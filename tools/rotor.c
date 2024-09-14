@@ -141,6 +141,9 @@ char* ARRAY  = (char*) 0;
 
 char* OP_SORT = (char*) 0;
 
+char* OP_ZERO = (char*) 0;
+char* OP_ONE  = (char*) 0;
+
 char* OP_CONST  = (char*) 0;
 char* OP_CONSTD = (char*) 0;
 char* OP_CONSTH = (char*) 0;
@@ -218,6 +221,9 @@ void init_model() {
   ARRAY  = "array";
 
   OP_SORT = "sort";
+
+  OP_ZERO = "zero";
+  OP_ONE  = "one";
 
   OP_CONST  = "const";
   OP_CONSTD = "constd";
@@ -4013,9 +4019,9 @@ uint64_t print_constant(uint64_t nid, uint64_t* line) {
     print_nid(nid, line);
     if (get_op(line) == OP_CONSTD) {
       if (value == 0)
-        w = w + dprintf(output_fd, " zero %lu", get_nid(get_sid(line)));
+        w = w + dprintf(output_fd, " %s %lu", OP_ZERO, get_nid(get_sid(line)));
       else if (value == 1)
-        w = w + dprintf(output_fd, " one %lu", get_nid(get_sid(line)));
+        w = w + dprintf(output_fd, " %s %lu", OP_ONE, get_nid(get_sid(line)));
       else
         w = w + dprintf(output_fd, " %s %lu %ld", get_op(line), get_nid(get_sid(line)), value);
     } else if (get_op(line) == OP_CONST)

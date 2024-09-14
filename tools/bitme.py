@@ -55,6 +55,71 @@ except ImportError:
 
 import math
 
+# supported BTOR2 keywords and operators
+
+BITVEC = 'bitvec'
+ARRAY  = 'array'
+
+OP_SORT = 'sort'
+
+OP_ZERO = 'zero'
+OP_ONE  = 'one'
+
+OP_CONST  = 'const'
+OP_CONSTD = 'constd'
+OP_CONSTH = 'consth'
+OP_INPUT  = 'input'
+OP_STATE  = 'state'
+
+OP_INIT  = 'init'
+OP_NEXT  = 'next'
+
+OP_SEXT  = 'sext'
+OP_UEXT  = 'uext'
+OP_SLICE = 'slice'
+
+OP_NOT = 'not'
+OP_INC = 'inc'
+OP_DEC = 'dec'
+OP_NEG = 'neg'
+
+OP_IMPLIES = 'implies'
+OP_EQ      = 'eq'
+OP_NEQ     = 'neq'
+OP_SGT     = 'sgt'
+OP_UGT     = 'ugt'
+OP_SGTE    = 'sgte'
+OP_UGTE    = 'ugte'
+OP_SLT     = 'slt'
+OP_ULT     = 'ult'
+OP_SLTE    = 'slte'
+OP_ULTE    = 'ulte'
+
+OP_AND = 'and'
+OP_OR  = 'or'
+OP_XOR = 'xor'
+
+OP_SLL = 'sll'
+OP_SRL = 'srl'
+OP_SRA = 'sra'
+
+OP_ADD  = 'add'
+OP_SUB  = 'sub'
+OP_MUL  = 'mul'
+OP_SDIV = 'sdiv'
+OP_UDIV = 'udiv'
+OP_SREM = 'srem'
+OP_UREM = 'urem'
+
+OP_CONCAT = 'concat'
+OP_READ   = 'read'
+
+OP_ITE   = 'ite'
+OP_WRITE = 'write'
+
+OP_BAD        = 'bad'
+OP_CONSTRAINT = 'constraint'
+
 class model_error(Exception):
     def __init__(self, expected, line_no):
         super().__init__(f"model error in line {line_no}: {expected} expected")
@@ -93,7 +158,7 @@ class Line(Z3, Bitwuzla):
         return Line.lines[nid]
 
 class Sort(Line):
-    keyword = 'sort'
+    keyword = OP_SORT
 
     def __init__(self, nid, comment, line_no):
         super().__init__(nid, comment, line_no)
@@ -102,7 +167,7 @@ class Sort(Line):
         return type(self) == type(sort)
 
 class Bitvector(Sort):
-    keyword = 'bitvec'
+    keyword = BITVEC
 
     def __init__(self, nid, size, comment, line_no):
         super().__init__(nid, comment, line_no)
@@ -149,7 +214,7 @@ class Bitvec(Bitvector):
         return self.bitwuzla
 
 class Array(Sort):
-    keyword = 'array'
+    keyword = ARRAY
 
     def __init__(self, nid, array_size_line, element_size_line, comment, line_no):
         super().__init__(nid, comment, line_no)
@@ -217,7 +282,7 @@ class Constant(Expression):
         return self.bitwuzla
 
 class Zero(Constant):
-    keyword = 'zero'
+    keyword = OP_ZERO
 
     def __init__(self, nid, sid_line, comment, line_no):
         super().__init__(nid, sid_line, 0, comment, line_no)
@@ -226,7 +291,7 @@ class Zero(Constant):
         return f"{self.nid} {Zero.keyword} {self.sid_line.nid} {self.comment}"
 
 class One(Constant):
-    keyword = 'one'
+    keyword = OP_ONE
 
     def __init__(self, nid, sid_line, comment, line_no):
         super().__init__(nid, sid_line, 1, comment, line_no)
@@ -235,7 +300,7 @@ class One(Constant):
         return f"{self.nid} {One.keyword} {self.sid_line.nid} {self.comment}"
 
 class Constd(Constant):
-    keyword = 'constd'
+    keyword = OP_CONSTD
 
     def __init__(self, nid, sid_line, value, comment, line_no):
         super().__init__(nid, sid_line, value, comment, line_no)
@@ -244,7 +309,7 @@ class Constd(Constant):
         return f"{self.nid} {Constd.keyword} {self.sid_line.nid} {self.value} {self.comment}"
 
 class Const(Constant):
-    keyword = 'const'
+    keyword = OP_CONST
 
     def __init__(self, nid, sid_line, value, comment, line_no):
         super().__init__(nid, sid_line, value, comment, line_no)
@@ -254,7 +319,7 @@ class Const(Constant):
         return f"{self.nid} {Const.keyword} {self.sid_line.nid} {self.value:0{size}b} {self.comment}"
 
 class Consth(Constant):
-    keyword = 'consth'
+    keyword = OP_CONSTH
 
     def __init__(self, nid, sid_line, value, comment, line_no):
         super().__init__(nid, sid_line, value, comment, line_no)
@@ -264,7 +329,7 @@ class Consth(Constant):
         return f"{self.nid} {Consth.keyword} {self.sid_line.nid} {self.value:0{size}X} {self.comment}"
 
 class Variable(Expression):
-    keywords = {'input', 'state'}
+    keywords = {OP_INPUT, OP_STATE}
 
     inputs = dict()
 
@@ -277,7 +342,7 @@ class Variable(Expression):
         Variable.inputs[self.nid] = self
 
 class Input(Variable):
-    keyword = 'input'
+    keyword = OP_INPUT
 
     def __init__(self, nid, sid_line, symbol, comment, line_no):
         super().__init__(nid, sid_line, dict(), symbol, comment, line_no)
@@ -298,7 +363,7 @@ class Input(Variable):
         return self.bitwuzla
 
 class State(Variable):
-    keyword = 'state'
+    keyword = OP_STATE
 
     states = dict()
 
@@ -416,7 +481,7 @@ class Indexed(Expression):
             raise model_error("bitvector operand", line_no)
 
 class Ext(Indexed):
-    keywords = {'sext', 'uext'}
+    keywords = {OP_SEXT, OP_UEXT}
 
     def __init__(self, nid, op, sid_line, arg1_line, w, comment, line_no):
         super().__init__(nid, sid_line, arg1_line, comment, line_no)
@@ -447,7 +512,7 @@ class Ext(Indexed):
         return self.bitwuzla
 
 class Slice(Indexed):
-    keyword = 'slice'
+    keyword = OP_SLICE
 
     def __init__(self, nid, sid_line, arg1_line, u, l, comment, line_no):
         super().__init__(nid, sid_line, arg1_line, comment, line_no)
@@ -475,7 +540,7 @@ class Slice(Indexed):
         return self.bitwuzla
 
 class Unary(Expression):
-    keywords = {'not', 'inc', 'dec', 'neg'}
+    keywords = {OP_NOT, OP_INC, OP_DEC, OP_NEG}
 
     def __init__(self, nid, op, sid_line, arg1_line, comment, line_no):
         super().__init__(nid, sid_line, arg1_line.domain, comment, line_no)
@@ -525,7 +590,7 @@ class Unary(Expression):
         return self.bitwuzla
 
 class Binary(Expression):
-    keywords = {'implies', 'eq', 'neq', 'sgt', 'ugt', 'sgte', 'ugte', 'slt', 'ult', 'slte', 'ulte', 'and', 'or', 'xor', 'sll', 'srl', 'sra', 'add', 'sub', 'mul', 'sdiv', 'udiv', 'srem', 'urem', 'concat', 'read'}
+    keywords = {OP_IMPLIES, OP_EQ, OP_NEQ, OP_SGT, OP_UGT, OP_SGTE, OP_UGTE, OP_SLT, OP_ULT, OP_SLTE, OP_ULTE, OP_AND, OP_OR, OP_XOR, OP_SLL, OP_SRL, OP_SRA, OP_ADD, OP_SUB, OP_MUL, OP_SDIV, OP_UDIV, OP_SREM, OP_UREM, OP_CONCAT, OP_READ}
 
     def __init__(self, nid, op, sid_line, arg1_line, arg2_line, comment, line_no):
         super().__init__(nid, sid_line, arg1_line.domain | arg2_line.domain, comment, line_no)
@@ -541,7 +606,7 @@ class Binary(Expression):
         return f"{self.nid} {self.op} {self.sid_line.nid} {self.arg1_line.nid} {self.arg2_line.nid} {self.comment}"
 
 class Implies(Binary):
-    keyword = 'implies'
+    keyword = OP_IMPLIES
 
     def __init__(self, nid, op, sid_line, arg1_line, arg2_line, comment, line_no):
         super().__init__(nid, Implies.keyword, sid_line, arg1_line, arg2_line, comment, line_no)
@@ -564,7 +629,7 @@ class Implies(Binary):
         return self.bitwuzla
 
 class Comparison(Binary):
-    keywords = {'eq', 'neq', 'sgt', 'ugt', 'sgte', 'ugte', 'slt', 'ult', 'slte', 'ulte'}
+    keywords = {OP_EQ, OP_NEQ, OP_SGT, OP_UGT, OP_SGTE, OP_UGTE, OP_SLT, OP_ULT, OP_SLTE, OP_ULTE}
 
     def __init__(self, nid, op, sid_line, arg1_line, arg2_line, comment, line_no):
         super().__init__(nid, op, sid_line, arg1_line, arg2_line, comment, line_no)
@@ -626,7 +691,7 @@ class Comparison(Binary):
         return self.bitwuzla
 
 class Logical(Binary):
-    keywords = {'and', 'or', 'xor'}
+    keywords = {OP_AND, OP_OR, OP_XOR}
 
     def __init__(self, nid, op, sid_line, arg1_line, arg2_line, comment, line_no):
         super().__init__(nid, op, sid_line, arg1_line, arg2_line, comment, line_no)
@@ -676,7 +741,7 @@ class Logical(Binary):
         return self.bitwuzla
 
 class Computation(Binary):
-    keywords = {'sll', 'srl', 'sra', 'add', 'sub', 'mul', 'sdiv', 'udiv', 'srem', 'urem'}
+    keywords = {OP_SLL, OP_SRL, OP_SRA, OP_ADD, OP_SUB, OP_MUL, OP_SDIV, OP_UDIV, OP_SREM, OP_UREM}
 
     def __init__(self, nid, op, sid_line, arg1_line, arg2_line, comment, line_no):
         super().__init__(nid, op, sid_line, arg1_line, arg2_line, comment, line_no)
@@ -738,7 +803,7 @@ class Computation(Binary):
         return self.bitwuzla
 
 class Concat(Binary):
-    keyword = 'concat'
+    keyword = OP_CONCAT
 
     def __init__(self, nid, op, sid_line, arg1_line, arg2_line, comment, line_no):
         super().__init__(nid, Concat.keyword, sid_line, arg1_line, arg2_line, comment, line_no)
@@ -763,7 +828,7 @@ class Concat(Binary):
         return self.bitwuzla
 
 class Read(Binary):
-    keyword = 'read'
+    keyword = OP_READ
 
     def __init__(self, nid, op, sid_line, arg1_line, arg2_line, comment, line_no):
         super().__init__(nid, Read.keyword, sid_line, arg1_line, arg2_line, comment, line_no)
@@ -786,7 +851,7 @@ class Read(Binary):
         return self.bitwuzla
 
 class Ternary(Expression):
-    keywords = {'ite', 'write'}
+    keywords = {OP_ITE, OP_WRITE}
 
     def __init__(self, nid, op, sid_line, arg1_line, arg2_line, arg3_line, comment, line_no):
         super().__init__(nid, sid_line, arg1_line.domain | arg2_line.domain | arg3_line.domain, comment, line_no)
@@ -805,7 +870,7 @@ class Ternary(Expression):
         return f"{self.nid} {self.op} {self.sid_line.nid} {self.arg1_line.nid} {self.arg2_line.nid} {self.arg3_line.nid} {self.comment}"
 
 class Ite(Ternary):
-    keyword = 'ite'
+    keyword = OP_ITE
 
     def __init__(self, nid, op, sid_line, arg1_line, arg2_line, arg3_line, comment, line_no):
         super().__init__(nid, Ite.keyword, sid_line, arg1_line, arg2_line, arg3_line, comment, line_no)
@@ -831,7 +896,7 @@ class Ite(Ternary):
         return self.bitwuzla
 
 class Write(Ternary):
-    keyword = 'write'
+    keyword = OP_WRITE
 
     def __init__(self, nid, op, sid_line, arg1_line, arg2_line, arg3_line, comment, line_no):
         super().__init__(nid, Write.keyword, sid_line, arg1_line, arg2_line, arg3_line, comment, line_no)
@@ -870,7 +935,7 @@ class Sequential(Line):
             raise model_error("expression operand", line_no)
 
 class Init(Sequential):
-    keyword = 'init'
+    keyword = OP_INIT
 
     inits = dict()
 
@@ -930,7 +995,7 @@ class Init(Sequential):
                     self.exp_line.domain, 0, tm)])
 
 class Next(Sequential):
-    keyword = 'next'
+    keyword = OP_NEXT
 
     nexts = dict()
 
@@ -989,7 +1054,7 @@ class Next(Sequential):
             self.state_line.get_bitwuzla_step(step, tm)])
 
 class Property(Sequential):
-    keywords = {'constraint', 'bad'}
+    keywords = {OP_CONSTRAINT, OP_BAD}
 
     def __init__(self, nid, property_line, symbol, comment, line_no):
         super().__init__(nid, property_line, comment, line_no)
@@ -1019,7 +1084,7 @@ class Property(Sequential):
         return self.bitwuzla
 
 class Constraint(Property):
-    keyword = 'constraint'
+    keyword = OP_CONSTRAINT
 
     constraints = dict()
 
@@ -1035,7 +1100,7 @@ class Constraint(Property):
         Constraint.constraints[self.nid] = self
 
 class Bad(Property):
-    keyword = 'bad'
+    keyword = OP_BAD
 
     bads = dict()
 
@@ -1050,7 +1115,51 @@ class Bad(Property):
         assert self not in Bad.bads
         Bad.bads[self.nid] = self
 
-# RISC-V model generator
+def get_class(keyword):
+    if keyword == Zero.keyword:
+        return Zero
+    elif keyword == One.keyword:
+        return One
+    elif keyword == Constd.keyword:
+        return Constd
+    elif keyword == Const.keyword:
+        return Const
+    elif keyword == Consth.keyword:
+        return Consth
+    elif keyword == Input.keyword:
+        return Input
+    elif keyword == State.keyword:
+        return State
+    elif keyword in Ext.keywords:
+        return Ext
+    elif keyword == Slice.keyword:
+        return Slice
+    elif keyword in Unary.keywords:
+        return Unary
+    elif keyword == Implies.keyword:
+        return Implies
+    elif keyword in Comparison.keywords:
+        return Comparison
+    elif keyword in Logical.keywords:
+        return Logical
+    elif keyword in Computation.keywords:
+        return Computation
+    elif keyword == Concat.keyword:
+        return Concat
+    elif keyword == Read.keyword:
+        return Read
+    elif keyword == Ite.keyword:
+        return Ite
+    elif keyword == Write.keyword:
+        return Write
+    elif keyword == Init.keyword:
+        return Init
+    elif keyword == Next.keyword:
+        return Next
+    elif keyword == Constraint.keyword:
+        return Constraint
+    elif keyword == Bad.keyword:
+        return Bad
 
 current_nid = 0
 
@@ -1059,28 +1168,73 @@ def next_nid():
     current_nid += 1
     return current_nid
 
-def new_boolean():
-    return Bool(next_nid(), "Boolean", None)
+def new_boolean(nid = next_nid(), line_no = None):
+    return Bool(nid, "Boolean", line_no)
 
-def new_bitvec(size_in_bits, comment):
-    return Bitvec(next_nid(), size_in_bits, comment, None)
+def new_bitvec(size_in_bits, comment, nid = next_nid(), line_no = None):
+    return Bitvec(nid, size_in_bits, comment, line_no)
 
-def new_zero(sid, comment):
-    return Zero(next_nid(), sid, comment, None)
+def new_array(address_sid, element_sid, comment, nid = next_nid(), line_no = None):
+    return Array(nid, address_sid, element_sid, comment, line_no)
 
-def new_one(sid, comment):
-    return One(next_nid(), sid, comment, None)
+def new_zero_one(op, sid, comment, nid = next_nid(), line_no = None):
+    assert op in {OP_ZERO, OP_ONE}
+    return get_class(op)(nid, sid, comment, line_no)
 
-def new_constd(sid, value, comment):
-    return Constd(next_nid(), sid, value, comment, None)
+def new_constant(op, sid, constant, comment, nid = next_nid(), line_no = None):
+    assert op in {OP_CONSTD, OP_CONST, OP_CONSTH}
+    if op == OP_CONSTD:
+        if constant == 0:
+            return Zero(nid, sid, comment, line_no)
+        elif constant == 1:
+            return One(nid, sid, comment, line_no)
+    return get_class(op)(nid, sid, constant, comment, line_no)
 
-def new_const(sid, value, comment):
-    return Const(next_nid(), sid, value, comment, None)
+def new_input(op, sid, symbol, comment, nid = next_nid(), line_no = None):
+    assert op in Variable.keywords
+    return get_class(op)(nid, sid, symbol, comment, line_no)
 
-def new_consth(sid, value, comment):
-    return Consth(next_nid(), sid, value, comment, None)
+def new_ext(op, sid, value_nid, w, comment, nid = next_nid(), line_no = None):
+    assert op in Ext.keywords
+    return get_class(op)(nid, op, sid, value_nid, w, comment, line_no)
 
-# ------------------------ GLOBAL CONSTANTS -----------------------
+def new_slice(sid, value_nid, u, l, comment, nid = next_nid(), line_no = None):
+    return Slice(nid, sid, value_nid, u, l, comment, line_no)
+
+def new_unary(op, sid, value_nid, comment, nid = next_nid(), line_no = None):
+    assert op in Unary.keywords
+    return get_class(op)(nid, op, sid, value_nid, comment, line_no)
+
+def new_unary_boolean(op, value_nid, comment, nid = next_nid(), line_no = None):
+    assert op == OP_NOT
+    return get_class(op)(nid, op, SID_BOOLEAN, value_nid, comment, line_no)
+
+def new_binary(op, sid, left_nid, right_nid, comment, nid = next_nid(), line_no = None):
+    assert op in Binary.keywords
+    return get_class(op)(nid, op, sid, left_nid, right_nid, comment, line_no)
+
+def new_binary_boolean(op, left_nid, right_nid, comment, nid = next_nid(), line_no = None):
+    assert op in Implies.keyword + Comparison.keywords + Logical.keywords
+    return get_class(op)(nid, op, SID_BOOLEAN, left_nid, right_nid, comment, line_no)
+
+def new_ternary(op, sid, first_nid, second_nid, third_nid, comment, nid = next_nid(), line_no = None):
+    assert op in Ternary.keywords
+    return get_class(op)(nid, op, sid, first_nid, second_nid, third_nid, comment, line_no)
+
+def new_init(sid, state_nid, value_nid, comment, nid = next_nid(), line_no = None):
+    return Init(nid, sid, state_nid, value_nid, comment, line_no)
+
+def new_next(sid, state_nid, value_nid, comment, nid = next_nid(), line_no = None):
+    return Next(nid, sid, state_nid, value_nid, comment, line_no)
+
+def new_init_next(op, sid, state_nid, value_nid, comment, nid = next_nid(), line_no = None):
+    return get_class(op)(nid, sid, state_nid, value_nid, comment, line_no)
+
+def new_property(op, condition_nid, symbol, comment, nid = next_nid(), line_no = None):
+    assert op in Property.keywords
+    return get_class(op)(nid, condition_nid, symbol, comment, line_no)
+
+# RISC-V model generator
 
 IS64BITTARGET = True # TODO: configure
 
@@ -1088,76 +1242,74 @@ WORDSIZEINBITS = 64 # TODO: define accordingly
 
 SID_BOOLEAN = None
 
-NID_FALSE = 0
-NID_TRUE  = 1
+NID_FALSE = None
+NID_TRUE  = None
 
 SID_BYTE = None
 
-NID_BYTE_0 = 0
-NID_BYTE_3 = 0
+NID_BYTE_0 = None
+NID_BYTE_3 = None
 
 HALFWORDSIZEINBITS = 16
 
 SID_HALF_WORD = None
 
-NID_HALF_WORD_0 = 0
-NID_HALF_WORD_1 = 0
+NID_HALF_WORD_0 = None
+NID_HALF_WORD_1 = None
 
 SINGLEWORDSIZEINBITS = 32
 
 SID_SINGLE_WORD = None
 
-NID_SINGLE_WORD_0 = 0
-NID_SINGLE_WORD_1 = 0
-NID_SINGLE_WORD_2 = 0
-NID_SINGLE_WORD_3 = 0
-NID_SINGLE_WORD_4 = 0
-NID_SINGLE_WORD_5 = 0
-NID_SINGLE_WORD_6 = 0
-NID_SINGLE_WORD_7 = 0
-NID_SINGLE_WORD_8 = 0
+NID_SINGLE_WORD_0 = None
+NID_SINGLE_WORD_1 = None
+NID_SINGLE_WORD_2 = None
+NID_SINGLE_WORD_3 = None
+NID_SINGLE_WORD_4 = None
+NID_SINGLE_WORD_5 = None
+NID_SINGLE_WORD_6 = None
+NID_SINGLE_WORD_7 = None
+NID_SINGLE_WORD_8 = None
 
-NID_SINGLE_WORD_MINUS_1 = 0
-NID_SINGLE_WORD_INT_MIN = 0
+NID_SINGLE_WORD_MINUS_1 = None
+NID_SINGLE_WORD_INT_MIN = None
 
 DOUBLEWORDSIZE = 8
 DOUBLEWORDSIZEINBITS = 64
 
 SID_DOUBLE_WORD = None
 
-NID_DOUBLE_WORD_0 = 0
-NID_DOUBLE_WORD_1 = 0
-NID_DOUBLE_WORD_2 = 0
-NID_DOUBLE_WORD_3 = 0
-NID_DOUBLE_WORD_4 = 0
-NID_DOUBLE_WORD_5 = 0
-NID_DOUBLE_WORD_6 = 0
-NID_DOUBLE_WORD_7 = 0
-NID_DOUBLE_WORD_8 = 0
+NID_DOUBLE_WORD_0 = None
+NID_DOUBLE_WORD_1 = None
+NID_DOUBLE_WORD_2 = None
+NID_DOUBLE_WORD_3 = None
+NID_DOUBLE_WORD_4 = None
+NID_DOUBLE_WORD_5 = None
+NID_DOUBLE_WORD_6 = None
+NID_DOUBLE_WORD_7 = None
+NID_DOUBLE_WORD_8 = None
 
-NID_DOUBLE_WORD_MINUS_1 = 0
-NID_DOUBLE_WORD_INT_MIN = 0
+NID_DOUBLE_WORD_MINUS_1 = None
+NID_DOUBLE_WORD_INT_MIN = None
 
 SID_MACHINE_WORD = None
 
-NID_MACHINE_WORD_0 = 0
-NID_MACHINE_WORD_1 = 0
-NID_MACHINE_WORD_2 = 0
-NID_MACHINE_WORD_3 = 0
-NID_MACHINE_WORD_4 = 0
-NID_MACHINE_WORD_5 = 0
-NID_MACHINE_WORD_6 = 0
-NID_MACHINE_WORD_7 = 0
-NID_MACHINE_WORD_8 = 0
+NID_MACHINE_WORD_0 = None
+NID_MACHINE_WORD_1 = None
+NID_MACHINE_WORD_2 = None
+NID_MACHINE_WORD_3 = None
+NID_MACHINE_WORD_4 = None
+NID_MACHINE_WORD_5 = None
+NID_MACHINE_WORD_6 = None
+NID_MACHINE_WORD_7 = None
+NID_MACHINE_WORD_8 = None
 
-NID_MACHINE_WORD_MINUS_1 = 0
-NID_MACHINE_WORD_INT_MIN = 0
+NID_MACHINE_WORD_MINUS_1 = None
+NID_MACHINE_WORD_INT_MIN = None
 
-NID_LSB_MASK = 0
+NID_LSB_MASK = None
 
 SID_DOUBLE_MACHINE_WORD = None
-
-# ------------------------- INITIALIZATION ------------------------
 
 def init_interface_sorts():
     global SID_BOOLEAN, NID_FALSE, NID_TRUE
@@ -1183,50 +1335,50 @@ def init_interface_sorts():
 
     SID_BOOLEAN = new_boolean()
 
-    NID_FALSE = new_zero(SID_BOOLEAN, "false")
-    NID_TRUE = new_one(SID_BOOLEAN, "true")
+    NID_FALSE = new_constant(OP_CONSTD, SID_BOOLEAN, 0, "false")
+    NID_TRUE = new_constant(OP_CONSTD, SID_BOOLEAN, 1, "true")
 
     SID_BYTE = new_bitvec(8, "8-bit byte")
 
-    NID_BYTE_0 = new_constd(SID_BYTE, 0, "byte 0")
-    NID_BYTE_3 = new_constd(SID_BYTE, 3, "byte 3")
+    NID_BYTE_0 = new_constant(OP_CONSTD, SID_BYTE, 0, "byte 0")
+    NID_BYTE_3 = new_constant(OP_CONSTD, SID_BYTE, 3, "byte 3")
 
     SID_HALF_WORD = new_bitvec(HALFWORDSIZEINBITS, "16-bit half word")
 
-    NID_HALF_WORD_0 = new_constd(SID_HALF_WORD, 0, "half word 0")
-    NID_HALF_WORD_1 = new_constd(SID_HALF_WORD, 1, "half word 1")
+    NID_HALF_WORD_0 = new_constant(OP_CONSTD, SID_HALF_WORD, 0, "half word 0")
+    NID_HALF_WORD_1 = new_constant(OP_CONSTD, SID_HALF_WORD, 1, "half word 1")
 
     SID_SINGLE_WORD = new_bitvec(SINGLEWORDSIZEINBITS, "32-bit single word")
 
-    NID_SINGLE_WORD_0 = new_constd(SID_SINGLE_WORD, 0, "single-word 0")
-    NID_SINGLE_WORD_1 = new_constd(SID_SINGLE_WORD, 1, "single-word 1")
-    NID_SINGLE_WORD_2 = new_constd(SID_SINGLE_WORD, 2, "single-word 2")
-    NID_SINGLE_WORD_3 = new_constd(SID_SINGLE_WORD, 3, "single-word 3")
-    NID_SINGLE_WORD_4 = new_constd(SID_SINGLE_WORD, 4, "single-word 4")
-    NID_SINGLE_WORD_5 = new_constd(SID_SINGLE_WORD, 5, "single-word 5")
-    NID_SINGLE_WORD_6 = new_constd(SID_SINGLE_WORD, 6, "single-word 6")
-    NID_SINGLE_WORD_7 = new_constd(SID_SINGLE_WORD, 7, "single-word 7")
-    NID_SINGLE_WORD_8 = new_constd(SID_SINGLE_WORD, 8, "single-word 8")
+    NID_SINGLE_WORD_0 = new_constant(OP_CONSTD, SID_SINGLE_WORD, 0, "single-word 0")
+    NID_SINGLE_WORD_1 = new_constant(OP_CONSTD, SID_SINGLE_WORD, 1, "single-word 1")
+    NID_SINGLE_WORD_2 = new_constant(OP_CONSTD, SID_SINGLE_WORD, 2, "single-word 2")
+    NID_SINGLE_WORD_3 = new_constant(OP_CONSTD, SID_SINGLE_WORD, 3, "single-word 3")
+    NID_SINGLE_WORD_4 = new_constant(OP_CONSTD, SID_SINGLE_WORD, 4, "single-word 4")
+    NID_SINGLE_WORD_5 = new_constant(OP_CONSTD, SID_SINGLE_WORD, 5, "single-word 5")
+    NID_SINGLE_WORD_6 = new_constant(OP_CONSTD, SID_SINGLE_WORD, 6, "single-word 6")
+    NID_SINGLE_WORD_7 = new_constant(OP_CONSTD, SID_SINGLE_WORD, 7, "single-word 7")
+    NID_SINGLE_WORD_8 = new_constant(OP_CONSTD, SID_SINGLE_WORD, 8, "single-word 8")
 
-    NID_SINGLE_WORD_MINUS_1 = new_constd(SID_SINGLE_WORD, -1, "single-word -1")
-    NID_SINGLE_WORD_INT_MIN = new_consth(SID_SINGLE_WORD, 2**(SINGLEWORDSIZEINBITS - 1), "single-word INT_MIN")
+    NID_SINGLE_WORD_MINUS_1 = new_constant(OP_CONSTD, SID_SINGLE_WORD, -1, "single-word -1")
+    NID_SINGLE_WORD_INT_MIN = new_constant(OP_CONSTH, SID_SINGLE_WORD, 2**(SINGLEWORDSIZEINBITS - 1), "single-word INT_MIN")
 
     SID_DOUBLE_WORD = new_bitvec(DOUBLEWORDSIZEINBITS, "64-bit double word")
 
-    NID_DOUBLE_WORD_0 = new_constd(SID_DOUBLE_WORD, 0, "double-word 0")
-    NID_DOUBLE_WORD_1 = new_constd(SID_DOUBLE_WORD, 1, "double-word 1")
-    NID_DOUBLE_WORD_2 = new_constd(SID_DOUBLE_WORD, 2, "double-word 2")
-    NID_DOUBLE_WORD_3 = new_constd(SID_DOUBLE_WORD, 3, "double-word 3")
-    NID_DOUBLE_WORD_4 = new_constd(SID_DOUBLE_WORD, 4, "double-word 4")
-    NID_DOUBLE_WORD_5 = new_constd(SID_DOUBLE_WORD, 5, "double-word 5")
-    NID_DOUBLE_WORD_6 = new_constd(SID_DOUBLE_WORD, 6, "double-word 6")
-    NID_DOUBLE_WORD_7 = new_constd(SID_DOUBLE_WORD, 7, "double-word 7")
-    NID_DOUBLE_WORD_8 = new_constd(SID_DOUBLE_WORD, 8, "double-word 8")
+    NID_DOUBLE_WORD_0 = new_constant(OP_CONSTD, SID_DOUBLE_WORD, 0, "double-word 0")
+    NID_DOUBLE_WORD_1 = new_constant(OP_CONSTD, SID_DOUBLE_WORD, 1, "double-word 1")
+    NID_DOUBLE_WORD_2 = new_constant(OP_CONSTD, SID_DOUBLE_WORD, 2, "double-word 2")
+    NID_DOUBLE_WORD_3 = new_constant(OP_CONSTD, SID_DOUBLE_WORD, 3, "double-word 3")
+    NID_DOUBLE_WORD_4 = new_constant(OP_CONSTD, SID_DOUBLE_WORD, 4, "double-word 4")
+    NID_DOUBLE_WORD_5 = new_constant(OP_CONSTD, SID_DOUBLE_WORD, 5, "double-word 5")
+    NID_DOUBLE_WORD_6 = new_constant(OP_CONSTD, SID_DOUBLE_WORD, 6, "double-word 6")
+    NID_DOUBLE_WORD_7 = new_constant(OP_CONSTD, SID_DOUBLE_WORD, 7, "double-word 7")
+    NID_DOUBLE_WORD_8 = new_constant(OP_CONSTD, SID_DOUBLE_WORD, 8, "double-word 8")
 
-    NID_DOUBLE_WORD_MINUS_1 = new_constd(SID_DOUBLE_WORD, -1, "double-word -1")
+    NID_DOUBLE_WORD_MINUS_1 = new_constant(OP_CONSTD, SID_DOUBLE_WORD, -1, "double-word -1")
 
     if IS64BITTARGET:
-        NID_DOUBLE_WORD_INT_MIN = new_consth(SID_DOUBLE_WORD, 2**(DOUBLEWORDSIZEINBITS - 1), "double-word INT_MIN")
+        NID_DOUBLE_WORD_INT_MIN = new_constant(OP_CONSTH, SID_DOUBLE_WORD, 2**(DOUBLEWORDSIZEINBITS - 1), "double-word INT_MIN")
 
         SID_MACHINE_WORD = SID_DOUBLE_WORD
 
@@ -1259,7 +1411,7 @@ def init_interface_sorts():
         NID_MACHINE_WORD_MINUS_1 = NID_SINGLE_WORD_MINUS_1
         NID_MACHINE_WORD_INT_MIN = NID_SINGLE_WORD_INT_MIN
 
-    NID_LSB_MASK = new_constd(SID_MACHINE_WORD, -2, "all bits but LSB set")
+    NID_LSB_MASK = new_constant(OP_CONSTD, SID_MACHINE_WORD, -2, "all bits but LSB set")
 
     SID_DOUBLE_MACHINE_WORD = new_bitvec(2 * WORDSIZEINBITS, "double machine word")
 
@@ -1268,12 +1420,12 @@ class Bitvector_State():
         assert isinstance(sid, Bitvector)
         self.sid = sid
         if core >= 0:
-            self.initial = new_constd(self.sid, 0, f"initial core-{core} {name} value")
-            self.state = State(next_nid(), self.sid, f"core-{core}-{initials}", f"{sid.size}-bit {name}", None)
+            self.initial = new_constant(OP_CONSTD, self.sid, 0, f"initial core-{core} {name} value")
+            self.state = new_input(OP_STATE, self.sid, f"core-{core}-{initials}", f"{sid.size}-bit {name}")
         else:
-            self.initial = new_constd(self.sid, 0, f"initial {name} value")
-            self.state = State(next_nid(), self.sid, f"{initials}", f"{sid.size}-bit {name}", None)
-        self.init = Init(next_nid(), self.sid, self.state, self.initial, f"initializing {name}", None)
+            self.initial = new_constant(OP_CONSTD, self.sid, 0, f"initial {name} value")
+            self.state = new_input(OP_STATE, self.sid, f"{initials}", f"{sid.size}-bit {name}")
+        self.init = new_init(self.sid, self.state, self.initial, f"initializing {name}")
 
     def __str__(self):
         return f"{self.state}"
@@ -1283,21 +1435,21 @@ class Array_State():
         assert isinstance(address_sid, Bitvector) and isinstance(element_sid, Bitvector)
         self.address_sid = address_sid
         self.element_sid = element_sid
-        self.array_sid = Array(next_nid(), address_sid, element_sid, f"{address_sid.size}-bit {name} array", None)
-        self.initial = new_constd(element_sid, 0, f"initial core-{core} {name} value")
-        self.state = State(next_nid(), self.array_sid, f"core-{core}-{initials}", f"{element_sid.size}-bit {name}", None)
-        self.init = Init(next_nid(), self.array_sid, self.state, self.initial, f"initializing {name}", None)
+        self.array_sid = new_array(address_sid, element_sid, f"{address_sid.size}-bit {name} array")
+        self.initial = new_constant(OP_CONSTD, element_sid, 0, f"initial core-{core} {name} value")
+        self.state = new_input(OP_STATE, self.array_sid, f"core-{core}-{initials}", f"{element_sid.size}-bit {name}")
+        self.init = new_init(self.array_sid, self.state, self.initial, f"initializing {name}")
 
     def __str__(self):
         return f"{self.state}"
 
     def load(self, array_nid, address_nid, comment):
         assert array_nid.sid_line == self.array_sid and address_nid.sid_line == self.address_sid
-        return Read(next_nid(), None, self.element_sid, array_nid, address_nid, comment, None)
+        return new_binary(OP_READ, self.element_sid, array_nid, address_nid, comment)
 
     def store(self, array_nid, address_nid, value_nid, comment):
         assert array_nid.sid_line == self.array_sid and address_nid.sid_line == self.address_sid and value_nid.sid_line == self.element_sid
-        return Write(next_nid(), None, self.array_sid, array_nid, address_nid, value_nid, comment, None)
+        return new_ternary(OP_WRITE, self.array_sid, array_nid, address_nid, value_nid, comment)
 
 class PC(Bitvector_State):
     def __init__(self, core, word_sid):
@@ -1367,52 +1519,6 @@ class System():
         return f"{SID_MACHINE_WORD.size}-bit single-core system:\n{self.core}"
 
 # BTOR2 parser
-
-def get_class(keyword):
-    if keyword == Zero.keyword:
-        return Zero
-    elif keyword == One.keyword:
-        return One
-    elif keyword == Constd.keyword:
-        return Constd
-    elif keyword == Const.keyword:
-        return Const
-    elif keyword == Consth.keyword:
-        return Consth
-    elif keyword == Input.keyword:
-        return Input
-    elif keyword == State.keyword:
-        return State
-    elif keyword in Ext.keywords:
-        return Ext
-    elif keyword == Slice.keyword:
-        return Slice
-    elif keyword in Unary.keywords:
-        return Unary
-    elif keyword == Implies.keyword:
-        return Implies
-    elif keyword in Comparison.keywords:
-        return Comparison
-    elif keyword in Logical.keywords:
-        return Logical
-    elif keyword in Computation.keywords:
-        return Computation
-    elif keyword == Concat.keyword:
-        return Concat
-    elif keyword == Read.keyword:
-        return Read
-    elif keyword == Ite.keyword:
-        return Ite
-    elif keyword == Write.keyword:
-        return Write
-    elif keyword == Init.keyword:
-        return Init
-    elif keyword == Next.keyword:
-        return Next
-    elif keyword == Constraint.keyword:
-        return Constraint
-    elif keyword == Bad.keyword:
-        return Bad
 
 import re
 
@@ -1496,21 +1602,21 @@ def parse_sort_line(tokens, nid, line_no):
         comment = get_comment(tokens, line_no)
         # rotor-dependent Boolean declaration
         if comment == "; Boolean" and size == 1:
-            return Bool(nid, comment, line_no)
+            return new_boolean(nid, line_no)
         else:
-            return Bitvec(nid, size, comment, line_no)
+            return new_bitvec(size, comment, nid, line_no)
     elif token == Array.keyword:
         array_size_line = get_bitvec_sid_line(tokens, line_no)
         element_size_line = get_bitvec_sid_line(tokens, line_no)
         comment = get_comment(tokens, line_no)
-        return Array(nid, array_size_line, element_size_line, comment, line_no)
+        return new_array(array_size_line, element_size_line, comment, nid, line_no)
     else:
         raise syntax_error("bitvector or array", line_no)
 
 def parse_zero_one_line(tokens, nid, op, line_no):
     sid_line = get_bool_or_bitvec_sid_line(tokens, line_no)
     comment = get_comment(tokens, line_no)
-    return get_class(op)(nid, sid_line, comment, line_no)
+    return new_zero_one(op, sid_line, comment, nid, line_no)
 
 def parse_constant_line(tokens, nid, op, line_no):
     sid_line = get_bool_or_bitvec_sid_line(tokens, line_no)
@@ -1521,7 +1627,7 @@ def parse_constant_line(tokens, nid, op, line_no):
     elif op == Consth.keyword:
         value = get_number(tokens, 16, "hexadecimal number", line_no)
     comment = get_comment(tokens, line_no)
-    return get_class(op)(nid, sid_line, value, comment, line_no)
+    return new_constant(op, sid_line, value, comment, nid, line_no)
 
 def parse_symbol_comment(tokens, line_no):
     symbol = get_symbol(tokens)
@@ -1534,14 +1640,14 @@ def parse_symbol_comment(tokens, line_no):
 def parse_variable_line(tokens, nid, op, line_no):
     sid_line = get_sid_line(tokens, line_no)
     symbol, comment = parse_symbol_comment(tokens, line_no)
-    return get_class(op)(nid, sid_line, symbol, comment, line_no)
+    return new_input(op, sid_line, symbol, comment, nid, line_no)
 
 def parse_ext_line(tokens, nid, op, line_no):
     sid_line = get_sid_line(tokens, line_no)
     arg1_line = get_exp_line(tokens, line_no)
     w = get_decimal(tokens, "bit width", line_no)
     comment = get_comment(tokens, line_no)
-    return Ext(nid, op, sid_line, arg1_line, w, comment, line_no)
+    return new_ext(op, sid_line, arg1_line, w, comment, nid, line_no)
 
 def parse_slice_line(tokens, nid, line_no):
     sid_line = get_sid_line(tokens, line_no)
@@ -1549,20 +1655,20 @@ def parse_slice_line(tokens, nid, line_no):
     u = get_decimal(tokens, "upper bit", line_no)
     l = get_decimal(tokens, "lower bit", line_no)
     comment = get_comment(tokens, line_no)
-    return Slice(nid, sid_line, arg1_line, u, l, comment, line_no)
+    return new_slice(sid_line, arg1_line, u, l, comment, nid, line_no)
 
 def parse_unary_line(tokens, nid, op, line_no):
     sid_line = get_sid_line(tokens, line_no)
     arg1_line = get_exp_line(tokens, line_no)
     comment = get_comment(tokens, line_no)
-    return Unary(nid, op, sid_line, arg1_line, comment, line_no)
+    return new_unary(op, sid_line, arg1_line, comment, nid, line_no)
 
 def parse_binary_line(tokens, nid, op, line_no):
     sid_line = get_sid_line(tokens, line_no)
     arg1_line = get_exp_line(tokens, line_no)
     arg2_line = get_exp_line(tokens, line_no)
     comment = get_comment(tokens, line_no)
-    return get_class(op)(nid, op, sid_line, arg1_line, arg2_line, comment, line_no)
+    return new_binary(op, sid_line, arg1_line, arg2_line, comment, nid, line_no)
 
 def parse_ternary_line(tokens, nid, op, line_no):
     sid_line = get_sid_line(tokens, line_no)
@@ -1570,19 +1676,19 @@ def parse_ternary_line(tokens, nid, op, line_no):
     arg2_line = get_exp_line(tokens, line_no)
     arg3_line = get_exp_line(tokens, line_no)
     comment = get_comment(tokens, line_no)
-    return get_class(op)(nid, op, sid_line, arg1_line, arg2_line, arg3_line, comment, line_no)
+    return new_ternary(op, sid_line, arg1_line, arg2_line, arg3_line, comment, nid, line_no)
 
 def parse_init_next_line(tokens, nid, op, line_no):
     sid_line = get_sid_line(tokens, line_no)
     state_line = get_state_line(tokens, line_no)
     exp_line = get_exp_line(tokens, line_no)
     comment = get_comment(tokens, line_no)
-    return get_class(op)(nid, sid_line, state_line, exp_line, comment, line_no)
+    return new_init_next(op, sid_line, state_line, exp_line, comment, nid, line_no)
 
 def parse_property_line(tokens, nid, op, line_no):
     property_line = get_exp_line(tokens, line_no)
     symbol, comment = parse_symbol_comment(tokens, line_no)
-    return get_class(op)(nid, property_line, symbol, comment, line_no)
+    return new_property(op, property_line, symbol, comment, nid, line_no)
 
 def parse_btor2_line(line, line_no):
     current_nid = 0
