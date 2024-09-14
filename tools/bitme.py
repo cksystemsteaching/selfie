@@ -1064,63 +1064,73 @@ NID_FALSE = Zero(next_nid(), SID_BOOLEAN, "False", None)
 NID_TRUE = One(next_nid(), SID_BOOLEAN, "True", None)
 
 class Bitvector_State():
-    def __init__(self, core, sort, name, initials):
-        self.sort = sort
+    def __init__(self, core, sid, name, initials):
+        assert isinstance(sid, Bitvector)
+        self.sid = sid
         if core >= 0:
-            self.initial = Const(next_nid(), self.sort, 0, f"initial core-{core} {name} value", None)
-            self.state = State(next_nid(), self.sort, f"core-{core}-{initials}", f"{sort.size}-bit {name}", None)
+            self.initial = Const(next_nid(), self.sid, 0, f"initial core-{core} {name} value", None)
+            self.state = State(next_nid(), self.sid, f"core-{core}-{initials}", f"{sid.size}-bit {name}", None)
         else:
-            self.initial = Const(next_nid(), self.sort, 0, f"initial {name} value", None)
-            self.state = State(next_nid(), self.sort, f"{initials}", f"{sort.size}-bit {name}", None)
-        self.init = Init(next_nid(), self.sort, self.state, self.initial, f"initializing {name}", None)
+            self.initial = Const(next_nid(), self.sid, 0, f"initial {name} value", None)
+            self.state = State(next_nid(), self.sid, f"{initials}", f"{sid.size}-bit {name}", None)
+        self.init = Init(next_nid(), self.sid, self.state, self.initial, f"initializing {name}", None)
 
     def __str__(self):
         return f"{self.state}"
 
 class Array_State():
-    def __init__(self, core, address_sort, word_sort, name, initials):
-        self.address_sort = address_sort
-        self.word_sort = word_sort
-        self.array_sort = Array(next_nid(), address_sort, word_sort, f"{address_sort.size}-bit {name} array", None)
-        self.initial = Const(next_nid(), word_sort, 0, f"initial core-{core} {name} value", None)
-        self.state = State(next_nid(), self.array_sort, f"core-{core}-{initials}", f"{word_sort.size}-bit {name}", None)
-        self.init = Init(next_nid(), self.array_sort, self.state, self.initial, f"initializing {name}", None)
+    def __init__(self, core, address_sid, element_sid, name, initials):
+        assert isinstance(address_sid, Bitvector) and isinstance(element_sid, Bitvector)
+        self.address_sid = address_sid
+        self.element_sid = element_sid
+        self.array_sid = Array(next_nid(), address_sid, element_sid, f"{address_sid.size}-bit {name} array", None)
+        self.initial = Const(next_nid(), element_sid, 0, f"initial core-{core} {name} value", None)
+        self.state = State(next_nid(), self.array_sid, f"core-{core}-{initials}", f"{element_sid.size}-bit {name}", None)
+        self.init = Init(next_nid(), self.array_sid, self.state, self.initial, f"initializing {name}", None)
 
     def __str__(self):
         return f"{self.state}"
 
+    def load(self, array_nid, address_nid, comment):
+        assert array_nid.sid_line == self.array_sid and address_nid.sid_line == self.address_sid
+        return Read(next_nid(), None, self.element_sid, array_nid, address_nid, comment, None)
+
+    def store(self, array_nid, address_nid, value_nid, comment):
+        assert array_nid.sid_line == self.array_sid and address_nid.sid_line == self.address_sid and value_nid.sid_line == self.element_sid
+        return Write(next_nid(), None, self.array_sid, array_nid, address_nid, value_nid, comment, None)
+
 class PC(Bitvector_State):
-    def __init__(self, core, word_sort):
-        super().__init__(core, word_sort, "program counter", 'pc')
+    def __init__(self, core, word_sid):
+        super().__init__(core, word_sid, "program counter", 'pc')
 
 class Registers(Array_State):
-    def __init__(self, core, word_sort):
+    def __init__(self, core, word_sid):
         self.SID_REGISTER_ADDRESS = Bitvec(next_nid(), 5, "register address", None)
-        super().__init__(core, self.SID_REGISTER_ADDRESS, word_sort, "register file", 'register-file')
-        self.SID_REGISTER_STATE = self.array_sort
+        super().__init__(core, self.SID_REGISTER_ADDRESS, word_sid, "register file", 'register-file')
+        self.SID_REGISTER_STATE = self.array_sid
 
 class Segment(Array_State):
-    def __init__(self, core, address_sort, word_sort, name, initials):
-        super().__init__(core, address_sort, word_sort, name, initials)
+    def __init__(self, core, address_sid, word_sid, name, initials):
+        super().__init__(core, address_sid, word_sid, name, initials)
 
-class Virtual_Memory():
-    def __init__(self, core, virtual_memory_bits, word_sort):
-        self.SID_VIRTUAL_ADDRESS = Bitvec(next_nid(), virtual_memory_bits, "virtual address", None)
-        self.code = Segment(core, self.SID_VIRTUAL_ADDRESS, word_sort, "code segment", 'code-segment')
-        self.data = Segment(core, self.SID_VIRTUAL_ADDRESS, word_sort, "data segment", 'data-segment')
-        self.heap = Segment(core, self.SID_VIRTUAL_ADDRESS, word_sort, "heap segment", 'heap-segment')
-        self.stack = Segment(core, self.SID_VIRTUAL_ADDRESS, word_sort, "stack segment", 'stack-segment')
+class Memory():
+    def __init__(self, core, memory_bits, word_sid):
+        self.SID_VIRTUAL_ADDRESS = Bitvec(next_nid(), memory_bits, "virtual address", None)
+        self.code = Segment(core, self.SID_VIRTUAL_ADDRESS, word_sid, "code segment", 'code-segment')
+        self.data = Segment(core, self.SID_VIRTUAL_ADDRESS, word_sid, "data segment", 'data-segment')
+        self.heap = Segment(core, self.SID_VIRTUAL_ADDRESS, word_sid, "heap segment", 'heap-segment')
+        self.stack = Segment(core, self.SID_VIRTUAL_ADDRESS, word_sid, "stack segment", 'stack-segment')
 
     def __str__(self):
         return f"{self.SID_VIRTUAL_ADDRESS.size}-bit virtual memory:\n{self.code}\n{self.data}\n{self.heap}\n{self.stack}"
 
 class Kernel():
-    def __init__(self, core, word_sort, virtual_memory):
-        self.virtual_memory = virtual_memory
-        self.program_break = Bitvector_State(-1, virtual_memory.SID_VIRTUAL_ADDRESS, "program break", 'program-break')
-        self.file_descriptor = Bitvector_State(-1, word_sort, "file descriptor", 'file-descriptor')
-        self.readable_bytes = Bitvector_State(core, word_sort, "readable bytes", 'readable-bytes')
-        self.read_bytes = Bitvector_State(core, word_sort, "read bytes", 'read-bytes')
+    def __init__(self, core, word_sid, memory):
+        self.memory = memory
+        self.program_break = Bitvector_State(-1, memory.SID_VIRTUAL_ADDRESS, "program break", 'program-break')
+        self.file_descriptor = Bitvector_State(-1, word_sid, "file descriptor", 'file-descriptor')
+        self.readable_bytes = Bitvector_State(core, word_sid, "readable bytes", 'readable-bytes')
+        self.read_bytes = Bitvector_State(core, word_sid, "read bytes", 'read-bytes')
 
     def __str__(self):
         return f"kernel:\n{self.program_break}\n{self.file_descriptor}\n{self.readable_bytes}\n{self.read_bytes}"
@@ -1128,25 +1138,25 @@ class Kernel():
 class Core():
     cores = dict()
 
-    def __init__(self, machine_bits, virtual_memory_bits):
+    def __init__(self, machine_bits, memory_bits):
         self.SID_MACHINE_WORD = Bitvec(next_nid(), machine_bits, "machine word", None)
         self.core = len(Core.cores)
-        self.virtual_memory = Virtual_Memory(self.core, virtual_memory_bits, self.SID_MACHINE_WORD)
-        self.kernel = Kernel(self.core, self.SID_MACHINE_WORD, self.virtual_memory)
+        self.memory = Memory(self.core, memory_bits, self.SID_MACHINE_WORD)
+        self.kernel = Kernel(self.core, self.SID_MACHINE_WORD, self.memory)
         self.pc = PC(self.core, self.SID_MACHINE_WORD)
         self.regs = Registers(self.core, self.SID_MACHINE_WORD)
         self.new_core()
 
     def __str__(self):
-        return f"{self.kernel}\n{self.virtual_memory}\ncore-{self.core}:\n{self.pc}\n{self.regs}"
+        return f"{self.kernel}\n{self.memory}\ncore-{self.core}:\n{self.pc}\n{self.regs}"
 
     def new_core(self):
         assert self not in Core.cores
         Core.cores[self.core] = self
 
 class System():
-    def __init__(self, machine_bits, virtual_memory_bits):
-        self.core = Core(machine_bits, virtual_memory_bits) # single core for now
+    def __init__(self, machine_bits, memory_bits):
+        self.core = Core(machine_bits, memory_bits) # single core for now
 
     def __str__(self):
         return f"{self.core.SID_MACHINE_WORD.size}-bit single-core system:\n{self.core}"
