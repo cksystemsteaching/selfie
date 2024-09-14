@@ -544,7 +544,7 @@ class Implies(Binary):
     keyword = 'implies'
 
     def __init__(self, nid, op, sid_line, arg1_line, arg2_line, comment, line_no):
-        super().__init__(nid, op, sid_line, arg1_line, arg2_line, comment, line_no)
+        super().__init__(nid, Implies.keyword, sid_line, arg1_line, arg2_line, comment, line_no)
         if not isinstance(sid_line, Bool):
             raise model_error("Boolean result", line_no)
         if not sid_line.match_sorts(arg1_line.sid_line):
@@ -741,7 +741,7 @@ class Concat(Binary):
     keyword = 'concat'
 
     def __init__(self, nid, op, sid_line, arg1_line, arg2_line, comment, line_no):
-        super().__init__(nid, op, sid_line, arg1_line, arg2_line, comment, line_no)
+        super().__init__(nid, Concat.keyword, sid_line, arg1_line, arg2_line, comment, line_no)
         if not isinstance(sid_line, Bitvec):
             raise model_error("bitvector result", line_no)
         if not isinstance(arg1_line.sid_line, Bitvec):
@@ -766,7 +766,7 @@ class Read(Binary):
     keyword = 'read'
 
     def __init__(self, nid, op, sid_line, arg1_line, arg2_line, comment, line_no):
-        super().__init__(nid, op, sid_line, arg1_line, arg2_line, comment, line_no)
+        super().__init__(nid, Read.keyword, sid_line, arg1_line, arg2_line, comment, line_no)
         if not isinstance(arg1_line.sid_line, Array):
             raise model_error("array first operand", line_no)
         if not arg1_line.sid_line.array_size_line.match_sorts(arg2_line.sid_line):
@@ -808,7 +808,7 @@ class Ite(Ternary):
     keyword = 'ite'
 
     def __init__(self, nid, op, sid_line, arg1_line, arg2_line, arg3_line, comment, line_no):
-        super().__init__(nid, op, sid_line, arg1_line, arg2_line, arg3_line, comment, line_no)
+        super().__init__(nid, Ite.keyword, sid_line, arg1_line, arg2_line, arg3_line, comment, line_no)
         if not isinstance(arg1_line.sid_line, Bool):
             raise model_error("Boolean first operand", line_no)
         if not sid_line.match_sorts(arg2_line.sid_line):
@@ -834,7 +834,7 @@ class Write(Ternary):
     keyword = 'write'
 
     def __init__(self, nid, op, sid_line, arg1_line, arg2_line, arg3_line, comment, line_no):
-        super().__init__(nid, op, sid_line, arg1_line, arg2_line, arg3_line, comment, line_no)
+        super().__init__(nid, Write.keyword, sid_line, arg1_line, arg2_line, arg3_line, comment, line_no)
         if not isinstance(sid_line, Array):
             raise model_error("array result", line_no)
         if not sid_line.match_sorts(arg1_line.sid_line):
