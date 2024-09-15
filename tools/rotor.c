@@ -2204,6 +2204,7 @@ uint64_t* NID_C_SUB  = (uint64_t*) 0;
 uint64_t* NID_C_XOR  = (uint64_t*) 0;
 uint64_t* NID_C_OR   = (uint64_t*) 0;
 uint64_t* NID_C_AND  = (uint64_t*) 0;
+
 uint64_t* NID_C_ADDW = (uint64_t*) 0;
 uint64_t* NID_C_SUBW = (uint64_t*) 0;
 

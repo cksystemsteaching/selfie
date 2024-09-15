@@ -2527,6 +2527,7 @@ NID_C_SUB  = None
 NID_C_XOR  = None
 NID_C_OR   = None
 NID_C_AND  = None
+
 NID_C_ADDW = None
 NID_C_SUBW = None
 
@@ -3469,6 +3470,326 @@ def init_instruction_sorts():
         NID_REMW  = NID_DISABLED
         NID_REMUW = NID_DISABLED
 
+def init_compressed_instruction_sorts():
+    global SID_OPCODE_C
+
+    global NID_OP_C0
+    global NID_OP_C1
+    global NID_OP_C2
+    global NID_OP_C3
+
+    global NID_F3_C_LI
+    global NID_F3_C_LUI_ADDI16SP
+
+    global NID_F3_C_ADDI
+    global NID_F3_C_ADDIW_JAL
+
+    global NID_F3_C_ADDI4SPN
+
+    global NID_F3_C_SLLI
+    global NID_F3_C_SRLI_SRAI_ANDI
+
+    global SID_FUNCT2
+
+    global NID_F2_C_SRLI
+    global NID_F2_C_SRAI
+    global NID_F2_C_ANDI
+
+    global NID_F6_C_SUB_XOR_OR_AND
+    global NID_F6_C_ADDW_SUBW
+
+    global NID_F2_C_SUB_SUBW
+    global NID_F2_C_XOR_ADDW
+    global NID_F2_C_OR
+    global NID_F2_C_AND
+
+    global NID_F3_C_LWSP_LW
+    global NID_F3_C_LDSP_LD
+
+    global NID_F3_C_SWSP_SW
+    global NID_F3_C_SDSP_SD
+
+    global NID_F3_C_BEQZ
+    global NID_F3_C_BNEZ
+
+    global NID_F3_C_J
+
+    global SID_FUNCT4
+
+    global NID_F4_C_MV_JR
+    global NID_F4_C_ADD_JALR
+
+    global SID_1_BIT_OFFSET
+    global SID_2_BIT_OFFSET
+    global SID_3_BIT_OFFSET
+    global SID_4_BIT_OFFSET
+    global SID_5_BIT_OFFSET
+    global SID_6_BIT_OFFSET
+    global SID_7_BIT_OFFSET
+    global SID_8_BIT_OFFSET
+    global SID_9_BIT_OFFSET
+    global SID_10_BIT_OFFSET
+    global SID_11_BIT_OFFSET
+    global SID_12_BIT_OFFSET
+    global SID_17_BIT_OFFSET
+    global SID_18_BIT_OFFSET
+
+    global NID_1_BIT_OFFSET_0
+    global NID_1_BIT_OFFSET_1
+    global NID_2_BIT_OFFSET_0
+    global NID_2_BIT_OFFSET_1
+    global NID_3_BIT_OFFSET_0
+    global NID_4_BIT_OFFSET_0
+    global NID_12_BIT_OFFSET_0
+
+    global SID_COMPRESSED_REGISTER_ADDRESS
+
+    global RVC
+
+    global NID_C_LI
+    global NID_C_LUI
+
+    global NID_C_ADDI
+    global NID_C_ADDIW
+    global NID_C_ADDI16SP
+
+    global NID_C_ADDI4SPN
+
+    global NID_C_ANDI
+
+    global NID_C_SLLI
+    global NID_C_SRLI
+    global NID_C_SRAI
+
+    global NID_C_MV
+    global NID_C_ADD
+
+    global NID_C_SUB
+    global NID_C_XOR
+    global NID_C_OR
+    global NID_C_AND
+
+    global NID_C_ADDW
+    global NID_C_SUBW
+
+    global NID_C_LWSP
+    global NID_C_LW
+
+    global NID_C_LDSP
+    global NID_C_LD
+
+    global NID_C_SWSP
+    global NID_C_SW
+
+    global NID_C_SDSP
+    global NID_C_SD
+
+    global NID_C_BEQZ
+    global NID_C_BNEZ
+
+    global NID_C_J
+    global NID_C_JAL
+
+    global NID_C_JR
+    global NID_C_JALR
+
+    # RVC codes
+
+    SID_OPCODE_C = new_bitvec(2, "compressed opcode sort")
+
+    NID_OP_C0 = new_constant(OP_CONST, SID_OPCODE_C, 0, "OP_C0")
+    NID_OP_C1 = new_constant(OP_CONST, SID_OPCODE_C, 1, "OP_C1")
+    NID_OP_C2 = new_constant(OP_CONST, SID_OPCODE_C, 2, "OP_C2")
+    NID_OP_C3 = new_constant(OP_CONST, SID_OPCODE_C, 3, "OP_C3")
+
+    NID_F3_C_LI           = new_constant(OP_CONST, SID_FUNCT3, F3_C_LI, "F3_C_LI")
+    NID_F3_C_LUI_ADDI16SP = new_constant(OP_CONST, SID_FUNCT3, F3_C_LUI_ADDI16SP, "F3_C_LUI_ADDI16SP")
+
+    NID_F3_C_ADDI      = new_constant(OP_CONST, SID_FUNCT3, F3_C_ADDI, "F3_C_ADDI")
+    NID_F3_C_ADDIW_JAL = new_constant(OP_CONST, SID_FUNCT3, F3_C_ADDIW_JAL, "F3_C_ADDIW_JAL")
+
+    NID_F3_C_ADDI4SPN = new_constant(OP_CONST, SID_FUNCT3, F3_C_ADDI4SPN, "F3_C_ADDI4SPN")
+
+    NID_F3_C_SLLI           = new_constant(OP_CONST, SID_FUNCT3, F3_C_SLLI, "F3_C_SLLI")
+    NID_F3_C_SRLI_SRAI_ANDI = new_constant(OP_CONST, SID_FUNCT3, F3_C_SRLI_SRAI_ANDI, "F3_C_SRLI_SRAI_ANDI")
+
+    SID_FUNCT2 = new_bitvec(2, "compressed funct2 sort")
+
+    NID_F2_C_SRLI = new_constant(OP_CONST, SID_FUNCT2, F2_C_SRLI, "F2_C_SRLI")
+    NID_F2_C_SRAI = new_constant(OP_CONST, SID_FUNCT2, F2_C_SRAI, "F2_C_SRAI")
+    NID_F2_C_ANDI = new_constant(OP_CONST, SID_FUNCT2, F2_C_ANDI, "F2_C_ANDI")
+
+    NID_F6_C_SUB_XOR_OR_AND = new_constant(OP_CONST, SID_FUNCT6, F6_C_SUB_XOR_OR_AND, "F6_C_SUB_XOR_OR_AND")
+    NID_F6_C_ADDW_SUBW      = new_constant(OP_CONST, SID_FUNCT6, F6_C_ADDW_SUBW, "F6_C_ADDW_SUBW")
+
+    NID_F2_C_SUB_SUBW = new_constant(OP_CONST, SID_FUNCT2, F2_C_SUB_SUBW, "F2_C_SUB_SUBW")
+    NID_F2_C_XOR_ADDW = new_constant(OP_CONST, SID_FUNCT2, F2_C_XOR_ADDW, "F2_C_XOR_ADDW")
+    NID_F2_C_OR       = new_constant(OP_CONST, SID_FUNCT2, F2_C_OR, "F2_C_OR")
+    NID_F2_C_AND      = new_constant(OP_CONST, SID_FUNCT2, F2_C_AND, "F2_C_AND")
+
+    NID_F3_C_LWSP_LW = new_constant(OP_CONST, SID_FUNCT3, F3_C_LWSP_LW, "F3_C_LWSP_LW")
+    NID_F3_C_LDSP_LD = new_constant(OP_CONST, SID_FUNCT3, F3_C_LDSP_LD, "F3_C_LDSP_LD")
+
+    NID_F3_C_SWSP_SW = new_constant(OP_CONST, SID_FUNCT3, F3_C_SWSP_SW, "F3_C_SWSP_SW")
+    NID_F3_C_SDSP_SD = new_constant(OP_CONST, SID_FUNCT3, F3_C_SDSP_SD, "F3_C_SDSP_SD")
+
+    NID_F3_C_BEQZ = new_constant(OP_CONST, SID_FUNCT3, F3_C_BEQZ, "F3_C_BEQZ")
+    NID_F3_C_BNEZ = new_constant(OP_CONST, SID_FUNCT3, F3_C_BNEZ, "F3_C_BNEZ")
+
+    NID_F3_C_J = new_constant(OP_CONST, SID_FUNCT3, F3_C_J, "F3_C_J")
+
+    SID_FUNCT4 = new_bitvec(4, "compressed funct4 sort")
+
+    NID_F4_C_MV_JR    = new_constant(OP_CONST, SID_FUNCT4, F4_C_MV_JR, "F4_C_MV_JR")
+    NID_F4_C_ADD_JALR = new_constant(OP_CONST, SID_FUNCT4, F4_C_ADD_JALR, "F4_C_ADD_JALR")
+
+    # offset sorts
+
+    SID_1_BIT_OFFSET  = new_bitvec(1, "1-bit offset sort")
+    SID_2_BIT_OFFSET  = new_bitvec(2, "2-bit offset sort")
+    SID_3_BIT_OFFSET  = new_bitvec(3, "3-bit offset sort")
+    SID_4_BIT_OFFSET  = new_bitvec(4, "4-bit offset sort")
+    SID_5_BIT_OFFSET  = new_bitvec(5, "5-bit offset sort")
+    SID_6_BIT_OFFSET  = new_bitvec(6, "6-bit offset sort")
+    SID_7_BIT_OFFSET  = new_bitvec(7, "7-bit offset sort")
+    SID_8_BIT_OFFSET  = new_bitvec(8, "8-bit offset sort")
+    SID_9_BIT_OFFSET  = new_bitvec(9, "9-bit offset sort")
+    SID_10_BIT_OFFSET = new_bitvec(10, "10-bit offset sort")
+    SID_11_BIT_OFFSET = new_bitvec(11, "11-bit offset sort")
+    SID_12_BIT_OFFSET = new_bitvec(12, "12-bit offset sort")
+    SID_17_BIT_OFFSET = new_bitvec(17, "17-bit offset sort")
+    SID_18_BIT_OFFSET = new_bitvec(18, "18-bit offset sort")
+
+    NID_1_BIT_OFFSET_0  = new_constant(OP_CONST, SID_1_BIT_OFFSET, 0, "1-bit offset 0")
+    NID_1_BIT_OFFSET_1  = new_constant(OP_CONST, SID_1_BIT_OFFSET, 1, "1-bit offset 1")
+    NID_2_BIT_OFFSET_0  = new_constant(OP_CONST, SID_2_BIT_OFFSET, 0, "2-bit offset 0")
+    NID_2_BIT_OFFSET_1  = new_constant(OP_CONST, SID_2_BIT_OFFSET, 1, "2-bit offset 1, 01000 s0")
+    NID_3_BIT_OFFSET_0  = new_constant(OP_CONST, SID_3_BIT_OFFSET, 0, "3-bit offset 0")
+    NID_4_BIT_OFFSET_0  = new_constant(OP_CONST, SID_4_BIT_OFFSET, 0, "4-bit offset 0")
+    NID_12_BIT_OFFSET_0 = new_constant(OP_CONST, SID_12_BIT_OFFSET, 0, "12-bit offset 0")
+
+    SID_COMPRESSED_REGISTER_ADDRESS = new_bitvec(3, "3-bit compressed register address")
+
+    # RVC instruction switches
+
+    if RISCUONLY:
+        RVC = False
+
+    NID_C_LI  = NID_DISABLED
+    NID_C_LUI = NID_DISABLED
+
+    NID_C_ADDI     = NID_DISABLED
+    NID_C_ADDIW    = NID_DISABLED
+    NID_C_ADDI16SP = NID_DISABLED
+
+    NID_C_ADDI4SPN = NID_DISABLED
+
+    NID_C_ANDI = NID_DISABLED
+
+    NID_C_SLLI = NID_DISABLED
+    NID_C_SRLI = NID_DISABLED
+    NID_C_SRAI = NID_DISABLED
+
+    NID_C_MV  = NID_DISABLED
+    NID_C_ADD = NID_DISABLED
+
+    NID_C_SUB = NID_DISABLED
+    NID_C_XOR = NID_DISABLED
+    NID_C_OR  = NID_DISABLED
+    NID_C_AND = NID_DISABLED
+
+    NID_C_ADDW = NID_DISABLED
+    NID_C_SUBW = NID_DISABLED
+
+    NID_C_LWSP = NID_DISABLED
+    NID_C_LW   = NID_DISABLED
+
+    NID_C_LDSP = NID_DISABLED
+    NID_C_LD   = NID_DISABLED
+
+    NID_C_SWSP = NID_DISABLED
+    NID_C_SW   = NID_DISABLED
+
+    NID_C_SDSP = NID_DISABLED
+    NID_C_SD   = NID_DISABLED
+
+    NID_C_BEQZ = NID_DISABLED
+    NID_C_BNEZ = NID_DISABLED
+
+    NID_C_J   = NID_DISABLED
+    NID_C_JAL = NID_DISABLED
+
+    NID_C_JR   = NID_DISABLED
+    NID_C_JALR = NID_DISABLED
+
+    if not RVC:
+        # avoiding oversized then case
+        return
+
+    NID_C_LI  = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_LI, RISC_V_MNEMONICS[ID_C_LI])
+    NID_C_LUI = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_LUI, RISC_V_MNEMONICS[ID_C_LUI])
+
+    NID_C_ADDI = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_ADDI, RISC_V_MNEMONICS[ID_C_ADDI])
+    if IS64BITTARGET:
+        NID_C_ADDIW = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_ADDIW, RISC_V_MNEMONICS[ID_C_ADDIW])
+    else:
+        NID_C_ADDIW = NID_DISABLED
+    NID_C_ADDI16SP = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_ADDI16SP, RISC_V_MNEMONICS[ID_C_ADDI16SP])
+
+    NID_C_ADDI4SPN = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_ADDI4SPN, RISC_V_MNEMONICS[ID_C_ADDI4SPN])
+
+    NID_C_ANDI = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_ANDI, RISC_V_MNEMONICS[ID_C_ANDI])
+
+    NID_C_SLLI = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_SLLI, RISC_V_MNEMONICS[ID_C_SLLI])
+    NID_C_SRLI = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_SRLI, RISC_V_MNEMONICS[ID_C_SRLI])
+    NID_C_SRAI = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_SRAI, RISC_V_MNEMONICS[ID_C_SRAI])
+
+    NID_C_MV  = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_MV, RISC_V_MNEMONICS[ID_C_MV])
+    NID_C_ADD = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_ADD, RISC_V_MNEMONICS[ID_C_ADD])
+
+    NID_C_SUB = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_SUB, RISC_V_MNEMONICS[ID_C_SUB])
+    NID_C_XOR = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_XOR, RISC_V_MNEMONICS[ID_C_XOR])
+    NID_C_OR  = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_OR, RISC_V_MNEMONICS[ID_C_OR])
+    NID_C_AND = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_AND, RISC_V_MNEMONICS[ID_C_AND])
+
+    if IS64BITTARGET:
+        NID_C_ADDW = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_ADDW, RISC_V_MNEMONICS[ID_C_ADDW])
+        NID_C_SUBW = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_SUBW, RISC_V_MNEMONICS[ID_C_SUBW])
+    else:
+        NID_C_ADDW = NID_DISABLED
+        NID_C_SUBW = NID_DISABLED
+
+    NID_C_LWSP = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_LWSP, RISC_V_MNEMONICS[ID_C_LWSP])
+    NID_C_LW   = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_LW, RISC_V_MNEMONICS[ID_C_LW])
+
+    NID_C_SWSP = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_SWSP, RISC_V_MNEMONICS[ID_C_SWSP])
+    NID_C_SW   = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_SW, RISC_V_MNEMONICS[ID_C_SW])
+
+    if IS64BITTARGET:
+        NID_C_LDSP = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_LDSP, RISC_V_MNEMONICS[ID_C_LDSP])
+        NID_C_LD   = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_LD, RISC_V_MNEMONICS[ID_C_LD])
+
+        NID_C_SDSP = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_SDSP, RISC_V_MNEMONICS[ID_C_SDSP])
+        NID_C_SD   = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_SD, RISC_V_MNEMONICS[ID_C_SD])
+    else:
+        NID_C_LDSP = NID_DISABLED
+        NID_C_LD   = NID_DISABLED
+
+        NID_C_SDSP = NID_DISABLED
+        NID_C_SD   = NID_DISABLED
+
+    NID_C_BEQZ = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_BEQZ, RISC_V_MNEMONICS[ID_C_BEQZ])
+    NID_C_BNEZ = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_BNEZ, RISC_V_MNEMONICS[ID_C_BNEZ])
+
+    NID_C_J = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_J, RISC_V_MNEMONICS[ID_C_J])
+    if IS64BITTARGET:
+        NID_C_JAL = NID_DISABLED
+    else:
+        NID_C_JAL = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_JAL, RISC_V_MNEMONICS[ID_C_JAL])
+
+    NID_C_JR   = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_JR, RISC_V_MNEMONICS[ID_C_JR])
+    NID_C_JALR = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_JALR, RISC_V_MNEMONICS[ID_C_JALR])
+
 # system model
 
 class Bitvector_State():
@@ -4008,6 +4329,7 @@ def rotor_model():
         new_segmentation()
 
         init_instruction_sorts()
+        init_compressed_instruction_sorts()
 
         print(System(32, 16))
     except Exception as message:
