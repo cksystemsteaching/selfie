@@ -5,6 +5,7 @@ from lib.generate import generate_all_examples, clean_examples, create_model
 from lib.print import custom_exit
 import lib.argument_parser as arg_parser
 from lib.smt_benchmark import benchmark_model
+from lib.solver import Z3Solver
 
 if __name__ == "__main__":
     try:
@@ -21,10 +22,8 @@ if __name__ == "__main__":
             custom_exit("Generated all examples sucessfuly")
 
         if args.model_type and args.source_file:
-            create_model(args.source_file, args.model_type)
-            benchmark_model(
-                "../models/division-by-zero-3-35-kmin-76-kmax-106-rotorized.smt"
-            )
+            model_path = create_model(args.source_file, args.model_type)
+            Z3Solver(model_path).benchmark()
             exit(0)
 
         if not args.model_type:

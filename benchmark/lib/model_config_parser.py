@@ -1,8 +1,9 @@
 from dataclasses import dataclass
-from pathlib import Path
 from .exceptions import ParsingError
-
 import lib.config as cfg
+
+import os
+from pathlib import Path
 
 @dataclass
 class ModelConfig:
@@ -31,6 +32,8 @@ class ModelConfigParser:
             else:
                 raise ParsingError(model_type, level)
 
+        # extension should always be the last level in the config
+        self.extension = parsed_models[-1]
         self.output = self.get_output_file_path(current_level)
         self.model_generation_command = current_level["command"]
 
@@ -44,8 +47,7 @@ class ModelConfigParser:
             outdir = Path(cfg.models_dir / model.get("output", None))
         if not outdir.exists():
             outdir.mkdir(parents=True, exist_ok=True)
-        # TODO: This is not good - generates with .c extension
-        output = outdir / self.source_file.name
+        output = outdir / self.source_file.with_suffix("." + self.extension).name
         return output
 
     def get_config(self) -> ModelConfig:

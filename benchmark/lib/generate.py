@@ -37,9 +37,10 @@ class CStarSourceProcessor(BaseSourceProcessor):
                 output=self.model_config.output
             )
         )
-        self.model_config.output.unlink()
         if returncode != 0:
             custom_exit(output, cfg.EXIT_MODEL_GENERATION_ERROR)
+
+        return self.model_config.output
 
 
 class GenericSourceProcessor(BaseSourceProcessor):
@@ -47,12 +48,12 @@ class GenericSourceProcessor(BaseSourceProcessor):
         super().__init__(model_config)
 
     def compile_source(self):
-        self.output_file = self.model_config.source_file.with_suffix(".out")
+        self.compiled_source = self.model_config.source_file.with_suffix(".out")
 
         returncode, output = execute(
             self.model_config.compilation_command.format(
                 source_file=self.model_config.source_file,
-                output_machine_code=self.output_file
+                output_machine_code=self.compiled_source
             )
         )
 
@@ -61,15 +62,15 @@ class GenericSourceProcessor(BaseSourceProcessor):
         returncode, output = execute(
             self.model_config.model_generation_command.format(
                 rotor=cfg.rotor_path,
-                source_file=self.output_file,
+                source_file=self.compiled_source,
                 output=self.model_config.output
             )
         )
-        self.output_file.unlink()
-        self.model_config.output.unlink()
+        self.compiled_source.unlink()
         if returncode != 0:
             custom_exit(output, cfg.EXIT_MODEL_GENERATION_ERROR)
 
+        return self.model_config.output
 
 
 def clean_examples() -> None:
