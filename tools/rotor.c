@@ -491,7 +491,7 @@ uint64_t* eval_good_nid = (uint64_t*) 0;
 // -----------------------------------------------------------------
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
 
-void print_interface_sorts();
+void print_machine_interface();
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
@@ -566,7 +566,7 @@ uint64_t* SID_DOUBLE_MACHINE_WORD = (uint64_t*) 0;
 
 // ------------------------- INITIALIZATION ------------------------
 
-void init_interface_sorts() {
+void init_machine_interface() {
   SID_BOOLEAN = new_bitvec(1, "Boolean");
 
   NID_FALSE = new_constant(OP_CONSTD, SID_BOOLEAN, 0, "false");
@@ -655,7 +655,7 @@ void init_interface_sorts() {
 // ---------------------------- KERNEL -----------------------------
 // -----------------------------------------------------------------
 
-void print_interface_kernel();
+void print_kernel_interface();
 
 uint64_t get_power_of_two_size_in_bytes(uint64_t size_in_bits);
 uint64_t calculate_address_space(uint64_t number_of_bytes, uint64_t word_size_in_bits);
@@ -724,7 +724,7 @@ uint64_t* eval_more_than_one_readable_byte_to_read_nid = (uint64_t*) 0;
 
 // ------------------------- INITIALIZATION ------------------------
 
-void init_interface_kernel() {
+void init_kernel_interface() {
   uint64_t saved_reuse_lines;
 
   NID_MAX_STRING_LENGTH = new_constant(OP_CONSTD, SID_MACHINE_WORD,
@@ -5941,7 +5941,7 @@ void reset_state_for(uint64_t core, uint64_t* lines) {
 // -----------------------------------------------------------------
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
 
-void print_interface_sorts() {
+void print_machine_interface() {
   print_line(SID_BOOLEAN);
 
   print_line(SID_BYTE);
@@ -5997,7 +5997,7 @@ void print_interface_sorts() {
 // ---------------------------- KERNEL -----------------------------
 // -----------------------------------------------------------------
 
-void print_interface_kernel() {
+void print_kernel_interface() {
   print_break_comment("kernel interface");
 
   print_line(NID_EXIT_SYSCALL_ID);
@@ -11903,8 +11903,8 @@ void model_rotor() {
 
   init_model();
 
-  init_interface_sorts();
-  init_interface_kernel();
+  init_machine_interface();
+  init_kernel_interface();
 
   init_register_file_sorts();
   init_memory_sorts(max_code_size, max_data_size);
@@ -12264,8 +12264,8 @@ void print_model() {
 
   last_nid = 0;
 
-  print_interface_sorts();
-  print_interface_kernel();
+  print_machine_interface();
+  print_kernel_interface();
 
   print_register_sorts();
   print_memory_sorts();

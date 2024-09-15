@@ -1240,6 +1240,8 @@ IS64BITTARGET = True # TODO: configure
 
 WORDSIZEINBITS = 64 # TODO: define accordingly
 
+# machine interface
+
 SID_BOOLEAN = None
 
 NID_FALSE = None
@@ -1311,7 +1313,7 @@ NID_LSB_MASK = None
 
 SID_DOUBLE_MACHINE_WORD = None
 
-def init_interface_sorts():
+def init_machine_interface():
     global SID_BOOLEAN, NID_FALSE, NID_TRUE
 
     global SID_BYTE, NID_BYTE_0, NID_BYTE_3
@@ -1415,6 +1417,83 @@ def init_interface_sorts():
 
     SID_DOUBLE_MACHINE_WORD = new_bitvec(2 * WORDSIZEINBITS, "double machine word")
 
+# kernel interface
+
+MAX_STRING_LENGTH = 128
+
+NID_MAX_STRING_LENGTH = None
+
+SYSCALL_EXIT   = 93;
+SYSCALL_BRK    = 214;
+SYSCALL_OPENAT = 56;
+SYSCALL_OPEN   = 1024 # legacy syscall
+SYSCALL_READ   = 63;
+SYSCALL_WRITE  = 64;
+
+NID_EXIT_SYSCALL_ID   = None
+NID_BRK_SYSCALL_ID    = None
+NID_OPENAT_SYSCALL_ID = None
+NID_OPEN_SYSCALL_ID   = None
+NID_READ_SYSCALL_ID   = None
+NID_WRITE_SYSCALL_ID  = None
+
+BYTES_TO_READ = 1
+
+NID_BYTES_TO_READ = None
+
+INPUT_ADDRESS_SPACE = 1
+
+SID_INPUT_ADDRESS = None
+SID_INPUT_BUFFER  = None
+
+def init_kernel_interface():
+    global NID_MAX_STRING_LENGTH
+    global NID_EXIT_SYSCALL_ID, NID_BRK_SYSCALL_ID, NID_OPENAT_SYSCALL_ID
+    global NID_OPEN_SYSCALL_ID, NID_READ_SYSCALL_ID, NID_WRITE_SYSCALL_ID
+    global NID_BYTES_TO_READ
+    global INPUT_ADDRESS_SPACE, SID_INPUT_ADDRESS, SID_INPUT_BUFFER
+
+    NID_MAX_STRING_LENGTH = new_constant(OP_CONSTD, SID_MACHINE_WORD,
+        MAX_STRING_LENGTH, "maximum string length")
+
+    NID_EXIT_SYSCALL_ID = new_constant(OP_CONSTD, SID_MACHINE_WORD,
+        SYSCALL_EXIT, f"exit syscall ID {SYSCALL_EXIT:b}")
+    NID_BRK_SYSCALL_ID = new_constant(OP_CONSTD, SID_MACHINE_WORD,
+        SYSCALL_BRK, f"brk syscall ID {SYSCALL_BRK:b}")
+    NID_OPENAT_SYSCALL_ID = new_constant(OP_CONSTD, SID_MACHINE_WORD,
+        SYSCALL_OPENAT, f"openat syscall ID {SYSCALL_OPENAT:b}")
+    NID_OPEN_SYSCALL_ID = new_constant(OP_CONSTD, SID_MACHINE_WORD,
+        SYSCALL_OPEN, f"open syscall ID {SYSCALL_OPEN:b}")
+    NID_READ_SYSCALL_ID = new_constant(OP_CONSTD, SID_MACHINE_WORD,
+        SYSCALL_READ, f"read syscall ID {SYSCALL_READ:b}")
+    NID_WRITE_SYSCALL_ID = new_constant(OP_CONSTD, SID_MACHINE_WORD,
+        SYSCALL_WRITE, f"write syscall ID {SYSCALL_WRITE:b}")
+
+    NID_BYTES_TO_READ = new_constant(OP_CONSTD, SID_MACHINE_WORD, BYTES_TO_READ, "bytes to read")
+
+    INPUT_ADDRESS_SPACE = calculate_address_space(BYTES_TO_READ, 8)
+
+    SID_INPUT_ADDRESS = new_bitvec(INPUT_ADDRESS_SPACE, f"{INPUT_ADDRESS_SPACE}-bit input address")
+    SID_INPUT_BUFFER  = new_array(SID_INPUT_ADDRESS, SID_BYTE, "input buffer")
+
+def get_power_of_two_size_in_bytes(size_in_bits):
+    assert size_in_bits % 8 == 0
+    size_in_bits = size_in_bits // 8
+    assert size_in_bits == 2**int(math.log(size_in_bits, 2))
+    return size_in_bits
+
+def calculate_address_space(number_of_bytes, word_size_in_bits):
+    if number_of_bytes < 2 * get_power_of_two_size_in_bytes(word_size_in_bits):
+        number_of_bytes = 2 * get_power_of_two_size_in_bytes(word_size_in_bits)
+
+    size_in_words = math.ceil(number_of_bytes / get_power_of_two_size_in_bytes(word_size_in_bits))
+    address_space = int(math.log(size_in_words, 2))
+
+    if size_in_words > 2**address_space:
+        address_space += 1
+
+    return address_space
+
 class Bitvector_State():
     def __init__(self, core, sid, name, initials):
         assert isinstance(sid, Bitvector)
@@ -1466,6 +1545,21 @@ class Registers(Array_State):
 
     def store_register_value(reg_nid, value_nid, comment, register_file_nid):
         return self.store(register_file_nid, reg_nid, value_nid, comment)
+
+    def get_5_bit_shamt(value_nid):
+        return new_ext(OP_UEXT, SID_SINGLE_WORD,
+            new_slice(SID_5_BIT_IMM, value_nid, 4, 0, "get 5-bit shamt"),
+            SINGLEWORDSIZEINBITS - 5,
+            "unsigned-extend 5-bit shamt")
+
+    def get_shamt(value_nid):
+        if IS64BITTARGET:
+            return new_ext(OP_UEXT, SID_MACHINE_WORD,
+                new_slice(SID_6_BIT_IMM, value_nid, 5, 0, "get 6-bit shamt"),
+                WORDSIZEINBITS - 6,
+                "unsigned-extend 6-bit shamt")
+        else:
+            return get_5_bit_shamt(value_nid)
 
 class Segment(Array_State):
     def __init__(self, core, address_sid, word_sid, name, initials):
