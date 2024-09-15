@@ -2090,6 +2090,842 @@ def new_segmentation():
     else:
         raise system_error(f"end of stack segment wrapped around to 0x{stack_end:X}")
 
+# instructions
+
+SID_INSTRUCTION_WORD = None
+
+NID_INSTRUCTION_WORD_SIZE_MASK = None
+
+# RISC-U codes
+
+SID_OPCODE = None
+
+NID_OP_LOAD   = None
+NID_OP_IMM    = None
+NID_OP_STORE  = None
+NID_OP_OP     = None
+NID_OP_LUI    = None
+NID_OP_BRANCH = None
+NID_OP_JALR   = None
+NID_OP_JAL    = None
+NID_OP_SYSTEM = None
+
+SID_FUNCT3 = None
+
+NID_F3_NOP         = None
+NID_F3_ADDI        = None
+NID_F3_ADD_SUB_MUL = None
+NID_F3_DIVU        = None
+NID_F3_REMU        = None
+NID_F3_SLTU        = None
+NID_F3_LD          = None
+NID_F3_SD          = None
+NID_F3_LW          = None
+NID_F3_SW          = None
+NID_F3_BEQ         = None
+NID_F3_JALR        = None
+NID_F3_ECALL       = None
+
+SID_FUNCT7 = None
+
+NID_F7_ADD  = None
+NID_F7_MUL  = None
+NID_F7_SUB  = None
+NID_F7_DIVU = None
+NID_F7_REMU = None
+NID_F7_SLTU = None
+
+NID_F7_MUL_DIV_REM = None
+
+SID_FUNCT12 = None
+
+NID_F12_ECALL = None
+
+NID_ECALL_I = None
+
+# immediate sorts
+
+SID_1_BIT_IMM  = None
+SID_4_BIT_IMM  = None
+SID_5_BIT_IMM  = None
+SID_6_BIT_IMM  = None
+SID_8_BIT_IMM  = None
+SID_10_BIT_IMM = None
+SID_11_BIT_IMM = None
+SID_12_BIT_IMM = None
+SID_13_BIT_IMM = None
+SID_20_BIT_IMM = None
+SID_21_BIT_IMM = None
+SID_32_BIT_IMM = None
+
+NID_1_BIT_IMM_0  = None
+NID_12_BIT_IMM_0 = None
+
+# RISC-U instruction switches
+
+RISCUONLY = False # restrict modeling to RISC-U only
+
+SID_INSTRUCTION_ID = None
+
+NID_DISABLED = None
+
+NID_LUI  = None
+NID_ADDI = None
+
+NID_ADD  = None
+NID_SUB  = None
+NID_MUL  = None
+NID_DIVU = None
+NID_REMU = None
+NID_SLTU = None
+
+NID_LD = None
+NID_SD = None
+NID_LW = None
+NID_SW = None
+
+NID_BEQ  = None
+NID_JAL  = None
+NID_JALR = None
+
+NID_ECALL = None
+
+# RV32I codes missing in RISC-U
+
+OP_AUIPC = 23 # 0010111, U format (AUIPC)
+
+F3_BNE  = 1 # 001
+F3_BLT  = 4 # 100
+F3_BGE  = 5 # 101
+F3_BLTU = 6 # 110
+F3_BGEU = 7 # 111
+
+F3_LB  = 0 # 000
+F3_LH  = 1 # 001
+F3_LBU = 4 # 100
+F3_LHU = 5 # 101
+
+F3_SB = 0 # 000
+F3_SH = 1 # 001
+
+F3_SLL = 1 # 001
+F3_SLT = 2 # 010
+F3_XOR = 4 # 100
+F3_SRL = 5 # 101
+F3_SRA = 5 # 101
+F3_OR  = 6 # 110
+F3_AND = 7 # 111
+
+NID_OP_AUIPC = None
+
+NID_F3_BNE  = None
+NID_F3_BLT  = None
+NID_F3_BGE  = None
+NID_F3_BLTU = None
+NID_F3_BGEU = None
+
+NID_F3_LB  = None
+NID_F3_LH  = None
+NID_F3_LBU = None
+NID_F3_LHU = None
+
+NID_F3_SB = None
+NID_F3_SH = None
+
+NID_F3_SLL = None
+NID_F3_SLT = None
+NID_F3_XOR = None
+NID_F3_SRL = None
+NID_F3_SRA = None
+NID_F3_OR  = None
+NID_F3_AND = None
+
+NID_F7_ADD_SLT_XOR_OR_AND_SLL_SRL = None
+NID_F7_SUB_SRA                    = None
+
+NID_F7_SLL_SRL_ILLEGAL = None
+NID_F7_SRA_ILLEGAL     = None
+
+# RV32I instruction switches
+
+NID_AUIPC = None
+
+NID_BNE  = None
+NID_BLT  = None
+NID_BGE  = None
+NID_BLTU = None
+NID_BGEU = None
+
+NID_LB  = None
+NID_LH  = None
+NID_LBU = None
+NID_LHU = None
+
+NID_SB = None
+NID_SH = None
+
+NID_SLTI  = None
+NID_SLTIU = None
+NID_XORI  = None
+NID_ORI   = None
+NID_ANDI  = None
+
+NID_SLLI = None
+NID_SRLI = None
+NID_SRAI = None
+
+NID_SLL = None
+NID_SLT = None
+NID_XOR = None
+NID_SRL = None
+NID_SRA = None
+
+NID_OR  = None
+NID_AND = None
+
+# RV64I codes missing in RISC-U
+
+SID_FUNCT6 = None
+
+F6_SLL_SRL = 0  # 000000
+F6_SRA     = 16 # 010000
+
+NID_F6_SLL_SRL = None
+NID_F6_SRA     = None
+
+OP_IMM_32 = 27 # 0011011, I format
+OP_OP_32  = 59 # 0111011, I format
+
+F3_LWU = 6 # 110
+
+NID_OP_IMM_32 = None
+NID_OP_OP_32  = None
+
+NID_F3_LWU = None
+
+# RV64I instruction switches
+
+NID_LWU = None
+
+NID_ADDIW = None
+NID_SLLIW = None
+NID_SRLIW = None
+NID_SRAIW = None
+
+NID_ADDW = None
+NID_SUBW = None
+NID_SLLW = None
+NID_SRLW = None
+NID_SRAW = None
+
+# RV32M codes missing in RISC-U
+
+F3_MULH   = 1 # 001
+F3_MULHSU = 2 # 010
+F3_MULHU  = 3 # 011
+F3_DIV    = 4 # 100
+F3_REM    = 6 # 110
+
+NID_F3_MULH   = None
+NID_F3_MULHSU = None
+NID_F3_MULHU  = None
+NID_F3_DIV    = None
+NID_F3_REM    = None
+
+# RV32M instruction switches
+
+RV32M = True # RV32M support
+
+NID_MULH   = None
+NID_MULHSU = None
+NID_MULHU  = None
+NID_DIV    = None
+NID_REM    = None
+
+# RV64M instruction switches
+
+RV64M = True # RV64M support
+
+NID_MULW  = None
+NID_DIVW  = None
+NID_DIVUW = None
+NID_REMW  = None
+NID_REMUW = None
+
+# RVC codes
+
+SID_OPCODE_C = None
+
+NID_OP_C0 = None
+NID_OP_C1 = None
+NID_OP_C2 = None
+NID_OP_C3 = None
+
+F3_C_LI           = 2 # 010
+F3_C_LUI_ADDI16SP = 3 # 011
+
+NID_F3_C_LI           = None
+NID_F3_C_LUI_ADDI16SP = None
+
+F3_C_ADDI      = 0 # 000
+F3_C_ADDIW_JAL = 1 # 001
+
+NID_F3_C_ADDI      = None
+NID_F3_C_ADDIW_JAL = None
+
+F3_C_ADDI4SPN = 0 # 000
+
+NID_F3_C_ADDI4SPN = None
+
+F3_C_SLLI           = 0 # 000
+F3_C_SRLI_SRAI_ANDI = 4 # 100
+
+NID_F3_C_SLLI           = None
+NID_F3_C_SRLI_SRAI_ANDI = None
+
+SID_FUNCT2 = None
+
+F2_C_SRLI = 0 # 00
+F2_C_SRAI = 1 # 01
+F2_C_ANDI = 2 # 10
+
+NID_F2_C_SRLI = None
+NID_F2_C_SRAI = None
+NID_F2_C_ANDI = None
+
+F6_C_SUB_XOR_OR_AND = 35 # 100011
+F6_C_ADDW_SUBW      = 39 # 100111
+
+NID_F6_C_SUB_XOR_OR_AND = None
+NID_F6_C_ADDW_SUBW      = None
+
+F2_C_SUB_SUBW = 0 # 00
+F2_C_XOR_ADDW = 1 # 01
+F2_C_OR       = 2 # 10
+F2_C_AND      = 3 # 11
+
+NID_F2_C_SUB_SUBW = None
+NID_F2_C_XOR_ADDW = None
+NID_F2_C_OR       = None
+NID_F2_C_AND      = None
+
+F3_C_LWSP_LW = 2 # 010
+F3_C_LDSP_LD = 3 # 011
+
+NID_F3_C_LWSP_LW = None
+NID_F3_C_LDSP_LD = None
+
+F3_C_SWSP_SW = 6 # 110
+F3_C_SDSP_SD = 7 # 111
+
+NID_F3_C_SWSP_SW = None
+NID_F3_C_SDSP_SD = None
+
+F3_C_BEQZ = 6 # 110
+F3_C_BNEZ = 7 # 111
+
+NID_F3_C_BEQZ = None
+NID_F3_C_BNEZ = None
+
+F3_C_J = 5 # 101
+
+NID_F3_C_J = None
+
+SID_FUNCT4 = None
+
+F4_C_MV_JR    = 8 # 1000
+F4_C_ADD_JALR = 9 # 1001
+
+NID_F4_C_MV_JR    = None
+NID_F4_C_ADD_JALR = None
+
+# offset sorts
+
+SID_1_BIT_OFFSET  = None
+SID_2_BIT_OFFSET  = None
+SID_3_BIT_OFFSET  = None
+SID_4_BIT_OFFSET  = None
+SID_5_BIT_OFFSET  = None
+SID_6_BIT_OFFSET  = None
+SID_7_BIT_OFFSET  = None
+SID_8_BIT_OFFSET  = None
+SID_9_BIT_OFFSET  = None
+SID_10_BIT_OFFSET = None
+SID_11_BIT_OFFSET = None
+SID_12_BIT_OFFSET = None
+SID_17_BIT_OFFSET = None
+SID_18_BIT_OFFSET = None
+
+NID_1_BIT_OFFSET_0  = None
+NID_1_BIT_OFFSET_1  = None
+NID_2_BIT_OFFSET_0  = None
+NID_2_BIT_OFFSET_1  = None
+NID_3_BIT_OFFSET_0  = None
+NID_4_BIT_OFFSET_0  = None
+NID_12_BIT_OFFSET_0 = None
+
+SID_COMPRESSED_REGISTER_ADDRESS = None
+
+# RVC instruction switches
+
+RVC = True # RVC support
+
+NID_C_LI  = None
+NID_C_LUI = None
+
+NID_C_ADDI     = None
+NID_C_ADDIW    = None
+NID_C_ADDI16SP = None
+
+NID_C_ADDI4SPN = None
+
+NID_C_ANDI = None
+
+NID_C_SLLI = None
+NID_C_SRLI = None
+NID_C_SRAI = None
+
+NID_C_MV   = None
+NID_C_ADD  = None
+
+NID_C_SUB  = None
+NID_C_XOR  = None
+NID_C_OR   = None
+NID_C_AND  = None
+NID_C_ADDW = None
+NID_C_SUBW = None
+
+NID_C_LWSP = None
+NID_C_LW   = None
+
+NID_C_LDSP = None
+NID_C_LD   = None
+
+NID_C_SWSP = None
+NID_C_SW   = None
+
+NID_C_SDSP = None
+NID_C_SD   = None
+
+NID_C_BEQZ = None
+NID_C_BNEZ = None
+
+NID_C_J   = None
+NID_C_JAL = None
+
+NID_C_JR   = None
+NID_C_JALR = None
+
+# instruction IDs
+
+ID_UNKNOWN = 0
+
+ID_ECALL = 1
+
+# R-type
+
+ID_ADD  = 2
+ID_SUB  = 3
+ID_SLL  = 4
+ID_SLT  = 5
+ID_SLTU = 6
+ID_XOR  = 7
+ID_SRL  = 8
+ID_SRA  = 9
+ID_OR   = 10
+ID_AND  = 11
+
+ID_ADDW = 12
+ID_SUBW = 13
+ID_SLLW = 14
+ID_SRLW = 15
+ID_SRAW = 16
+
+ID_MUL    = 17
+ID_MULH   = 18
+ID_MULHSU = 19
+ID_MULHU  = 20
+ID_DIV    = 21
+ID_DIVU   = 22
+ID_REM    = 23
+ID_REMU   = 24
+
+ID_MULW  = 25
+ID_DIVW  = 26
+ID_DIVUW = 27
+ID_REMW  = 28
+ID_REMUW = 29
+
+# I-type
+
+ID_JALR = 30
+
+ID_LB  = 31
+ID_LH  = 32
+ID_LW  = 33
+ID_LBU = 34
+ID_LHU = 35
+ID_LWU = 36
+ID_LD  = 37
+
+ID_ADDI  = 38
+ID_SLTI  = 39
+ID_SLTIU = 40
+ID_XORI  = 41
+ID_ORI   = 42
+ID_ANDI  = 43
+
+ID_ADDIW = 44
+
+ID_SLLI = 45
+ID_SRLI = 46
+ID_SRAI = 47
+
+ID_SLLIW = 48
+ID_SRLIW = 49
+ID_SRAIW = 50
+
+# S-type
+
+ID_SB = 51
+ID_SH = 52
+ID_SW = 53
+ID_SD = 54
+
+# SB-type
+
+ID_BEQ  = 55
+ID_BNE  = 56
+ID_BLT  = 57
+ID_BGE  = 58
+ID_BLTU = 59
+ID_BGEU = 60
+
+# U-type
+
+ID_LUI   = 61
+ID_AUIPC = 62
+
+# UJ-type
+
+ID_JAL = 63
+
+# compressed instruction IDs
+
+# CR-type
+
+ID_C_MV  = 64
+ID_C_ADD = 65
+
+ID_C_JR   = 66
+ID_C_JALR = 67
+
+# CI-type
+
+ID_C_LI  = 68
+ID_C_LUI = 69
+
+ID_C_ADDI     = 70
+ID_C_ADDIW    = 71
+ID_C_ADDI16SP = 72
+
+# CIW-type
+
+ID_C_ADDI4SPN = 73
+
+# CI-type
+
+ID_C_SLLI = 74
+
+ID_C_LWSP = 75
+ID_C_LDSP = 76
+
+# CL-type
+
+ID_C_LW = 77
+ID_C_LD = 78
+
+# CS-type
+
+ID_C_SW = 79
+ID_C_SD = 80
+
+ID_C_SUB = 81
+ID_C_XOR = 82
+ID_C_OR  = 83
+ID_C_AND = 84
+
+ID_C_ADDW = 85
+ID_C_SUBW = 86
+
+# CSS-type
+
+ID_C_SWSP = 87
+ID_C_SDSP = 88
+
+# CB-type
+
+ID_C_BEQZ = 89
+ID_C_BNEZ = 90
+
+ID_C_ANDI = 91
+
+ID_C_SRLI = 92
+ID_C_SRAI = 93
+
+# CJ-type
+
+ID_C_J   = 94
+ID_C_JAL = 95
+
+# pseudoinstruction IDs
+
+# No operands
+
+ID_P_NOP = 96
+ID_P_RET = 97
+
+# rd,I_imm
+
+ID_P_LI = 98
+
+# rd,rsx
+
+ID_P_MV     = 99  # rs1 or rs2
+ID_P_NOT    = 100 # rs1
+ID_P_SEXT_W = 101 # rs1
+ID_P_SEQZ   = 102 # rs1
+ID_P_SLTZ   = 103 # rs1
+ID_P_ZEXT_B = 104 # rs1
+ID_P_NEG    = 105 # rs2
+ID_P_NEGW   = 106 # rs2
+ID_P_SNEZ   = 107 # rs2
+ID_P_SGTZ   = 108 # rs2
+
+# branch type (rsx,pc+SB_imm <SB_imm>)
+
+ID_P_BEQZ = 109 # rs1
+ID_P_BNEZ = 110 # rs1
+ID_P_BGEZ = 111 # rs1
+ID_P_BLTZ = 112 # rs1
+ID_P_BLEZ = 113 # rs2
+ID_P_BGTZ = 114 # rs2
+
+# jump type (pc + UJ_imm <UJ_imm>)
+
+ID_P_J   = 115
+ID_P_JAL = 116
+
+# jump register type (immx(rs1))
+
+ID_P_JR   = 117 # I_imm or 0
+ID_P_JALR = 118 # I_imm or 0
+
+RISC_V_MNEMONICS = {
+    ID_UNKNOWN: "unknown RISC-V instruction",
+
+    ID_ECALL: 'ecall',
+
+    # R-type
+
+    ID_ADD:  'add',
+    ID_SUB:  'sub',
+    ID_SLL:  'sll',
+    ID_SLT:  'slt',
+    ID_SLTU: 'sltu',
+    ID_XOR:  'xor',
+    ID_SRL:  'srl',
+    ID_SRA:  'sra',
+    ID_OR:   'or',
+    ID_AND:  'and',
+
+    ID_ADDW: 'addw',
+    ID_SUBW: 'subw',
+    ID_SLLW: 'sllw',
+    ID_SRLW: 'srlw',
+    ID_SRAW: 'sraw',
+
+    ID_MUL:    'mul',
+    ID_MULH:   'mulh',
+    ID_MULHSU: 'mulhsu',
+    ID_MULHU:  'mulhu',
+    ID_DIV:    'div',
+    ID_DIVU:   'divu',
+    ID_REM:    'rem',
+    ID_REMU:   'remu',
+
+    ID_MULW:  'mulw',
+    ID_DIVW:  'divw',
+    ID_DIVUW: 'divuw',
+    ID_REMW:  'remw',
+    ID_REMUW: 'remuw',
+
+    # I-type
+
+    ID_JALR: 'jalr',
+
+    ID_LB:  'lb',
+    ID_LH:  'lh',
+    ID_LW:  'lw',
+    ID_LBU: 'lbu',
+    ID_LHU: 'lhu',
+    ID_LWU: 'lwu',
+    ID_LD:  'ld',
+
+    ID_ADDI:  'addi',
+    ID_SLTI:  'slti',
+    ID_SLTIU: 'sltiu',
+    ID_XORI:  'xori',
+    ID_ORI:   'ori',
+    ID_ANDI:  'andi',
+
+    ID_ADDIW: 'addiw',
+
+    ID_SLLI: 'slli',
+    ID_SRLI: 'srli',
+    ID_SRAI: 'srai',
+
+    ID_SLLIW: 'slliw',
+    ID_SRLIW: 'srliw',
+    ID_SRAIW: 'sraiw',
+
+    # S-type
+
+    ID_SB: 'sb',
+    ID_SH: 'sh',
+    ID_SW: 'sw',
+    ID_SD: 'sd',
+
+    # SB-type
+
+    ID_BEQ:  'beq',
+    ID_BNE:  'bne',
+    ID_BLT:  'blt',
+    ID_BGE:  'bge',
+    ID_BLTU: 'bltu',
+    ID_BGEU: 'bgeu',
+
+    # U-type
+
+    ID_LUI:   'lui',
+    ID_AUIPC: 'auipc',
+
+    # UJ-type
+
+    ID_JAL: 'jal',
+
+    # compressed instruction IDs
+
+    # CR-type
+
+    ID_C_MV:  'c.mv',
+    ID_C_ADD: 'c.add',
+
+    ID_C_JR:   'c.jr',
+    ID_C_JALR: 'c.jalr',
+
+    # CI-type
+
+    ID_C_LI:  'c.li',
+    ID_C_LUI: 'c.lui',
+
+    ID_C_ADDI:     'c.addi',
+    ID_C_ADDIW:    'c.addiw',
+    ID_C_ADDI16SP: 'c.addi16sp',
+
+    # CIW-type
+
+    ID_C_ADDI4SPN: 'c.addi4spn',
+
+    # CI-type
+
+    ID_C_SLLI: 'c.slli',
+
+    ID_C_LWSP: 'c.lwsp',
+    ID_C_LDSP: 'c.ldsp',
+
+    # CL-type
+
+    ID_C_LW: 'c.lw',
+    ID_C_LD: 'c.ld',
+
+    # CS-type
+
+    ID_C_SW: 'c.sw',
+    ID_C_SD: 'c.sd',
+
+    ID_C_SUB: 'c.sub',
+    ID_C_XOR: 'c.xor',
+    ID_C_OR:  'c.or',
+    ID_C_AND: 'c.and',
+
+    ID_C_ADDW: 'c.addw',
+    ID_C_SUBW: 'c.subw',
+
+    # CSS-type
+
+    ID_C_SWSP: 'c.swsp',
+    ID_C_SDSP: 'c.sdsp',
+
+    # CB-type
+
+    ID_C_BEQZ: 'c.beqz',
+    ID_C_BNEZ: 'c.bnez',
+
+    ID_C_ANDI: 'c.andi',
+
+    ID_C_SRLI: 'c.srli',
+    ID_C_SRAI: 'c.srai',
+
+    # CJ-type
+
+    ID_C_J:   'c.j',
+    ID_C_JAL: 'c.jal',
+
+    # pseudoinstruction IDs
+
+    # No operands
+
+    ID_P_NOP: 'nop',
+    ID_P_RET: 'ret',
+
+    # rd,I_imm
+
+    ID_P_LI: 'li',
+
+    # rd,rsx
+
+    ID_P_MV:     'mv',
+    ID_P_NOT:    'not',
+    ID_P_SEXT_W: 'sext.w',
+    ID_P_SEQZ:   'seqz',
+    ID_P_SLTZ:   'sltz',
+    ID_P_ZEXT_B: 'zext.b',
+    ID_P_NEG:    'neg',
+    ID_P_NEGW:   'negw',
+    ID_P_SNEZ:   'snez',
+    ID_P_SGTZ:   'sgtz',
+
+    # branch type (rsx,pc+SB_imm <SB_imm>)
+
+    ID_P_BEQZ: 'beqz',
+    ID_P_BNEZ: 'bnez',
+    ID_P_BGEZ: 'bgez',
+    ID_P_BLTZ: 'bltz',
+    ID_P_BLEZ: 'blez',
+    ID_P_BGTZ: 'bgtz',
+
+    # jump type (pc + UJ_imm <UJ_imm>)
+
+    ID_P_J:   'j',
+    ID_P_JAL: 'jal',
+
+    # jump register type (immx(rs1))
+
+    ID_P_JR:   'jr',
+    ID_P_JALR: 'jalr'
+}
+
 # system model
 
 class Bitvector_State():
