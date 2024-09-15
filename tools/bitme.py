@@ -1494,6 +1494,145 @@ def calculate_address_space(number_of_bytes, word_size_in_bits):
 
     return address_space
 
+# register sorts
+
+SID_REGISTER_ADDRESS = None
+
+REG_ZR  = 0
+REG_RA  = 1
+REG_SP  = 2
+REG_GP  = 3
+REG_TP  = 4
+REG_T0  = 5
+REG_T1  = 6
+REG_T2  = 7
+REG_S0  = 8
+REG_S1  = 9
+REG_A0  = 10
+REG_A1  = 11
+REG_A2  = 12
+REG_A3  = 13
+REG_A4  = 14
+REG_A5  = 15
+REG_A6  = 16
+REG_A7  = 17
+REG_S2  = 18
+REG_S3  = 19
+REG_S4  = 20
+REG_S5  = 21
+REG_S6  = 22
+REG_S7  = 23
+REG_S8  = 24
+REG_S9  = 25
+REG_S10 = 26
+REG_S11 = 27
+REG_T3  = 28
+REG_T4  = 29
+REG_T5  = 30
+REG_T6  = 31
+
+NID_ZR  = None
+NID_RA  = None
+NID_SP  = None
+NID_GP  = None
+NID_TP  = None
+NID_T0  = None
+NID_T1  = None
+NID_T2  = None
+NID_S0  = None
+NID_S1  = None
+NID_A0  = None
+NID_A1  = None
+NID_A2  = None
+NID_A3  = None
+NID_A4  = None
+NID_A5  = None
+NID_A6  = None
+NID_A7  = None
+NID_S2  = None
+NID_S3  = None
+NID_S4  = None
+NID_S5  = None
+NID_S6  = None
+NID_S7  = None
+NID_S8  = None
+NID_S9  = None
+NID_S10 = None
+NID_S11 = None
+NID_T3  = None
+NID_T4  = None
+NID_T5  = None
+NID_T6  = None
+
+SID_REGISTER_STATE = None
+
+def init_register_file_sorts():
+    global SID_REGISTER_ADDRESS, NID_ZR, NID_RA, NID_SP, NID_GP, NID_TP
+    global NID_T0, NID_T1, NID_T2, NID_S0, NID_S1, NID_A0, NID_A1, NID_A2
+    global NID_A3, NID_A4, NID_A5, NID_A6, NID_A7, NID_S2, NID_S3, NID_S4
+    global NID_S5, NID_S6, NID_S7, NID_S8, NID_S9, NID_S10, NID_S11, NID_T3
+    global NID_T4, NID_T5, NID_T6, SID_REGISTER_STATE
+
+    SID_REGISTER_ADDRESS = new_bitvec(5, "5-bit register address")
+
+    NID_ZR  = new_constant(OP_CONST, SID_REGISTER_ADDRESS, REG_ZR, "zero")
+    NID_RA  = new_constant(OP_CONST, SID_REGISTER_ADDRESS, REG_RA, "ra")
+    NID_SP  = new_constant(OP_CONST, SID_REGISTER_ADDRESS, REG_SP, "sp")
+    NID_GP  = new_constant(OP_CONST, SID_REGISTER_ADDRESS, REG_GP, "gp")
+    NID_TP  = new_constant(OP_CONST, SID_REGISTER_ADDRESS, REG_TP, "tp")
+    NID_T0  = new_constant(OP_CONST, SID_REGISTER_ADDRESS, REG_T0, "t0")
+    NID_T1  = new_constant(OP_CONST, SID_REGISTER_ADDRESS, REG_T1, "t1")
+    NID_T2  = new_constant(OP_CONST, SID_REGISTER_ADDRESS, REG_T2, "t2")
+    NID_S0  = new_constant(OP_CONST, SID_REGISTER_ADDRESS, REG_S0, "s0") # used to be fp
+    NID_S1  = new_constant(OP_CONST, SID_REGISTER_ADDRESS, REG_S1, "s1")
+    NID_A0  = new_constant(OP_CONST, SID_REGISTER_ADDRESS, REG_A0, "a0")
+    NID_A1  = new_constant(OP_CONST, SID_REGISTER_ADDRESS, REG_A1, "a1")
+    NID_A2  = new_constant(OP_CONST, SID_REGISTER_ADDRESS, REG_A2, "a2")
+    NID_A3  = new_constant(OP_CONST, SID_REGISTER_ADDRESS, REG_A3, "a3")
+    NID_A4  = new_constant(OP_CONST, SID_REGISTER_ADDRESS, REG_A4, "a4")
+    NID_A5  = new_constant(OP_CONST, SID_REGISTER_ADDRESS, REG_A5, "a5")
+    NID_A6  = new_constant(OP_CONST, SID_REGISTER_ADDRESS, REG_A6, "a6")
+    NID_A7  = new_constant(OP_CONST, SID_REGISTER_ADDRESS, REG_A7, "a7")
+    NID_S2  = new_constant(OP_CONST, SID_REGISTER_ADDRESS, REG_S2, "s2")
+    NID_S3  = new_constant(OP_CONST, SID_REGISTER_ADDRESS, REG_S3, "s3")
+    NID_S4  = new_constant(OP_CONST, SID_REGISTER_ADDRESS, REG_S4, "s4")
+    NID_S5  = new_constant(OP_CONST, SID_REGISTER_ADDRESS, REG_S5, "s5")
+    NID_S6  = new_constant(OP_CONST, SID_REGISTER_ADDRESS, REG_S6, "s6")
+    NID_S7  = new_constant(OP_CONST, SID_REGISTER_ADDRESS, REG_S7, "s7")
+    NID_S8  = new_constant(OP_CONST, SID_REGISTER_ADDRESS, REG_S8, "s8")
+    NID_S9  = new_constant(OP_CONST, SID_REGISTER_ADDRESS, REG_S9, "s9")
+    NID_S10 = new_constant(OP_CONST, SID_REGISTER_ADDRESS, REG_S10, "s10")
+    NID_S11 = new_constant(OP_CONST, SID_REGISTER_ADDRESS, REG_S11, "s11")
+    NID_T3  = new_constant(OP_CONST, SID_REGISTER_ADDRESS, REG_T3, "t3")
+    NID_T4  = new_constant(OP_CONST, SID_REGISTER_ADDRESS, REG_T4, "t4")
+    NID_T5  = new_constant(OP_CONST, SID_REGISTER_ADDRESS, REG_T5, "t5")
+    NID_T6  = new_constant(OP_CONST, SID_REGISTER_ADDRESS, REG_T6, "t6")
+
+    SID_REGISTER_STATE = new_array(SID_REGISTER_ADDRESS, SID_MACHINE_WORD, "register state")
+
+def load_register_value(reg_nid, comment, register_file_nid):
+    return new_binary(OP_READ, SID_MACHINE_WORD, register_file_nid, reg_nid, comment)
+
+def store_register_value(reg_nid, value_nid, comment, register_file_nid):
+    return new_ternary(OP_WRITE, SID_REGISTER_STATE, register_file_nid, reg_nid, value_nid, comment)
+
+def get_5_bit_shamt(value_nid):
+    return new_ext(OP_UEXT, SID_SINGLE_WORD,
+        new_slice(SID_5_BIT_IMM, value_nid, 4, 0, "get 5-bit shamt"),
+        SINGLEWORDSIZEINBITS - 5,
+        "unsigned-extend 5-bit shamt")
+
+def get_shamt(value_nid):
+    if IS64BITTARGET:
+        return new_ext(OP_UEXT, SID_MACHINE_WORD,
+            new_slice(SID_6_BIT_IMM, value_nid, 5, 0, "get 6-bit shamt"),
+            WORDSIZEINBITS - 6,
+            "unsigned-extend 6-bit shamt")
+    else:
+        return get_5_bit_shamt(value_nid)
+
+# system model
+
 class Bitvector_State():
     def __init__(self, core, sid, name, initials):
         assert isinstance(sid, Bitvector)
@@ -1526,68 +1665,37 @@ class Array_State():
     def __str__(self):
         return f"{self.state}"
 
-    def load(self, array_nid, address_nid, comment):
-        assert array_nid.sid_line == self.array_sid and address_nid.sid_line == self.address_sid
-        return new_binary(OP_READ, self.element_sid, array_nid, address_nid, comment)
-
-    def store(self, array_nid, address_nid, value_nid, comment):
-        assert array_nid.sid_line == self.array_sid and address_nid.sid_line == self.address_sid and value_nid.sid_line == self.element_sid
-        return new_ternary(OP_WRITE, self.array_sid, array_nid, address_nid, value_nid, comment)
-
 class PC(Bitvector_State):
-    def __init__(self, core, word_sid):
-        super().__init__(core, word_sid, "program counter", 'pc')
+    def __init__(self, core):
+        super().__init__(core, SID_MACHINE_WORD, "program counter", 'pc')
 
 class Registers(Array_State):
-    def __init__(self, core, word_sid):
-        self.SID_REGISTER_ADDRESS = new_bitvec(5, "register address")
-        super().__init__(core, self.SID_REGISTER_ADDRESS, word_sid, "register file", 'register-file')
-        self.SID_REGISTER_STATE = self.array_sid
-
-    def load_register_value(reg_nid, comment, register_file_nid):
-        return self.load(register_file_nid, reg_nid, comment)
-
-    def store_register_value(reg_nid, value_nid, comment, register_file_nid):
-        return self.store(register_file_nid, reg_nid, value_nid, comment)
-
-    def get_5_bit_shamt(value_nid):
-        return new_ext(OP_UEXT, SID_SINGLE_WORD,
-            new_slice(SID_5_BIT_IMM, value_nid, 4, 0, "get 5-bit shamt"),
-            SINGLEWORDSIZEINBITS - 5,
-            "unsigned-extend 5-bit shamt")
-
-    def get_shamt(value_nid):
-        if IS64BITTARGET:
-            return new_ext(OP_UEXT, SID_MACHINE_WORD,
-                new_slice(SID_6_BIT_IMM, value_nid, 5, 0, "get 6-bit shamt"),
-                WORDSIZEINBITS - 6,
-                "unsigned-extend 6-bit shamt")
-        else:
-            return get_5_bit_shamt(value_nid)
+    def __init__(self, core):
+        super().__init__(core, SID_REGISTER_ADDRESS, SID_MACHINE_WORD, "register file", 'register-file')
 
 class Segment(Array_State):
     def __init__(self, core, address_sid, word_sid, name, initials):
         super().__init__(core, address_sid, word_sid, name, initials)
 
 class Memory():
-    def __init__(self, core, memory_bits, word_sid):
+    def __init__(self, core, memory_bits):
         self.SID_VIRTUAL_ADDRESS = new_bitvec(memory_bits, "virtual address")
-        self.code = Segment(core, self.SID_VIRTUAL_ADDRESS, word_sid, "code segment", 'code-segment')
-        self.data = Segment(core, self.SID_VIRTUAL_ADDRESS, word_sid, "data segment", 'data-segment')
-        self.heap = Segment(core, self.SID_VIRTUAL_ADDRESS, word_sid, "heap segment", 'heap-segment')
-        self.stack = Segment(core, self.SID_VIRTUAL_ADDRESS, word_sid, "stack segment", 'stack-segment')
+        self.code = Segment(core, self.SID_VIRTUAL_ADDRESS, SID_MACHINE_WORD, "code segment", 'code-segment')
+        self.data = Segment(core, self.SID_VIRTUAL_ADDRESS, SID_MACHINE_WORD, "data segment", 'data-segment')
+        self.heap = Segment(core, self.SID_VIRTUAL_ADDRESS, SID_MACHINE_WORD, "heap segment", 'heap-segment')
+        self.stack = Segment(core, self.SID_VIRTUAL_ADDRESS, SID_MACHINE_WORD, "stack segment", 'stack-segment')
 
     def __str__(self):
         return f"{self.SID_VIRTUAL_ADDRESS.size}-bit virtual memory:\n{self.code}\n{self.data}\n{self.heap}\n{self.stack}"
 
 class Kernel():
-    def __init__(self, core, word_sid, memory):
+    def __init__(self, core, memory):
         self.memory = memory
         self.program_break = Bitvector_State(-1, memory.SID_VIRTUAL_ADDRESS, "program break", 'program-break')
-        self.file_descriptor = Bitvector_State(-1, word_sid, "file descriptor", 'file-descriptor')
+        self.file_descriptor = Bitvector_State(-1, SID_MACHINE_WORD, "file descriptor", 'file-descriptor')
         self.input_buffer = Array_State(-1, SID_INPUT_ADDRESS, SID_BYTE, "input buffer", 'input-buffer')
-        self.readable_bytes = Bitvector_State(core, word_sid, "readable bytes", 'readable-bytes')
-        self.read_bytes = Bitvector_State(core, word_sid, "read bytes", 'read-bytes')
+        self.readable_bytes = Bitvector_State(core, SID_MACHINE_WORD, "readable bytes", 'readable-bytes')
+        self.read_bytes = Bitvector_State(core, SID_MACHINE_WORD, "read bytes", 'read-bytes')
 
     def __str__(self):
         return f"kernel:\n{self.program_break}\n{self.file_descriptor}\n{self.input_buffer}\n{self.readable_bytes}\n{self.read_bytes}"
@@ -1597,10 +1705,10 @@ class Core():
 
     def __init__(self, machine_bits, memory_bits):
         self.core = len(Core.cores)
-        self.memory = Memory(self.core, memory_bits, SID_MACHINE_WORD)
-        self.kernel = Kernel(self.core, SID_MACHINE_WORD, self.memory)
-        self.pc = PC(self.core, SID_MACHINE_WORD)
-        self.regs = Registers(self.core, SID_MACHINE_WORD)
+        self.memory = Memory(self.core, memory_bits)
+        self.kernel = Kernel(self.core, self.memory)
+        self.pc = PC(self.core)
+        self.regs = Registers(self.core)
         self.new_core()
 
     def __str__(self):
