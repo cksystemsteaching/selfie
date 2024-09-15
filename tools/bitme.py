@@ -1515,8 +1515,12 @@ class Array_State():
         self.address_sid = address_sid
         self.element_sid = element_sid
         self.array_sid = new_array(address_sid, element_sid, f"{address_sid.size}-bit {name} array")
-        self.initial = new_constant(OP_CONSTD, element_sid, 0, f"initial core-{core} {name} value")
-        self.state = new_input(OP_STATE, self.array_sid, f"core-{core}-{initials}", f"{element_sid.size}-bit {name}")
+        if core >= 0:
+            self.initial = new_constant(OP_CONSTD, element_sid, 0, f"initial core-{core} {name} value")
+            self.state = new_input(OP_STATE, self.array_sid, f"core-{core}-{initials}", f"{address_sid.size}-bit {name} of {element_sid.size}-bit bitvectors")
+        else:
+            self.initial = new_constant(OP_CONSTD, element_sid, 0, f"initial {name} value")
+            self.state = new_input(OP_STATE, self.array_sid, f"{initials}", f"{address_sid.size}-bit {name} of {element_sid.size}-bit bitvectors")
         self.init = new_init(self.array_sid, self.state, self.initial, f"initializing {name}")
 
     def __str__(self):
@@ -1581,11 +1585,12 @@ class Kernel():
         self.memory = memory
         self.program_break = Bitvector_State(-1, memory.SID_VIRTUAL_ADDRESS, "program break", 'program-break')
         self.file_descriptor = Bitvector_State(-1, word_sid, "file descriptor", 'file-descriptor')
+        self.input_buffer = Array_State(-1, SID_INPUT_ADDRESS, SID_BYTE, "input buffer", 'input-buffer')
         self.readable_bytes = Bitvector_State(core, word_sid, "readable bytes", 'readable-bytes')
         self.read_bytes = Bitvector_State(core, word_sid, "read bytes", 'read-bytes')
 
     def __str__(self):
-        return f"kernel:\n{self.program_break}\n{self.file_descriptor}\n{self.readable_bytes}\n{self.read_bytes}"
+        return f"kernel:\n{self.program_break}\n{self.file_descriptor}\n{self.input_buffer}\n{self.readable_bytes}\n{self.read_bytes}"
 
 class Core():
     cores = dict()
