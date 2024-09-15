@@ -1236,6 +1236,10 @@ def new_property(op, condition_nid, symbol, comment, nid = next_nid(), line_no =
 
 # RISC-V model generator
 
+class system_error(Exception):
+    def __init__(self, message):
+        super().__init__(message)
+
 # TODO: configure:
 
 IS64BITTARGET = True
@@ -1542,7 +1546,7 @@ def init_kernel_interface():
 def get_power_of_two_size_in_bytes(size_in_bits):
     assert size_in_bits % 8 == 0
     size_in_bits = size_in_bits // 8
-    assert size_in_bits == 2**int(math.log(size_in_bits, 2))
+    assert size_in_bits == 2**int(math.log2(size_in_bits))
     return size_in_bits
 
 def calculate_address_space(number_of_bytes, word_size_in_bits):
@@ -1550,7 +1554,7 @@ def calculate_address_space(number_of_bytes, word_size_in_bits):
         number_of_bytes = 2 * get_power_of_two_size_in_bytes(word_size_in_bits)
 
     size_in_words = math.ceil(number_of_bytes / get_power_of_two_size_in_bytes(word_size_in_bits))
-    address_space = int(math.log(size_in_words, 2))
+    address_space = int(math.log2(size_in_words))
 
     if size_in_words > 2**address_space:
         address_space += 1
@@ -2014,6 +2018,77 @@ def eval_bitvec_size(line):
     # TODO: tolerating but not yet supporting double machine word bitvectors
     assert (line.size > 0 and line.size <= SIZEOFUINT64INBITS) or line.size == 2 * WORDSIZEINBITS
     return line.size;
+
+def new_segmentation():
+    global NID_CODE_START
+    global NID_CODE_END
+
+    global NID_DATA_START
+    global NID_DATA_END
+
+    global NID_HEAP_START
+    global NID_HEAP_END
+
+    global NID_STACK_START
+    global NID_STACK_END
+
+    NID_CODE_START = new_constant(OP_CONSTH, SID_VIRTUAL_ADDRESS, code_start,
+        f"start of code segment @ 0x{code_start:X}")
+
+    NID_CODE_END = new_constant(OP_CONSTH, SID_VIRTUAL_ADDRESS, code_start + code_size,
+        f"end of code segment accommodating at least {code_size // INSTRUCTIONSIZE} instructions")
+
+    assert data_start >= code_start + code_size > 0
+
+    NID_DATA_START = new_constant(OP_CONSTH, SID_VIRTUAL_ADDRESS, data_start,
+        f"start of data segment @ 0x{data_start:X}")
+
+    NID_DATA_END = new_constant(OP_CONSTH, SID_VIRTUAL_ADDRESS, data_start + data_size,
+        f"end of data segment accommodating {data_size} bytes")
+
+    assert heap_start >= data_start + data_size > 0
+
+    NID_HEAP_START = new_constant(OP_CONSTH, SID_VIRTUAL_ADDRESS, heap_start,
+        f"start of heap segment @ 0x{heap_start:X}")
+
+    NID_HEAP_END = new_constant(OP_CONSTH, SID_VIRTUAL_ADDRESS, heap_start + heap_size,
+        f"static end of heap segment accommodating {heap_size} bytes")
+
+    assert stack_start >= heap_start + heap_size > 0
+
+    NID_STACK_START = new_constant(OP_CONSTH, SID_VIRTUAL_ADDRESS, stack_start,
+        f"static start of stack segment @ 0x{stack_start:X}")
+
+    stack_end = stack_start + stack_size
+
+    if stack_start < stack_end:
+        low_stack_address_space = int(math.log2(stack_end))
+        up_stack_address_space = low_stack_address_space
+
+        if stack_end > 2**low_stack_address_space:
+            up_stack_address_space += 1
+
+        if up_stack_address_space < VIRTUAL_ADDRESS_SPACE:
+            NID_STACK_END = new_constant(OP_CONSTH, SID_VIRTUAL_ADDRESS, stack_end,
+                f"end of stack segment accommodating {stack_size} bytes")
+        elif up_stack_address_space == VIRTUAL_ADDRESS_SPACE:
+            if low_stack_address_space < up_stack_address_space:
+                NID_STACK_END = new_constant(OP_CONSTH, SID_VIRTUAL_ADDRESS, stack_end,
+                    f"end of stack segment accommodating {stack_size} bytes")
+            else:
+                NID_STACK_END = new_constant(OP_CONSTH, SID_VIRTUAL_ADDRESS, 0,
+                    f"end of stack segment accommodating {stack_size} bytes")
+        else:
+            raise system_error(f"end of stack segment at 0x{stack_end:X} does not fit {VIRTUAL_ADDRESS_SPACE}-bit virtual address space")
+
+    elif stack_end == 0:
+        if VIRTUAL_ADDRESS_SPACE == WORDSIZEINBITS:
+            NID_STACK_END = new_constant(OP_CONSTH, SID_VIRTUAL_ADDRESS, 0,
+                f"end of stack segment accommodating {stack_size} bytes")
+        else:
+            raise system_error(f"end of stack segment wrapped around to 0x0")
+    else:
+        raise system_error(f"end of stack segment wrapped around to 0x{stack_end:X}")
 
 # system model
 
@@ -2543,14 +2618,20 @@ def load_binary():
     assert stack_start >= heap_start + heap_size > 0
 
 def rotor_model():
-    load_binary()
+    try:
+        load_binary()
 
-    init_machine_interface()
-    init_kernel_interface()
-    init_register_file_sorts()
-    init_memory_sorts()
+        init_machine_interface()
+        init_kernel_interface()
+        init_register_file_sorts()
+        init_memory_sorts()
 
-    print(System(32, 16))
+        new_segmentation()
+
+        print(System(32, 16))
+    except Exception as message:
+        print(message)
+        exit(1)
 
 import sys
 
