@@ -2098,6 +2098,41 @@ NID_INSTRUCTION_WORD_SIZE_MASK = None
 
 # RISC-U codes
 
+OP_LOAD   = 3   # 0000011, I format (LD,LW)
+OP_IMM    = 19  # 0010011, I format (ADDI, NOP)
+OP_STORE  = 35  # 0100011, S format (SD,SW)
+OP_OP     = 51  # 0110011, R format (ADD, SUB, MUL, DIVU, REMU, SLTU)
+OP_LUI    = 55  # 0110111, U format (LUI)
+OP_BRANCH = 99  # 1100011, B format (BEQ)
+OP_JALR   = 103 # 1100111, I format (JALR)
+OP_JAL    = 111 # 1101111, J format (JAL)
+OP_SYSTEM = 115 # 1110011, I format (ECALL)
+
+F3_NOP   = 0 # 000
+F3_ADDI  = 0 # 000
+F3_ADD   = 0 # 000
+F3_SUB   = 0 # 000
+F3_MUL   = 0 # 000
+F3_DIVU  = 5 # 101
+F3_REMU  = 7 # 111
+F3_SLTU  = 3 # 011
+F3_LD    = 3 # 011
+F3_SD    = 3 # 011
+F3_LW    = 2 # 010
+F3_SW    = 2 # 010
+F3_BEQ   = 0 # 000
+F3_JALR  = 0 # 000
+F3_ECALL = 0 # 000
+
+F7_ADD  = 0  # 0000000
+F7_MUL  = 1  # 0000001
+F7_SUB  = 32 # 0100000
+F7_DIVU = 1  # 0000001
+F7_REMU = 1  # 0000001
+F7_SLTU = 0  # 0000000
+
+F12_ECALL = 0 # 000000000000
+
 SID_OPCODE = None
 
 NID_OP_LOAD   = None
@@ -2926,6 +2961,514 @@ RISC_V_MNEMONICS = {
     ID_P_JALR: 'jalr'
 }
 
+def init_instruction_sorts():
+    global SID_INSTRUCTION_WORD
+
+    global NID_INSTRUCTION_WORD_SIZE_MASK
+
+    global SID_OPCODE
+
+    global NID_OP_LOAD
+    global NID_OP_IMM
+    global NID_OP_STORE
+    global NID_OP_OP
+    global NID_OP_LUI
+    global NID_OP_BRANCH
+    global NID_OP_JALR
+    global NID_OP_JAL
+    global NID_OP_SYSTEM
+
+    global SID_FUNCT3
+
+    global NID_F3_NOP
+    global NID_F3_ADDI
+    global NID_F3_ADD_SUB_MUL
+    global NID_F3_DIVU
+    global NID_F3_REMU
+    global NID_F3_SLTU
+    global NID_F3_LD
+    global NID_F3_SD
+    global NID_F3_LW
+    global NID_F3_SW
+    global NID_F3_BEQ
+    global NID_F3_JALR
+    global NID_F3_ECALL
+
+    global SID_FUNCT7
+
+    global NID_F7_ADD
+    global NID_F7_MUL
+    global NID_F7_SUB
+    global NID_F7_DIVU
+    global NID_F7_REMU
+    global NID_F7_SLTU
+
+    global NID_F7_MUL_DIV_REM
+
+    global SID_FUNCT12
+
+    global NID_F12_ECALL
+
+    global NID_ECALL_I
+
+    global SID_1_BIT_IMM
+    global SID_4_BIT_IMM
+    global SID_5_BIT_IMM
+    global SID_6_BIT_IMM
+    global SID_8_BIT_IMM
+    global SID_10_BIT_IMM
+    global SID_11_BIT_IMM
+    global SID_12_BIT_IMM
+    global SID_13_BIT_IMM
+    global SID_20_BIT_IMM
+    global SID_21_BIT_IMM
+    global SID_32_BIT_IMM
+
+    global NID_1_BIT_IMM_0
+    global NID_12_BIT_IMM_0
+
+    global SID_INSTRUCTION_ID
+
+    global NID_DISABLED
+
+    global NID_LUI
+    global NID_ADDI
+
+    global NID_ADD
+    global NID_SUB
+    global NID_MUL
+    global NID_DIVU
+    global NID_REMU
+    global NID_SLTU
+
+    global NID_LD
+    global NID_SD
+    global NID_LW
+    global NID_SW
+
+    global NID_BEQ
+    global NID_JAL
+    global NID_JALR
+
+    global NID_ECALL
+
+    global NID_OP_AUIPC
+
+    global NID_F3_BNE
+    global NID_F3_BLT
+    global NID_F3_BGE
+    global NID_F3_BLTU
+    global NID_F3_BGEU
+
+    global NID_F3_LB
+    global NID_F3_LH
+    global NID_F3_LBU
+    global NID_F3_LHU
+
+    global NID_F3_SB
+    global NID_F3_SH
+
+    global NID_F3_SLL
+    global NID_F3_SLT
+    global NID_F3_XOR
+    global NID_F3_SRL
+    global NID_F3_SRA
+    global NID_F3_OR
+    global NID_F3_AND
+
+    global NID_F7_ADD_SLT_XOR_OR_AND_SLL_SRL
+    global NID_F7_SUB_SRA
+
+    global NID_F7_SLL_SRL_ILLEGAL
+    global NID_F7_SRA_ILLEGAL
+
+    global NID_AUIPC
+
+    global NID_BNE
+    global NID_BLT
+    global NID_BGE
+    global NID_BLTU
+    global NID_BGEU
+
+    global NID_LB
+    global NID_LH
+    global NID_LBU
+    global NID_LHU
+
+    global NID_SB
+    global NID_SH
+
+    global NID_SLTI
+    global NID_SLTIU
+    global NID_XORI
+    global NID_ORI
+    global NID_ANDI
+
+    global NID_SLLI
+    global NID_SRLI
+    global NID_SRAI
+
+    global NID_SLL
+    global NID_SLT
+    global NID_XOR
+    global NID_SRL
+    global NID_SRA
+
+    global NID_OR
+    global NID_AND
+
+    global SID_FUNCT6
+
+    global NID_F6_SLL_SRL
+    global NID_F6_SRA
+
+    global NID_OP_IMM_32
+    global NID_OP_OP_32
+
+    global NID_F3_LWU
+
+    global NID_LWU
+
+    global NID_ADDIW
+    global NID_SLLIW
+    global NID_SRLIW
+    global NID_SRAIW
+
+    global NID_ADDW
+    global NID_SUBW
+    global NID_SLLW
+    global NID_SRLW
+    global NID_SRAW
+
+    global NID_F3_MULH
+    global NID_F3_MULHSU
+    global NID_F3_MULHU
+    global NID_F3_DIV
+    global NID_F3_REM
+
+    global RV32M
+
+    global NID_MULH
+    global NID_MULHSU
+    global NID_MULHU
+    global NID_DIV
+    global NID_REM
+
+    global RV64M
+
+    global NID_MULW
+    global NID_DIVW
+    global NID_DIVUW
+    global NID_REMW
+    global NID_REMUW
+
+    SID_INSTRUCTION_WORD = SID_SINGLE_WORD;
+
+    if (RVC):
+        NID_INSTRUCTION_WORD_SIZE_MASK = NID_MACHINE_WORD_1
+    else:
+        NID_INSTRUCTION_WORD_SIZE_MASK = NID_MACHINE_WORD_3
+
+    SID_OPCODE = new_bitvec(7, "opcode sort");
+
+    NID_OP_LOAD   = new_constant(OP_CONST, SID_OPCODE, OP_LOAD, "OP_LOAD")
+    NID_OP_IMM    = new_constant(OP_CONST, SID_OPCODE, OP_IMM, "OP_IMM")
+    NID_OP_STORE  = new_constant(OP_CONST, SID_OPCODE, OP_STORE, "OP_STORE")
+    NID_OP_OP     = new_constant(OP_CONST, SID_OPCODE, OP_OP, "OP_OP")
+    NID_OP_LUI    = new_constant(OP_CONST, SID_OPCODE, OP_LUI, "OP_LUI")
+    NID_OP_BRANCH = new_constant(OP_CONST, SID_OPCODE, OP_BRANCH, "OP_BRANCH")
+    NID_OP_JALR   = new_constant(OP_CONST, SID_OPCODE, OP_JALR, "OP_JALR")
+    NID_OP_JAL    = new_constant(OP_CONST, SID_OPCODE, OP_JAL, "OP_JAL")
+    NID_OP_SYSTEM = new_constant(OP_CONST, SID_OPCODE, OP_SYSTEM, "OP_SYSTEM")
+
+    SID_FUNCT3 = new_bitvec(3, "funct3 sort")
+
+    NID_F3_NOP         = new_constant(OP_CONST, SID_FUNCT3, F3_NOP, "F3_NOP")
+    NID_F3_ADDI        = new_constant(OP_CONST, SID_FUNCT3, F3_ADDI, "F3_ADDI")
+    NID_F3_ADD_SUB_MUL = new_constant(OP_CONST, SID_FUNCT3, F3_ADD, "F3_ADD_SUB_MUL")
+    NID_F3_DIVU        = new_constant(OP_CONST, SID_FUNCT3, F3_DIVU, "F3_DIVU")
+    NID_F3_REMU        = new_constant(OP_CONST, SID_FUNCT3, F3_REMU, "F3_REMU")
+    NID_F3_SLTU        = new_constant(OP_CONST, SID_FUNCT3, F3_SLTU, "F3_SLTU")
+    NID_F3_LD          = new_constant(OP_CONST, SID_FUNCT3, F3_LD, "F3_LD")
+    NID_F3_SD          = new_constant(OP_CONST, SID_FUNCT3, F3_SD, "F3_SD")
+    NID_F3_LW          = new_constant(OP_CONST, SID_FUNCT3, F3_LW, "F3_LW")
+    NID_F3_SW          = new_constant(OP_CONST, SID_FUNCT3, F3_SW, "F3_SW")
+    NID_F3_BEQ         = new_constant(OP_CONST, SID_FUNCT3, F3_BEQ, "F3_BEQ")
+    NID_F3_JALR        = new_constant(OP_CONST, SID_FUNCT3, F3_JALR, "F3_JALR")
+    NID_F3_ECALL       = new_constant(OP_CONST, SID_FUNCT3, F3_ECALL, "F3_ECALL")
+
+    SID_FUNCT7 = new_bitvec(7, "funct7 sort")
+
+    NID_F7_ADD  = new_constant(OP_CONST, SID_FUNCT7, F7_ADD, "F7_ADD")
+    NID_F7_MUL  = new_constant(OP_CONST, SID_FUNCT7, F7_MUL, "F7_MUL")
+    NID_F7_SUB  = new_constant(OP_CONST, SID_FUNCT7, F7_SUB, "F7_SUB")
+    NID_F7_DIVU = new_constant(OP_CONST, SID_FUNCT7, F7_DIVU, "F7_DIVU")
+    NID_F7_REMU = new_constant(OP_CONST, SID_FUNCT7, F7_REMU, "F7_REMU")
+    NID_F7_SLTU = new_constant(OP_CONST, SID_FUNCT7, F7_SLTU, "F7_SLTU")
+
+    NID_F7_MUL_DIV_REM = NID_F7_MUL
+
+    SID_FUNCT12 = new_bitvec(12, "funct12 sort")
+
+    NID_F12_ECALL = new_constant(OP_CONST, SID_FUNCT12, F12_ECALL, "F12_ECALL")
+
+    NID_ECALL_I = new_constant(OP_CONST, SID_INSTRUCTION_WORD,
+        (((((((F12_ECALL << 5) + REG_ZR) << 3) + F3_ECALL) << 5) + REG_ZR) << 7) + OP_SYSTEM,
+        "ECALL instruction");
+
+    # immediate sorts
+
+    SID_1_BIT_IMM  = new_bitvec(1, "1-bit immediate sort")
+    SID_4_BIT_IMM  = new_bitvec(4, "4-bit immediate sort")
+    SID_5_BIT_IMM  = new_bitvec(5, "5-bit immediate sort")
+    SID_6_BIT_IMM  = new_bitvec(6, "6-bit immediate sort")
+    SID_8_BIT_IMM  = new_bitvec(8, "8-bit immediate sort")
+    SID_10_BIT_IMM = new_bitvec(10, "10-bit immediate sort")
+    SID_11_BIT_IMM = new_bitvec(11, "11-bit immediate sort")
+    SID_12_BIT_IMM = new_bitvec(12, "12-bit immediate sort")
+    SID_13_BIT_IMM = new_bitvec(13, "13-bit immediate sort")
+    SID_20_BIT_IMM = new_bitvec(20, "20-bit immediate sort")
+    SID_21_BIT_IMM = new_bitvec(21, "21-bit immediate sort")
+    SID_32_BIT_IMM = new_bitvec(32, "32-bit immediate sort")
+
+    NID_1_BIT_IMM_0  = new_constant(OP_CONST, SID_1_BIT_IMM, 0, "zeroed bit")
+    NID_12_BIT_IMM_0 = new_constant(OP_CONST, SID_12_BIT_IMM, 0, "12 LSBs zeroed")
+
+    # RISC-U instructions
+
+    SID_INSTRUCTION_ID = new_bitvec(7, "7-bit instruction ID")
+
+    NID_DISABLED = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_UNKNOWN, RISC_V_MNEMONICS[ID_UNKNOWN])
+
+    NID_LUI  = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_LUI, RISC_V_MNEMONICS[ID_LUI])
+    NID_ADDI = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_ADDI, RISC_V_MNEMONICS[ID_ADDI])
+
+    NID_ADD  = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_ADD, RISC_V_MNEMONICS[ID_ADD])
+    NID_SUB  = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_SUB, RISC_V_MNEMONICS[ID_SUB])
+    NID_MUL  = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_MUL, RISC_V_MNEMONICS[ID_MUL])
+    NID_DIVU = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_DIVU, RISC_V_MNEMONICS[ID_DIVU])
+    NID_REMU = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_REMU, RISC_V_MNEMONICS[ID_REMU])
+    NID_SLTU = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_SLTU, RISC_V_MNEMONICS[ID_SLTU])
+
+    NID_LW = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_LW, RISC_V_MNEMONICS[ID_LW])
+    NID_SW = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_SW, RISC_V_MNEMONICS[ID_SW])
+    NID_LD = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_LD, RISC_V_MNEMONICS[ID_LD])
+    NID_SD = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_SD, RISC_V_MNEMONICS[ID_SD])
+
+    NID_BEQ  = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_BEQ, RISC_V_MNEMONICS[ID_BEQ])
+    NID_JAL  = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_JAL, RISC_V_MNEMONICS[ID_JAL])
+    NID_JALR = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_JALR, RISC_V_MNEMONICS[ID_JALR])
+
+    NID_ECALL = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_ECALL, RISC_V_MNEMONICS[ID_ECALL])
+
+    if IS64BITTARGET:
+        if RISCUONLY:
+            NID_LW = NID_DISABLED
+            NID_SW = NID_DISABLED
+    else:
+        NID_LD = NID_DISABLED
+        NID_SD = NID_DISABLED
+
+    # RV32I codes missing in RISC-U
+
+    NID_OP_AUIPC = new_constant(OP_CONST, SID_OPCODE, OP_AUIPC, "OP_AUIPC")
+
+    NID_F3_BNE  = new_constant(OP_CONST, SID_FUNCT3, F3_BNE, "F3_BNE")
+    NID_F3_BLT  = new_constant(OP_CONST, SID_FUNCT3, F3_BLT, "F3_BLT")
+    NID_F3_BGE  = new_constant(OP_CONST, SID_FUNCT3, F3_BGE, "F3_BGE")
+    NID_F3_BLTU = new_constant(OP_CONST, SID_FUNCT3, F3_BLTU, "F3_BLTU")
+    NID_F3_BGEU = new_constant(OP_CONST, SID_FUNCT3, F3_BGEU, "F3_BGEU")
+
+    NID_F3_LB  = new_constant(OP_CONST, SID_FUNCT3, F3_LB, "F3_LB")
+    NID_F3_LH  = new_constant(OP_CONST, SID_FUNCT3, F3_LH, "F3_LH")
+    NID_F3_LBU = new_constant(OP_CONST, SID_FUNCT3, F3_LBU, "F3_LBU")
+    NID_F3_LHU = new_constant(OP_CONST, SID_FUNCT3, F3_LHU, "F3_LHU")
+
+    NID_F3_SB = new_constant(OP_CONST, SID_FUNCT3, F3_SB, "F3_SB")
+    NID_F3_SH = new_constant(OP_CONST, SID_FUNCT3, F3_SH, "F3_SH")
+
+    NID_F3_SLL = new_constant(OP_CONST, SID_FUNCT3, F3_SLL, "F3_SLL")
+    NID_F3_SLT = new_constant(OP_CONST, SID_FUNCT3, F3_SLT, "F3_SLT")
+    NID_F3_XOR = new_constant(OP_CONST, SID_FUNCT3, F3_XOR, "F3_XOR")
+    NID_F3_SRL = new_constant(OP_CONST, SID_FUNCT3, F3_SRL, "F3_SRL")
+    NID_F3_SRA = new_constant(OP_CONST, SID_FUNCT3, F3_SRA, "F3_SRA")
+    NID_F3_OR  = new_constant(OP_CONST, SID_FUNCT3, F3_OR, "F3_OR")
+    NID_F3_AND = new_constant(OP_CONST, SID_FUNCT3, F3_AND, "F3_AND")
+
+    NID_F7_ADD_SLT_XOR_OR_AND_SLL_SRL = NID_F7_ADD
+    NID_F7_SUB_SRA                    = NID_F7_SUB
+
+    NID_F7_SLL_SRL_ILLEGAL = new_constant(OP_CONST, SID_FUNCT7, F7_ADD + 1, "F7_SLL_SRL_ILLEGAL")
+    NID_F7_SRA_ILLEGAL     = new_constant(OP_CONST, SID_FUNCT7, F7_SUB + 1, "F7_SRA_ILLEGAL")
+
+    # RV32I instruction switches
+
+    if RISCUONLY:
+        NID_AUIPC = NID_DISABLED
+
+        NID_BNE  = NID_DISABLED
+        NID_BLT  = NID_DISABLED
+        NID_BGE  = NID_DISABLED
+        NID_BLTU = NID_DISABLED
+        NID_BGEU = NID_DISABLED
+
+        NID_LB  = NID_DISABLED
+        NID_LH  = NID_DISABLED
+        NID_LBU = NID_DISABLED
+        NID_LHU = NID_DISABLED
+
+        NID_SB = NID_DISABLED
+        NID_SH = NID_DISABLED
+
+        NID_SLTI  = NID_DISABLED
+        NID_SLTIU = NID_DISABLED
+        NID_XORI  = NID_DISABLED
+        NID_ORI   = NID_DISABLED
+        NID_ANDI  = NID_DISABLED
+
+        NID_SLLI = NID_DISABLED
+        NID_SRLI = NID_DISABLED
+        NID_SRAI = NID_DISABLED
+
+        NID_SLL = NID_DISABLED
+        NID_SLT = NID_DISABLED
+        NID_XOR = NID_DISABLED
+        NID_SRL = NID_DISABLED
+        NID_SRA = NID_DISABLED
+
+        NID_OR  = NID_DISABLED
+        NID_AND = NID_DISABLED;
+    else:
+        NID_AUIPC = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_AUIPC, RISC_V_MNEMONICS[ID_AUIPC])
+
+        NID_BNE  = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_BNE, RISC_V_MNEMONICS[ID_BNE])
+        NID_BLT  = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_BLT, RISC_V_MNEMONICS[ID_BLT])
+        NID_BGE  = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_BGE, RISC_V_MNEMONICS[ID_BGE])
+        NID_BLTU = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_BLTU, RISC_V_MNEMONICS[ID_BLTU])
+        NID_BGEU = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_BGEU, RISC_V_MNEMONICS[ID_BGEU])
+
+        NID_LB  = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_LB, RISC_V_MNEMONICS[ID_LB])
+        NID_LH  = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_LH, RISC_V_MNEMONICS[ID_LH])
+        NID_LBU = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_LBU, RISC_V_MNEMONICS[ID_LBU])
+        NID_LHU = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_LHU, RISC_V_MNEMONICS[ID_LHU])
+
+        NID_SB = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_SB, RISC_V_MNEMONICS[ID_SB])
+        NID_SH = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_SH, RISC_V_MNEMONICS[ID_SH])
+
+        NID_SLTI  = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_SLTI, RISC_V_MNEMONICS[ID_SLTI])
+        NID_SLTIU = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_SLTIU, RISC_V_MNEMONICS[ID_SLTIU])
+        NID_XORI  = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_XORI, RISC_V_MNEMONICS[ID_XORI])
+        NID_ORI   = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_ORI, RISC_V_MNEMONICS[ID_ORI])
+        NID_ANDI  = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_ANDI, RISC_V_MNEMONICS[ID_ANDI])
+
+        NID_SLLI = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_SLLI, RISC_V_MNEMONICS[ID_SLLI])
+        NID_SRLI = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_SRLI, RISC_V_MNEMONICS[ID_SRLI])
+        NID_SRAI = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_SRAI, RISC_V_MNEMONICS[ID_SRAI])
+
+        NID_SLL = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_SLL, RISC_V_MNEMONICS[ID_SLL])
+        NID_SLT = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_SLT, RISC_V_MNEMONICS[ID_SLT])
+        NID_XOR = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_XOR, RISC_V_MNEMONICS[ID_XOR])
+        NID_SRL = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_SRL, RISC_V_MNEMONICS[ID_SRL])
+        NID_SRA = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_SRA, RISC_V_MNEMONICS[ID_SRA])
+
+        NID_OR  = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_OR, RISC_V_MNEMONICS[ID_OR])
+        NID_AND = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_AND, RISC_V_MNEMONICS[ID_AND])
+
+    # RV64I codes missing in RISC-U
+
+    SID_FUNCT6 = new_bitvec(6, "funct6 sort")
+
+    NID_F6_SLL_SRL = new_constant(OP_CONST, SID_FUNCT6, F6_SLL_SRL, "F6_SLL_SRL")
+    NID_F6_SRA     = new_constant(OP_CONST, SID_FUNCT6, F6_SRA, "F6_SRA")
+
+    NID_OP_IMM_32 = new_constant(OP_CONST, SID_OPCODE, OP_IMM_32, "OP_IMM_32")
+    NID_OP_OP_32  = new_constant(OP_CONST, SID_OPCODE, OP_OP_32, "OP_OP_32")
+
+    NID_F3_LWU = new_constant(OP_CONST, SID_FUNCT3, F3_LWU, "F3_LWU")
+
+    # RV64I instruction switches
+
+    NID_LWU = NID_DISABLED
+
+    NID_ADDIW = NID_DISABLED
+    NID_SLLIW = NID_DISABLED
+    NID_SRLIW = NID_DISABLED
+    NID_SRAIW = NID_DISABLED
+
+    NID_ADDW = NID_DISABLED
+    NID_SUBW = NID_DISABLED
+    NID_SLLW = NID_DISABLED
+    NID_SRLW = NID_DISABLED
+    NID_SRAW = NID_DISABLED
+
+    if not RISCUONLY:
+        if IS64BITTARGET:
+            NID_LWU = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_LWU, RISC_V_MNEMONICS[ID_LWU])
+
+            NID_ADDIW = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_ADDIW, RISC_V_MNEMONICS[ID_ADDIW])
+            NID_SLLIW = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_SLLIW, RISC_V_MNEMONICS[ID_SLLIW])
+            NID_SRLIW = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_SRLIW, RISC_V_MNEMONICS[ID_SRLIW])
+            NID_SRAIW = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_SRAIW, RISC_V_MNEMONICS[ID_SRAIW])
+
+            NID_ADDW = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_ADDW, RISC_V_MNEMONICS[ID_ADDW])
+            NID_SUBW = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_SUBW, RISC_V_MNEMONICS[ID_SUBW])
+            NID_SLLW = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_SLLW, RISC_V_MNEMONICS[ID_SLLW])
+            NID_SRLW = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_SRLW, RISC_V_MNEMONICS[ID_SRLW])
+            NID_SRAW = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_SRAW, RISC_V_MNEMONICS[ID_SRAW])
+
+    # RV32M codes missing in RISC-U
+
+    NID_F3_MULH   = new_constant(OP_CONST, SID_FUNCT3, F3_MULH, "F3_MULH")
+    NID_F3_MULHSU = new_constant(OP_CONST, SID_FUNCT3, F3_MULHSU, "F3_MULHSU")
+    NID_F3_MULHU  = new_constant(OP_CONST, SID_FUNCT3, F3_MULHU, "F3_MULHU")
+    NID_F3_DIV    = new_constant(OP_CONST, SID_FUNCT3, F3_DIV, "F3_DIV")
+    NID_F3_REM    = new_constant(OP_CONST, SID_FUNCT3, F3_REM, "F3_REM")
+
+    # RV32M instruction switches
+
+    if RISCUONLY:
+        RV32M = True
+
+    NID_MULH   = NID_DISABLED
+    NID_MULHSU = NID_DISABLED
+    NID_MULHU  = NID_DISABLED
+    NID_DIV    = NID_DISABLED
+    NID_REM    = NID_DISABLED
+
+    if not RISCUONLY:
+        if RV32M:
+            # MUL, DIVU, REMU already defined
+            NID_MULH   = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_MULH, RISC_V_MNEMONICS[ID_MULH])
+            NID_MULHSU = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_MULHSU, RISC_V_MNEMONICS[ID_MULHSU])
+            NID_MULHU  = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_MULHU, RISC_V_MNEMONICS[ID_MULHU])
+            NID_DIV    = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_DIV, RISC_V_MNEMONICS[ID_DIV])
+            NID_REM    = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_REM, RISC_V_MNEMONICS[ID_REM])
+        else:
+            NID_MUL  = NID_DISABLED
+            NID_DIVU = NID_DISABLED
+            NID_REMU = NID_DISABLED
+
+    # RV64M instruction switches
+
+    if RISCUONLY:
+        RV64M = False
+
+    if not IS64BITTARGET:
+        RV64M = False
+
+    if RV64M:
+        NID_MULW  = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_MULW, RISC_V_MNEMONICS[ID_MULW])
+        NID_DIVW  = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_DIVW, RISC_V_MNEMONICS[ID_DIVW])
+        NID_DIVUW = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_DIVUW, RISC_V_MNEMONICS[ID_DIVUW])
+        NID_REMW  = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_REMW, RISC_V_MNEMONICS[ID_REMW])
+        NID_REMUW = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_REMUW, RISC_V_MNEMONICS[ID_REMUW])
+    else:
+        NID_MULW  = NID_DISABLED
+        NID_DIVW  = NID_DISABLED
+        NID_DIVUW = NID_DISABLED
+        NID_REMW  = NID_DISABLED
+        NID_REMUW = NID_DISABLED
+
 # system model
 
 class Bitvector_State():
@@ -3463,6 +4006,8 @@ def rotor_model():
         init_memory_sorts()
 
         new_segmentation()
+
+        init_instruction_sorts()
 
         print(System(32, 16))
     except Exception as message:

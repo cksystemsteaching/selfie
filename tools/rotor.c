@@ -2230,7 +2230,7 @@ uint64_t* NID_C_JALR = (uint64_t*) 0;
 
 // instruction IDs
 
-uint64_t ID_UNKOWN = 0;
+uint64_t ID_UNKNOWN = 0;
 
 uint64_t ID_ECALL = 1;
 
@@ -2326,69 +2326,69 @@ uint64_t ID_JAL = 63;
 
 // CR-type
 
-uint64_t ID_C_MV  = 64; // "c.mv";
-uint64_t ID_C_ADD = 65; // "c.add";
+uint64_t ID_C_MV  = 64;
+uint64_t ID_C_ADD = 65;
 
-uint64_t ID_C_JR   = 66; // "c.jr";
-uint64_t ID_C_JALR = 67; // "c.jalr";
+uint64_t ID_C_JR   = 66;
+uint64_t ID_C_JALR = 67;
 
 // CI-type
 
-uint64_t ID_C_LI  = 68; // "c.li";
-uint64_t ID_C_LUI = 69; // "c.lui";
+uint64_t ID_C_LI  = 68;
+uint64_t ID_C_LUI = 69;
 
-uint64_t ID_C_ADDI     = 70; // "c.addi";
-uint64_t ID_C_ADDIW    = 71; // "c.addiw";
-uint64_t ID_C_ADDI16SP = 72; // "c.addi16sp";
+uint64_t ID_C_ADDI     = 70;
+uint64_t ID_C_ADDIW    = 71;
+uint64_t ID_C_ADDI16SP = 72;
 
 // CIW-type
 
-uint64_t ID_C_ADDI4SPN = 73; // "c.addi4spn";
+uint64_t ID_C_ADDI4SPN = 73;
 
 // CI-type
 
-uint64_t ID_C_SLLI = 74; // "c.slli";
+uint64_t ID_C_SLLI = 74;
 
-uint64_t ID_C_LWSP = 75; // "c.lwsp";
-uint64_t ID_C_LDSP = 76; // "c.ldsp";
+uint64_t ID_C_LWSP = 75;
+uint64_t ID_C_LDSP = 76;
 
 // CL-type
 
-uint64_t ID_C_LW = 77; // "c.lw";
-uint64_t ID_C_LD = 78; // "c.ld";
+uint64_t ID_C_LW = 77;
+uint64_t ID_C_LD = 78;
 
 // CS-type
 
-uint64_t ID_C_SW = 79; // "c.sw";
-uint64_t ID_C_SD = 80; // "c.sd";
+uint64_t ID_C_SW = 79;
+uint64_t ID_C_SD = 80;
 
-uint64_t ID_C_SUB = 81; // "c.sub";
-uint64_t ID_C_XOR = 82; // "c.xor";
-uint64_t ID_C_OR  = 83; // "c.or";
-uint64_t ID_C_AND = 84; // "c.and";
+uint64_t ID_C_SUB = 81;
+uint64_t ID_C_XOR = 82;
+uint64_t ID_C_OR  = 83;
+uint64_t ID_C_AND = 84;
 
-uint64_t ID_C_ADDW = 85; // "c.addw";
-uint64_t ID_C_SUBW = 86; // "c.subw";
+uint64_t ID_C_ADDW = 85;
+uint64_t ID_C_SUBW = 86;
 
 // CSS-type
 
-uint64_t ID_C_SWSP = 87; // "c.swsp";
-uint64_t ID_C_SDSP = 88; // "c.sdsp";
+uint64_t ID_C_SWSP = 87;
+uint64_t ID_C_SDSP = 88;
 
 // CB-type
 
-uint64_t ID_C_BEQZ = 89; // "c.beqz";
-uint64_t ID_C_BNEZ = 90; // "c.bnez";
+uint64_t ID_C_BEQZ = 89;
+uint64_t ID_C_BNEZ = 90;
 
-uint64_t ID_C_ANDI = 91; // "c.andi";
+uint64_t ID_C_ANDI = 91;
 
-uint64_t ID_C_SRLI = 92; // "c.srli";
-uint64_t ID_C_SRAI = 93; // "c.srai";
+uint64_t ID_C_SRLI = 92;
+uint64_t ID_C_SRAI = 93;
 
 // CJ-type
 
-uint64_t ID_C_J   = 94; // "c.j";
-uint64_t ID_C_JAL = 95; // "c.jal";
+uint64_t ID_C_J   = 94;
+uint64_t ID_C_JAL = 95;
 
 // pseudoinstruction IDs
 
@@ -2448,7 +2448,7 @@ uint64_t* eval_ID_nids                        = (uint64_t*) 0;
 void init_instruction_mnemonics() {
   RISC_V_MNEMONICS = smalloc((ID_P_JALR + 1) * sizeof(char*));
 
-  *(RISC_V_MNEMONICS + ID_UNKOWN) = (uint64_t) "unknown RISC-V instruction";
+  *(RISC_V_MNEMONICS + ID_UNKNOWN) = (uint64_t) "unknown RISC-V instruction";
 
   *(RISC_V_MNEMONICS + ID_ECALL) = (uint64_t) "ecall";
 
@@ -2738,7 +2738,7 @@ void init_instruction_sorts() {
 
   SID_INSTRUCTION_ID = new_bitvec(7, "7-bit instruction ID");
 
-  NID_DISABLED = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_UNKOWN, get_instruction_mnemonic(ID_UNKOWN));
+  NID_DISABLED = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_UNKNOWN, get_instruction_mnemonic(ID_UNKNOWN));
 
   NID_LUI  = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_LUI, get_instruction_mnemonic(ID_LUI));
   NID_ADDI = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_ADDI, get_instruction_mnemonic(ID_ADDI));
@@ -2752,7 +2752,6 @@ void init_instruction_sorts() {
 
   NID_LW = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_LW, get_instruction_mnemonic(ID_LW));
   NID_SW = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_SW, get_instruction_mnemonic(ID_SW));
-
   NID_LD = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_LD, get_instruction_mnemonic(ID_LD));
   NID_SD = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_SD, get_instruction_mnemonic(ID_SD));
 
