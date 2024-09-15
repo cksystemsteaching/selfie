@@ -1184,6 +1184,8 @@ uint64_t* NID_BYTE_SIZE_IN_BASE_BITS = (uint64_t*) 0;
 
 // code segment
 
+uint64_t max_code_size = 0;
+
 uint64_t* init_zeroed_code_segment_nids = (uint64_t*) 0;
 uint64_t* next_zeroed_code_segment_nids = (uint64_t*) 0;
 
@@ -1201,6 +1203,8 @@ uint64_t* initial_head_nid = (uint64_t*) 0;
 uint64_t* initial_tail_nid = (uint64_t*) 0;
 
 // data segment
+
+uint64_t max_data_size = 0;
 
 uint64_t* init_zeroed_data_segment_nids = (uint64_t*) 0;
 uint64_t* next_zeroed_data_segment_nids = (uint64_t*) 0;
@@ -1262,7 +1266,7 @@ uint64_t* eval_core_0_stack_segment_data_flow_nid = (uint64_t*) 0;
 
 // ------------------------- INITIALIZATION ------------------------
 
-void init_memory_sorts(uint64_t max_code_size, uint64_t max_data_size) {
+void init_memory_sorts() {
   uint64_t saved_reuse_lines;
 
   if (VIRTUAL_ADDRESS_SPACE < WORDSIZEINBITS)
@@ -3605,9 +3609,6 @@ uint64_t* code_starts = (uint64_t*) 0;
 uint64_t* code_sizes  = (uint64_t*) 0;
 uint64_t* data_starts = (uint64_t*) 0;
 uint64_t* data_sizes  = (uint64_t*) 0;
-
-uint64_t max_code_size = 0;
-uint64_t max_data_size = 0;
 
 uint64_t min_steps = -1;
 uint64_t max_steps = 0;
@@ -11907,7 +11908,7 @@ void model_rotor() {
   init_kernel_interface();
 
   init_register_file_sorts();
-  init_memory_sorts(max_code_size, max_data_size);
+  init_memory_sorts();
 
   init_kernels(number_of_cores);
   init_register_files(number_of_cores);

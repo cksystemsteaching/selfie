@@ -1236,9 +1236,19 @@ def new_property(op, condition_nid, symbol, comment, nid = next_nid(), line_no =
 
 # RISC-V model generator
 
-IS64BITTARGET = True # TODO: configure
+# TODO: configure:
 
-WORDSIZEINBITS = 64 # TODO: define accordingly
+IS64BITTARGET = True
+
+SIZEOFUINT64INBITS = 64
+
+WORDSIZE       = 8
+WORDSIZEINBITS = 64
+
+INSTRUCTIONSIZE = 4
+
+VIRTUALMEMORYSIZE = 4
+GIGABYTE = 1073741824
 
 # machine interface
 
@@ -1314,26 +1324,69 @@ NID_LSB_MASK = None
 SID_DOUBLE_MACHINE_WORD = None
 
 def init_machine_interface():
-    global SID_BOOLEAN, NID_FALSE, NID_TRUE
+    global SID_BOOLEAN
 
-    global SID_BYTE, NID_BYTE_0, NID_BYTE_3
+    global NID_FALSE
+    global NID_TRUE
 
-    global SID_HALF_WORD, NID_HALF_WORD_0, NID_HALF_WORD_1
+    global SID_BYTE
 
-    global SID_SINGLE_WORD, NID_SINGLE_WORD_0, NID_SINGLE_WORD_1, NID_SINGLE_WORD_2
-    global NID_SINGLE_WORD_3, NID_SINGLE_WORD_4, NID_SINGLE_WORD_5, NID_SINGLE_WORD_6
-    global NID_SINGLE_WORD_7, NID_SINGLE_WORD_8, NID_SINGLE_WORD_MINUS_1, NID_SINGLE_WORD_INT_MIN
+    global NID_BYTE_0
+    global NID_BYTE_3
 
-    global SID_DOUBLE_WORD, DOUBLEWORDSIZEINBITS, NID_DOUBLE_WORD_0, NID_DOUBLE_WORD_1
-    global NID_DOUBLE_WORD_2, NID_DOUBLE_WORD_3, NID_DOUBLE_WORD_4, NID_DOUBLE_WORD_5
-    global NID_DOUBLE_WORD_6, NID_DOUBLE_WORD_7, NID_DOUBLE_WORD_8, NID_DOUBLE_WORD_MINUS_1
+    global SID_HALF_WORD
+
+    global NID_HALF_WORD_0
+    global NID_HALF_WORD_1
+
+    global SID_SINGLE_WORD
+
+    global NID_SINGLE_WORD_0
+    global NID_SINGLE_WORD_1
+    global NID_SINGLE_WORD_2
+    global NID_SINGLE_WORD_3
+    global NID_SINGLE_WORD_4
+    global NID_SINGLE_WORD_5
+    global NID_SINGLE_WORD_6
+    global NID_SINGLE_WORD_7
+    global NID_SINGLE_WORD_8
+
+    global NID_SINGLE_WORD_MINUS_1
+    global NID_SINGLE_WORD_INT_MIN
+
+    global SID_DOUBLE_WORD
+
+    global NID_DOUBLE_WORD_0
+    global NID_DOUBLE_WORD_1
+    global NID_DOUBLE_WORD_2
+    global NID_DOUBLE_WORD_3
+    global NID_DOUBLE_WORD_4
+    global NID_DOUBLE_WORD_5
+    global NID_DOUBLE_WORD_6
+    global NID_DOUBLE_WORD_7
+    global NID_DOUBLE_WORD_8
+
+    global NID_DOUBLE_WORD_MINUS_1
     global NID_DOUBLE_WORD_INT_MIN
 
-    global SID_MACHINE_WORD, NID_MACHINE_WORD_0, NID_MACHINE_WORD_1, NID_MACHINE_WORD_2
-    global NID_MACHINE_WORD_3, NID_MACHINE_WORD_4, NID_MACHINE_WORD_5, NID_MACHINE_WORD_6
-    global NID_MACHINE_WORD_7, NID_MACHINE_WORD_8, NID_MACHINE_WORD_MINUS_1, NID_MACHINE_WORD_INT_MIN
+    global SID_MACHINE_WORD
 
-    global NID_LSB_MASK, SID_DOUBLE_MACHINE_WORD
+    global NID_MACHINE_WORD_0
+    global NID_MACHINE_WORD_1
+    global NID_MACHINE_WORD_2
+    global NID_MACHINE_WORD_3
+    global NID_MACHINE_WORD_4
+    global NID_MACHINE_WORD_5
+    global NID_MACHINE_WORD_6
+    global NID_MACHINE_WORD_7
+    global NID_MACHINE_WORD_8
+
+    global NID_MACHINE_WORD_MINUS_1
+    global NID_MACHINE_WORD_INT_MIN
+
+    global NID_LSB_MASK
+
+    global SID_DOUBLE_MACHINE_WORD
 
     SID_BOOLEAN = new_boolean()
 
@@ -1448,10 +1501,20 @@ SID_INPUT_BUFFER  = None
 
 def init_kernel_interface():
     global NID_MAX_STRING_LENGTH
-    global NID_EXIT_SYSCALL_ID, NID_BRK_SYSCALL_ID, NID_OPENAT_SYSCALL_ID
-    global NID_OPEN_SYSCALL_ID, NID_READ_SYSCALL_ID, NID_WRITE_SYSCALL_ID
+
+    global NID_EXIT_SYSCALL_ID
+    global NID_BRK_SYSCALL_ID
+    global NID_OPENAT_SYSCALL_ID
+    global NID_OPEN_SYSCALL_ID
+    global NID_READ_SYSCALL_ID
+    global NID_WRITE_SYSCALL_ID
+
     global NID_BYTES_TO_READ
-    global INPUT_ADDRESS_SPACE, SID_INPUT_ADDRESS, SID_INPUT_BUFFER
+
+    global INPUT_ADDRESS_SPACE
+
+    global SID_INPUT_ADDRESS
+    global SID_INPUT_BUFFER
 
     NID_MAX_STRING_LENGTH = new_constant(OP_CONSTD, SID_MACHINE_WORD,
         MAX_STRING_LENGTH, "maximum string length")
@@ -1494,7 +1557,7 @@ def calculate_address_space(number_of_bytes, word_size_in_bits):
 
     return address_space
 
-# register sorts
+# register sorts and specification
 
 SID_REGISTER_ADDRESS = None
 
@@ -1567,11 +1630,42 @@ NID_T6  = None
 SID_REGISTER_STATE = None
 
 def init_register_file_sorts():
-    global SID_REGISTER_ADDRESS, NID_ZR, NID_RA, NID_SP, NID_GP, NID_TP
-    global NID_T0, NID_T1, NID_T2, NID_S0, NID_S1, NID_A0, NID_A1, NID_A2
-    global NID_A3, NID_A4, NID_A5, NID_A6, NID_A7, NID_S2, NID_S3, NID_S4
-    global NID_S5, NID_S6, NID_S7, NID_S8, NID_S9, NID_S10, NID_S11, NID_T3
-    global NID_T4, NID_T5, NID_T6, SID_REGISTER_STATE
+    global SID_REGISTER_ADDRESS
+
+    global NID_ZR
+    global NID_RA
+    global NID_SP
+    global NID_GP
+    global NID_TP
+    global NID_T0
+    global NID_T1
+    global NID_T2
+    global NID_S0
+    global NID_S1
+    global NID_A0
+    global NID_A1
+    global NID_A2
+    global NID_A3
+    global NID_A4
+    global NID_A5
+    global NID_A6
+    global NID_A7
+    global NID_S2
+    global NID_S3
+    global NID_S4
+    global NID_S5
+    global NID_S6
+    global NID_S7
+    global NID_S8
+    global NID_S9
+    global NID_S10
+    global NID_S11
+    global NID_T3
+    global NID_T4
+    global NID_T5
+    global NID_T6
+
+    global SID_REGISTER_STATE
 
     SID_REGISTER_ADDRESS = new_bitvec(5, "5-bit register address")
 
@@ -1630,6 +1724,296 @@ def get_shamt(value_nid):
             "unsigned-extend 6-bit shamt")
     else:
         return get_5_bit_shamt(value_nid)
+
+# memory sorts and specification
+
+# virtual address space
+
+VIRTUAL_ADDRESS_SPACE = 32 # number of bits in virtual addresses
+
+SID_VIRTUAL_ADDRESS = None
+
+NID_VIRTUAL_ADDRESS_0 = None
+NID_VIRTUAL_ADDRESS_1 = None
+NID_VIRTUAL_ADDRESS_2 = None
+NID_VIRTUAL_ADDRESS_3 = None
+NID_VIRTUAL_ADDRESS_4 = None
+NID_VIRTUAL_ADDRESS_5 = None
+NID_VIRTUAL_ADDRESS_6 = None
+NID_VIRTUAL_ADDRESS_7 = None
+NID_VIRTUAL_ADDRESS_8 = None
+
+NID_VIRTUAL_HALF_WORD_SIZE   = None
+NID_VIRTUAL_SINGLE_WORD_SIZE = None
+NID_VIRTUAL_DOUBLE_WORD_SIZE = None
+
+NID_VIRTUAL_HALF_WORD_SIZE_MINUS_1   = None
+NID_VIRTUAL_SINGLE_WORD_SIZE_MINUS_1 = None
+NID_VIRTUAL_DOUBLE_WORD_SIZE_MINUS_1 = None
+
+NID_HIGHEST_VIRTUAL_ADDRESS = None
+
+# code segment
+
+CODEWORDSIZEINBITS = 32
+
+SID_CODE_WORD = None
+
+NID_CODE_WORD_0 = None
+
+CODE_ADDRESS_SPACE = 0 # number of bits in code segment addresses
+
+SID_CODE_ADDRESS = None
+SID_CODE_STATE   = None
+
+max_code_size = 0
+
+code_start = 0
+code_size  = 0
+
+NID_CODE_START = None
+NID_CODE_END   = None
+
+# main memory
+
+MEMORYWORDSIZEINBITS = 64
+
+SID_MEMORY_WORD = None
+
+NID_MEMORY_WORD_0 = None
+
+# data segment
+
+DATA_ADDRESS_SPACE = 1 # number of bits in data segment addresses
+
+SID_DATA_ADDRESS = None
+SID_DATA_STATE   = None
+
+max_data_size = 0
+
+data_start = 0
+data_size  = 0
+
+NID_DATA_START = None
+NID_DATA_END   = None
+
+# heap segment
+
+HEAP_ADDRESS_SPACE = 1 # number of bits in heap segment addresses
+
+SID_HEAP_ADDRESS = None
+SID_HEAP_STATE   = None
+
+heap_initial_size = 0
+heap_allowance    = 4096 # must be multiple of WORDSIZE
+
+heap_start = 0
+heap_size  = 0
+
+NID_HEAP_START = None
+NID_HEAP_END   = None
+
+# stack segment
+
+STACK_ADDRESS_SPACE = 1 # number of bits in stack segment addresses
+
+SID_STACK_ADDRESS = None
+SID_STACK_STATE   = None
+
+stack_initial_size = 0
+stack_allowance    = 2048 # must be multiple of WORDSIZE > 0
+
+stack_start = 0
+stack_size  = 0
+
+NID_STACK_START = None
+NID_STACK_END   = None
+
+# bit masks and factors
+
+NID_HALF_WORD_SIZE_MASK   = None
+NID_SINGLE_WORD_SIZE_MASK = None
+NID_DOUBLE_WORD_SIZE_MASK = None
+
+NID_BYTE_MASK        = None
+NID_HALF_WORD_MASK   = None
+NID_SINGLE_WORD_MASK = None
+
+NID_SINGLE_WORD_SIZE_MINUS_HALF_WORD_SIZE   = None
+NID_DOUBLE_WORD_SIZE_MINUS_HALF_WORD_SIZE   = None
+NID_DOUBLE_WORD_SIZE_MINUS_SINGLE_WORD_SIZE = None
+
+NID_BYTE_SIZE_IN_BASE_BITS = None
+
+def init_memory_sorts():
+    global VIRTUAL_ADDRESS_SPACE
+
+    global SID_VIRTUAL_ADDRESS
+
+    global NID_VIRTUAL_ADDRESS_0
+    global NID_VIRTUAL_ADDRESS_1
+    global NID_VIRTUAL_ADDRESS_2
+    global NID_VIRTUAL_ADDRESS_3
+    global NID_VIRTUAL_ADDRESS_4
+    global NID_VIRTUAL_ADDRESS_5
+    global NID_VIRTUAL_ADDRESS_6
+    global NID_VIRTUAL_ADDRESS_7
+    global NID_VIRTUAL_ADDRESS_8
+
+    global NID_VIRTUAL_HALF_WORD_SIZE
+    global NID_VIRTUAL_SINGLE_WORD_SIZE
+    global NID_VIRTUAL_DOUBLE_WORD_SIZE
+
+    global NID_VIRTUAL_HALF_WORD_SIZE_MINUS_1
+    global NID_VIRTUAL_SINGLE_WORD_SIZE_MINUS_1
+    global NID_VIRTUAL_DOUBLE_WORD_SIZE_MINUS_1
+
+    global NID_HIGHEST_VIRTUAL_ADDRESS
+
+    global CODEWORDSIZEINBITS
+
+    global SID_CODE_WORD
+
+    global NID_CODE_WORD_0
+
+    global CODE_ADDRESS_SPACE
+
+    global SID_CODE_ADDRESS
+    global SID_CODE_STATE
+
+    global NID_CODE_START
+    global NID_CODE_END
+
+    global MEMORYWORDSIZEINBITS
+
+    global SID_MEMORY_WORD
+
+    global NID_MEMORY_WORD_0
+
+    global DATA_ADDRESS_SPACE
+
+    global SID_DATA_ADDRESS
+    global SID_DATA_STATE
+
+    global NID_DATA_START
+    global NID_DATA_END
+
+    global HEAP_ADDRESS_SPACE
+
+    global SID_HEAP_ADDRESS
+    global SID_HEAP_STATE
+
+    global NID_HEAP_START
+    global NID_HEAP_END
+
+    global STACK_ADDRESS_SPACE
+
+    global SID_STACK_ADDRESS
+    global SID_STACK_STATE
+
+    global NID_STACK_START
+    global NID_STACK_END
+
+    global NID_HALF_WORD_SIZE_MASK
+    global NID_SINGLE_WORD_SIZE_MASK
+    global NID_DOUBLE_WORD_SIZE_MASK
+
+    global NID_BYTE_MASK
+    global NID_HALF_WORD_MASK
+    global NID_SINGLE_WORD_MASK
+
+    global NID_SINGLE_WORD_SIZE_MINUS_HALF_WORD_SIZE
+    global NID_DOUBLE_WORD_SIZE_MINUS_HALF_WORD_SIZE
+    global NID_DOUBLE_WORD_SIZE_MINUS_SINGLE_WORD_SIZE
+
+    global NID_BYTE_SIZE_IN_BASE_BITS
+
+    if VIRTUAL_ADDRESS_SPACE < WORDSIZEINBITS:
+        NID_HIGHEST_VIRTUAL_ADDRESS = new_constant(OP_CONSTD, SID_MACHINE_WORD,
+            2**VIRTUAL_ADDRESS_SPACE - 1, "highest virtual address")
+    elif VIRTUAL_ADDRESS_SPACE > WORDSIZEINBITS:
+        VIRTUAL_ADDRESS_SPACE = WORDSIZEINBITS
+
+    SID_VIRTUAL_ADDRESS = new_bitvec(VIRTUAL_ADDRESS_SPACE, f"{VIRTUAL_ADDRESS_SPACE}-bit virtual address")
+
+    NID_VIRTUAL_ADDRESS_0 = new_constant(OP_CONSTD, SID_VIRTUAL_ADDRESS, 0, "virtual address 0")
+    NID_VIRTUAL_ADDRESS_1 = new_constant(OP_CONSTD, SID_VIRTUAL_ADDRESS, 1, "virtual address 1")
+    NID_VIRTUAL_ADDRESS_2 = new_constant(OP_CONSTD, SID_VIRTUAL_ADDRESS, 2, "virtual address 2")
+    NID_VIRTUAL_ADDRESS_3 = new_constant(OP_CONSTD, SID_VIRTUAL_ADDRESS, 3, "virtual address 3")
+    NID_VIRTUAL_ADDRESS_4 = new_constant(OP_CONSTD, SID_VIRTUAL_ADDRESS, 4, "virtual address 4")
+    NID_VIRTUAL_ADDRESS_5 = new_constant(OP_CONSTD, SID_VIRTUAL_ADDRESS, 5, "virtual address 5")
+    NID_VIRTUAL_ADDRESS_6 = new_constant(OP_CONSTD, SID_VIRTUAL_ADDRESS, 6, "virtual address 6")
+    NID_VIRTUAL_ADDRESS_7 = new_constant(OP_CONSTD, SID_VIRTUAL_ADDRESS, 7, "virtual address 7")
+    NID_VIRTUAL_ADDRESS_8 = new_constant(OP_CONSTD, SID_VIRTUAL_ADDRESS, 8, "virtual address 8")
+
+    NID_VIRTUAL_HALF_WORD_SIZE   = NID_VIRTUAL_ADDRESS_2
+    NID_VIRTUAL_SINGLE_WORD_SIZE = NID_VIRTUAL_ADDRESS_4
+    NID_VIRTUAL_DOUBLE_WORD_SIZE = NID_VIRTUAL_ADDRESS_8
+
+    NID_VIRTUAL_HALF_WORD_SIZE_MINUS_1   = NID_VIRTUAL_ADDRESS_1
+    NID_VIRTUAL_SINGLE_WORD_SIZE_MINUS_1 = NID_VIRTUAL_ADDRESS_3
+    NID_VIRTUAL_DOUBLE_WORD_SIZE_MINUS_1 = NID_VIRTUAL_ADDRESS_7
+
+    if CODEWORDSIZEINBITS > WORDSIZEINBITS:
+        CODEWORDSIZEINBITS = WORDSIZEINBITS
+
+    SID_CODE_WORD = new_bitvec(CODEWORDSIZEINBITS, f"{CODEWORDSIZEINBITS}-bit code word")
+
+    NID_CODE_WORD_0 = new_constant(OP_CONSTD, SID_CODE_WORD, 0, "code word 0")
+
+    CODE_ADDRESS_SPACE = calculate_address_space(max_code_size, eval_bitvec_size(SID_CODE_WORD))
+
+    SID_CODE_ADDRESS = new_bitvec(CODE_ADDRESS_SPACE, f"{CODE_ADDRESS_SPACE}-bit code segment address")
+
+    SID_CODE_STATE = new_bitvec(CODE_ADDRESS_SPACE, "code segment state")
+
+    if MEMORYWORDSIZEINBITS > WORDSIZEINBITS:
+        MEMORYWORDSIZEINBITS = WORDSIZEINBITS
+
+    SID_MEMORY_WORD = new_bitvec(MEMORYWORDSIZEINBITS, f"{MEMORYWORDSIZEINBITS}-bit memory word")
+
+    NID_MEMORY_WORD_0 = new_constant(OP_CONSTD, SID_MEMORY_WORD, 0, "memory word 0")
+
+    DATA_ADDRESS_SPACE = calculate_address_space(max_data_size, eval_bitvec_size(SID_MEMORY_WORD))
+
+    SID_DATA_ADDRESS = new_bitvec(DATA_ADDRESS_SPACE,
+        f"{DATA_ADDRESS_SPACE}-bit physical data segment address")
+
+    SID_DATA_STATE = new_bitvec(DATA_ADDRESS_SPACE, "data segment state")
+
+    HEAP_ADDRESS_SPACE = calculate_address_space(heap_allowance, eval_bitvec_size(SID_MEMORY_WORD))
+
+    SID_HEAP_ADDRESS = new_bitvec(HEAP_ADDRESS_SPACE,
+        f"{HEAP_ADDRESS_SPACE}-bit physical heap segment address")
+
+    SID_HEAP_STATE = new_bitvec(HEAP_ADDRESS_SPACE, "heap segment state")
+
+    STACK_ADDRESS_SPACE = calculate_address_space(stack_allowance, eval_bitvec_size(SID_MEMORY_WORD))
+
+    SID_STACK_ADDRESS = new_bitvec(STACK_ADDRESS_SPACE,
+        f"{STACK_ADDRESS_SPACE}-bit physical stack segment address")
+
+    SID_STACK_STATE = new_bitvec(STACK_ADDRESS_SPACE, "stack segment state")
+
+    NID_HALF_WORD_SIZE_MASK   = NID_VIRTUAL_ADDRESS_1
+    NID_SINGLE_WORD_SIZE_MASK = NID_VIRTUAL_ADDRESS_3
+    NID_DOUBLE_WORD_SIZE_MASK = NID_VIRTUAL_ADDRESS_7
+
+    NID_BYTE_MASK        = new_constant(OP_CONSTH, SID_BYTE, 255, "maximum byte value")
+    NID_HALF_WORD_MASK   = new_constant(OP_CONSTH, SID_HALF_WORD, 65535, "maximum half-word value")
+    NID_SINGLE_WORD_MASK = new_constant(OP_CONSTH, SID_SINGLE_WORD, 4294967295, "maximum single-word value")
+
+    NID_SINGLE_WORD_SIZE_MINUS_HALF_WORD_SIZE   = NID_VIRTUAL_ADDRESS_2
+    NID_DOUBLE_WORD_SIZE_MINUS_HALF_WORD_SIZE   = NID_VIRTUAL_ADDRESS_6
+    NID_DOUBLE_WORD_SIZE_MINUS_SINGLE_WORD_SIZE = NID_VIRTUAL_ADDRESS_4
+
+    NID_BYTE_SIZE_IN_BASE_BITS = NID_VIRTUAL_ADDRESS_3
+
+def eval_bitvec_size(line):
+    assert isinstance(line, Bitvector)
+    # TODO: tolerating but not yet supporting double machine word bitvectors
+    assert (line.size > 0 and line.size <= SIZEOFUINT64INBITS) or line.size == 2 * WORDSIZEINBITS
+    return line.size;
 
 # system model
 
@@ -2114,6 +2498,59 @@ def bmc(solver, kmin, kmax, args):
         step += 1
 
 # rotor model generator
+
+def load_binary():
+    global max_code_size
+
+    global code_start
+    global code_size
+
+    global max_data_size
+
+    global data_start
+    global data_size
+
+    global heap_initial_size
+
+    global heap_start
+    global heap_size
+
+    global stack_initial_size
+
+    global stack_start
+    global stack_size
+
+    max_code_size = 7 * INSTRUCTIONSIZE
+
+    code_start = 4096;
+    code_size  = max_code_size;
+
+    max_data_size = WORDSIZE
+
+    data_start = 8192;
+    data_size  = max_data_size;
+
+    heap_initial_size = 0;
+
+    heap_start = 12288;
+    heap_size  = heap_allowance;
+
+    stack_initial_size = 0;
+
+    stack_start = VIRTUALMEMORYSIZE * GIGABYTE - stack_allowance;
+    stack_size  = stack_allowance;
+
+    assert stack_start >= heap_start + heap_size > 0
+
+def rotor_model():
+    load_binary()
+
+    init_machine_interface()
+    init_kernel_interface()
+    init_register_file_sorts()
+    init_memory_sorts()
+
+    print(System(32, 16))
 
 import sys
 
