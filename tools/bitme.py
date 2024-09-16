@@ -57,6 +57,8 @@ import math
 
 # supported BTOR2 keywords and operators
 
+UNUSED = None
+
 BITVEC = 'bitvec'
 ARRAY  = 'array'
 
@@ -1246,6 +1248,9 @@ IS64BITTARGET = True
 
 SIZEOFUINT64INBITS = 64
 
+# avoiding 64-bit integer overflow
+UINT64_MAX = ((2**(SIZEOFUINT64INBITS - 1) - 1) << 1) + 1
+
 WORDSIZE       = 8
 WORDSIZEINBITS = 64
 
@@ -1253,6 +1258,87 @@ INSTRUCTIONSIZE = 4
 
 VIRTUALMEMORYSIZE = 4
 GIGABYTE = 1073741824
+
+# unsigned integer arithmetic support
+
+def is_unsigned_integer(n, b):
+    assert 0 < b <= SIZEOFUINT64INBITS
+    if b == SIZEOFUINT64INBITS:
+        # avoiding 64-bit integer overflow
+        return 0 <= n <= UINT64_MAX
+    else:
+        return 0 <= n < 2**b
+
+def is_uint64(n):
+    return is_unsigned_integer(n, SIZEOFUINT64INBITS)
+
+def is_int64(n):
+    return is_signed_integer(n, SIZEOFUINT64INBITS)
+
+# ported from selfie library
+
+def get_bits(n, i, b):
+    assert is_uint64(n)
+    assert 0 <= i + b <= SIZEOFUINT64INBITS
+    assert 0 < b
+    if b < SIZEOFUINT64INBITS:
+        return (n >> i) % 2**b
+    else:
+        # avoiding 64-bit integer overflow
+        return n >> i
+
+def is_signed_integer(n, b):
+    assert is_uint64(n)
+    assert 0 < b <= SIZEOFUINT64INBITS
+    # avoiding 64-bit integer overflow
+    return 0 <= n < 2**(b - 1) or UINT64_MAX - 2**(b - 1) <= n - 1 < UINT64_MAX
+
+def sign_shrink(n, b):
+    assert is_uint64(n)
+    assert 0 < b <= SIZEOFUINT64INBITS
+    return get_bits(n, 0, b)
+
+# ported from rotor model
+
+def get_sid(line):
+    return line.sid_line
+
+# ported from rotor emulator
+
+def eval_bitvec_size(line):
+    assert isinstance(line, Bitvec)
+    # TODO: tolerating but not yet supporting double machine word bitvectors
+    assert (line.size > 0 and line.size <= SIZEOFUINT64INBITS) or line.size == 2 * WORDSIZEINBITS
+    return line.size;
+
+def fit_bitvec_sort(sid, value):
+    size = eval_bitvec_size(sid)
+    if size >= SIZEOFUINT64INBITS:
+        # TODO: support of bitvectors larger than machine words
+        return
+    elif is_unsigned_integer(value, size):
+        return
+    raise system_error(f"{value} does not fit {size}-bit bitvector")
+
+def signed_fit_bitvec_sort(sid, value):
+    size = eval_bitvec_size(sid)
+    if size >= SIZEOFUINT64INBITS:
+        # TODO: support of bitvectors larger than machine words
+        return
+    elif is_signed_integer(value, size):
+        return
+    fit_bitvec_sort(sid, value)
+
+def eval_constant_value(line):
+    assert isinstance(line, Constant)
+    sid   = get_sid(line)
+    value = line.value
+    if isinstance(line, Constd):
+        signed_fit_bitvec_sort(sid, value)
+        value = sign_shrink(value, eval_bitvec_size(sid))
+    else:
+        fit_bitvec_sort(sid, value)
+    return value
 
 # machine interface
 
@@ -2012,12 +2098,6 @@ def init_memory_sorts():
     NID_DOUBLE_WORD_SIZE_MINUS_SINGLE_WORD_SIZE = NID_VIRTUAL_ADDRESS_4
 
     NID_BYTE_SIZE_IN_BASE_BITS = NID_VIRTUAL_ADDRESS_3
-
-def eval_bitvec_size(line):
-    assert isinstance(line, Bitvector)
-    # TODO: tolerating but not yet supporting double machine word bitvectors
-    assert (line.size > 0 and line.size <= SIZEOFUINT64INBITS) or line.size == 2 * WORDSIZEINBITS
-    return line.size;
 
 def new_segmentation():
     global NID_CODE_START
