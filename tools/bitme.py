@@ -2045,6 +2045,8 @@ def init_memory_sorts():
     NID_VIRTUAL_SINGLE_WORD_SIZE_MINUS_1 = NID_VIRTUAL_ADDRESS_3
     NID_VIRTUAL_DOUBLE_WORD_SIZE_MINUS_1 = NID_VIRTUAL_ADDRESS_7
 
+    # code segment
+
     if CODEWORDSIZEINBITS > WORDSIZEINBITS:
         CODEWORDSIZEINBITS = WORDSIZEINBITS
 
@@ -2052,11 +2054,15 @@ def init_memory_sorts():
 
     NID_CODE_WORD_0 = new_constant(OP_CONSTD, SID_CODE_WORD, 0, "code word 0")
 
+    assert max_code_size >= WORDSIZE
+
     CODE_ADDRESS_SPACE = calculate_address_space(max_code_size, eval_bitvec_size(SID_CODE_WORD))
 
     SID_CODE_ADDRESS = new_bitvec(CODE_ADDRESS_SPACE, f"{CODE_ADDRESS_SPACE}-bit code segment address")
 
-    SID_CODE_STATE = new_bitvec(CODE_ADDRESS_SPACE, "code segment state")
+    SID_CODE_STATE = new_array(SID_CODE_ADDRESS, SID_CODE_WORD, "code segment state")
+
+    # main memory
 
     if MEMORYWORDSIZEINBITS > WORDSIZEINBITS:
         MEMORYWORDSIZEINBITS = WORDSIZEINBITS
@@ -2070,21 +2076,27 @@ def init_memory_sorts():
     SID_DATA_ADDRESS = new_bitvec(DATA_ADDRESS_SPACE,
         f"{DATA_ADDRESS_SPACE}-bit physical data segment address")
 
-    SID_DATA_STATE = new_bitvec(DATA_ADDRESS_SPACE, "data segment state")
+    SID_DATA_STATE = new_array(SID_DATA_ADDRESS, SID_MEMORY_WORD, "data segment state")
+
+    # heap segment
 
     HEAP_ADDRESS_SPACE = calculate_address_space(heap_allowance, eval_bitvec_size(SID_MEMORY_WORD))
 
     SID_HEAP_ADDRESS = new_bitvec(HEAP_ADDRESS_SPACE,
         f"{HEAP_ADDRESS_SPACE}-bit physical heap segment address")
 
-    SID_HEAP_STATE = new_bitvec(HEAP_ADDRESS_SPACE, "heap segment state")
+    SID_HEAP_STATE = new_array(SID_HEAP_ADDRESS, SID_MEMORY_WORD, "heap segment state")
+
+    # stack segment
 
     STACK_ADDRESS_SPACE = calculate_address_space(stack_allowance, eval_bitvec_size(SID_MEMORY_WORD))
 
     SID_STACK_ADDRESS = new_bitvec(STACK_ADDRESS_SPACE,
         f"{STACK_ADDRESS_SPACE}-bit physical stack segment address")
 
-    SID_STACK_STATE = new_bitvec(STACK_ADDRESS_SPACE, "stack segment state")
+    SID_STACK_STATE = new_array(SID_STACK_ADDRESS, SID_MEMORY_WORD, "stack segment state");
+
+    # bit masks and factors
 
     NID_HALF_WORD_SIZE_MASK   = NID_VIRTUAL_ADDRESS_1
     NID_SINGLE_WORD_SIZE_MASK = NID_VIRTUAL_ADDRESS_3
@@ -3946,18 +3958,16 @@ class Bitvector_State():
         return f"{self.state}"
 
 class Array_State():
-    def __init__(self, core, address_sid, element_sid, name, initials):
-        assert isinstance(address_sid, Bitvector) and isinstance(element_sid, Bitvector)
-        self.address_sid = address_sid
-        self.element_sid = element_sid
-        self.array_sid = new_array(address_sid, element_sid, f"{address_sid.size}-bit {name} array")
+    def __init__(self, core, array_sid, name, initials):
+        assert isinstance(array_sid, Array)
+        self.array_sid = array_sid
         if core >= 0:
-            self.initial = new_constant(OP_CONSTD, element_sid, 0, f"initial core-{core} {name} value")
-            self.state = new_input(OP_STATE, self.array_sid, f"core-{core}-{initials}", f"{address_sid.size}-bit {name} of {element_sid.size}-bit bitvectors")
+            self.initial = new_constant(OP_CONSTD, array_sid.element_size_line, 0, f"initial core-{core} {name} value")
+            self.state = new_input(OP_STATE, array_sid, f"core-{core}-{initials}", f"{array_sid.array_size_line.size}-bit {name} of {array_sid.element_size_line.size}-bit bitvectors")
         else:
-            self.initial = new_constant(OP_CONSTD, element_sid, 0, f"initial {name} value")
-            self.state = new_input(OP_STATE, self.array_sid, f"{initials}", f"{address_sid.size}-bit {name} of {element_sid.size}-bit bitvectors")
-        self.init = new_init(self.array_sid, self.state, self.initial, f"initializing {name}")
+            self.initial = new_constant(OP_CONSTD, array_sid.element_size_line, 0, f"initial {name} value")
+            self.state = new_input(OP_STATE, array_sid, f"{initials}", f"{array_sid.array_size_line.size}-bit {name} of {array_sid.element_size_line.size}-bit bitvectors")
+        self.init = new_init(array_sid, self.state, self.initial, f"initializing {name}")
 
     def __str__(self):
         return f"{self.state}"
@@ -3968,29 +3978,33 @@ class PC(Bitvector_State):
 
 class Registers(Array_State):
     def __init__(self, core):
-        super().__init__(core, SID_REGISTER_ADDRESS, SID_MACHINE_WORD, "register file", 'register-file')
+        super().__init__(core, SID_REGISTER_STATE, "register file", 'register-file')
 
 class Segment(Array_State):
-    def __init__(self, core, address_sid, word_sid, name, initials):
-        super().__init__(core, address_sid, word_sid, name, initials)
+    def __init__(self, core, array_sid, start_nid, end_nid, name, initials):
+        assert isinstance(array_sid, Array) and isinstance(start_nid, Constant) and isinstance(end_nid, Constant)
+        super().__init__(core, array_sid, name, initials)
+        self.start_nid = start_nid
+        self.end_nid = end_nid
 
 class Memory():
-    def __init__(self, core, memory_bits):
-        self.SID_VIRTUAL_ADDRESS = new_bitvec(memory_bits, "virtual address")
-        self.code = Segment(core, self.SID_VIRTUAL_ADDRESS, SID_MACHINE_WORD, "code segment", 'code-segment')
-        self.data = Segment(core, self.SID_VIRTUAL_ADDRESS, SID_MACHINE_WORD, "data segment", 'data-segment')
-        self.heap = Segment(core, self.SID_VIRTUAL_ADDRESS, SID_MACHINE_WORD, "heap segment", 'heap-segment')
-        self.stack = Segment(core, self.SID_VIRTUAL_ADDRESS, SID_MACHINE_WORD, "stack segment", 'stack-segment')
+    def __init__(self, core):
+        self.vaddr_sort_nid = SID_VIRTUAL_ADDRESS
+        self.code = Segment(core, SID_CODE_STATE, NID_CODE_START, NID_CODE_END, "code segment", 'code-segment')
+        self.data = Segment(core, SID_DATA_STATE, NID_DATA_START, NID_DATA_END, "data segment", 'data-segment')
+        self.heap = Segment(core, SID_HEAP_STATE, NID_HEAP_START, NID_HEAP_END, "heap segment", 'heap-segment')
+        self.stack = Segment(core, SID_STACK_STATE, NID_STACK_START, NID_STACK_END, "stack segment", 'stack-segment')
 
     def __str__(self):
-        return f"{self.SID_VIRTUAL_ADDRESS.size}-bit virtual memory:\n{self.code}\n{self.data}\n{self.heap}\n{self.stack}"
+        return f"{self.vaddr_sort_nid.size}-bit virtual memory:\n{self.code}\n{self.data}\n{self.heap}\n{self.stack}"
 
 class Kernel():
     def __init__(self, core, memory):
+        assert isinstance(memory, Memory)
         self.memory = memory
-        self.program_break = Bitvector_State(-1, memory.SID_VIRTUAL_ADDRESS, "program break", 'program-break')
+        self.program_break = Bitvector_State(-1, memory.vaddr_sort_nid, "program break", 'program-break')
         self.file_descriptor = Bitvector_State(-1, SID_MACHINE_WORD, "file descriptor", 'file-descriptor')
-        self.input_buffer = Array_State(-1, SID_INPUT_ADDRESS, SID_BYTE, "input buffer", 'input-buffer')
+        self.input_buffer = Array_State(-1, SID_INPUT_BUFFER, "input buffer", 'input-buffer')
         self.readable_bytes = Bitvector_State(core, SID_MACHINE_WORD, "readable bytes", 'readable-bytes')
         self.read_bytes = Bitvector_State(core, SID_MACHINE_WORD, "read bytes", 'read-bytes')
 
@@ -4000,9 +4014,9 @@ class Kernel():
 class Core():
     cores = dict()
 
-    def __init__(self, machine_bits, memory_bits):
+    def __init__(self):
         self.core = len(Core.cores)
-        self.memory = Memory(self.core, memory_bits)
+        self.memory = Memory(self.core)
         self.kernel = Kernel(self.core, self.memory)
         self.pc = PC(self.core)
         self.regs = Registers(self.core)
@@ -4016,8 +4030,8 @@ class Core():
         Core.cores[self.core] = self
 
 class System():
-    def __init__(self, machine_bits, memory_bits):
-        self.core = Core(machine_bits, memory_bits) # single core for now
+    def __init__(self):
+        self.core = Core() # single core for now
 
     def __str__(self):
         return f"{SID_MACHINE_WORD.size}-bit single-core system:\n{self.core}"
@@ -4469,7 +4483,7 @@ def rotor_model():
         init_instruction_sorts()
         init_compressed_instruction_sorts()
 
-        print(System(32, 16))
+        print(System())
     except Exception as message:
         print(message)
         exit(1)
