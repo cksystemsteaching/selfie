@@ -1,16 +1,16 @@
 import argparse
 
-def parse_arguments():
+def init_parser():
     parser = argparse.ArgumentParser(description="Tool for generating SMT models from RISC-V machine code and benchmarking SMT solvers using these models")
 
     parser.add_argument(
-        '--model-type',
+        '-m', '--model-type',
         required=False,
         help="Specify models, you can find available models in config and add new ones"
     )
 
     parser.add_argument(
-        '--source-file',
+        '--source', '-s',
         required=False,
         help="Source file"
     )
@@ -27,4 +27,4 @@ def parse_arguments():
         help="Generate example outputs"
     )
 
-    return parser.parse_args()
+    return parser

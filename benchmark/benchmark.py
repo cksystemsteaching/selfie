@@ -7,11 +7,17 @@ import lib.argument_parser as arg_parser
 from lib.smt_benchmark import benchmark_model
 from lib.solver import Z3Solver
 
+from pathlib import Path
+import sys
+
 if __name__ == "__main__":
     try:
-        args = arg_parser.parse_arguments()
+        parser = arg_parser.init_parser()
+        args = parser.parse_args()
 
-        check_needed_tools()
+        if len(sys.argv) <= 1:
+            parser.print_help()
+            exit()
 
         if args.clean:
             clean_examples()
@@ -21,16 +27,19 @@ if __name__ == "__main__":
             generate_all_examples()
             custom_exit("Generated all examples sucessfuly")
 
-        if args.model_type and args.source_file:
-            model_path = create_model(args.source_file, args.model_type)
+        if args.model_type and args.source:
+            model_path = create_model(args.source, args.model_type)
+            Z3Solver(Path("../models/model.smt")).benchmark()
             Z3Solver(model_path).benchmark()
             exit(0)
 
-        if not args.model_type:
+        if not args.model_type and args.source:
             custom_exit("ERROR: --model-type is required")
 
-        if not args.source_file:
+        if not args.source and args.model_type:
             custom_exit("ERROR: --source-file is required")
+
+        check_needed_tools()
 
     except ToolNotAvailableError as e:
         custom_exit(str(e), cfg.EXIT_TOOL_NOT_FOUND)
