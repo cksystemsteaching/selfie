@@ -2170,6 +2170,63 @@ def new_segmentation():
     else:
         raise system_error(f"end of stack segment wrapped around to 0x{stack_end:X}")
 
+def select_segment_feature(segment_nid, code_nid, data_nid, heap_nid, stack_nid):
+    sid = get_sid(segment_nid)
+
+    if sid == SID_CODE_STATE:
+        return code_nid
+    elif sid == SID_DATA_STATE:
+        return data_nid
+    elif sid == SID_HEAP_STATE:
+        return heap_nid
+    elif sid == SID_STACK_STATE:
+        return stack_nid
+    else:
+        return UNUSED
+
+def get_segment_start(segment_nid):
+    return select_segment_feature(segment_nid,
+        NID_CODE_START, NID_DATA_START, NID_HEAP_START, NID_STACK_START)
+
+def get_segment_end(segment_nid):
+    return select_segment_feature(segment_nid,
+        NID_CODE_END, NID_DATA_END, NID_HEAP_END, NID_STACK_END)
+
+def is_block_in_segment(start_nid, end_nid, segment_nid):
+    start_comparison_nid = new_binary_boolean(OP_UGTE,
+        start_nid,
+        get_segment_start(segment_nid),
+        "virtual address of start of block >= start of segment?")
+
+    if eval_constant_value(get_segment_end(segment_nid)) == 0:
+        # comparing with end of segment is unnecessary since end wrapped around to zero
+        return start_comparison_nid
+    else:
+        # assert: block and segment start <= end
+        return new_binary_boolean(OP_AND,
+            start_comparison_nid,
+            new_binary_boolean(OP_ULT,
+                end_nid,
+                get_segment_end(segment_nid),
+                "virtual address of end of block < end of segment?"),
+            "block in segment?")
+
+def is_virtual_address_in_segment(vaddr_nid, segment_nid):
+    return is_block_in_segment(vaddr_nid, vaddr_nid, segment_nid)
+
+def vaddr_to_laddr(vaddr_nid, segment_nid):
+    # TODO: distinguish linear addresses from virtual addresses
+    return new_binary(OP_SUB, SID_VIRTUAL_ADDRESS,
+        vaddr_nid, get_segment_start(segment_nid),
+        "map virtual address to linear address in segment")
+
+def store_if_in_segment(vaddr_nid, store_nid, segment_nid):
+    return new_ternary(OP_ITE, get_sid(segment_nid),
+        is_virtual_address_in_segment(vaddr_nid, segment_nid),
+        store_nid,
+        segment_nid,
+        "store at virtual address if in segment")
+
 # instructions
 
 SID_INSTRUCTION_WORD = None
