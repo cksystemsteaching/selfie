@@ -264,7 +264,7 @@ class Constant(Expression):
     def __init__(self, nid, sid_line, value, comment, line_no):
         super().__init__(nid, sid_line, dict(), comment, line_no)
         self.value = value
-        if value >= 2**sid_line.size:
+        if not(0 <= value < 2**sid_line.size or -2**(sid_line.size - 1) <= value < 2**(sid_line.size - 1)):
             raise model_error(f"{value} in range of {sid_line.size}-bit bitvector", line_no)
 
     def get_z3(self):
@@ -1256,8 +1256,8 @@ WORDSIZEINBITS = 64
 
 INSTRUCTIONSIZE = 4
 
-VIRTUALMEMORYSIZE = 4
-GIGABYTE = 1073741824
+VIRTUALMEMORYSIZE = 4 # 4GB avoiding 32-bit integer overflow
+GIGABYTE = 2**30
 
 # unsigned integer arithmetic support
 
@@ -1330,6 +1330,7 @@ def signed_fit_bitvec_sort(sid, value):
     fit_bitvec_sort(sid, value)
 
 def eval_constant_value(line):
+    # TODO: check if really needed
     assert isinstance(line, Constant)
     sid   = get_sid(line)
     value = line.value
