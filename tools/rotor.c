@@ -1610,6 +1610,7 @@ uint64_t* store_no_seg_faults(uint64_t* ir_nid, uint64_t* register_file_nid,
 
 uint64_t* core_memory_data_flow(uint64_t* ir_nid, uint64_t* register_file_nid, uint64_t* segment_nid);
 
+uint64_t* branch_conditions(uint64_t* ir_nid, uint64_t* register_file_nid, char* comment, uint64_t* non_branching_nid);
 uint64_t* get_pc_value_plus_SB_immediate(uint64_t* pc_nid, uint64_t* ir_nid);
 uint64_t* execute_branch(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* condition_nid);
 uint64_t* branch_control_flow(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* register_file_nid, uint64_t* other_control_flow_nid);
@@ -2443,6 +2444,9 @@ uint64_t riscu_only = 0;
 uint64_t* eval_instruction_ID_nids            = (uint64_t*) 0;
 uint64_t* eval_compressed_instruction_ID_nids = (uint64_t*) 0;
 uint64_t* eval_ID_nids                        = (uint64_t*) 0;
+
+uint64_t* branching_conditions_nid     = (uint64_t*) 0;
+uint64_t* non_branching_conditions_nid = (uint64_t*) 0;
 
 // ------------------------- INITIALIZATION ------------------------
 
@@ -9294,6 +9298,29 @@ uint64_t* core_memory_data_flow(uint64_t* ir_nid, uint64_t* register_file_nid, u
   return store_memory_data_flow(ir_nid, register_file_nid, segment_nid, segment_nid);
 }
 
+uint64_t* branch_conditions(uint64_t* ir_nid, uint64_t* register_file_nid, char* comment, uint64_t* non_branching_nid) {
+  uint64_t* rs1_value_nid;
+  uint64_t* rs2_value_nid;
+
+  // only needed for controlling branching in bitme
+
+  // TODO: avoid code duplication with branch_control_flow
+
+  rs1_value_nid = load_register_value(get_instruction_rs1(ir_nid), "rs1 value", register_file_nid);
+  rs2_value_nid = load_register_value(get_instruction_rs2(ir_nid), "rs2 value", register_file_nid);
+
+  return decode_branch(SID_BOOLEAN, ir_nid,
+    new_binary_boolean(OP_EQ, rs1_value_nid, rs2_value_nid, "rs1 value == rs2 value?"),
+    new_binary_boolean(OP_NEQ, rs1_value_nid, rs2_value_nid, "rs1 value != rs2 value?"),
+    new_binary_boolean(OP_SLT, rs1_value_nid, rs2_value_nid, "rs1 value < rs2 value?"),
+    new_binary_boolean(OP_SGTE, rs1_value_nid, rs2_value_nid, "rs1 value >= rs2 value?"),
+    new_binary_boolean(OP_ULT, rs1_value_nid, rs2_value_nid, "rs1 value < rs2 value (unsigned)?"),
+    new_binary_boolean(OP_UGTE, rs1_value_nid, rs2_value_nid, "rs1 value >= rs2 value (unsigned)?"),
+    comment,
+    non_branching_nid,
+    non_branching_nid);
+}
+
 uint64_t* get_pc_value_plus_SB_immediate(uint64_t* pc_nid, uint64_t* ir_nid) {
   return new_binary(OP_ADD, SID_MACHINE_WORD,
     pc_nid,
@@ -11440,6 +11467,12 @@ void rotor_combinational(uint64_t core, uint64_t* pc_nid,
 
   set_for(core, eval_instruction_control_flow_nids, instruction_control_flow_nid);
 
+  if (core == 0) {
+    // TODO: multicore support
+    branching_conditions_nid     = branch_conditions(eval_ir_nid, register_file_nid, "true condition", NID_FALSE);
+    non_branching_conditions_nid = branch_conditions(eval_ir_nid, register_file_nid, "false condition", NID_TRUE);
+  }
+
   // compressed and uncompressed instruction control flow
 
   eval_non_kernel_control_flow_nid =
@@ -12146,6 +12179,12 @@ void print_model_for(uint64_t core) {
 
   print_break_comment_line_for(core, "decode instruction", eval_instruction_ID_nids);
   print_break_comment_line_for(core, "decode compressed instruction", eval_compressed_instruction_ID_nids);
+
+  if (core == 0) {
+    // TODO: multicore support
+    print_break_line(branching_conditions_nid);
+    print_break_line(non_branching_conditions_nid);
+  }
 
   print_break_comment_line_for(core, "instruction control flow", eval_instruction_control_flow_nids);
   if (RVC)
