@@ -1783,6 +1783,7 @@ uint64_t* compressed_store_no_seg_faults(uint64_t* c_ir_nid, uint64_t* register_
 uint64_t* core_compressed_memory_data_flow(uint64_t* c_ir_nid,
   uint64_t* register_file_nid, uint64_t* segment_nid, uint64_t* other_memory_data_flow_nid);
 
+uint64_t* compressed_branch_conditions(uint64_t* c_ir_nid, uint64_t* register_file_nid, char* comment, uint64_t* non_branching_nid);
 uint64_t* get_pc_value_plus_CB_offset(uint64_t* pc_nid, uint64_t* c_ir_nid);
 uint64_t* execute_compressed_branch(uint64_t* pc_nid, uint64_t* c_ir_nid, uint64_t* condition_nid);
 uint64_t* compressed_branch_control_flow(uint64_t* pc_nid, uint64_t* c_ir_nid, uint64_t* register_file_nid, uint64_t* other_control_flow_nid);
@@ -10647,6 +10648,22 @@ uint64_t* core_compressed_memory_data_flow(uint64_t* c_ir_nid,
     return other_memory_data_flow_nid;
 }
 
+uint64_t* compressed_branch_conditions(uint64_t* c_ir_nid, uint64_t* register_file_nid, char* comment, uint64_t* non_branching_nid) {
+  uint64_t* rs1_shift_value_nid;
+
+  // only needed for controlling branching in bitme
+
+  // TODO: avoid code duplication with compressed_branch_control_flow
+
+  rs1_shift_value_nid = load_register_value(get_compressed_instruction_rs1_shift(c_ir_nid), "rs1' value", register_file_nid);
+
+  return decode_compressed_branch(SID_BOOLEAN, c_ir_nid,
+    new_binary_boolean(OP_EQ, rs1_shift_value_nid, NID_MACHINE_WORD_0, "rs1' value == 0?"),
+    new_binary_boolean(OP_NEQ, rs1_shift_value_nid, NID_MACHINE_WORD_0, "rs1' value != 0?"),
+    comment,
+    non_branching_nid);
+}
+
 uint64_t* get_pc_value_plus_CB_offset(uint64_t* pc_nid, uint64_t* c_ir_nid) {
   return new_binary(OP_ADD, SID_MACHINE_WORD,
     pc_nid,
@@ -11469,8 +11486,21 @@ void rotor_combinational(uint64_t core, uint64_t* pc_nid,
 
   if (core == 0) {
     // TODO: multicore support
-    branching_conditions_nid     = branch_conditions(eval_ir_nid, register_file_nid, "true condition", NID_FALSE);
-    non_branching_conditions_nid = branch_conditions(eval_ir_nid, register_file_nid, "false condition", NID_TRUE);
+    if (RVC) {
+      branching_conditions_nid = new_ternary(OP_ITE, SID_BOOLEAN,
+        is_compressed_instruction(eval_ir_nid),
+        compressed_branch_conditions(eval_c_ir_nid, register_file_nid, "compressed true condition", NID_FALSE),
+        branch_conditions(eval_ir_nid, register_file_nid, "uncompressed true condition", NID_FALSE),
+        "branch true condition");
+      non_branching_conditions_nid = new_ternary(OP_ITE, SID_BOOLEAN,
+        is_compressed_instruction(eval_ir_nid),
+        compressed_branch_conditions(eval_c_ir_nid, register_file_nid, "compressed false condition", NID_TRUE),
+        branch_conditions(eval_ir_nid, register_file_nid, "uncompressed false condition", NID_TRUE),
+        "branch false condition");
+    } else {
+      branching_conditions_nid     = branch_conditions(eval_ir_nid, register_file_nid, "true condition", NID_FALSE);
+      non_branching_conditions_nid = branch_conditions(eval_ir_nid, register_file_nid, "false condition", NID_TRUE);
+    }
   }
 
   // compressed and uncompressed instruction control flow

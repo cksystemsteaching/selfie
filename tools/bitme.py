@@ -4445,7 +4445,7 @@ def branching_bmc(solver, kmin, kmax, args, step, level):
                     print("no states changed: terminating")
                     return
 
-        if args.branching:
+        if args.branching and Ite.branching_conditions and Ite.non_branching_conditions:
             solver.push()
             solver.assert_this([Ite.branching_conditions], step)
             branching_result = solver.is_SAT(solver.prove())
