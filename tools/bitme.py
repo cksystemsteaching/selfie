@@ -377,13 +377,9 @@ class State(Variable):
         self.init_line = self
         self.next_line = self
         self.step_z3 = 0
-        self.current_z3 = None
-        self.next_z3 = None
-        self.stack_z3 = []
+        self.state_z3 = dict()
         self.step_bitwuzla = 0
-        self.current_bitwuzla = None
-        self.next_bitwuzla = None
-        self.stack_bitwuzla = []
+        self.state_bitwuzla = dict()
         self.new_state()
         # rotor-dependent program counter declaration
         if comment == "; program counter":
@@ -415,14 +411,9 @@ class State(Variable):
 
     def get_z3_step(self, step):
         assert self.step_z3 <= step <= self.step_z3 + 1
-        if step == self.step_z3:
-            if self.current_z3 is None:
-                self.current_z3 = self.get_z3_state(step)
-            return self.current_z3
-        elif step == self.step_z3 + 1:
-            if self.next_z3 is None:
-                self.next_z3 = self.get_z3_state(step)
-            return self.next_z3
+        if step not in self.state_z3:
+            self.state_z3[step] = self.get_z3_state(step)
+        return self.state_z3[step]
 
     def get_z3_select(term, domain, step):
         if domain:
@@ -430,21 +421,12 @@ class State(Variable):
         else:
             return term
 
-    def push_z3_state(self):
-        self.stack_z3.append(self.step_z3)
-        self.stack_z3.append(self.current_z3)
-        self.stack_z3.append(self.next_z3)
-
-    def pop_z3_state(self):
-        self.next_z3 = self.stack_z3.pop()
-        self.current_z3 = self.stack_z3.pop()
-        self.step_z3 = self.stack_z3.pop()
-
     def take_z3_step(self, step):
         assert step == self.step_z3
-        self.current_z3 = self.next_z3
         self.step_z3 += 1
-        self.next_z3 = self.get_z3_state(self.step_z3 + 1)
+
+    def restore_z3_step(self, step):
+        self.step_z3 = step
 
     def get_bitwuzla(self, tm):
         if self.bitwuzla is None:
@@ -463,14 +445,9 @@ class State(Variable):
 
     def get_bitwuzla_step(self, step, tm):
         assert self.step_bitwuzla <= step <= self.step_bitwuzla + 1
-        if step == self.step_bitwuzla:
-            if self.current_bitwuzla is None:
-                self.current_bitwuzla = self.get_bitwuzla_state(step, tm)
-            return self.current_bitwuzla
-        elif step == self.step_bitwuzla + 1:
-            if self.next_bitwuzla is None:
-                self.next_bitwuzla = self.get_bitwuzla_state(step, tm)
-            return self.next_bitwuzla
+        if step not in self.state_bitwuzla:
+            self.state_bitwuzla[step] = self.get_bitwuzla_state(step, tm)
+        return self.state_bitwuzla[step]
 
     def get_bitwuzla_select(term, domain, step, tm):
         if domain:
@@ -479,21 +456,12 @@ class State(Variable):
         else:
             return term
 
-    def push_bitwuzla_state(self):
-        self.stack_bitwuzla.append(self.step_bitwuzla)
-        self.stack_bitwuzla.append(self.current_bitwuzla)
-        self.stack_bitwuzla.append(self.next_bitwuzla)
-
-    def pop_bitwuzla_state(self):
-        self.next_bitwuzla = self.stack_bitwuzla.pop()
-        self.current_bitwuzla = self.stack_bitwuzla.pop()
-        self.step_bitwuzla = self.stack_bitwuzla.pop()
-
     def take_bitwuzla_step(self, step, tm):
         assert step == self.step_bitwuzla
-        self.current_bitwuzla = self.next_bitwuzla
         self.step_bitwuzla += 1
-        self.next_bitwuzla = self.get_bitwuzla_state(self.step_bitwuzla + 1, tm)
+
+    def restore_bitwuzla_step(self, step):
+        self.step_bitwuzla = step
 
 class Indexed(Expression):
     def __init__(self, nid, sid_line, arg1_line, comment, line_no):
@@ -975,25 +943,17 @@ class Sequential(Line):
         super().__init__(nid, comment, line_no)
         self.exp_line = exp_line
         self.step_z3 = 0
-        self.stack_z3 = []
         self.z3_lambda_line = None
         self.step_bitwuzla = 0
-        self.stack_bitwuzla = []
         self.bitwuzla_lambda_line = None
         if not isinstance(exp_line, Expression):
             raise model_error("expression operand", line_no)
 
-    def push_z3_state(self):
-        self.stack_z3.append(self.step_z3)
+    def restore_z3_step(self, step):
+        self.step_z3 = step
 
-    def pop_z3_state(self):
-        self.step_z3 = self.stack_z3.pop()
-
-    def push_bitwuzla_state(self):
-        self.stack_bitwuzla.append(self.step_bitwuzla)
-
-    def pop_bitwuzla_state(self):
-        self.step_bitwuzla = self.stack_bitwuzla.pop()
+    def restore_bitwuzla_step(self, step):
+        self.step_bitwuzla = step
 
 class Init(Sequential):
     keyword = OP_INIT
@@ -4358,17 +4318,13 @@ class Z3_Solver(Solver):
     def assert_change(self, next_line, step):
         return self.solver.add(next_line.get_z3_change(step))
 
-    def push_state(self, lines):
-        for line in lines:
-            line.push_z3_state()
-
-    def pop_state(self, lines):
-        for line in lines:
-            line.pop_z3_state()
-
     def take_next_step(self, states, step):
         for state in states:
             state.take_z3_step(step)
+
+    def restore_step(self, lines, step):
+        for line in lines:
+            line.restore_z3_step()
 
     def print_pc(self, pc, step):
         self.prove()
@@ -4415,17 +4371,13 @@ class Bitwuzla_Solver(Solver):
     def assert_change(self, next_line, step):
         return self.solver.assert_formula(next_line.get_bitwuzla_change(step, self.tm))
 
-    def push_state(self, lines):
-        for line in lines:
-            line.push_bitwuzla_state()
-
-    def pop_state(self, lines):
-        for line in lines:
-            line.pop_bitwuzla_state()
-
     def take_next_step(self, states, step):
         for state in states:
             state.take_bitwuzla_step(step, self.tm)
+
+    def restore_step(self, lines, step):
+        for line in lines:
+            line.restore_bitwuzla_step(step)
 
     def print_pc(self, pc, step):
         self.prove()
@@ -4516,21 +4468,16 @@ def branching_bmc(solver, kmin, kmax, args, step, level):
 
                 solver.push()
                 solver.assert_this([Ite.branching_conditions], step)
-                solver.push_state(State.states.values())
-                solver.push_state(Constraint.constraints.values())
-                solver.push_state(Bad.bads.values())
-                solver.push_state(Next.nexts.values())
-
                 solver.take_next_step(State.states.values(), step)
 
                 branching_bmc(solver, kmin, kmax, args, step + 1, level + 1)
 
-                solver.pop_state(State.states.values())
-                solver.pop_state(Constraint.constraints.values())
-                solver.pop_state(Bad.bads.values())
-                solver.pop_state(Next.nexts.values())
-
                 solver.pop()
+
+                solver.restore_step(State.states.values(), step)
+                solver.restore_step(Constraint.constraints.values(), step)
+                solver.restore_step(Bad.bads.values(), step)
+                solver.restore_step(Next.nexts.values(), step)
 
                 print("-" * 80)
                 print("not branching")
@@ -4538,7 +4485,9 @@ def branching_bmc(solver, kmin, kmax, args, step, level):
                 solver.push()
                 solver.assert_not_this([Ite.non_branching_conditions], step)
                 solver.take_next_step(State.states.values(), step)
+
                 branching_bmc(solver, kmin, kmax, args, step + 1, level + 1)
+
                 solver.pop()
 
                 print("^" * 80)
