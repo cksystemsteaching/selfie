@@ -126,6 +126,8 @@ uint64_t* new_ternary(char* op, uint64_t* sid, uint64_t* first_nid, uint64_t* se
 uint64_t* new_init(uint64_t* sid, uint64_t* state_nid, uint64_t* value_nid, char* comment);
 uint64_t* new_next(uint64_t* sid, uint64_t* state_nid, uint64_t* value_nid, char* comment);
 
+uint64_t* new_register_file_next(uint64_t* state_nid, uint64_t* value_nid, char* comment);
+
 uint64_t* new_property(char* op, uint64_t* condition_nid, char* symbol, char* comment);
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
@@ -3816,6 +3818,42 @@ uint64_t* new_init(uint64_t* sid, uint64_t* state_nid, uint64_t* value_nid, char
 
 uint64_t* new_next(uint64_t* sid, uint64_t* state_nid, uint64_t* value_nid, char* comment) {
   return new_line(OP_NEXT, sid, state_nid, value_nid, UNUSED, comment);
+}
+
+uint64_t* new_register_file_next(uint64_t* state_nid, uint64_t* value_nid, char* comment) {
+  uint64_t* next_nid;
+  uint64_t i;
+
+  if (REGISTER_FILE_ARRAY)
+    return new_next(SID_REGISTER_STATE, state_nid, value_nid, comment);
+  else {
+    next_nid = smalloc(32 * sizeof(uint64_t*));
+
+    i = 0;
+
+    while (i < 32) {
+      if (i == 0)
+        *next_nid = (uint64_t) new_next(SID_REGISTER_STATE, (uint64_t*) *state_nid, (uint64_t*) *state_nid, comment);
+      else
+        *(next_nid + i) = (uint64_t) new_next(SID_REGISTER_STATE, (uint64_t*) *(state_nid + i),
+          new_ternary(OP_ITE, SID_MACHINE_WORD,
+            new_binary_boolean(OP_AND,
+              get_array_status_nid(value_nid),
+              new_binary_boolean(OP_EQ,
+                get_array_address_nid(value_nid),
+                new_constant(OP_CONST, SID_REGISTER_ADDRESS, i, (char*) *(REGISTERS + i)),
+                ""),
+              ""),
+            get_array_value_nid(value_nid),
+            (uint64_t*) *(state_nid + i),
+            ""),
+          comment);
+
+      i = i + 1;
+    }
+
+    return next_nid;
+  }
 }
 
 uint64_t* new_property(char* op, uint64_t* condition_nid, char* symbol, char* comment) {
@@ -11752,8 +11790,7 @@ void rotor_sequential(uint64_t core, uint64_t* pc_nid, uint64_t* register_file_n
       next_nid = new_next(SID_REGISTER_STATE,
         get_for(0, state_register_file_nids), register_data_flow_nid, "register file");
   } else
-    next_nid = new_next(SID_REGISTER_STATE,
-      register_file_nid, register_data_flow_nid, "register file");
+    next_nid = new_register_file_next(register_file_nid, register_data_flow_nid, "register file");
 
   set_for(core, next_register_file_nids, next_nid);
   set_for(core, sync_register_file_nids, sync_nid);
