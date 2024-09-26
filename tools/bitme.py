@@ -4416,8 +4416,9 @@ def branching_bmc(solver, kmin, kmax, args, step, level):
                     print("^" * 80)
                 solver.pop()
 
-        # assert all bad properties as negated constraints
-        solver.assert_not_this(Bad.bads.values(), step)
+        if not args.unconstraining_bad:
+            # assert all bad properties as negated constraints
+            solver.assert_not_this(Bad.bads.values(), step)
 
         # compute next step
         solver.assert_this(Next.nexts.values(), step)
@@ -4580,6 +4581,7 @@ def main():
 
     parser.add_argument('--print-pc', action='store_true')
     parser.add_argument('--check-termination', action='store_true')
+    parser.add_argument('--unconstraining-bad', action='store_true')
     parser.add_argument('--branching', action='store_true')
 
     args = parser.parse_args()
