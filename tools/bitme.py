@@ -4296,6 +4296,42 @@ def parse_btor2(modelfile):
             # state has no init
             state.new_input()
 
+    are_there_uninitialized_states = False
+    are_there_untransitioned_states = False
+    are_there_state_transitions = False
+
+    for state in State.states.values():
+        if state.init_line is None:
+            are_there_uninitialized_states = True
+        if state.next_line is None:
+            are_there_untransitioned_states = True
+        else:
+            are_there_state_transitions = True
+
+    if are_there_state_transitions:
+        print("sequential problem")
+    else:
+        print("combinational problem")
+
+    for input_line in Input.inputs.values():
+        if isinstance(input_line, Input):
+            print(input_line)
+    for state in State.states.values():
+        print(state)
+
+    if are_there_uninitialized_states:
+        print("uninitialized states:")
+        for state in State.states.values():
+            if state.init_line is None:
+                print(state)
+    if are_there_untransitioned_states:
+        print("untransitioned states:")
+        for state in State.states.values():
+            if state.next_line is None:
+                print(state)
+
+    return are_there_state_transitions
+
 # Z3 and bitwuzla solver interface
 
 class Solver():
