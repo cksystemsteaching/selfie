@@ -343,6 +343,11 @@ class Variable(Expression):
         assert self not in Variable.inputs
         Variable.inputs[self.nid] = self
 
+    def get_z3(self):
+        if self.z3 is None:
+            self.z3 = z3.Const(self.name, self.sid_line.get_z3())
+        return self.z3
+
 class Input(Variable):
     keyword = OP_INPUT
 
@@ -354,15 +359,16 @@ class Input(Variable):
     def __str__(self):
         return f"{self.nid} {Input.keyword} {self.sid_line.nid} {self.symbol} {self.comment}"
 
-    def get_z3(self):
-        if self.z3 is None:
-            self.z3 = z3.Const(self.name, self.sid_line.get_z3())
-        return self.z3
+    def get_z3_step(self, step):
+        return self.get_z3()
 
     def get_bitwuzla(self, tm):
         if self.bitwuzla is None:
             self.bitwuzla = tm.mk_const(self.sid_line.get_bitwuzla(tm), self.name)
         return self.bitwuzla
+
+    def get_bitwuzla_step(self, step, tm):
+        return self.get_bitwuzla(tm)
 
 class State(Variable):
     keyword = OP_STATE
@@ -374,8 +380,8 @@ class State(Variable):
     def __init__(self, nid, sid_line, symbol, comment, line_no):
         super().__init__(nid, sid_line, {nid:self}, symbol, comment, line_no)
         self.name = f"state{nid}"
-        self.init_line = self
-        self.next_line = self
+        self.init_line = None
+        self.next_line = None
         self.step_z3 = 0
         self.state_z3 = dict()
         self.step_bitwuzla = 0
@@ -391,11 +397,6 @@ class State(Variable):
     def new_state(self):
         assert self not in State.states
         State.states[self.nid] = self
-
-    def get_z3(self):
-        if self.z3 is None:
-            self.z3 = z3.Const(self.name, self.sid_line.get_z3())
-        return self.z3
 
     def get_z3_lambda(term, domain):
         if domain:
@@ -974,7 +975,7 @@ class Init(Sequential):
             raise model_error("compatible state and expression sorts", line_no)
         if state_line.nid < exp_line.nid:
             raise model_error("state after expression", line_no)
-        if self.state_line.init_line == self.state_line:
+        if self.state_line.init_line is None:
             self.state_line.init_line = self
         else:
             raise model_error("uninitialized state", line_no)
@@ -1032,7 +1033,7 @@ class Next(Sequential):
             raise model_error("compatible line and state sorts", line_no)
         if not state_line.sid_line.match_sorts(exp_line.sid_line):
             raise model_error("compatible state and expression sorts", line_no)
-        if self.state_line.next_line == self.state_line:
+        if self.state_line.next_line is None:
             self.state_line.next_line = self
         else:
             raise model_error("untransitioned state", line_no)
@@ -4278,7 +4279,7 @@ def parse_btor2(modelfile):
             exit(1)
 
     for state in State.states.values():
-        if state.init_line == state:
+        if state.init_line is None:
             # state has no init
             state.new_input()
 
