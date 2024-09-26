@@ -4651,13 +4651,16 @@ def main():
     args = parser.parse_args()
 
     with open(args.modelfile) as modelfile:
-        parse_btor2(modelfile)
+        are_there_state_transitions = parse_btor2(modelfile)
 
     if args.kmin or args.kmax:
         kmin = args.kmin[0] if args.kmin else 0
         kmax = args.kmax[0] if args.kmax else 0
 
-        kmax = max(kmin, kmax)
+        if are_there_state_transitions:
+            kmax = max(kmin, kmax)
+        else:
+            kmin = kmax = 0
 
         if is_Z3_present and args.use_Z3:
             solver = Z3_Solver()
