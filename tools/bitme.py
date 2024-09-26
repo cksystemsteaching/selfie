@@ -383,9 +383,9 @@ class State(Variable):
         self.init_line = None
         self.next_line = None
         self.step_z3 = 0
-        self.state_z3 = dict()
+        self.cache_z3 = dict()
         self.step_bitwuzla = 0
-        self.state_bitwuzla = dict()
+        self.cache_bitwuzla = dict()
         self.new_state()
         # rotor-dependent program counter declaration
         if comment == "; program counter":
@@ -412,9 +412,9 @@ class State(Variable):
 
     def get_z3_step(self, step):
         assert self.step_z3 <= step <= self.step_z3 + 1
-        if step not in self.state_z3:
-            self.state_z3[step] = self.get_z3_state(step)
-        return self.state_z3[step]
+        if step not in self.cache_z3:
+            self.cache_z3[step] = self.get_z3_state(step)
+        return self.cache_z3[step]
 
     def get_z3_select(term, domain, step):
         if domain:
@@ -446,9 +446,9 @@ class State(Variable):
 
     def get_bitwuzla_step(self, step, tm):
         assert self.step_bitwuzla <= step <= self.step_bitwuzla + 1
-        if step not in self.state_bitwuzla:
-            self.state_bitwuzla[step] = self.get_bitwuzla_state(step, tm)
-        return self.state_bitwuzla[step]
+        if step not in self.cache_bitwuzla:
+            self.cache_bitwuzla[step] = self.get_bitwuzla_state(step, tm)
+        return self.cache_bitwuzla[step]
 
     def get_bitwuzla_select(term, domain, step, tm):
         if domain:
@@ -945,8 +945,10 @@ class Sequential(Line):
         self.exp_line = exp_line
         self.step_z3 = 0
         self.z3_lambda_line = None
+        self.cache_z3 = dict()
         self.step_bitwuzla = 0
         self.bitwuzla_lambda_line = None
+        self.cache_bitwuzla = dict()
         if not isinstance(exp_line, Expression):
             raise model_error("expression operand", line_no)
 
@@ -1025,6 +1027,8 @@ class Next(Sequential):
         super().__init__(nid, exp_line, comment, line_no)
         self.sid_line = sid_line
         self.state_line = state_line
+        self.cache_z3_change = dict()
+        self.cache_bitwuzla_change = dict()
         if not isinstance(sid_line, Sort):
             raise model_error("sort", line_no)
         if not isinstance(state_line, State):
@@ -1052,12 +1056,16 @@ class Next(Sequential):
                 self.exp_line.get_z3(), self.exp_line.domain)
         assert step == self.step_z3
         self.step_z3 = step + 1
-        return self.state_line.get_z3_step(step + 1) == State.get_z3_select(
-            self.z3_lambda_line, self.exp_line.domain, step)
+        if step not in self.cache_z3:
+            self.cache_z3[step] = self.state_line.get_z3_step(step + 1) == State.get_z3_select(
+                self.z3_lambda_line, self.exp_line.domain, step)
+        return self.cache_z3[step]
 
     def get_z3_change(self, step):
         assert step == self.step_z3 - 1
-        return self.state_line.get_z3_step(step + 1) != self.state_line.get_z3_step(step)
+        if step not in self.cache_z3_change:
+            self.cache_z3_change[step] = self.state_line.get_z3_step(step + 1) != self.state_line.get_z3_step(step)
+        return self.cache_z3_change[step]
 
     def get_bitwuzla_step(self, step, tm):
         if self.bitwuzla_lambda_line is None:
@@ -1065,15 +1073,19 @@ class Next(Sequential):
                 self.exp_line.get_bitwuzla(tm), self.exp_line.domain, tm)
         assert step == self.step_bitwuzla
         self.step_bitwuzla = step + 1
-        return tm.mk_term(bitwuzla.Kind.EQUAL,
-            [self.state_line.get_bitwuzla_step(step + 1, tm),
-            State.get_bitwuzla_select(self.bitwuzla_lambda_line, self.exp_line.domain, step, tm)])
+        if step not in self.cache_bitwuzla:
+            self.cache_bitwuzla[step] = tm.mk_term(bitwuzla.Kind.EQUAL,
+                [self.state_line.get_bitwuzla_step(step + 1, tm), State.get_bitwuzla_select(
+                    self.bitwuzla_lambda_line, self.exp_line.domain, step, tm)])
+        return self.cache_bitwuzla[step]
 
     def get_bitwuzla_change(self, step, tm):
         assert step == self.step_bitwuzla - 1
-        return tm.mk_term(bitwuzla.Kind.DISTINCT,
-            [self.state_line.get_bitwuzla_step(step + 1, tm),
-            self.state_line.get_bitwuzla_step(step, tm)])
+        if step not in self.cache_bitwuzla_change:
+            self.cache_bitwuzla_change[step] = tm.mk_term(bitwuzla.Kind.DISTINCT,
+                [self.state_line.get_bitwuzla_step(step + 1, tm),
+                self.state_line.get_bitwuzla_step(step, tm)])
+        return self.cache_bitwuzla_change[step]
 
 class Property(Sequential):
     keywords = {OP_CONSTRAINT, OP_BAD}
@@ -1089,21 +1101,22 @@ class Property(Sequential):
             self.z3_lambda_line = State.get_z3_lambda(
                 self.exp_line.get_z3(), self.exp_line.domain)
         assert self.step_z3 <= step <= self.step_z3 + 1
-        if (step == self.step_z3 and self.z3 is None) or step == self.step_z3 + 1:
-            self.z3 = State.get_z3_select(self.z3_lambda_line, self.exp_line.domain, step)
+        if step not in self.cache_z3:
+            self.cache_z3[step] = State.get_z3_select(
+                self.z3_lambda_line, self.exp_line.domain, step)
         self.step_z3 = step
-        return self.z3
+        return self.cache_z3[step]
 
     def get_bitwuzla_step(self, step, tm):
         if self.bitwuzla_lambda_line is None:
             self.bitwuzla_lambda_line = State.get_bitwuzla_lambda(
                 self.exp_line.get_bitwuzla(tm), self.exp_line.domain, tm)
         assert self.step_bitwuzla <= step <= self.step_bitwuzla + 1
-        if (step == self.step_bitwuzla and self.bitwuzla is None) or step == self.step_bitwuzla + 1:
-            self.bitwuzla = State.get_bitwuzla_select(
+        if step not in self.cache_bitwuzla:
+            self.cache_bitwuzla[step] = State.get_bitwuzla_select(
                 self.bitwuzla_lambda_line, self.exp_line.domain, step, tm)
         self.step_bitwuzla = step
-        return self.bitwuzla
+        return self.cache_bitwuzla[step]
 
 class Constraint(Property):
     keyword = OP_CONSTRAINT
@@ -4465,7 +4478,7 @@ def branching_bmc(solver, kmin, kmax, args, step, level):
 
             if branching_result and non_branching_result:
                 print("v" * 80)
-                print("branching")
+                print(f"branching @ {step}-{level}")
 
                 solver.push()
                 solver.assert_this([Ite.branching_conditions], step)
@@ -4481,7 +4494,7 @@ def branching_bmc(solver, kmin, kmax, args, step, level):
                 solver.restore_step(Next.nexts.values(), step + 1)
 
                 print("-" * 80)
-                print("not branching")
+                print(f"not branching @ {step}-{level}")
 
                 solver.push()
                 solver.assert_not_this([Ite.non_branching_conditions], step)
