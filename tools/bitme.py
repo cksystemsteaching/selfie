@@ -396,22 +396,19 @@ class State(Variable):
         assert self not in State.states
         State.states[self.nid] = self
 
+    def get_step_name(self, step):
+        return f"{self.name}-{step}"
+
+    def get_z3_step(self, step):
+        if step not in self.cache_z3:
+            self.cache_z3[step] = z3.Const(self.get_step_name(step), self.sid_line.get_z3())
+        return self.cache_z3[step]
+
     def get_z3_lambda(term, domain):
         if domain:
             return z3.Lambda([state.get_z3() for state in domain.values()], term)
         else:
             return term
-
-    def get_step_name(self, step):
-        return f"{self.name}-{step}"
-
-    def get_z3_state(self, step):
-        return z3.Const(self.get_step_name(step), self.sid_line.get_z3())
-
-    def get_z3_step(self, step):
-        if step not in self.cache_z3:
-            self.cache_z3[step] = self.get_z3_state(step)
-        return self.cache_z3[step]
 
     def get_z3_select(term, domain, step):
         if domain:
@@ -424,20 +421,18 @@ class State(Variable):
             self.bitwuzla = tm.mk_var(self.sid_line.get_bitwuzla(tm), self.name)
         return self.bitwuzla
 
+    def get_bitwuzla_step(self, step, tm):
+        if step not in self.cache_bitwuzla:
+            self.cache_bitwuzla[step] = tm.mk_const(self.sid_line.get_bitwuzla(tm),
+                self.get_step_name(step))
+        return self.cache_bitwuzla[step]
+
     def get_bitwuzla_lambda(term, domain, tm):
         if domain:
             return tm.mk_term(bitwuzla.Kind.LAMBDA,
                 [*[state.get_bitwuzla(tm) for state in domain.values()], term])
         else:
             return term
-
-    def get_bitwuzla_state(self, step, tm):
-        return tm.mk_const(self.sid_line.get_bitwuzla(tm), self.get_step_name(step))
-
-    def get_bitwuzla_step(self, step, tm):
-        if step not in self.cache_bitwuzla:
-            self.cache_bitwuzla[step] = self.get_bitwuzla_state(step, tm)
-        return self.cache_bitwuzla[step]
 
     def get_bitwuzla_select(term, domain, step, tm):
         if domain:
