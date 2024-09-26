@@ -4478,7 +4478,7 @@ def branching_bmc(solver, kmin, kmax, args, step, level):
                 solver.restore_step(State.states.values(), step)
                 solver.restore_step(Constraint.constraints.values(), step)
                 solver.restore_step(Bad.bads.values(), step)
-                solver.restore_step(Next.nexts.values(), step)
+                solver.restore_step(Next.nexts.values(), step + 1)
 
                 print("-" * 80)
                 print("not branching")
