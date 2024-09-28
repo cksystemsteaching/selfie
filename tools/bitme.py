@@ -122,6 +122,10 @@ OP_WRITE = 'write'
 OP_BAD        = 'bad'
 OP_CONSTRAINT = 'constraint'
 
+# map arrays up to size bound to bitvectors
+
+ARRAY_SIZE_BOUND = 5 # array size in bits
+
 class model_error(Exception):
     def __init__(self, expected, line_no):
         super().__init__(f"model error in line {line_no}: {expected} expected")
@@ -137,20 +141,21 @@ class Bitwuzla():
 class Line(Z3, Bitwuzla):
     lines = dict()
 
-    def __init__(self, nid, comment, line_no):
+    def __init__(self, nid, comment, line_no, index = None):
         Z3.__init__(self)
         Bitwuzla.__init__(self)
         self.nid = nid
         self.comment = "; " + comment if comment != "" and comment[0] != ';' else comment
         self.line_no = line_no
-        self.new_line()
+        self.new_line(index)
 
     def __repr__(self):
         return self.__str__()
 
-    def new_line(self):
-        assert self not in Line.lines
-        Line.lines[self.nid] = self
+    def new_line(self, index = None):
+        if index is None:
+            assert self.nid not in Line.lines, f"nid {self.nid} already defined @ {self.line_no}"
+            Line.lines[self.nid] = self
 
     def is_defined(nid):
         return nid in Line.lines
@@ -253,8 +258,8 @@ class Array(Sort):
         return self.bitwuzla
 
 class Expression(Line):
-    def __init__(self, nid, sid_line, domain, comment, line_no):
-        super().__init__(nid, comment, line_no)
+    def __init__(self, nid, sid_line, domain, comment, line_no, index = None):
+        super().__init__(nid, comment, line_no, index)
         self.sid_line = sid_line
         self.domain = domain
         if not isinstance(sid_line, Sort):
@@ -335,13 +340,31 @@ class Variable(Expression):
 
     inputs = dict()
 
-    def __init__(self, nid, sid_line, domain, symbol, comment, line_no):
-        super().__init__(nid, sid_line, domain, comment, line_no)
+    def __init__(self, nid, sid_line, domain, symbol, comment, line_no, index = None):
+        super().__init__(nid, sid_line, domain, comment, line_no, index)
+        if index is not None and not isinstance(sid_line, Bitvector):
+            raise model_error("bitvector", line_no)
         self.symbol = symbol
+        if index is None:
+            self.array = self.new_array()
+        else:
+            self.index = index
 
-    def new_input(self):
-        assert self not in Variable.inputs
-        Variable.inputs[self.nid] = self
+    def new_array(self):
+        if isinstance(self.sid_line, Array) and self.sid_line.array_size_line.size <= ARRAY_SIZE_BOUND:
+            array = dict()
+            print(self)
+            for index in range(2**self.sid_line.array_size_line.size - 1):
+                array[index] = self.__class__(self.nid,
+                    self.sid_line.element_size_line, self.symbol, self.comment, self.line_no, index)
+            return array
+        else:
+            return None
+
+    def new_input(self, index = None):
+        if index is None:
+            assert self.nid not in Variable.inputs, f"variable nid {self.nid} already defined @ {self.line_no}"
+            Variable.inputs[self.nid] = self
 
     def get_z3(self):
         if self.z3 is None:
@@ -351,10 +374,10 @@ class Variable(Expression):
 class Input(Variable):
     keyword = OP_INPUT
 
-    def __init__(self, nid, sid_line, symbol, comment, line_no):
-        super().__init__(nid, sid_line, dict(), symbol, comment, line_no)
+    def __init__(self, nid, sid_line, symbol, comment, line_no, index = None):
+        super().__init__(nid, sid_line, dict(), symbol, comment, line_no, index)
         self.name = f"input{self.nid}"
-        self.new_input()
+        self.new_input(index)
 
     def __str__(self):
         return f"{self.nid} {Input.keyword} {self.sid_line.nid} {self.symbol} {self.comment}"
@@ -377,14 +400,14 @@ class State(Variable):
 
     pc = None
 
-    def __init__(self, nid, sid_line, symbol, comment, line_no):
-        super().__init__(nid, sid_line, {nid:self}, symbol, comment, line_no)
+    def __init__(self, nid, sid_line, symbol, comment, line_no, index = None):
+        super().__init__(nid, sid_line, {nid:self}, symbol, comment, line_no, index)
         self.name = f"state{nid}"
         self.init_line = None
         self.next_line = None
         self.cache_z3 = dict()
         self.cache_bitwuzla = dict()
-        self.new_state()
+        self.new_state(index)
         # rotor-dependent program counter declaration
         if comment == "; program counter":
             State.pc = self
@@ -392,9 +415,10 @@ class State(Variable):
     def __str__(self):
         return f"{self.nid} {State.keyword} {self.sid_line.nid} {self.symbol} {self.comment}"
 
-    def new_state(self):
-        assert self not in State.states
-        State.states[self.nid] = self
+    def new_state(self, index = None):
+        if index is None:
+            assert self.nid not in State.states, f"state nid {self.nid} already defined @ {self.line_no}"
+            State.states[self.nid] = self
 
     def get_step_name(self, step):
         return f"{self.name}-{step}"
