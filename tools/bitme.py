@@ -4247,7 +4247,7 @@ def parse_btor2(modelfile):
             parse_btor2_line(line, line_no)
             line_no += 1
         except Exception as message:
-            print(message)
+            print(f"exception during parsing: {message}")
             exit(1)
 
     for state in State.states.values():
@@ -4267,10 +4267,12 @@ def parse_btor2(modelfile):
         else:
             are_there_state_transitions = True
 
+    print("#" * 80)
+
     if are_there_state_transitions:
-        print("sequential problem")
+        print("sequential problem:")
     else:
-        print("combinational problem")
+        print("combinational problem:")
 
     for input_line in Input.inputs.values():
         if isinstance(input_line, Input):
@@ -4483,6 +4485,10 @@ def branching_bmc(solver, kmin, kmax, args, step, level):
         step += 1
 
 def bmc(solver, kmin, kmax, args):
+    print("#" * 80)
+
+    print(f"bounded model checking: -kmin {kmin} -kmax {kmax}")
+
     # initialize all states
     solver.assert_this(Init.inits.values(), 0)
 
@@ -4549,7 +4555,7 @@ def rotor_model():
 
         print(System())
     except Exception as message:
-        print(message)
+        print(f"exception during modeling: {message}")
         exit(1)
 
 import sys
