@@ -342,6 +342,7 @@ class Variable(Expression):
 
     def __init__(self, nid, sid_line, domain, symbol, comment, line_no, index = None):
         super().__init__(nid, sid_line, domain, comment, line_no, index)
+        self.qid = f"{nid}{f"-{index}" if index is not None else ''}"
         self.symbol = symbol
         if index is not None and not isinstance(sid_line, Bitvector):
             raise model_error("bitvector", line_no)
@@ -375,11 +376,11 @@ class Input(Variable):
 
     def __init__(self, nid, sid_line, symbol, comment, line_no, index = None):
         super().__init__(nid, sid_line, dict(), symbol, comment, line_no, index)
-        self.name = f"input{self.nid}"
+        self.name = f"input{self.qid}"
         self.new_input(index)
 
     def __str__(self):
-        return f"{self.nid} {Input.keyword} {self.sid_line.nid} {self.symbol} {self.comment}"
+        return f"{self.qid} {Input.keyword} {self.sid_line.nid} {self.symbol} {self.comment}"
 
     def get_z3_step(self, step):
         return self.get_z3()
@@ -401,7 +402,7 @@ class State(Variable):
 
     def __init__(self, nid, sid_line, symbol, comment, line_no, index = None):
         super().__init__(nid, sid_line, {nid:self}, symbol, comment, line_no, index)
-        self.name = f"state{nid}"
+        self.name = f"state{self.qid}"
         self.init_line = None
         self.next_line = None
         self.cache_z3 = dict()
@@ -412,7 +413,7 @@ class State(Variable):
             State.pc = self
 
     def __str__(self):
-        return f"{self.nid} {State.keyword} {self.sid_line.nid} {self.symbol} {self.comment}"
+        return f"{self.qid} {State.keyword} {self.sid_line.nid} {self.symbol} {self.comment}"
 
     def new_state(self, index = None):
         if index is None:
