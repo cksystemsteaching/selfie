@@ -156,7 +156,7 @@ class Line(Z3, Bitwuzla):
         return nid in Line.lines
 
     def get(nid):
-        assert nid in Line.lines
+        assert Line.is_defined(nid), f"undefined nid {self.nid} @ {self.line_no}"
         return Line.lines[nid]
 
 class Sort(Line):
@@ -956,11 +956,11 @@ class Init(Sequential):
         return f"{self.nid} {Init.keyword} {self.sid_line.nid} {self.state_line.nid} {self.exp_line.nid} {self.comment}"
 
     def new_init(self):
-        assert self not in Init.inits
+        assert self.nid not in Init.inits, f"init nid {self.nid} already defined @ {self.line_no}"
         Init.inits[self.nid] = self
 
     def get_z3_step(self, step):
-        assert step == 0
+        assert step == 0, f"z3 init with {step} != 0"
         if isinstance(self.sid_line, Array) and isinstance(self.exp_line.sid_line, Bitvec):
             # initialize with constant array
             return self.state_line.get_z3_step(0) == z3.K(
@@ -972,7 +972,7 @@ class Init(Sequential):
                 self.exp_line.domain, 0)
 
     def get_bitwuzla_step(self, step, tm):
-        assert step == 0
+        assert step == 0, f"bitwuzla init with {step} != 0"
         if isinstance(self.sid_line, Array) and isinstance(self.exp_line.sid_line, Bitvec):
             # initialize with constant array
             return tm.mk_term(bitwuzla.Kind.EQUAL,
@@ -1016,7 +1016,7 @@ class Next(Sequential):
         return f"{self.nid} {Next.keyword} {self.sid_line.nid} {self.state_line.nid} {self.exp_line.nid} {self.comment}"
 
     def new_next(self):
-        assert self not in Next.nexts
+        assert self.nid not in Next.nexts, f"next nid {self.nid} already defined @ {self.line_no}"
         Next.nexts[self.nid] = self
 
     def get_z3_step(self, step):
@@ -1090,7 +1090,7 @@ class Constraint(Property):
         return f"{self.nid} {Constraint.keyword} {self.exp_line.nid} {self.symbol} {self.comment}"
 
     def new_constraint(self):
-        assert self not in Constraint.constraints
+        assert self not in Constraint.constraints, f"constraint nid {self.nid} already defined @ {self.line_no}"
         Constraint.constraints[self.nid] = self
 
 class Bad(Property):
@@ -1106,7 +1106,7 @@ class Bad(Property):
         return f"{self.nid} {Bad.keyword} {self.exp_line.nid} {self.symbol} {self.comment}"
 
     def new_bad(self):
-        assert self not in Bad.bads
+        assert self.nid not in Bad.bads, f"bad nid {self.nid} already defined @ {self.line_no}"
         Bad.bads[self.nid] = self
 
 def get_class(keyword):
