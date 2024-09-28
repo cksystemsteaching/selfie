@@ -312,7 +312,10 @@ void print_nid(uint64_t nid, uint64_t* line);
 void print_comment(uint64_t* line);
 
 uint64_t print_sort(uint64_t nid, uint64_t* line);
+
+void print_boolean_and_constd(uint64_t* sid, uint64_t value);
 uint64_t print_constant(uint64_t nid, uint64_t* line);
+
 uint64_t print_input(uint64_t nid, uint64_t* line);
 
 uint64_t print_ext(uint64_t nid, uint64_t* line);
@@ -4057,6 +4060,22 @@ uint64_t print_sort(uint64_t nid, uint64_t* line) {
   return nid;
 }
 
+void print_boolean_and_constd(uint64_t* sid, uint64_t value) {
+  if (printing_smt) {
+    if (sid == SID_BOOLEAN)
+      if (is_true(value)) w = w + dprintf(output_fd, "true"); else w = w + dprintf(output_fd, "false");
+    else
+      w = w + dprintf(output_fd, "(_ bv%lu %lu)", value, eval_bitvec_size(sid));
+  } else {
+    if (value == 0)
+      w = w + dprintf(output_fd, " %s %lu", OP_ZERO, get_nid(sid));
+    else if (value == 1)
+      w = w + dprintf(output_fd, " %s %lu", OP_ONE, get_nid(sid));
+    else
+      w = w + dprintf(output_fd, " %s %lu %ld", OP_CONSTD, get_nid(sid), value);
+  }
+}
+
 uint64_t print_constant(uint64_t nid, uint64_t* line) {
   uint64_t value;
   uint64_t size;
@@ -4065,10 +4084,8 @@ uint64_t print_constant(uint64_t nid, uint64_t* line) {
   size = eval_bitvec_size(get_sid(line));
   if (printing_smt) {
     define_fun(line, nid, PREFIX_CONST);
-    if (get_sid(line) == SID_BOOLEAN)
-      if (is_true(value)) w = w + dprintf(output_fd, "true"); else w = w + dprintf(output_fd, "false");
-    else if (get_op(line) == OP_CONSTD)
-      w = w + dprintf(output_fd, "(_ bv%lu %lu)", value, size);
+    if (or(get_sid(line) == SID_BOOLEAN, get_op(line) == OP_CONSTD))
+      print_boolean_and_constd(get_sid(line), value);
     else if (get_op(line) == OP_CONST)
       w = w + dprintf(output_fd, "#b%s", itoa(value, string_buffer, 2, 0, size));
     else
@@ -4077,14 +4094,9 @@ uint64_t print_constant(uint64_t nid, uint64_t* line) {
     w = w + dprintf(output_fd, ")");
   } else {
     print_nid(nid, line);
-    if (get_op(line) == OP_CONSTD) {
-      if (value == 0)
-        w = w + dprintf(output_fd, " %s %lu", OP_ZERO, get_nid(get_sid(line)));
-      else if (value == 1)
-        w = w + dprintf(output_fd, " %s %lu", OP_ONE, get_nid(get_sid(line)));
-      else
-        w = w + dprintf(output_fd, " %s %lu %ld", get_op(line), get_nid(get_sid(line)), value);
-    } else if (get_op(line) == OP_CONST)
+    if (get_op(line) == OP_CONSTD)
+      print_boolean_and_constd(get_sid(line), value);
+    else if (get_op(line) == OP_CONST)
       w = w + dprintf(output_fd, " %s %lu %s", get_op(line), get_nid(get_sid(line)),
         itoa(value, string_buffer, 2, 0, size));
     else
@@ -4335,14 +4347,11 @@ uint64_t print_propagated_constant(uint64_t nid, uint64_t* line) {
   nid = print_line_once(nid, get_sid(line));
   if (printing_smt) {
     define_fun(line, nid, PREFIX_EVAL);
-    if (get_sid(line) == SID_BOOLEAN)
-      if (is_true(get_state(line))) w = w + dprintf(output_fd, "true"); else w = w + dprintf(output_fd, "false");
-    else
-      w = w + dprintf(output_fd, "(_ bv%lu %lu)", get_state(line), eval_bitvec_size(get_sid(line)));
+    print_boolean_and_constd(get_sid(line), get_state(line));
     w = w + dprintf(output_fd, ")");
   } else {
     print_nid(nid, line);
-    w = w + dprintf(output_fd, " %s %lu %lu", OP_CONSTD, get_nid(get_sid(line)), get_state(line));
+    print_boolean_and_constd(get_sid(line), get_state(line));
   }
   if (printing_comments) w = w + dprintf(output_fd, " ; %s propagated", get_comment(line));
   w = w + dprintf(output_fd, "\n");
