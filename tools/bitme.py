@@ -393,7 +393,12 @@ class Input(Variable):
     def get_bitwuzla_step(self, step, tm):
         return self.get_bitwuzla(tm)
 
-class State(Variable):
+class Cache():
+    def __init__(self):
+        self.cache_z3 = dict()
+        self.cache_bitwuzla = dict()
+
+class State(Variable, Cache):
     keyword = OP_STATE
 
     states = dict()
@@ -401,12 +406,11 @@ class State(Variable):
     pc = None
 
     def __init__(self, nid, sid_line, symbol, comment, line_no, index = None):
-        super().__init__(nid, sid_line, {nid:self}, symbol, comment, line_no, index)
+        Variable.__init__(self, nid, sid_line, {nid:self}, symbol, comment, line_no, index)
+        Cache.__init__(self)
         self.name = f"state{self.qid}"
         self.init_line = None
         self.next_line = None
-        self.cache_z3 = dict()
-        self.cache_bitwuzla = dict()
         self.new_state(index)
         # rotor-dependent program counter declaration
         if comment == "; program counter":
@@ -940,34 +944,37 @@ class Write(Ternary):
                 self.arg3_line.get_bitwuzla(tm)])
         return self.bitwuzla
 
-class Sequential(Line):
-    def __init__(self, nid, exp_line, comment, line_no, index = None):
-        super().__init__(nid, comment, line_no, index)
-        self.exp_line = exp_line
+class Sequential(Line, Cache):
+    def __init__(self, nid, comment, line_no, index = None):
+        Line.__init__(self, nid, comment, line_no, index)
+        Cache.__init__(self)
         self.z3_lambda_line = None
-        self.cache_z3 = dict()
         self.bitwuzla_lambda_line = None
-        self.cache_bitwuzla = dict()
+
+class Transaction(Sequential):
+    def __init__(self, nid, sid_line, state_line, exp_line, comment, line_no, index = None):
+        super().__init__(nid, comment, line_no, index)
+        self.sid_line = sid_line
+        self.state_line = state_line
+        self.exp_line = exp_line
+        if not isinstance(sid_line, Sort):
+            raise model_error("sort", line_no)
+        if not isinstance(state_line, State):
+            raise model_error("state operand", line_no)
         if not isinstance(exp_line, Expression):
             raise model_error("expression operand", line_no)
+        if not self.sid_line.match_sorts(state_line.sid_line):
+            raise model_error("compatible line and state sorts", line_no)
+        if not state_line.sid_line.match_init_sorts(exp_line.sid_line):
+            raise model_error("compatible state and expression sorts", line_no)
 
-class Init(Sequential):
+class Init(Transaction):
     keyword = OP_INIT
 
     inits = dict()
 
     def __init__(self, nid, sid_line, state_line, exp_line, comment, line_no, index = None):
-        super().__init__(nid, exp_line, comment, line_no, index)
-        self.sid_line = sid_line
-        self.state_line = state_line
-        if not isinstance(sid_line, Sort):
-            raise model_error("sort", line_no)
-        if not isinstance(state_line, State):
-            raise model_error("state operand", line_no)
-        if not self.sid_line.match_sorts(state_line.sid_line):
-            raise model_error("compatible line and state sorts", line_no)
-        if not state_line.sid_line.match_init_sorts(exp_line.sid_line):
-            raise model_error("compatible state and expression sorts", line_no)
+        super().__init__(nid, sid_line, state_line, exp_line, comment, line_no, index)
         if state_line.nid < exp_line.nid:
             raise model_error("state after expression", line_no)
         if self.state_line.init_line is None:
@@ -1030,25 +1037,15 @@ class Init(Sequential):
                         self.exp_line.get_bitwuzla(tm), self.exp_line.domain, tm),
                     self.exp_line.domain, 0, tm)])
 
-class Next(Sequential):
+class Next(Transaction):
     keyword = OP_NEXT
 
     nexts = dict()
 
     def __init__(self, nid, sid_line, state_line, exp_line, comment, line_no):
-        super().__init__(nid, exp_line, comment, line_no)
-        self.sid_line = sid_line
-        self.state_line = state_line
+        super().__init__(nid, sid_line, state_line, exp_line, comment, line_no)
         self.cache_z3_change = dict()
         self.cache_bitwuzla_change = dict()
-        if not isinstance(sid_line, Sort):
-            raise model_error("sort", line_no)
-        if not isinstance(state_line, State):
-            raise model_error("state operand", line_no)
-        if not self.sid_line.match_sorts(state_line.sid_line):
-            raise model_error("compatible line and state sorts", line_no)
-        if not state_line.sid_line.match_sorts(exp_line.sid_line):
-            raise model_error("compatible state and expression sorts", line_no)
         if self.state_line.next_line is None:
             self.state_line.next_line = self
         else:
@@ -1097,27 +1094,30 @@ class Property(Sequential):
     keywords = {OP_CONSTRAINT, OP_BAD}
 
     def __init__(self, nid, property_line, symbol, comment, line_no):
-        super().__init__(nid, property_line, comment, line_no)
+        super().__init__(nid, comment, line_no)
+        self.property_line = property_line
         self.symbol = symbol
+        if not isinstance(property_line, Expression):
+            raise model_error("expression operand", line_no)
         if not isinstance(property_line.sid_line, Bool):
             raise model_error("Boolean operand", line_no)
 
     def get_z3_step(self, step):
         if self.z3_lambda_line is None:
             self.z3_lambda_line = State.get_z3_lambda(
-                self.exp_line.get_z3(), self.exp_line.domain)
+                self.property_line.get_z3(), self.property_line.domain)
         if step not in self.cache_z3:
             self.cache_z3[step] = State.get_z3_select(
-                self.z3_lambda_line, self.exp_line.domain, step)
+                self.z3_lambda_line, self.property_line.domain, step)
         return self.cache_z3[step]
 
     def get_bitwuzla_step(self, step, tm):
         if self.bitwuzla_lambda_line is None:
             self.bitwuzla_lambda_line = State.get_bitwuzla_lambda(
-                self.exp_line.get_bitwuzla(tm), self.exp_line.domain, tm)
+                self.property_line.get_bitwuzla(tm), self.property_line.domain, tm)
         if step not in self.cache_bitwuzla:
             self.cache_bitwuzla[step] = State.get_bitwuzla_select(
-                self.bitwuzla_lambda_line, self.exp_line.domain, step, tm)
+                self.bitwuzla_lambda_line, self.property_line.domain, step, tm)
         return self.cache_bitwuzla[step]
 
 class Constraint(Property):
@@ -1130,7 +1130,7 @@ class Constraint(Property):
         self.new_constraint()
 
     def __str__(self):
-        return f"{self.nid} {Constraint.keyword} {self.exp_line.nid} {self.symbol} {self.comment}"
+        return f"{self.nid} {Constraint.keyword} {self.property_line.nid} {self.symbol} {self.comment}"
 
     def new_constraint(self):
         assert self not in Constraint.constraints, f"constraint nid {self.nid} already defined @ {self.line_no}"
@@ -1146,7 +1146,7 @@ class Bad(Property):
         self.new_bad()
 
     def __str__(self):
-        return f"{self.nid} {Bad.keyword} {self.exp_line.nid} {self.symbol} {self.comment}"
+        return f"{self.nid} {Bad.keyword} {self.property_line.nid} {self.symbol} {self.comment}"
 
     def new_bad(self):
         assert self.nid not in Bad.bads, f"bad nid {self.nid} already defined @ {self.line_no}"
