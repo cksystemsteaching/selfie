@@ -3960,7 +3960,7 @@ def init_compressed_instruction_sorts():
 
 class Bitvector_State():
     def __init__(self, core, sid, name, initials):
-        assert isinstance(sid, Bitvector)
+        assert isinstance(sid, Bitvector), f"got {sid} but expected bitvector"
         self.sid = sid
         if core >= 0:
             self.initial = new_constant(OP_CONSTD, self.sid, 0, f"initial core-{core} {name} value")
@@ -3975,7 +3975,7 @@ class Bitvector_State():
 
 class Array_State():
     def __init__(self, core, array_sid, name, initials):
-        assert isinstance(array_sid, Array)
+        assert isinstance(array_sid, Array), f"got {array_sid} but expected array"
         self.array_sid = array_sid
         if core >= 0:
             self.initial = new_constant(OP_CONSTD, array_sid.element_size_line, 0, f"initial core-{core} {name} value")
@@ -4016,7 +4016,7 @@ class Memory():
 
 class Kernel():
     def __init__(self, core, memory):
-        assert isinstance(memory, Memory)
+        assert isinstance(memory, Memory), f"got {memory} but expected memory"
         self.memory = memory
         self.program_break = Bitvector_State(-1, memory.vaddr_sort_nid, "program break", 'program-break')
         self.file_descriptor = Bitvector_State(-1, SID_MACHINE_WORD, "file descriptor", 'file-descriptor')
@@ -4042,7 +4042,7 @@ class Core():
         return f"{self.kernel}\n{self.memory}\ncore-{self.core}:\n{self.pc}\n{self.regs}"
 
     def new_core(self):
-        assert self not in Core.cores
+        assert self.core not in Core.cores, f"{self.core} already defined"
         Core.cores[self.core] = self
 
 class System():
