@@ -342,9 +342,9 @@ class Variable(Expression):
 
     def __init__(self, nid, sid_line, domain, symbol, comment, line_no, index = None):
         super().__init__(nid, sid_line, domain, comment, line_no, index)
+        self.symbol = symbol
         if index is not None and not isinstance(sid_line, Bitvector):
             raise model_error("bitvector", line_no)
-        self.symbol = symbol
         if index is None:
             self.array = self.new_array()
         else:
@@ -353,8 +353,7 @@ class Variable(Expression):
     def new_array(self):
         if isinstance(self.sid_line, Array) and self.sid_line.array_size_line.size <= ARRAY_SIZE_BOUND:
             array = dict()
-            print(self)
-            for index in range(2**self.sid_line.array_size_line.size - 1):
+            for index in range(2**self.sid_line.array_size_line.size):
                 array[index] = self.__class__(self.nid,
                     self.sid_line.element_size_line, self.symbol, self.comment, self.line_no, index)
             return array
@@ -941,8 +940,8 @@ class Write(Ternary):
         return self.bitwuzla
 
 class Sequential(Line):
-    def __init__(self, nid, exp_line, comment, line_no):
-        super().__init__(nid, comment, line_no)
+    def __init__(self, nid, exp_line, comment, line_no, index = None):
+        super().__init__(nid, comment, line_no, index)
         self.exp_line = exp_line
         self.z3_lambda_line = None
         self.cache_z3 = dict()
@@ -956,8 +955,8 @@ class Init(Sequential):
 
     inits = dict()
 
-    def __init__(self, nid, sid_line, state_line, exp_line, comment, line_no):
-        super().__init__(nid, exp_line, comment, line_no)
+    def __init__(self, nid, sid_line, state_line, exp_line, comment, line_no, index = None):
+        super().__init__(nid, exp_line, comment, line_no, index)
         self.sid_line = sid_line
         self.state_line = state_line
         if not isinstance(sid_line, Sort):
@@ -974,14 +973,33 @@ class Init(Sequential):
             self.state_line.init_line = self
         else:
             raise model_error("uninitialized state", line_no)
-        self.new_init()
+        if index is not None and not isinstance(sid_line, Bitvector):
+            raise model_error("bitvector", line_no)
+        if index is None:
+            self.array = self.new_array()
+        else:
+            self.index = index
+        self.new_init(index)
 
     def __str__(self):
         return f"{self.nid} {Init.keyword} {self.sid_line.nid} {self.state_line.nid} {self.exp_line.nid} {self.comment}"
 
-    def new_init(self):
-        assert self.nid not in Init.inits, f"init nid {self.nid} already defined @ {self.line_no}"
-        Init.inits[self.nid] = self
+    def new_array(self):
+        if isinstance(self.exp_line.sid_line, Array):
+            return None
+        if isinstance(self.sid_line, Array) and self.sid_line.array_size_line.size <= ARRAY_SIZE_BOUND:
+            array = dict()
+            for index in range(2**self.sid_line.array_size_line.size):
+                array[index] = Init(self.nid, self.sid_line.element_size_line,
+                    self.state_line.array[index], self.exp_line, self.comment, self.line_no, index)
+            return array
+        else:
+            return None
+
+    def new_init(self, index = None):
+        if index is None:
+            assert self.nid not in Init.inits, f"init nid {self.nid} already defined @ {self.line_no}"
+            Init.inits[self.nid] = self
 
     def get_z3_step(self, step):
         assert step == 0, f"z3 init with {step} != 0"
