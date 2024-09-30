@@ -124,7 +124,7 @@ OP_CONSTRAINT = 'constraint'
 
 # map arrays up to size bound to bitvectors
 
-ARRAY_SIZE_BOUND = 5 # array size in bits
+ARRAY_SIZE_BOUND = 0 # array size in bits
 
 class model_error(Exception):
     def __init__(self, expected, line_no):
@@ -271,6 +271,9 @@ class Constant(Expression):
         self.value = value
         if not(0 <= value < 2**sid_line.size or -2**(sid_line.size - 1) <= value < 2**(sid_line.size - 1)):
             raise model_error(f"{value} in range of {sid_line.size}-bit bitvector", line_no)
+
+    def get_array_element_value(self, index):
+        return self
 
     def get_z3(self):
         if self.z3 is None:
@@ -423,6 +426,10 @@ class State(Variable, Cache):
         if index is None:
             assert self.nid not in State.states, f"state nid {self.nid} already defined @ {self.line_no}"
             State.states[self.nid] = self
+
+    def get_array_element_value(self, index):
+        assert isinstance(self.sid_line, Array), f"array state nid {self.nid} expected"
+        return self.array[index].init_line.exp_line
 
     def get_step_name(self, step):
         return f"{self.name}-{step}"
@@ -930,6 +937,13 @@ class Write(Ternary):
         if not arg1_line.sid_line.element_size_line.match_sorts(arg3_line.sid_line):
             raise model_error("compatible first operand element size and third operand sorts", line_no)
 
+    def get_array_element_value(self, index):
+        assert isinstance(self.arg2_line, Constant), f"{self}: with constant address expected"
+        if index == self.arg2_line.value:
+            return self.arg3_line
+        else:
+            return self.arg1_line.get_array_element_value(index)
+
     def get_z3(self):
         if self.z3 is None:
             self.z3 = z3.Store(self.arg1_line.get_z3(),
@@ -993,13 +1007,11 @@ class Init(Transaction):
         return f"{self.nid} {Init.keyword} {self.sid_line.nid} {self.state_line.nid} {self.exp_line.nid} {self.comment}"
 
     def new_array(self):
-        if isinstance(self.exp_line.sid_line, Array):
-            return None
         if isinstance(self.sid_line, Array) and self.sid_line.array_size_line.size <= ARRAY_SIZE_BOUND:
             array = dict()
             for index in range(2**self.sid_line.array_size_line.size):
                 array[index] = Init(self.nid, self.sid_line.element_size_line,
-                    self.state_line.array[index], self.exp_line, self.comment, self.line_no, index)
+                    self.state_line.array[index], self.exp_line.get_array_element_value(index), self.comment, self.line_no, index)
             return array
         else:
             return None
