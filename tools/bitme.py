@@ -409,7 +409,8 @@ class State(Variable, Cache):
     pc = None
 
     def __init__(self, nid, sid_line, symbol, comment, line_no, index = None):
-        Variable.__init__(self, nid, sid_line, {nid:self}, symbol, comment, line_no, index)
+        # the domain is an ordered set using dict() with None values
+        Variable.__init__(self, nid, sid_line, {self:None}, symbol, comment, line_no, index)
         Cache.__init__(self)
         self.name = f"state{self.qid}"
         self.init_line = None
@@ -441,13 +442,13 @@ class State(Variable, Cache):
 
     def get_z3_lambda(term, domain):
         if domain:
-            return z3.Lambda([state.get_z3() for state in domain.values()], term)
+            return z3.Lambda([state.get_z3() for state in domain], term)
         else:
             return term
 
     def get_z3_select(term, domain, step):
         if domain:
-            return z3.Select(term, *[state.get_z3_step(step) for state in domain.values()])
+            return z3.Select(term, *[state.get_z3_step(step) for state in domain])
         else:
             return term
 
@@ -465,14 +466,14 @@ class State(Variable, Cache):
     def get_bitwuzla_lambda(term, domain, tm):
         if domain:
             return tm.mk_term(bitwuzla.Kind.LAMBDA,
-                [*[state.get_bitwuzla(tm) for state in domain.values()], term])
+                [*[state.get_bitwuzla(tm) for state in domain], term])
         else:
             return term
 
     def get_bitwuzla_select(term, domain, step, tm):
         if domain:
             return tm.mk_term(bitwuzla.Kind.APPLY,
-                [term, *[state.get_bitwuzla_step(step, tm) for state in domain.values()]])
+                [term, *[state.get_bitwuzla_step(step, tm) for state in domain]])
         else:
             return term
 
@@ -4671,6 +4672,8 @@ def main():
         if is_bitwuzla_present and args.use_bitwuzla:
             solver = Bitwuzla_Solver()
             bmc(solver, kmin, kmax, args)
+
+        print("#" * 80)
 
 if __name__ == '__main__':
     main()
