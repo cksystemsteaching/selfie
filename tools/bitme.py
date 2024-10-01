@@ -350,19 +350,20 @@ class Variable(Expression):
         if index is not None and not isinstance(sid_line, Bitvector):
             raise model_error("bitvector", line_no)
         if index is None:
-            self.array = self.new_array()
+            self.new_array()
         else:
             self.index = index
 
     def new_array(self):
         if isinstance(self.sid_line, Array) and self.sid_line.array_size_line.size <= ARRAY_SIZE_BOUND:
-            array = dict()
+            self.array = dict()
+            self.domain = dict() # ordered set by using dict with None values
             for index in range(2**self.sid_line.array_size_line.size):
-                array[index] = self.__class__(self.nid,
+                self.array[index] = self.__class__(self.nid,
                     self.sid_line.element_size_line, self.symbol, self.comment, self.line_no, index)
-            return array
+                self.domain |= self.array[index].domain
         else:
-            return None
+            self.array = None
 
     def new_input(self, index = None):
         if index is None:
@@ -999,7 +1000,7 @@ class Init(Transaction):
         if index is not None and not isinstance(sid_line, Bitvector):
             raise model_error("bitvector", line_no)
         if index is None:
-            self.array = self.new_array()
+            self.new_array()
         else:
             self.index = index
         self.new_init(index)
@@ -1009,13 +1010,12 @@ class Init(Transaction):
 
     def new_array(self):
         if isinstance(self.sid_line, Array) and self.sid_line.array_size_line.size <= ARRAY_SIZE_BOUND:
-            array = dict()
+            self.array = dict()
             for index in range(2**self.sid_line.array_size_line.size):
-                array[index] = Init(self.nid, self.sid_line.element_size_line,
+                self.array[index] = Init(self.nid, self.sid_line.element_size_line,
                     self.state_line.array[index], self.exp_line.get_array_element_value(index), self.comment, self.line_no, index)
-            return array
         else:
-            return None
+            self.array = None
 
     def new_init(self, index = None):
         if index is None:
