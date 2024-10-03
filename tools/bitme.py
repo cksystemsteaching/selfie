@@ -122,10 +122,6 @@ OP_WRITE = 'write'
 OP_BAD        = 'bad'
 OP_CONSTRAINT = 'constraint'
 
-# map arrays up to size bound to bitvectors
-
-ARRAY_SIZE_BOUND = 0 # array size in bits
-
 class model_error(Exception):
     def __init__(self, expected, line_no):
         super().__init__(f"model error in line {line_no}: {expected} expected")
@@ -139,23 +135,22 @@ class Bitwuzla():
         self.bitwuzla = None
 
 class Line(Z3, Bitwuzla):
-    lines = dict()
+    lines = {}
 
-    def __init__(self, nid, comment, line_no, index = None):
+    def __init__(self, nid, comment, line_no):
         Z3.__init__(self)
         Bitwuzla.__init__(self)
         self.nid = nid
         self.comment = "; " + comment if comment != "" and comment[0] != ';' else comment
         self.line_no = line_no
-        self.new_line(index)
+        self.new_line()
 
     def __repr__(self):
         return self.__str__()
 
-    def new_line(self, index = None):
-        if index is None:
-            assert self.nid not in Line.lines, f"nid {self.nid} already defined @ {self.line_no}"
-            Line.lines[self.nid] = self
+    def new_line(self):
+        assert self.nid not in Line.lines, f"nid {self.nid} already defined @ {self.line_no}"
+        Line.lines[self.nid] = self
 
     def is_defined(nid):
         return nid in Line.lines
@@ -187,8 +182,12 @@ class Bitvector(Sort):
         return self.match_sorts(sort)
 
 class Bool(Bitvector):
+    boolean = None
+
     def __init__(self, nid, comment, line_no):
         super().__init__(nid, 1, comment, line_no)
+        assert Bool.boolean is None
+        Bool.boolean = self
 
     def match_sorts(self, sort):
         return super().match_sorts(sort)
@@ -223,6 +222,10 @@ class Bitvec(Bitvector):
 class Array(Sort):
     keyword = ARRAY
 
+    # map arrays up to size bound to bitvectors
+
+    ARRAY_SIZE_BOUND = 0 # array size in bits
+
     def __init__(self, nid, array_size_line, element_size_line, comment, line_no):
         super().__init__(nid, comment, line_no)
         self.array_size_line = array_size_line
@@ -245,6 +248,13 @@ class Array(Sort):
         return (self.match_sorts(sort)
             or (isinstance(sort, Bitvec) and self.element_size_line.match_sorts(sort)))
 
+    def is_array_mapped_to_bitvectors(self):
+        return self.array_size_line.size <= Array.ARRAY_SIZE_BOUND
+
+    def accommodate_array_indexes(nid):
+        # shift left by log10(2**n + 1) decimal digits where n is the array index space
+        return nid * 10**math.ceil(math.log10(2**Array.ARRAY_SIZE_BOUND + 1))
+
     def get_z3(self):
         if self.z3 is None:
             self.z3 = z3.ArraySort(self.array_size_line.get_z3(),
@@ -258,8 +268,8 @@ class Array(Sort):
         return self.bitwuzla
 
 class Expression(Line):
-    def __init__(self, nid, sid_line, domain, comment, line_no, index = None):
-        super().__init__(nid, comment, line_no, index)
+    def __init__(self, nid, sid_line, domain, comment, line_no):
+        super().__init__(nid, comment, line_no)
         self.sid_line = sid_line
         self.domain = domain
         if not isinstance(sid_line, Sort):
@@ -267,7 +277,7 @@ class Expression(Line):
 
 class Constant(Expression):
     def __init__(self, nid, sid_line, value, comment, line_no):
-        super().__init__(nid, sid_line, dict(), comment, line_no)
+        super().__init__(nid, sid_line, {}, comment, line_no)
         self.value = value
         if not(0 <= value < 2**sid_line.size or -2**(sid_line.size - 1) <= value < 2**(sid_line.size - 1)):
             raise model_error(f"{value} in range of {sid_line.size}-bit bitvector", line_no)
@@ -341,34 +351,29 @@ class Consth(Constant):
 class Variable(Expression):
     keywords = {OP_INPUT, OP_STATE}
 
-    inputs = dict()
+    inputs = {}
 
     def __init__(self, nid, sid_line, domain, symbol, comment, line_no, index = None):
-        super().__init__(nid, sid_line, domain, comment, line_no, index)
-        self.qid = f"{nid}{f"-{index}" if index is not None else ''}"
+        super().__init__(nid, sid_line, domain, comment, line_no)
         self.symbol = symbol
-        if index is not None and not isinstance(sid_line, Bitvector):
-            raise model_error("bitvector", line_no)
-        if index is None:
-            self.new_array()
-        else:
-            self.index = index
+        self.new_array(index)
 
-    def new_array(self):
-        if isinstance(self.sid_line, Array) and self.sid_line.array_size_line.size <= ARRAY_SIZE_BOUND:
-            self.array = dict()
-            self.domain = dict() # ordered set by using dict with None values
+    def new_array(self, index):
+        if index is not None:
+            if not isinstance(self.sid_line, Bitvector):
+                raise model_error("bitvector", self.line_no)
+            self.index = index
+        elif isinstance(self.sid_line, Array) and self.sid_line.is_array_mapped_to_bitvectors():
+            self.array = {}
+            self.domain = {} # ordered set by using dictionary with None values
             for index in range(2**self.sid_line.array_size_line.size):
-                self.array[index] = self.__class__(self.nid,
+                self.array[index] = self.__class__(self.nid + index + 1,
                     self.sid_line.element_size_line, self.symbol, self.comment, self.line_no, index)
                 self.domain |= self.array[index].domain
-        else:
-            self.array = None
 
-    def new_input(self, index = None):
-        if index is None:
-            assert self.nid not in Variable.inputs, f"variable nid {self.nid} already defined @ {self.line_no}"
-            Variable.inputs[self.nid] = self
+    def new_input(self):
+        assert self.nid not in Variable.inputs, f"variable nid {self.nid} already defined @ {self.line_no}"
+        Variable.inputs[self.nid] = self
 
     def get_z3(self):
         if self.z3 is None:
@@ -379,12 +384,12 @@ class Input(Variable):
     keyword = OP_INPUT
 
     def __init__(self, nid, sid_line, symbol, comment, line_no, index = None):
-        super().__init__(nid, sid_line, dict(), symbol, comment, line_no, index)
-        self.name = f"input{self.qid}"
-        self.new_input(index)
+        super().__init__(nid, sid_line, {}, symbol, comment, line_no, index)
+        self.name = f"input{self.nid}"
+        self.new_input()
 
     def __str__(self):
-        return f"{self.qid} {Input.keyword} {self.sid_line.nid} {self.symbol} {self.comment}"
+        return f"{self.nid} {Input.keyword} {self.sid_line.nid} {self.symbol} {self.comment}"
 
     def get_z3_step(self, step):
         return self.get_z3()
@@ -399,35 +404,34 @@ class Input(Variable):
 
 class Cache():
     def __init__(self):
-        self.cache_z3 = dict()
-        self.cache_bitwuzla = dict()
+        self.cache_z3 = {}
+        self.cache_bitwuzla = {}
 
 class State(Variable, Cache):
     keyword = OP_STATE
 
-    states = dict()
+    states = {}
 
     pc = None
 
     def __init__(self, nid, sid_line, symbol, comment, line_no, index = None):
-        # the domain is an ordered set using dict() with None values
+        # domain is ordered set by using dictionary with None values
         Variable.__init__(self, nid, sid_line, {self:None}, symbol, comment, line_no, index)
         Cache.__init__(self)
-        self.name = f"state{self.qid}"
+        self.name = f"state{self.nid}"
         self.init_line = None
         self.next_line = None
-        self.new_state(index)
+        self.new_state()
         # rotor-dependent program counter declaration
         if comment == "; program counter":
             State.pc = self
 
     def __str__(self):
-        return f"{self.qid} {State.keyword} {self.sid_line.nid} {self.symbol} {self.comment}"
+        return f"{self.nid} {State.keyword} {self.sid_line.nid} {self.symbol} {self.comment}"
 
-    def new_state(self, index = None):
-        if index is None:
-            assert self.nid not in State.states, f"state nid {self.nid} already defined @ {self.line_no}"
-            State.states[self.nid] = self
+    def new_state(self):
+        assert self.nid not in State.states, f"state nid {self.nid} already defined @ {self.line_no}"
+        State.states[self.nid] = self
 
     def get_array_element_value(self, index):
         assert isinstance(self.sid_line, Array), f"array state nid {self.nid} expected"
@@ -847,10 +851,31 @@ class Read(Binary):
             raise model_error("compatible first operand array size and second operand sorts", line_no)
         if not sid_line.match_sorts(arg1_line.sid_line.element_size_line):
             raise model_error("compatible result and first operand element size sorts", line_no)
+        self.new_array()
+
+    def new_array(self):
+        return
+        if self.arg1_line.sid_line.is_array_mapped_to_bitvectors():
+            for index in range(2**self.arg1_line.sid_line.array_size_line.size):
+                if index == 0:
+                    self.select_line = self.arg1_line.array[0]
+                else:
+                    self.select_line = Ite(self.nid, self.sid_line,
+                        Comparison(self.nid, OP_EQ, Bool.boolean,
+                            self.arg2_line,
+                            Constd(self.nid, self.arg1_line.sid_line.array_size_line, index,
+                                self.comment, self.line_no, index),
+                            self.comment, self.line_no, index),
+                        self.arg1_line.array[index],
+                        self.select_line,
+                        self.comment, self.line_no, index)
 
     def get_z3(self):
         if self.z3 is None:
-            self.z3 = z3.Select(self.arg1_line.get_z3(), self.arg2_line.get_z3())
+            if self.arg1_line.sid_line.is_array_mapped_to_bitvectors():
+                self.z3 = self.select_line.get_z3()
+            else:
+                self.z3 = z3.Select(self.arg1_line.get_z3(), self.arg2_line.get_z3())
         return self.z3
 
     def get_bitwuzla(self, tm):
@@ -862,7 +887,7 @@ class Read(Binary):
 class Ternary(Expression):
     keywords = {OP_ITE, OP_WRITE}
 
-    def __init__(self, nid, op, sid_line, arg1_line, arg2_line, arg3_line, comment, line_no):
+    def __init__(self, nid, op, sid_line, arg1_line, arg2_line, arg3_line, comment, line_no, index = None):
         super().__init__(nid, sid_line, arg1_line.domain | arg2_line.domain | arg3_line.domain, comment, line_no)
         self.op = op
         self.arg1_line = arg1_line
@@ -884,8 +909,8 @@ class Ite(Ternary):
     branching_conditions = None
     non_branching_conditions = None
 
-    def __init__(self, nid, op, sid_line, arg1_line, arg2_line, arg3_line, comment, line_no):
-        super().__init__(nid, Ite.keyword, sid_line, arg1_line, arg2_line, arg3_line, comment, line_no)
+    def __init__(self, nid, sid_line, arg1_line, arg2_line, arg3_line, comment, line_no, index = None):
+        super().__init__(nid, Ite.keyword, sid_line, arg1_line, arg2_line, arg3_line, comment, line_no, index)
         if not isinstance(arg1_line.sid_line, Bool):
             raise model_error("Boolean first operand", line_no)
         if not sid_line.match_sorts(arg2_line.sid_line):
@@ -928,7 +953,7 @@ class Ite(Ternary):
 class Write(Ternary):
     keyword = OP_WRITE
 
-    def __init__(self, nid, op, sid_line, arg1_line, arg2_line, arg3_line, comment, line_no):
+    def __init__(self, nid, sid_line, arg1_line, arg2_line, arg3_line, comment, line_no):
         super().__init__(nid, Write.keyword, sid_line, arg1_line, arg2_line, arg3_line, comment, line_no)
         if not isinstance(sid_line, Array):
             raise model_error("array result", line_no)
@@ -961,15 +986,15 @@ class Write(Ternary):
         return self.bitwuzla
 
 class Sequential(Line, Cache):
-    def __init__(self, nid, comment, line_no, index = None):
-        Line.__init__(self, nid, comment, line_no, index)
+    def __init__(self, nid, comment, line_no):
+        Line.__init__(self, nid, comment, line_no)
         Cache.__init__(self)
         self.z3_lambda_line = None
         self.bitwuzla_lambda_line = None
 
-class Transaction(Sequential):
-    def __init__(self, nid, sid_line, state_line, exp_line, comment, line_no, index = None):
-        super().__init__(nid, comment, line_no, index)
+class Transitional(Sequential):
+    def __init__(self, nid, sid_line, state_line, exp_line, comment, line_no):
+        super().__init__(nid, comment, line_no)
         self.sid_line = sid_line
         self.state_line = state_line
         self.exp_line = exp_line
@@ -984,43 +1009,39 @@ class Transaction(Sequential):
         if not state_line.sid_line.match_init_sorts(exp_line.sid_line):
             raise model_error("compatible state and expression sorts", line_no)
 
-class Init(Transaction):
+class Init(Transitional):
     keyword = OP_INIT
 
-    inits = dict()
+    inits = {}
 
     def __init__(self, nid, sid_line, state_line, exp_line, comment, line_no, index = None):
-        super().__init__(nid, sid_line, state_line, exp_line, comment, line_no, index)
+        super().__init__(nid, sid_line, state_line, exp_line, comment, line_no)
         if state_line.nid < exp_line.nid:
             raise model_error("state after expression", line_no)
         if self.state_line.init_line is None:
             self.state_line.init_line = self
         else:
             raise model_error("uninitialized state", line_no)
-        if index is not None and not isinstance(sid_line, Bitvector):
-            raise model_error("bitvector", line_no)
-        if index is None:
-            self.new_array()
-        else:
-            self.index = index
-        self.new_init(index)
+        self.new_array(index)
+        self.new_init()
 
     def __str__(self):
         return f"{self.nid} {Init.keyword} {self.sid_line.nid} {self.state_line.nid} {self.exp_line.nid} {self.comment}"
 
-    def new_array(self):
-        if isinstance(self.sid_line, Array) and self.sid_line.array_size_line.size <= ARRAY_SIZE_BOUND:
-            self.array = dict()
+    def new_array(self, index):
+        if index is not None:
+            if not isinstance(self.sid_line, Bitvector):
+                raise model_error("bitvector", self.line_no)
+            self.index = index
+        elif isinstance(self.sid_line, Array) and self.sid_line.is_array_mapped_to_bitvectors():
+            self.array = {}
             for index in range(2**self.sid_line.array_size_line.size):
-                self.array[index] = Init(self.nid, self.sid_line.element_size_line,
+                self.array[index] = Init(self.nid + index + 1, self.sid_line.element_size_line,
                     self.state_line.array[index], self.exp_line.get_array_element_value(index), self.comment, self.line_no, index)
-        else:
-            self.array = None
 
-    def new_init(self, index = None):
-        if index is None:
-            assert self.nid not in Init.inits, f"init nid {self.nid} already defined @ {self.line_no}"
-            Init.inits[self.nid] = self
+    def new_init(self):
+        assert self.nid not in Init.inits, f"init nid {self.nid} already defined @ {self.line_no}"
+        Init.inits[self.nid] = self
 
     def get_z3_step(self, step):
         assert step == 0, f"z3 init with {step} != 0"
@@ -1050,15 +1071,15 @@ class Init(Transaction):
                         self.exp_line.get_bitwuzla(tm), self.exp_line.domain, tm),
                     self.exp_line.domain, 0, tm)])
 
-class Next(Transaction):
+class Next(Transitional):
     keyword = OP_NEXT
 
-    nexts = dict()
+    nexts = {}
 
     def __init__(self, nid, sid_line, state_line, exp_line, comment, line_no):
         super().__init__(nid, sid_line, state_line, exp_line, comment, line_no)
-        self.cache_z3_change = dict()
-        self.cache_bitwuzla_change = dict()
+        self.cache_z3_change = {}
+        self.cache_bitwuzla_change = {}
         if self.state_line.next_line is None:
             self.state_line.next_line = self
         else:
@@ -1136,7 +1157,7 @@ class Property(Sequential):
 class Constraint(Property):
     keyword = OP_CONSTRAINT
 
-    constraints = dict()
+    constraints = {}
 
     def __init__(self, nid, property_line, symbol, comment, line_no):
         super().__init__(nid, property_line, symbol, comment, line_no)
@@ -1152,7 +1173,7 @@ class Constraint(Property):
 class Bad(Property):
     keyword = OP_BAD
 
-    bads = dict()
+    bads = {}
 
     def __init__(self, nid, property_line, symbol, comment, line_no):
         super().__init__(nid, property_line, symbol, comment, line_no)
@@ -1269,7 +1290,7 @@ def new_binary_boolean(op, left_nid, right_nid, comment, nid = next_nid(), line_
 
 def new_ternary(op, sid, first_nid, second_nid, third_nid, comment, nid = next_nid(), line_no = None):
     assert op in Ternary.keywords
-    return get_class(op)(nid, op, sid, first_nid, second_nid, third_nid, comment, line_no)
+    return get_class(op)(nid, sid, first_nid, second_nid, third_nid, comment, line_no)
 
 def new_init(sid, state_nid, value_nid, comment, nid = next_nid(), line_no = None):
     return Init(nid, sid, state_nid, value_nid, comment, line_no)
@@ -4060,7 +4081,7 @@ class Kernel():
         return f"kernel:\n{self.program_break}\n{self.file_descriptor}\n{self.input_buffer}\n{self.readable_bytes}\n{self.read_bytes}"
 
 class Core():
-    cores = dict()
+    cores = {}
 
     def __init__(self):
         self.core = len(Core.cores)
@@ -4112,8 +4133,11 @@ def get_decimal(tokens, expected, line_no):
     else:
         raise syntax_error(expected, line_no)
 
+def get_nid(tokens, expected, line_no):
+    return Array.accommodate_array_indexes(get_decimal(tokens, expected, line_no))
+
 def get_nid_line(tokens, clss, expected, line_no):
-    nid = get_decimal(tokens, expected, line_no)
+    nid = get_nid(tokens, expected, line_no)
     if Line.is_defined(nid):
         line = Line.get(nid)
         if isinstance(line, clss):
@@ -4267,6 +4291,7 @@ def parse_btor2_line(line, line_no):
                 nid = int(token)
                 if nid > current_nid:
                     current_nid = nid
+                    nid = Array.accommodate_array_indexes(nid)
                     token = get_token(tokens, "keyword", line_no)
                     if token == Sort.keyword:
                         return parse_sort_line(tokens, nid, line_no)
@@ -4297,7 +4322,7 @@ def parse_btor2_line(line, line_no):
     return line.strip()
 
 def parse_btor2(modelfile, outputfile):
-    lines = dict()
+    lines = {}
     line_no = 1
     for line in modelfile:
         try:
