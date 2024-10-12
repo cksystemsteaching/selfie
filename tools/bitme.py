@@ -181,6 +181,9 @@ class Bitvector(Sort):
     def match_init_sorts(self, sort):
         return self.match_sorts(sort)
 
+    def is_mapped_array(self):
+        return False
+
 class Bool(Bitvector):
     boolean = None
 
@@ -248,7 +251,7 @@ class Array(Sort):
         return (self.match_sorts(sort)
             or (isinstance(sort, Bitvec) and self.element_size_line.match_sorts(sort)))
 
-    def is_array_mapped_to_bitvectors(self):
+    def is_mapped_array(self):
         return self.array_size_line.size <= Array.ARRAY_SIZE_BOUND
 
     def accommodate_array_indexes(nid):
@@ -282,7 +285,7 @@ class Constant(Expression):
         if not(0 <= value < 2**sid_line.size or -2**(sid_line.size - 1) <= value < 2**(sid_line.size - 1)):
             raise model_error(f"{value} in range of {sid_line.size}-bit bitvector", line_no)
 
-    def get_array_element_value(self, index):
+    def get_expression_for(self, index):
         return self
 
     def get_z3(self):
@@ -353,27 +356,34 @@ class Variable(Expression):
 
     inputs = {}
 
-    def __init__(self, nid, sid_line, domain, symbol, comment, line_no, index = None):
+    def __init__(self, nid, sid_line, domain, symbol, comment, line_no, index):
         super().__init__(nid, sid_line, domain, comment, line_no)
         self.symbol = symbol
+        self.index = index
         self.new_array(index)
 
     def new_array(self, index):
         if index is not None:
             if not isinstance(self.sid_line, Bitvector):
                 raise model_error("bitvector", self.line_no)
-            self.index = index
-        elif isinstance(self.sid_line, Array) and self.sid_line.is_array_mapped_to_bitvectors():
+        elif self.sid_line.is_mapped_array():
             self.array = {}
-            self.domain = {} # ordered set by using dictionary with None values
             for index in range(2**self.sid_line.array_size_line.size):
-                self.array[index] = self.__class__(self.nid + index + 1,
-                    self.sid_line.element_size_line, self.symbol, self.comment, self.line_no, index)
-                self.domain |= self.array[index].domain
+                self.array[index] = type(self)(self.nid + index + 1, self.sid_line.element_size_line,
+                    self.symbol, self.comment, self.line_no, index)
 
-    def new_input(self):
-        assert self.nid not in Variable.inputs, f"variable nid {self.nid} already defined @ {self.line_no}"
-        Variable.inputs[self.nid] = self
+    def new_input(self, index):
+        if index is not None or not self.sid_line.is_mapped_array():
+            assert self.nid not in Variable.inputs, f"variable nid {self.nid} already defined @ {self.line_no}"
+            Variable.inputs[self.nid] = self
+
+    def get_expression_for(self, index):
+        if index is None:
+            assert not self.sid_line.is_mapped_array()
+            return self
+        else:
+            assert self.sid_line.is_mapped_array()
+            return self.array[index]
 
     def get_z3(self):
         if self.z3 is None:
@@ -386,7 +396,7 @@ class Input(Variable):
     def __init__(self, nid, sid_line, symbol, comment, line_no, index = None):
         super().__init__(nid, sid_line, {}, symbol, comment, line_no, index)
         self.name = f"input{self.nid}"
-        self.new_input()
+        self.new_input(index)
 
     def __str__(self):
         return f"{self.nid} {Input.keyword} {self.sid_line.nid} {self.symbol} {self.comment}"
@@ -421,7 +431,7 @@ class State(Variable, Cache):
         self.name = f"state{self.nid}"
         self.init_line = None
         self.next_line = None
-        self.new_state()
+        self.new_state(index)
         # rotor-dependent program counter declaration
         if comment == "; program counter":
             State.pc = self
@@ -429,13 +439,10 @@ class State(Variable, Cache):
     def __str__(self):
         return f"{self.nid} {State.keyword} {self.sid_line.nid} {self.symbol} {self.comment}"
 
-    def new_state(self):
-        assert self.nid not in State.states, f"state nid {self.nid} already defined @ {self.line_no}"
-        State.states[self.nid] = self
-
-    def get_array_element_value(self, index):
-        assert isinstance(self.sid_line, Array), f"array state nid {self.nid} expected"
-        return self.array[index].init_line.exp_line
+    def new_state(self, index):
+        if index is not None or not self.sid_line.is_mapped_array():
+            assert self.nid not in State.states, f"state nid {self.nid} already defined @ {self.line_no}"
+            State.states[self.nid] = self
 
     def get_step_name(self, step):
         return f"{self.name}-{step}"
@@ -493,6 +500,10 @@ class Indexed(Expression):
         if not isinstance(arg1_line.sid_line, Bitvec):
             raise model_error("bitvector operand", line_no)
 
+    def get_expression_for(self, index):
+        arg1_line = self.arg1_line.get_expression_for(None)
+        return self.copy(arg1_line)
+
 class Ext(Indexed):
     keywords = {OP_SEXT, OP_UEXT}
 
@@ -505,6 +516,12 @@ class Ext(Indexed):
 
     def __str__(self):
         return f"{self.nid} {self.op} {self.sid_line.nid} {self.arg1_line.nid} {self.w} {self.comment}"
+
+    def copy(self, arg1_line):
+        if self.arg1_line is not arg1_line:
+            return Ext(next_nid(), self.op, self.sid_line, arg1_line, self.w, self.comment, self.line_no)
+        else:
+            return self
 
     def get_z3(self):
         if self.z3 is None:
@@ -541,6 +558,12 @@ class Slice(Indexed):
     def __str__(self):
         return f"{self.nid} {Slice.keyword} {self.sid_line.nid} {self.arg1_line.nid} {self.u} {self.l} {self.comment}"
 
+    def copy(self, arg1_line):
+        if self.arg1_line is not arg1_line:
+            return Slice(next_nid(), self.sid_line, arg1_line, self.u, self.l, self.comment, self.line_no)
+        else:
+            return self
+
     def get_z3(self):
         if self.z3 is None:
             self.z3 = z3.Extract(self.u, self.l, self.arg1_line.get_z3())
@@ -570,6 +593,16 @@ class Unary(Expression):
 
     def __str__(self):
         return f"{self.nid} {self.op} {self.sid_line.nid} {self.arg1_line.nid} {self.comment}"
+
+    def copy(self, arg1_line):
+        if self.arg1_line is not arg1_line:
+            return type(self)(next_nid(), self.op, self.sid_line, arg1_line, self.comment, self.line_no)
+        else:
+            return self
+
+    def get_expression_for(self, index):
+        arg1_line = self.arg1_line.get_expression_for(None)
+        return self.copy(arg1_line)
 
     def get_z3(self):
         if self.z3 is None:
@@ -617,6 +650,17 @@ class Binary(Expression):
 
     def __str__(self):
         return f"{self.nid} {self.op} {self.sid_line.nid} {self.arg1_line.nid} {self.arg2_line.nid} {self.comment}"
+
+    def copy(self, arg1_line, arg2_line):
+        if self.arg1_line is not arg1_line or self.arg2_line is not arg2_line:
+            return type(self)(next_nid(), self.op, self.sid_line, arg1_line, arg2_line, self.comment, self.line_no)
+        else:
+            return self
+
+    def get_expression_for(self, index):
+        arg1_line = self.arg1_line.get_expression_for(None)
+        arg2_line = self.arg2_line.get_expression_for(None)
+        return self.copy(arg1_line, arg2_line)
 
 class Implies(Binary):
     keyword = OP_IMPLIES
@@ -851,31 +895,35 @@ class Read(Binary):
             raise model_error("compatible first operand array size and second operand sorts", line_no)
         if not sid_line.match_sorts(arg1_line.sid_line.element_size_line):
             raise model_error("compatible result and first operand element size sorts", line_no)
-        self.new_array()
 
-    def new_array(self):
-        return
-        if self.arg1_line.sid_line.is_array_mapped_to_bitvectors():
-            for index in range(2**self.arg1_line.sid_line.array_size_line.size):
-                if index == 0:
-                    self.select_line = self.arg1_line.array[0]
-                else:
-                    self.select_line = Ite(self.nid, self.sid_line,
-                        Comparison(self.nid, OP_EQ, Bool.boolean,
-                            self.arg2_line,
-                            Constd(self.nid, self.arg1_line.sid_line.array_size_line, index,
-                                self.comment, self.line_no, index),
-                            self.comment, self.line_no, index),
-                        self.arg1_line.array[index],
-                        self.select_line,
-                        self.comment, self.line_no, index)
+    def get_expression_for(self, index):
+        assert isinstance(self.arg1_line, Variable)
+        arg1_line = self.arg1_line
+        arg2_line = self.arg2_line.get_expression_for(None)
+        if arg1_line.sid_line.is_mapped_array():
+            if isinstance(arg2_line, Constant):
+                return arg1_line.array[arg2_line.value]
+            else:
+                for state_line in arg1_line.array.values():
+                    if state_line is arg1_line.array[0]:
+                        read_line = state_line
+                    else:
+                        read_line = Ite(next_nid(), self.sid_line,
+                            Comparison(next_nid(), OP_EQ, Bool.boolean,
+                                arg2_line,
+                                Constd(next_nid(), arg1_line.sid_line.array_size_line,
+                                    state_line.index, self.comment, self.line_no),
+                                self.comment, self.line_no),
+                            state_line,
+                            read_line,
+                            self.comment, self.line_no)
+                return read_line
+        else:
+            return self.copy(arg1_line, arg2_line)
 
     def get_z3(self):
         if self.z3 is None:
-            if self.arg1_line.sid_line.is_array_mapped_to_bitvectors():
-                self.z3 = self.select_line.get_z3()
-            else:
-                self.z3 = z3.Select(self.arg1_line.get_z3(), self.arg2_line.get_z3())
+            self.z3 = z3.Select(self.arg1_line.get_z3(), self.arg2_line.get_z3())
         return self.z3
 
     def get_bitwuzla(self, tm):
@@ -887,7 +935,7 @@ class Read(Binary):
 class Ternary(Expression):
     keywords = {OP_ITE, OP_WRITE}
 
-    def __init__(self, nid, op, sid_line, arg1_line, arg2_line, arg3_line, comment, line_no, index = None):
+    def __init__(self, nid, op, sid_line, arg1_line, arg2_line, arg3_line, comment, line_no):
         super().__init__(nid, sid_line, arg1_line.domain | arg2_line.domain | arg3_line.domain, comment, line_no)
         self.op = op
         self.arg1_line = arg1_line
@@ -909,8 +957,8 @@ class Ite(Ternary):
     branching_conditions = None
     non_branching_conditions = None
 
-    def __init__(self, nid, sid_line, arg1_line, arg2_line, arg3_line, comment, line_no, index = None):
-        super().__init__(nid, Ite.keyword, sid_line, arg1_line, arg2_line, arg3_line, comment, line_no, index)
+    def __init__(self, nid, sid_line, arg1_line, arg2_line, arg3_line, comment, line_no):
+        super().__init__(nid, Ite.keyword, sid_line, arg1_line, arg2_line, arg3_line, comment, line_no)
         if not isinstance(arg1_line.sid_line, Bool):
             raise model_error("Boolean first operand", line_no)
         if not sid_line.match_sorts(arg2_line.sid_line):
@@ -925,6 +973,18 @@ class Ite(Ternary):
             Ite.non_branching_conditions = self
             self.z3_lambda_line = None
             self.bitwuzla_lambda_line = None
+
+    def copy(self, arg1_line, arg2_line, arg3_line):
+        if self.arg1_line is not arg1_line or self.arg2_line is not arg2_line or self.arg3_line is not arg3_line:
+            return Ite(next_nid(), arg2_line.sid_line, arg1_line, arg2_line, arg3_line, self.comment, self.line_no)
+        else:
+            return self
+
+    def get_expression_for(self, index):
+        arg1_line = self.arg1_line.get_expression_for(None)
+        arg2_line = self.arg2_line.get_expression_for(index)
+        arg3_line = self.arg3_line.get_expression_for(index)
+        return self.copy(arg1_line, arg2_line, arg3_line)
 
     def get_z3(self):
         if self.z3 is None:
@@ -964,12 +1024,36 @@ class Write(Ternary):
         if not arg1_line.sid_line.element_size_line.match_sorts(arg3_line.sid_line):
             raise model_error("compatible first operand element size and third operand sorts", line_no)
 
-    def get_array_element_value(self, index):
-        assert isinstance(self.arg2_line, Constant), f"{self}: with constant address expected"
-        if index == self.arg2_line.value:
-            return self.arg3_line
+    def copy(self, arg1_line, arg2_line, arg3_line):
+        if self.arg1_line is not arg1_line or self.arg2_line is not arg2_line or self.arg3_line is not arg3_line:
+            return Write(next_nid(), arg1_line.sid_line, arg1_line, arg2_line, arg3_line, self.comment, self.line_no)
         else:
-            return self.arg1_line.get_array_element_value(index)
+            return self
+
+    def get_expression_for(self, index):
+        arg1_line = self.arg1_line.get_expression_for(index)
+        arg2_line = self.arg2_line.get_expression_for(None)
+        arg3_line = self.arg3_line.get_expression_for(None)
+        if self.sid_line.is_mapped_array():
+            assert index is not None
+            if isinstance(arg2_line, Constant):
+                if arg2_line.value == index:
+                    return arg3_line
+                else:
+                    return arg1_line
+            else:
+                return Ite(next_nid(), self.arg3_line.sid_line,
+                    Comparison(next_nid(), OP_EQ, Bool.boolean,
+                        arg2_line,
+                        Constd(next_nid(), self.arg2_line.sid_line,
+                            index, self.comment, self.line_no),
+                        self.comment, self.line_no),
+                    arg3_line,
+                    arg1_line,
+                    self.comment, self.line_no)
+        else:
+            assert index is None
+            return self.copy(arg1_line, arg2_line, arg3_line)
 
     def get_z3(self):
         if self.z3 is None:
@@ -993,7 +1077,7 @@ class Sequential(Line, Cache):
         self.bitwuzla_lambda_line = None
 
 class Transitional(Sequential):
-    def __init__(self, nid, sid_line, state_line, exp_line, comment, line_no):
+    def __init__(self, nid, sid_line, state_line, exp_line, comment, line_no, array_line, index):
         super().__init__(nid, comment, line_no)
         self.sid_line = sid_line
         self.state_line = state_line
@@ -1008,40 +1092,49 @@ class Transitional(Sequential):
             raise model_error("compatible line and state sorts", line_no)
         if not state_line.sid_line.match_init_sorts(exp_line.sid_line):
             raise model_error("compatible state and expression sorts", line_no)
+        self.array_line = array_line
+        self.index = index
+        self.new_array(index)
+
+    def new_array(self, index):
+        if index is not None:
+            if not isinstance(self.sid_line, Bitvector):
+                raise model_error("bitvector", self.line_no)
+        elif self.sid_line.is_mapped_array():
+            self.array = {}
+            for state_line in self.state_line.array.values():
+                self.array[index] = type(self)(self.nid + state_line.index + 1, self.sid_line.element_size_line,
+                    state_line, state_line, self.comment, self.line_no,
+                    self, state_line.index)
+
+    def set_array(self):
+        if self.index is None:
+            self.exp_line = self.exp_line.get_expression_for(None)
+        else:
+            self.exp_line = self.array_line.exp_line.get_expression_for(self.index)
+
+    def new_transition(self, transitions, index):
+        if index is not None or not self.sid_line.is_mapped_array():
+            assert self.nid not in transitions, f"nid {self.nid} already defined @ {self.line_no}"
+            transitions[self.nid] = self
 
 class Init(Transitional):
     keyword = OP_INIT
 
     inits = {}
 
-    def __init__(self, nid, sid_line, state_line, exp_line, comment, line_no, index = None):
-        super().__init__(nid, sid_line, state_line, exp_line, comment, line_no)
+    def __init__(self, nid, sid_line, state_line, exp_line, comment, line_no, array_line = None, index = None):
+        super().__init__(nid, sid_line, state_line, exp_line, comment, line_no, array_line, index)
         if state_line.nid < exp_line.nid:
             raise model_error("state after expression", line_no)
         if self.state_line.init_line is None:
             self.state_line.init_line = self
         else:
             raise model_error("uninitialized state", line_no)
-        self.new_array(index)
-        self.new_init()
+        self.new_transition(Init.inits, index)
 
     def __str__(self):
         return f"{self.nid} {Init.keyword} {self.sid_line.nid} {self.state_line.nid} {self.exp_line.nid} {self.comment}"
-
-    def new_array(self, index):
-        if index is not None:
-            if not isinstance(self.sid_line, Bitvector):
-                raise model_error("bitvector", self.line_no)
-            self.index = index
-        elif isinstance(self.sid_line, Array) and self.sid_line.is_array_mapped_to_bitvectors():
-            self.array = {}
-            for index in range(2**self.sid_line.array_size_line.size):
-                self.array[index] = Init(self.nid + index + 1, self.sid_line.element_size_line,
-                    self.state_line.array[index], self.exp_line.get_array_element_value(index), self.comment, self.line_no, index)
-
-    def new_init(self):
-        assert self.nid not in Init.inits, f"init nid {self.nid} already defined @ {self.line_no}"
-        Init.inits[self.nid] = self
 
     def get_z3_step(self, step):
         assert step == 0, f"z3 init with {step} != 0"
@@ -1076,22 +1169,18 @@ class Next(Transitional):
 
     nexts = {}
 
-    def __init__(self, nid, sid_line, state_line, exp_line, comment, line_no):
-        super().__init__(nid, sid_line, state_line, exp_line, comment, line_no)
+    def __init__(self, nid, sid_line, state_line, exp_line, comment, line_no, array_line = None, index = None):
+        super().__init__(nid, sid_line, state_line, exp_line, comment, line_no, array_line, index)
         self.cache_z3_change = {}
         self.cache_bitwuzla_change = {}
         if self.state_line.next_line is None:
             self.state_line.next_line = self
         else:
             raise model_error("untransitioned state", line_no)
-        self.new_next()
+        self.new_transition(Next.nexts, index)
 
     def __str__(self):
         return f"{self.nid} {Next.keyword} {self.sid_line.nid} {self.state_line.nid} {self.exp_line.nid} {self.comment}"
-
-    def new_next(self):
-        assert self.nid not in Next.nexts, f"next nid {self.nid} already defined @ {self.line_no}"
-        Next.nexts[self.nid] = self
 
     def get_z3_step(self, step):
         if self.z3_lambda_line is None:
@@ -1135,6 +1224,9 @@ class Property(Sequential):
             raise model_error("expression operand", line_no)
         if not isinstance(property_line.sid_line, Bool):
             raise model_error("Boolean operand", line_no)
+
+    def set_array(self):
+        self.property_line = self.property_line.get_expression_for(None)
 
     def get_z3_step(self, step):
         if self.z3_lambda_line is None:
@@ -4332,6 +4424,19 @@ def parse_btor2(modelfile, outputfile):
             print(f"exception during parsing: {message}")
             exit(1)
 
+    global current_nid
+
+    current_nid = lines[line_no-1].nid
+
+    for init in Init.inits.values():
+        init.set_array()
+    for constraint in Constraint.constraints.values():
+        constraint.set_array()
+    for bad in Bad.bads.values():
+        bad.set_array()
+    for next_line in Next.nexts.values():
+        next_line.set_array()
+
     if outputfile:
         for line in lines.values():
             print(line, file=outputfile)
@@ -4339,7 +4444,7 @@ def parse_btor2(modelfile, outputfile):
     for state in State.states.values():
         if state.init_line is None:
             # state has no init
-            state.new_input()
+            state.new_input(state.index)
 
     are_there_uninitialized_states = False
     are_there_untransitioned_states = False
