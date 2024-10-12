@@ -894,6 +894,8 @@ class Concat(Binary):
 class Read(Binary):
     keyword = OP_READ
 
+    READ_ARRAY_ITERATIVELY = True
+
     def __init__(self, nid, op, sid_line, arg1_line, arg2_line, comment, line_no):
         super().__init__(nid, Read.keyword, sid_line, arg1_line, arg2_line, comment, line_no)
         if not isinstance(arg1_line.sid_line, Array):
@@ -903,6 +905,51 @@ class Read(Binary):
         if not sid_line.match_sorts(arg1_line.sid_line.element_size_line):
             raise model_error("compatible result and first operand element size sorts", line_no)
 
+    def read_array_iterative(read_line, array_line, index_line):
+        for state_line in array_line.array.values():
+            if state_line is array_line.array[0]:
+                result_line = state_line
+            else:
+                result_line = Ite(next_nid(), read_line.sid_line,
+                    Comparison(next_nid(), OP_EQ, Bool.boolean,
+                        index_line,
+                        Constd(next_nid(), index_line.sid_line,
+                            state_line.index, read_line.comment, read_line.line_no),
+                        read_line.comment, read_line.line_no),
+                    state_line,
+                    result_line,
+                    read_line.comment, read_line.line_no)
+        return result_line
+
+    def read_array_recursive(read_line, array, index_line, zero_line):
+        assert len(array) == 2**math.log2(len(array))
+        if len(array) == 2:
+            even_line = array[0]
+            odd_line = array[1]
+        else:
+            even_line = Read.read_array_recursive(read_line,
+                array[0:len(array)//2], index_line, zero_line)
+            odd_line = Read.read_array_recursive(read_line,
+                array[len(array)//2:len(array)], index_line, zero_line)
+        return Ite(next_nid(), read_line.sid_line,
+            Comparison(next_nid(), OP_EQ, Bool.boolean,
+                Slice(next_nid(), zero_line.sid_line, index_line,
+                    math.log2(len(array)) - 1, math.log2(len(array)) - 1,
+                    read_line.comment, read_line.line_no),
+                zero_line,
+                read_line.comment, read_line.line_no),
+            even_line,
+            odd_line,
+            read_line.comment, read_line.line_no)
+
+    def read_array(read_line, array_line, index_line):
+        if Read.READ_ARRAY_ITERATIVELY:
+            return Read.read_array_iterative(read_line, array_line, index_line)
+        else:
+            return Read.read_array_recursive(read_line, list(array_line.array.values()), index_line,
+                Zero(next_nid(), Bitvec(next_nid(), 1, read_line.comment, read_line.line_no),
+                    read_line.comment, read_line.line_no))
+
     def get_expression_for(self, index):
         assert isinstance(self.arg1_line, Variable)
         arg1_line = self.arg1_line # TODO: generalize to read from write
@@ -911,20 +958,7 @@ class Read(Binary):
             if isinstance(arg2_line, Constant):
                 return arg1_line.array[arg2_line.value]
             else:
-                for state_line in arg1_line.array.values():
-                    if state_line is arg1_line.array[0]:
-                        read_line = state_line
-                    else:
-                        read_line = Ite(next_nid(), self.sid_line,
-                            Comparison(next_nid(), OP_EQ, Bool.boolean,
-                                arg2_line,
-                                Constd(next_nid(), arg1_line.sid_line.array_size_line,
-                                    state_line.index, self.comment, self.line_no),
-                                self.comment, self.line_no),
-                            state_line,
-                            read_line,
-                            self.comment, self.line_no)
-                return read_line
+                return Read.read_array(self, arg1_line, arg2_line)
         else:
             return self.copy(arg1_line, arg2_line)
 
@@ -4776,6 +4810,7 @@ def main():
     parser.add_argument('outputfile', nargs='?', type=argparse.FileType('w', encoding='UTF-8'))
 
     parser.add_argument('-array', nargs=1, type=int)
+    parser.add_argument('--recursive-array', action='store_true')
 
     parser.add_argument('-kmin', nargs=1, type=int)
     parser.add_argument('-kmax', nargs=1, type=int)
@@ -4791,6 +4826,7 @@ def main():
     args = parser.parse_args()
 
     Array.ARRAY_SIZE_BOUND = args.array[0] if args.array else 0
+    Read.READ_ARRAY_ITERATIVELY = not args.recursive_array
 
     are_there_state_transitions = parse_btor2(args.modelfile, args.outputfile)
 
