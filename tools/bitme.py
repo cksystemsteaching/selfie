@@ -122,6 +122,13 @@ OP_WRITE = 'write'
 OP_BAD        = 'bad'
 OP_CONSTRAINT = 'constraint'
 
+current_nid = 0
+
+def next_nid():
+    global current_nid
+    current_nid += 1
+    return current_nid
+
 class model_error(Exception):
     def __init__(self, expected, line_no):
         super().__init__(f"model error in line {line_no}: {expected} expected")
@@ -898,7 +905,7 @@ class Read(Binary):
 
     def get_expression_for(self, index):
         assert isinstance(self.arg1_line, Variable)
-        arg1_line = self.arg1_line
+        arg1_line = self.arg1_line # TODO: generalize to read from write
         arg2_line = self.arg2_line.get_expression_for(None)
         if arg1_line.sid_line.is_mapped_array():
             if isinstance(arg2_line, Constant):
@@ -1323,13 +1330,6 @@ def get_class(keyword):
         return Constraint
     elif keyword == Bad.keyword:
         return Bad
-
-current_nid = 0
-
-def next_nid():
-    global current_nid
-    current_nid += 1
-    return current_nid
 
 def new_boolean(nid = next_nid(), line_no = None):
     return Bool(nid, "Boolean", line_no)
@@ -4373,7 +4373,7 @@ def parse_property_line(tokens, nid, op, line_no):
     return new_property(op, property_line, symbol, comment, nid, line_no)
 
 def parse_btor2_line(line, line_no):
-    current_nid = 0
+    last_nid = 0
 
     if line.strip():
         tokens = tokenize_btor2(line)
@@ -4381,8 +4381,8 @@ def parse_btor2_line(line, line_no):
         if token[0] != ';':
             if token.isdecimal():
                 nid = int(token)
-                if nid > current_nid:
-                    current_nid = nid
+                if nid > last_nid:
+                    last_nid = nid
                     nid = Array.accommodate_array_indexes(nid)
                     token = get_token(tokens, "keyword", line_no)
                     if token == Sort.keyword:
@@ -4424,6 +4424,8 @@ def parse_btor2(modelfile, outputfile):
             print(f"exception during parsing: {message}")
             exit(1)
 
+    # start: mapping arrays to bitvectors
+
     global current_nid
 
     current_nid = lines[line_no-1].nid
@@ -4436,6 +4438,8 @@ def parse_btor2(modelfile, outputfile):
         bad.set_array()
     for next_line in Next.nexts.values():
         next_line.set_array()
+
+    # end: mapping arrays to bitvectors
 
     if outputfile:
         for line in lines.values():
@@ -4771,6 +4775,8 @@ def main():
     parser.add_argument('modelfile', type=argparse.FileType('r'))
     parser.add_argument('outputfile', nargs='?', type=argparse.FileType('w', encoding='UTF-8'))
 
+    parser.add_argument('-array', nargs=1, type=int)
+
     parser.add_argument('-kmin', nargs=1, type=int)
     parser.add_argument('-kmax', nargs=1, type=int)
 
@@ -4783,6 +4789,8 @@ def main():
     parser.add_argument('--branching', action='store_true')
 
     args = parser.parse_args()
+
+    Array.ARRAY_SIZE_BOUND = args.array[0] if args.array else 0
 
     are_there_state_transitions = parse_btor2(args.modelfile, args.outputfile)
 
