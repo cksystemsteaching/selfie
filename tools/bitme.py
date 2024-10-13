@@ -377,7 +377,7 @@ class Variable(Expression):
             self.array = {}
             for index in range(2**self.sid_line.array_size_line.size):
                 self.array[index] = type(self)(self.nid + index + 1, self.sid_line.element_size_line,
-                    self.symbol, self.comment, self.line_no, index)
+                    self.symbol, f"{self.comment} @ index {index}", self.line_no, index)
 
     def new_input(self, index):
         if index is not None or not self.sid_line.is_mapped_array():
@@ -905,62 +905,64 @@ class Read(Binary):
         if not sid_line.match_sorts(arg1_line.sid_line.element_size_line):
             raise model_error("compatible result and first operand element size sorts", line_no)
 
-    def read_array_iterative(read_line, array_line, index_line):
+    def read_array_iterative(self, array_line, index_line):
         for state_line in array_line.array.values():
+            index = state_line.index
             if state_line is array_line.array[0]:
                 result_line = state_line
             else:
-                result_line = Ite(next_nid(), read_line.sid_line,
+                result_line = Ite(next_nid(), self.sid_line,
                     Comparison(next_nid(), OP_EQ, Bool.boolean,
                         index_line,
                         Constd(next_nid(), index_line.sid_line,
-                            state_line.index, read_line.comment, read_line.line_no),
-                        read_line.comment, read_line.line_no),
+                            index, f"index {index}", self.line_no),
+                        f"is address equal to index {index}?", self.line_no),
                     state_line,
                     result_line,
-                    read_line.comment, read_line.line_no)
+                    f"read value @ address if equal to index {index}", self.line_no)
         return result_line
 
-    def read_array_recursive(read_line, array, index_line, zero_line):
+    def read_array_recursive(self, array, index_line, zero_line):
         assert len(array) == 2**math.log2(len(array))
         if len(array) == 2:
             even_line = array[0]
             odd_line = array[1]
         else:
-            even_line = Read.read_array_recursive(read_line,
+            even_line = Read.read_array_recursive(self,
                 array[0:len(array)//2], index_line, zero_line)
-            odd_line = Read.read_array_recursive(read_line,
+            odd_line = Read.read_array_recursive(self,
                 array[len(array)//2:len(array)], index_line, zero_line)
-        return Ite(next_nid(), read_line.sid_line,
+        return Ite(next_nid(), self.sid_line,
             Comparison(next_nid(), OP_EQ, Bool.boolean,
                 Slice(next_nid(), zero_line.sid_line, index_line,
                     math.log2(len(array)) - 1, math.log2(len(array)) - 1,
-                    read_line.comment, read_line.line_no),
+                    f"extract {math.log2(len(array)) - 1}th address bit", self.line_no),
                 zero_line,
-                read_line.comment, read_line.line_no),
+                f"is {math.log2(len(array)) - 1} address bit set?", self.line_no),
             even_line,
             odd_line,
-            read_line.comment, read_line.line_no)
+            f"read value @ reset or set {math.log2(len(array)) - 1} address bit", self.line_no)
 
-    def read_array(read_line, array_line, index_line):
-        if Read.READ_ARRAY_ITERATIVELY:
-            return Read.read_array_iterative(read_line, array_line, index_line)
+    def read_array(self, array_line, index_line):
+        if array_line.sid_line.is_mapped_array():
+            if isinstance(index_line, Constant):
+                return array_line.array[index_line.value]
+            else:
+                if Read.READ_ARRAY_ITERATIVELY:
+                    return self.read_array_iterative(array_line, index_line)
+                else:
+                    return self.read_array_recursive(list(array_line.array.values()), index_line,
+                        Zero(next_nid(),
+                            Bitvec(next_nid(), 1, "1-bit bitvector for testing bits", self.line_no),
+                            "zero value for testing bits", self.line_no))
         else:
-            return Read.read_array_recursive(read_line, list(array_line.array.values()), index_line,
-                Zero(next_nid(), Bitvec(next_nid(), 1, read_line.comment, read_line.line_no),
-                    read_line.comment, read_line.line_no))
+            return self.copy(array_line, index_line)
 
     def get_expression_for(self, index):
         assert isinstance(self.arg1_line, Variable)
         arg1_line = self.arg1_line # TODO: generalize to read from write
         arg2_line = self.arg2_line.get_expression_for(None)
-        if arg1_line.sid_line.is_mapped_array():
-            if isinstance(arg2_line, Constant):
-                return arg1_line.array[arg2_line.value]
-            else:
-                return Read.read_array(self, arg1_line, arg2_line)
-        else:
-            return self.copy(arg1_line, arg2_line)
+        return self.read_array(arg1_line, arg2_line)
 
     def get_z3(self):
         if self.z3 is None:
@@ -1071,30 +1073,33 @@ class Write(Ternary):
         else:
             return self
 
+    def write_array(self, array_line, index_line, value_line, index):
+        if self.sid_line.is_mapped_array():
+            assert index is not None
+            if isinstance(index_line, Constant):
+                if index_line.value == index:
+                    return value_line
+                else:
+                    return array_line
+            else:
+                return Ite(next_nid(), value_line.sid_line,
+                    Comparison(next_nid(), OP_EQ, Bool.boolean,
+                        index_line,
+                        Constd(next_nid(), index_line.sid_line,
+                            index, f"index {index}", self.line_no),
+                        f"is address equal to index {index}?", self.line_no),
+                    value_line,
+                    array_line,
+                    f"write value @ address if equal to index {index}", self.line_no)
+        else:
+            assert index is None
+            return self.copy(array_line, index_line, value_line)
+
     def get_expression_for(self, index):
         arg1_line = self.arg1_line.get_expression_for(index)
         arg2_line = self.arg2_line.get_expression_for(None)
         arg3_line = self.arg3_line.get_expression_for(None)
-        if self.sid_line.is_mapped_array():
-            assert index is not None
-            if isinstance(arg2_line, Constant):
-                if arg2_line.value == index:
-                    return arg3_line
-                else:
-                    return arg1_line
-            else:
-                return Ite(next_nid(), self.arg3_line.sid_line,
-                    Comparison(next_nid(), OP_EQ, Bool.boolean,
-                        arg2_line,
-                        Constd(next_nid(), self.arg2_line.sid_line,
-                            index, self.comment, self.line_no),
-                        self.comment, self.line_no),
-                    arg3_line,
-                    arg1_line,
-                    self.comment, self.line_no)
-        else:
-            assert index is None
-            return self.copy(arg1_line, arg2_line, arg3_line)
+        return self.write_array(arg1_line, arg2_line, arg3_line, index)
 
     def get_z3(self):
         if self.z3 is None:
@@ -1145,7 +1150,7 @@ class Transitional(Sequential):
             self.array = {}
             for state_line in self.state_line.array.values():
                 self.array[index] = type(self)(self.nid + state_line.index + 1, self.sid_line.element_size_line,
-                    state_line, state_line, self.comment, self.line_no,
+                    state_line, state_line, f"{self.comment} @ index {index}", self.line_no,
                     self, state_line.index)
 
     def set_array(self):
