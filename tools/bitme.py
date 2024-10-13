@@ -57,70 +57,134 @@ import math
 
 # supported BTOR2 keywords and operators
 
-UNUSED = None
+def init_btor2_keywords_operators():
+    global BITVEC
+    global ARRAY
 
-BITVEC = 'bitvec'
-ARRAY  = 'array'
+    global OP_SORT
 
-OP_SORT = 'sort'
+    global OP_ZERO
+    global OP_ONE
 
-OP_ZERO = 'zero'
-OP_ONE  = 'one'
+    global OP_CONST
+    global OP_CONSTD
+    global OP_CONSTH
+    global OP_INPUT
+    global OP_STATE
 
-OP_CONST  = 'const'
-OP_CONSTD = 'constd'
-OP_CONSTH = 'consth'
-OP_INPUT  = 'input'
-OP_STATE  = 'state'
+    global OP_INIT
+    global OP_NEXT
 
-OP_INIT  = 'init'
-OP_NEXT  = 'next'
+    global OP_SEXT
+    global OP_UEXT
+    global OP_SLICE
 
-OP_SEXT  = 'sext'
-OP_UEXT  = 'uext'
-OP_SLICE = 'slice'
+    global OP_NOT
+    global OP_INC
+    global OP_DEC
+    global OP_NEG
 
-OP_NOT = 'not'
-OP_INC = 'inc'
-OP_DEC = 'dec'
-OP_NEG = 'neg'
+    global OP_IMPLIES
+    global OP_EQ
+    global OP_NEQ
+    global OP_SGT
+    global OP_UGT
+    global OP_SGTE
+    global OP_UGTE
+    global OP_SLT
+    global OP_ULT
+    global OP_SLTE
+    global OP_ULTE
 
-OP_IMPLIES = 'implies'
-OP_EQ      = 'eq'
-OP_NEQ     = 'neq'
-OP_SGT     = 'sgt'
-OP_UGT     = 'ugt'
-OP_SGTE    = 'sgte'
-OP_UGTE    = 'ugte'
-OP_SLT     = 'slt'
-OP_ULT     = 'ult'
-OP_SLTE    = 'slte'
-OP_ULTE    = 'ulte'
+    global OP_AND
+    global OP_OR
+    global OP_XOR
 
-OP_AND = 'and'
-OP_OR  = 'or'
-OP_XOR = 'xor'
+    global OP_SLL
+    global OP_SRL
+    global OP_SRA
 
-OP_SLL = 'sll'
-OP_SRL = 'srl'
-OP_SRA = 'sra'
+    global OP_ADD
+    global OP_SUB
+    global OP_MUL
+    global OP_SDIV
+    global OP_UDIV
+    global OP_SREM
+    global OP_UREM
 
-OP_ADD  = 'add'
-OP_SUB  = 'sub'
-OP_MUL  = 'mul'
-OP_SDIV = 'sdiv'
-OP_UDIV = 'udiv'
-OP_SREM = 'srem'
-OP_UREM = 'urem'
+    global OP_CONCAT
+    global OP_READ
 
-OP_CONCAT = 'concat'
-OP_READ   = 'read'
+    global OP_ITE
+    global OP_WRITE
 
-OP_ITE   = 'ite'
-OP_WRITE = 'write'
+    global OP_BAD
+    global OP_CONSTRAINT
 
-OP_BAD        = 'bad'
-OP_CONSTRAINT = 'constraint'
+    BITVEC = 'bitvec'
+    ARRAY  = 'array'
+
+    OP_SORT = 'sort'
+
+    OP_ZERO = 'zero'
+    OP_ONE  = 'one'
+
+    OP_CONST  = 'const'
+    OP_CONSTD = 'constd'
+    OP_CONSTH = 'consth'
+    OP_INPUT  = 'input'
+    OP_STATE  = 'state'
+
+    OP_INIT  = 'init'
+    OP_NEXT  = 'next'
+
+    OP_SEXT  = 'sext'
+    OP_UEXT  = 'uext'
+    OP_SLICE = 'slice'
+
+    OP_NOT = 'not'
+    OP_INC = 'inc'
+    OP_DEC = 'dec'
+    OP_NEG = 'neg'
+
+    OP_IMPLIES = 'implies'
+    OP_EQ      = 'eq'
+    OP_NEQ     = 'neq'
+    OP_SGT     = 'sgt'
+    OP_UGT     = 'ugt'
+    OP_SGTE    = 'sgte'
+    OP_UGTE    = 'ugte'
+    OP_SLT     = 'slt'
+    OP_ULT     = 'ult'
+    OP_SLTE    = 'slte'
+    OP_ULTE    = 'ulte'
+
+    OP_AND = 'and'
+    OP_OR  = 'or'
+    OP_XOR = 'xor'
+
+    OP_SLL = 'sll'
+    OP_SRL = 'srl'
+    OP_SRA = 'sra'
+
+    OP_ADD  = 'add'
+    OP_SUB  = 'sub'
+    OP_MUL  = 'mul'
+    OP_SDIV = 'sdiv'
+    OP_UDIV = 'udiv'
+    OP_SREM = 'srem'
+    OP_UREM = 'urem'
+
+    OP_CONCAT = 'concat'
+    OP_READ   = 'read'
+
+    OP_ITE   = 'ite'
+    OP_WRITE = 'write'
+
+    OP_BAD        = 'bad'
+    OP_CONSTRAINT = 'constraint'
+
+init_btor2_keywords_operators()
 
 current_nid = 0
 
@@ -1441,6 +1505,8 @@ def new_property(op, condition_nid, symbol, comment, nid = None, line_no = None)
 
 # RISC-V model generator
 
+UNUSED = None
+
 class system_error(Exception):
     def __init__(self, message):
         super().__init__(message)
@@ -1546,76 +1612,12 @@ def eval_constant_value(line):
 
 # machine interface
 
-SID_BOOLEAN = None
-
-NID_FALSE = None
-NID_TRUE  = None
-
-SID_BYTE = None
-
-NID_BYTE_0 = None
-NID_BYTE_3 = None
-
 HALFWORDSIZEINBITS = 16
-
-SID_HALF_WORD = None
-
-NID_HALF_WORD_0 = None
-NID_HALF_WORD_1 = None
 
 SINGLEWORDSIZEINBITS = 32
 
-SID_SINGLE_WORD = None
-
-NID_SINGLE_WORD_0 = None
-NID_SINGLE_WORD_1 = None
-NID_SINGLE_WORD_2 = None
-NID_SINGLE_WORD_3 = None
-NID_SINGLE_WORD_4 = None
-NID_SINGLE_WORD_5 = None
-NID_SINGLE_WORD_6 = None
-NID_SINGLE_WORD_7 = None
-NID_SINGLE_WORD_8 = None
-
-NID_SINGLE_WORD_MINUS_1 = None
-NID_SINGLE_WORD_INT_MIN = None
-
 DOUBLEWORDSIZE = 8
 DOUBLEWORDSIZEINBITS = 64
-
-SID_DOUBLE_WORD = None
-
-NID_DOUBLE_WORD_0 = None
-NID_DOUBLE_WORD_1 = None
-NID_DOUBLE_WORD_2 = None
-NID_DOUBLE_WORD_3 = None
-NID_DOUBLE_WORD_4 = None
-NID_DOUBLE_WORD_5 = None
-NID_DOUBLE_WORD_6 = None
-NID_DOUBLE_WORD_7 = None
-NID_DOUBLE_WORD_8 = None
-
-NID_DOUBLE_WORD_MINUS_1 = None
-NID_DOUBLE_WORD_INT_MIN = None
-
-SID_MACHINE_WORD = None
-
-NID_MACHINE_WORD_0 = None
-NID_MACHINE_WORD_1 = None
-NID_MACHINE_WORD_2 = None
-NID_MACHINE_WORD_3 = None
-NID_MACHINE_WORD_4 = None
-NID_MACHINE_WORD_5 = None
-NID_MACHINE_WORD_6 = None
-NID_MACHINE_WORD_7 = None
-NID_MACHINE_WORD_8 = None
-
-NID_MACHINE_WORD_MINUS_1 = None
-NID_MACHINE_WORD_INT_MIN = None
-
-NID_LSB_MASK = None
-
-SID_DOUBLE_MACHINE_WORD = None
 
 def init_machine_interface():
     global SID_BOOLEAN
@@ -1768,30 +1770,22 @@ def init_machine_interface():
 
 MAX_STRING_LENGTH = 128
 
-NID_MAX_STRING_LENGTH = None
+def init_syscall_IDs():
+    global SYSCALL_EXIT
+    global SYSCALL_BRK
+    global SYSCALL_OPENAT
+    global SYSCALL_OPEN
+    global SYSCALL_READ
+    global SYSCALL_WRITE
 
-SYSCALL_EXIT   = 93;
-SYSCALL_BRK    = 214;
-SYSCALL_OPENAT = 56;
-SYSCALL_OPEN   = 1024 # legacy syscall
-SYSCALL_READ   = 63;
-SYSCALL_WRITE  = 64;
-
-NID_EXIT_SYSCALL_ID   = None
-NID_BRK_SYSCALL_ID    = None
-NID_OPENAT_SYSCALL_ID = None
-NID_OPEN_SYSCALL_ID   = None
-NID_READ_SYSCALL_ID   = None
-NID_WRITE_SYSCALL_ID  = None
+    SYSCALL_EXIT   = 93
+    SYSCALL_BRK    = 214
+    SYSCALL_OPENAT = 56
+    SYSCALL_OPEN   = 1024 # legacy syscall
+    SYSCALL_READ   = 63
+    SYSCALL_WRITE  = 64
 
 BYTES_TO_READ = 1
-
-NID_BYTES_TO_READ = None
-
-INPUT_ADDRESS_SPACE = 1
-
-SID_INPUT_ADDRESS = None
-SID_INPUT_BUFFER  = None
 
 def init_kernel_interface():
     global NID_MAX_STRING_LENGTH
@@ -1809,6 +1803,8 @@ def init_kernel_interface():
 
     global SID_INPUT_ADDRESS
     global SID_INPUT_BUFFER
+
+    init_syscall_IDs()
 
     NID_MAX_STRING_LENGTH = new_constant(OP_CONSTD, SID_MACHINE_WORD,
         MAX_STRING_LENGTH, "maximum string length")
@@ -1853,75 +1849,72 @@ def calculate_address_space(number_of_bytes, word_size_in_bits):
 
 # register sorts and specification
 
-SID_REGISTER_ADDRESS = None
+def init_register_IDs():
+    global REG_ZR
+    global REG_RA
+    global REG_SP
+    global REG_GP
+    global REG_TP
+    global REG_T0
+    global REG_T1
+    global REG_T2
+    global REG_S0
+    global REG_S1
+    global REG_A0
+    global REG_A1
+    global REG_A2
+    global REG_A3
+    global REG_A4
+    global REG_A5
+    global REG_A6
+    global REG_A7
+    global REG_S2
+    global REG_S3
+    global REG_S4
+    global REG_S5
+    global REG_S6
+    global REG_S7
+    global REG_S8
+    global REG_S9
+    global REG_S10
+    global REG_S11
+    global REG_T3
+    global REG_T4
+    global REG_T5
+    global REG_T6
 
-REG_ZR  = 0
-REG_RA  = 1
-REG_SP  = 2
-REG_GP  = 3
-REG_TP  = 4
-REG_T0  = 5
-REG_T1  = 6
-REG_T2  = 7
-REG_S0  = 8
-REG_S1  = 9
-REG_A0  = 10
-REG_A1  = 11
-REG_A2  = 12
-REG_A3  = 13
-REG_A4  = 14
-REG_A5  = 15
-REG_A6  = 16
-REG_A7  = 17
-REG_S2  = 18
-REG_S3  = 19
-REG_S4  = 20
-REG_S5  = 21
-REG_S6  = 22
-REG_S7  = 23
-REG_S8  = 24
-REG_S9  = 25
-REG_S10 = 26
-REG_S11 = 27
-REG_T3  = 28
-REG_T4  = 29
-REG_T5  = 30
-REG_T6  = 31
-
-NID_ZR  = None
-NID_RA  = None
-NID_SP  = None
-NID_GP  = None
-NID_TP  = None
-NID_T0  = None
-NID_T1  = None
-NID_T2  = None
-NID_S0  = None
-NID_S1  = None
-NID_A0  = None
-NID_A1  = None
-NID_A2  = None
-NID_A3  = None
-NID_A4  = None
-NID_A5  = None
-NID_A6  = None
-NID_A7  = None
-NID_S2  = None
-NID_S3  = None
-NID_S4  = None
-NID_S5  = None
-NID_S6  = None
-NID_S7  = None
-NID_S8  = None
-NID_S9  = None
-NID_S10 = None
-NID_S11 = None
-NID_T3  = None
-NID_T4  = None
-NID_T5  = None
-NID_T6  = None
-
-SID_REGISTER_STATE = None
+    REG_ZR  = 0
+    REG_RA  = 1
+    REG_SP  = 2
+    REG_GP  = 3
+    REG_TP  = 4
+    REG_T0  = 5
+    REG_T1  = 6
+    REG_T2  = 7
+    REG_S0  = 8
+    REG_S1  = 9
+    REG_A0  = 10
+    REG_A1  = 11
+    REG_A2  = 12
+    REG_A3  = 13
+    REG_A4  = 14
+    REG_A5  = 15
+    REG_A6  = 16
+    REG_A7  = 17
+    REG_S2  = 18
+    REG_S3  = 19
+    REG_S4  = 20
+    REG_S5  = 21
+    REG_S6  = 22
+    REG_S7  = 23
+    REG_S8  = 24
+    REG_S9  = 25
+    REG_S10 = 26
+    REG_S11 = 27
+    REG_T3  = 28
+    REG_T4  = 29
+    REG_T5  = 30
+    REG_T6  = 31
 
 def init_register_file_sorts():
     global SID_REGISTER_ADDRESS
@@ -1960,6 +1953,8 @@ def init_register_file_sorts():
     global NID_T6
 
     global SID_REGISTER_STATE
+
+    init_register_IDs()
 
     SID_REGISTER_ADDRESS = new_bitvec(5, "5-bit register address")
 
@@ -2025,78 +2020,27 @@ def get_shamt(value_nid):
 
 VIRTUAL_ADDRESS_SPACE = 32 # number of bits in virtual addresses
 
-SID_VIRTUAL_ADDRESS = None
-
-NID_VIRTUAL_ADDRESS_0 = None
-NID_VIRTUAL_ADDRESS_1 = None
-NID_VIRTUAL_ADDRESS_2 = None
-NID_VIRTUAL_ADDRESS_3 = None
-NID_VIRTUAL_ADDRESS_4 = None
-NID_VIRTUAL_ADDRESS_5 = None
-NID_VIRTUAL_ADDRESS_6 = None
-NID_VIRTUAL_ADDRESS_7 = None
-NID_VIRTUAL_ADDRESS_8 = None
-
-NID_VIRTUAL_HALF_WORD_SIZE   = None
-NID_VIRTUAL_SINGLE_WORD_SIZE = None
-NID_VIRTUAL_DOUBLE_WORD_SIZE = None
-
-NID_VIRTUAL_HALF_WORD_SIZE_MINUS_1   = None
-NID_VIRTUAL_SINGLE_WORD_SIZE_MINUS_1 = None
-NID_VIRTUAL_DOUBLE_WORD_SIZE_MINUS_1 = None
-
-NID_HIGHEST_VIRTUAL_ADDRESS = None
-
 # code segment
 
 CODEWORDSIZEINBITS = 32
-
-SID_CODE_WORD = None
-
-NID_CODE_WORD_0 = None
-
-CODE_ADDRESS_SPACE = 0 # number of bits in code segment addresses
-
-SID_CODE_ADDRESS = None
-SID_CODE_STATE   = None
 
 max_code_size = 0
 
 code_start = 0
 code_size  = 0
 
-NID_CODE_START = None
-NID_CODE_END   = None
-
 # main memory
 
 MEMORYWORDSIZEINBITS = 64
 
-SID_MEMORY_WORD = None
-
-NID_MEMORY_WORD_0 = None
-
 # data segment
-
-DATA_ADDRESS_SPACE = 1 # number of bits in data segment addresses
-
-SID_DATA_ADDRESS = None
-SID_DATA_STATE   = None
 
 max_data_size = 0
 
 data_start = 0
 data_size  = 0
 
-NID_DATA_START = None
-NID_DATA_END   = None
-
 # heap segment
-
-HEAP_ADDRESS_SPACE = 1 # number of bits in heap segment addresses
-
-SID_HEAP_ADDRESS = None
-SID_HEAP_STATE   = None
 
 heap_initial_size = 0
 heap_allowance    = 4096 # must be multiple of WORDSIZE
@@ -2104,40 +2048,13 @@ heap_allowance    = 4096 # must be multiple of WORDSIZE
 heap_start = 0
 heap_size  = 0
 
-NID_HEAP_START = None
-NID_HEAP_END   = None
-
 # stack segment
-
-STACK_ADDRESS_SPACE = 1 # number of bits in stack segment addresses
-
-SID_STACK_ADDRESS = None
-SID_STACK_STATE   = None
 
 stack_initial_size = 0
 stack_allowance    = 2048 # must be multiple of WORDSIZE > 0
 
 stack_start = 0
 stack_size  = 0
-
-NID_STACK_START = None
-NID_STACK_END   = None
-
-# bit masks and factors
-
-NID_HALF_WORD_SIZE_MASK   = None
-NID_SINGLE_WORD_SIZE_MASK = None
-NID_DOUBLE_WORD_SIZE_MASK = None
-
-NID_BYTE_MASK        = None
-NID_HALF_WORD_MASK   = None
-NID_SINGLE_WORD_MASK = None
-
-NID_SINGLE_WORD_SIZE_MINUS_HALF_WORD_SIZE   = None
-NID_DOUBLE_WORD_SIZE_MINUS_HALF_WORD_SIZE   = None
-NID_DOUBLE_WORD_SIZE_MINUS_SINGLE_WORD_SIZE = None
-
-NID_BYTE_SIZE_IN_BASE_BITS = None
 
 def init_memory_sorts():
     global VIRTUAL_ADDRESS_SPACE
@@ -2443,877 +2360,820 @@ def store_if_in_segment(vaddr_nid, store_nid, segment_nid):
         segment_nid,
         "store at virtual address if in segment")
 
-# instructions
+# instruction codes
 
-SID_INSTRUCTION_WORD = None
+def init_instruction_codes():
+    global OP_LOAD
+    global OP_IMM
+    global OP_STORE
+    global OP_OP
+    global OP_LUI
+    global OP_BRANCH
+    global OP_JALR
+    global OP_JAL
+    global OP_SYSTEM
 
-NID_INSTRUCTION_WORD_SIZE_MASK = None
+    global F3_NOP
+    global F3_ADDI
+    global F3_ADD
+    global F3_SUB
+    global F3_MUL
+    global F3_DIVU
+    global F3_REMU
+    global F3_SLTU
+    global F3_LD
+    global F3_SD
+    global F3_LW
+    global F3_SW
+    global F3_BEQ
+    global F3_JALR
+    global F3_ECALL
 
-# RISC-U codes
+    global F7_ADD
+    global F7_MUL
+    global F7_SUB
+    global F7_DIVU
+    global F7_REMU
+    global F7_SLTU
 
-OP_LOAD   = 3   # 0000011, I format (LD,LW)
-OP_IMM    = 19  # 0010011, I format (ADDI, NOP)
-OP_STORE  = 35  # 0100011, S format (SD,SW)
-OP_OP     = 51  # 0110011, R format (ADD, SUB, MUL, DIVU, REMU, SLTU)
-OP_LUI    = 55  # 0110111, U format (LUI)
-OP_BRANCH = 99  # 1100011, B format (BEQ)
-OP_JALR   = 103 # 1100111, I format (JALR)
-OP_JAL    = 111 # 1101111, J format (JAL)
-OP_SYSTEM = 115 # 1110011, I format (ECALL)
+    global F12_ECALL
 
-F3_NOP   = 0 # 000
-F3_ADDI  = 0 # 000
-F3_ADD   = 0 # 000
-F3_SUB   = 0 # 000
-F3_MUL   = 0 # 000
-F3_DIVU  = 5 # 101
-F3_REMU  = 7 # 111
-F3_SLTU  = 3 # 011
-F3_LD    = 3 # 011
-F3_SD    = 3 # 011
-F3_LW    = 2 # 010
-F3_SW    = 2 # 010
-F3_BEQ   = 0 # 000
-F3_JALR  = 0 # 000
-F3_ECALL = 0 # 000
+    global OP_AUIPC
 
-F7_ADD  = 0  # 0000000
-F7_MUL  = 1  # 0000001
-F7_SUB  = 32 # 0100000
-F7_DIVU = 1  # 0000001
-F7_REMU = 1  # 0000001
-F7_SLTU = 0  # 0000000
+    global F3_BNE
+    global F3_BLT
+    global F3_BGE
+    global F3_BLTU
+    global F3_BGEU
 
-F12_ECALL = 0 # 000000000000
+    global F3_LB
+    global F3_LH
+    global F3_LBU
+    global F3_LHU
 
-SID_OPCODE = None
+    global F3_SB
+    global F3_SH
 
-NID_OP_LOAD   = None
-NID_OP_IMM    = None
-NID_OP_STORE  = None
-NID_OP_OP     = None
-NID_OP_LUI    = None
-NID_OP_BRANCH = None
-NID_OP_JALR   = None
-NID_OP_JAL    = None
-NID_OP_SYSTEM = None
+    global F3_SLL
+    global F3_SLT
+    global F3_XOR
+    global F3_SRL
+    global F3_SRA
+    global F3_OR
+    global F3_AND
 
-SID_FUNCT3 = None
+    global F6_SLL_SRL
+    global F6_SRA
 
-NID_F3_NOP         = None
-NID_F3_ADDI        = None
-NID_F3_ADD_SUB_MUL = None
-NID_F3_DIVU        = None
-NID_F3_REMU        = None
-NID_F3_SLTU        = None
-NID_F3_LD          = None
-NID_F3_SD          = None
-NID_F3_LW          = None
-NID_F3_SW          = None
-NID_F3_BEQ         = None
-NID_F3_JALR        = None
-NID_F3_ECALL       = None
+    global OP_IMM_32
+    global OP_OP_32
 
-SID_FUNCT7 = None
+    global F3_LWU
 
-NID_F7_ADD  = None
-NID_F7_MUL  = None
-NID_F7_SUB  = None
-NID_F7_DIVU = None
-NID_F7_REMU = None
-NID_F7_SLTU = None
+    global F3_MULH
+    global F3_MULHSU
+    global F3_MULHU
+    global F3_DIV
+    global F3_REM
 
-NID_F7_MUL_DIV_REM = None
+    # RISC-U codes
 
-SID_FUNCT12 = None
+    OP_LOAD   = 3   # 0000011, I format (LD,LW)
+    OP_IMM    = 19  # 0010011, I format (ADDI, NOP)
+    OP_STORE  = 35  # 0100011, S format (SD,SW)
+    OP_OP     = 51  # 0110011, R format (ADD, SUB, MUL, DIVU, REMU, SLTU)
+    OP_LUI    = 55  # 0110111, U format (LUI)
+    OP_BRANCH = 99  # 1100011, B format (BEQ)
+    OP_JALR   = 103 # 1100111, I format (JALR)
+    OP_JAL    = 111 # 1101111, J format (JAL)
+    OP_SYSTEM = 115 # 1110011, I format (ECALL)
 
-NID_F12_ECALL = None
+    F3_NOP   = 0 # 000
+    F3_ADDI  = 0 # 000
+    F3_ADD   = 0 # 000
+    F3_SUB   = 0 # 000
+    F3_MUL   = 0 # 000
+    F3_DIVU  = 5 # 101
+    F3_REMU  = 7 # 111
+    F3_SLTU  = 3 # 011
+    F3_LD    = 3 # 011
+    F3_SD    = 3 # 011
+    F3_LW    = 2 # 010
+    F3_SW    = 2 # 010
+    F3_BEQ   = 0 # 000
+    F3_JALR  = 0 # 000
+    F3_ECALL = 0 # 000
 
-NID_ECALL_I = None
+    F7_ADD  = 0  # 0000000
+    F7_MUL  = 1  # 0000001
+    F7_SUB  = 32 # 0100000
+    F7_DIVU = 1  # 0000001
+    F7_REMU = 1  # 0000001
+    F7_SLTU = 0  # 0000000
 
-# immediate sorts
+    F12_ECALL = 0 # 000000000000
 
-SID_1_BIT_IMM  = None
-SID_4_BIT_IMM  = None
-SID_5_BIT_IMM  = None
-SID_6_BIT_IMM  = None
-SID_8_BIT_IMM  = None
-SID_10_BIT_IMM = None
-SID_11_BIT_IMM = None
-SID_12_BIT_IMM = None
-SID_13_BIT_IMM = None
-SID_20_BIT_IMM = None
-SID_21_BIT_IMM = None
-SID_32_BIT_IMM = None
+    # RV32I codes missing in RISC-U
 
-NID_1_BIT_IMM_0  = None
-NID_12_BIT_IMM_0 = None
+    OP_AUIPC = 23 # 0010111, U format (AUIPC)
 
-# RISC-U instruction switches
+    F3_BNE  = 1 # 001
+    F3_BLT  = 4 # 100
+    F3_BGE  = 5 # 101
+    F3_BLTU = 6 # 110
+    F3_BGEU = 7 # 111
+
+    F3_LB  = 0 # 000
+    F3_LH  = 1 # 001
+    F3_LBU = 4 # 100
+    F3_LHU = 5 # 101
+
+    F3_SB = 0 # 000
+    F3_SH = 1 # 001
+
+    F3_SLL = 1 # 001
+    F3_SLT = 2 # 010
+    F3_XOR = 4 # 100
+    F3_SRL = 5 # 101
+    F3_SRA = 5 # 101
+    F3_OR  = 6 # 110
+    F3_AND = 7 # 111
+
+    # RV64I codes missing in RISC-U
+
+    F6_SLL_SRL = 0  # 000000
+    F6_SRA     = 16 # 010000
+
+    OP_IMM_32 = 27 # 0011011, I format
+    OP_OP_32  = 59 # 0111011, I format
+
+    F3_LWU = 6 # 110
+
+    # RV32M codes missing in RISC-U
+
+    F3_MULH   = 1 # 001
+    F3_MULHSU = 2 # 010
+    F3_MULHU  = 3 # 011
+    F3_DIV    = 4 # 100
+    F3_REM    = 6 # 110
 
 RISCUONLY = False # restrict modeling to RISC-U only
 
-SID_INSTRUCTION_ID = None
-
-NID_DISABLED = None
-
-NID_LUI  = None
-NID_ADDI = None
-
-NID_ADD  = None
-NID_SUB  = None
-NID_MUL  = None
-NID_DIVU = None
-NID_REMU = None
-NID_SLTU = None
-
-NID_LD = None
-NID_SD = None
-NID_LW = None
-NID_SW = None
-
-NID_BEQ  = None
-NID_JAL  = None
-NID_JALR = None
-
-NID_ECALL = None
-
-# RV32I codes missing in RISC-U
-
-OP_AUIPC = 23 # 0010111, U format (AUIPC)
-
-F3_BNE  = 1 # 001
-F3_BLT  = 4 # 100
-F3_BGE  = 5 # 101
-F3_BLTU = 6 # 110
-F3_BGEU = 7 # 111
-
-F3_LB  = 0 # 000
-F3_LH  = 1 # 001
-F3_LBU = 4 # 100
-F3_LHU = 5 # 101
-
-F3_SB = 0 # 000
-F3_SH = 1 # 001
-
-F3_SLL = 1 # 001
-F3_SLT = 2 # 010
-F3_XOR = 4 # 100
-F3_SRL = 5 # 101
-F3_SRA = 5 # 101
-F3_OR  = 6 # 110
-F3_AND = 7 # 111
-
-NID_OP_AUIPC = None
-
-NID_F3_BNE  = None
-NID_F3_BLT  = None
-NID_F3_BGE  = None
-NID_F3_BLTU = None
-NID_F3_BGEU = None
-
-NID_F3_LB  = None
-NID_F3_LH  = None
-NID_F3_LBU = None
-NID_F3_LHU = None
-
-NID_F3_SB = None
-NID_F3_SH = None
-
-NID_F3_SLL = None
-NID_F3_SLT = None
-NID_F3_XOR = None
-NID_F3_SRL = None
-NID_F3_SRA = None
-NID_F3_OR  = None
-NID_F3_AND = None
-
-NID_F7_ADD_SLT_XOR_OR_AND_SLL_SRL = None
-NID_F7_SUB_SRA                    = None
-
-NID_F7_SLL_SRL_ILLEGAL = None
-NID_F7_SRA_ILLEGAL     = None
-
-# RV32I instruction switches
-
-NID_AUIPC = None
-
-NID_BNE  = None
-NID_BLT  = None
-NID_BGE  = None
-NID_BLTU = None
-NID_BGEU = None
-
-NID_LB  = None
-NID_LH  = None
-NID_LBU = None
-NID_LHU = None
-
-NID_SB = None
-NID_SH = None
-
-NID_SLTI  = None
-NID_SLTIU = None
-NID_XORI  = None
-NID_ORI   = None
-NID_ANDI  = None
-
-NID_SLLI = None
-NID_SRLI = None
-NID_SRAI = None
-
-NID_SLL = None
-NID_SLT = None
-NID_XOR = None
-NID_SRL = None
-NID_SRA = None
-
-NID_OR  = None
-NID_AND = None
-
-# RV64I codes missing in RISC-U
-
-SID_FUNCT6 = None
-
-F6_SLL_SRL = 0  # 000000
-F6_SRA     = 16 # 010000
-
-NID_F6_SLL_SRL = None
-NID_F6_SRA     = None
-
-OP_IMM_32 = 27 # 0011011, I format
-OP_OP_32  = 59 # 0111011, I format
-
-F3_LWU = 6 # 110
-
-NID_OP_IMM_32 = None
-NID_OP_OP_32  = None
-
-NID_F3_LWU = None
-
-# RV64I instruction switches
-
-NID_LWU = None
-
-NID_ADDIW = None
-NID_SLLIW = None
-NID_SRLIW = None
-NID_SRAIW = None
-
-NID_ADDW = None
-NID_SUBW = None
-NID_SLLW = None
-NID_SRLW = None
-NID_SRAW = None
-
-# RV32M codes missing in RISC-U
-
-F3_MULH   = 1 # 001
-F3_MULHSU = 2 # 010
-F3_MULHU  = 3 # 011
-F3_DIV    = 4 # 100
-F3_REM    = 6 # 110
-
-NID_F3_MULH   = None
-NID_F3_MULHSU = None
-NID_F3_MULHU  = None
-NID_F3_DIV    = None
-NID_F3_REM    = None
-
-# RV32M instruction switches
-
 RV32M = True # RV32M support
-
-NID_MULH   = None
-NID_MULHSU = None
-NID_MULHU  = None
-NID_DIV    = None
-NID_REM    = None
-
-# RV64M instruction switches
-
 RV64M = True # RV64M support
 
-NID_MULW  = None
-NID_DIVW  = None
-NID_DIVUW = None
-NID_REMW  = None
-NID_REMUW = None
+# compressed instruction codes
 
-# RVC codes
+def init_compressed_instruction_codes():
+    global F3_C_LI
+    global F3_C_LUI_ADDI16SP
 
-SID_OPCODE_C = None
+    global F3_C_ADDI
+    global F3_C_ADDIW_JAL
 
-NID_OP_C0 = None
-NID_OP_C1 = None
-NID_OP_C2 = None
-NID_OP_C3 = None
+    global F3_C_ADDI4SPN
 
-F3_C_LI           = 2 # 010
-F3_C_LUI_ADDI16SP = 3 # 011
+    global F3_C_SLLI
+    global F3_C_SRLI_SRAI_ANDI
 
-NID_F3_C_LI           = None
-NID_F3_C_LUI_ADDI16SP = None
+    global F2_C_SRLI
+    global F2_C_SRAI
+    global F2_C_ANDI
 
-F3_C_ADDI      = 0 # 000
-F3_C_ADDIW_JAL = 1 # 001
+    global F6_C_SUB_XOR_OR_AND
+    global F6_C_ADDW_SUBW
 
-NID_F3_C_ADDI      = None
-NID_F3_C_ADDIW_JAL = None
+    global F2_C_SUB_SUBW
+    global F2_C_XOR_ADDW
+    global F2_C_OR
+    global F2_C_AND
 
-F3_C_ADDI4SPN = 0 # 000
+    global F3_C_LWSP_LW
+    global F3_C_LDSP_LD
 
-NID_F3_C_ADDI4SPN = None
+    global F3_C_SWSP_SW
+    global F3_C_SDSP_SD
 
-F3_C_SLLI           = 0 # 000
-F3_C_SRLI_SRAI_ANDI = 4 # 100
+    global F3_C_BEQZ
+    global F3_C_BNEZ
 
-NID_F3_C_SLLI           = None
-NID_F3_C_SRLI_SRAI_ANDI = None
+    global F3_C_J
 
-SID_FUNCT2 = None
+    global F4_C_MV_JR
+    global F4_C_ADD_JALR
 
-F2_C_SRLI = 0 # 00
-F2_C_SRAI = 1 # 01
-F2_C_ANDI = 2 # 10
+    # RVC codes
 
-NID_F2_C_SRLI = None
-NID_F2_C_SRAI = None
-NID_F2_C_ANDI = None
+    F3_C_LI           = 2 # 010
+    F3_C_LUI_ADDI16SP = 3 # 011
 
-F6_C_SUB_XOR_OR_AND = 35 # 100011
-F6_C_ADDW_SUBW      = 39 # 100111
+    F3_C_ADDI      = 0 # 000
+    F3_C_ADDIW_JAL = 1 # 001
 
-NID_F6_C_SUB_XOR_OR_AND = None
-NID_F6_C_ADDW_SUBW      = None
+    F3_C_ADDI4SPN = 0 # 000
 
-F2_C_SUB_SUBW = 0 # 00
-F2_C_XOR_ADDW = 1 # 01
-F2_C_OR       = 2 # 10
-F2_C_AND      = 3 # 11
+    F3_C_SLLI           = 0 # 000
+    F3_C_SRLI_SRAI_ANDI = 4 # 100
 
-NID_F2_C_SUB_SUBW = None
-NID_F2_C_XOR_ADDW = None
-NID_F2_C_OR       = None
-NID_F2_C_AND      = None
+    F2_C_SRLI = 0 # 00
+    F2_C_SRAI = 1 # 01
+    F2_C_ANDI = 2 # 10
 
-F3_C_LWSP_LW = 2 # 010
-F3_C_LDSP_LD = 3 # 011
+    F6_C_SUB_XOR_OR_AND = 35 # 100011
+    F6_C_ADDW_SUBW      = 39 # 100111
 
-NID_F3_C_LWSP_LW = None
-NID_F3_C_LDSP_LD = None
+    F2_C_SUB_SUBW = 0 # 00
+    F2_C_XOR_ADDW = 1 # 01
+    F2_C_OR       = 2 # 10
+    F2_C_AND      = 3 # 11
 
-F3_C_SWSP_SW = 6 # 110
-F3_C_SDSP_SD = 7 # 111
+    F3_C_LWSP_LW = 2 # 010
+    F3_C_LDSP_LD = 3 # 011
 
-NID_F3_C_SWSP_SW = None
-NID_F3_C_SDSP_SD = None
+    F3_C_SWSP_SW = 6 # 110
+    F3_C_SDSP_SD = 7 # 111
 
-F3_C_BEQZ = 6 # 110
-F3_C_BNEZ = 7 # 111
+    F3_C_BEQZ = 6 # 110
+    F3_C_BNEZ = 7 # 111
 
-NID_F3_C_BEQZ = None
-NID_F3_C_BNEZ = None
+    F3_C_J = 5 # 101
 
-F3_C_J = 5 # 101
-
-NID_F3_C_J = None
-
-SID_FUNCT4 = None
-
-F4_C_MV_JR    = 8 # 1000
-F4_C_ADD_JALR = 9 # 1001
-
-NID_F4_C_MV_JR    = None
-NID_F4_C_ADD_JALR = None
-
-# offset sorts
-
-SID_1_BIT_OFFSET  = None
-SID_2_BIT_OFFSET  = None
-SID_3_BIT_OFFSET  = None
-SID_4_BIT_OFFSET  = None
-SID_5_BIT_OFFSET  = None
-SID_6_BIT_OFFSET  = None
-SID_7_BIT_OFFSET  = None
-SID_8_BIT_OFFSET  = None
-SID_9_BIT_OFFSET  = None
-SID_10_BIT_OFFSET = None
-SID_11_BIT_OFFSET = None
-SID_12_BIT_OFFSET = None
-SID_17_BIT_OFFSET = None
-SID_18_BIT_OFFSET = None
-
-NID_1_BIT_OFFSET_0  = None
-NID_1_BIT_OFFSET_1  = None
-NID_2_BIT_OFFSET_0  = None
-NID_2_BIT_OFFSET_1  = None
-NID_3_BIT_OFFSET_0  = None
-NID_4_BIT_OFFSET_0  = None
-NID_12_BIT_OFFSET_0 = None
-
-SID_COMPRESSED_REGISTER_ADDRESS = None
-
-# RVC instruction switches
+    F4_C_MV_JR    = 8 # 1000
+    F4_C_ADD_JALR = 9 # 1001
 
 RVC = True # RVC support
 
-NID_C_LI  = None
-NID_C_LUI = None
-
-NID_C_ADDI     = None
-NID_C_ADDIW    = None
-NID_C_ADDI16SP = None
-
-NID_C_ADDI4SPN = None
-
-NID_C_ANDI = None
-
-NID_C_SLLI = None
-NID_C_SRLI = None
-NID_C_SRAI = None
-
-NID_C_MV   = None
-NID_C_ADD  = None
-
-NID_C_SUB  = None
-NID_C_XOR  = None
-NID_C_OR   = None
-NID_C_AND  = None
-
-NID_C_ADDW = None
-NID_C_SUBW = None
-
-NID_C_LWSP = None
-NID_C_LW   = None
-
-NID_C_LDSP = None
-NID_C_LD   = None
-
-NID_C_SWSP = None
-NID_C_SW   = None
-
-NID_C_SDSP = None
-NID_C_SD   = None
-
-NID_C_BEQZ = None
-NID_C_BNEZ = None
-
-NID_C_J   = None
-NID_C_JAL = None
-
-NID_C_JR   = None
-NID_C_JALR = None
-
 # instruction IDs
 
-ID_UNKNOWN = 0
+def init_instruction_IDs():
+    global ID_UNKNOWN
 
-ID_ECALL = 1
+    global ID_ECALL
 
-# R-type
+    global ID_ADD
+    global ID_SUB
+    global ID_SLL
+    global ID_SLT
+    global ID_SLTU
+    global ID_XOR
+    global ID_SRL
+    global ID_SRA
+    global ID_OR
+    global ID_AND
 
-ID_ADD  = 2
-ID_SUB  = 3
-ID_SLL  = 4
-ID_SLT  = 5
-ID_SLTU = 6
-ID_XOR  = 7
-ID_SRL  = 8
-ID_SRA  = 9
-ID_OR   = 10
-ID_AND  = 11
+    global ID_ADDW
+    global ID_SUBW
+    global ID_SLLW
+    global ID_SRLW
+    global ID_SRAW
 
-ID_ADDW = 12
-ID_SUBW = 13
-ID_SLLW = 14
-ID_SRLW = 15
-ID_SRAW = 16
+    global ID_MUL
+    global ID_MULH
+    global ID_MULHSU
+    global ID_MULHU
+    global ID_DIV
+    global ID_DIVU
+    global ID_REM
+    global ID_REMU
 
-ID_MUL    = 17
-ID_MULH   = 18
-ID_MULHSU = 19
-ID_MULHU  = 20
-ID_DIV    = 21
-ID_DIVU   = 22
-ID_REM    = 23
-ID_REMU   = 24
+    global ID_MULW
+    global ID_DIVW
+    global ID_DIVUW
+    global ID_REMW
+    global ID_REMUW
 
-ID_MULW  = 25
-ID_DIVW  = 26
-ID_DIVUW = 27
-ID_REMW  = 28
-ID_REMUW = 29
+    global ID_JALR
 
-# I-type
+    global ID_LB
+    global ID_LH
+    global ID_LW
+    global ID_LBU
+    global ID_LHU
+    global ID_LWU
+    global ID_LD
 
-ID_JALR = 30
+    global ID_ADDI
+    global ID_SLTI
+    global ID_SLTIU
+    global ID_XORI
+    global ID_ORI
+    global ID_ANDI
 
-ID_LB  = 31
-ID_LH  = 32
-ID_LW  = 33
-ID_LBU = 34
-ID_LHU = 35
-ID_LWU = 36
-ID_LD  = 37
+    global ID_ADDIW
 
-ID_ADDI  = 38
-ID_SLTI  = 39
-ID_SLTIU = 40
-ID_XORI  = 41
-ID_ORI   = 42
-ID_ANDI  = 43
+    global ID_SLLI
+    global ID_SRLI
+    global ID_SRAI
 
-ID_ADDIW = 44
+    global ID_SLLIW
+    global ID_SRLIW
+    global ID_SRAIW
 
-ID_SLLI = 45
-ID_SRLI = 46
-ID_SRAI = 47
+    global ID_SB
+    global ID_SH
+    global ID_SW
+    global ID_SD
 
-ID_SLLIW = 48
-ID_SRLIW = 49
-ID_SRAIW = 50
+    global ID_BEQ
+    global ID_BNE
+    global ID_BLT
+    global ID_BGE
+    global ID_BLTU
+    global ID_BGEU
 
-# S-type
+    global ID_LUI
+    global ID_AUIPC
 
-ID_SB = 51
-ID_SH = 52
-ID_SW = 53
-ID_SD = 54
+    global ID_JAL
 
-# SB-type
+    global ID_C_MV
+    global ID_C_ADD
 
-ID_BEQ  = 55
-ID_BNE  = 56
-ID_BLT  = 57
-ID_BGE  = 58
-ID_BLTU = 59
-ID_BGEU = 60
+    global ID_C_JR
+    global ID_C_JALR
 
-# U-type
+    global ID_C_LI
+    global ID_C_LUI
 
-ID_LUI   = 61
-ID_AUIPC = 62
+    global ID_C_ADDI
+    global ID_C_ADDIW
+    global ID_C_ADDI16SP
 
-# UJ-type
+    global ID_C_ADDI4SPN
 
-ID_JAL = 63
+    global ID_C_SLLI
 
-# compressed instruction IDs
+    global ID_C_LWSP
+    global ID_C_LDSP
 
-# CR-type
+    global ID_C_LW
+    global ID_C_LD
 
-ID_C_MV  = 64
-ID_C_ADD = 65
+    global ID_C_SW
+    global ID_C_SD
 
-ID_C_JR   = 66
-ID_C_JALR = 67
+    global ID_C_SUB
+    global ID_C_XOR
+    global ID_C_OR
+    global ID_C_AND
 
-# CI-type
+    global ID_C_ADDW
+    global ID_C_SUBW
 
-ID_C_LI  = 68
-ID_C_LUI = 69
+    global ID_C_SWSP
+    global ID_C_SDSP
 
-ID_C_ADDI     = 70
-ID_C_ADDIW    = 71
-ID_C_ADDI16SP = 72
+    global ID_C_BEQZ
+    global ID_C_BNEZ
 
-# CIW-type
+    global ID_C_ANDI
 
-ID_C_ADDI4SPN = 73
+    global ID_C_SRLI
+    global ID_C_SRAI
 
-# CI-type
+    global ID_C_J
+    global ID_C_JAL
 
-ID_C_SLLI = 74
+    global ID_P_NOP
+    global ID_P_RET
 
-ID_C_LWSP = 75
-ID_C_LDSP = 76
+    global ID_P_LI
 
-# CL-type
+    global ID_P_MV
+    global ID_P_NOT
+    global ID_P_SEXT_W
+    global ID_P_SEQZ
+    global ID_P_SLTZ
+    global ID_P_ZEXT_B
+    global ID_P_NEG
+    global ID_P_NEGW
+    global ID_P_SNEZ
+    global ID_P_SGTZ
 
-ID_C_LW = 77
-ID_C_LD = 78
+    global ID_P_BEQZ
+    global ID_P_BNEZ
+    global ID_P_BGEZ
+    global ID_P_BLTZ
+    global ID_P_BLEZ
+    global ID_P_BGTZ
 
-# CS-type
+    global ID_P_J
+    global ID_P_JAL
 
-ID_C_SW = 79
-ID_C_SD = 80
+    global ID_P_JR
+    global ID_P_JALR
 
-ID_C_SUB = 81
-ID_C_XOR = 82
-ID_C_OR  = 83
-ID_C_AND = 84
+    global RISC_V_MNEMONICS
 
-ID_C_ADDW = 85
-ID_C_SUBW = 86
+    ID_UNKNOWN = 0
 
-# CSS-type
-
-ID_C_SWSP = 87
-ID_C_SDSP = 88
-
-# CB-type
-
-ID_C_BEQZ = 89
-ID_C_BNEZ = 90
-
-ID_C_ANDI = 91
-
-ID_C_SRLI = 92
-ID_C_SRAI = 93
-
-# CJ-type
-
-ID_C_J   = 94
-ID_C_JAL = 95
-
-# pseudoinstruction IDs
-
-# No operands
-
-ID_P_NOP = 96
-ID_P_RET = 97
-
-# rd,I_imm
-
-ID_P_LI = 98
-
-# rd,rsx
-
-ID_P_MV     = 99  # rs1 or rs2
-ID_P_NOT    = 100 # rs1
-ID_P_SEXT_W = 101 # rs1
-ID_P_SEQZ   = 102 # rs1
-ID_P_SLTZ   = 103 # rs1
-ID_P_ZEXT_B = 104 # rs1
-ID_P_NEG    = 105 # rs2
-ID_P_NEGW   = 106 # rs2
-ID_P_SNEZ   = 107 # rs2
-ID_P_SGTZ   = 108 # rs2
-
-# branch type (rsx,pc+SB_imm <SB_imm>)
-
-ID_P_BEQZ = 109 # rs1
-ID_P_BNEZ = 110 # rs1
-ID_P_BGEZ = 111 # rs1
-ID_P_BLTZ = 112 # rs1
-ID_P_BLEZ = 113 # rs2
-ID_P_BGTZ = 114 # rs2
-
-# jump type (pc + UJ_imm <UJ_imm>)
-
-ID_P_J   = 115
-ID_P_JAL = 116
-
-# jump register type (immx(rs1))
-
-ID_P_JR   = 117 # I_imm or 0
-ID_P_JALR = 118 # I_imm or 0
-
-RISC_V_MNEMONICS = {
-    ID_UNKNOWN: "unknown RISC-V instruction",
-
-    ID_ECALL: 'ecall',
+    ID_ECALL = 1
 
     # R-type
 
-    ID_ADD:  'add',
-    ID_SUB:  'sub',
-    ID_SLL:  'sll',
-    ID_SLT:  'slt',
-    ID_SLTU: 'sltu',
-    ID_XOR:  'xor',
-    ID_SRL:  'srl',
-    ID_SRA:  'sra',
-    ID_OR:   'or',
-    ID_AND:  'and',
+    ID_ADD  = 2
+    ID_SUB  = 3
+    ID_SLL  = 4
+    ID_SLT  = 5
+    ID_SLTU = 6
+    ID_XOR  = 7
+    ID_SRL  = 8
+    ID_SRA  = 9
+    ID_OR   = 10
+    ID_AND  = 11
 
-    ID_ADDW: 'addw',
-    ID_SUBW: 'subw',
-    ID_SLLW: 'sllw',
-    ID_SRLW: 'srlw',
-    ID_SRAW: 'sraw',
+    ID_ADDW = 12
+    ID_SUBW = 13
+    ID_SLLW = 14
+    ID_SRLW = 15
+    ID_SRAW = 16
 
-    ID_MUL:    'mul',
-    ID_MULH:   'mulh',
-    ID_MULHSU: 'mulhsu',
-    ID_MULHU:  'mulhu',
-    ID_DIV:    'div',
-    ID_DIVU:   'divu',
-    ID_REM:    'rem',
-    ID_REMU:   'remu',
+    ID_MUL    = 17
+    ID_MULH   = 18
+    ID_MULHSU = 19
+    ID_MULHU  = 20
+    ID_DIV    = 21
+    ID_DIVU   = 22
+    ID_REM    = 23
+    ID_REMU   = 24
 
-    ID_MULW:  'mulw',
-    ID_DIVW:  'divw',
-    ID_DIVUW: 'divuw',
-    ID_REMW:  'remw',
-    ID_REMUW: 'remuw',
+    ID_MULW  = 25
+    ID_DIVW  = 26
+    ID_DIVUW = 27
+    ID_REMW  = 28
+    ID_REMUW = 29
 
     # I-type
 
-    ID_JALR: 'jalr',
+    ID_JALR = 30
 
-    ID_LB:  'lb',
-    ID_LH:  'lh',
-    ID_LW:  'lw',
-    ID_LBU: 'lbu',
-    ID_LHU: 'lhu',
-    ID_LWU: 'lwu',
-    ID_LD:  'ld',
+    ID_LB  = 31
+    ID_LH  = 32
+    ID_LW  = 33
+    ID_LBU = 34
+    ID_LHU = 35
+    ID_LWU = 36
+    ID_LD  = 37
 
-    ID_ADDI:  'addi',
-    ID_SLTI:  'slti',
-    ID_SLTIU: 'sltiu',
-    ID_XORI:  'xori',
-    ID_ORI:   'ori',
-    ID_ANDI:  'andi',
+    ID_ADDI  = 38
+    ID_SLTI  = 39
+    ID_SLTIU = 40
+    ID_XORI  = 41
+    ID_ORI   = 42
+    ID_ANDI  = 43
 
-    ID_ADDIW: 'addiw',
+    ID_ADDIW = 44
 
-    ID_SLLI: 'slli',
-    ID_SRLI: 'srli',
-    ID_SRAI: 'srai',
+    ID_SLLI = 45
+    ID_SRLI = 46
+    ID_SRAI = 47
 
-    ID_SLLIW: 'slliw',
-    ID_SRLIW: 'srliw',
-    ID_SRAIW: 'sraiw',
+    ID_SLLIW = 48
+    ID_SRLIW = 49
+    ID_SRAIW = 50
 
     # S-type
 
-    ID_SB: 'sb',
-    ID_SH: 'sh',
-    ID_SW: 'sw',
-    ID_SD: 'sd',
+    ID_SB = 51
+    ID_SH = 52
+    ID_SW = 53
+    ID_SD = 54
 
     # SB-type
 
-    ID_BEQ:  'beq',
-    ID_BNE:  'bne',
-    ID_BLT:  'blt',
-    ID_BGE:  'bge',
-    ID_BLTU: 'bltu',
-    ID_BGEU: 'bgeu',
+    ID_BEQ  = 55
+    ID_BNE  = 56
+    ID_BLT  = 57
+    ID_BGE  = 58
+    ID_BLTU = 59
+    ID_BGEU = 60
 
     # U-type
 
-    ID_LUI:   'lui',
-    ID_AUIPC: 'auipc',
+    ID_LUI   = 61
+    ID_AUIPC = 62
 
     # UJ-type
 
-    ID_JAL: 'jal',
+    ID_JAL = 63
 
     # compressed instruction IDs
 
     # CR-type
 
-    ID_C_MV:  'c.mv',
-    ID_C_ADD: 'c.add',
+    ID_C_MV  = 64
+    ID_C_ADD = 65
 
-    ID_C_JR:   'c.jr',
-    ID_C_JALR: 'c.jalr',
+    ID_C_JR   = 66
+    ID_C_JALR = 67
 
     # CI-type
 
-    ID_C_LI:  'c.li',
-    ID_C_LUI: 'c.lui',
+    ID_C_LI  = 68
+    ID_C_LUI = 69
 
-    ID_C_ADDI:     'c.addi',
-    ID_C_ADDIW:    'c.addiw',
-    ID_C_ADDI16SP: 'c.addi16sp',
+    ID_C_ADDI     = 70
+    ID_C_ADDIW    = 71
+    ID_C_ADDI16SP = 72
 
     # CIW-type
 
-    ID_C_ADDI4SPN: 'c.addi4spn',
+    ID_C_ADDI4SPN = 73
 
     # CI-type
 
-    ID_C_SLLI: 'c.slli',
+    ID_C_SLLI = 74
 
-    ID_C_LWSP: 'c.lwsp',
-    ID_C_LDSP: 'c.ldsp',
+    ID_C_LWSP = 75
+    ID_C_LDSP = 76
 
     # CL-type
 
-    ID_C_LW: 'c.lw',
-    ID_C_LD: 'c.ld',
+    ID_C_LW = 77
+    ID_C_LD = 78
 
     # CS-type
 
-    ID_C_SW: 'c.sw',
-    ID_C_SD: 'c.sd',
+    ID_C_SW = 79
+    ID_C_SD = 80
 
-    ID_C_SUB: 'c.sub',
-    ID_C_XOR: 'c.xor',
-    ID_C_OR:  'c.or',
-    ID_C_AND: 'c.and',
+    ID_C_SUB = 81
+    ID_C_XOR = 82
+    ID_C_OR  = 83
+    ID_C_AND = 84
 
-    ID_C_ADDW: 'c.addw',
-    ID_C_SUBW: 'c.subw',
+    ID_C_ADDW = 85
+    ID_C_SUBW = 86
 
     # CSS-type
 
-    ID_C_SWSP: 'c.swsp',
-    ID_C_SDSP: 'c.sdsp',
+    ID_C_SWSP = 87
+    ID_C_SDSP = 88
 
     # CB-type
 
-    ID_C_BEQZ: 'c.beqz',
-    ID_C_BNEZ: 'c.bnez',
+    ID_C_BEQZ = 89
+    ID_C_BNEZ = 90
 
-    ID_C_ANDI: 'c.andi',
+    ID_C_ANDI = 91
 
-    ID_C_SRLI: 'c.srli',
-    ID_C_SRAI: 'c.srai',
+    ID_C_SRLI = 92
+    ID_C_SRAI = 93
 
     # CJ-type
 
-    ID_C_J:   'c.j',
-    ID_C_JAL: 'c.jal',
+    ID_C_J   = 94
+    ID_C_JAL = 95
 
     # pseudoinstruction IDs
 
     # No operands
 
-    ID_P_NOP: 'nop',
-    ID_P_RET: 'ret',
+    ID_P_NOP = 96
+    ID_P_RET = 97
 
     # rd,I_imm
 
-    ID_P_LI: 'li',
+    ID_P_LI = 98
 
     # rd,rsx
 
-    ID_P_MV:     'mv',
-    ID_P_NOT:    'not',
-    ID_P_SEXT_W: 'sext.w',
-    ID_P_SEQZ:   'seqz',
-    ID_P_SLTZ:   'sltz',
-    ID_P_ZEXT_B: 'zext.b',
-    ID_P_NEG:    'neg',
-    ID_P_NEGW:   'negw',
-    ID_P_SNEZ:   'snez',
-    ID_P_SGTZ:   'sgtz',
+    ID_P_MV     = 99  # rs1 or rs2
+    ID_P_NOT    = 100 # rs1
+    ID_P_SEXT_W = 101 # rs1
+    ID_P_SEQZ   = 102 # rs1
+    ID_P_SLTZ   = 103 # rs1
+    ID_P_ZEXT_B = 104 # rs1
+    ID_P_NEG    = 105 # rs2
+    ID_P_NEGW   = 106 # rs2
+    ID_P_SNEZ   = 107 # rs2
+    ID_P_SGTZ   = 108 # rs2
 
     # branch type (rsx,pc+SB_imm <SB_imm>)
 
-    ID_P_BEQZ: 'beqz',
-    ID_P_BNEZ: 'bnez',
-    ID_P_BGEZ: 'bgez',
-    ID_P_BLTZ: 'bltz',
-    ID_P_BLEZ: 'blez',
-    ID_P_BGTZ: 'bgtz',
+    ID_P_BEQZ = 109 # rs1
+    ID_P_BNEZ = 110 # rs1
+    ID_P_BGEZ = 111 # rs1
+    ID_P_BLTZ = 112 # rs1
+    ID_P_BLEZ = 113 # rs2
+    ID_P_BGTZ = 114 # rs2
 
     # jump type (pc + UJ_imm <UJ_imm>)
 
-    ID_P_J:   'j',
-    ID_P_JAL: 'jal',
+    ID_P_J   = 115
+    ID_P_JAL = 116
 
     # jump register type (immx(rs1))
 
-    ID_P_JR:   'jr',
-    ID_P_JALR: 'jalr'
-}
+    ID_P_JR   = 117 # I_imm or 0
+    ID_P_JALR = 118 # I_imm or 0
+
+    RISC_V_MNEMONICS = {
+        ID_UNKNOWN: "unknown RISC-V instruction",
+
+        ID_ECALL: 'ecall',
+
+        # R-type
+
+        ID_ADD:  'add',
+        ID_SUB:  'sub',
+        ID_SLL:  'sll',
+        ID_SLT:  'slt',
+        ID_SLTU: 'sltu',
+        ID_XOR:  'xor',
+        ID_SRL:  'srl',
+        ID_SRA:  'sra',
+        ID_OR:   'or',
+        ID_AND:  'and',
+
+        ID_ADDW: 'addw',
+        ID_SUBW: 'subw',
+        ID_SLLW: 'sllw',
+        ID_SRLW: 'srlw',
+        ID_SRAW: 'sraw',
+
+        ID_MUL:    'mul',
+        ID_MULH:   'mulh',
+        ID_MULHSU: 'mulhsu',
+        ID_MULHU:  'mulhu',
+        ID_DIV:    'div',
+        ID_DIVU:   'divu',
+        ID_REM:    'rem',
+        ID_REMU:   'remu',
+
+        ID_MULW:  'mulw',
+        ID_DIVW:  'divw',
+        ID_DIVUW: 'divuw',
+        ID_REMW:  'remw',
+        ID_REMUW: 'remuw',
+
+        # I-type
+
+        ID_JALR: 'jalr',
+
+        ID_LB:  'lb',
+        ID_LH:  'lh',
+        ID_LW:  'lw',
+        ID_LBU: 'lbu',
+        ID_LHU: 'lhu',
+        ID_LWU: 'lwu',
+        ID_LD:  'ld',
+
+        ID_ADDI:  'addi',
+        ID_SLTI:  'slti',
+        ID_SLTIU: 'sltiu',
+        ID_XORI:  'xori',
+        ID_ORI:   'ori',
+        ID_ANDI:  'andi',
+
+        ID_ADDIW: 'addiw',
+
+        ID_SLLI: 'slli',
+        ID_SRLI: 'srli',
+        ID_SRAI: 'srai',
+
+        ID_SLLIW: 'slliw',
+        ID_SRLIW: 'srliw',
+        ID_SRAIW: 'sraiw',
+
+        # S-type
+
+        ID_SB: 'sb',
+        ID_SH: 'sh',
+        ID_SW: 'sw',
+        ID_SD: 'sd',
+
+        # SB-type
+
+        ID_BEQ:  'beq',
+        ID_BNE:  'bne',
+        ID_BLT:  'blt',
+        ID_BGE:  'bge',
+        ID_BLTU: 'bltu',
+        ID_BGEU: 'bgeu',
+
+        # U-type
+
+        ID_LUI:   'lui',
+        ID_AUIPC: 'auipc',
+
+        # UJ-type
+
+        ID_JAL: 'jal',
+
+        # compressed instruction IDs
+
+        # CR-type
+
+        ID_C_MV:  'c.mv',
+        ID_C_ADD: 'c.add',
+
+        ID_C_JR:   'c.jr',
+        ID_C_JALR: 'c.jalr',
+
+        # CI-type
+
+        ID_C_LI:  'c.li',
+        ID_C_LUI: 'c.lui',
+
+        ID_C_ADDI:     'c.addi',
+        ID_C_ADDIW:    'c.addiw',
+        ID_C_ADDI16SP: 'c.addi16sp',
+
+        # CIW-type
+
+        ID_C_ADDI4SPN: 'c.addi4spn',
+
+        # CI-type
+
+        ID_C_SLLI: 'c.slli',
+
+        ID_C_LWSP: 'c.lwsp',
+        ID_C_LDSP: 'c.ldsp',
+
+        # CL-type
+
+        ID_C_LW: 'c.lw',
+        ID_C_LD: 'c.ld',
+
+        # CS-type
+
+        ID_C_SW: 'c.sw',
+        ID_C_SD: 'c.sd',
+
+        ID_C_SUB: 'c.sub',
+        ID_C_XOR: 'c.xor',
+        ID_C_OR:  'c.or',
+        ID_C_AND: 'c.and',
+
+        ID_C_ADDW: 'c.addw',
+        ID_C_SUBW: 'c.subw',
+
+        # CSS-type
+
+        ID_C_SWSP: 'c.swsp',
+        ID_C_SDSP: 'c.sdsp',
+
+        # CB-type
+
+        ID_C_BEQZ: 'c.beqz',
+        ID_C_BNEZ: 'c.bnez',
+
+        ID_C_ANDI: 'c.andi',
+
+        ID_C_SRLI: 'c.srli',
+        ID_C_SRAI: 'c.srai',
+
+        # CJ-type
+
+        ID_C_J:   'c.j',
+        ID_C_JAL: 'c.jal',
+
+        # pseudoinstruction IDs
+
+        # No operands
+
+        ID_P_NOP: 'nop',
+        ID_P_RET: 'ret',
+
+        # rd,I_imm
+
+        ID_P_LI: 'li',
+
+        # rd,rsx
+
+        ID_P_MV:     'mv',
+        ID_P_NOT:    'not',
+        ID_P_SEXT_W: 'sext.w',
+        ID_P_SEQZ:   'seqz',
+        ID_P_SLTZ:   'sltz',
+        ID_P_ZEXT_B: 'zext.b',
+        ID_P_NEG:    'neg',
+        ID_P_NEGW:   'negw',
+        ID_P_SNEZ:   'snez',
+        ID_P_SGTZ:   'sgtz',
+
+        # branch type (rsx,pc+SB_imm <SB_imm>)
+
+        ID_P_BEQZ: 'beqz',
+        ID_P_BNEZ: 'bnez',
+        ID_P_BGEZ: 'bgez',
+        ID_P_BLTZ: 'bltz',
+        ID_P_BLEZ: 'blez',
+        ID_P_BGTZ: 'bgtz',
+
+        # jump type (pc + UJ_imm <UJ_imm>)
+
+        ID_P_J:   'j',
+        ID_P_JAL: 'jal',
+
+        # jump register type (immx(rs1))
+
+        ID_P_JR:   'jr',
+        ID_P_JALR: 'jalr'
+    }
+
+# instructions
 
 def init_instruction_sorts():
     global SID_INSTRUCTION_WORD
@@ -3515,6 +3375,9 @@ def init_instruction_sorts():
     global NID_DIVUW
     global NID_REMW
     global NID_REMUW
+
+    init_instruction_codes()
+    init_instruction_IDs()
 
     SID_INSTRUCTION_WORD = SID_SINGLE_WORD;
 
@@ -3823,6 +3686,8 @@ def init_instruction_sorts():
         NID_REMW  = NID_DISABLED
         NID_REMUW = NID_DISABLED
 
+# compressed instructions
+
 def init_compressed_instruction_sorts():
     global SID_OPCODE_C
 
@@ -3945,6 +3810,8 @@ def init_compressed_instruction_sorts():
 
     global NID_C_JR
     global NID_C_JALR
+
+    init_compressed_instruction_codes()
 
     # RVC codes
 
