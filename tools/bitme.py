@@ -124,10 +124,13 @@ OP_CONSTRAINT = 'constraint'
 
 current_nid = 0
 
-def next_nid():
-    global current_nid
-    current_nid += 1
-    return current_nid
+def next_nid(nid = None):
+    if nid is None:
+        global current_nid
+        current_nid += 1
+        return current_nid
+    else:
+        return nid
 
 class model_error(Exception):
     def __init__(self, expected, line_no):
@@ -1370,71 +1373,71 @@ def get_class(keyword):
     elif keyword == Bad.keyword:
         return Bad
 
-def new_boolean(nid = next_nid(), line_no = None):
-    return Bool(nid, "Boolean", line_no)
+def new_boolean(nid = None, line_no = None):
+    return Bool(next_nid(nid), "Boolean", line_no)
 
-def new_bitvec(size_in_bits, comment, nid = next_nid(), line_no = None):
-    return Bitvec(nid, size_in_bits, comment, line_no)
+def new_bitvec(size_in_bits, comment, nid = None, line_no = None):
+    return Bitvec(next_nid(nid), size_in_bits, comment, line_no)
 
-def new_array(address_sid, element_sid, comment, nid = next_nid(), line_no = None):
-    return Array(nid, address_sid, element_sid, comment, line_no)
+def new_array(address_sid, element_sid, comment, nid = None, line_no = None):
+    return Array(next_nid(nid), address_sid, element_sid, comment, line_no)
 
-def new_zero_one(op, sid, comment, nid = next_nid(), line_no = None):
+def new_zero_one(op, sid, comment, nid = None, line_no = None):
     assert op in {OP_ZERO, OP_ONE}
-    return get_class(op)(nid, sid, comment, line_no)
+    return get_class(op)(next_nid(nid), sid, comment, line_no)
 
-def new_constant(op, sid, constant, comment, nid = next_nid(), line_no = None):
+def new_constant(op, sid, constant, comment, nid = None, line_no = None):
     assert op in {OP_CONSTD, OP_CONST, OP_CONSTH}
     if op == OP_CONSTD:
         if constant == 0:
-            return Zero(nid, sid, comment, line_no)
+            return Zero(next_nid(nid), sid, comment, line_no)
         elif constant == 1:
-            return One(nid, sid, comment, line_no)
-    return get_class(op)(nid, sid, constant, comment, line_no)
+            return One(next_nid(nid), sid, comment, line_no)
+    return get_class(op)(next_nid(nid), sid, constant, comment, line_no)
 
-def new_input(op, sid, symbol, comment, nid = next_nid(), line_no = None):
+def new_input(op, sid, symbol, comment, nid = None, line_no = None):
     assert op in Variable.keywords
-    return get_class(op)(nid, sid, symbol, comment, line_no)
+    return get_class(op)(next_nid(nid), sid, symbol, comment, line_no)
 
-def new_ext(op, sid, value_nid, w, comment, nid = next_nid(), line_no = None):
+def new_ext(op, sid, value_nid, w, comment, nid = None, line_no = None):
     assert op in Ext.keywords
-    return get_class(op)(nid, op, sid, value_nid, w, comment, line_no)
+    return get_class(op)(next_nid(nid), op, sid, value_nid, w, comment, line_no)
 
-def new_slice(sid, value_nid, u, l, comment, nid = next_nid(), line_no = None):
-    return Slice(nid, sid, value_nid, u, l, comment, line_no)
+def new_slice(sid, value_nid, u, l, comment, nid = None, line_no = None):
+    return Slice(next_nid(nid), sid, value_nid, u, l, comment, line_no)
 
-def new_unary(op, sid, value_nid, comment, nid = next_nid(), line_no = None):
+def new_unary(op, sid, value_nid, comment, nid = None, line_no = None):
     assert op in Unary.keywords
-    return get_class(op)(nid, op, sid, value_nid, comment, line_no)
+    return get_class(op)(next_nid(nid), op, sid, value_nid, comment, line_no)
 
-def new_unary_boolean(op, value_nid, comment, nid = next_nid(), line_no = None):
+def new_unary_boolean(op, value_nid, comment, nid = None, line_no = None):
     assert op == OP_NOT
-    return get_class(op)(nid, op, SID_BOOLEAN, value_nid, comment, line_no)
+    return get_class(op)(next_nid(nid), op, SID_BOOLEAN, value_nid, comment, line_no)
 
-def new_binary(op, sid, left_nid, right_nid, comment, nid = next_nid(), line_no = None):
+def new_binary(op, sid, left_nid, right_nid, comment, nid = None, line_no = None):
     assert op in Binary.keywords
-    return get_class(op)(nid, op, sid, left_nid, right_nid, comment, line_no)
+    return get_class(op)(next_nid(nid), op, sid, left_nid, right_nid, comment, line_no)
 
-def new_binary_boolean(op, left_nid, right_nid, comment, nid = next_nid(), line_no = None):
+def new_binary_boolean(op, left_nid, right_nid, comment, nid = None, line_no = None):
     assert op in Implies.keyword + Comparison.keywords + Logical.keywords
-    return get_class(op)(nid, op, SID_BOOLEAN, left_nid, right_nid, comment, line_no)
+    return get_class(op)(next_nid(nid), op, SID_BOOLEAN, left_nid, right_nid, comment, line_no)
 
-def new_ternary(op, sid, first_nid, second_nid, third_nid, comment, nid = next_nid(), line_no = None):
+def new_ternary(op, sid, first_nid, second_nid, third_nid, comment, nid = None, line_no = None):
     assert op in Ternary.keywords
-    return get_class(op)(nid, sid, first_nid, second_nid, third_nid, comment, line_no)
+    return get_class(op)(next_nid(nid), sid, first_nid, second_nid, third_nid, comment, line_no)
 
-def new_init(sid, state_nid, value_nid, comment, nid = next_nid(), line_no = None):
-    return Init(nid, sid, state_nid, value_nid, comment, line_no)
+def new_init(sid, state_nid, value_nid, comment, nid = None, line_no = None):
+    return Init(next_nid(nid), sid, state_nid, value_nid, comment, line_no)
 
-def new_next(sid, state_nid, value_nid, comment, nid = next_nid(), line_no = None):
-    return Next(nid, sid, state_nid, value_nid, comment, line_no)
+def new_next(sid, state_nid, value_nid, comment, nid = None, line_no = None):
+    return Next(next_nid(nid), sid, state_nid, value_nid, comment, line_no)
 
-def new_init_next(op, sid, state_nid, value_nid, comment, nid = next_nid(), line_no = None):
-    return get_class(op)(nid, sid, state_nid, value_nid, comment, line_no)
+def new_init_next(op, sid, state_nid, value_nid, comment, nid = None, line_no = None):
+    return get_class(op)(next_nid(nid), sid, state_nid, value_nid, comment, line_no)
 
-def new_property(op, condition_nid, symbol, comment, nid = next_nid(), line_no = None):
+def new_property(op, condition_nid, symbol, comment, nid = None, line_no = None):
     assert op in Property.keywords
-    return get_class(op)(nid, condition_nid, symbol, comment, line_no)
+    return get_class(op)(next_nid(nid), condition_nid, symbol, comment, line_no)
 
 # RISC-V model generator
 
