@@ -923,25 +923,24 @@ class Read(Binary):
         return result_line
 
     def read_array_recursive(self, array, index_line, zero_line):
-        assert len(array) == 2**math.log2(len(array))
+        assert 2 <= len(array) == 2**math.log2(len(array))
         if len(array) == 2:
             even_line = array[0]
             odd_line = array[1]
         else:
-            even_line = Read.read_array_recursive(self,
-                array[0:len(array)//2], index_line, zero_line)
-            odd_line = Read.read_array_recursive(self,
-                array[len(array)//2:len(array)], index_line, zero_line)
+            even_line = self.read_array_recursive(array[0:len(array)//2], index_line, zero_line)
+            odd_line = self.read_array_recursive(array[len(array)//2:len(array)], index_line, zero_line)
+        address_bit = int(math.log2(len(array))) - 1
         return Ite(next_nid(), self.sid_line,
             Comparison(next_nid(), OP_EQ, Bool.boolean,
                 Slice(next_nid(), zero_line.sid_line, index_line,
-                    math.log2(len(array)) - 1, math.log2(len(array)) - 1,
-                    f"extract {math.log2(len(array)) - 1}th address bit", self.line_no),
+                    address_bit, address_bit,
+                    f"extract {address_bit}-th address bit", self.line_no),
                 zero_line,
-                f"is {math.log2(len(array)) - 1} address bit set?", self.line_no),
+                f"is {address_bit}-th address bit set?", self.line_no),
             even_line,
             odd_line,
-            f"read value @ reset or set {math.log2(len(array)) - 1} address bit", self.line_no)
+            f"read value @ reset or set {address_bit}-th address bit", self.line_no)
 
     def read_array(self, array_line, index_line):
         if array_line.sid_line.is_mapped_array():
