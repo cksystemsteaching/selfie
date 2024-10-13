@@ -9220,14 +9220,14 @@ uint64_t* core_register_data_flow(uint64_t* pc_nid, uint64_t* ir_nid,
   uint64_t* rd_nid;
   uint64_t* rd_value_nid;
 
-  uint64_t* register_data_flow_nid;
+  uint64_t* is_there_register_data_flow_nid;
 
   opcode_nid = get_instruction_opcode(ir_nid);
 
   rd_nid       = get_instruction_rd(ir_nid);
   rd_value_nid = load_register_value(rd_nid, "current rd value", register_file_nid);
 
-  register_data_flow_nid = new_binary_boolean(OP_AND,
+  is_there_register_data_flow_nid = new_binary_boolean(OP_AND,
     new_binary_boolean(OP_NEQ, rd_nid, NID_ZR, "rd != register zero?"),
     new_binary_boolean(OP_AND,
       new_binary_boolean(OP_NEQ, opcode_nid, NID_OP_STORE, "opcode != STORE?"),
@@ -9246,7 +9246,7 @@ uint64_t* core_register_data_flow(uint64_t* pc_nid, uint64_t* ir_nid,
                 auipc_data_flow(pc_nid, ir_nid, rd_value_nid)))))));
 
   return new_ternary(OP_ITE, SID_REGISTER_STATE,
-    register_data_flow_nid,
+    is_there_register_data_flow_nid,
     store_register_value(rd_nid, rd_value_nid, "rd update", register_file_nid),
     register_file_nid,
     "register data flow");
