@@ -1148,9 +1148,10 @@ class Transitional(Sequential):
         elif self.sid_line.is_mapped_array():
             self.array = {}
             for state_line in self.state_line.array.values():
-                self.array[index] = type(self)(self.nid + state_line.index + 1, self.sid_line.element_size_line,
+                index = state_line.index
+                self.array[index] = type(self)(self.nid + index + 1, self.sid_line.element_size_line,
                     state_line, state_line, f"{self.comment} @ index {index}", self.line_no,
-                    self, state_line.index)
+                    self, index)
 
     def set_mapped_array_expression(self):
         if self.index is None:
