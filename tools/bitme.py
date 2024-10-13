@@ -292,7 +292,7 @@ class Constant(Expression):
         if not(0 <= value < 2**sid_line.size or -2**(sid_line.size - 1) <= value < 2**(sid_line.size - 1)):
             raise model_error(f"{value} in range of {sid_line.size}-bit bitvector", line_no)
 
-    def get_expression_for(self, index):
+    def get_mapped_array_expression_for(self, index):
         return self
 
     def get_z3(self):
@@ -366,10 +366,10 @@ class Variable(Expression):
     def __init__(self, nid, sid_line, domain, symbol, comment, line_no, index):
         super().__init__(nid, sid_line, domain, comment, line_no)
         self.symbol = symbol
-        self.index = index
-        self.new_array(index)
+        self.new_mapped_array(index)
 
-    def new_array(self, index):
+    def new_mapped_array(self, index):
+        self.index = index
         if index is not None:
             if not isinstance(self.sid_line, Bitvector):
                 raise model_error("bitvector", self.line_no)
@@ -384,7 +384,7 @@ class Variable(Expression):
             assert self.nid not in Variable.inputs, f"variable nid {self.nid} already defined @ {self.line_no}"
             Variable.inputs[self.nid] = self
 
-    def get_expression_for(self, index):
+    def get_mapped_array_expression_for(self, index):
         if index is None:
             assert not self.sid_line.is_mapped_array()
             return self
@@ -507,8 +507,8 @@ class Indexed(Expression):
         if not isinstance(arg1_line.sid_line, Bitvec):
             raise model_error("bitvector operand", line_no)
 
-    def get_expression_for(self, index):
-        arg1_line = self.arg1_line.get_expression_for(None)
+    def get_mapped_array_expression_for(self, index):
+        arg1_line = self.arg1_line.get_mapped_array_expression_for(None)
         return self.copy(arg1_line)
 
 class Ext(Indexed):
@@ -607,8 +607,8 @@ class Unary(Expression):
         else:
             return self
 
-    def get_expression_for(self, index):
-        arg1_line = self.arg1_line.get_expression_for(None)
+    def get_mapped_array_expression_for(self, index):
+        arg1_line = self.arg1_line.get_mapped_array_expression_for(None)
         return self.copy(arg1_line)
 
     def get_z3(self):
@@ -664,9 +664,9 @@ class Binary(Expression):
         else:
             return self
 
-    def get_expression_for(self, index):
-        arg1_line = self.arg1_line.get_expression_for(None)
-        arg2_line = self.arg2_line.get_expression_for(None)
+    def get_mapped_array_expression_for(self, index):
+        arg1_line = self.arg1_line.get_mapped_array_expression_for(None)
+        arg2_line = self.arg2_line.get_mapped_array_expression_for(None)
         return self.copy(arg1_line, arg2_line)
 
 class Implies(Binary):
@@ -957,10 +957,10 @@ class Read(Binary):
         else:
             return self.copy(array_line, index_line)
 
-    def get_expression_for(self, index):
+    def get_mapped_array_expression_for(self, index):
         assert isinstance(self.arg1_line, Variable)
         arg1_line = self.arg1_line # TODO: generalize to read from write
-        arg2_line = self.arg2_line.get_expression_for(None)
+        arg2_line = self.arg2_line.get_mapped_array_expression_for(None)
         return self.read_array(arg1_line, arg2_line)
 
     def get_z3(self):
@@ -1022,10 +1022,10 @@ class Ite(Ternary):
         else:
             return self
 
-    def get_expression_for(self, index):
-        arg1_line = self.arg1_line.get_expression_for(None)
-        arg2_line = self.arg2_line.get_expression_for(index)
-        arg3_line = self.arg3_line.get_expression_for(index)
+    def get_mapped_array_expression_for(self, index):
+        arg1_line = self.arg1_line.get_mapped_array_expression_for(None)
+        arg2_line = self.arg2_line.get_mapped_array_expression_for(index)
+        arg3_line = self.arg3_line.get_mapped_array_expression_for(index)
         return self.copy(arg1_line, arg2_line, arg3_line)
 
     def get_z3(self):
@@ -1094,10 +1094,10 @@ class Write(Ternary):
             assert index is None
             return self.copy(array_line, index_line, value_line)
 
-    def get_expression_for(self, index):
-        arg1_line = self.arg1_line.get_expression_for(index)
-        arg2_line = self.arg2_line.get_expression_for(None)
-        arg3_line = self.arg3_line.get_expression_for(None)
+    def get_mapped_array_expression_for(self, index):
+        arg1_line = self.arg1_line.get_mapped_array_expression_for(index)
+        arg2_line = self.arg2_line.get_mapped_array_expression_for(None)
+        arg3_line = self.arg3_line.get_mapped_array_expression_for(None)
         return self.write_array(arg1_line, arg2_line, arg3_line, index)
 
     def get_z3(self):
@@ -1137,11 +1137,11 @@ class Transitional(Sequential):
             raise model_error("compatible line and state sorts", line_no)
         if not state_line.sid_line.match_init_sorts(exp_line.sid_line):
             raise model_error("compatible state and expression sorts", line_no)
+        self.new_mapped_array(array_line, index)
+
+    def new_mapped_array(self, array_line, index):
         self.array_line = array_line
         self.index = index
-        self.new_array(index)
-
-    def new_array(self, index):
         if index is not None:
             if not isinstance(self.sid_line, Bitvector):
                 raise model_error("bitvector", self.line_no)
@@ -1152,11 +1152,11 @@ class Transitional(Sequential):
                     state_line, state_line, f"{self.comment} @ index {index}", self.line_no,
                     self, state_line.index)
 
-    def set_array(self):
+    def set_mapped_array_expression(self):
         if self.index is None:
-            self.exp_line = self.exp_line.get_expression_for(None)
+            self.exp_line = self.exp_line.get_mapped_array_expression_for(None)
         else:
-            self.exp_line = self.array_line.exp_line.get_expression_for(self.index)
+            self.exp_line = self.array_line.exp_line.get_mapped_array_expression_for(self.index)
 
     def new_transition(self, transitions, index):
         if index is not None or not self.sid_line.is_mapped_array():
@@ -1270,8 +1270,8 @@ class Property(Sequential):
         if not isinstance(property_line.sid_line, Bool):
             raise model_error("Boolean operand", line_no)
 
-    def set_array(self):
-        self.property_line = self.property_line.get_expression_for(None)
+    def set_mapped_array_expression(self):
+        self.property_line = self.property_line.get_mapped_array_expression_for(None)
 
     def get_z3_step(self, step):
         if self.z3_lambda_line is None:
@@ -4464,18 +4464,19 @@ def parse_btor2(modelfile, outputfile):
 
     # start: mapping arrays to bitvectors
 
-    global current_nid
+    if Array.ARRAY_SIZE_BOUND > 0:
+        global current_nid
 
-    current_nid = lines[line_no-1].nid
+        current_nid = lines[line_no-1].nid
 
-    for init in Init.inits.values():
-        init.set_array()
-    for constraint in Constraint.constraints.values():
-        constraint.set_array()
-    for bad in Bad.bads.values():
-        bad.set_array()
-    for next_line in Next.nexts.values():
-        next_line.set_array()
+        for init in Init.inits.values():
+            init.set_mapped_array_expression()
+        for constraint in Constraint.constraints.values():
+            constraint.set_mapped_array_expression()
+        for bad in Bad.bads.values():
+            bad.set_mapped_array_expression()
+        for next_line in Next.nexts.values():
+            next_line.set_mapped_array_expression()
 
     # end: mapping arrays to bitvectors
 
