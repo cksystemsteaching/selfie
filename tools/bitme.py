@@ -4383,6 +4383,10 @@ def parse_btor2(modelfile, outputfile):
                         Transitional.remove_transition(state, Init.inits)
                         Transitional.remove_transition(state, Next.nexts)
 
+        if Ite.branching_conditions and Ite.non_branching_conditions:
+            Ite.branching_conditions.get_mapped_array_expression_for(None)
+            Ite.non_branching_conditions.get_mapped_array_expression_for(None)
+
     # end: mapping arrays to bitvectors
 
     if outputfile:
