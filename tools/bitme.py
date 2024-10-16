@@ -1204,7 +1204,9 @@ class Sequential(Line, Cache):
         Line.__init__(self, nid, comment, line_no)
         Cache.__init__(self)
         self.z3_lambda_line = None
+        self.cache_z3_select = {}
         self.bitwuzla_lambda_line = None
+        self.cache_bitwuzla_select = {}
 
 class Transitional(Sequential):
     def __init__(self, nid, sid_line, state_line, exp_line, comment, line_no, array_line, index):
@@ -1310,7 +1312,9 @@ class Next(Transitional):
     def __init__(self, nid, sid_line, state_line, exp_line, comment, line_no, array_line = None, index = None):
         super().__init__(nid, sid_line, state_line, exp_line, comment, line_no, array_line, index)
         self.cache_z3_change = {}
+        self.cache_z3_no_change = {}
         self.cache_bitwuzla_change = {}
+        self.cache_bitwuzla_no_change = {}
         if self.state_line.next_line is None:
             self.state_line.next_line = self
         else:
@@ -1320,36 +1324,65 @@ class Next(Transitional):
     def __str__(self):
         return f"{self.nid} {Next.keyword} {self.sid_line.nid} {self.state_line.nid} {self.exp_line.nid} {self.comment}"
 
-    def get_z3_step(self, step):
+    def get_z3_lambda(self):
         if self.z3_lambda_line is None:
             self.z3_lambda_line = State.get_z3_lambda(
                 self.exp_line.get_z3(), self.exp_line.domain)
+        return self.z3_lambda_line
+
+    def get_z3_select(self, step):
+        if step not in self.cache_z3_select:
+            self.cache_z3_select[step] = State.get_z3_select(
+                self.get_z3_lambda(), self.exp_line.domain, step)
+        return self.cache_z3_select[step]
+
+    def get_z3_step(self, step):
         if step not in self.cache_z3:
-            self.cache_z3[step] = self.state_line.get_z3_step(step + 1) == State.get_z3_select(
-                self.z3_lambda_line, self.exp_line.domain, step)
+            self.cache_z3[step] = self.state_line.get_z3_step(step + 1) == self.get_z3_select(step)
         return self.cache_z3[step]
 
     def get_z3_change(self, step):
         if step not in self.cache_z3_change:
-            self.cache_z3_change[step] = self.state_line.get_z3_step(step + 1) != self.state_line.get_z3_step(step)
+            self.cache_z3_change[step] = self.state_line.get_z3_step(step) != self.get_z3_select(step)
         return self.cache_z3_change[step]
 
-    def get_bitwuzla_step(self, step, tm):
+    def get_z3_no_change(self, step):
+        if step not in self.cache_z3_no_change:
+            self.cache_z3_no_change[step] = self.state_line.get_z3_step(step + 1) == self.state_line.get_z3_step(step)
+        return self.cache_z3_no_change[step]
+
+    def get_bitwuzla_lambda(self, tm):
         if self.bitwuzla_lambda_line is None:
             self.bitwuzla_lambda_line = State.get_bitwuzla_lambda(
                 self.exp_line.get_bitwuzla(tm), self.exp_line.domain, tm)
+        return self.bitwuzla_lambda_line
+
+    def get_bitwuzla_select(self, step, tm):
+        if step not in self.cache_bitwuzla_select:
+            self.cache_bitwuzla_select[step] = State.get_bitwuzla_select(
+                self.get_bitwuzla_lambda(tm), self.exp_line.domain, step, tm)
+        return self.cache_bitwuzla_select[step]
+
+    def get_bitwuzla_step(self, step, tm):
         if step not in self.cache_bitwuzla:
             self.cache_bitwuzla[step] = tm.mk_term(bitwuzla.Kind.EQUAL,
-                [self.state_line.get_bitwuzla_step(step + 1, tm), State.get_bitwuzla_select(
-                    self.bitwuzla_lambda_line, self.exp_line.domain, step, tm)])
+                [self.state_line.get_bitwuzla_step(step + 1, tm),
+                    self.get_bitwuzla_select(step, tm)])
         return self.cache_bitwuzla[step]
 
     def get_bitwuzla_change(self, step, tm):
         if step not in self.cache_bitwuzla_change:
             self.cache_bitwuzla_change[step] = tm.mk_term(bitwuzla.Kind.DISTINCT,
+                [self.state_line.get_bitwuzla_step(step, tm),
+                    self.get_bitwuzla_select(step, tm)])
+        return self.cache_bitwuzla_change[step]
+
+    def get_bitwuzla_no_change(self, step, tm):
+        if step not in self.cache_bitwuzla_no_change:
+            self.cache_bitwuzla_no_change[step] = tm.mk_term(bitwuzla.Kind.EQUAL,
                 [self.state_line.get_bitwuzla_step(step + 1, tm),
                 self.state_line.get_bitwuzla_step(step, tm)])
-        return self.cache_bitwuzla_change[step]
+        return self.cache_bitwuzla_no_change[step]
 
 class Property(Sequential):
     keywords = {OP_CONSTRAINT, OP_BAD}
@@ -4472,6 +4505,9 @@ class Z3_Solver(Solver):
     def assert_change(self, next_line, step):
         return self.solver.add(next_line.get_z3_change(step))
 
+    def assert_no_change(self, next_line, step):
+        return self.solver.add(next_line.get_z3_no_change(step))
+
     def print_pc(self, pc, step):
         self.prove()
         model = self.solver.model()
@@ -4516,6 +4552,9 @@ class Bitwuzla_Solver(Solver):
 
     def assert_change(self, next_line, step):
         return self.solver.assert_formula(next_line.get_bitwuzla_change(step, self.tm))
+
+    def assert_no_change(self, next_line, step):
+        return self.solver.assert_formula(next_line.get_bitwuzla_no_change(step, self.tm))
 
     def print_pc(self, pc, step):
         self.prove()
@@ -4565,24 +4604,28 @@ def branching_bmc(solver, kmin, kmax, args, step, level):
             # assert all bad properties as negated constraints
             solver.assert_not_this(Bad.bads.values(), step)
 
-        # compute next step
-        solver.assert_this(Next.nexts.values(), step)
-
         if args.check_termination and step >= kmin:
             state_change = False
             for next_line in Next.nexts.values():
-                # check if any of the states changes
+                # check if state changes
                 solver.push()
                 solver.assert_change(next_line, step)
                 result = solver.prove()
-                solver.pop()
                 if solver.is_SAT(result):
                     state_change = True
                     print(f"state change: {next_line}")
-                    # break for efficiency
+                    # compute next step
+                    solver.assert_this([next_line], step)
+                else:
+                    # assert no change
+                    solver.pop()
+                    solver.assert_no_change(next_line, step)
                 if not state_change and next_line == list(Next.nexts.values())[-1]:
                     print("no states changed: terminating")
                     return
+        else:
+            # compute next step
+            solver.assert_this(Next.nexts.values(), step)
 
         if args.branching and Ite.branching_conditions and Ite.non_branching_conditions:
             solver.push()
