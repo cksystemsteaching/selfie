@@ -452,12 +452,16 @@ class Variable(Expression):
             Variable.inputs[self.nid] = self
 
     def get_mapped_array_expression_for(self, index):
-        if index is None:
-            assert not self.sid_line.is_mapped_array()
-            return self
-        else:
+        if isinstance(self.sid_line, Bitvector) or self.sid_line.is_mapped_array():
+            if self.init_line is not None and self.next_line is not None and self.next_line.exp_line is self:
+                # propagate initial value of initialized read-only bitvector states
+                return self.init_line.exp_line.get_mapped_array_expression_for(index)
+        if index is not None:
             assert self.sid_line.is_mapped_array()
             return self.array[index]
+        else:
+            assert not self.sid_line.is_mapped_array()
+            return self
 
     def get_z3(self):
         if self.z3 is None:
@@ -517,6 +521,12 @@ class State(Variable, Cache):
         if index is not None or not self.sid_line.is_mapped_array():
             assert self.nid not in State.states, f"state nid {self.nid} already defined @ {self.line_no}"
             State.states[self.nid] = self
+
+    def remove_state(self):
+        for key in State.states.keys():
+            if State.states[key] is self:
+                del State.states[key]
+                return
 
     def get_step_name(self, step):
         return f"{self.name}-{step}"
@@ -971,33 +981,35 @@ class Read(Binary):
             raise model_error("compatible first operand array size and second operand sorts", line_no)
         if not sid_line.match_sorts(arg1_line.sid_line.element_size_line):
             raise model_error("compatible result and first operand element size sorts", line_no)
+        self.read_cache = None
 
     def read_array_iterative(self, array_line, index_line):
-        for state_line in array_line.array.values():
-            index = state_line.index
-            if state_line is array_line.array[0]:
-                result_line = state_line
+        for index in array_line.array.keys():
+            if index == 0:
+                read_line = array_line.get_mapped_array_expression_for(0)
             else:
-                result_line = Ite(next_nid(), self.sid_line,
+                read_line = Ite(next_nid(), self.sid_line,
                     Comparison(next_nid(), OP_EQ, Bool.boolean,
                         index_line,
                         Constd(next_nid(), index_line.sid_line,
                             index, f"index {index}", self.line_no),
                         f"is address equal to index {index}?", self.line_no),
-                    state_line,
-                    result_line,
-                    f"read value @ address if equal to index {index}", self.line_no)
-        return result_line
+                    array_line.get_mapped_array_expression_for(index),
+                    read_line,
+                    f"read value from {array_line.comment[2:]} @ address if equal to index {index}", self.line_no)
+        return read_line
 
-    def read_array_recursive(self, array, index_line, zero_line):
-        assert 2 <= len(array) == 2**math.log2(len(array))
-        if len(array) == 2:
-            even_line = array[0]
-            odd_line = array[1]
+    def read_array_recursive(self, array_line, index_line, index_array, zero_line):
+        assert 2 <= len(index_array) == 2**math.log2(len(index_array))
+        if len(index_array) == 2:
+            even_line = array_line.get_mapped_array_expression_for(index_array[0])
+            odd_line = array_line.get_mapped_array_expression_for(index_array[1])
         else:
-            even_line = self.read_array_recursive(array[0:len(array)//2], index_line, zero_line)
-            odd_line = self.read_array_recursive(array[len(array)//2:len(array)], index_line, zero_line)
-        address_bit = int(math.log2(len(array))) - 1
+            even_line = self.read_array_recursive(array_line, index_line,
+                index_array[0:len(index_array)//2], zero_line)
+            odd_line = self.read_array_recursive(array_line, index_line,
+                index_array[len(index_array)//2:len(index_array)], zero_line)
+        address_bit = int(math.log2(len(index_array))) - 1
         return Ite(next_nid(), self.sid_line,
             Comparison(next_nid(), OP_EQ, Bool.boolean,
                 Slice(next_nid(), zero_line.sid_line, index_line,
@@ -1007,17 +1019,18 @@ class Read(Binary):
                 f"is {address_bit}-th address bit set?", self.line_no),
             even_line,
             odd_line,
-            f"read value @ reset or set {address_bit}-th address bit", self.line_no)
+            f"read value from {array_line.comment[2:]} @ reset or set {address_bit}-th address bit", self.line_no)
 
     def read_array(self, array_line, index_line):
         if array_line.sid_line.is_mapped_array():
             if isinstance(index_line, Constant):
-                return array_line.array[index_line.value]
+                return array_line.get_mapped_array_expression_for(index_line.value)
             else:
                 if Read.READ_ARRAY_ITERATIVELY:
                     return self.read_array_iterative(array_line, index_line)
                 else:
-                    return self.read_array_recursive(list(array_line.array.values()), index_line,
+                    return self.read_array_recursive(array_line, index_line,
+                        list(array_line.array.keys()),
                         Zero(next_nid(),
                             Bitvec(next_nid(), 1, "1-bit bitvector for testing bits", self.line_no),
                             "zero value for testing bits", self.line_no))
@@ -1026,9 +1039,11 @@ class Read(Binary):
 
     def get_mapped_array_expression_for(self, index):
         assert isinstance(self.arg1_line, Variable)
-        arg1_line = self.arg1_line # TODO: generalize to read from write
-        arg2_line = self.arg2_line.get_mapped_array_expression_for(None)
-        return self.read_array(arg1_line, arg2_line)
+        if self.read_cache is None: # avoids quadratic blowup in mapped array size
+            arg1_line = self.arg1_line # map later when index is known
+            arg2_line = self.arg2_line.get_mapped_array_expression_for(None)
+            self.read_cache = self.read_array(arg1_line, arg2_line)
+        return self.read_cache
 
     def get_z3(self):
         if self.z3 is None:
@@ -1156,7 +1171,7 @@ class Write(Ternary):
                         f"is address equal to index {index}?", self.line_no),
                     value_line,
                     array_line,
-                    f"write value @ address if equal to index {index}", self.line_no)
+                    f"write value to {array_line.comment[2:]} @ address if equal to index {index}", self.line_no)
         else:
             assert index is None
             return self.copy(array_line, index_line, value_line)
@@ -1214,17 +1229,22 @@ class Transitional(Sequential):
                 raise model_error("bitvector", self.line_no)
         elif self.sid_line.is_mapped_array():
             self.array = {}
-            for state_line in self.state_line.array.values():
-                index = state_line.index
+            for index in self.state_line.array.keys():
                 self.array[index] = type(self)(self.nid + index + 1, self.sid_line.element_size_line,
-                    state_line, state_line, f"{self.comment} @ index {index}", self.line_no,
-                    self, index)
+                    self.state_line.array[index], self.state_line.array[index],
+                    f"{self.comment} @ index {index}", self.line_no, self, index)
 
     def set_mapped_array_expression(self):
         if self.index is None:
             self.exp_line = self.exp_line.get_mapped_array_expression_for(None)
         else:
             self.exp_line = self.array_line.exp_line.get_mapped_array_expression_for(self.index)
+
+    def remove_transition(state_line, transitions):
+        for key in transitions.keys():
+            if transitions[key].state_line is state_line:
+                del transitions[key]
+                return
 
     def new_transition(self, transitions, index):
         if index is not None or not self.sid_line.is_mapped_array():
@@ -1240,6 +1260,8 @@ class Init(Transitional):
         super().__init__(nid, sid_line, state_line, exp_line, comment, line_no, array_line, index)
         if state_line.nid < exp_line.nid:
             raise model_error("state after expression", line_no)
+        if isinstance(state_line, Input):
+            raise model_error("state, not input", line_no)
         if self.state_line.init_line is None:
             self.state_line.init_line = self
         else:
@@ -4348,6 +4370,15 @@ def parse_btor2(modelfile, outputfile):
             bad.set_mapped_array_expression()
         for next_line in Next.nexts.values():
             next_line.set_mapped_array_expression()
+
+        for state in list(State.states.values()):
+            if isinstance(state.sid_line, Bitvector):
+                if state.init_line is not None and state.next_line is not None:
+                    if state.init_line.exp_line is state.next_line.exp_line or state.next_line.exp_line is state:
+                        # remove initialized read-only bitvector states
+                        state.remove_state()
+                        Transitional.remove_transition(state, Init.inits)
+                        Transitional.remove_transition(state, Next.nexts)
 
     # end: mapping arrays to bitvectors
 

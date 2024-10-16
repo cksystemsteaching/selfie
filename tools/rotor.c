@@ -6566,7 +6566,7 @@ void new_code_segment(uint64_t core) {
       state_code_segment_nid, state_code_segment_nid, "read-only uninitialized code segment");
   } else {
     state_zeroed_code_segment_nid = new_input(OP_STATE, SID_CODE_STATE,
-      format_comment("core-%lu-code-segment", core), "code segment");
+      format_comment("core-%lu-code-segment", core), "zeroed code segment");
 
     init_zeroed_code_segment_nid = new_init(SID_CODE_STATE,
       state_zeroed_code_segment_nid, NID_CODE_WORD_0, "zeroing code segment");
