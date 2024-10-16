@@ -1147,6 +1147,7 @@ class Write(Ternary):
             raise model_error("compatible first operand array size and second operand sorts", line_no)
         if not arg1_line.sid_line.element_size_line.match_sorts(arg3_line.sid_line):
             raise model_error("compatible first operand element size and third operand sorts", line_no)
+        self.write_cache = {}
 
     def copy(self, arg1_line, arg2_line, arg3_line):
         if self.arg1_line is not arg1_line or self.arg2_line is not arg2_line or self.arg3_line is not arg3_line:
@@ -1177,10 +1178,12 @@ class Write(Ternary):
             return self.copy(array_line, index_line, value_line)
 
     def get_mapped_array_expression_for(self, index):
-        arg1_line = self.arg1_line.get_mapped_array_expression_for(index)
-        arg2_line = self.arg2_line.get_mapped_array_expression_for(None)
-        arg3_line = self.arg3_line.get_mapped_array_expression_for(None)
-        return self.write_array(arg1_line, arg2_line, arg3_line, index)
+        if index not in self.write_cache:
+            arg1_line = self.arg1_line.get_mapped_array_expression_for(index)
+            arg2_line = self.arg2_line.get_mapped_array_expression_for(None)
+            arg3_line = self.arg3_line.get_mapped_array_expression_for(None)
+            self.write_cache[index] = self.write_array(arg1_line, arg2_line, arg3_line, index)
+        return self.write_cache[index]
 
     def get_z3(self):
         if self.z3 is None:
