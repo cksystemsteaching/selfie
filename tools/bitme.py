@@ -1038,7 +1038,6 @@ class Read(Binary):
             return self.copy(array_line, index_line)
 
     def get_mapped_array_expression_for(self, index):
-        assert isinstance(self.arg1_line, Variable)
         if self.read_cache is None: # avoids quadratic blowup in mapped array size
             arg1_line = self.arg1_line # map later when index is known
             arg2_line = self.arg2_line.get_mapped_array_expression_for(None)
@@ -1253,7 +1252,7 @@ class Transitional(Sequential):
 
     def new_transition(self, transitions, index):
         if index is not None or not self.sid_line.is_mapped_array():
-            assert self.nid not in transitions, f"nid {self.nid} already defined @ {self.line_no}"
+            assert self.nid not in transitions, f"transition nid {self.nid} already defined @ {self.line_no}"
             transitions[self.nid] = self
 
 class Init(Transitional):
@@ -4340,7 +4339,9 @@ def parse_property_line(tokens, nid, op, line_no):
     return new_property(op, property_line, symbol, comment, nid, line_no)
 
 def parse_btor2_line(line, line_no):
-    last_nid = 0
+    global current_nid # only necessary for mapping arrays
+
+    current_nid = 0
 
     if line.strip():
         tokens = tokenize_btor2(line)
@@ -4348,8 +4349,8 @@ def parse_btor2_line(line, line_no):
         if token[0] != ';':
             if token.isdecimal():
                 nid = int(token)
-                if nid > last_nid:
-                    last_nid = nid
+                if nid > current_nid:
+                    current_nid = nid
                     nid = Array.accommodate_array_indexes(nid)
                     token = get_token(tokens, "keyword", line_no)
                     if token == Sort.keyword:
@@ -4394,10 +4395,6 @@ def parse_btor2(modelfile, outputfile):
     # start: mapping arrays to bitvectors
 
     if Array.ARRAY_SIZE_BOUND > 0:
-        global current_nid
-
-        current_nid = lines[line_no-1].nid
-
         for init in Init.inits.values():
             init.set_mapped_array_expression()
         for constraint in Constraint.constraints.values():
