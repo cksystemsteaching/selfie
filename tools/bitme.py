@@ -4611,14 +4611,13 @@ def branching_bmc(solver, kmin, kmax, args, step, level):
                 solver.push()
                 solver.assert_change(next_line, step)
                 result = solver.prove()
+                solver.pop()
                 if solver.is_SAT(result):
                     state_change = True
                     print(f"state change: {next_line}")
                     # compute next step
                     solver.assert_this([next_line], step)
                 else:
-                    # assert no change
-                    solver.pop()
                     solver.assert_no_change(next_line, step)
                 if not state_change and next_line == list(Next.nexts.values())[-1]:
                     print("no states changed: terminating")
