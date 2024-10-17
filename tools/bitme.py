@@ -211,6 +211,8 @@ class Bitwuzla():
 class Line(Z3, Bitwuzla):
     lines = {}
 
+    count = 0
+
     def __init__(self, nid, comment, line_no):
         Z3.__init__(self)
         Bitwuzla.__init__(self)
@@ -225,6 +227,7 @@ class Line(Z3, Bitwuzla):
     def new_line(self):
         assert self.nid not in Line.lines, f"nid {self.nid} already defined @ {self.line_no}"
         Line.lines[self.nid] = self
+        type(self).count += 1
 
     def is_defined(nid):
         return nid in Line.lines
@@ -4463,6 +4466,15 @@ def parse_btor2(modelfile, outputfile):
         for state in State.states.values():
             if state.next_line is None:
                 print(state)
+
+    print("model profile:")
+    print(f"{len(Line.lines)} lines in total")
+    print(f"{Input.count} input, {State.count} state, {Init.count} init, {Next.count} next, {Constraint.count} constraint, {Bad.count} bad")
+    print(f"{Bool.count} bool, {Bitvec.count} bitvec, {Array.count} array")
+    print(f"{Zero.count} zero, {One.count} one, {Constd.count} constd, {Const.count} const, {Consth.count} consth")
+    print(f"{Ext.count} ext, {Slice.count} slice, {Unary.count} unary")
+    print(f"{Implies.count} implies, {Comparison.count} comparison, {Logical.count} logical, {Computation.count} computation")
+    print(f"{Concat.count} concat, {Ite.count} ite, {Read.count} read, {Write.count} write")
 
     return are_there_state_transitions
 
