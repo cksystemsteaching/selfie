@@ -13162,8 +13162,8 @@ void eval_multicore_states() {
 }
 
 uint64_t eval_constant_propagation() {
-  current_offset = 0;
-  current_step   = 0;
+  current_step   = next_step;
+  current_offset = current_step;
 
   input_steps   = 0;
   current_input = 0;
@@ -13180,11 +13180,19 @@ uint64_t eval_constant_propagation() {
   if (eval_multicore_properties(0)) {
     printf("%s: %s violated one or more constraints already after 1 step\n", selfie_name, model_name);
 
+    restore_multicore_states();
+
+    states_are_symbolic = 0;
+
     return 1;
   }
 
   if (eval_multicore_properties(1)) {
     printf("%s: %s satisfied one or more bad properties already after 1 step\n", selfie_name, model_name);
+
+    restore_multicore_states();
+
+    states_are_symbolic = 0;
 
     return 1;
   }
@@ -13192,12 +13200,14 @@ uint64_t eval_constant_propagation() {
   if (eval_multicore_sequential()) {
     printf("%s: %s halted on all cores already after 1 step\n", selfie_name, model_name);
 
+    restore_multicore_states();
+
+    states_are_symbolic = 0;
+
     return 1;
   }
 
   restore_multicore_states();
-
-  current_step = next_step;
 
   states_are_symbolic = 0;
 
@@ -13208,6 +13218,7 @@ void eval_rotor() {
   if (number_of_binaries == number_of_cores) {
     printf("%s: ********************************************************************************\n", selfie_name);
 
+    current_step   = next_step;
     current_offset = current_step;
 
     input_steps   = 0;
@@ -13285,6 +13296,8 @@ void eval_rotor() {
         max_steps - 1,
         max_steps);
     }
+
+    reset_multicore_states();
   } else {
     // initialize kmin and kmax
     if (min_steps_to_bad_state == (uint64_t) -1) {
@@ -13335,8 +13348,8 @@ void disassemble_rotor(uint64_t core) {
 void print_unrolled_model() {
   open_model_file();
 
-  current_offset = current_step;
   current_step   = next_step;
+  current_offset = current_step;
 
   input_steps   = 0;
   current_input = 0;
@@ -13359,6 +13372,8 @@ void print_unrolled_model() {
       printf("%s: %s violated one or more constraints after %lu steps (up to %lu instructions)\n", selfie_name,
         model_name, current_step - current_offset, next_step - current_offset);
 
+      restore_multicore_states();
+
       return;
     }
 
@@ -13367,6 +13382,8 @@ void print_unrolled_model() {
 
       printf("%s: %s satisfied one or more bad properties after %lu steps (up to %lu instructions)\n", selfie_name,
         model_name, current_step - current_offset, next_step - current_offset);
+
+      restore_multicore_states();
 
       return;
     }
@@ -13377,6 +13394,8 @@ void print_unrolled_model() {
       printf("%s: unrolled %s for %lu steps (up to %lu instructions)\n", selfie_name,
         model_name, current_step - current_offset, next_step - current_offset);
 
+      restore_multicore_states();
+
       return;
     }
 
@@ -13385,6 +13404,8 @@ void print_unrolled_model() {
 
       printf("%s: %s halted on all cores after %lu steps (up to %lu instructions)\n", selfie_name,
         model_name, current_step - current_offset, next_step - current_offset);
+
+      restore_multicore_states();
 
       return;
     }
@@ -13397,8 +13418,6 @@ void print_unrolled_model() {
 
     last_nid = current_nid - 1;
   }
-
-  close_model_file();
 }
 
 // -----------------------------------------------------------------
@@ -13712,8 +13731,6 @@ uint64_t selfie_model() {
           eval_rotor(); // determines kmin and kmax
 
           printing_unrolled_model = 1;
-
-          reset_multicore_states();
         }
 
         print_unrolled_model();
