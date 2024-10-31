@@ -4700,6 +4700,9 @@ def branching_bmc(solver, kmin, kmax, args, step, level):
             # compute next step
             solver.assert_this(Next.nexts.values(), step)
 
+        print_message("transitioning", step, level)
+        solver.prove() # hopefully triggers simplification
+
         if args.branching and Ite.branching_conditions and Ite.non_branching_conditions:
             print_message("checking branching", step, level)
 
@@ -4725,9 +4728,7 @@ def branching_bmc(solver, kmin, kmax, args, step, level):
 
                 solver.push()
                 solver.assert_this([Ite.branching_conditions], step)
-
                 branching_bmc(solver, kmin, kmax, args, step + 1, level + 1)
-
                 solver.pop()
 
                 print_separator('-', step, level)
@@ -4735,9 +4736,7 @@ def branching_bmc(solver, kmin, kmax, args, step, level):
 
                 solver.push()
                 solver.assert_not_this([Ite.non_branching_conditions], step)
-
                 branching_bmc(solver, kmin, kmax, args, step + 1, level + 1)
-
                 solver.pop()
 
                 print_separator('^', step, level)
@@ -4752,6 +4751,9 @@ def bmc(solver, kmin, kmax, args):
 
     # initialize all states
     solver.assert_this(Init.inits.values(), 0)
+
+    print_message("initializing", 0, 0)
+    solver.prove() # hopefully triggers simplification
 
     return branching_bmc(solver, kmin, kmax, args, 0, 0)
 
