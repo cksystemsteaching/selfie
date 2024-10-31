@@ -4593,19 +4593,16 @@ class Z3_Solver(Solver):
         self.prove()
         model = self.solver.model()
         print_message(f"{pc}\n", step, level)
-        for decl in model.decls():
-            if str(pc.get_z3_step(step)) in str(decl.name()):
-                pc_value = int(model[decl].as_long())
-                print_message("%s = 0x%X\n" % (decl.name(), pc_value), step, level)
+        print_message("%s = 0x%X\n" % (pc.get_z3_step(step),
+            int(model.evaluate(pc.get_z3_step(step)).as_long())), step, level)
 
     def print_inputs(self, inputs, step, level):
         model = self.solver.model()
         for input_variable in inputs.values():
             # only print value of uninitialized states
             print_message(f"{input_variable}\n", step, level)
-            for decl in model.decls():
-                if str(input_variable.get_z3_step(step)) in str(decl.name()):
-                    print_message("%s = %s\n" % (decl.name(), model[decl]), step, level)
+            print_message("%s = %s\n" % (input_variable.get_z3_step(step),
+                model.evaluate(input_variable.get_z3_step(step))), step, level)
 
 class Bitwuzla_Solver(Solver):
     def __init__(self):
