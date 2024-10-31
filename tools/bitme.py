@@ -4570,6 +4570,10 @@ class Z3_Solver(Solver):
         for assertion in assertions:
             self.solver.add(assertion.get_z3_step(step) == False)
 
+    def simplify(self):
+        # no effective simplification yet found in Z3
+        return self
+
     def prove(self):
         return self.solver.check()
 
@@ -4617,6 +4621,10 @@ class Bitwuzla_Solver(Solver):
     def assert_not_this(self, assertions, step):
         for assertion in assertions:
             self.solver.assert_formula(self.tm.mk_term(bitwuzla.Kind.NOT, [assertion.get_bitwuzla_step(step, self.tm)]))
+
+    def simplify(self):
+        # possibly increases performance
+        return self.prove()
 
     def prove(self):
         return self.solver.check_sat()
@@ -4701,7 +4709,7 @@ def branching_bmc(solver, kmin, kmax, args, step, level):
             solver.assert_this(Next.nexts.values(), step)
 
         print_message("transitioning", step, level)
-        solver.prove() # hopefully triggers simplification
+        solver.simplify()
 
         if args.branching and Ite.branching_conditions and Ite.non_branching_conditions:
             print_message("checking branching", step, level)
@@ -4753,7 +4761,7 @@ def bmc(solver, kmin, kmax, args):
     solver.assert_this(Init.inits.values(), 0)
 
     print_message("initializing", 0, 0)
-    solver.prove() # hopefully triggers simplification
+    solver.simplify()
 
     return branching_bmc(solver, kmin, kmax, args, 0, 0)
 
