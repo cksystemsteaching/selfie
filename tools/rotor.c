@@ -68,7 +68,7 @@ support for reasoning about concurrent code is future work.
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
 
 uint64_t* allocate_line() {
-  return smalloc(7 * sizeof(uint64_t*) + 3 * sizeof(char*) + 4 * sizeof(uint64_t));
+  return smalloc(7 * sizeof(uint64_t*) + 3 * sizeof(char*) + 5 * sizeof(uint64_t));
 }
 
 uint64_t  get_nid(uint64_t* line)      { return *line; }
@@ -83,8 +83,9 @@ uint64_t  get_state(uint64_t* line)    { return *(line + 8); }
 uint64_t  get_step(uint64_t* line)     { return *(line + 9); }
 uint64_t  get_reuse(uint64_t* line)    { return *(line + 10); }
 char*     get_prefix(uint64_t* line)   { return (char*) *(line + 11); }
-uint64_t* get_pred(uint64_t* line)     { return (uint64_t*) *(line + 12); }
-uint64_t* get_succ(uint64_t* line)     { return (uint64_t*) *(line + 13); }
+uint64_t  get_sat(uint64_t* line)      { return *(line + 12); }
+uint64_t* get_pred(uint64_t* line)     { return (uint64_t*) *(line + 13); }
+uint64_t* get_succ(uint64_t* line)     { return (uint64_t*) *(line + 14); }
 
 void set_nid(uint64_t* line, uint64_t nid)       { *line        = nid; }
 void set_op(uint64_t* line, char* op)            { *(line + 1)  = (uint64_t) op; }
@@ -98,8 +99,9 @@ void set_state(uint64_t* line, uint64_t state)   { *(line + 8)  = state; }
 void set_step(uint64_t* line, uint64_t step)     { *(line + 9)  = step; }
 void set_reuse(uint64_t* line, uint64_t reuse)   { *(line + 10) = reuse; }
 void set_prefix(uint64_t* line, char* prefix)    { *(line + 11) = (uint64_t) prefix; }
-void set_pred(uint64_t* line, uint64_t* pred)    { *(line + 12) = (uint64_t) pred; }
-void set_succ(uint64_t* line, uint64_t* succ)    { *(line + 13) = (uint64_t) succ; }
+void set_sat(uint64_t* line, uint64_t sat)       { *(line + 12) = sat; }
+void set_pred(uint64_t* line, uint64_t* pred)    { *(line + 13) = (uint64_t) pred; }
+void set_succ(uint64_t* line, uint64_t* succ)    { *(line + 14) = (uint64_t) succ; }
 
 uint64_t* allocate_lines(uint64_t number_of_lines);
 
@@ -135,6 +137,9 @@ char*     NOCOMMENT = (char*) 0;
 
 uint64_t* NONSYMBOLIC = (uint64_t*) 0;
 uint64_t* SYMBOLIC    = (uint64_t*) 1;
+
+uint64_t SAT         = 1;
+uint64_t SAT_UNKNOWN = 0;
 
 char* BITVEC = (char*) 0;
 char* ARRAY  = (char*) 0;
@@ -297,6 +302,7 @@ uint64_t is_array(uint64_t* line);
 uint64_t is_constant_op(char* op);
 uint64_t is_input_op(char* op);
 uint64_t is_unary_op(char* op);
+uint64_t is_property_op(char* op);
 
 char* get_smt_op(uint64_t* line);
 
@@ -3364,6 +3370,7 @@ char* disassemble_model_option = (char*) 0;
 char* load_code_option         = (char*) 0;
 
 char* determine_min_max_option = (char*) 0;
+char* printing_only_sat_option = (char*) 0;
 
 char* min_unroll_model_option = (char*) 0;
 char* max_unroll_model_option = (char*) 0;
@@ -3404,6 +3411,8 @@ uint64_t custom_model_name = 0;
 uint64_t evaluate_model    = 0;
 uint64_t output_assembly   = 0;
 uint64_t disassemble_model = 0;
+
+uint64_t printing_only_sat = 0;
 
 uint64_t check_bad_exit_code  = 1;
 uint64_t check_good_exit_code = 0;
@@ -3491,6 +3500,7 @@ void init_rotor(int argc, char** argv) {
   load_code_option         = "-l";
 
   determine_min_max_option = "-k";
+  printing_only_sat_option = "-sat";
 
   min_unroll_model_option = "-kmin";
   max_unroll_model_option = "-kmax";
@@ -3722,6 +3732,7 @@ uint64_t* new_line(char* op, uint64_t* sid, uint64_t* arg1, uint64_t* arg2, uint
   set_step(new_line, UNINITIALIZED);
   set_reuse(new_line, 0);
   set_prefix(new_line, (char*) 0);
+  set_sat(new_line, SAT_UNKNOWN);
   set_pred(new_line, UNUSED);
   set_succ(new_line, UNUSED);
 
@@ -3849,6 +3860,15 @@ uint64_t is_unary_op(char* op) {
   else if (op == OP_DEC)
     return 1;
   else if (op == OP_NEG)
+    return 1;
+  else
+    return 0;
+}
+
+uint64_t is_property_op(char* op) {
+  if (op == OP_BAD)
+    return 1;
+  else if (op == OP_CONSTRAINT)
     return 1;
   else
     return 0;
@@ -4323,9 +4343,7 @@ uint64_t print_line_with_given_nid(uint64_t nid, uint64_t* line) {
     return print_binary_op(nid, line);
   else if (op == OP_NEXT)
     return print_binary_op(nid, line);
-  else if (op == OP_BAD)
-    return print_constraint(nid, line);
-  else if (op == OP_CONSTRAINT)
+  else if (is_property_op(op))
     return print_constraint(nid, line);
   else {
     if (printing_propagated_constants)
@@ -4363,6 +4381,8 @@ void print_line_advancing_nid(uint64_t* line) {
 }
 
 void print_line(uint64_t* line) {
+  if (and(printing_only_sat,
+    and(is_property_op(get_op(line)), get_sat(line) == SAT_UNKNOWN))) return;
   if (get_nid(line) > 0) {
     // print lines only once but mention reuse at top level
     w = w + dprintf(output_fd, "; reusing ");
@@ -4397,6 +4417,8 @@ void print_break() {
 
 void print_break_line(uint64_t* line) {
   if (line != UNUSED) {
+    if (and(printing_only_sat,
+      and(is_property_op(get_op(line)), get_sat(line) == SAT_UNKNOWN))) return;
     print_break();
     print_line(line);
   }
@@ -5515,9 +5537,11 @@ uint64_t eval_property(uint64_t core, uint64_t* line, uint64_t bad) {
 
             max_input_to_bad_state = current_input;
           }
+
+          set_sat(line, SAT);
         }
     } else {
-      if (printing_unrolled_model)
+      if (or(not(printing_only_sat), and(printing_unrolled_model, get_sat(line) == SAT)))
         if (next_step - current_offset >= min_steps_to_bad_state) {
           w = w + dprintf(output_fd, "; bad-start-%lu: %s\n\n", current_step - current_offset, get_comment(line));
           if (not(printing_explicit_constraints))
@@ -5554,9 +5578,11 @@ uint64_t eval_property(uint64_t core, uint64_t* line, uint64_t bad) {
           printf("%s: constraint %s violated on core-%lu @ 0x%lX after %lu steps (up to %lu instructions)\n", selfie_name,
             symbol, core, eval_line_for(core, state_pc_nids), current_step - current_offset, next_step - current_offset);
           if (any_input) printf(" with input %lu\n", current_input); else printf("\n");
+
+          set_sat(line, SAT);
         }
     } else {
-      if (printing_unrolled_model) {
+      if (or(not(printing_only_sat), and(printing_unrolled_model, get_sat(line) == SAT))) {
         w = w + dprintf(output_fd, "; constraint-start-%lu: %s\n\n", current_step - current_offset, get_comment(line));
         if (not(printing_explicit_constraints))
           print_line_advancing_nid(line);
@@ -12283,9 +12309,9 @@ void print_model_for(uint64_t core) {
       eval_stack_segment_data_flow_nids);
   print_break_comment_line_for(core, "update stack segment data flow", next_stack_segment_nids);
 
-  print_break_comment_for(core, "state properties");
+  print_nobreak_comment_for(core, "state properties");
 
-  print_line_for(core, prop_illegal_instruction_nids);
+  print_break_line_for(core, prop_illegal_instruction_nids);
   print_break_line_for(core, prop_illegal_compressed_instruction_nids);
   print_break_line_for(core, prop_is_instruction_known_nids);
   print_break_line_for(core, prop_next_fetch_invalid_address_nids);
@@ -13482,6 +13508,11 @@ uint64_t parse_engine_arguments() {
     evaluate_model          = 1;
 
     get_argument();
+  } else if (string_compare(peek_argument(1), printing_only_sat_option)) {
+    printing_only_sat = 1;
+    evaluate_model    = 1;
+
+    get_argument();
   } else if (string_compare(peek_argument(1), min_unroll_model_option)) {
     get_argument();
 
@@ -13728,21 +13759,21 @@ uint64_t selfie_model() {
         if (evaluate_model) {
           printing_unrolled_model = 0;
 
-          eval_rotor(); // determines kmin and kmax
+          eval_rotor(); // determines kmin and kmax, sat properties
 
           printing_unrolled_model = 1;
         }
 
         print_unrolled_model();
       } else {
+        if (evaluate_model)
+          eval_rotor(); // determines kmin and kmax, sat properties
+
         if (printing_propagated_constants)
           if (eval_constant_propagation())
             return EXITCODE_NOERROR;
 
         print_model();
-
-        if (evaluate_model)
-          eval_rotor();
       }
 
       if (disassemble_model)
