@@ -4507,6 +4507,11 @@ def parse_btor2(modelfile, outputfile):
             if state.next_line is None:
                 print(state)
 
+    if Ite.branching_conditions and Ite.non_branching_conditions:
+        print("branching conditions:")
+        print(Ite.branching_conditions)
+        print(Ite.non_branching_conditions)
+
     print("model profile:")
     print(f"{len(Line.lines)} lines in total")
     print(f"{Input.count} input, {State.count} state, {Init.count} init, {Next.count} next, {Constraint.count} constraint, {Bad.count} bad")
@@ -4517,6 +4522,29 @@ def parse_btor2(modelfile, outputfile):
     print(f"{Concat.count} concat, {Ite.count} ite, {Read.count} read, {Write.count} write")
 
     return are_there_state_transitions
+
+# console output
+
+def get_step(step, level):
+    if step is None or level is None:
+        return ""
+    elif level == 0:
+        return f"{step}: "
+    else:
+        return f"{step}-{level}: "
+
+last_message_length = 0
+
+def print_message(message, step = None, level = None):
+    global last_message_length
+    if last_message_length > 0:
+        print("\r%s" % (" " * last_message_length), end='\r')
+    message = f"{get_step(step, level)}{message}"
+    print(message, end='', flush=True)
+    last_message_length = len(message) if message[-1:] != '\n' else 0
+
+def print_separator(separator, step = None, level = None):
+    print_message(f"{separator * (80 - len(get_step(step, level)))}\n", step, level)
 
 # Z3 and bitwuzla solver interface
 
@@ -4557,23 +4585,23 @@ class Z3_Solver(Solver):
     def assert_no_change(self, next_line, step):
         return self.solver.add(next_line.get_z3_no_change(step))
 
-    def print_pc(self, pc, step):
+    def print_pc(self, pc, step, level):
         self.prove()
         model = self.solver.model()
+        print_message(f"{pc}\n", step, level)
         for decl in model.decls():
             if str(pc.get_z3_step(step)) in str(decl.name()):
                 pc_value = int(model[decl].as_long())
-                print(pc)
-                print("%s = 0x%X" % (decl.name(), pc_value))
+                print_message("%s = 0x%X\n" % (decl.name(), pc_value), step, level)
 
-    def print_inputs(self, inputs, step):
+    def print_inputs(self, inputs, step, level):
         model = self.solver.model()
         for input_variable in inputs.values():
             # only print value of uninitialized states
-            print(input_variable)
+            print_message(f"{input_variable}\n", step, level)
             for decl in model.decls():
                 if str(input_variable.get_z3_step(step)) in str(decl.name()):
-                    print("%s = %s" % (decl.name(), model[decl]))
+                    print_message("%s = %s\n" % (decl.name(), model[decl]), step, level)
 
 class Bitwuzla_Solver(Solver):
     def __init__(self):
@@ -4605,32 +4633,29 @@ class Bitwuzla_Solver(Solver):
     def assert_no_change(self, next_line, step):
         return self.solver.assert_formula(next_line.get_bitwuzla_no_change(step, self.tm))
 
-    def print_pc(self, pc, step):
+    def print_pc(self, pc, step, level):
         self.prove()
         pc_value = int(self.solver.get_value(pc.get_bitwuzla_step(step, self.tm)).value(16), 16)
-        print(pc)
-        print("%s = 0x%X" % (pc.get_bitwuzla_step(step, self.tm), pc_value))
+        print_message(f"{pc}\n", step, level)
+        print_message("%s = 0x%X\n" % (pc.get_bitwuzla_step(step, self.tm), pc_value), step, level)
 
-    def print_inputs(self, inputs, step):
+    def print_inputs(self, inputs, step, level):
         for input_variable in inputs.values():
             # only print value of uninitialized states
-            print(input_variable)
-            print("%s = %s" % (input_variable.get_bitwuzla_step(step, self.tm),
-                self.solver.get_value(input_variable.get_bitwuzla_step(step, self.tm))))
+            print_message(f"{input_variable}\n", step, level)
+            print_message("%s = %s\n" % (input_variable.get_bitwuzla_step(step, self.tm),
+                self.solver.get_value(input_variable.get_bitwuzla_step(step, self.tm))),
+                step, level)
 
 # bitme bounded model checker
 
 def branching_bmc(solver, kmin, kmax, args, step, level):
     while step <= kmax:
         # check model up to kmax steps
-        if level == 0:
-            print(step)
-        else:
-            print(f"{step}-{level}")
 
         if args.print_pc and State.pc:
             # print current program counter value of single-core rotor model
-            solver.print_pc(State.pc, step)
+            solver.print_pc(State.pc, step, level)
 
         # assert all constraints
         solver.assert_this(Constraint.constraints.values(), step)
@@ -4638,15 +4663,15 @@ def branching_bmc(solver, kmin, kmax, args, step, level):
         if step >= kmin:
             # check bad properties from kmin on
             for bad in Bad.bads.values():
-                # check all bad properties
+                print_message(bad, step, level)
                 solver.push()
                 solver.assert_this([bad], step)
                 result = solver.prove()
                 if solver.is_SAT(result):
-                    print("v" * 80)
-                    print(f"sat: {bad}")
-                    solver.print_inputs(Variable.inputs, step)
-                    print("^" * 80)
+                    print_separator('v', step, level)
+                    print_message(f"{bad}\n", step, level)
+                    solver.print_inputs(Variable.inputs, step, level)
+                    print_separator('^', step, level)
                 solver.pop()
 
         if not args.unconstraining_bad:
@@ -4663,19 +4688,21 @@ def branching_bmc(solver, kmin, kmax, args, step, level):
                 solver.pop()
                 if solver.is_SAT(result):
                     state_change = True
-                    print(f"state change: {next_line}")
+                    print_message(f"state change: {next_line}\n", step, level)
                     # compute next step
                     solver.assert_this([next_line], step)
                 else:
                     solver.assert_no_change(next_line, step)
                 if not state_change and next_line == list(Next.nexts.values())[-1]:
-                    print("no states changed: terminating")
+                    print_message("no states changed: terminating\n", step, level)
                     return
         else:
             # compute next step
             solver.assert_this(Next.nexts.values(), step)
 
         if args.branching and Ite.branching_conditions and Ite.non_branching_conditions:
+            print_message("checking branching", step, level)
+
             solver.push()
             solver.assert_this([Ite.branching_conditions], step)
             branching_result = solver.is_SAT(solver.prove())
@@ -4693,8 +4720,8 @@ def branching_bmc(solver, kmin, kmax, args, step, level):
                     solver.assert_not_this([Ite.non_branching_conditions], step)
 
             if branching_result and non_branching_result:
-                print("v" * 80)
-                print(f"branching @ {step}-{level}")
+                print_separator('v', step, level)
+                print_message("branching:\n", step, level)
 
                 solver.push()
                 solver.assert_this([Ite.branching_conditions], step)
@@ -4703,8 +4730,8 @@ def branching_bmc(solver, kmin, kmax, args, step, level):
 
                 solver.pop()
 
-                print("-" * 80)
-                print(f"not branching @ {step}-{level}")
+                print_separator('-', step, level)
+                print_message("not branching:\n", step, level)
 
                 solver.push()
                 solver.assert_not_this([Ite.non_branching_conditions], step)
@@ -4713,15 +4740,15 @@ def branching_bmc(solver, kmin, kmax, args, step, level):
 
                 solver.pop()
 
-                print("^" * 80)
+                print_separator('^', step, level)
                 return
 
         step += 1
 
 def bmc(solver, kmin, kmax, args):
-    print("#" * 80)
-
-    print(f"bounded model checking: -kmin {kmin} -kmax {kmax}")
+    print_separator('#')
+    print_message(f"bounded model checking: -kmin {kmin} -kmax {kmax}\n")
+    print_separator('#')
 
     # initialize all states
     solver.assert_this(Init.inits.values(), 0)
@@ -4852,7 +4879,7 @@ def main():
             solver = Bitwuzla_Solver()
             bmc(solver, kmin, kmax, args)
 
-        print("#" * 80)
+        print_separator('#')
 
 if __name__ == '__main__':
     main()
