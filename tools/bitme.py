@@ -1107,6 +1107,7 @@ class Ite(Ternary):
             raise model_error("compatible result and second operand sorts", line_no)
         if not arg2_line.sid_line.match_sorts(arg3_line.sid_line):
             raise model_error("compatible second and third operand sorts", line_no)
+        self.ite_cache = {}
         if comment == "; branch true condition":
             Ite.branching_conditions = self
             self.z3_lambda_line = None
@@ -1123,10 +1124,12 @@ class Ite(Ternary):
             return self
 
     def get_mapped_array_expression_for(self, index):
-        arg1_line = self.arg1_line.get_mapped_array_expression_for(None)
-        arg2_line = self.arg2_line.get_mapped_array_expression_for(index)
-        arg3_line = self.arg3_line.get_mapped_array_expression_for(index)
-        return self.copy(arg1_line, arg2_line, arg3_line)
+        if index not in self.ite_cache:
+            arg1_line = self.arg1_line.get_mapped_array_expression_for(None)
+            arg2_line = self.arg2_line.get_mapped_array_expression_for(index)
+            arg3_line = self.arg3_line.get_mapped_array_expression_for(index)
+            self.ite_cache[index] = self.copy(arg1_line, arg2_line, arg3_line)
+        return self.ite_cache[index]
 
     def get_z3(self):
         if self.z3 is None:
