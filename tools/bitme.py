@@ -4384,17 +4384,14 @@ def parse_property_line(tokens, nid, op, line_no):
 def parse_btor2_line(line, line_no):
     global current_nid # only necessary for mapping arrays
 
-    current_nid = 0
-
     if line.strip():
         tokens = tokenize_btor2(line)
         token = get_token(tokens, None, None)
         if token[0] != ';':
             if token.isdecimal():
-                nid = int(token)
+                nid = Array.accommodate_array_indexes(int(token))
                 if nid > current_nid:
                     current_nid = nid
-                    nid = Array.accommodate_array_indexes(nid)
                     token = get_token(tokens, "keyword", line_no)
                     if token == Sort.keyword:
                         return parse_sort_line(tokens, nid, line_no)
