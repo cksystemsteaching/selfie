@@ -5541,7 +5541,7 @@ uint64_t eval_property(uint64_t core, uint64_t* line, uint64_t bad) {
           set_sat(line, SAT);
         }
     } else {
-      if (or(not(printing_only_sat), and(printing_unrolled_model, get_sat(line) == SAT)))
+      if (and(printing_unrolled_model, or(not(printing_only_sat), get_sat(line) == SAT)))
         if (next_step - current_offset >= min_steps_to_bad_state) {
           w = w + dprintf(output_fd, "; bad-start-%lu: %s\n\n", current_step - current_offset, get_comment(line));
           if (not(printing_explicit_constraints))
@@ -5582,7 +5582,7 @@ uint64_t eval_property(uint64_t core, uint64_t* line, uint64_t bad) {
           set_sat(line, SAT);
         }
     } else {
-      if (or(not(printing_only_sat), and(printing_unrolled_model, get_sat(line) == SAT))) {
+      if (and(printing_unrolled_model, or(not(printing_only_sat), get_sat(line) == SAT))) {
         w = w + dprintf(output_fd, "; constraint-start-%lu: %s\n\n", current_step - current_offset, get_comment(line));
         if (not(printing_explicit_constraints))
           print_line_advancing_nid(line);
