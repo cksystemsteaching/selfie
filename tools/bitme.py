@@ -461,10 +461,6 @@ class Variable(Expression):
             Variable.inputs[self.nid] = self
 
     def get_mapped_array_expression_for(self, index):
-        if isinstance(self.sid_line, Bitvector) or self.sid_line.is_mapped_array():
-            if self.init_line is not None and self.next_line is not None and self.next_line.exp_line is self:
-                # propagate initial value of initialized read-only bitvector states
-                return self.init_line.exp_line.get_mapped_array_expression_for(index)
         if index is not None:
             assert self.sid_line.is_mapped_array()
             return self.array[index]
@@ -487,6 +483,9 @@ class Input(Variable):
 
     def __str__(self):
         return f"{self.nid} {Input.keyword} {self.sid_line.nid} {self.symbol} {self.comment}"
+
+    def get_mapped_array_expression_for(self, index):
+        return super().get_mapped_array_expression_for(index)
 
     def get_value(self):
         return self
@@ -540,6 +539,13 @@ class State(Variable, Cache):
             if State.states[key] is self:
                 del State.states[key]
                 return
+
+    def get_mapped_array_expression_for(self, index):
+        if isinstance(self.sid_line, Bitvector) or self.sid_line.is_mapped_array():
+            if self.init_line is not None and self.next_line is not None and self.next_line.exp_line is self:
+                # propagate initial value of initialized read-only bitvector states
+                return self.init_line.exp_line.get_mapped_array_expression_for(index)
+        return super().get_mapped_array_expression_for(index)
 
     def get_value(self):
         return self.value
@@ -604,6 +610,7 @@ class Indexed(Expression):
             raise model_error("bitvector operand", line_no)
 
     def get_mapped_array_expression_for(self, index):
+        assert index is None
         arg1_line = self.arg1_line.get_mapped_array_expression_for(None)
         return self.copy(arg1_line)
 
@@ -704,6 +711,7 @@ class Unary(Expression):
             return self
 
     def get_mapped_array_expression_for(self, index):
+        assert index is None
         arg1_line = self.arg1_line.get_mapped_array_expression_for(None)
         return self.copy(arg1_line)
 
@@ -761,6 +769,7 @@ class Binary(Expression):
             return self
 
     def get_mapped_array_expression_for(self, index):
+        assert index is None
         arg1_line = self.arg1_line.get_mapped_array_expression_for(None)
         arg2_line = self.arg2_line.get_mapped_array_expression_for(None)
         return self.copy(arg1_line, arg2_line)
@@ -1003,7 +1012,7 @@ class Read(Binary):
         self.read_cache = None
 
     def read_array_iterative(self, array_line, index_line):
-        for index in array_line.array.keys():
+        for index in range(2**array_line.sid_line.array_size_line.size):
             if index == 0:
                 read_line = array_line.get_mapped_array_expression_for(0)
             else:
@@ -1049,14 +1058,15 @@ class Read(Binary):
                     return self.read_array_iterative(array_line, index_line)
                 else:
                     return self.read_array_recursive(array_line, index_line,
-                        list(array_line.array.keys()),
+                        list(range(2**array_line.sid_line.array_size_line.size)),
                         Zero(next_nid(),
                             Bitvec(next_nid(), 1, "1-bit bitvector for testing bits", self.line_no),
                             "zero value for testing bits", self.line_no))
         else:
-            return self.copy(array_line, index_line)
+            return self.copy(array_line.get_mapped_array_expression_for(None), index_line)
 
     def get_mapped_array_expression_for(self, index):
+        assert index is None
         if self.read_cache is None: # avoids quadratic blowup in mapped array size
             arg1_line = self.arg1_line # map later when index is known
             arg2_line = self.arg2_line.get_mapped_array_expression_for(None)
