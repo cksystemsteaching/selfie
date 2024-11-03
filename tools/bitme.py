@@ -332,8 +332,11 @@ class Array(Sort):
         return self.array_size_line.size <= Array.ARRAY_SIZE_BOUND
 
     def accommodate_array_indexes(nid):
-        # shift left by log10(2**n + 1) decimal digits where n is the array index space
-        return nid * 10**math.ceil(math.log10(2**Array.ARRAY_SIZE_BOUND + 1))
+        if Array.ARRAY_SIZE_BOUND == 0:
+            return nid
+        else:
+            # shift left by log10(2**n + 1) decimal digits where n is the array index space
+            return nid * 10**(math.floor(math.log10(2**Array.ARRAY_SIZE_BOUND + 1)) + 1)
 
     def get_z3(self):
         if self.z3 is None:
