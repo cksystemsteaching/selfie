@@ -4219,6 +4219,29 @@ class System():
     def __str__(self):
         return f"{SID_MACHINE_WORD.size}-bit single-core system:\n{self.core}"
 
+# console output
+
+def get_step(step, level):
+    if step is None or level is None:
+        return ""
+    elif level == 0:
+        return f"{step}: "
+    else:
+        return f"{step}-{level}: "
+
+last_message_length = 0
+
+def print_message(message, step = None, level = None):
+    global last_message_length
+    if last_message_length > 0:
+        print("\r%s" % (" " * last_message_length), end='\r')
+    message = f"{get_step(step, level)}{message}"
+    print(message, end='', flush=True)
+    last_message_length = len(message) if message[-1:] != '\n' else 0
+
+def print_separator(separator, step = None, level = None):
+    print_message(f"{separator * (80 - len(get_step(step, level)))}\n", step, level)
+
 # BTOR2 parser
 
 import re
@@ -4472,10 +4495,6 @@ def parse_btor2(modelfile, outputfile):
 
     # end: mapping arrays to bitvectors
 
-    if outputfile:
-        for line in lines.values():
-            print(line, file=outputfile)
-
     for state in State.states.values():
         if state.init_line is None:
             # state has no init
@@ -4531,30 +4550,13 @@ def parse_btor2(modelfile, outputfile):
     print(f"{Implies.count} implies, {Comparison.count} comparison, {Logical.count} logical, {Computation.count} computation")
     print(f"{Concat.count} concat, {Ite.count} ite, {Read.count} read, {Write.count} write")
 
+    if outputfile:
+        print_separator('#')
+        print(f"output file: {outputfile.name}")
+        for line in lines.values():
+            print(line, file=outputfile)
+
     return are_there_state_transitions
-
-# console output
-
-def get_step(step, level):
-    if step is None or level is None:
-        return ""
-    elif level == 0:
-        return f"{step}: "
-    else:
-        return f"{step}-{level}: "
-
-last_message_length = 0
-
-def print_message(message, step = None, level = None):
-    global last_message_length
-    if last_message_length > 0:
-        print("\r%s" % (" " * last_message_length), end='\r')
-    message = f"{get_step(step, level)}{message}"
-    print(message, end='', flush=True)
-    last_message_length = len(message) if message[-1:] != '\n' else 0
-
-def print_separator(separator, step = None, level = None):
-    print_message(f"{separator * (80 - len(get_step(step, level)))}\n", step, level)
 
 # Z3 and bitwuzla solver interface
 
@@ -4896,7 +4898,7 @@ def main():
             solver = Bitwuzla_Solver()
             bmc(solver, kmin, kmax, args)
 
-        print_separator('#')
+    print_separator('#')
 
 if __name__ == '__main__':
     main()
