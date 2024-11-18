@@ -98,4 +98,5 @@ def generate_all_examples() -> None:
                     for file in files:
                         if file.suffix != ".c":
                             continue
+                        print(f"Generating {file}...")
                         create_model(file, model_type, type)

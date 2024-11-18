@@ -29,7 +29,6 @@ if __name__ == "__main__":
 
         if args.model_type and args.source:
             model_path = create_model(args.source, args.model_type)
-            Z3Solver(Path("../models/model.smt")).benchmark()
             Z3Solver(model_path).benchmark()
             exit(0)
 
