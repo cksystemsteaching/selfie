@@ -55,6 +55,8 @@ except ImportError:
 
 import math
 
+LAMBDAS = True
+
 # supported BTOR2 keywords and operators
 
 def init_btor2_keywords_operators():
@@ -608,6 +610,21 @@ class State(Variable, Cache):
         else:
             return line.get_bitwuzla_lambda(tm)
 
+    def get_bitwuzla_substitute(line, domain, step, tm):
+        assert step >= 0
+        line.bitwuzla = line.get_bitwuzla(tm)
+        if domain:
+            if step == 0:
+                current_states = [state.get_bitwuzla(tm) for state in domain]
+            else:
+                # assuming that line.bitwuzla is a term over states of step - 1
+                current_states = [state.get_bitwuzla_step(step - 1, tm) for state in domain]
+            next_states = [state.get_bitwuzla_step(step, tm) for state in domain]
+            renaming = dict(current_next for current_next in zip(current_states, next_states))
+
+            line.bitwuzla = tm.substitute_term(line.bitwuzla, renaming)
+        return line.bitwuzla
+
 class Indexed(Expression):
     def __init__(self, nid, sid_line, arg1_line, comment, line_no):
         super().__init__(nid, sid_line, arg1_line.domain, comment, line_no)
@@ -1149,10 +1166,12 @@ class Ite(Ternary):
             Ite.branching_conditions = self
             self.z3_lambda_line = None
             self.bitwuzla_lambda_line = None
+            self.cache_bitwuzla_instance = {}
         elif comment == "; branch false condition":
             Ite.non_branching_conditions = self
             self.z3_lambda_line = None
             self.bitwuzla_lambda_line = None
+            self.cache_bitwuzla_instance = {}
 
     def copy(self, arg1_line, arg2_line, arg3_line):
         if self.arg1_line is not arg1_line or self.arg2_line is not arg2_line or self.arg3_line is not arg3_line:
@@ -1204,11 +1223,22 @@ class Ite(Ternary):
 
     def get_bitwuzla_select(self, domain, step, tm):
         # only needed for branching
-        return State.get_bitwuzla_select(self, domain, step, tm)
+        if step not in self.cache_bitwuzla_instance:
+            self.cache_bitwuzla_instance[step] = State.get_bitwuzla_select(self, domain, step, tm)
+        return self.cache_bitwuzla_instance[step]
+
+    def get_bitwuzla_substitute(self, domain, step, tm):
+        # only needed for branching
+        if step not in self.cache_bitwuzla_instance:
+            self.cache_bitwuzla_instance[step] = State.get_bitwuzla_substitute(self, domain, step, tm)
+        return self.cache_bitwuzla_instance[step]
 
     def get_bitwuzla_step(self, step, tm):
         # only needed for branching
-        return self.get_bitwuzla_select(self.domain, step, tm)
+        if LAMBDAS:
+            return self.get_bitwuzla_select(self.domain, step, tm)
+        else:
+            return self.get_bitwuzla_substitute(self.domain, step, tm)
 
 class Write(Ternary):
     keyword = OP_WRITE
@@ -1282,13 +1312,36 @@ class Sequential(Line, Cache):
         self.z3_lambda_line = None
         self.cache_z3_select = {}
         self.bitwuzla_lambda_line = None
-        self.cache_bitwuzla_select = {}
+        self.cache_bitwuzla_instance = {}
 
     def get_z3_select(self, domain, step):
         return State.get_z3_select(self, domain, step)
 
+    def get_bitwuzla(self, line, tm):
+        if self.bitwuzla is None:
+            self.bitwuzla = line.get_bitwuzla(tm)
+        return self.bitwuzla
+
+    def get_bitwuzla_lambda(self, line, tm):
+        if self.bitwuzla_lambda_line is None:
+            self.bitwuzla_lambda_line = State.get_bitwuzla_lambda(line, tm)
+        return self.bitwuzla_lambda_line
+
     def get_bitwuzla_select(self, domain, step, tm):
-        return State.get_bitwuzla_select(self, domain, step, tm)
+        if step not in self.cache_bitwuzla_instance:
+            self.cache_bitwuzla_instance[step] = State.get_bitwuzla_select(self, domain, step, tm)
+        return self.cache_bitwuzla_instance[step]
+
+    def get_bitwuzla_substitute(self, domain, step, tm):
+        if step not in self.cache_bitwuzla_instance:
+            self.cache_bitwuzla_instance[step] = State.get_bitwuzla_substitute(self, domain, step, tm)
+        return self.cache_bitwuzla_instance[step]
+
+    def get_bitwuzla_step(self, domain, step, tm):
+        if LAMBDAS:
+            return self.get_bitwuzla_select(domain, step, tm)
+        else:
+            return self.get_bitwuzla_substitute(domain, step, tm)
 
 class Transitional(Sequential):
     def __init__(self, nid, sid_line, state_line, exp_line, comment, line_no, array_line, index):
@@ -1348,15 +1401,14 @@ class Transitional(Sequential):
             self.cache_z3_select[step] = super().get_z3_select(self.exp_line.domain, step)
         return self.cache_z3_select[step]
 
-    def get_bitwuzla_lambda(self, tm):
-        if self.bitwuzla_lambda_line is None:
-            self.bitwuzla_lambda_line = State.get_bitwuzla_lambda(self.exp_line, tm)
-        return self.bitwuzla_lambda_line
+    def get_bitwuzla(self, tm):
+        return super().get_bitwuzla(self.exp_line, tm)
 
-    def get_bitwuzla_select(self, step, tm):
-        if step not in self.cache_bitwuzla_select:
-            self.cache_bitwuzla_select[step] = super().get_bitwuzla_select(self.exp_line.domain, step, tm)
-        return self.cache_bitwuzla_select[step]
+    def get_bitwuzla_lambda(self, tm):
+        return super().get_bitwuzla_lambda(self.exp_line, tm)
+
+    def get_bitwuzla_step(self, step, tm):
+        return super().get_bitwuzla_step(self.exp_line.domain, step, tm)
 
     def set_value(self):
         self.state_line.set_value(self.exp_line.get_value())
@@ -1406,7 +1458,7 @@ class Init(Transitional):
                 self.set_value()
             return tm.mk_term(bitwuzla.Kind.EQUAL,
                 [self.state_line.get_bitwuzla_step(0, tm),
-                    self.get_bitwuzla_select(0, tm)])
+                    super().get_bitwuzla_step(0, tm)])
 
 class Next(Transitional):
     keyword = OP_NEXT
@@ -1447,14 +1499,14 @@ class Next(Transitional):
         if step not in self.cache_bitwuzla:
             self.cache_bitwuzla[step] = tm.mk_term(bitwuzla.Kind.EQUAL,
                 [self.state_line.get_bitwuzla_step(step + 1, tm),
-                    self.get_bitwuzla_select(step, tm)])
+                    super().get_bitwuzla_step(step, tm)])
         return self.cache_bitwuzla[step]
 
     def get_bitwuzla_change(self, step, tm):
         if step not in self.cache_bitwuzla_change:
             self.cache_bitwuzla_change[step] = tm.mk_term(bitwuzla.Kind.DISTINCT,
                 [self.state_line.get_bitwuzla_step(step, tm),
-                    self.get_bitwuzla_select(step, tm)])
+                    super().get_bitwuzla_step(step, tm)])
         return self.cache_bitwuzla_change[step]
 
     def get_bitwuzla_no_change(self, step, tm):
@@ -1489,15 +1541,14 @@ class Property(Sequential):
             self.cache_z3[step] = super().get_z3_select(self.property_line.domain, step)
         return self.cache_z3[step]
 
+    def get_bitwuzla(self, tm):
+        return super().get_bitwuzla(self.property_line, tm)
+
     def get_bitwuzla_lambda(self, tm):
-        if self.bitwuzla_lambda_line is None:
-            self.bitwuzla_lambda_line = State.get_bitwuzla_lambda(self.property_line, tm)
-        return self.bitwuzla_lambda_line
+        return super().get_bitwuzla_lambda(self.property_line, tm)
 
     def get_bitwuzla_step(self, step, tm):
-        if step not in self.cache_bitwuzla:
-            self.cache_bitwuzla[step] = super().get_bitwuzla_select(self.property_line.domain, step, tm)
-        return self.cache_bitwuzla[step]
+        return super().get_bitwuzla_step(self.property_line.domain, step, tm)
 
 class Constraint(Property):
     keyword = OP_CONSTRAINT
