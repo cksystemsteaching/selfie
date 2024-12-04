@@ -55,8 +55,6 @@ except ImportError:
 
 import math
 
-LAMBDAS = True
-
 # supported BTOR2 keywords and operators
 
 def init_btor2_keywords_operators():
@@ -211,6 +209,8 @@ class Bitwuzla():
         self.bitwuzla = None
 
 class Line(Z3, Bitwuzla):
+    LAMBDAS = True
+
     lines = {}
 
     count = 0
@@ -1235,7 +1235,7 @@ class Ite(Ternary):
 
     def get_bitwuzla_step(self, step, tm):
         # only needed for branching
-        if LAMBDAS:
+        if Line.LAMBDAS:
             return self.get_bitwuzla_select(self.domain, step, tm)
         else:
             return self.get_bitwuzla_substitute(self.domain, step, tm)
@@ -1338,7 +1338,7 @@ class Sequential(Line, Cache):
         return self.cache_bitwuzla_instance[step]
 
     def get_bitwuzla_step(self, domain, step, tm):
-        if LAMBDAS:
+        if Line.LAMBDAS:
             return self.get_bitwuzla_select(domain, step, tm)
         else:
             return self.get_bitwuzla_substitute(domain, step, tm)
@@ -4938,14 +4938,16 @@ def main():
     parser.add_argument('modelfile', type=argparse.FileType('r'))
     parser.add_argument('outputfile', nargs='?', type=argparse.FileType('w', encoding='UTF-8'))
 
+    parser.add_argument('--use-Z3', action='store_true')
+    parser.add_argument('--use-bitwuzla', action='store_true')
+
+    parser.add_argument('--substitute', action='store_true')
+
     parser.add_argument('-array', nargs=1, type=int)
     parser.add_argument('--recursive-array', action='store_true')
 
     parser.add_argument('-kmin', nargs=1, type=int)
     parser.add_argument('-kmax', nargs=1, type=int)
-
-    parser.add_argument('--use-Z3', action='store_true')
-    parser.add_argument('--use-bitwuzla', action='store_true')
 
     parser.add_argument('--print-pc', action='store_true')
     parser.add_argument('--check-termination', action='store_true')
@@ -4953,6 +4955,8 @@ def main():
     parser.add_argument('--branching', action='store_true')
 
     args = parser.parse_args()
+
+    Line.LAMBDAS = not args.substitute
 
     Array.ARRAY_SIZE_BOUND = args.array[0] if args.array else 0
     Read.READ_ARRAY_ITERATIVELY = not args.recursive_array
