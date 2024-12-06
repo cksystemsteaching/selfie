@@ -209,8 +209,6 @@ class Bitwuzla():
         self.bitwuzla = None
 
 class Line(Z3, Bitwuzla):
-    LAMBDAS = True
-
     lines = {}
 
     count = 0
@@ -353,54 +351,64 @@ class Array(Sort):
         return self.bitwuzla
 
 class Expression(Line):
+    PROPAGATE = False
+    LAMBDAS = True
+
     def __init__(self, nid, sid_line, domain, comment, line_no):
         super().__init__(nid, comment, line_no)
         self.sid_line = sid_line
         self.domain = domain
+        self.z3_lambda = None
+        self.cache_z3_value = {}
         if not isinstance(sid_line, Sort):
             raise model_error("sort", line_no)
 
-    def get_z3_lambda(self, seq_line):
-        if seq_line.z3_lambda is None:
+    def get_z3_lambda(self):
+        if self.z3_lambda is None:
             if self.domain:
-                seq_line.z3_lambda = z3.Lambda([state.get_z3() for state in self.domain], self.get_z3())
+                self.z3_lambda = z3.Lambda([state.get_z3() for state in self.domain], self.get_z3())
             else:
-                seq_line.z3_lambda = self.get_z3()
-        return seq_line.z3_lambda
+                self.z3_lambda = self.get_z3()
+        return self.z3_lambda
 
-    def get_z3_select(self, seq_line, step):
-        if step not in seq_line.cache_z3_instance:
+    def get_z3_select(self, step):
+        if step not in self.cache_z3_value:
             if self.domain:
-                seq_line.cache_z3_instance[step] = z3.Select(self.get_z3_lambda(seq_line),
-                    *[state.get_z3_step(step) for state in self.domain])
+                self.cache_z3_value[step] = z3.Select(self.get_z3_lambda(),
+                    *[state.get_z3_name(step) for state in self.domain])
             else:
-                seq_line.cache_z3_instance[step] = self.get_z3_lambda(seq_line)
-        return seq_line.cache_z3_instance[step]
+                self.cache_z3_value[step] = self.get_z3_lambda()
+        return self.cache_z3_value[step]
 
-    def get_z3_substitute(self, seq_line, step):
+    def get_z3_substitute(self, step):
         assert step >= 0
-        if step not in seq_line.cache_z3_instance:
+        if step not in self.cache_z3_value:
             if step == 0:
-                seq_line.cache_z3_instance[step] = self.get_z3()
+                self.cache_z3_value[step] = self.get_z3()
             else:
-                seq_line.cache_z3_instance[step] = seq_line.cache_z3_instance[step - 1]
+                self.cache_z3_value[step] = self.cache_z3_value[step - 1]
             if self.domain:
                 if step == 0:
                     current_states = [state.get_z3() for state in self.domain]
                 else:
                     # assuming that self.z3 is a term over states of step - 1
-                    current_states = [state.get_z3_step(step - 1) for state in self.domain]
-                next_states = [state.get_z3_step(step) for state in self.domain]
+                    current_states = [state.get_z3_name(step - 1) for state in self.domain]
+                next_states = [state.get_z3_name(step) for state in self.domain]
                 renaming = list(zip(current_states, next_states))
 
-                seq_line.cache_z3_instance[step] = z3.substitute(seq_line.cache_z3_instance[step], renaming)
-        return seq_line.cache_z3_instance[step]
+                self.cache_z3_value[step] = z3.substitute(self.cache_z3_value[step], renaming)
+        return self.cache_z3_value[step]
 
-    def get_z3_instance(self, seq_line, step):
-        if Line.LAMBDAS:
-            return self.get_z3_select(seq_line, step)
+    def get_z3_propagate(self, step):
+        return self.get_z3_step(step)
+
+    def get_z3_instance(self, step):
+        if Expression.PROPAGATE:
+            return self.get_z3_propagate(step)
+        elif Expression.LAMBDAS:
+            return self.get_z3_select(step)
         else:
-            return self.get_z3_substitute(seq_line, step)
+            return self.get_z3_substitute(step)
 
     def get_bitwuzla_lambda(self, seq_line, tm):
         if seq_line.bitwuzla_lambda is None:
@@ -439,8 +447,13 @@ class Expression(Line):
                 seq_line.cache_bitwuzla_instance[step] = tm.substitute_term(seq_line.cache_bitwuzla_instance[step], renaming)
         return seq_line.cache_bitwuzla_instance[step]
 
+    def get_bitwuzla_propagate(self, seq_line, step, tm):
+        return self.get_bitwuzla_step(step, tm)
+
     def get_bitwuzla_instance(self, seq_line, step, tm):
-        if Line.LAMBDAS:
+        if Expression.PROPAGATE:
+            return self.get_bitwuzla_propagate(seq_line, step, tm)
+        elif Expression.LAMBDAS:
             return self.get_bitwuzla_select(seq_line, step, tm)
         else:
             return self.get_bitwuzla_substitute(seq_line, step, tm)
@@ -463,9 +476,6 @@ class Constant(Expression):
     def get_mapped_array_expression_for(self, index):
         return self
 
-    def get_value(self):
-        return self
-
     def get_z3(self):
         if self.z3 is None:
             if isinstance(self.sid_line, Bool):
@@ -473,6 +483,9 @@ class Constant(Expression):
             else:
                 self.z3 = z3.BitVecVal(self.value, self.sid_line.size)
         return self.z3
+
+    def get_z3_step(self, step):
+        return self.get_z3()
 
     def get_bitwuzla(self, tm):
         if self.bitwuzla is None:
@@ -582,9 +595,6 @@ class Input(Variable):
     def get_mapped_array_expression_for(self, index):
         return super().get_mapped_array_expression_for(index)
 
-    def get_value(self):
-        return self
-
     def get_z3_step(self, step):
         return self.get_z3()
 
@@ -598,7 +608,6 @@ class Input(Variable):
 
 class Cache():
     def __init__(self):
-        self.cache_z3 = {}
         self.cache_bitwuzla = {}
 
 class State(Variable, Cache):
@@ -615,7 +624,7 @@ class State(Variable, Cache):
         self.name = f"state{self.nid}"
         self.init_line = None
         self.next_line = None
-        self.value = None
+        self.cache_z3_name = {}
         self.new_state(index)
         # rotor-dependent program counter declaration
         if comment == "; program counter":
@@ -642,21 +651,27 @@ class State(Variable, Cache):
                 return self.init_line.exp_line.get_mapped_array_expression_for(index)
         return super().get_mapped_array_expression_for(index)
 
-    def get_value(self):
-        assert self.value is not None
-        return self.value
-
-    def set_value(self, value):
-        assert self.sid_line.match_sorts(value.sid_line)
-        self.value = value
-
     def get_step_name(self, step):
         return f"{self.name}-{step}"
 
+    def get_z3_name(self, step):
+        if step not in self.cache_z3_name:
+            self.cache_z3_name[step] = z3.Const(self.get_step_name(step), self.sid_line.get_z3())
+        return self.cache_z3_name[step]
+
+    def get_z3_value(self, step):
+        assert step in self.cache_z3_value
+        return self.cache_z3_value[step]
+
+    def set_z3_value(self, value, step):
+        assert step not in self.cache_z3_value
+        self.cache_z3_value[step] = value
+
     def get_z3_step(self, step):
-        if step not in self.cache_z3:
-            self.cache_z3[step] = z3.Const(self.get_step_name(step), self.sid_line.get_z3())
-        return self.cache_z3[step]
+        if Expression.PROPAGATE:
+            if step in self.cache_z3_value:
+                return self.get_z3_value(step)
+        return self.get_z3_name(step)
 
     def get_bitwuzla(self, tm):
         if self.bitwuzla is None:
@@ -704,21 +719,29 @@ class Ext(Indexed):
         else:
             return self
 
-    def get_value(self):
-        arg1_value = self.arg1_line.get_value()
+    def get_value(self, step):
+        arg1_value = self.arg1_line.get_value(step)
         if isinstance(arg1_value, Constant):
             return type(arg1_value)(next_nid(), self.sid_line, arg1_value.value, self.comment, self.line_no)
         else:
             return self.copy(arg1_value)
 
+    def create_z3(self, arg1_z3):
+        if self.op == 'sext':
+            return z3.SignExt(self.w, arg1_z3)
+        else:
+            assert self.op == 'uext'
+            return z3.ZeroExt(self.w, arg1_z3)
+
     def get_z3(self):
         if self.z3 is None:
-            if self.op == 'sext':
-                self.z3 = z3.SignExt(self.w, self.arg1_line.get_z3())
-            else:
-                assert self.op == 'uext'
-                self.z3 = z3.ZeroExt(self.w, self.arg1_line.get_z3())
+            self.z3 = self.create_z3(self.arg1_line.get_z3())
         return self.z3
+
+    def get_z3_step(self, step):
+        if step not in self.cache_z3_value:
+            self.cache_z3_value[step] = self.create_z3(self.arg1_line.get_z3_step(step))
+        return self.cache_z3_value[step]
 
     def get_bitwuzla(self, tm):
         if self.bitwuzla is None:
@@ -754,8 +777,8 @@ class Slice(Indexed):
         else:
             return self
 
-    def get_value(self):
-        arg1_value = self.arg1_line.get_value()
+    def get_value(self, step):
+        arg1_value = self.arg1_line.get_value(step)
         if isinstance(arg1_value, Constant):
             return type(arg1_value)(next_nid(), self.sid_line,
                 (arg1_value.value & 2**(self.u + 1) - 1) >> self.l, self.comment, self.line_no)
@@ -1208,14 +1231,10 @@ class Ite(Ternary):
         self.ite_cache = {}
         if comment == "; branch true condition":
             Ite.branching_conditions = self
-            self.z3_lambda = None
-            self.cache_z3_instance = {}
             self.bitwuzla_lambda = None
             self.cache_bitwuzla_instance = {}
         elif comment == "; branch false condition":
             Ite.non_branching_conditions = self
-            self.z3_lambda = None
-            self.cache_z3_instance = {}
             self.bitwuzla_lambda = None
             self.cache_bitwuzla_instance = {}
 
@@ -1233,15 +1252,24 @@ class Ite(Ternary):
             self.ite_cache[index] = self.copy(arg1_line, arg2_line, arg3_line)
         return self.ite_cache[index]
 
+    def create_z3(self, arg1_z3, arg2_z3, arg3_z3):
+        return z3.If(arg1_z3, arg2_z3, arg3_z3)
+
     def get_z3(self):
         if self.z3 is None:
-            self.z3 = z3.If(self.arg1_line.get_z3(),
+            self.z3 = self.create_z3(self.arg1_line.get_z3(),
                 self.arg2_line.get_z3(), self.arg3_line.get_z3())
         return self.z3
 
     def get_z3_step(self, step):
-        # only needed for branching
-        return self.get_z3_instance(self, step)
+        if Expression.PROPAGATE:
+            if step in self.cache_z3_value:
+                self.cache_z3_value[step] = self.create_z3(self.arg1_line.get_z3_step(step),
+                    self.arg2_line.get_z3_step(step), self.arg3_line.get_z3_step(step))
+            return self.cache_z3_value[step]
+        else:
+            # only needed for branching
+            return self.get_z3_instance(step)
 
     def get_bitwuzla(self, tm):
         if self.bitwuzla is None:
@@ -1306,11 +1334,19 @@ class Write(Ternary):
             self.write_cache[index] = self.write_array(arg1_line, arg2_line, arg3_line, index)
         return self.write_cache[index]
 
+    def create_z3(self, arg1_z3, arg2_z3, arg3_z3):
+        return z3.Store(arg1_z3, arg2_z3, arg3_z3)
+
     def get_z3(self):
         if self.z3 is None:
-            self.z3 = z3.Store(self.arg1_line.get_z3(),
-                self.arg2_line.get_z3(), self.arg3_line.get_z3())
+            self.z3 = self.create_z3(self.arg1_line.get_z3(), self.arg2_line.get_z3(), self.arg3_line.get_z3())
         return self.z3
+
+    def get_z3_step(self, step):
+        if step not in self.cache_z3_value:
+            self.cache_z3_value[step] = self.create_z3(self.arg1_line.get_z3_step(step),
+                self.arg2_line.get_z3_step(step), self.arg3_line.get_z3_step(step))
+        return self.cache_z3_value[step]
 
     def get_bitwuzla(self, tm):
         if self.bitwuzla is None:
@@ -1324,8 +1360,6 @@ class Sequential(Line, Cache):
     def __init__(self, nid, comment, line_no):
         Line.__init__(self, nid, comment, line_no)
         Cache.__init__(self)
-        self.z3_lambda = None
-        self.cache_z3_instance = {}
         self.bitwuzla_lambda = None
         self.cache_bitwuzla_instance = {}
 
@@ -1335,6 +1369,7 @@ class Transitional(Sequential):
         self.sid_line = sid_line
         self.state_line = state_line
         self.exp_line = exp_line
+        self.cache_z3_value = {}
         if not isinstance(sid_line, Sort):
             raise model_error("sort", line_no)
         if not isinstance(state_line, State):
@@ -1377,9 +1412,6 @@ class Transitional(Sequential):
             assert self.nid not in transitions, f"transition nid {self.nid} already defined @ {self.line_no}"
             transitions[self.nid] = self
 
-    def set_value(self):
-        self.state_line.set_value(self.exp_line.get_value())
-
 class Init(Transitional):
     keyword = OP_INIT
 
@@ -1404,13 +1436,11 @@ class Init(Transitional):
         assert step == 0, f"z3 init with {step} != 0"
         if isinstance(self.sid_line, Array) and isinstance(self.exp_line.sid_line, Bitvec):
             # initialize with constant array
-            return self.state_line.get_z3_step(0) == z3.K(
-                self.sid_line.array_size_line.get_z3(),
-                    self.exp_line.get_z3())
+            self.state_line.set_z3_value(z3.K(self.sid_line.array_size_line.get_z3(),
+                self.exp_line.get_z3()), 0)
         else:
-            if isinstance(self.exp_line, Constant):
-                self.set_value()
-            return self.state_line.get_z3_step(0) == self.exp_line.get_z3_instance(self, 0)
+            self.state_line.set_z3_value(self.exp_line.get_z3_instance(0), 0)
+        return self.state_line.get_z3_name(0) == self.state_line.get_z3_value(0)
 
     def get_bitwuzla_step(self, step, tm):
         assert step == 0, f"bitwuzla init with {step} != 0"
@@ -1421,8 +1451,6 @@ class Init(Transitional):
                     tm.mk_const_array(self.sid_line.get_bitwuzla(tm),
                         self.exp_line.get_bitwuzla(tm))])
         else:
-            if isinstance(self.exp_line, Constant):
-                self.set_value()
             return tm.mk_term(bitwuzla.Kind.EQUAL,
                 [self.state_line.get_bitwuzla_step(0, tm),
                     self.exp_line.get_bitwuzla_instance(self, 0, tm)])
@@ -1448,13 +1476,14 @@ class Next(Transitional):
         return f"{self.nid} {Next.keyword} {self.sid_line.nid} {self.state_line.nid} {self.exp_line.nid} {self.comment}"
 
     def get_z3_step(self, step):
-        if step not in self.cache_z3:
-            self.cache_z3[step] = self.state_line.get_z3_step(step + 1) == self.exp_line.get_z3_instance(self, step)
-        return self.cache_z3[step]
+        if step not in self.cache_z3_value:
+            self.state_line.set_z3_value(self.exp_line.get_z3_instance(step), step + 1)
+            self.cache_z3_value[step] = self.state_line.get_z3_name(step + 1) == self.state_line.get_z3_value(step + 1)
+        return self.cache_z3_value[step]
 
     def get_z3_change(self, step):
         if step not in self.cache_z3_change:
-            self.cache_z3_change[step] = self.state_line.get_z3_step(step) != self.exp_line.get_z3_instance(self, step)
+            self.cache_z3_change[step] = self.state_line.get_z3_step(step) != self.exp_line.get_z3_instance(step)
         return self.cache_z3_change[step]
 
     def get_z3_no_change(self, step):
@@ -1499,7 +1528,7 @@ class Property(Sequential):
         self.property_line = self.property_line.get_mapped_array_expression_for(None)
 
     def get_z3_step(self, step):
-        return self.property_line.get_z3_instance(self, step)
+        return self.property_line.get_z3_instance(step)
 
     def get_bitwuzla_step(self, step, tm):
         return self.property_line.get_bitwuzla_instance(self, step, tm)
@@ -4910,7 +4939,7 @@ def main():
 
     args = parser.parse_args()
 
-    Line.LAMBDAS = not args.substitute
+    Expression.LAMBDAS = not args.substitute
 
     Array.ARRAY_SIZE_BOUND = args.array[0] if args.array else 0
     Read.READ_ARRAY_ITERATIVELY = not args.recursive_array
