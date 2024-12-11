@@ -4,10 +4,6 @@ rotor_path: "rotor"
 examples_dir: "examples/symbolic"
 models_dir: "models"
 
-base_dirs:
-  starc: "starc"
-  gcc: "gcc"
-
 output_dir: "models"
 default_output: &default_output ""
 

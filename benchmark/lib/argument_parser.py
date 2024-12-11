@@ -27,4 +27,11 @@ def init_parser():
         help="Generate example outputs"
     )
 
+    parser.add_argument(
+        '--benchmark', '-b',
+        required=False,
+        help="Benchmark"
+
+    )
+
     return parser

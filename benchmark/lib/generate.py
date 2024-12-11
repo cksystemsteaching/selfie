@@ -10,10 +10,14 @@ from queue import Queue
 def create_model(source_file: str, model_type: str, is_example: bool = False):
     model_config = ModelConfigParser(source_file, model_type, is_example).get_config()
 
+    print(f"Generating model from the source: {model_config.source_file}")
     if not model_config.compilation_command:
-        return CStarSourceProcessor(model_config).generate_model()
+        model = CStarSourceProcessor(model_config).generate_model()
     else:
-        return GenericSourceProcessor(model_config).generate_model()
+        model = GenericSourceProcessor(model_config).generate_model()
+
+    print(f"Generated model: {model_config.output}")
+    return model
 
 
 class BaseSourceProcessor:
@@ -92,11 +96,9 @@ def generate_all_examples() -> None:
             else:
                 if key == 'command':
                     model_type = "-".join(curr_val[1])
-                    print(f"Generating model: {model_type}")
 
                     files = [file for file in cfg.examples_dir.iterdir()]
                     for file in files:
                         if file.suffix != ".c":
                             continue
-                        print(f"Generating {file}...")
                         create_model(file, model_type, type)
