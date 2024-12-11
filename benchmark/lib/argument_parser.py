@@ -30,8 +30,12 @@ def init_parser():
     parser.add_argument(
         '--benchmark', '-b',
         required=False,
-        help="Benchmark"
+    )
 
+    parser.add_argument(
+        '--output', '-o',
+        required=False,
+        help="output"
     )
 
     return parser

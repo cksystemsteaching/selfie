@@ -47,7 +47,7 @@ class ModelConfigParser:
                 parent_directories.mkdir(parents=True)
             return self.output
 
-        output_dir = Path(cfg.models_dir / model.get("output", None))
+        output_dir = Path(model.get("output", None))
 
         if not output_dir.exists():
             self.output_dir.mkdir(parents=True)

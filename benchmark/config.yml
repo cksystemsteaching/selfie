@@ -7,8 +7,6 @@ models_dir: "models"
 output_dir: "models"
 default_output: &default_output ""
 
-
-
 models:
   starc:
     64bit:
