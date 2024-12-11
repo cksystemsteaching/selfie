@@ -5,6 +5,7 @@ import lib.config as cfg
 import os
 from pathlib import Path
 
+
 @dataclass
 class ModelConfig:
     source_file: Path
@@ -14,10 +15,10 @@ class ModelConfig:
 
 
 class ModelConfigParser:
-    def __init__(self, source_file: str, model_type: str, output_dir: str = ""):
+    def __init__(self, source_file: str, model_type: str, output: str = ""):
         self.source_file = Path(source_file)
         self.compilation_command = ""
-        self.output_dir = Path(output_dir)
+        self.output = output
         self.parse_config(model_type)
 
     def parse_config(self, model_type):
@@ -40,13 +41,18 @@ class ModelConfigParser:
             raise ParsingError(model_type, level)
 
     def get_output_file_path(self, model):
-        if self.output_dir == "":
-            self.output_dir = Path(cfg.models_dir / model.get("output", None))
+        if self.output != "":
+            parent_directories = Path(self.output).parent
+            if not parent_directories.exists():
+                parent_directories.mkdir(parents=True)
+            return self.output
 
-        if not self.output_dir.exists():
-            self.output_dir.mkdir(parents=True, exist_ok=True)
+        output_dir = Path(cfg.models_dir / model.get("output", None))
 
-        output = self.output_dir / self.source_file.with_suffix("." + self.extension).name
+        if not output_dir.exists():
+            self.output_dir.mkdir(parents=True)
+
+        output = output_dir / self.source_file.with_suffix("." + self.extension).name
         return output
 
     def get_config(self) -> ModelConfig:
