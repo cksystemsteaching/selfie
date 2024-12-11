@@ -11,14 +11,13 @@ class ModelConfig:
     output: Path
     compilation_command: str = ""
     model_generation_command: str = ""
-    is_example: bool = False
 
 
 class ModelConfigParser:
-    def __init__(self, source_file: str, model_type: str, is_example: bool = False):
+    def __init__(self, source_file: str, model_type: str, output_dir: str = ""):
         self.source_file = Path(source_file)
-        self.is_example = is_example
         self.compilation_command = ""
+        self.output_dir = Path(output_dir)
         self.parse_config(model_type)
 
     def parse_config(self, model_type):
@@ -41,13 +40,13 @@ class ModelConfigParser:
             raise ParsingError(model_type, level)
 
     def get_output_file_path(self, model):
-        if self.is_example:
-            outdir = Path(cfg.models_dir / model.get("example_output", None))
-        else:
-            outdir = Path(cfg.models_dir / model.get("output", None))
-        if not outdir.exists():
-            outdir.mkdir(parents=True, exist_ok=True)
-        output = outdir / self.source_file.with_suffix("." + self.extension).name
+        if self.output_dir == "":
+            self.output_dir = Path(cfg.models_dir / model.get("output", None))
+
+        if not self.output_dir.exists():
+            self.output_dir.mkdir(parents=True, exist_ok=True)
+
+        output = self.output_dir / self.source_file.with_suffix("." + self.extension).name
         return output
 
     def get_config(self) -> ModelConfig:
@@ -56,7 +55,6 @@ class ModelConfigParser:
             self.output,
             self.compilation_command,
             self.model_generation_command,
-            self.is_example
         )
 
     def log(self):

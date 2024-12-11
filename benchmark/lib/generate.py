@@ -7,8 +7,8 @@ import shutil
 from queue import Queue
 
 
-def create_model(source_file: str, model_type: str, is_example: bool = False):
-    model_config = ModelConfigParser(source_file, model_type, is_example).get_config()
+def create_model(source_file: str, model_type: str, output_dir: str = ""):
+    model_config = ModelConfigParser(source_file, model_type, output_dir).get_config()
 
     print(f"Generating model from the source: {model_config.source_file}")
     if not model_config.compilation_command:
@@ -83,6 +83,11 @@ def clean_examples() -> None:
 
 
 def generate_all_examples() -> None:
+    """
+    Examples directory is defined in config file.
+    Recursively traverse examples sources (directory of examples defined in config file) and generates models defined in config file
+    for each source inside this example directory. Output directory is also specified by a config file.
+    """
     clean_examples()
 
     q = Queue(maxsize=0)
@@ -95,10 +100,13 @@ def generate_all_examples() -> None:
                 q.put((value, curr_val[1] + [key]))
             else:
                 if key == 'command':
+                    # Provide a model type based on config file structure
                     model_type = "-".join(curr_val[1])
+                    # Generate output directory based on config file structure and base models directory
+                    output_dir = f"{cfg.models_dir}" + "/" + "/".join(curr_val[1])
 
                     files = [file for file in cfg.examples_dir.iterdir()]
                     for file in files:
                         if file.suffix != ".c":
                             continue
-                        create_model(file, model_type, type)
+                        create_model(file, model_type, output_dir)
