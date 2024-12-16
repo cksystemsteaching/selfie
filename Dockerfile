@@ -110,7 +110,7 @@ RUN mkdir -p $RISCV/bin \
 ########################################
 # Boolector (SMT solver) builder image #
 ########################################
-FROM ubuntu:24.04 AS boolectorbuilder
+FROM ubuntu:23.04 AS boolectorbuilder
 
 ENV TOP=/opt RISCV=/opt/riscv PATH=$PATH:/opt/riscv/bin
 
