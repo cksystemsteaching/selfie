@@ -6,7 +6,7 @@
 #####################################
 # RISCV gnu toolchain builder image #
 #####################################
-FROM ubuntu:23.04 AS riscvgnutoolchainbuilder
+FROM ubuntu:24.04 AS riscvgnutoolchainbuilder
 
 ENV TOP=/opt RISCV=/opt/riscv PATH=$PATH:/opt/riscv/bin
 
@@ -31,7 +31,7 @@ RUN cd riscv-gnu-toolchain \
 ###################################
 # PK (Proxy kernel) builder image #
 ###################################
-FROM ubuntu:23.04 AS pkbuilder
+FROM ubuntu:24.04 AS pkbuilder
 
 ENV TOP=/opt RISCV=/opt/riscv PATH=$PATH:/opt/riscv/bin
 
@@ -62,7 +62,7 @@ RUN mkdir -p riscv-pk/build \
 #######################################
 # Spike (ISA simulator) builder image #
 #######################################
-FROM ubuntu:23.04 AS spikebuilder
+FROM ubuntu:24.04 AS spikebuilder
 
 ENV TOP=/opt RISCV=/opt/riscv PATH=$PATH:/opt/riscv/bin
 
@@ -88,7 +88,7 @@ RUN mkdir -p riscv-isa-sim/build \
 ######################
 # QEMU builder image #
 ######################
-FROM ubuntu:23.04 AS qemubuilder
+FROM ubuntu:24.04 AS qemubuilder
 
 ENV TOP=/opt RISCV=/opt/riscv PATH=$PATH:/opt/riscv/bin
 
@@ -110,7 +110,7 @@ RUN mkdir -p $RISCV/bin \
 ########################################
 # Boolector (SMT solver) builder image #
 ########################################
-FROM ubuntu:23.04 AS boolectorbuilder
+FROM ubuntu:24.04 AS boolectorbuilder
 
 ENV TOP=/opt RISCV=/opt/riscv PATH=$PATH:/opt/riscv/bin
 
@@ -145,7 +145,7 @@ RUN mkdir -p $RISCV \
 #######################################
 # Bitwuzla (SMT solver) builder image #
 #######################################
-FROM ubuntu:23.04 AS bitwuzlabuilder
+FROM ubuntu:24.04 AS bitwuzlabuilder
 
 ENV TOP=/opt RISCV=/opt/riscv PATH=$PATH:/opt/riscv/bin
 
@@ -177,7 +177,7 @@ RUN mkdir -p $RISCV \
 #########################
 # OpenOCD builder image #
 #########################
-FROM ubuntu:23.04 AS openocdbuilder
+FROM ubuntu:24.04 AS openocdbuilder
 
 ENV TOP=/opt RISCV=/opt/riscv PATH=$PATH:/opt/riscv/bin
 
@@ -208,7 +208,7 @@ RUN mkdir -p $RISCV \
 ############################
 # Selfie interactive image #
 ############################
-FROM ubuntu:23.04 AS selfieall
+FROM ubuntu:24.04 AS selfieall
 
 ENV TOP=/opt RISCV=/opt/riscv PATH=$PATH:/opt/riscv/bin
 
@@ -225,7 +225,6 @@ RUN apt-get update \
        gcc gdb libc6-dev-i386-amd64-cross \
        python3 \
        device-tree-compiler gcc-riscv64-linux-gnu \
-  && apt-get install -y --no-install-recommends \
        binutils-riscv64-linux-gnu libc-dev-riscv64-cross \
        libusb-dev libhidapi-dev \
        xxd gettext curl \
