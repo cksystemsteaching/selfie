@@ -738,7 +738,7 @@ void constrain_add_sub_mul_divu_remu_sltu(char* operator) {
 void zero_extend_sltu() {
   if (rd != REG_ZR)
     if (*(reg_sym + rd))
-      *(reg_sym + rd) = (uint64_t) smt_unary(bv_zero_extension(1), (char*) *(reg_sym + rd));
+      *(reg_sym + rd) = (uint64_t) smt_ternary("ite", (char*) *(reg_sym + rd), bv_constant(1), bv_constant(0));
 }
 
 void constrain_load() {
@@ -876,7 +876,7 @@ void constrain_beq() {
   bvar = smt_variable("b", 1);
 
   w = w
-    + dprintf(output_fd, "(assert (= %s %s)); beq in ", bvar, smt_binary("bvcomp", op1, op2))
+    + dprintf(output_fd, "(assert (= %s %s)); beq in ", bvar, smt_binary("=", op1, op2))
     + print_code_context_for_instruction(pc)
     + dprintf(output_fd, "\n");
 
@@ -1284,6 +1284,9 @@ char* bv_constant(uint64_t value) {
 char* bv_variable(uint64_t bits) {
   char* string;
 
+  if (bits == 1)
+    return "Bool";
+
   string = string_alloc(10 + 2); // up to 64-bit variables require up to 2 decimal digits
 
   sprintf(string, "(_ BitVec %lu)", bits);
@@ -1316,7 +1319,7 @@ char* smt_variable(char* prefix, uint64_t bits) {
   sprintf(svar, "%s%lu", prefix, variable_version);
 
   w = w
-    + dprintf(output_fd, "(declare-fun %s () (_ BitVec %lu)); variable for ", svar, bits)
+    + dprintf(output_fd, "(declare-fun %s () %s); variable for ", svar, bv_variable(bits))
     + print_code_context_for_instruction(pc)
     + dprintf(output_fd, "\n");
 

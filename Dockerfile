@@ -6,7 +6,7 @@
 #####################################
 # RISCV gnu toolchain builder image #
 #####################################
-FROM ubuntu:23.04 AS riscvgnutoolchainbuilder
+FROM ubuntu:latest AS riscvgnutoolchainbuilder
 
 ENV TOP=/opt RISCV=/opt/riscv PATH=$PATH:/opt/riscv/bin
 
@@ -31,7 +31,7 @@ RUN cd riscv-gnu-toolchain \
 ###################################
 # PK (Proxy kernel) builder image #
 ###################################
-FROM ubuntu:23.04 AS pkbuilder
+FROM ubuntu:latest AS pkbuilder
 
 ENV TOP=/opt RISCV=/opt/riscv PATH=$PATH:/opt/riscv/bin
 
@@ -62,7 +62,7 @@ RUN mkdir -p riscv-pk/build \
 #######################################
 # Spike (ISA simulator) builder image #
 #######################################
-FROM ubuntu:23.04 AS spikebuilder
+FROM ubuntu:latest AS spikebuilder
 
 ENV TOP=/opt RISCV=/opt/riscv PATH=$PATH:/opt/riscv/bin
 
@@ -88,7 +88,7 @@ RUN mkdir -p riscv-isa-sim/build \
 ######################
 # QEMU builder image #
 ######################
-FROM ubuntu:23.04 AS qemubuilder
+FROM ubuntu:latest AS qemubuilder
 
 ENV TOP=/opt RISCV=/opt/riscv PATH=$PATH:/opt/riscv/bin
 
@@ -107,45 +107,10 @@ RUN mkdir -p $RISCV/bin \
   && cp /usr/bin/qemu-riscv32-static $RISCV/bin \
   && cp /usr/bin/qemu-system-riscv32 $RISCV/bin
 
-########################################
-# Boolector (SMT solver) builder image #
-########################################
-FROM ubuntu:23.04 AS boolectorbuilder
-
-ENV TOP=/opt RISCV=/opt/riscv PATH=$PATH:/opt/riscv/bin
-
-WORKDIR $TOP
-
-# Setting non-interactive mode
-RUN echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selections
-
-# install tools to build boolector
-RUN apt-get update \
-  && apt-get install -y --no-install-recommends \
-       ca-certificates \
-       make git \
-       g++ \
-       curl cmake \
-  && apt clean
-
-RUN git clone https://github.com/Boolector/boolector
-
-ENV MAKEFLAGS=-j4
-
-# build boolector and dependencies
-RUN mkdir -p $RISCV \
-  && cd boolector \
-  && ./contrib/setup-lingeling.sh \
-  && ./contrib/setup-btor2tools.sh \
-  && ./configure.sh --prefix $RISCV \
-  && cd build \
-  && make \
-  && make install
-
 #######################################
 # Bitwuzla (SMT solver) builder image #
 #######################################
-FROM ubuntu:23.04 AS bitwuzlabuilder
+FROM ubuntu:latest AS bitwuzlabuilder
 
 ENV TOP=/opt RISCV=/opt/riscv PATH=$PATH:/opt/riscv/bin
 
@@ -174,41 +139,10 @@ RUN mkdir -p $RISCV \
   && cd build \
   && ninja install
 
-#########################
-# OpenOCD builder image #
-#########################
-FROM ubuntu:23.04 AS openocdbuilder
-
-ENV TOP=/opt RISCV=/opt/riscv PATH=$PATH:/opt/riscv/bin
-
-WORKDIR $TOP
-
-# install tools to build OpenOCD
-RUN apt-get update \
-  && apt-get install -y --no-install-recommends \
-       ca-certificates \
-       make git \
-       gcc libtool libusb-dev \
-       automake pkg-config \
-  && apt clean
-
-RUN git clone https://github.com/riscv/riscv-openocd.git
-
-ENV MAKEFLAGS=-j4
-
-RUN mkdir -p $RISCV \
-  && cd riscv-openocd \
-  && ./bootstrap \
-  && ./configure \
-       --prefix=$RISCV \
-       --program-prefix=riscv64- \
-  && make \
-  && make install
-
 ############################
 # Selfie interactive image #
 ############################
-FROM ubuntu:23.04 AS selfieall
+FROM ubuntu:latest AS selfieall
 
 ENV TOP=/opt RISCV=/opt/riscv PATH=$PATH:/opt/riscv/bin
 
@@ -225,19 +159,16 @@ RUN apt-get update \
        gcc gdb libc6-dev-i386-amd64-cross \
        python3 \
        device-tree-compiler gcc-riscv64-linux-gnu \
-  && apt-get install -y --no-install-recommends \
        binutils-riscv64-linux-gnu libc-dev-riscv64-cross \
        libusb-dev libhidapi-dev \
        xxd gettext curl \
   && apt clean
 
-# copy spike, pk, qemu and boolector from builder images
+# copy pk, spike, qemu, and bitwuzla from builder images
 COPY --from=pkbuilder $RISCV/ $RISCV/
 COPY --from=spikebuilder $RISCV/ $RISCV/
 COPY --from=qemubuilder $RISCV/ $RISCV/
-COPY --from=boolectorbuilder $RISCV/ $RISCV/
 COPY --from=bitwuzlabuilder $RISCV/ $RISCV/
-COPY --from=openocdbuilder $RISCV/ $RISCV/
 
 # add selfie sources to the image
 COPY . /opt/selfie/
@@ -250,7 +181,7 @@ RUN make selfie \
   && make clean
 
 # default command
-CMD /bin/bash
+CMD ["/bin/bash"]
 
 #################################
 # Selfie interactive full image #
@@ -271,4 +202,4 @@ WORKDIR /opt/selfie
 RUN make --directory machine/
 
 # default command
-CMD /bin/bash
+CMD ["/bin/bash"]
