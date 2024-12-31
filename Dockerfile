@@ -249,7 +249,7 @@ RUN make selfie \
   && make clean
 
 # default command
-CMD /bin/bash
+CMD ["/bin/bash"]
 
 #################################
 # Selfie interactive full image #
@@ -270,4 +270,4 @@ WORKDIR /opt/selfie
 RUN make --directory machine/
 
 # default command
-CMD /bin/bash
+CMD ["/bin/bash"]
