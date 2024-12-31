@@ -174,37 +174,6 @@ RUN mkdir -p $RISCV \
   && cd build \
   && ninja install
 
-#########################
-# OpenOCD builder image #
-#########################
-FROM ubuntu:latest AS openocdbuilder
-
-ENV TOP=/opt RISCV=/opt/riscv PATH=$PATH:/opt/riscv/bin
-
-WORKDIR $TOP
-
-# install tools to build OpenOCD
-RUN apt-get update \
-  && apt-get install -y --no-install-recommends \
-       ca-certificates \
-       make git \
-       gcc libtool libusb-dev \
-       automake pkg-config \
-  && apt clean
-
-RUN git clone https://github.com/riscv/riscv-openocd.git
-
-ENV MAKEFLAGS=-j4
-
-RUN mkdir -p $RISCV \
-  && cd riscv-openocd \
-  && ./bootstrap \
-  && ./configure \
-       --prefix=$RISCV \
-       --program-prefix=riscv64- \
-  && make \
-  && make install
-
 ############################
 # Selfie interactive image #
 ############################
@@ -236,7 +205,6 @@ COPY --from=spikebuilder $RISCV/ $RISCV/
 COPY --from=qemubuilder $RISCV/ $RISCV/
 COPY --from=boolectorbuilder $RISCV/ $RISCV/
 COPY --from=bitwuzlabuilder $RISCV/ $RISCV/
-COPY --from=openocdbuilder $RISCV/ $RISCV/
 
 # add selfie sources to the image
 COPY . /opt/selfie/
