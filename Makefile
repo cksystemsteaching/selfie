@@ -347,7 +347,7 @@ btor2: beator-btor2 rotor-btor2
 .PHONY: spike qemu assemble beator-32 rotor-32 32-bit boolector beator-btormc rotor-btormc btormc extras
 
 # Run everything that requires non-standard tools
-extras: spike qemu assemble beator-32 rotor-32 32-bit boolector btormc
+extras: spike qemu assemble beator-32 rotor-32 32-bit
 
 # Run selfie on spike
 spike: selfie.m selfie.s
