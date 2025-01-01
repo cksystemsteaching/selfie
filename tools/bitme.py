@@ -217,7 +217,7 @@ class Line(Z3, Bitwuzla):
         Z3.__init__(self)
         Bitwuzla.__init__(self)
         self.nid = nid
-        self.comment = "; " + comment if comment != "" and comment[0] != ';' else comment
+        self.comment = "; " + comment if comment and comment[0] != ';' else comment
         self.line_no = line_no
         self.new_line()
 
@@ -503,20 +503,28 @@ class Constant(Expression):
 class Zero(Constant):
     keyword = OP_ZERO
 
-    def __init__(self, nid, sid_line, comment, line_no):
+    def __init__(self, nid, sid_line, symbol, comment, line_no):
         super().__init__(nid, sid_line, 0, comment, line_no)
+        self.symbol = symbol
 
     def __str__(self):
-        return f"{self.nid} {Zero.keyword} {self.sid_line.nid} {self.comment}"
+        if self.symbol:
+            return f"{self.nid} {Zero.keyword} {self.sid_line.nid} {self.symbol} {self.comment}"
+        else:
+            return f"{self.nid} {Zero.keyword} {self.sid_line.nid} {self.comment}"
 
 class One(Constant):
     keyword = OP_ONE
 
-    def __init__(self, nid, sid_line, comment, line_no):
+    def __init__(self, nid, sid_line, symbol, comment, line_no):
         super().__init__(nid, sid_line, 1, comment, line_no)
+        self.symbol = symbol
 
     def __str__(self):
-        return f"{self.nid} {One.keyword} {self.sid_line.nid} {self.comment}"
+        if self.symbol:
+            return f"{self.nid} {One.keyword} {self.sid_line.nid} {self.symbol} {self.comment}"
+        else:
+            return f"{self.nid} {One.keyword} {self.sid_line.nid} {self.comment}"
 
 class Constd(Constant):
     keyword = OP_CONSTD
@@ -1187,7 +1195,7 @@ class Read(Binary):
                         list(range(2**array_line.sid_line.array_size_line.size)),
                         Zero(next_nid(),
                             Bitvec(next_nid(), 1, "1-bit bitvector for testing bits", self.line_no),
-                            "zero value for testing bits", self.line_no))
+                            "", "zero value for testing bits", self.line_no))
         else:
             return self.copy(array_line.get_mapped_array_expression_for(None), index_line)
 
@@ -1375,11 +1383,12 @@ class Write(Ternary):
         return self.bitwuzla
 
 class Transitional(Line):
-    def __init__(self, nid, sid_line, state_line, exp_line, comment, line_no, array_line, index):
+    def __init__(self, nid, sid_line, state_line, exp_line, symbol, comment, line_no, array_line, index):
         super().__init__(nid, comment, line_no)
         self.sid_line = sid_line
         self.state_line = state_line
         self.exp_line = exp_line
+        self.symbol = symbol
         self.cache_z3_value = {}
         self.cache_bitwuzla_value = {}
         if not isinstance(sid_line, Sort):
@@ -1429,8 +1438,8 @@ class Init(Transitional):
 
     inits = {}
 
-    def __init__(self, nid, sid_line, state_line, exp_line, comment, line_no, array_line = None, index = None):
-        super().__init__(nid, sid_line, state_line, exp_line, comment, line_no, array_line, index)
+    def __init__(self, nid, sid_line, state_line, exp_line, symbol, comment, line_no, array_line = None, index = None):
+        super().__init__(nid, sid_line, state_line, exp_line, symbol, comment, line_no, array_line, index)
         if state_line.nid < exp_line.nid:
             raise model_error("state after expression", line_no)
         if isinstance(state_line, Input):
@@ -1442,7 +1451,10 @@ class Init(Transitional):
         self.new_transition(Init.inits, index)
 
     def __str__(self):
-        return f"{self.nid} {Init.keyword} {self.sid_line.nid} {self.state_line.nid} {self.exp_line.nid} {self.comment}"
+        if self.symbol:
+            return f"{self.nid} {Init.keyword} {self.sid_line.nid} {self.state_line.nid} {self.exp_line.nid} {self.symbol} {self.comment}"
+        else:
+            return f"{self.nid} {Init.keyword} {self.sid_line.nid} {self.state_line.nid} {self.exp_line.nid} {self.comment}"
 
     def get_z3_step(self, step):
         assert step == 0, f"z3 init with {step} != 0"
@@ -1471,8 +1483,8 @@ class Next(Transitional):
 
     nexts = {}
 
-    def __init__(self, nid, sid_line, state_line, exp_line, comment, line_no, array_line = None, index = None):
-        super().__init__(nid, sid_line, state_line, exp_line, comment, line_no, array_line, index)
+    def __init__(self, nid, sid_line, state_line, exp_line, symbol, comment, line_no, array_line = None, index = None):
+        super().__init__(nid, sid_line, state_line, exp_line, symbol, comment, line_no, array_line, index)
         self.cache_z3_change = {}
         self.cache_z3_no_change = {}
         self.cache_bitwuzla_change = {}
@@ -1484,7 +1496,10 @@ class Next(Transitional):
         self.new_transition(Next.nexts, index)
 
     def __str__(self):
-        return f"{self.nid} {Next.keyword} {self.sid_line.nid} {self.state_line.nid} {self.exp_line.nid} {self.comment}"
+        if self.symbol:
+            return f"{self.nid} {Next.keyword} {self.sid_line.nid} {self.state_line.nid} {self.exp_line.nid} {self.symbol} {self.comment}"
+        else:
+            return f"{self.nid} {Next.keyword} {self.sid_line.nid} {self.state_line.nid} {self.exp_line.nid} {self.comment}"
 
     def get_z3_step(self, step):
         if step not in self.cache_z3_value:
@@ -1632,17 +1647,17 @@ def new_bitvec(size_in_bits, comment, nid = None, line_no = None):
 def new_array(address_sid, element_sid, comment, nid = None, line_no = None):
     return Array(next_nid(nid), address_sid, element_sid, comment, line_no)
 
-def new_zero_one(op, sid, comment, nid = None, line_no = None):
+def new_zero_one(op, sid, symbol, comment, nid = None, line_no = None):
     assert op in {OP_ZERO, OP_ONE}
-    return get_class(op)(next_nid(nid), sid, comment, line_no)
+    return get_class(op)(next_nid(nid), sid, symbol, comment, line_no)
 
 def new_constant(op, sid, constant, comment, nid = None, line_no = None):
     assert op in {OP_CONSTD, OP_CONST, OP_CONSTH}
     if op == OP_CONSTD:
         if constant == 0:
-            return Zero(next_nid(nid), sid, comment, line_no)
+            return Zero(next_nid(nid), sid, "", comment, line_no)
         elif constant == 1:
-            return One(next_nid(nid), sid, comment, line_no)
+            return One(next_nid(nid), sid, "", comment, line_no)
     return get_class(op)(next_nid(nid), sid, constant, comment, line_no)
 
 def new_input(op, sid, symbol, comment, nid = None, line_no = None):
@@ -1682,8 +1697,8 @@ def new_init(sid, state_nid, value_nid, comment, nid = None, line_no = None):
 def new_next(sid, state_nid, value_nid, comment, nid = None, line_no = None):
     return Next(next_nid(nid), sid, state_nid, value_nid, comment, line_no)
 
-def new_init_next(op, sid, state_nid, value_nid, comment, nid = None, line_no = None):
-    return get_class(op)(next_nid(nid), sid, state_nid, value_nid, comment, line_no)
+def new_init_next(op, sid, state_nid, value_nid, symbol, comment, nid = None, line_no = None):
+    return get_class(op)(next_nid(nid), sid, state_nid, value_nid, symbol, comment, line_no)
 
 def new_property(op, condition_nid, symbol, comment, nid = None, line_no = None):
     assert op in Property.keywords
@@ -4390,7 +4405,7 @@ def get_symbol(tokens):
 
 def get_comment(tokens, line_no):
     comment = get_symbol(tokens)
-    if comment != "":
+    if comment:
         if comment[0] != ';':
             raise syntax_error("comment", line_no)
     return comment
@@ -4415,8 +4430,8 @@ def parse_sort_line(tokens, nid, line_no):
 
 def parse_zero_one_line(tokens, nid, op, line_no):
     sid_line = get_bool_or_bitvec_sid_line(tokens, line_no)
-    comment = get_comment(tokens, line_no)
-    return new_zero_one(op, sid_line, comment, nid, line_no)
+    symbol, comment = parse_symbol_comment(tokens, line_no)
+    return new_zero_one(op, sid_line, symbol, comment, nid, line_no)
 
 def parse_constant_line(tokens, nid, op, line_no):
     sid_line = get_bool_or_bitvec_sid_line(tokens, line_no)
@@ -4432,7 +4447,7 @@ def parse_constant_line(tokens, nid, op, line_no):
 def parse_symbol_comment(tokens, line_no):
     symbol = get_symbol(tokens)
     comment = get_comment(tokens, line_no)
-    if symbol != "":
+    if symbol:
         if symbol[0] == ';':
             return "", symbol
     return symbol, comment
@@ -4482,8 +4497,8 @@ def parse_init_next_line(tokens, nid, op, line_no):
     sid_line = get_sid_line(tokens, line_no)
     state_line = get_state_line(tokens, line_no)
     exp_line = get_exp_line(tokens, line_no)
-    comment = get_comment(tokens, line_no)
-    return new_init_next(op, sid_line, state_line, exp_line, comment, nid, line_no)
+    symbol, comment = parse_symbol_comment(tokens, line_no)
+    return new_init_next(op, sid_line, state_line, exp_line, symbol, comment, nid, line_no)
 
 def parse_property_line(tokens, nid, op, line_no):
     property_line = get_exp_line(tokens, line_no)
@@ -4538,7 +4553,7 @@ def parse_btor2(modelfile, outputfile):
             lines[line_no] = parse_btor2_line(line, line_no)
             line_no += 1
         except Exception as message:
-            print(f"exception during parsing: {message}")
+            print(f"{modelfile.name}: {message}")
             exit(1)
 
     # start: mapping arrays to bitvectors
@@ -4908,7 +4923,7 @@ def rotor_model():
 
         print(System())
     except Exception as message:
-        print(f"exception during modeling: {message}")
+        print(message)
         exit(1)
 
 import sys
