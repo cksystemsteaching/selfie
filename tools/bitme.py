@@ -4415,7 +4415,7 @@ def parse_sort_line(tokens, nid, line_no):
     if token == Bitvec.keyword:
         size = get_decimal(tokens, "bitvector size", line_no)
         comment = get_comment(tokens, line_no)
-        # rotor-dependent Boolean declaration
+        # beator- and rotor-dependent Boolean declaration
         if comment == "; Boolean" and size == 1:
             return new_boolean(nid, line_no)
         else:
@@ -4546,6 +4546,9 @@ def parse_btor2_line(line, line_no):
     return line.strip()
 
 def parse_btor2(modelfile, outputfile):
+    print_separator('#')
+    print(f"model file: {modelfile.name}")
+
     lines = {}
     line_no = 1
     for line in modelfile:
@@ -4553,7 +4556,7 @@ def parse_btor2(modelfile, outputfile):
             lines[line_no] = parse_btor2_line(line, line_no)
             line_no += 1
         except Exception as message:
-            print(f"{modelfile.name}: {message}")
+            print(f"parsing exception: {message}")
             exit(1)
 
     # start: mapping arrays to bitvectors
@@ -4600,7 +4603,7 @@ def parse_btor2(modelfile, outputfile):
         else:
             are_there_state_transitions = True
 
-    print("#" * 80)
+    print_separator('-')
 
     if are_there_state_transitions:
         print("sequential problem:")
@@ -4639,7 +4642,7 @@ def parse_btor2(modelfile, outputfile):
     print(f"{Concat.count} concat, {Ite.count} ite, {Read.count} read, {Write.count} write")
 
     if outputfile:
-        print_separator('#')
+        print_separator('-')
         print(f"output file: {outputfile.name}")
         for line in lines.values():
             print(line, file=outputfile)
@@ -4850,9 +4853,9 @@ def branching_bmc(solver, kmin, kmax, args, step, level):
         step += 1
 
 def bmc(solver, kmin, kmax, args):
-    print_separator('#')
+    print_separator('-')
     print_message(f"bounded model checking: -kmin {kmin} -kmax {kmax}\n")
-    print_separator('#')
+    print_separator('-')
 
     # initialize all states
     solver.assert_this(Init.inits.values(), 0)
@@ -4923,7 +4926,7 @@ def rotor_model():
 
         print(System())
     except Exception as message:
-        print(message)
+        print(f"modeling exception: {message}")
         exit(1)
 
 import sys
