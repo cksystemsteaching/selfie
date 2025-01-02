@@ -1282,17 +1282,16 @@ void model_data_flow_sltu() {
           reg_nids + rs1, // nid of current value of $rs1 register
           reg_nids + rs2) // nid of current value of $rs2 register
 
-      // unsigned-extend $rs1 < $rs2 by word size in bits - 1 to word size in bits
-      + dprintf(output_fd, "%lu uext 2 %lu %lu\n",
-          current_nid + 1,    // nid of this line
-          current_nid,        // nid of $rs1 < $rs2
-          WORDSIZEINBITS - 1) // unsigned-extend by word size in bits - 1
+      // cast Boolean to machine word
+      + dprintf(output_fd, "%lu ite 2 %lu 21 20\n",
+          current_nid + 1, // nid of this line
+          current_nid)     // nid of $rs1 < $rs2
 
       // if this instruction is active set $rd = $rs1 < $rs2
       + dprintf(output_fd, "%lu ite 2 %lu %lu %lu ; ",
           current_nid + 2,        // nid of this line
           pc_nid(pcs_nid, pc),    // nid of pc flag of this instruction
-          current_nid + 1,        // nid of unsigned-extended $rs1 < $rs2
+          current_nid + 1,        // nid of $rs1 < $rs2 cast to machine word
           *(reg_flow_nids + rd)); // nid of most recent update of $rd register
 
     *(reg_flow_nids + rd) = current_nid + 2;
