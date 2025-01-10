@@ -522,10 +522,16 @@ class Input(Variable):
     def get_mapped_array_expression_for(self, index):
         return super().get_mapped_array_expression_for(index)
 
+    def get_z3_name(self, step):
+        return self.get_z3()
+
     def get_bitwuzla(self, tm):
         if self.bitwuzla is None:
             self.bitwuzla = tm.mk_const(self.sid_line.get_bitwuzla(tm), self.name)
         return self.bitwuzla
+
+    def get_bitwuzla_name(self, step, tm):
+        return self.get_bitwuzla(tm)
 
 class Instance:
     def __init__(self):
@@ -689,6 +695,11 @@ class State(Variable):
     def set_z3_instance(self, instance, step):
         self.instance.set_z3_instance(instance, step)
 
+    def get_bitwuzla(self, tm):
+        if self.bitwuzla is None:
+            self.bitwuzla = tm.mk_var(self.sid_line.get_bitwuzla(tm), self.name)
+        return self.bitwuzla
+
     def get_bitwuzla_name(self, step, tm):
         if step == -1:
             step = 0
@@ -702,11 +713,6 @@ class State(Variable):
 
     def set_bitwuzla_instance(self, instance, step):
         self.instance.set_bitwuzla_instance(instance, step)
-
-    def get_bitwuzla(self, tm):
-        if self.bitwuzla is None:
-            self.bitwuzla = tm.mk_var(self.sid_line.get_bitwuzla(tm), self.name)
-        return self.bitwuzla
 
 class Indexed(Expression):
     def __init__(self, nid, sid_line, arg1_line, comment, line_no):
