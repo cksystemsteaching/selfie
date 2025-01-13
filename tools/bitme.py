@@ -357,25 +357,39 @@ class Values:
         self.number_of_values = 0
         self.values = {}
 
-    def OR(arg1, arg2):
-        assert arg1 != Constant.false or arg2 != Constant.false
-        if arg1 == Constant.true or arg2 == Constant.true:
+    def OR(arg1_line, arg2_line):
+        assert arg1_line != Constant.false or arg2_line != Constant.false
+        if arg1_line == Constant.true or arg2_line == Constant.true:
             return Constant.true
         else:
-            return Logical(next_nid(), OP_OR, Bool.boolean, arg1, arg2, arg1.comment, arg1.line_no)
+            return Logical(next_nid(), OP_OR, Bool.boolean,
+                arg1_line, arg2_line, arg1_line.comment, arg1_line.line_no)
 
     def get_value(self):
-        assert self.number_of_values == 1
-        return list(self.values)[0]
+        # naive transition from domain propagation to bit blasting
+        assert self.number_of_values > 0
+        exp_line = None
+        for value_line in self.values:
+            constraint_line = self.values[value_line]
+            if constraint_line != Constant.true:
+                if exp_line is None:
+                    exp_line = Zero(next_nid(), self.sid_line,
+                        "unreachable-value", "unreachable value", 0)
+                exp_line = Ite(next_nid(), self.sid_line,
+                    constraint_line, value_line, exp_line,
+                    value_line.comment, value_line.line_no)
+            else:
+                exp_line = value_line
+        return exp_line
 
-    def set_value(self, constraint, value):
-        assert self.sid_line == value.sid_line
-        assert constraint != Constant.false
-        if value not in self.values:
+    def set_value(self, constraint_line, value_line):
+        assert self.sid_line == value_line.sid_line
+        assert constraint_line != Constant.false
+        if value_line not in self.values:
             self.number_of_values += 1
-            self.values[value] = constraint
+            self.values[value_line] = constraint_line
         else:
-            self.values[value] = Values.OR(constraint, self.values[value])
+            self.values[value_line] = Values.OR(constraint_line, self.values[value_line])
         return self
 
 class Expression(Line):
@@ -822,10 +836,11 @@ class Ext(Indexed):
 
     def get_exts(self, values, op):
         results = Values(self.sid_line)
-        for value in values.values:
-            constraint = values.values[value]
-            results.set_value(constraint,
-                type(value)(next_nid(), self.sid_line, op(value), self.comment, self.line_no))
+        for value_line in values.values:
+            constraint_line = values.values[value_line]
+            results.set_value(constraint_line,
+                type(value_line)(next_nid(), self.sid_line, op(value_line),
+                    self.comment, self.line_no))
         return results
 
     def get_values(self, step):
@@ -886,11 +901,12 @@ class Slice(Indexed):
 
     def get_slices(self, values):
         results = Values(self.sid_line)
-        for value in values.values:
-            constraint = values.values[value]
-            results.set_value(constraint,
-                type(value)(next_nid(), self.sid_line,
-                    (value.value & 2**(self.u + 1) - 1) >> self.l, self.comment, self.line_no))
+        for value_line in values.values:
+            constraint_line = values.values[value_line]
+            results.set_value(constraint_line,
+                type(value_line)(next_nid(), self.sid_line,
+                    (value_line.value & 2**(self.u + 1) - 1) >> self.l,
+                    self.comment, self.line_no))
         return results
 
     def get_values(self, step):
@@ -945,18 +961,19 @@ class Unary(Expression):
 
     def get_unaries(self, values, op):
         results = Values(self.sid_line)
-        for value in values.values:
-            constraint = values.values[value]
+        for value_line in values.values:
+            constraint_line = values.values[value_line]
             if op == (lambda x: not x):
-                if value == Constant.false:
-                    results.set_value(constraint, Constant.true)
+                if value_line == Constant.false:
+                    results.set_value(constraint_line, Constant.true)
                 else:
-                    assert value == Constant.true
-                    results.set_value(constraint, Constant.false)
+                    assert value_line == Constant.true
+                    results.set_value(constraint_line, Constant.false)
             else:
-                results.set_value(constraint,
-                    type(value)(next_nid(), self.sid_line,
-                        op(value.value) % 2**self.sid_line.size, self.comment, self.line_no))
+                results.set_value(constraint_line,
+                    type(value_line)(next_nid(), self.sid_line,
+                        op(value_line.value) % 2**self.sid_line.size,
+                        self.comment, self.line_no))
         return results
 
     def get_values(self, step):
