@@ -743,11 +743,11 @@ class State(Variable):
         self.instance.set_instance(instance, step)
 
     def get_values(self, step):
-        if step not in self.values:
-            self.values[step] = self
-            if self.has_instance(step):
-                self.values[step] = self.get_instance(step)
-        return self.values[step]
+        if step == -1:
+            step = 0
+        if self.has_instance(step - 1):
+            return self.get_instance(step - 1)
+        return self
 
     def get_step_name(self, step):
         return f"{self.name}-{step}"
