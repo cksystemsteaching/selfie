@@ -733,6 +733,15 @@ class State(Variable):
                 return self.init_line.exp_line.get_mapped_array_expression_for(index)
         return super().get_mapped_array_expression_for(index)
 
+    def has_instance(self, step):
+        return self.instance.has_instance(step)
+
+    def get_instance(self, step):
+        return self.instance.get_instance(step)
+
+    def set_instance(self, instance, step):
+        self.instance.set_instance(instance, step)
+
     def get_values(self, step):
         if step not in self.values:
             self.values[step] = self
@@ -742,15 +751,6 @@ class State(Variable):
 
     def get_step_name(self, step):
         return f"{self.name}-{step}"
-
-    def has_instance(self, step):
-        return self.instance.has_instance(step)
-
-    def get_instance(self, step):
-        return self.instance.get_instance(step)
-
-    def set_instance(self, instance, step):
-        self.instance.set_instance(instance, step)
 
     def get_z3_name(self, step):
         if step == -1:
@@ -824,16 +824,13 @@ class Ext(Indexed):
         else:
             return self.copy(arg1_value)
 
-    def create_z3(self, arg1_z3):
-        if self.op == 'sext':
-            return z3.SignExt(self.w, arg1_z3)
-        else:
-            assert self.op == 'uext'
-            return z3.ZeroExt(self.w, arg1_z3)
-
     def get_z3(self):
         if self.z3 is None:
-            self.z3 = self.create_z3(self.arg1_line.get_z3())
+            if self.op == 'sext':
+                self.z3 = z3.SignExt(self.w, self.arg1_line.get_z3())
+            else:
+                assert self.op == 'uext'
+                self.z3 = z3.ZeroExt(self.w, self.arg1_line.get_z3())
         return self.z3
 
     def get_bitwuzla(self, tm):
@@ -1357,13 +1354,9 @@ class Ite(Ternary):
             self.ite_cache[index] = self.copy(arg1_line, arg2_line, arg3_line)
         return self.ite_cache[index]
 
-    def create_z3(self, arg1_z3, arg2_z3, arg3_z3):
-        return z3.If(arg1_z3, arg2_z3, arg3_z3)
-
     def get_z3(self):
         if self.z3 is None:
-            self.z3 = self.create_z3(self.arg1_line.get_z3(),
-                self.arg2_line.get_z3(), self.arg3_line.get_z3())
+            self.z3 = z3.If(self.arg1_line.get_z3(), self.arg2_line.get_z3(), self.arg3_line.get_z3())
         return self.z3
 
     def get_z3_step(self, step):
@@ -1371,13 +1364,10 @@ class Ite(Ternary):
         self.instance.set_instance(self, step)
         return self.instance.get_z3_instance(step)
 
-    def create_bitwuzla(self, arg1_bitwuzla, arg2_bitwuzla, arg3_bitwuzla, tm):
-        return tm.mk_term(bitwuzla.Kind.ITE, [arg1_bitwuzla, arg2_bitwuzla, arg3_bitwuzla])
-
     def get_bitwuzla(self, tm):
         if self.bitwuzla is None:
-            self.bitwuzla = self.create_bitwuzla(self.arg1_line.get_bitwuzla(tm),
-                self.arg2_line.get_bitwuzla(tm), self.arg3_line.get_bitwuzla(tm), tm)
+            self.bitwuzla = tm.mk_term(bitwuzla.Kind.ITE, [self.arg1_line.get_bitwuzla(tm),
+                self.arg2_line.get_bitwuzla(tm), self.arg3_line.get_bitwuzla(tm)])
         return self.bitwuzla
 
     def get_bitwuzla_step(self, step, tm):
@@ -1436,12 +1426,9 @@ class Write(Ternary):
             self.write_cache[index] = self.write_array(arg1_line, arg2_line, arg3_line, index)
         return self.write_cache[index]
 
-    def create_z3(self, arg1_z3, arg2_z3, arg3_z3):
-        return z3.Store(arg1_z3, arg2_z3, arg3_z3)
-
     def get_z3(self):
         if self.z3 is None:
-            self.z3 = self.create_z3(self.arg1_line.get_z3(), self.arg2_line.get_z3(), self.arg3_line.get_z3())
+            self.z3 = z3.Store(self.arg1_line.get_z3(), self.arg2_line.get_z3(), self.arg3_line.get_z3())
         return self.z3
 
     def get_bitwuzla(self, tm):
