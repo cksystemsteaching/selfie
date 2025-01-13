@@ -351,6 +351,22 @@ class Array(Sort):
                 self.element_size_line.get_bitwuzla(tm))
         return self.bitwuzla
 
+class Values:
+    def __init__(self, sid_line):
+        self.number_of_values = 0
+        self.values = {}
+        self.number_of_constraints = 0
+        self.constraints = {}
+
+    def set_value(self, constraint, value):
+        assert self.sid_line == value.sid_line
+        if value not in self.values:
+            self.number_of_values += 1
+        self.values[value] = constraint
+        if constraint not in self.constraints:
+            self.number_of_constraints += 1
+        self.constraints[constraint] = value
+
 class Expression(Line):
     def __init__(self, nid, sid_line, domain, comment, line_no):
         super().__init__(nid, comment, line_no)
@@ -380,6 +396,9 @@ class Expression(Line):
         return self.bitwuzla_lambda
 
 class Constant(Expression):
+    false = None
+    true = None
+
     def __init__(self, nid, sid_line, value, comment, line_no):
         super().__init__(nid, sid_line, {}, comment, line_no)
         self.print_value = value
@@ -393,6 +412,14 @@ class Constant(Expression):
             self.value = 2**sid_line.size + value
         else:
             raise model_error(f"{value} in range of {sid_line.size}-bit bitvector", line_no)
+        if sid_line == Bool.boolean:
+            assert 0 <= self.value <= 1
+            if self.value == 0:
+                if Constant.false is None:
+                    Constant.false = self
+            elif self.value == 1:
+                if Constant.true is None:
+                    Constant.true = self
 
     def get_mapped_array_expression_for(self, index):
         return self
