@@ -352,13 +352,11 @@ class Array(Sort):
         return self.bitwuzla
 
 class Expression(Line):
-    PROPAGATE = False
-    LAMBDAS = True
-
     def __init__(self, nid, sid_line, domain, comment, line_no):
         super().__init__(nid, comment, line_no)
         self.sid_line = sid_line
         self.domain = domain
+        self.values = {}
         self.z3_lambda = None
         self.bitwuzla_lambda = None
         if not isinstance(sid_line, Sort):
@@ -397,6 +395,9 @@ class Constant(Expression):
             raise model_error(f"{value} in range of {sid_line.size}-bit bitvector", line_no)
 
     def get_mapped_array_expression_for(self, index):
+        return self
+
+    def get_values(self, step):
         return self
 
     def get_z3(self):
@@ -551,6 +552,9 @@ class Input(Variable):
     def get_mapped_array_expression_for(self, index):
         return super().get_mapped_array_expression_for(index)
 
+    def get_values(self, step):
+        return self
+
     def get_z3_name(self, step):
         return self.get_z3()
 
@@ -563,17 +567,25 @@ class Input(Variable):
         return self.get_bitwuzla(tm)
 
 class Instance:
+    PROPAGATE = None
+    LAMBDAS = True
+
     def __init__(self):
         self.cache_instance = {}
         self.cache_z3_instance = {}
         self.cache_bitwuzla_instance = {}
 
+    def has_instance(self, step):
+        return step in self.cache_instance
+
     def get_instance(self, step):
-        assert step in self.cache_instance
+        assert self.has_instance(step)
         return self.cache_instance[step]
 
     def set_instance(self, instance, step):
         self.cache_instance[step] = instance
+        if Instance.PROPAGATE:
+            self.cache_instance[step] = self.cache_instance[step].get_values(step)
 
     def get_z3_select(self, step):
         instance = self.get_instance(step)
@@ -608,7 +620,7 @@ class Instance:
     def get_z3_instance(self, step):
         if step in self.cache_z3_instance:
             return self.cache_z3_instance[step]
-        elif Expression.LAMBDAS:
+        elif Instance.LAMBDAS:
             return self.get_z3_select(step)
         else:
             return self.get_z3_substitute(step)
@@ -647,7 +659,7 @@ class Instance:
     def get_bitwuzla_instance(self, step, tm):
         if step in self.cache_bitwuzla_instance:
             return self.cache_bitwuzla_instance[step]
-        elif Expression.LAMBDAS:
+        elif Instance.LAMBDAS:
             return self.get_bitwuzla_select(step, tm)
         else:
             return self.get_bitwuzla_substitute(step, tm)
@@ -694,8 +706,18 @@ class State(Variable):
                 return self.init_line.exp_line.get_mapped_array_expression_for(index)
         return super().get_mapped_array_expression_for(index)
 
+    def get_values(self, step):
+        if step not in self.values:
+            self.values[step] = self
+            if self.has_instance(step):
+                self.values[step] = self.get_instance(step)
+        return self.values[step]
+
     def get_step_name(self, step):
         return f"{self.name}-{step}"
+
+    def has_instance(self, step):
+        return self.instance.has_instance(step)
 
     def get_instance(self, step):
         return self.instance.get_instance(step)
@@ -764,10 +786,14 @@ class Ext(Indexed):
         else:
             return self
 
-    def get_value(self, step):
-        arg1_value = self.arg1_line.get_value(step)
+    def get_values(self, step):
+        arg1_value = self.arg1_line.get_values(step)
         if isinstance(arg1_value, Constant):
-            return type(arg1_value)(next_nid(), self.sid_line, arg1_value.value, self.comment, self.line_no)
+            if self.op == 'sext':
+                return type(arg1_value)(next_nid(), self.sid_line, arg1_value.signed_value, self.comment, self.line_no)
+            else:
+                assert self.op == 'uext'
+                return type(arg1_value)(next_nid(), self.sid_line, arg1_value.value, self.comment, self.line_no)
         else:
             return self.copy(arg1_value)
 
@@ -817,8 +843,8 @@ class Slice(Indexed):
         else:
             return self
 
-    def get_value(self, step):
-        arg1_value = self.arg1_line.get_value(step)
+    def get_values(self, step):
+        arg1_value = self.arg1_line.get_values(step)
         if isinstance(arg1_value, Constant):
             return type(arg1_value)(next_nid(), self.sid_line,
                 (arg1_value.value & 2**(self.u + 1) - 1) >> self.l, self.comment, self.line_no)
@@ -865,6 +891,10 @@ class Unary(Expression):
         assert index is None
         arg1_line = self.arg1_line.get_mapped_array_expression_for(None)
         return self.copy(arg1_line)
+
+    def get_values(self, step):
+        arg1_value = self.arg1_line.get_values(step)
+        return self.copy(arg1_value)
 
     def get_z3(self):
         if self.z3 is None:
@@ -924,6 +954,11 @@ class Binary(Expression):
         arg1_line = self.arg1_line.get_mapped_array_expression_for(None)
         arg2_line = self.arg2_line.get_mapped_array_expression_for(None)
         return self.copy(arg1_line, arg2_line)
+
+    def get_values(self, step):
+        arg1_value = self.arg1_line.get_values(step)
+        arg2_value = self.arg2_line.get_values(step)
+        return self.copy(arg1_value, arg2_value)
 
 class Implies(Binary):
     keyword = OP_IMPLIES
@@ -1253,6 +1288,12 @@ class Ternary(Expression):
 
     def __str__(self):
         return f"{self.nid} {self.op} {self.sid_line.nid} {self.arg1_line.nid} {self.arg2_line.nid} {self.arg3_line.nid} {self.comment}"
+
+    def get_values(self, step):
+        arg1_value = self.arg1_line.get_values(step)
+        arg2_value = self.arg2_line.get_values(step)
+        arg3_value = self.arg3_line.get_values(step)
+        return self.copy(arg1_value, arg2_value, arg3_value)
 
 class Ite(Ternary):
     keyword = OP_ITE
@@ -4955,6 +4996,7 @@ def main():
     parser.add_argument('--use-Z3', action='store_true')
     parser.add_argument('--use-bitwuzla', action='store_true')
 
+    parser.add_argument('-propagate', nargs=1, type=int)
     parser.add_argument('--substitute', action='store_true')
 
     parser.add_argument('-array', nargs=1, type=int)
@@ -4970,7 +5012,8 @@ def main():
 
     args = parser.parse_args()
 
-    Expression.LAMBDAS = not args.substitute
+    Instance.PROPAGATE = args.propagate[0] if args.propagate and args.propagate[0] > 0 else None
+    Instance.LAMBDAS = not args.substitute
 
     Array.ARRAY_SIZE_BOUND = args.array[0] if args.array else 0
     Read.READ_ARRAY_ITERATIVELY = not args.recursive_array
