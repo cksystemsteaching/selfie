@@ -973,7 +973,8 @@ class Unary(Expression):
                     self.cache_values[step] = self.get_unaries(arg1_value, lambda x: x + 1)
                 elif self.op == OP_DEC:
                     self.cache_values[step] = self.get_unaries(arg1_value, lambda x: x - 1)
-                elif self.op == OP_NEG:
+                else:
+                    assert self.op == OP_NEG
                     self.cache_values[step] = self.get_unaries(arg1_value, lambda x: -x)
             else:
                 self.cache_values[step] = self.copy(arg1_value)
@@ -990,7 +991,8 @@ class Unary(Expression):
                 self.z3 = self.arg1_line.get_z3() + 1
             elif self.op == OP_DEC:
                 self.z3 = self.arg1_line.get_z3() - 1
-            elif self.op == OP_NEG:
+            else:
+                assert self.op == OP_NEG
                 self.z3 = -self.arg1_line.get_z3()
         return self.z3
 
@@ -1005,7 +1007,8 @@ class Unary(Expression):
                 bitwuzla_op = bitwuzla.Kind.BV_INC
             elif self.op == OP_DEC:
                 bitwuzla_op = bitwuzla.Kind.BV_DEC
-            elif self.op == OP_NEG:
+            else:
+                assert self.op == OP_NEG
                 bitwuzla_op = bitwuzla.Kind.BV_NEG
             self.bitwuzla = tm.mk_term(bitwuzla_op, [self.arg1_line.get_bitwuzla(tm)])
         return self.bitwuzla
@@ -1082,49 +1085,51 @@ class Comparison(Binary):
 
     def get_z3(self):
         if self.z3 is None:
-            if self.op == 'eq':
+            if self.op == OP_EQ:
                 self.z3 = self.arg1_line.get_z3() == self.arg2_line.get_z3()
-            elif self.op == 'neq':
+            elif self.op == OP_NEQ:
                 self.z3 = self.arg1_line.get_z3() != self.arg2_line.get_z3()
-            elif self.op == 'sgt':
+            elif self.op == OP_SGT:
                 self.z3 = self.arg1_line.get_z3() > self.arg2_line.get_z3()
-            elif self.op == 'ugt':
+            elif self.op == OP_UGT:
                 self.z3 = z3.UGT(self.arg1_line.get_z3(), self.arg2_line.get_z3())
-            elif self.op == 'sgte':
+            elif self.op == OP_SGTE:
                 self.z3 = self.arg1_line.get_z3() >= self.arg2_line.get_z3()
-            elif self.op == 'ugte':
+            elif self.op == OP_UGTE:
                 self.z3 = z3.UGE(self.arg1_line.get_z3(), self.arg2_line.get_z3())
-            elif self.op == 'slt':
+            elif self.op == OP_SLT:
                 self.z3 = self.arg1_line.get_z3() < self.arg2_line.get_z3()
-            elif self.op == 'ult':
+            elif self.op == OP_ULT:
                 self.z3 = z3.ULT(self.arg1_line.get_z3(), self.arg2_line.get_z3())
-            elif self.op == 'slte':
+            elif self.op == OP_SLTE:
                 self.z3 = self.arg1_line.get_z3() <= self.arg2_line.get_z3()
-            elif self.op == 'ulte':
+            else:
+                assert self.op == OP_ULTE
                 self.z3 = z3.ULE(self.arg1_line.get_z3(), self.arg2_line.get_z3())
         return self.z3
 
     def get_bitwuzla(self, tm):
         if self.bitwuzla is None:
-            if self.op == 'eq':
+            if self.op == OP_EQ:
                 bitwuzla_op = bitwuzla.Kind.EQUAL
-            elif self.op == 'neq':
+            elif self.op == OP_NEQ:
                 bitwuzla_op = bitwuzla.Kind.DISTINCT
-            elif self.op == 'sgt':
+            elif self.op == OP_SGT:
                 bitwuzla_op = bitwuzla.Kind.BV_SGT
-            elif self.op == 'ugt':
+            elif self.op == OP_UGT:
                 bitwuzla_op = bitwuzla.Kind.BV_UGT
-            elif self.op == 'sgte':
+            elif self.op == OP_SGTE:
                 bitwuzla_op = bitwuzla.Kind.BV_SGE
-            elif self.op == 'ugte':
+            elif self.op == OP_UGTE:
                 bitwuzla_op = bitwuzla.Kind.BV_UGE
-            elif self.op == 'slt':
+            elif self.op == OP_SLT:
                 bitwuzla_op = bitwuzla.Kind.BV_SLT
-            elif self.op == 'ult':
+            elif self.op == OP_ULT:
                 bitwuzla_op = bitwuzla.Kind.BV_ULT
-            elif self.op == 'slte':
+            elif self.op == OP_SLTE:
                 bitwuzla_op = bitwuzla.Kind.BV_SLE
-            elif self.op == 'ulte':
+            else:
+                assert self.op == OP_ULTE
                 bitwuzla_op = bitwuzla.Kind.BV_ULE
             self.bitwuzla = tm.mk_term(bitwuzla_op,
                 [self.arg1_line.get_bitwuzla(tm), self.arg2_line.get_bitwuzla(tm)])
@@ -1145,36 +1150,40 @@ class Logical(Binary):
     def get_z3(self):
         if self.z3 is None:
             if isinstance(self.sid_line, Bool):
-                if self.op == 'and':
+                if self.op == OP_AND:
                     self.z3 = z3.And(self.arg1_line.get_z3(), self.arg2_line.get_z3())
-                elif self.op == 'or':
+                elif self.op == OP_OR:
                     self.z3 = z3.Or(self.arg1_line.get_z3(), self.arg2_line.get_z3())
-                elif self.op == 'xor':
+                else:
+                    assert self.op == OP_XOR
                     self.z3 = z3.Xor(self.arg1_line.get_z3(), self.arg2_line.get_z3())
             else:
-                if self.op == 'and':
+                if self.op == OP_AND:
                     self.z3 = self.arg1_line.get_z3() & self.arg2_line.get_z3()
-                elif self.op == 'or':
+                elif self.op == OP_OR:
                     self.z3 = self.arg1_line.get_z3() | self.arg2_line.get_z3()
-                elif self.op == 'xor':
+                else:
+                    assert self.op == OP_XOR
                     self.z3 = self.arg1_line.get_z3() ^ self.arg2_line.get_z3()
         return self.z3
 
     def get_bitwuzla(self, tm):
         if self.bitwuzla is None:
             if isinstance(self.sid_line, Bool):
-                if self.op == 'and':
+                if self.op == OP_AND:
                     bitwuzla_op = bitwuzla.Kind.AND
-                elif self.op == 'or':
+                elif self.op == OP_OR:
                     bitwuzla_op = bitwuzla.Kind.OR
-                elif self.op == 'xor':
+                else:
+                    assert self.op == OP_XOR
                     bitwuzla_op = bitwuzla.Kind.XOR
             else:
-                if self.op == 'and':
+                if self.op == OP_AND:
                     bitwuzla_op = bitwuzla.Kind.BV_AND
-                elif self.op == 'or':
+                elif self.op == OP_OR:
                     bitwuzla_op = bitwuzla.Kind.BV_OR
-                elif self.op == 'xor':
+                else:
+                    assert self.op == OP_XOR
                     bitwuzla_op = bitwuzla.Kind.BV_XOR
             self.bitwuzla = tm.mk_term(bitwuzla_op,
                 [self.arg1_line.get_bitwuzla(tm), self.arg2_line.get_bitwuzla(tm)])
@@ -1194,49 +1203,51 @@ class Computation(Binary):
 
     def get_z3(self):
         if self.z3 is None:
-            if self.op == 'sll':
+            if self.op == OP_SLL:
                 self.z3 = self.arg1_line.get_z3() << self.arg2_line.get_z3()
-            elif self.op == 'srl':
+            elif self.op == OP_SRL:
                 self.z3 = z3.LShR(self.arg1_line.get_z3(), self.arg2_line.get_z3())
-            elif self.op == 'sra':
+            elif self.op == OP_SRA:
                 self.z3 = self.arg1_line.get_z3() >> self.arg2_line.get_z3()
-            elif self.op == 'add':
+            elif self.op == OP_ADD:
                 self.z3 = self.arg1_line.get_z3() + self.arg2_line.get_z3()
-            elif self.op == 'sub':
+            elif self.op == OP_SUB:
                 self.z3 = self.arg1_line.get_z3() - self.arg2_line.get_z3()
-            elif self.op == 'mul':
+            elif self.op == OP_MUL:
                 self.z3 = self.arg1_line.get_z3() * self.arg2_line.get_z3()
-            elif self.op == 'sdiv':
+            elif self.op == OP_SDIV:
                 self.z3 = self.arg1_line.get_z3() / self.arg2_line.get_z3()
-            elif self.op == 'udiv':
+            elif self.op == OP_UDIV:
                 self.z3 = z3.UDiv(self.arg1_line.get_z3(), self.arg2_line.get_z3())
-            elif self.op == 'srem':
+            elif self.op == OP_SREM:
                 self.z3 = z3.SRem(self.arg1_line.get_z3(), self.arg2_line.get_z3())
-            elif self.op == 'urem':
+            else:
+                assert self.op == OP_UREM
                 self.z3 = z3.URem(self.arg1_line.get_z3(), self.arg2_line.get_z3())
         return self.z3
 
     def get_bitwuzla(self, tm):
         if self.bitwuzla is None:
-            if self.op == 'sll':
+            if self.op == OP_SLL:
                 bitwuzla_op = bitwuzla.Kind.BV_SHL
-            elif self.op == 'srl':
+            elif self.op == OP_SRL:
                 bitwuzla_op = bitwuzla.Kind.BV_SHR
-            elif self.op == 'sra':
+            elif self.op == OP_SRA:
                 bitwuzla_op = bitwuzla.Kind.BV_ASHR
-            elif self.op == 'add':
+            elif self.op == OP_ADD:
                 bitwuzla_op = bitwuzla.Kind.BV_ADD
-            elif self.op == 'sub':
+            elif self.op == OP_SUB:
                 bitwuzla_op = bitwuzla.Kind.BV_SUB
-            elif self.op == 'mul':
+            elif self.op == OP_MUL:
                 bitwuzla_op = bitwuzla.Kind.BV_MUL
-            elif self.op == 'sdiv':
+            elif self.op == OP_SDIV:
                 bitwuzla_op = bitwuzla.Kind.BV_SDIV
-            elif self.op == 'udiv':
+            elif self.op == OP_UDIV:
                 bitwuzla_op = bitwuzla.Kind.BV_UDIV
-            elif self.op == 'srem':
+            elif self.op == OP_SREM:
                 bitwuzla_op = bitwuzla.Kind.BV_SREM
-            elif self.op == 'urem':
+            else:
+                assert self.op == OP_UREM
                 bitwuzla_op = bitwuzla.Kind.BV_UREM
             self.bitwuzla = tm.mk_term(bitwuzla_op,
                 [self.arg1_line.get_bitwuzla(tm), self.arg2_line.get_bitwuzla(tm)])
