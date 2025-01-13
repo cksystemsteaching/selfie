@@ -913,7 +913,29 @@ class Unary(Expression):
     def get_values(self, step):
         if step not in self.cache_values:
             arg1_value = self.arg1_line.get_values(step)
-            self.cache_values[step] = self.copy(arg1_value)
+            if isinstance(arg1_value, Constant):
+                value = arg1_value.value
+                if self.op == 'not':
+                    if isinstance(self.sid_line, Bool):
+                        if arg1_value == Constant.false:
+                            self.cache_values[step] = Constant.true
+                        else:
+                            assert arg1_value == Constant.true
+                            self.cache_values[step] = Constant.false
+                        return self.cache_values[step]
+                    else:
+                        value = ~value
+                elif self.op == 'inc':
+                    value = value + 1
+                elif self.op == 'dec':
+                    value = value - 1
+                elif self.op == 'neg':
+                    value = -value
+
+                self.cache_values[step] = type(arg1_value)(next_nid(), self.sid_line,
+                    value % 2**self.sid_line.size, self.comment, self.line_no)
+            else:
+                self.cache_values[step] = self.copy(arg1_value)
         return self.cache_values[step]
 
     def get_z3(self):
