@@ -1505,6 +1505,8 @@ class Init(Transitional):
     inits = {}
 
     def __init__(self, nid, sid_line, state_line, exp_line, symbol, comment, line_no, array_line = None, index = None):
+        if isinstance(state_line.sid_line, Array) and isinstance(exp_line, Constant):
+            exp_line = Constant_Array(state_line.sid_line, exp_line)
         super().__init__(nid, sid_line, state_line, exp_line, symbol, comment, line_no, array_line, index)
         if state_line.nid < exp_line.nid:
             raise model_error("state after expression", line_no)
@@ -4563,8 +4565,6 @@ def parse_init_next_line(tokens, nid, op, line_no):
     state_line = get_state_line(tokens, line_no)
     exp_line = get_exp_line(tokens, line_no)
     symbol, comment = parse_symbol_comment(tokens, line_no)
-    if op == Init.keyword and isinstance(state_line.sid_line, Array) and isinstance(exp_line, Constant):
-        exp_line = Constant_Array(state_line.sid_line, exp_line)
     return new_init_next(op, sid_line, state_line, exp_line, symbol, comment, nid, line_no)
 
 def parse_property_line(tokens, nid, op, line_no):
