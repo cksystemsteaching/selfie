@@ -820,34 +820,42 @@ class Ext(Indexed):
         else:
             return self
 
+    def get_exts(self, values, op):
+        results = Values(self.sid_line)
+        for value in values.values:
+            constraint = values.values[value]
+            results.set_value(constraint,
+                type(value)(next_nid(), self.sid_line, op(value), self.comment, self.line_no))
+        return results
+
     def get_values(self, step):
         if step not in self.cache_values:
-            arg1_value = self.arg1_line.get_values(step).get_value()
-            if isinstance(arg1_value, Constant):
-                if self.op == 'sext':
-                    self.cache_values[step] = type(arg1_value)(next_nid(), self.sid_line, arg1_value.signed_value, self.comment, self.line_no)
+            arg1_value = self.arg1_line.get_values(step)
+            if isinstance(arg1_value, Values):
+                if self.op == OP_SEXT:
+                    self.cache_values[step] = self.get_exts(arg1_value, lambda x: x.signed_value)
                 else:
-                    assert self.op == 'uext'
-                    self.cache_values[step] = type(arg1_value)(next_nid(), self.sid_line, arg1_value.value, self.comment, self.line_no)
+                    assert self.op == OP_UEXT
+                    self.cache_values[step] = self.get_exts(arg1_value, lambda x: x.value)
             else:
                 self.cache_values[step] = self.copy(arg1_value)
         return self.cache_values[step]
 
     def get_z3(self):
         if self.z3 is None:
-            if self.op == 'sext':
+            if self.op == OP_SEXT:
                 self.z3 = z3.SignExt(self.w, self.arg1_line.get_z3())
             else:
-                assert self.op == 'uext'
+                assert self.op == OP_UEXT
                 self.z3 = z3.ZeroExt(self.w, self.arg1_line.get_z3())
         return self.z3
 
     def get_bitwuzla(self, tm):
         if self.bitwuzla is None:
-            if self.op == 'sext':
+            if self.op == OP_SEXT:
                 bitwuzla_op = bitwuzla.Kind.BV_SIGN_EXTEND
             else:
-                assert self.op == 'uext'
+                assert self.op == OP_UEXT
                 bitwuzla_op = bitwuzla.Kind.BV_ZERO_EXTEND
             self.bitwuzla = tm.mk_term(bitwuzla_op,
                 [self.arg1_line.get_bitwuzla(tm)], [self.w])
@@ -876,12 +884,20 @@ class Slice(Indexed):
         else:
             return self
 
+    def get_slices(self, values):
+        results = Values(self.sid_line)
+        for value in values.values:
+            constraint = values.values[value]
+            results.set_value(constraint,
+                type(value)(next_nid(), self.sid_line,
+                    (value.value & 2**(self.u + 1) - 1) >> self.l, self.comment, self.line_no))
+        return results
+
     def get_values(self, step):
         if step not in self.cache_values:
-            arg1_value = self.arg1_line.get_values(step).get_value()
-            if isinstance(arg1_value, Constant):
-                self.cache_values[step] = type(arg1_value)(next_nid(), self.sid_line,
-                    (arg1_value.value & 2**(self.u + 1) - 1) >> self.l, self.comment, self.line_no)
+            arg1_value = self.arg1_line.get_values(step)
+            if isinstance(arg1_value, Values):
+                self.cache_values[step] = get_slices(arg1_value)
             else:
                 self.cache_values[step] = self.copy(arg1_value)
         return self.cache_values[step]
@@ -947,17 +963,17 @@ class Unary(Expression):
         if step not in self.cache_values:
             arg1_value = self.arg1_line.get_values(step)
             if isinstance(arg1_value, Values):
-                if self.op == 'not':
+                if self.op == OP_NOT:
                     if isinstance(self.sid_line, Bool):
                         assert arg1_value.number_of_values <= 2
                         self.cache_values[step] = self.get_unaries(arg1_value, lambda x: not x)
                     else:
                         self.cache_values[step] = self.get_unaries(arg1_value, lambda x: ~x)
-                elif self.op == 'inc':
+                elif self.op == OP_INC:
                     self.cache_values[step] = self.get_unaries(arg1_value, lambda x: x + 1)
-                elif self.op == 'dec':
+                elif self.op == OP_DEC:
                     self.cache_values[step] = self.get_unaries(arg1_value, lambda x: x - 1)
-                elif self.op == 'neg':
+                elif self.op == OP_NEG:
                     self.cache_values[step] = self.get_unaries(arg1_value, lambda x: -x)
             else:
                 self.cache_values[step] = self.copy(arg1_value)
@@ -965,31 +981,31 @@ class Unary(Expression):
 
     def get_z3(self):
         if self.z3 is None:
-            if self.op == 'not':
+            if self.op == OP_NOT:
                 if isinstance(self.sid_line, Bool):
                     self.z3 = z3.Not(self.arg1_line.get_z3())
                 else:
                     self.z3 = ~self.arg1_line.get_z3()
-            elif self.op == 'inc':
+            elif self.op == OP_INC:
                 self.z3 = self.arg1_line.get_z3() + 1
-            elif self.op == 'dec':
+            elif self.op == OP_DEC:
                 self.z3 = self.arg1_line.get_z3() - 1
-            elif self.op == 'neg':
+            elif self.op == OP_NEG:
                 self.z3 = -self.arg1_line.get_z3()
         return self.z3
 
     def get_bitwuzla(self, tm):
         if self.bitwuzla is None:
-            if self.op == 'not':
+            if self.op == OP_NOT:
                 if isinstance(self.sid_line, Bool):
                     bitwuzla_op = bitwuzla.Kind.NOT
                 else:
                     bitwuzla_op = bitwuzla.Kind.BV_NOT
-            elif self.op == 'inc':
+            elif self.op == OP_INC:
                 bitwuzla_op = bitwuzla.Kind.BV_INC
-            elif self.op == 'dec':
+            elif self.op == OP_DEC:
                 bitwuzla_op = bitwuzla.Kind.BV_DEC
-            elif self.op == 'neg':
+            elif self.op == OP_NEG:
                 bitwuzla_op = bitwuzla.Kind.BV_NEG
             self.bitwuzla = tm.mk_term(bitwuzla_op, [self.arg1_line.get_bitwuzla(tm)])
         return self.bitwuzla
