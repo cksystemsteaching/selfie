@@ -372,7 +372,7 @@ class Expression(Line):
         super().__init__(nid, comment, line_no)
         self.sid_line = sid_line
         self.domain = domain
-        self.values = {}
+        self.cache_values = {}
         self.z3_lambda = None
         self.bitwuzla_lambda = None
         if not isinstance(sid_line, Sort):
@@ -417,7 +417,8 @@ class Constant(Expression):
             if self.value == 0:
                 if Constant.false is None:
                     Constant.false = self
-            elif self.value == 1:
+            else:
+                assert self.value == 1
                 if Constant.true is None:
                     Constant.true = self
 
@@ -814,15 +815,17 @@ class Ext(Indexed):
             return self
 
     def get_values(self, step):
-        arg1_value = self.arg1_line.get_values(step)
-        if isinstance(arg1_value, Constant):
-            if self.op == 'sext':
-                return type(arg1_value)(next_nid(), self.sid_line, arg1_value.signed_value, self.comment, self.line_no)
+        if step not in self.cache_values:
+            arg1_value = self.arg1_line.get_values(step)
+            if isinstance(arg1_value, Constant):
+                if self.op == 'sext':
+                    self.cache_values[step] = type(arg1_value)(next_nid(), self.sid_line, arg1_value.signed_value, self.comment, self.line_no)
+                else:
+                    assert self.op == 'uext'
+                    self.cache_values[step] = type(arg1_value)(next_nid(), self.sid_line, arg1_value.value, self.comment, self.line_no)
             else:
-                assert self.op == 'uext'
-                return type(arg1_value)(next_nid(), self.sid_line, arg1_value.value, self.comment, self.line_no)
-        else:
-            return self.copy(arg1_value)
+                self.cache_values[step] = self.copy(arg1_value)
+        return self.cache_values[step]
 
     def get_z3(self):
         if self.z3 is None:
@@ -868,12 +871,14 @@ class Slice(Indexed):
             return self
 
     def get_values(self, step):
-        arg1_value = self.arg1_line.get_values(step)
-        if isinstance(arg1_value, Constant):
-            return type(arg1_value)(next_nid(), self.sid_line,
-                (arg1_value.value & 2**(self.u + 1) - 1) >> self.l, self.comment, self.line_no)
-        else:
-            return self.copy(arg1_value)
+        if step not in self.cache_values:
+            arg1_value = self.arg1_line.get_values(step)
+            if isinstance(arg1_value, Constant):
+                self.cache_values[step] = type(arg1_value)(next_nid(), self.sid_line,
+                    (arg1_value.value & 2**(self.u + 1) - 1) >> self.l, self.comment, self.line_no)
+            else:
+                self.cache_values[step] = self.copy(arg1_value)
+        return self.cache_values[step]
 
     def get_z3(self):
         if self.z3 is None:
@@ -917,8 +922,10 @@ class Unary(Expression):
         return self.copy(arg1_line)
 
     def get_values(self, step):
-        arg1_value = self.arg1_line.get_values(step)
-        return self.copy(arg1_value)
+        if step not in self.cache_values:
+            arg1_value = self.arg1_line.get_values(step)
+            self.cache_values[step] = self.copy(arg1_value)
+        return self.cache_values[step]
 
     def get_z3(self):
         if self.z3 is None:
@@ -980,9 +987,11 @@ class Binary(Expression):
         return self.copy(arg1_line, arg2_line)
 
     def get_values(self, step):
-        arg1_value = self.arg1_line.get_values(step)
-        arg2_value = self.arg2_line.get_values(step)
-        return self.copy(arg1_value, arg2_value)
+        if step not in self.cache_values:
+            arg1_value = self.arg1_line.get_values(step)
+            arg2_value = self.arg2_line.get_values(step)
+            self.cache_values[step] = self.copy(arg1_value, arg2_value)
+        return self.cache_values[step]
 
 class Implies(Binary):
     keyword = OP_IMPLIES
@@ -1314,10 +1323,12 @@ class Ternary(Expression):
         return f"{self.nid} {self.op} {self.sid_line.nid} {self.arg1_line.nid} {self.arg2_line.nid} {self.arg3_line.nid} {self.comment}"
 
     def get_values(self, step):
-        arg1_value = self.arg1_line.get_values(step)
-        arg2_value = self.arg2_line.get_values(step)
-        arg3_value = self.arg3_line.get_values(step)
-        return self.copy(arg1_value, arg2_value, arg3_value)
+        if step not in self.cache_values:
+            arg1_value = self.arg1_line.get_values(step)
+            arg2_value = self.arg2_line.get_values(step)
+            arg3_value = self.arg3_line.get_values(step)
+            self.cache_values[step] = self.copy(arg1_value, arg2_value, arg3_value)
+        return self.cache_values[step]
 
 class Ite(Ternary):
     keyword = OP_ITE
