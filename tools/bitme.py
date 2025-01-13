@@ -225,8 +225,9 @@ class Line(Z3, Bitwuzla):
         return self.__str__()
 
     def new_line(self):
-        assert self.nid not in Line.lines, f"nid {self.nid} already defined @ {self.line_no}"
-        Line.lines[self.nid] = self
+        if self.nid is not None:
+            assert self.nid not in Line.lines, f"nid {self.nid} already defined @ {self.line_no}"
+            Line.lines[self.nid] = self
         type(self).count += 1
 
     def is_defined(nid):
@@ -469,6 +470,34 @@ class Consth(Constant):
         size = math.ceil(self.sid_line.size / 4)
         return f"{self.nid} {Consth.keyword} {self.sid_line.nid} {self.value:0{size}X} {self.comment}"
 
+class Constant_Array(Expression):
+    def __init__(self, sid_line, constant_line):
+        super().__init__(None, sid_line, {}, constant_line.comment, constant_line.line_no)
+        self.nid = constant_line.nid # reuse nid of constant_line
+        self.constant_line = constant_line
+        if not isinstance(sid_line, Array):
+            raise model_error("array sort", line_no)
+        if not isinstance(constant_line, Constant):
+            raise model_error("bitvector constant", line_no)
+        if not sid_line.element_size_line.match_sorts(constant_line.sid_line):
+            raise model_error("compatible sorts", line_no)
+
+    def __str__(self):
+        return f"{self.nid} {"consta"} {self.sid_line.nid} {self.constant_line.nid} {self.comment}"
+
+    def get_values(self, step):
+        return self
+
+    def get_z3(self):
+        if self.z3 is None:
+            self.z3 = z3.K(self.sid_line.array_size_line.get_z3(), self.constant_line.get_z3())
+        return self.z3
+
+    def get_bitwuzla(self, tm):
+        if self.bitwuzla is None:
+            self.bitwuzla = tm.mk_const_array(self.sid_line.get_bitwuzla(tm), self.constant_line.get_bitwuzla(tm))
+        return self.bitwuzla
+
 class Variable(Expression):
     keywords = {OP_INPUT, OP_STATE}
 
@@ -584,10 +613,6 @@ class Instance:
         else:
             return self.get_z3_substitute(step)
 
-    def set_z3_instance(self, instance, step):
-        assert step not in self.cache_z3_instance
-        self.cache_z3_instance[step] = instance
-
     def get_bitwuzla_select(self, step, tm):
         instance = self.get_instance(step)
         assert step not in self.cache_bitwuzla_instance
@@ -626,10 +651,6 @@ class Instance:
             return self.get_bitwuzla_select(step, tm)
         else:
             return self.get_bitwuzla_substitute(step, tm)
-
-    def set_bitwuzla_instance(self, instance, step):
-        assert step not in self.cache_bitwuzla_instance
-        self.cache_bitwuzla_instance[step] = instance
 
 class State(Variable):
     keyword = OP_STATE
@@ -692,9 +713,6 @@ class State(Variable):
     def get_z3_instance(self, step):
         return self.instance.get_z3_instance(step)
 
-    def set_z3_instance(self, instance, step):
-        self.instance.set_z3_instance(instance, step)
-
     def get_bitwuzla(self, tm):
         if self.bitwuzla is None:
             self.bitwuzla = tm.mk_var(self.sid_line.get_bitwuzla(tm), self.name)
@@ -710,9 +728,6 @@ class State(Variable):
 
     def get_bitwuzla_instance(self, step, tm):
         return self.instance.get_bitwuzla_instance(step, tm)
-
-    def set_bitwuzla_instance(self, instance, step):
-        self.instance.set_bitwuzla_instance(instance, step)
 
 class Indexed(Expression):
     def __init__(self, nid, sid_line, arg1_line, comment, line_no):
@@ -1444,19 +1459,11 @@ class Init(Transitional):
     def get_z3_step(self, step):
         assert step == 0, f"z3 init with {step} != 0"
         self.state_line.set_instance(self.exp_line, -1)
-        if isinstance(self.sid_line, Array) and isinstance(self.exp_line, Constant):
-            # initialize with constant array
-            self.state_line.set_z3_instance(z3.K(self.sid_line.array_size_line.get_z3(),
-                self.exp_line.get_z3()), -1)
         return self.state_line.get_z3_name(0) == self.state_line.get_z3_instance(-1)
 
     def get_bitwuzla_step(self, step, tm):
         assert step == 0, f"bitwuzla init with {step} != 0"
         self.state_line.set_instance(self.exp_line, -1)
-        if isinstance(self.sid_line, Array) and isinstance(self.exp_line, Constant):
-            # initialize with constant array
-            self.state_line.set_bitwuzla_instance(tm.mk_const_array(self.sid_line.get_bitwuzla(tm),
-                self.exp_line.get_bitwuzla(tm)), -1)
         return tm.mk_term(bitwuzla.Kind.EQUAL,
             [self.state_line.get_bitwuzla_name(0, tm),
             self.state_line.get_bitwuzla_instance(-1, tm)])
@@ -4490,6 +4497,8 @@ def parse_init_next_line(tokens, nid, op, line_no):
     state_line = get_state_line(tokens, line_no)
     exp_line = get_exp_line(tokens, line_no)
     symbol, comment = parse_symbol_comment(tokens, line_no)
+    if op == Init.keyword and isinstance(state_line.sid_line, Array) and isinstance(exp_line, Constant):
+        exp_line = Constant_Array(state_line.sid_line, exp_line)
     return new_init_next(op, sid_line, state_line, exp_line, symbol, comment, nid, line_no)
 
 def parse_property_line(tokens, nid, op, line_no):
