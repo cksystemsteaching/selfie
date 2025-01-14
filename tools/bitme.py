@@ -387,6 +387,31 @@ class Values:
             return Unary(next_nid(), OP_NOT, Bool.boolean,
                 arg1_line, arg1_line.comment, arg1_line.line_no)
 
+    def constrain(self, constraining_line):
+        if constraining_line == Constant.true:
+            return self
+        else:
+            results = Values(self.sid_line)
+            for value in self.values:
+                constraint_line = self.values[value]
+                results.set_value(Values.AND(constraining_line, constraint_line), self.sid_line, value)
+            return results
+
+    def copy(self):
+        results = Values(self.sid_line)
+        for value in self.values:
+            constraint = self.values[value]
+            results.set_value(constraint, self.sid_line, value)
+        return results
+
+    def merge(self, values):
+        assert self.sid_line == values.sid_line
+        results = self.copy()
+        for value in values.values:
+            constraint = values.values[value]
+            results.set_value(constraint, values.sid_line, value)
+        return results
+
     def get_expression(self):
         # naive transition from domain propagation to bit blasting
         assert len(self.values) > 0
@@ -1471,10 +1496,16 @@ class Ternary(Expression):
 
     def get_values(self, step):
         if step not in self.cache_values:
-            arg1_value = self.arg1_line.get_values(step).get_expression()
-            arg2_value = self.arg2_line.get_values(step).get_expression()
-            arg3_value = self.arg3_line.get_values(step).get_expression()
-            self.cache_values[step] = self.copy(arg1_value, arg2_value, arg3_value)
+            arg1_value = self.arg1_line.get_values(step)
+            arg2_value = self.arg2_line.get_values(step)
+            arg3_value = self.arg3_line.get_values(step)
+            if isinstance(arg1_value, Values) and isinstance(arg2_value, Values) and isinstance(arg3_value, Values):
+                self.cache_values[step] = self.propagate(arg1_value, arg2_value, arg3_value)
+            else:
+                arg1_value = arg1_value.get_expression()
+                arg2_value = arg2_value.get_expression()
+                arg3_value = arg3_value.get_expression()
+                self.cache_values[step] = self.copy(arg1_value, arg2_value, arg3_value)
         return self.cache_values[step]
 
 class Ite(Ternary):
@@ -1511,6 +1542,26 @@ class Ite(Ternary):
             arg3_line = self.arg3_line.get_mapped_array_expression_for(index)
             self.ite_cache[index] = self.copy(arg1_line, arg2_line, arg3_line)
         return self.ite_cache[index]
+
+    def propagate(self, arg1_value, arg2_value, arg3_value):
+        assert len(arg1_value.values) <= 2
+        true_line = Constant.false
+        false_line = Constant.false
+        for value in arg1_value.values:
+            constraint_line = arg1_value.values[value]
+            if value == 1:
+                true_line = constraint_line
+            else:
+                assert value == 0
+                false_line = constraint_line
+        if true_line == Constant.false:
+            return self.arg3_value.constrain(false_line)
+        elif false_line == Constant.false:
+            return self.arg2_value.constrain(true_line)
+        else:
+            results2 = self.arg2_value.constrain(true_line)
+            results3 = self.arg3_value.constrain(false_line)
+            return results2.merge(results3)
 
     def get_z3(self):
         if self.z3 is None:
