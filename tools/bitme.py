@@ -354,11 +354,9 @@ class Array(Sort):
 class Values:
     def __init__(self, sid_line):
         self.sid_line = sid_line
-        self.number_of_values = 0
         self.values = {}
 
     def AND(arg1_line, arg2_line):
-        assert arg1_line != Constant.false and arg2_line != Constant.false
         if arg1_line == Constant.true and arg2_line == Constant.true:
             return Constant.true
         elif arg1_line == Constant.true:
@@ -370,38 +368,69 @@ class Values:
                 arg1_line, arg2_line, arg1_line.comment, arg1_line.line_no)
 
     def OR(arg1_line, arg2_line):
-        assert arg1_line != Constant.false and arg2_line != Constant.false
         if arg1_line == Constant.true or arg2_line == Constant.true:
             return Constant.true
+        elif arg1_line == Constant.false:
+            return arg2_line
+        elif arg2_line == Constant.false:
+            return arg1_line
         else:
             return Logical(next_nid(), OP_OR, Bool.boolean,
                 arg1_line, arg2_line, arg1_line.comment, arg1_line.line_no)
 
+    def NOT(arg1_line):
+        if arg1_line == Constant.true:
+            return Constant.false
+        elif arg1_line == Constant.false:
+            return Constant.true
+        else:
+            return Unary(next_nid(), OP_NOT, Bool.boolean,
+                arg1_line, arg1_line.comment, arg1_line.line_no)
+
     def get_expression(self):
         # naive transition from domain propagation to bit blasting
-        assert self.number_of_values > 0
-        exp_line = None
-        for value_line in self.values:
-            constraint_line = self.values[value_line]
-            if constraint_line != Constant.true:
-                if exp_line is None:
-                    exp_line = Zero(next_nid(), self.sid_line,
-                        "unreachable-value", "unreachable value", 0)
-                exp_line = Ite(next_nid(), self.sid_line,
-                    constraint_line, value_line, exp_line,
-                    value_line.comment, value_line.line_no)
-            else:
-                exp_line = value_line
+        assert len(self.values) > 0
+        if isinstance(self.sid_line, Bool):
+            assert len(self.values) <= 2
+            true_line = Constant.false
+            false_line = Constant.false
+            for value in self.values:
+                constraint_line = self.values[value]
+                if value == 1:
+                    true_line = constraint_line
+                else:
+                    assert value == 0
+                    false_line = Values.NOT(constraint_line)
+            exp_line = Values.OR(false_line, true_line)
+        else:
+            exp_line = None
+            for value in self.values:
+                constraint_line = self.values[value]
+                if constraint_line != Constant.true:
+                    if constraint_line != Constant.false:
+                        if exp_line is None:
+                            exp_line = Zero(next_nid(), self.sid_line,
+                                "unreachable-value", "unreachable value", 0)
+                        exp_line = Ite(next_nid(), self.sid_line,
+                            constraint_line,
+                            Constd(next_nid(), self.sid_line, value,
+                                constraint_line.comment, constraint_line.line_no),
+                            exp_line,
+                            constraint_line.comment, constraint_line.line_no)
+                else:
+                    exp_line = Constd(next_nid(), self.sid_line, value,
+                        constraint_line.comment, constraint_line.line_no)
+        assert exp_line is not None
         return exp_line
 
-    def set_value(self, constraint_line, value_line):
-        assert self.sid_line == value_line.sid_line
-        assert constraint_line != Constant.false
-        if value_line not in self.values:
-            self.number_of_values += 1
-            self.values[value_line] = constraint_line
-        else:
-            self.values[value_line] = Values.OR(constraint_line, self.values[value_line])
+    def set_value(self, constraint_line, sid_line, value):
+        assert self.sid_line == sid_line
+        assert 0 <= value < 2**sid_line.size
+        if constraint_line != Constant.false:
+            if value not in self.values:
+                self.values[value] = constraint_line
+            else:
+                self.values[value] = Values.OR(constraint_line, self.values[value])
         return self
 
 class Expression(Line):
@@ -474,7 +503,7 @@ class Constant(Expression):
 
     def get_values(self, step):
         if 0 not in self.cache_values:
-            self.cache_values[0] = Values(self.sid_line).set_value(Constant.true, self)
+            self.cache_values[0] = Values(self.sid_line).set_value(Constant.true, self.sid_line, self.value)
         return self.cache_values[0]
 
     def get_z3(self):
@@ -846,13 +875,11 @@ class Ext(Indexed):
         else:
             return self
 
-    def get_exts(self, arg1_value, op_lambda):
+    def propagate(self, arg1_value, op_lambda):
         results = Values(self.sid_line)
-        for value_line in arg1_value.values:
-            constraint_line = arg1_value.values[value_line]
-            results.set_value(constraint_line,
-                type(value_line)(next_nid(), self.sid_line, op_lambda(value_line),
-                    self.comment, self.line_no))
+        for value in arg1_value.values:
+            constraint_line = arg1_value.values[value]
+            results.set_value(constraint_line, self.sid_line, op_lambda(value))
         return results
 
     def get_values(self, step):
@@ -860,10 +887,11 @@ class Ext(Indexed):
             arg1_value = self.arg1_line.get_values(step)
             if isinstance(arg1_value, Values):
                 if self.op == OP_SEXT:
-                    self.cache_values[step] = self.get_exts(arg1_value, lambda x: x.signed_value)
+                    self.cache_values[step] = self.propagate(arg1_value,
+                        lambda x: -x % 2**self.sid_line if x >= 2**(arg1_value.sid_line - 1) else x)
                 else:
                     assert self.op == OP_UEXT
-                    self.cache_values[step] = self.get_exts(arg1_value, lambda x: x.value)
+                    self.cache_values[step] = self.propagate(arg1_value, lambda x: x)
             else:
                 self.cache_values[step] = self.copy(arg1_value)
         return self.cache_values[step]
@@ -911,21 +939,18 @@ class Slice(Indexed):
         else:
             return self
 
-    def get_slices(self, arg1_value):
+    def propagate(self, arg1_value):
         results = Values(self.sid_line)
-        for value_line in arg1_value.values:
-            constraint_line = arg1_value.values[value_line]
-            results.set_value(constraint_line,
-                type(value_line)(next_nid(), self.sid_line,
-                    (value_line.value & 2**(self.u + 1) - 1) >> self.l,
-                    self.comment, self.line_no))
+        for value in arg1_value.values:
+            constraint_line = arg1_value.values[value]
+            results.set_value(constraint_line, self.sid_line, (value & 2**(self.u + 1) - 1) >> self.l)
         return results
 
     def get_values(self, step):
         if step not in self.cache_values:
             arg1_value = self.arg1_line.get_values(step)
             if isinstance(arg1_value, Values):
-                self.cache_values[step] = get_slices(arg1_value)
+                self.cache_values[step] = self.propagate(arg1_value)
             else:
                 self.cache_values[step] = self.copy(arg1_value)
         return self.cache_values[step]
@@ -971,21 +996,19 @@ class Unary(Expression):
         arg1_line = self.arg1_line.get_mapped_array_expression_for(None)
         return self.copy(arg1_line)
 
-    def get_unaries(self, arg1_value, op_lambda):
+    def propagate(self, arg1_value, op_lambda):
         results = Values(self.sid_line)
-        for value_line in arg1_value.values:
-            constraint_line = arg1_value.values[value_line]
+        for value in arg1_value.values:
+            constraint_line = arg1_value.values[value]
             if op_lambda == (lambda x: not x):
-                if value_line == Constant.false:
-                    results.set_value(constraint_line, Constant.true)
+                if value == 0:
+                    results.set_value(constraint_line, self.sid_line, 1)
                 else:
-                    assert value_line == Constant.true
-                    results.set_value(constraint_line, Constant.false)
+                    assert value == 1
+                    results.set_value(constraint_line, self.sid_line, 0)
             else:
-                results.set_value(constraint_line,
-                    type(value_line)(next_nid(), self.sid_line,
-                        op_lambda(value_line.value) % 2**self.sid_line.size,
-                        self.comment, self.line_no))
+                results.set_value(constraint_line, self.sid_line,
+                    op_lambda(value) % 2**self.sid_line.size)
         return results
 
     def get_values(self, step):
@@ -994,17 +1017,17 @@ class Unary(Expression):
             if isinstance(arg1_value, Values):
                 if self.op == OP_NOT:
                     if isinstance(self.sid_line, Bool):
-                        assert arg1_value.number_of_values <= 2
-                        self.cache_values[step] = self.get_unaries(arg1_value, lambda x: not x)
+                        assert len(arg1_value.values) <= 2
+                        self.cache_values[step] = self.propagate(arg1_value, lambda x: not x)
                     else:
-                        self.cache_values[step] = self.get_unaries(arg1_value, lambda x: ~x)
+                        self.cache_values[step] = self.propagate(arg1_value, lambda x: ~x)
                 elif self.op == OP_INC:
-                    self.cache_values[step] = self.get_unaries(arg1_value, lambda x: x + 1)
+                    self.cache_values[step] = self.propagate(arg1_value, lambda x: x + 1)
                 elif self.op == OP_DEC:
-                    self.cache_values[step] = self.get_unaries(arg1_value, lambda x: x - 1)
+                    self.cache_values[step] = self.propagate(arg1_value, lambda x: x - 1)
                 else:
                     assert self.op == OP_NEG
-                    self.cache_values[step] = self.get_unaries(arg1_value, lambda x: -x)
+                    self.cache_values[step] = self.propagate(arg1_value, lambda x: -x)
             else:
                 self.cache_values[step] = self.copy(arg1_value)
         return self.cache_values[step]
@@ -1070,11 +1093,22 @@ class Binary(Expression):
         arg2_line = self.arg2_line.get_mapped_array_expression_for(None)
         return self.copy(arg1_line, arg2_line)
 
+    def propagate(self, arg1_value, arg2_value):
+        # TODO: remove when done with domain propagation
+        arg1_value = arg1_value.get_expression()
+        arg2_value = arg2_value.get_expression()
+        return self.copy(arg1_value, arg2_value)
+
     def get_values(self, step):
         if step not in self.cache_values:
-            arg1_value = self.arg1_line.get_values(step).get_expression()
-            arg2_value = self.arg2_line.get_values(step).get_expression()
-            self.cache_values[step] = self.copy(arg1_value, arg2_value)
+            arg1_value = self.arg1_line.get_values(step)
+            arg2_value = self.arg2_line.get_values(step)
+            if isinstance(arg1_value, Values) and isinstance(arg2_value, Values):
+                self.cache_values[step] = self.propagate(arg1_value, arg2_value)
+            else:
+                arg1_value = arg1_value.get_expression()
+                arg2_value = arg2_value.get_expression()
+                self.cache_values[step] = self.copy(arg1_value, arg2_value)
         return self.cache_values[step]
 
 class Implies(Binary):
@@ -1088,6 +1122,17 @@ class Implies(Binary):
             raise model_error("compatible result and first operand sorts", line_no)
         if not arg1_line.sid_line.match_sorts(arg2_line.sid_line):
             raise model_error("compatible first and second operand sorts", line_no)
+
+    def propagate(self, arg1_value, arg2_value):
+        results = Values(self.sid_line)
+        for value1 in arg1_value.values:
+            for value2 in arg2_value.values:
+                constraint1_line = arg1_value.values[value1]
+                constraint2_line = arg2_value.values[value2]
+                assert 0 <= value1, value2 <= 1
+                results.set_value(Values.AND(constraint1_line, constraint2_line), self.sid_line,
+                    value2 if value1 == 1 else 1)
+        return results
 
     def get_z3(self):
         if self.z3 is None:
@@ -1296,29 +1341,15 @@ class Concat(Binary):
         if sid_line.size != arg1_line.sid_line.size + arg2_line.sid_line.size:
             raise model_error("compatible bitvector result", line_no)
 
-    def get_concats(self, arg1_values, arg2_values):
+    def propagate(self, arg1_value, arg2_value):
         results = Values(self.sid_line)
-        for value1_line in arg1_values.values:
-            for value2_line in arg2_values.values:
-                constraint1_line = arg1_values.values[value1_line]
-                constraint2_line = arg2_values.values[value2_line]
-                results.set_value(Values.AND(constraint1_line, constraint2_line),
-                    type(value1_line)(next_nid(), self.sid_line,
-                        (value1_line.value << value2_line.sid_line.size) + value2_line.value,
-                        self.comment, self.line_no))
+        for value1 in arg1_value.values:
+            for value2 in arg2_value.values:
+                constraint1_line = arg1_value.values[value1]
+                constraint2_line = arg2_value.values[value2]
+                results.set_value(Values.AND(constraint1_line, constraint2_line), self.sid_line,
+                    (value1 << arg2_value.sid_line.size) + value2)
         return results
-
-    def get_values(self, step):
-        if step not in self.cache_values:
-            arg1_value = self.arg1_line.get_values(step)
-            arg2_value = self.arg2_line.get_values(step)
-            if isinstance(arg1_value, Values) and isinstance(arg2_value, Values):
-                self.cache_values[step] = self.get_concats(arg1_value, arg2_value)
-            else:
-                arg1_value = arg1_value.get_expression()
-                arg2_value = arg2_value.get_expression()
-                self.cache_values[step] = self.copy(arg1_value, arg2_value)
-        return self.cache_values[step]
 
     def get_z3(self):
         if self.z3 is None:
