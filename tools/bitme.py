@@ -250,6 +250,7 @@ class Bitvector(Sort):
     keyword = BITVEC
 
     def __init__(self, nid, size, comment, line_no):
+        assert size > 0
         super().__init__(nid, comment, line_no)
         self.size = size
 
@@ -261,6 +262,23 @@ class Bitvector(Sort):
 
     def is_mapped_array(self):
         return False
+
+    def is_unsigned_value(self, value):
+        return 0 <= value < 2**self.size
+
+    def is_signed_value(self, value):
+        return -2**(self.size - 1) <= value < 2**(self.size - 1)
+
+    def is_value(self, value):
+        return self.is_unsigned_value(value) or self.is_signed_value(value)
+
+    def get_unsigned_value(self, value):
+        assert self.is_value(value)
+        return -value if value < 0 else value
+
+    def get_signed_value(self, value):
+        assert self.is_value(value)
+        return -value if value >= 2**(self.size - 1) else value
 
 class Bool(Bitvector):
     boolean = None
@@ -502,17 +520,11 @@ class Constant(Expression):
 
     def __init__(self, nid, sid_line, value, comment, line_no):
         super().__init__(nid, sid_line, {}, comment, line_no)
-        self.print_value = value
-        self.signed_value = value
-        if 0 <= value < 2**sid_line.size:
-            self.value = value
-            if 2**(sid_line.size - 1) <= value:
-                self.signed_value = value - 2**sid_line.size
-        elif -2**(sid_line.size - 1) <= value < 2**(sid_line.size - 1):
-            assert value < 0
-            self.value = 2**sid_line.size + value
-        else:
+        if not sid_line.is_value(value):
             raise model_error(f"{value} in range of {sid_line.size}-bit bitvector", line_no)
+        self.print_value = value
+        self.signed_value = sid_line.get_signed_value(value)
+        self.value = sid_line.get_unsigned_value(value)
         if sid_line == Bool.boolean:
             assert 0 <= self.value <= 1
             if self.value == 0:
@@ -913,7 +925,7 @@ class Ext(Indexed):
             if isinstance(arg1_value, Values):
                 if self.op == OP_SEXT:
                     self.cache_values[step] = self.propagate(arg1_value,
-                        lambda x: -x % 2**self.sid_line if x >= 2**(arg1_value.sid_line - 1) else x)
+                        lambda x: arg1_value.sid_line.get_signed_value(x) % 2**self.sid_line)
                 else:
                     assert self.op == OP_UEXT
                     self.cache_values[step] = self.propagate(arg1_value, lambda x: x)
