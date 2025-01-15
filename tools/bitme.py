@@ -510,6 +510,19 @@ class Values:
                 self.values[value] = Values.OR(constraint_line, self.values[value])
         return self
 
+    def is_equal(self, values):
+        # naive check for semantical equivalence
+        if not isinstance(values, Values) or len(self.values) != len(values.values):
+            return False
+        else:
+            for value in self.values:
+                if value in values.values:
+                    if self.values[value] != values.values[value]:
+                        return False
+                else:
+                    return False
+            return True
+
 class Expression(Line):
     def __init__(self, nid, sid_line, domain, comment, line_no):
         super().__init__(nid, comment, line_no)
@@ -524,6 +537,10 @@ class Expression(Line):
     def get_domain(self):
         # filter out uninitialized states
         return [state for state in self.domain if state.init_line is not None]
+
+    def is_equal(self, exp_line):
+        # checking semantical equivalence is delegated to solvers
+        return False
 
     def get_expression(self):
         return self
@@ -777,10 +794,10 @@ class Instance:
     def set_instance(self, instance, step):
         self.cache_instance[step] = instance
         if Instance.PROPAGATE > 0:
-            self.cache_instance[step] = self.cache_instance[step].get_values(step).get_expression()
+            self.cache_instance[step] = self.cache_instance[step].get_values(step)
 
     def get_z3_select(self, step):
-        instance = self.get_instance(step)
+        instance = self.get_instance(step).get_expression()
         assert step not in self.cache_z3_instance
         domain = instance.get_domain()
         if domain:
@@ -791,7 +808,7 @@ class Instance:
         return self.cache_z3_instance[step]
 
     def get_z3_substitute(self, step):
-        instance = self.get_instance(step)
+        instance = self.get_instance(step).get_expression()
         assert step not in self.cache_z3_instance
         self.cache_z3_instance[step] = instance.get_z3()
         domain = instance.get_domain()
@@ -812,7 +829,7 @@ class Instance:
             return self.get_z3_substitute(step)
 
     def get_bitwuzla_select(self, step, tm):
-        instance = self.get_instance(step)
+        instance = self.get_instance(step).get_expression()
         assert step not in self.cache_bitwuzla_instance
         domain = instance.get_domain()
         if domain:
@@ -824,7 +841,7 @@ class Instance:
         return self.cache_bitwuzla_instance[step]
 
     def get_bitwuzla_substitute(self, step, tm):
-        instance = self.get_instance(step)
+        instance = self.get_instance(step).get_expression()
         assert step not in self.cache_bitwuzla_instance
         self.cache_bitwuzla_instance[step] = instance.get_bitwuzla(tm)
         domain = instance.get_domain()
@@ -2028,13 +2045,22 @@ class Next(Transitional):
     def get_z3_step(self, step):
         self.state_line.set_instance(self.exp_line, step)
         if step not in self.cache_z3_next_state:
-            self.cache_z3_next_state[step] = self.state_line.get_z3_name(step + 1) == self.state_line.get_z3_instance(step)
+            if isinstance(self.state_line.get_instance(step), Values):
+                self.cache_z3_next_state[step] = z3.BoolVal(True)
+            else:
+                self.cache_z3_next_state[step] = self.state_line.get_z3_name(step + 1) == self.state_line.get_z3_instance(step)
         return self.cache_z3_next_state[step]
 
     def get_z3_is_state_changing(self, step):
         self.state_line.set_instance(self.exp_line, step)
         if step not in self.cache_z3_is_state_changing:
-            self.cache_z3_is_state_changing[step] = self.state_line.get_z3_name(step) != self.state_line.get_z3_instance(step)
+            if self.state_line.has_instance(step - 1):
+                if self.state_line.get_instance(step).is_equal(self.state_line.get_instance(step - 1)):
+                    self.cache_z3_is_state_changing[step] = z3.BoolVal(False)
+                else:
+                    self.cache_z3_is_state_changing[step] = self.state_line.get_z3_instance(step) != self.state_line.get_z3_instance(step - 1)
+            else:
+                self.cache_z3_is_state_changing[step] = z3.BoolVal(False)
         return self.cache_z3_is_state_changing[step]
 
     def get_z3_state_is_not_changing(self, step):
@@ -2046,17 +2072,26 @@ class Next(Transitional):
     def get_bitwuzla_step(self, step, tm):
         self.state_line.set_instance(self.exp_line, step)
         if step not in self.cache_bitwuzla_next_state:
-            self.cache_bitwuzla_next_state[step] = tm.mk_term(bitwuzla.Kind.EQUAL,
-                [self.state_line.get_bitwuzla_name(step + 1, tm),
-                self.state_line.get_bitwuzla_instance(step, tm)])
+            if isinstance(self.state_line.get_instance(step), Values):
+                self.cache_bitwuzla_next_state[step] = tm.mk_true()
+            else:
+                self.cache_bitwuzla_next_state[step] = tm.mk_term(bitwuzla.Kind.EQUAL,
+                    [self.state_line.get_bitwuzla_name(step + 1, tm),
+                    self.state_line.get_bitwuzla_instance(step, tm)])
         return self.cache_bitwuzla_next_state[step]
 
     def get_bitwuzla_is_state_changing(self, step, tm):
         self.state_line.set_instance(self.exp_line, step)
         if step not in self.cache_bitwuzla_is_state_changing:
-            self.cache_bitwuzla_is_state_changing[step] = tm.mk_term(bitwuzla.Kind.DISTINCT,
-                [self.state_line.get_bitwuzla_name(step, tm),
-                self.state_line.get_bitwuzla_instance(step, tm)])
+            if self.state_line.has_instance(step - 1):
+                if self.state_line.get_instance(step).is_equal(self.state_line.get_instance(step - 1)):
+                    self.cache_bitwuzla_is_state_changing[step] = tm.mk_false()
+                else:
+                    self.cache_bitwuzla_is_state_changing[step] = tm.mk_term(bitwuzla.Kind.DISTINCT,
+                        [self.state_line.get_bitwuzla_instance(step, tm),
+                        self.state_line.get_bitwuzla_instance(step - 1, tm)])
+            else:
+                self.cache_bitwuzla_is_state_changing[step] = tm.mk_false()
         return self.cache_bitwuzla_is_state_changing[step]
 
     def get_bitwuzla_state_is_not_changing(self, step, tm):
