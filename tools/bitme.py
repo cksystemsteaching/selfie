@@ -715,11 +715,6 @@ class Variable(Expression):
             self.z3 = z3.Const(self.name, self.sid_line.get_z3())
         return self.z3
 
-    def get_bitwuzla(self, tm):
-        if self.bitwuzla is None:
-            self.bitwuzla = tm.mk_const(self.sid_line.get_bitwuzla(tm), self.name)
-        return self.bitwuzla
-
 class Input(Variable):
     keyword = OP_INPUT
 
@@ -742,6 +737,11 @@ class Input(Variable):
 
     def get_bitwuzla_name(self, step, tm):
         return self.get_bitwuzla(tm)
+
+    def get_bitwuzla(self, tm):
+        if self.bitwuzla is None:
+            self.bitwuzla = tm.mk_const(self.sid_line.get_bitwuzla(tm), self.name)
+        return self.bitwuzla
 
 class Instance:
     PROPAGATE = None
@@ -899,6 +899,14 @@ class State(Variable):
 
     def get_z3_instance(self, step):
         return self.instance.get_z3_instance(step)
+
+    def get_bitwuzla(self, tm):
+        if self.bitwuzla is None:
+            if self.init_line is None:
+                self.bitwuzla = tm.mk_const(self.sid_line.get_bitwuzla(tm), self.name)
+            else:
+                self.bitwuzla = tm.mk_var(self.sid_line.get_bitwuzla(tm), self.name)
+        return self.bitwuzla
 
     def get_bitwuzla_name(self, step, tm):
         if step == -1:
