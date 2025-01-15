@@ -373,6 +373,8 @@ class Values:
     false = None
     true = None
 
+    total_number_of_values = 0
+
     def __init__(self, sid_line):
         self.sid_line = sid_line
         self.values = {}
@@ -502,6 +504,7 @@ class Values:
         assert 0 <= value < 2**sid_line.size
         if constraint_line != Constant.false:
             if value not in self.values:
+                Values.total_number_of_values += 1
                 self.values[value] = constraint_line
             else:
                 self.values[value] = Values.OR(constraint_line, self.values[value])
@@ -523,7 +526,6 @@ class Expression(Line):
         return [state for state in self.domain if state.init_line is not None]
 
     def get_expression(self):
-        # TODO: remove when done with domain propagation
         return self
 
     def get_z3_lambda(self):
@@ -925,6 +927,13 @@ class Indexed(Expression):
         arg1_line = self.arg1_line.get_mapped_array_expression_for(None)
         return self.copy(arg1_line)
 
+    def propagate(self, arg1_value, op_lambda):
+        results = Values(self.sid_line)
+        for value in arg1_value.values:
+            constraint_line = arg1_value.values[value]
+            results.set_value(self.sid_line, op_lambda(value), constraint_line)
+        return results
+
 class Ext(Indexed):
     keywords = {OP_SEXT, OP_UEXT}
 
@@ -944,13 +953,6 @@ class Ext(Indexed):
             return Ext(next_nid(), self.op, self.sid_line, arg1_line, self.w, self.comment, self.line_no)
         else:
             return self
-
-    def propagate(self, arg1_value, op_lambda):
-        results = Values(self.sid_line)
-        for value in arg1_value.values:
-            constraint_line = arg1_value.values[value]
-            results.set_value(self.sid_line, op_lambda(value), constraint_line)
-        return results
 
     def get_values(self, step):
         if step not in self.cache_values:
@@ -1009,19 +1011,12 @@ class Slice(Indexed):
         else:
             return self
 
-    def propagate(self, arg1_value):
-        results = Values(self.sid_line)
-        for value in arg1_value.values:
-            constraint_line = arg1_value.values[value]
-            results.set_value(self.sid_line, (value & 2**(self.u + 1) - 1) >> self.l,
-                constraint_line)
-        return results
-
     def get_values(self, step):
         if step not in self.cache_values:
             arg1_value = self.arg1_line.get_values(step)
             if isinstance(arg1_value, Values):
-                self.cache_values[step] = self.propagate(arg1_value)
+                self.cache_values[step] = self.propagate(arg1_value,
+                    lambda x: (x & 2**(self.u + 1) - 1) >> self.l)
             else:
                 self.cache_values[step] = self.copy(arg1_value)
         return self.cache_values[step]
@@ -1072,15 +1067,7 @@ class Unary(Expression):
         results = Values(self.sid_line)
         for value in arg1_value.values:
             constraint_line = arg1_value.values[value]
-            if op_lambda == (lambda x: not x):
-                if value == 0:
-                    results.set_value(self.sid_line, 1, constraint_line)
-                else:
-                    assert value == 1
-                    results.set_value(self.sid_line, 0, constraint_line)
-            else:
-                results.set_value(self.sid_line, op_lambda(value) % 2**self.sid_line.size,
-                    constraint_line)
+            results.set_value(self.sid_line, op_lambda(value) % 2**self.sid_line.size, constraint_line)
         return results
 
     def get_values(self, step):
@@ -1089,8 +1076,8 @@ class Unary(Expression):
             if isinstance(arg1_value, Values):
                 if self.op == OP_NOT:
                     if isinstance(self.sid_line, Bool):
-                        assert len(arg1_value.values) <= 2
-                        self.cache_values[step] = self.propagate(arg1_value, lambda x: not x)
+                        self.cache_values[step] = self.propagate(arg1_value,
+                            lambda x: 1 if x == 0 else 0)
                     else:
                         self.cache_values[step] = self.propagate(arg1_value, lambda x: ~x)
                 elif self.op == OP_INC:
@@ -1166,23 +1153,15 @@ class Binary(Expression):
         arg2_line = self.arg2_line.get_mapped_array_expression_for(None)
         return self.copy(arg1_line, arg2_line)
 
-    def propagate(self, arg1_value, arg2_value):
-        # TODO: remove when done with domain propagation
-        arg1_value = arg1_value.get_expression()
-        arg2_value = arg2_value.get_expression()
-        return self.copy(arg1_value, arg2_value)
-
-    def get_values(self, step):
-        if step not in self.cache_values:
-            arg1_value = self.arg1_line.get_values(step)
-            arg2_value = self.arg2_line.get_values(step)
-            if isinstance(arg1_value, Values) and isinstance(arg2_value, Values):
-                self.cache_values[step] = self.propagate(arg1_value, arg2_value)
-            else:
-                arg1_value = arg1_value.get_expression()
-                arg2_value = arg2_value.get_expression()
-                self.cache_values[step] = self.copy(arg1_value, arg2_value)
-        return self.cache_values[step]
+    def propagate(self, arg1_value, arg2_value, op_lambda):
+        results = Values(self.sid_line)
+        for value1 in arg1_value.values:
+            for value2 in arg2_value.values:
+                constraint1_line = arg1_value.values[value1]
+                constraint2_line = arg2_value.values[value2]
+                results.set_value(self.sid_line, op_lambda(value1, value2),
+                    Values.AND(constraint1_line, constraint2_line))
+        return results
 
 class Implies(Binary):
     keyword = OP_IMPLIES
@@ -1197,17 +1176,6 @@ class Implies(Binary):
         if not arg1_line.sid_line.match_sorts(arg2_line.sid_line):
             raise model_error("compatible first and second operand sorts", line_no)
 
-    def propagate(self, arg1_value, arg2_value):
-        results = Values(self.sid_line)
-        for value1 in arg1_value.values:
-            for value2 in arg2_value.values:
-                constraint1_line = arg1_value.values[value1]
-                constraint2_line = arg2_value.values[value2]
-                assert 0 <= value1, value2 <= 1
-                results.set_value(self.sid_line, value2 if value1 == 1 else 1,
-                    Values.AND(constraint1_line, constraint2_line))
-        return results
-
     def get_values(self, step):
         if step not in self.cache_values:
             arg1_value = self.arg1_line.get_values(step)
@@ -1220,7 +1188,8 @@ class Implies(Binary):
                     # lazy evaluation of implied value
                     arg2_value = self.arg2_line.get_values(step)
                     if isinstance(arg2_value, Values):
-                        self.cache_values[step] = self.propagate(arg1_value, arg2_value)
+                        self.cache_values[step] = self.propagate(arg1_value, arg2_value,
+                            lambda x, y: 1 if x == 0 else y)
                         return self.cache_values[step]
             else:
                 arg2_value = self.arg2_line.get_values(step)
@@ -1254,14 +1223,7 @@ class Comparison(Binary):
             raise model_error("compatible first and second operand sorts", line_no)
 
     def propagate(self, arg1_value, arg2_value, op_lambda):
-        results = Values(self.sid_line)
-        for value1 in arg1_value.values:
-            for value2 in arg2_value.values:
-                constraint1_line = arg1_value.values[value1]
-                constraint2_line = arg2_value.values[value2]
-                results.set_value(self.sid_line, 1 if op_lambda(value1, value2) else 0,
-                    Values.AND(constraint1_line, constraint2_line))
-        return results
+        return super().propagate(arg1_value, arg2_value, lambda x, y: 1 if op_lambda(x, y) else 0)
 
     def get_values(self, step):
         if step not in self.cache_values:
@@ -1370,6 +1332,62 @@ class Logical(Binary):
         if not arg1_line.sid_line.match_sorts(arg2_line.sid_line):
             raise model_error("compatible first and second operand sorts", line_no)
 
+    def get_values(self, step):
+        if step not in self.cache_values:
+            if isinstance(self.sid_line, Bool):
+                arg1_value = self.arg1_line.get_values(step)
+                if isinstance(arg1_value, Values):
+                    false_line, true_line = arg1_value.get_boolean_constraints()
+                    if self.op == OP_AND:
+                        if false_line == Constant.true:
+                            self.cache_values[step] = Values.FALSE()
+                            return self.cache_values[step]
+                        else:
+                            # lazy evaluation of second operand
+                            arg2_value = self.arg2_line.get_values(step)
+                            if isinstance(arg2_value, Values):
+                                self.cache_values[step] = self.propagate(arg1_value, arg2_value,
+                                    lambda x, y: 1 if x == 1 and y == 1 else 0)
+                                return self.cache_values[step]
+                    elif self.op == OP_OR:
+                        if true_line == Constant.true:
+                            self.cache_values[step] = Values.TRUE()
+                            return self.cache_values[step]
+                        else:
+                            # lazy evaluation of second operand
+                            arg2_value = self.arg2_line.get_values(step)
+                            if isinstance(arg2_value, Values):
+                                self.cache_values[step] = self.propagate(arg1_value, arg2_value,
+                                    lambda x, y: 1 if x == 1 or y == 1 else 0)
+                                return self.cache_values[step]
+                    else:
+                        assert self.op == OP_XOR
+                        arg2_value = self.arg2_line.get_values(step)
+                        if isinstance(arg2_value, Values):
+                            self.cache_values[step] = self.propagate(arg1_value, arg2_value,
+                                lambda x, y: 1 if (x == 1 and y == 0) or (x == 0 and y == 1) else 0)
+                            return self.cache_values[step]
+                arg2_value = self.arg2_line.get_values(step)
+            else:
+                arg1_value = self.arg1_line.get_values(step)
+                arg2_value = self.arg2_line.get_values(step)
+                if isinstance(arg1_value, Values) and isinstance(arg2_value, Values):
+                    if self.op == OP_AND:
+                        self.cache_values[step] = self.propagate(arg1_value, arg2_value,
+                            lambda x, y: x & y)
+                    elif self.op == OP_OR:
+                        self.cache_values[step] = self.propagate(arg1_value, arg2_value,
+                            lambda x, y: x | y)
+                    else:
+                        assert self.op == OP_XOR
+                        self.cache_values[step] = self.propagate(arg1_value, arg2_value,
+                            lambda x, y: x ^ y)
+                    return self.cache_values[step]
+            arg1_value = arg1_value.get_expression()
+            arg2_value = arg2_value.get_expression()
+            self.cache_values[step] = self.copy(arg1_value, arg2_value)
+        return self.cache_values[step]
+
     def get_z3(self):
         if self.z3 is None:
             if isinstance(self.sid_line, Bool):
@@ -1426,14 +1444,7 @@ class Computation(Binary):
             raise model_error("compatible first and second operand sorts", line_no)
 
     def propagate(self, arg1_value, arg2_value, op_lambda):
-        results = Values(self.sid_line)
-        for value1 in arg1_value.values:
-            for value2 in arg2_value.values:
-                constraint1_line = arg1_value.values[value1]
-                constraint2_line = arg2_value.values[value2]
-                results.set_value(self.sid_line, op_lambda(value1, value2) % 2**self.sid_line.size,
-                    Values.AND(constraint1_line, constraint2_line))
-        return results
+        return super().propagate(arg1_value, arg2_value, lambda x, y: op_lambda(x, y) % 2**self.sid_line.size)
 
     def get_values(self, step):
         if step not in self.cache_values:
@@ -1556,15 +1567,18 @@ class Concat(Binary):
         if sid_line.size != arg1_line.sid_line.size + arg2_line.sid_line.size:
             raise model_error("compatible bitvector result", line_no)
 
-    def propagate(self, arg1_value, arg2_value):
-        results = Values(self.sid_line)
-        for value1 in arg1_value.values:
-            for value2 in arg2_value.values:
-                constraint1_line = arg1_value.values[value1]
-                constraint2_line = arg2_value.values[value2]
-                results.set_value(self.sid_line, (value1 << arg2_value.sid_line.size) + value2,
-                    Values.AND(constraint1_line, constraint2_line))
-        return results
+    def get_values(self, step):
+        if step not in self.cache_values:
+            arg1_value = self.arg1_line.get_values(step)
+            arg2_value = self.arg2_line.get_values(step)
+            if isinstance(arg1_value, Values) and isinstance(arg2_value, Values):
+                self.cache_values[step] = self.propagate(arg1_value, arg2_value,
+                    lambda x, y: (x << arg2_value.sid_line.size) + y)
+            else:
+                arg1_value = arg1_value.get_expression()
+                arg2_value = arg2_value.get_expression()
+                self.cache_values[step] = self.copy(arg1_value, arg2_value)
+        return self.cache_values[step]
 
     def get_z3(self):
         if self.z3 is None:
@@ -1655,6 +1669,13 @@ class Read(Binary):
             self.read_cache = self.read_array(arg1_line, arg2_line)
         return self.read_cache
 
+    def get_values(self, step):
+        if step not in self.cache_values:
+            arg1_value = self.arg1_line.get_values(step).get_expression()
+            arg2_value = self.arg2_line.get_values(step).get_expression()
+            self.cache_values[step] = self.copy(arg1_value, arg2_value)
+        return self.cache_values[step]
+
     def get_z3(self):
         if self.z3 is None:
             self.z3 = z3.Select(self.arg1_line.get_z3(), self.arg2_line.get_z3())
@@ -1685,20 +1706,6 @@ class Ternary(Expression):
 
     def __str__(self):
         return f"{self.nid} {self.op} {self.sid_line.nid} {self.arg1_line.nid} {self.arg2_line.nid} {self.arg3_line.nid} {self.comment}"
-
-    def get_values(self, step):
-        if step not in self.cache_values:
-            arg1_value = self.arg1_line.get_values(step)
-            arg2_value = self.arg2_line.get_values(step)
-            arg3_value = self.arg3_line.get_values(step)
-            if isinstance(arg1_value, Values) and isinstance(arg2_value, Values) and isinstance(arg3_value, Values):
-                self.cache_values[step] = self.propagate(arg1_value, arg2_value, arg3_value)
-            else:
-                arg1_value = arg1_value.get_expression()
-                arg2_value = arg2_value.get_expression()
-                arg3_value = arg3_value.get_expression()
-                self.cache_values[step] = self.copy(arg1_value, arg2_value, arg3_value)
-        return self.cache_values[step]
 
 class Ite(Ternary):
     keyword = OP_ITE
@@ -1852,6 +1859,14 @@ class Write(Ternary):
             arg3_line = self.arg3_line.get_mapped_array_expression_for(None)
             self.write_cache[index] = self.write_array(arg1_line, arg2_line, arg3_line, index)
         return self.write_cache[index]
+
+    def get_values(self, step):
+        if step not in self.cache_values:
+            arg1_value = self.arg1_line.get_values(step).get_expression()
+            arg2_value = self.arg2_line.get_values(step).get_expression()
+            arg3_value = self.arg3_line.get_values(step).get_expression()
+            self.cache_values[step] = self.copy(arg1_value, arg2_value, arg3_value)
+        return self.cache_values[step]
 
     def get_z3(self):
         if self.z3 is None:
@@ -5291,7 +5306,7 @@ def branching_bmc(solver, kmin, kmax, args, step, level):
             # compute next step
             solver.assert_this(Next.nexts.values(), step)
 
-        print_message("transitioning", step, level)
+        print_message(f"({Values.total_number_of_values}) transitioning", step, level)
         solver.simplify()
 
         if args.branching and Ite.branching_conditions and Ite.non_branching_conditions:
