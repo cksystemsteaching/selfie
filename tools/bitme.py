@@ -757,6 +757,9 @@ class Input(Variable):
 
 class Instance:
     PROPAGATE = 0
+    PROPAGATE_UNARY = True
+    PROPAGATE_BINARY = True
+    PROPAGATE_ITE = True
     LAMBDAS = True
 
     def __init__(self):
@@ -977,15 +980,16 @@ class Ext(Indexed):
     def get_values(self, step):
         if step not in self.cache_values:
             arg1_value = self.arg1_line.get_values(step)
-            if isinstance(arg1_value, Values):
+            if Instance.PROPAGATE_UNARY and isinstance(arg1_value, Values):
                 if self.op == OP_SEXT:
                     self.cache_values[step] = self.propagate(arg1_value,
                         lambda x: arg1_value.sid_line.get_signed_value(x) % 2**self.sid_line)
                 else:
                     assert self.op == OP_UEXT
                     self.cache_values[step] = self.propagate(arg1_value, lambda x: x)
-            else:
-                self.cache_values[step] = self.copy(arg1_value)
+                return self.cache_values[step]
+            arg1_value = arg1_value.get_expression()
+            self.cache_values[step] = self.copy(arg1_value)
         return self.cache_values[step]
 
     def get_z3(self):
@@ -1034,11 +1038,12 @@ class Slice(Indexed):
     def get_values(self, step):
         if step not in self.cache_values:
             arg1_value = self.arg1_line.get_values(step)
-            if isinstance(arg1_value, Values):
+            if Instance.PROPAGATE_UNARY and isinstance(arg1_value, Values):
                 self.cache_values[step] = self.propagate(arg1_value,
                     lambda x: (x & 2**(self.u + 1) - 1) >> self.l)
-            else:
-                self.cache_values[step] = self.copy(arg1_value)
+                return self.cache_values[step]
+            arg1_value = arg1_value.get_expression()
+            self.cache_values[step] = self.copy(arg1_value)
         return self.cache_values[step]
 
     def get_z3(self):
@@ -1093,7 +1098,7 @@ class Unary(Expression):
     def get_values(self, step):
         if step not in self.cache_values:
             arg1_value = self.arg1_line.get_values(step)
-            if isinstance(arg1_value, Values):
+            if Instance.PROPAGATE_UNARY and isinstance(arg1_value, Values):
                 if self.op == OP_NOT:
                     if isinstance(self.sid_line, Bool):
                         self.cache_values[step] = self.propagate(arg1_value,
@@ -1107,8 +1112,9 @@ class Unary(Expression):
                 else:
                     assert self.op == OP_NEG
                     self.cache_values[step] = self.propagate(arg1_value, lambda x: -x)
-            else:
-                self.cache_values[step] = self.copy(arg1_value)
+                return self.cache_values[step]
+            arg1_value= arg1_value.get_expression()
+            self.cache_values[step] = self.copy(arg1_value)
         return self.cache_values[step]
 
     def get_z3(self):
@@ -1199,7 +1205,7 @@ class Implies(Binary):
     def get_values(self, step):
         if step not in self.cache_values:
             arg1_value = self.arg1_line.get_values(step)
-            if isinstance(arg1_value, Values):
+            if Instance.PROPAGATE_BINARY and isinstance(arg1_value, Values):
                 false_line, true_line = arg1_value.get_boolean_constraints()
                 if false_line == Constant.true:
                     self.cache_values[step] = Values.TRUE()
@@ -1249,42 +1255,43 @@ class Comparison(Binary):
         if step not in self.cache_values:
             arg1_value = self.arg1_line.get_values(step)
             arg2_value = self.arg2_line.get_values(step)
-            if isinstance(arg1_value, Values) and isinstance(arg2_value, Values):
-                if self.op == OP_EQ:
-                    self.cache_values[step] = self.propagate(arg1_value, arg2_value,
-                        lambda x, y: x == y)
-                elif self.op == OP_NEQ:
-                    self.cache_values[step] = self.propagate(arg1_value, arg2_value,
-                        lambda x, y: x != y)
-                elif self.op == OP_SGT:
-                    self.cache_values[step] = self.propagate(arg1_value, arg2_value,
-                        lambda x, y: arg1_value.sid_line.get_signed_value(x) > arg2_value.sid_line.get_signed_value(y))
-                elif self.op == OP_UGT:
-                    self.cache_values[step] = self.propagate(arg1_value, arg2_value,
-                        lambda x, y: x > y)
-                elif self.op == OP_SGTE:
-                    self.cache_values[step] = self.propagate(arg1_value, arg2_value,
-                        lambda x, y: arg1_value.sid_line.get_signed_value(x) >= arg2_value.sid_line.get_signed_value(y))
-                elif self.op == OP_UGTE:
-                    self.cache_values[step] = self.propagate(arg1_value, arg2_value,
-                        lambda x, y: x >= y)
-                elif self.op == OP_SLT:
-                    self.cache_values[step] = self.propagate(arg1_value, arg2_value,
-                        lambda x, y: arg1_value.sid_line.get_signed_value(x) < arg2_value.sid_line.get_signed_value(y))
-                elif self.op == OP_ULT:
-                    self.cache_values[step] = self.propagate(arg1_value, arg2_value,
-                        lambda x, y: x < y)
-                elif self.op == OP_SLTE:
-                    self.cache_values[step] = self.propagate(arg1_value, arg2_value,
-                        lambda x, y: arg1_value.sid_line.get_signed_value(x) <= arg2_value.sid_line.get_signed_value(y))
-                else:
-                    assert self.op == OP_ULTE
-                    self.cache_values[step] = self.propagate(arg1_value, arg2_value,
-                        lambda x, y: x <= y)
-            else:
-                arg1_value = arg1_value.get_expression()
-                arg2_value = arg2_value.get_expression()
-                self.cache_values[step] = self.copy(arg1_value, arg2_value)
+            if Instance.PROPAGATE_BINARY:
+                if isinstance(arg1_value, Values) and isinstance(arg2_value, Values):
+                    if self.op == OP_EQ:
+                        self.cache_values[step] = self.propagate(arg1_value, arg2_value,
+                            lambda x, y: x == y)
+                    elif self.op == OP_NEQ:
+                        self.cache_values[step] = self.propagate(arg1_value, arg2_value,
+                            lambda x, y: x != y)
+                    elif self.op == OP_SGT:
+                        self.cache_values[step] = self.propagate(arg1_value, arg2_value,
+                            lambda x, y: arg1_value.sid_line.get_signed_value(x) > arg2_value.sid_line.get_signed_value(y))
+                    elif self.op == OP_UGT:
+                        self.cache_values[step] = self.propagate(arg1_value, arg2_value,
+                            lambda x, y: x > y)
+                    elif self.op == OP_SGTE:
+                        self.cache_values[step] = self.propagate(arg1_value, arg2_value,
+                            lambda x, y: arg1_value.sid_line.get_signed_value(x) >= arg2_value.sid_line.get_signed_value(y))
+                    elif self.op == OP_UGTE:
+                        self.cache_values[step] = self.propagate(arg1_value, arg2_value,
+                            lambda x, y: x >= y)
+                    elif self.op == OP_SLT:
+                        self.cache_values[step] = self.propagate(arg1_value, arg2_value,
+                            lambda x, y: arg1_value.sid_line.get_signed_value(x) < arg2_value.sid_line.get_signed_value(y))
+                    elif self.op == OP_ULT:
+                        self.cache_values[step] = self.propagate(arg1_value, arg2_value,
+                            lambda x, y: x < y)
+                    elif self.op == OP_SLTE:
+                        self.cache_values[step] = self.propagate(arg1_value, arg2_value,
+                            lambda x, y: arg1_value.sid_line.get_signed_value(x) <= arg2_value.sid_line.get_signed_value(y))
+                    else:
+                        assert self.op == OP_ULTE
+                        self.cache_values[step] = self.propagate(arg1_value, arg2_value,
+                            lambda x, y: x <= y)
+                    return self.cache_values[step]
+            arg1_value = arg1_value.get_expression()
+            arg2_value = arg2_value.get_expression()
+            self.cache_values[step] = self.copy(arg1_value, arg2_value)
         return self.cache_values[step]
 
     def get_z3(self):
@@ -1354,55 +1361,59 @@ class Logical(Binary):
 
     def get_values(self, step):
         if step not in self.cache_values:
-            if isinstance(self.sid_line, Bool):
-                arg1_value = self.arg1_line.get_values(step)
-                if isinstance(arg1_value, Values):
-                    false_line, true_line = arg1_value.get_boolean_constraints()
-                    if self.op == OP_AND:
-                        if false_line == Constant.true:
-                            self.cache_values[step] = Values.FALSE()
-                            return self.cache_values[step]
+            if Instance.PROPAGATE_BINARY:
+                if isinstance(self.sid_line, Bool):
+                    arg1_value = self.arg1_line.get_values(step)
+                    if isinstance(arg1_value, Values):
+                        false_line, true_line = arg1_value.get_boolean_constraints()
+                        if self.op == OP_AND:
+                            if false_line == Constant.true:
+                                self.cache_values[step] = Values.FALSE()
+                                return self.cache_values[step]
+                            else:
+                                # lazy evaluation of second operand
+                                arg2_value = self.arg2_line.get_values(step)
+                                if isinstance(arg2_value, Values):
+                                    self.cache_values[step] = self.propagate(arg1_value, arg2_value,
+                                        lambda x, y: 1 if x == 1 and y == 1 else 0)
+                                    return self.cache_values[step]
+                        elif self.op == OP_OR:
+                            if true_line == Constant.true:
+                                self.cache_values[step] = Values.TRUE()
+                                return self.cache_values[step]
+                            else:
+                                # lazy evaluation of second operand
+                                arg2_value = self.arg2_line.get_values(step)
+                                if isinstance(arg2_value, Values):
+                                    self.cache_values[step] = self.propagate(arg1_value, arg2_value,
+                                        lambda x, y: 1 if x == 1 or y == 1 else 0)
+                                    return self.cache_values[step]
                         else:
-                            # lazy evaluation of second operand
+                            assert self.op == OP_XOR
                             arg2_value = self.arg2_line.get_values(step)
                             if isinstance(arg2_value, Values):
                                 self.cache_values[step] = self.propagate(arg1_value, arg2_value,
-                                    lambda x, y: 1 if x == 1 and y == 1 else 0)
+                                    lambda x, y: 1 if (x == 1 and y == 0) or (x == 0 and y == 1) else 0)
                                 return self.cache_values[step]
-                    elif self.op == OP_OR:
-                        if true_line == Constant.true:
-                            self.cache_values[step] = Values.TRUE()
-                            return self.cache_values[step]
-                        else:
-                            # lazy evaluation of second operand
-                            arg2_value = self.arg2_line.get_values(step)
-                            if isinstance(arg2_value, Values):
-                                self.cache_values[step] = self.propagate(arg1_value, arg2_value,
-                                    lambda x, y: 1 if x == 1 or y == 1 else 0)
-                                return self.cache_values[step]
-                    else:
-                        assert self.op == OP_XOR
-                        arg2_value = self.arg2_line.get_values(step)
-                        if isinstance(arg2_value, Values):
+                    arg2_value = self.arg2_line.get_values(step)
+                else:
+                    arg1_value = self.arg1_line.get_values(step)
+                    arg2_value = self.arg2_line.get_values(step)
+                    if isinstance(arg1_value, Values) and isinstance(arg2_value, Values):
+                        if self.op == OP_AND:
                             self.cache_values[step] = self.propagate(arg1_value, arg2_value,
-                                lambda x, y: 1 if (x == 1 and y == 0) or (x == 0 and y == 1) else 0)
-                            return self.cache_values[step]
-                arg2_value = self.arg2_line.get_values(step)
+                                lambda x, y: x & y)
+                        elif self.op == OP_OR:
+                            self.cache_values[step] = self.propagate(arg1_value, arg2_value,
+                                lambda x, y: x | y)
+                        else:
+                            assert self.op == OP_XOR
+                            self.cache_values[step] = self.propagate(arg1_value, arg2_value,
+                                lambda x, y: x ^ y)
+                        return self.cache_values[step]
             else:
                 arg1_value = self.arg1_line.get_values(step)
                 arg2_value = self.arg2_line.get_values(step)
-                if isinstance(arg1_value, Values) and isinstance(arg2_value, Values):
-                    if self.op == OP_AND:
-                        self.cache_values[step] = self.propagate(arg1_value, arg2_value,
-                            lambda x, y: x & y)
-                    elif self.op == OP_OR:
-                        self.cache_values[step] = self.propagate(arg1_value, arg2_value,
-                            lambda x, y: x | y)
-                    else:
-                        assert self.op == OP_XOR
-                        self.cache_values[step] = self.propagate(arg1_value, arg2_value,
-                            lambda x, y: x ^ y)
-                    return self.cache_values[step]
             arg1_value = arg1_value.get_expression()
             arg2_value = arg2_value.get_expression()
             self.cache_values[step] = self.copy(arg1_value, arg2_value)
@@ -1470,54 +1481,55 @@ class Computation(Binary):
         if step not in self.cache_values:
             arg1_value = self.arg1_line.get_values(step)
             arg2_value = self.arg2_line.get_values(step)
-            if isinstance(arg1_value, Values) and isinstance(arg2_value, Values):
-                if self.op == OP_SLL:
-                    self.cache_values[step] = self.propagate(arg1_value, arg2_value,
-                        lambda x, y: x << y)
-                elif self.op == OP_SRL:
-                    self.cache_values[step] = self.propagate(arg1_value, arg2_value,
-                        lambda x, y: x >> y)
-                elif self.op == OP_SRA:
-                    self.cache_values[step] = self.propagate(arg1_value, arg2_value,
-                        lambda x, y: arg1_value.sid_line.get_signed_value(x) >> y)
-                elif self.op == OP_ADD:
-                    self.cache_values[step] = self.propagate(arg1_value, arg2_value,
-                        lambda x, y: x + y)
-                elif self.op == OP_SUB:
-                    self.cache_values[step] = self.propagate(arg1_value, arg2_value,
-                        lambda x, y: x - y)
-                elif self.op == OP_MUL:
-                    self.cache_values[step] = self.propagate(arg1_value, arg2_value,
-                        lambda x, y: x * y)
-                elif self.op == OP_SDIV:
-                    self.cache_values[step] = self.propagate(arg1_value, arg2_value,
-                        lambda x, y: int(arg1_value.sid_line.get_signed_value(x) /
-                            arg2_value.sid_line.get_signed_value(y))
-                            if not (y == 0 or
-                                (arg1_value.sid_line.get_signed_value(x) ==
-                                    -2**(self.sid_line.size - 1) and
-                                    arg2_value.sid_line.get_signed_value(y) == -1))
-                                else -1 if y == 0 else -2**(self.sid_line.size - 1))
-                elif self.op == OP_UDIV:
-                    self.cache_values[step] = self.propagate(arg1_value, arg2_value,
-                        lambda x, y: int(x / y) if y != 0 else 2**self.sid_line.size - 1)
-                elif self.op == OP_SREM:
-                    self.cache_values[step] = self.propagate(arg1_value, arg2_value,
-                        lambda x, y: arg1_value.sid_line.get_signed_value(x) %
-                            arg2_value.sid_line.get_signed_value(y)
-                            if not (y == 0 or
-                                (arg1_value.sid_line.get_signed_value(x) ==
-                                    -2**(self.sid_line.size - 1) and
-                                    arg2_value.sid_line.get_signed_value(y) == -1))
-                                else x if y == 0 else 0)
-                else:
-                    assert self.op == OP_UREM
-                    self.cache_values[step] = self.propagate(arg1_value, arg2_value,
-                        lambda x, y: x % y if y != 0 else x)
-            else:
-                arg1_value = arg1_value.get_expression()
-                arg2_value = arg2_value.get_expression()
-                self.cache_values[step] = self.copy(arg1_value, arg2_value)
+            if Instance.PROPAGATE_BINARY:
+                if isinstance(arg1_value, Values) and isinstance(arg2_value, Values):
+                    if self.op == OP_SLL:
+                        self.cache_values[step] = self.propagate(arg1_value, arg2_value,
+                            lambda x, y: x << y)
+                    elif self.op == OP_SRL:
+                        self.cache_values[step] = self.propagate(arg1_value, arg2_value,
+                            lambda x, y: x >> y)
+                    elif self.op == OP_SRA:
+                        self.cache_values[step] = self.propagate(arg1_value, arg2_value,
+                            lambda x, y: arg1_value.sid_line.get_signed_value(x) >> y)
+                    elif self.op == OP_ADD:
+                        self.cache_values[step] = self.propagate(arg1_value, arg2_value,
+                            lambda x, y: x + y)
+                    elif self.op == OP_SUB:
+                        self.cache_values[step] = self.propagate(arg1_value, arg2_value,
+                            lambda x, y: x - y)
+                    elif self.op == OP_MUL:
+                        self.cache_values[step] = self.propagate(arg1_value, arg2_value,
+                            lambda x, y: x * y)
+                    elif self.op == OP_SDIV:
+                        self.cache_values[step] = self.propagate(arg1_value, arg2_value,
+                            lambda x, y: int(arg1_value.sid_line.get_signed_value(x) /
+                                arg2_value.sid_line.get_signed_value(y))
+                                if not (y == 0 or
+                                    (arg1_value.sid_line.get_signed_value(x) ==
+                                        -2**(self.sid_line.size - 1) and
+                                        arg2_value.sid_line.get_signed_value(y) == -1))
+                                    else -1 if y == 0 else -2**(self.sid_line.size - 1))
+                    elif self.op == OP_UDIV:
+                        self.cache_values[step] = self.propagate(arg1_value, arg2_value,
+                            lambda x, y: int(x / y) if y != 0 else 2**self.sid_line.size - 1)
+                    elif self.op == OP_SREM:
+                        self.cache_values[step] = self.propagate(arg1_value, arg2_value,
+                            lambda x, y: arg1_value.sid_line.get_signed_value(x) %
+                                arg2_value.sid_line.get_signed_value(y)
+                                if not (y == 0 or
+                                    (arg1_value.sid_line.get_signed_value(x) ==
+                                        -2**(self.sid_line.size - 1) and
+                                        arg2_value.sid_line.get_signed_value(y) == -1))
+                                    else x if y == 0 else 0)
+                    else:
+                        assert self.op == OP_UREM
+                        self.cache_values[step] = self.propagate(arg1_value, arg2_value,
+                            lambda x, y: x % y if y != 0 else x)
+                    return self.cache_values[step]
+            arg1_value = arg1_value.get_expression()
+            arg2_value = arg2_value.get_expression()
+            self.cache_values[step] = self.copy(arg1_value, arg2_value)
         return self.cache_values[step]
 
     def get_z3(self):
@@ -1591,13 +1603,14 @@ class Concat(Binary):
         if step not in self.cache_values:
             arg1_value = self.arg1_line.get_values(step)
             arg2_value = self.arg2_line.get_values(step)
-            if isinstance(arg1_value, Values) and isinstance(arg2_value, Values):
-                self.cache_values[step] = self.propagate(arg1_value, arg2_value,
-                    lambda x, y: (x << arg2_value.sid_line.size) + y)
-            else:
-                arg1_value = arg1_value.get_expression()
-                arg2_value = arg2_value.get_expression()
-                self.cache_values[step] = self.copy(arg1_value, arg2_value)
+            if Instance.PROPAGATE_BINARY:
+                if isinstance(arg1_value, Values) and isinstance(arg2_value, Values):
+                    self.cache_values[step] = self.propagate(arg1_value, arg2_value,
+                        lambda x, y: (x << arg2_value.sid_line.size) + y)
+                    return self.cache_values[step]
+            arg1_value = arg1_value.get_expression()
+            arg2_value = arg2_value.get_expression()
+            self.cache_values[step] = self.copy(arg1_value, arg2_value)
         return self.cache_values[step]
 
     def get_z3(self):
@@ -1765,7 +1778,7 @@ class Ite(Ternary):
     def get_values(self, step):
         if step not in self.cache_values:
             arg1_value = self.arg1_line.get_values(step)
-            if isinstance(arg1_value, Values):
+            if Instance.PROPAGATE_ITE and isinstance(arg1_value, Values):
                 false_line, true_line = arg1_value.get_boolean_constraints()
                 if false_line == Constant.false:
                     arg2_value = self.arg2_line.get_values(step)
