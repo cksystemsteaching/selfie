@@ -274,11 +274,11 @@ class Bitvector(Sort):
 
     def get_unsigned_value(self, value):
         assert self.is_value(value)
-        return -value if value < 0 else value
+        return 2**self.size + value if value < 0 else value
 
     def get_signed_value(self, value):
         assert self.is_value(value)
-        return -value if value >= 2**(self.size - 1) else value
+        return value - 2**self.size if value >= 2**(self.size - 1) else value
 
 class Bool(Bitvector):
     boolean = None
