@@ -2008,14 +2008,20 @@ class Init(Transitional):
     def get_z3_step(self, step):
         assert step == 0, f"z3 init with {step} != 0"
         self.state_line.set_instance(self.exp_line, -1)
-        return self.state_line.get_z3_name(0) == self.state_line.get_z3_instance(-1)
+        if isinstance(self.state_line.get_instance(-1), Values):
+            return z3.BoolVal(True)
+        else:
+            return self.state_line.get_z3_name(0) == self.state_line.get_z3_instance(-1)
 
     def get_bitwuzla_step(self, step, tm):
         assert step == 0, f"bitwuzla init with {step} != 0"
         self.state_line.set_instance(self.exp_line, -1)
-        return tm.mk_term(bitwuzla.Kind.EQUAL,
-            [self.state_line.get_bitwuzla_name(0, tm),
-            self.state_line.get_bitwuzla_instance(-1, tm)])
+        if isinstance(self.state_line.get_instance(-1), Values):
+            return tm.mk_true()
+        else:
+            return tm.mk_term(bitwuzla.Kind.EQUAL,
+                [self.state_line.get_bitwuzla_name(0, tm),
+                self.state_line.get_bitwuzla_instance(-1, tm)])
 
 class Next(Transitional):
     keyword = OP_NEXT
