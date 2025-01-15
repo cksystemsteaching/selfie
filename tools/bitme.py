@@ -389,47 +389,47 @@ class Values:
             Values.true = Values(Bool.boolean).set_value(Bool.boolean, 1, Constant.true)
         return Values.true
 
-    def AND(arg1_line, arg2_line):
-        if arg1_line == Constant.true and arg2_line == Constant.true:
+    def AND(constraint1_line, constraint2_line):
+        if constraint1_line == Constant.true and constraint2_line == Constant.true:
             return Constant.true
-        elif arg1_line == Constant.true:
-            return arg2_line
-        elif arg2_line == Constant.true:
-            return arg1_line
+        elif constraint1_line == Constant.true:
+            return constraint2_line
+        elif constraint2_line == Constant.true:
+            return constraint1_line
         else:
             return Logical(next_nid(), OP_AND, Bool.boolean,
-                arg1_line, arg2_line, arg1_line.comment, arg1_line.line_no)
+                constraint1_line, constraint2_line, constraint1_line.comment, constraint1_line.line_no)
 
-    def OR(arg1_line, arg2_line):
-        if arg1_line == Constant.true or arg2_line == Constant.true:
+    def OR(constraint1_line, constraint2_line):
+        if constraint1_line == Constant.true or constraint2_line == Constant.true:
             return Constant.true
-        elif arg1_line == Constant.false:
-            return arg2_line
-        elif arg2_line == Constant.false:
-            return arg1_line
+        elif constraint1_line == Constant.false:
+            return constraint2_line
+        elif constraint2_line == Constant.false:
+            return constraint1_line
         else:
             return Logical(next_nid(), OP_OR, Bool.boolean,
-                arg1_line, arg2_line, arg1_line.comment, arg1_line.line_no)
+                constraint1_line, constraint2_line, constraint1_line.comment, constraint1_line.line_no)
 
-    def NOT(arg1_line):
-        if arg1_line == Constant.true:
+    def NOT(constraint1_line):
+        if constraint1_line == Constant.true:
             return Constant.false
-        elif arg1_line == Constant.false:
+        elif constraint1_line == Constant.false:
             return Constant.true
         else:
             return Unary(next_nid(), OP_NOT, Bool.boolean,
-                arg1_line, arg1_line.comment, arg1_line.line_no)
+                constraint1_line, constraint1_line.comment, constraint1_line.line_no)
 
-    def IMPLIES(arg1_line, arg2_line):
-        if arg1_line == Constant.false or arg2_line == Constant.true:
+    def IMPLIES(constraint1_line, constraint2_line):
+        if constraint1_line == Constant.false or constraint2_line == Constant.true:
             return Constant.true
-        elif arg1_line == Constant.true:
-            return arg2_line
-        elif arg2_line == Constant.false:
-            return Values.NOT(arg1_line)
+        elif constraint1_line == Constant.true:
+            return constraint2_line
+        elif constraint2_line == Constant.false:
+            return Values.NOT(constraint1_line)
         else:
             return Implies(next_nid(), OP_IMPLIES, Bool.boolean,
-                arg1_line, arg2_line, arg1_line.comment, arg1_line.line_no)
+                constraint1_line, constraint2_line, constraint1_line.comment, constraint1_line.line_no)
 
     def constrain(self, constraining_line):
         if constraining_line == Constant.true:
