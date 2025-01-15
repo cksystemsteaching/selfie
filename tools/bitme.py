@@ -498,6 +498,7 @@ class Values:
 
     def set_value(self, sid_line, value, constraint_line):
         assert self.sid_line == sid_line
+        assert isinstance(value, int)
         assert 0 <= value < 2**sid_line.size
         if constraint_line != Constant.false:
             if value not in self.values:
@@ -1459,17 +1460,29 @@ class Computation(Binary):
                         lambda x, y: x * y)
                 elif self.op == OP_SDIV:
                     self.cache_values[step] = self.propagate(arg1_value, arg2_value,
-                        lambda x, y: arg1_value.sid_line.get_signed_value(x) / arg2_value.sid_line.get_signed_value(y))
+                        lambda x, y: int(arg1_value.sid_line.get_signed_value(x) /
+                            arg2_value.sid_line.get_signed_value(y))
+                            if not (y == 0 or
+                                (arg1_value.sid_line.get_signed_value(x) ==
+                                    -2**(self.sid_line.size - 1) and
+                                    arg2_value.sid_line.get_signed_value(y) == -1))
+                                else -1 if y == 0 else -2**(self.sid_line.size - 1))
                 elif self.op == OP_UDIV:
                     self.cache_values[step] = self.propagate(arg1_value, arg2_value,
-                        lambda x, y: x / y)
+                        lambda x, y: int(x / y) if y != 0 else 2**self.sid_line.size - 1)
                 elif self.op == OP_SREM:
                     self.cache_values[step] = self.propagate(arg1_value, arg2_value,
-                        lambda x, y: arg1_value.sid_line.get_signed_value(x) % arg2_value.sid_line.get_signed_value(y))
+                        lambda x, y: arg1_value.sid_line.get_signed_value(x) %
+                            arg2_value.sid_line.get_signed_value(y)
+                            if not (y == 0 or
+                                (arg1_value.sid_line.get_signed_value(x) ==
+                                    -2**(self.sid_line.size - 1) and
+                                    arg2_value.sid_line.get_signed_value(y) == -1))
+                                else x if y == 0 else 0)
                 else:
                     assert self.op == OP_UREM
                     self.cache_values[step] = self.propagate(arg1_value, arg2_value,
-                        lambda x, y: x % y)
+                        lambda x, y: x % y if y != 0 else x)
             else:
                 arg1_value = arg1_value.get_expression()
                 arg2_value = arg2_value.get_expression()
