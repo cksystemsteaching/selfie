@@ -730,7 +730,19 @@ class Input(Variable):
         return super().get_mapped_array_expression_for(index)
 
     def get_values(self, step):
-        return self
+        if 0 not in self.cache_values:
+            if self.sid_line.size <= Instance.PROPAGATE and isinstance(self.sid_line, Bitvector):
+                self.cache_values[0] = Values(self.sid_line)
+                for value in range(2**self.sid_line.size):
+                    self.cache_values[0].set_value(self.sid_line, value,
+                        Comparison(next_nid(), OP_EQ, Bool.boolean,
+                            self,
+                            Constd(next_nid(), self.sid_line, value,
+                                self.comment, self.line_no),
+                            self.comment, self.line_no))
+            else:
+                self.cache_values[0] = self
+        return self.cache_values[0]
 
     def get_z3_name(self, step):
         return self.get_z3()
@@ -744,7 +756,7 @@ class Input(Variable):
         return self.bitwuzla
 
 class Instance:
-    PROPAGATE = None
+    PROPAGATE = 0
     LAMBDAS = True
 
     def __init__(self):
@@ -761,7 +773,7 @@ class Instance:
 
     def set_instance(self, instance, step):
         self.cache_instance[step] = instance
-        if Instance.PROPAGATE:
+        if Instance.PROPAGATE > 0:
             self.cache_instance[step] = self.cache_instance[step].get_values(step).get_expression()
 
     def get_z3_select(self, step):
@@ -5277,7 +5289,7 @@ def branching_bmc(solver, kmin, kmax, args, step, level):
         if step >= kmin:
             # check bad properties from kmin on
             for bad in Bad.bads.values():
-                print_message(bad, step, level)
+                print_message(f"({Values.total_number_of_values}) {bad}", step, level)
                 solver.push()
                 solver.assert_this([bad], step)
                 result = solver.prove()
@@ -5476,7 +5488,7 @@ def main():
 
     args = parser.parse_args()
 
-    Instance.PROPAGATE = args.propagate[0] if args.propagate and args.propagate[0] > 0 else None
+    Instance.PROPAGATE = args.propagate[0] if args.propagate and args.propagate[0] > 0 else 0
     Instance.LAMBDAS = not args.substitute
 
     Array.ARRAY_SIZE_BOUND = args.array[0] if args.array else 0
