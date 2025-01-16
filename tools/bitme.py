@@ -592,8 +592,11 @@ class Constant(Expression):
 
     def get_values(self, step):
         if 0 not in self.cache_values:
-            self.cache_values[0] = Values(self.sid_line).set_value(self.sid_line, self.value,
-                Constant.true)
+            if Instance.PROPAGATE > 0:
+                self.cache_values[0] = Values(self.sid_line).set_value(self.sid_line, self.value,
+                    Constant.true)
+            else:
+                self.cache_values[0] = self
         return self.cache_values[0]
 
     def get_z3(self):
@@ -775,7 +778,7 @@ class Input(Variable):
         return self.bitwuzla
 
 class Instance:
-    PROPAGATE = 0
+    PROPAGATE = None
     PROPAGATE_UNARY = True
     PROPAGATE_BINARY = True
     PROPAGATE_ITE = True
@@ -795,7 +798,7 @@ class Instance:
 
     def set_instance(self, instance, step):
         self.cache_instance[step] = instance
-        if Instance.PROPAGATE > 0:
+        if Instance.PROPAGATE is not None:
             self.cache_instance[step] = self.cache_instance[step].get_values(step)
 
     def get_z3_select(self, step):
@@ -5556,7 +5559,7 @@ def main():
 
     args = parser.parse_args()
 
-    Instance.PROPAGATE = args.propagate[0] if args.propagate and args.propagate[0] > 0 else 0
+    Instance.PROPAGATE = args.propagate[0] if args.propagate and args.propagate[0] >= 0 else None
     Instance.LAMBDAS = not args.substitute
 
     Array.ARRAY_SIZE_BOUND = args.array[0] if args.array else 0
