@@ -524,7 +524,7 @@ class Values:
             return True
 
 class Expression(Line):
-    total_number_of_propagated_expressions = 0
+    total_number_of_generated_expressions = 0
 
     def __init__(self, nid, sid_line, domain, comment, line_no):
         super().__init__(nid, comment, line_no)
@@ -1029,7 +1029,7 @@ class Ext(Indexed):
 
     def copy(self, arg1_line):
         if self.arg1_line is not arg1_line:
-            Expression.total_number_of_propagated_expressions += 1
+            Expression.total_number_of_generated_expressions += 1
             return Ext(next_nid(), self.op, self.sid_line, arg1_line, self.w, self.comment, self.line_no)
         else:
             return self
@@ -1088,7 +1088,7 @@ class Slice(Indexed):
 
     def copy(self, arg1_line):
         if self.arg1_line is not arg1_line:
-            Expression.total_number_of_propagated_expressions += 1
+            Expression.total_number_of_generated_expressions += 1
             return Slice(next_nid(), self.sid_line, arg1_line, self.u, self.l, self.comment, self.line_no)
         else:
             return self
@@ -1137,7 +1137,7 @@ class Unary(Expression):
 
     def copy(self, arg1_line):
         if self.arg1_line is not arg1_line:
-            Expression.total_number_of_propagated_expressions += 1
+            Expression.total_number_of_generated_expressions += 1
             return type(self)(next_nid(), self.op, self.sid_line, arg1_line, self.comment, self.line_no)
         else:
             return self
@@ -1228,7 +1228,7 @@ class Binary(Expression):
 
     def copy(self, arg1_line, arg2_line):
         if self.arg1_line is not arg1_line or self.arg2_line is not arg2_line:
-            Expression.total_number_of_propagated_expressions += 1
+            Expression.total_number_of_generated_expressions += 1
             return type(self)(next_nid(), self.op, self.sid_line, arg1_line, arg2_line, self.comment, self.line_no)
         else:
             return self
@@ -1823,7 +1823,7 @@ class Ite(Ternary):
 
     def copy(self, arg1_line, arg2_line, arg3_line):
         if self.arg1_line is not arg1_line or self.arg2_line is not arg2_line or self.arg3_line is not arg3_line:
-            Expression.total_number_of_propagated_expressions += 1
+            Expression.total_number_of_generated_expressions += 1
             return Ite(next_nid(), arg2_line.sid_line, arg1_line, arg2_line, arg3_line, self.comment, self.line_no)
         else:
             return self
@@ -1920,7 +1920,7 @@ class Write(Ternary):
 
     def copy(self, arg1_line, arg2_line, arg3_line):
         if self.arg1_line is not arg1_line or self.arg2_line is not arg2_line or self.arg3_line is not arg3_line:
-            Expression.total_number_of_propagated_expressions += 1
+            Expression.total_number_of_generated_expressions += 1
             return Write(next_nid(), arg1_line.sid_line, arg1_line, arg2_line, arg3_line, self.comment, self.line_no)
         else:
             return self
@@ -4950,7 +4950,7 @@ def print_message(message, step = None, level = None):
 
 def print_message_with_propagation_profile(message, step = None, level = None):
     if Instance.PROPAGATE is not None:
-        print_message(f"({Values.total_number_of_values}, {Expression.total_number_of_propagated_expressions}) {message}", step, level)
+        print_message(f"({Values.total_number_of_values}, {Expression.total_number_of_generated_expressions}) {message}", step, level)
     else:
         print_message(message, step, level)
 
@@ -5267,6 +5267,11 @@ def parse_btor2(modelfile, outputfile):
     print(f"{Ext.count} ext, {Slice.count} slice, {Unary.count} unary")
     print(f"{Implies.count} implies, {Comparison.count} comparison, {Logical.count} logical, {Computation.count} computation")
     print(f"{Concat.count} concat, {Ite.count} ite, {Read.count} read, {Write.count} write")
+
+    if Array.ARRAY_SIZE_BOUND > 0:
+        print("array mapping profile:")
+        print(f"{Expression.total_number_of_generated_expressions} generated expressions")
+        Expression.total_number_of_generated_expressions = 0
 
     if outputfile:
         print_separator('-')
