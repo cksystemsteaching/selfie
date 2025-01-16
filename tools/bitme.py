@@ -1034,7 +1034,7 @@ class Ext(Indexed):
             if Instance.PROPAGATE_UNARY and isinstance(arg1_value, Values):
                 if self.op == OP_SEXT:
                     self.cache_values[step] = self.propagate(arg1_value,
-                        lambda x: arg1_value.sid_line.get_signed_value(x) % 2**self.sid_line)
+                        lambda x: arg1_value.sid_line.get_signed_value(x) % 2**self.sid_line.size)
                 else:
                     assert self.op == OP_UEXT
                     self.cache_values[step] = self.propagate(arg1_value, lambda x: x)
