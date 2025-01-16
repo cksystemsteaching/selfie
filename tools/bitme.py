@@ -1773,9 +1773,9 @@ class Ite(Ternary):
             raise model_error("compatible second and third operand sorts", line_no)
         self.ite_cache = {}
         self.instance = Instance()
-        if comment == "; branch true condition":
+        if Ite.branching_conditions is None and comment == "; branch true condition":
             Ite.branching_conditions = self
-        elif comment == "; branch false condition":
+        elif Ite.non_branching_conditions is None and comment == "; branch false condition":
             Ite.non_branching_conditions = self
 
     def copy(self, arg1_line, arg2_line, arg3_line):
