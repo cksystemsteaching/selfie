@@ -740,6 +740,21 @@ class Variable(Expression):
             assert not self.sid_line.is_mapped_array()
             return self
 
+    def get_values(self, step):
+        if 0 not in self.cache_values:
+            if self.sid_line.size <= Instance.PROPAGATE and isinstance(self.sid_line, Bitvector):
+                self.cache_values[0] = Values(self.sid_line)
+                for value in range(2**self.sid_line.size):
+                    self.cache_values[0].set_value(self.sid_line, value,
+                        Comparison(next_nid(), OP_EQ, Bool.boolean,
+                            self,
+                            Constd(next_nid(), self.sid_line, value,
+                                self.comment, self.line_no),
+                            self.comment, self.line_no))
+            else:
+                self.cache_values[0] = self
+        return self.cache_values[0]
+
     def get_z3(self):
         if self.z3 is None:
             self.z3 = z3.Const(self.name, self.sid_line.get_z3())
@@ -755,21 +770,6 @@ class Input(Variable):
 
     def __str__(self):
         return f"{self.nid} {Input.keyword} {self.sid_line.nid} {self.symbol} {self.comment}"
-
-    def get_values(self, step):
-        if 0 not in self.cache_values:
-            if self.sid_line.size <= Instance.PROPAGATE and isinstance(self.sid_line, Bitvector):
-                self.cache_values[0] = Values(self.sid_line)
-                for value in range(2**self.sid_line.size):
-                    self.cache_values[0].set_value(self.sid_line, value,
-                        Comparison(next_nid(), OP_EQ, Bool.boolean,
-                            self,
-                            Constd(next_nid(), self.sid_line, value,
-                                self.comment, self.line_no),
-                            self.comment, self.line_no))
-            else:
-                self.cache_values[0] = self
-        return self.cache_values[0]
 
     def get_z3_name(self, step):
         return self.get_z3()
@@ -806,6 +806,9 @@ class Instance:
     def get_instance(self, step):
         assert self.has_instance(step)
         return self.cache_instance[step]
+
+    def init_instance(self, instance):
+        self.cache_instance[-1] = instance
 
     def set_instance(self, instance, step):
         # bad instances may be overwritten if proven false
@@ -894,7 +897,7 @@ class State(Variable):
         self.cache_z3_name = {}
         self.cache_bitwuzla_name = {}
         self.instance = Instance()
-        self.set_instance(self, -1) # initialize with itself upon creation of state
+        self.instance.init_instance(self) # initialize with itself upon creation of state
         self.new_state(index)
         # rotor-dependent program counter declaration
         if comment == "; program counter":
@@ -938,9 +941,12 @@ class State(Variable):
     def get_values(self, step):
         if step == -1:
             step = 0
-        if self.has_instance(step - 1):
-            return self.get_instance(step - 1)
-        return self
+        instance = self.get_instance(step - 1)
+        if instance == self:
+            # uninitialized state
+            return super().get_values(step - 1)
+        else:
+            return instance
 
     def get_step_name(self, step):
         return f"{self.name}-{step}"
