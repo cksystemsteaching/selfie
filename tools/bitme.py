@@ -809,66 +809,66 @@ class Instance:
             self.cache_instance[step] = self.cache_instance[step].get_values(step)
 
     def get_z3_select(self, step):
-        instance = self.get_instance(step).get_expression()
-        assert step not in self.cache_z3_instance
-        domain = instance.get_domain()
-        if domain:
-            self.cache_z3_instance[step] = z3.Select(instance.get_z3_lambda(),
-                *[state.get_z3_name(step) for state in domain])
-        else:
-            self.cache_z3_instance[step] = instance.get_z3_lambda()
+        if step not in self.cache_z3_instance:
+            instance = self.get_instance(step).get_expression()
+            assert step not in self.cache_z3_instance
+            domain = instance.get_domain()
+            if domain:
+                self.cache_z3_instance[step] = z3.Select(instance.get_z3_lambda(),
+                    *[state.get_z3_name(step) for state in domain])
+            else:
+                self.cache_z3_instance[step] = instance.get_z3_lambda()
         return self.cache_z3_instance[step]
 
     def get_z3_substitute(self, step):
-        instance = self.get_instance(step).get_expression()
-        assert step not in self.cache_z3_instance
-        self.cache_z3_instance[step] = instance.get_z3()
-        domain = instance.get_domain()
-        if domain:
-            current_states = [state.get_z3() for state in domain]
-            next_states = [state.get_z3_name(step) for state in domain]
-            renaming = list(zip(current_states, next_states))
+        if step not in self.cache_z3_instance:
+            instance = self.get_instance(step).get_expression()
+            assert step not in self.cache_z3_instance
+            self.cache_z3_instance[step] = instance.get_z3()
+            domain = instance.get_domain()
+            if domain:
+                current_states = [state.get_z3() for state in domain]
+                next_states = [state.get_z3_name(step) for state in domain]
+                renaming = list(zip(current_states, next_states))
 
-            self.cache_z3_instance[step] = z3.substitute(self.cache_z3_instance[step], renaming)
+                self.cache_z3_instance[step] = z3.substitute(self.cache_z3_instance[step], renaming)
         return self.cache_z3_instance[step]
 
     def get_z3_instance(self, step):
-        if step in self.cache_z3_instance:
-            return self.cache_z3_instance[step]
-        elif Instance.LAMBDAS:
+        if Instance.LAMBDAS:
             return self.get_z3_select(step)
         else:
             return self.get_z3_substitute(step)
 
     def get_bitwuzla_select(self, step, tm):
-        instance = self.get_instance(step).get_expression()
-        assert step not in self.cache_bitwuzla_instance
-        domain = instance.get_domain()
-        if domain:
-            self.cache_bitwuzla_instance[step] = tm.mk_term(bitwuzla.Kind.APPLY,
-                [instance.get_bitwuzla_lambda(tm),
-                *[state.get_bitwuzla_name(step, tm) for state in domain]])
-        else:
-            self.cache_bitwuzla_instance[step] = instance.get_bitwuzla_lambda(tm)
+        if step not in self.cache_bitwuzla_instance:
+            instance = self.get_instance(step).get_expression()
+            assert step not in self.cache_bitwuzla_instance
+            domain = instance.get_domain()
+            if domain:
+                self.cache_bitwuzla_instance[step] = tm.mk_term(bitwuzla.Kind.APPLY,
+                    [instance.get_bitwuzla_lambda(tm),
+                    *[state.get_bitwuzla_name(step, tm) for state in domain]])
+            else:
+                self.cache_bitwuzla_instance[step] = instance.get_bitwuzla_lambda(tm)
         return self.cache_bitwuzla_instance[step]
 
     def get_bitwuzla_substitute(self, step, tm):
-        instance = self.get_instance(step).get_expression()
-        assert step not in self.cache_bitwuzla_instance
-        self.cache_bitwuzla_instance[step] = instance.get_bitwuzla(tm)
-        domain = instance.get_domain()
-        if domain:
-            current_states = [state.get_bitwuzla(tm) for state in domain]
-            next_states = [state.get_bitwuzla_name(step, tm) for state in domain]
-            renaming = dict(zip(current_states, next_states))
+        if step not in self.cache_bitwuzla_instance:
+            instance = self.get_instance(step).get_expression()
+            assert step not in self.cache_bitwuzla_instance
+            self.cache_bitwuzla_instance[step] = instance.get_bitwuzla(tm)
+            domain = instance.get_domain()
+            if domain:
+                current_states = [state.get_bitwuzla(tm) for state in domain]
+                next_states = [state.get_bitwuzla_name(step, tm) for state in domain]
+                renaming = dict(zip(current_states, next_states))
 
-            self.cache_bitwuzla_instance[step] = tm.substitute_term(self.cache_bitwuzla_instance[step], renaming)
+                self.cache_bitwuzla_instance[step] = tm.substitute_term(self.cache_bitwuzla_instance[step], renaming)
         return self.cache_bitwuzla_instance[step]
 
     def get_bitwuzla_instance(self, step, tm):
-        if step in self.cache_bitwuzla_instance:
-            return self.cache_bitwuzla_instance[step]
-        elif Instance.LAMBDAS:
+        if Instance.LAMBDAS:
             return self.get_bitwuzla_select(step, tm)
         else:
             return self.get_bitwuzla_substitute(step, tm)
@@ -5579,10 +5579,10 @@ def main():
     parser.add_argument('-kmin', nargs=1, type=int)
     parser.add_argument('-kmax', nargs=1, type=int)
 
-    parser.add_argument('--print-pc', action='store_true')
+    parser.add_argument('--print-pc', action='store_true') # only for rotor models
     parser.add_argument('--check-termination', action='store_true')
     parser.add_argument('--unconstraining-bad', action='store_true')
-    parser.add_argument('--branching', action='store_true')
+    parser.add_argument('--branching', action='store_true') # only for rotor models
 
     args = parser.parse_args()
 
