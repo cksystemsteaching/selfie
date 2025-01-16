@@ -524,6 +524,8 @@ class Values:
             return True
 
 class Expression(Line):
+    total_number_of_propagated_expressions = 0
+
     def __init__(self, nid, sid_line, domain, comment, line_no):
         super().__init__(nid, comment, line_no)
         self.sid_line = sid_line
@@ -990,6 +992,7 @@ class Ext(Indexed):
 
     def copy(self, arg1_line):
         if self.arg1_line is not arg1_line:
+            Expression.total_number_of_propagated_expressions += 1
             return Ext(next_nid(), self.op, self.sid_line, arg1_line, self.w, self.comment, self.line_no)
         else:
             return self
@@ -1048,6 +1051,7 @@ class Slice(Indexed):
 
     def copy(self, arg1_line):
         if self.arg1_line is not arg1_line:
+            Expression.total_number_of_propagated_expressions += 1
             return Slice(next_nid(), self.sid_line, arg1_line, self.u, self.l, self.comment, self.line_no)
         else:
             return self
@@ -1096,6 +1100,7 @@ class Unary(Expression):
 
     def copy(self, arg1_line):
         if self.arg1_line is not arg1_line:
+            Expression.total_number_of_propagated_expressions += 1
             return type(self)(next_nid(), self.op, self.sid_line, arg1_line, self.comment, self.line_no)
         else:
             return self
@@ -1186,6 +1191,7 @@ class Binary(Expression):
 
     def copy(self, arg1_line, arg2_line):
         if self.arg1_line is not arg1_line or self.arg2_line is not arg2_line:
+            Expression.total_number_of_propagated_expressions += 1
             return type(self)(next_nid(), self.op, self.sid_line, arg1_line, arg2_line, self.comment, self.line_no)
         else:
             return self
@@ -1780,6 +1786,7 @@ class Ite(Ternary):
 
     def copy(self, arg1_line, arg2_line, arg3_line):
         if self.arg1_line is not arg1_line or self.arg2_line is not arg2_line or self.arg3_line is not arg3_line:
+            Expression.total_number_of_propagated_expressions += 1
             return Ite(next_nid(), arg2_line.sid_line, arg1_line, arg2_line, arg3_line, self.comment, self.line_no)
         else:
             return self
@@ -1876,6 +1883,7 @@ class Write(Ternary):
 
     def copy(self, arg1_line, arg2_line, arg3_line):
         if self.arg1_line is not arg1_line or self.arg2_line is not arg2_line or self.arg3_line is not arg3_line:
+            Expression.total_number_of_propagated_expressions += 1
             return Write(next_nid(), arg1_line.sid_line, arg1_line, arg2_line, arg3_line, self.comment, self.line_no)
         else:
             return self
@@ -4899,6 +4907,12 @@ def print_message(message, step = None, level = None):
     print(message, end='', flush=True)
     last_message_length = len(message) if message[-1:] != '\n' else 0
 
+def print_message_with_propagation_profile(message, step = None, level = None):
+    if Instance.PROPAGATE is not None:
+        print_message(f"({Values.total_number_of_values}, {Expression.total_number_of_propagated_expressions}) {message}", step, level)
+    else:
+        print_message(message, step, level)
+
 def print_separator(separator, step = None, level = None):
     print_message(f"{separator * (80 - len(get_step(step, level)))}\n", step, level)
 
@@ -5343,7 +5357,7 @@ def branching_bmc(solver, kmin, kmax, args, step, level):
         if step >= kmin:
             # check bad properties from kmin on
             for bad in Bad.bads.values():
-                print_message(f"({Values.total_number_of_values}) {bad}", step, level)
+                print_message_with_propagation_profile(bad, step, level)
                 solver.push()
                 solver.assert_this([bad], step)
                 result = solver.prove()
@@ -5380,11 +5394,11 @@ def branching_bmc(solver, kmin, kmax, args, step, level):
             # compute next step
             solver.assert_this(Next.nexts.values(), step)
 
-        print_message(f"({Values.total_number_of_values}) transitioning", step, level)
+        print_message_with_propagation_profile("transitioning", step, level)
         solver.simplify()
 
         if args.branching and Ite.branching_conditions and Ite.non_branching_conditions:
-            print_message("checking branching", step, level)
+            print_message_with_propagation_profile("checking branching", step, level)
 
             solver.push()
             solver.assert_this([Ite.branching_conditions], step)
