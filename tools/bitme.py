@@ -685,6 +685,14 @@ class Constant_Array(Expression):
     def __str__(self):
         return f"{self.nid} {"consta"} {self.sid_line.nid} {self.constant_line.nid} {self.comment}"
 
+    def get_mapped_array_expression_for(self, index):
+        if index is not None:
+            assert self.sid_line.is_mapped_array()
+            return self.constant_line
+        else:
+            assert not self.sid_line.is_mapped_array()
+            return self
+
     def get_values(self, step):
         return self
 
@@ -747,9 +755,6 @@ class Input(Variable):
 
     def __str__(self):
         return f"{self.nid} {Input.keyword} {self.sid_line.nid} {self.symbol} {self.comment}"
-
-    def get_mapped_array_expression_for(self, index):
-        return super().get_mapped_array_expression_for(index)
 
     def get_values(self, step):
         if 0 not in self.cache_values:
@@ -1994,7 +1999,7 @@ class Transitional(Line):
             self.array = {}
             for index in self.state_line.array.keys():
                 self.array[index] = type(self)(self.nid + index + 1, self.sid_line.element_size_line,
-                    self.state_line.array[index], self.state_line.array[index],
+                    self.state_line.array[index], self.state_line.array[index], self.symbol,
                     f"{self.comment} @ index {index}", self.line_no, self, index)
 
     def set_mapped_array_expression(self):
@@ -5171,7 +5176,7 @@ def parse_btor2(modelfile, outputfile):
         try:
             lines[line_no] = parse_btor2_line(line, line_no)
             line_no += 1
-        except Exception as message:
+        except (model_error, syntax_error) as message:
             print(f"parsing exception: {message}")
             exit(1)
 
