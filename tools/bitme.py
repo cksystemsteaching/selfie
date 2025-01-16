@@ -742,7 +742,7 @@ class Variable(Expression):
 
     def get_values(self, step):
         if 0 not in self.cache_values:
-            if self.sid_line.size <= Instance.PROPAGATE and isinstance(self.sid_line, Bitvector):
+            if isinstance(self.sid_line, Bitvector) and self.sid_line.size <= Instance.PROPAGATE:
                 self.cache_values[0] = Values(self.sid_line)
                 for value in range(2**self.sid_line.size):
                     self.cache_values[0].set_value(self.sid_line, value,
