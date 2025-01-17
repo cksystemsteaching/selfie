@@ -378,6 +378,11 @@ class Values:
 
     total_number_of_values = 0
 
+    cache_AND = {}
+    cache_OR = {}
+    cache_NOT = {}
+    cache_IMPLIES = {}
+
     def __init__(self, sid_line):
         self.sid_line = sid_line
         self.values = {}
@@ -400,9 +405,16 @@ class Values:
             return constraint2_line
         elif constraint2_line == Constant.true:
             return constraint1_line
-        else:
-            return Logical(next_nid(), OP_AND, Bool.boolean,
+        elif constraint1_line == constraint2_line:
+            return constraint1_line
+        elif constraint1_line not in Values.cache_AND or constraint2_line not in Values.cache_AND[constraint1_line]:
+            constraint_line = Logical(next_nid(), OP_AND, Bool.boolean,
                 constraint1_line, constraint2_line, constraint1_line.comment, constraint1_line.line_no)
+            if constraint1_line not in Values.cache_AND:
+                Values.cache_AND[constraint1_line] = {constraint2_line:constraint_line}
+            else:
+                Values.cache_AND[constraint1_line] |= {constraint2_line:constraint_line}
+        return Values.cache_AND[constraint1_line][constraint2_line]
 
     def OR(constraint1_line, constraint2_line):
         if constraint1_line == Constant.true or constraint2_line == Constant.true:
@@ -411,18 +423,26 @@ class Values:
             return constraint2_line
         elif constraint2_line == Constant.false:
             return constraint1_line
-        else:
-            return Logical(next_nid(), OP_OR, Bool.boolean,
+        elif constraint1_line == constraint2_line:
+            return constraint1_line
+        elif constraint1_line not in Values.cache_OR or constraint2_line not in Values.cache_OR[constraint1_line]:
+            constraint_line = Logical(next_nid(), OP_OR, Bool.boolean,
                 constraint1_line, constraint2_line, constraint1_line.comment, constraint1_line.line_no)
+            if constraint1_line not in Values.cache_OR:
+                Values.cache_OR[constraint1_line] = {constraint2_line:constraint_line}
+            else:
+                Values.cache_OR[constraint1_line] |= {constraint2_line:constraint_line}
+        return Values.cache_OR[constraint1_line][constraint2_line]
 
     def NOT(constraint1_line):
         if constraint1_line == Constant.true:
             return Constant.false
         elif constraint1_line == Constant.false:
             return Constant.true
-        else:
-            return Unary(next_nid(), OP_NOT, Bool.boolean,
+        elif constraint1_line not in Values.cache_NOT:
+            Values.cache_NOT[constraint1_line] = Unary(next_nid(), OP_NOT, Bool.boolean,
                 constraint1_line, constraint1_line.comment, constraint1_line.line_no)
+        return Values.cache_NOT[constraint1_line]
 
     def IMPLIES(constraint1_line, constraint2_line):
         if constraint1_line == Constant.false or constraint2_line == Constant.true:
@@ -431,9 +451,16 @@ class Values:
             return constraint2_line
         elif constraint2_line == Constant.false:
             return Values.NOT(constraint1_line)
-        else:
-            return Implies(next_nid(), OP_IMPLIES, Bool.boolean,
+        elif constraint1_line == constraint2_line:
+            return Constant.true
+        elif constraint1_line not in Values.cache_IMPLIES or constraint2_line not in Values.cache_IMPLIES[constraint1_line]:
+            constraint_line = Implies(next_nid(), OP_IMPLIES, Bool.boolean,
                 constraint1_line, constraint2_line, constraint1_line.comment, constraint1_line.line_no)
+            if constraint1_line not in Values.cache_IMPLIES:
+                Values.cache_IMPLIES[constraint1_line] = {constraint2_line:constraint_line}
+            else:
+                Values.cache_IMPLIES[constraint1_line] |= {constraint2_line:constraint_line}
+        return Values.cache_IMPLIES[constraint1_line][constraint2_line]
 
     def constrain(self, constraining_line):
         assert constraining_line != Constant.false
