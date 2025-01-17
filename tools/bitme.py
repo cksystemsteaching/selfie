@@ -381,6 +381,7 @@ class Values:
     def __init__(self, sid_line):
         self.sid_line = sid_line
         self.values = {}
+        self.constraints = {}
 
     def FALSE():
         if Values.false is None:
@@ -435,14 +436,15 @@ class Values:
                 constraint1_line, constraint2_line, constraint1_line.comment, constraint1_line.line_no)
 
     def constrain(self, constraining_line):
+        assert constraining_line != Constant.false
         if constraining_line == Constant.true:
             return self
         else:
             results = Values(self.sid_line)
-            for value in self.values:
-                constraint_line = self.values[value]
-                results.set_value(self.sid_line, value,
-                    Values.AND(constraining_line, constraint_line))
+            for constraint_line in self.constraints:
+                constrained_line = Values.AND(constraining_line, constraint_line)
+                for value in self.constraints[constraint_line]:
+                    results.set_value(self.sid_line, value, constrained_line)
             return results
 
     def copy(self):
@@ -501,21 +503,33 @@ class Values:
             assert exp_line is not None
             return exp_line
 
-    def set_value(self, sid_line, value, constraint_line):
+    def set_value(self, sid_line, value, constraining_line):
         assert self.sid_line == sid_line
         assert isinstance(value, int)
         assert 0 <= value < 2**sid_line.size
-        if constraint_line != Constant.false:
+        if constraining_line != Constant.false:
             if value not in self.values:
                 Values.total_number_of_values += 1
-                self.values[value] = constraint_line
+                self.values[value] = constraining_line
+                if constraining_line not in self.constraints:
+                    self.constraints[constraining_line] = {value:None}
+                else:
+                    self.constraints[constraining_line] |= {value:None}
             else:
-                self.values[value] = Values.OR(constraint_line, self.values[value])
+                constraint_line = self.values[value]
+                constrained_line = Values.OR(constraining_line, constraint_line)
+                if constrained_line != constraint_line:
+                    del self.constraints[constraint_line][value]
+                    if not self.constraints[constraint_line]:
+                        del self.constraints[constraint_line]
+                    self.values[value] = constrained_line
+                    assert constrained_line not in self.constraints
+                    self.constraints[constrained_line] = {value:None}
         return self
 
     def is_equal(self, values):
         # naive check for semantical equivalence
-        if not isinstance(values, Values) or len(self.values) != len(values.values):
+        if not isinstance(values, Values) or len(self.values) != len(values.values) or len(self.constraints) != len(values.constraints):
             return False
         else:
             for value in self.values:
