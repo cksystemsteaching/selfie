@@ -529,11 +529,7 @@ class Values:
         if constraining_line != Constant.false:
             if value not in self.values:
                 Values.total_number_of_values += 1
-                self.values[value] = constraining_line
-                if constraining_line not in self.constraints:
-                    self.constraints[constraining_line] = {value:None}
-                else:
-                    self.constraints[constraining_line] |= {value:None}
+                constrained_line = constraining_line
             else:
                 constraint_line = self.values[value]
                 constrained_line = Values.OR(constraining_line, constraint_line)
@@ -541,9 +537,11 @@ class Values:
                     del self.constraints[constraint_line][value]
                     if not self.constraints[constraint_line]:
                         del self.constraints[constraint_line]
-                    self.values[value] = constrained_line
-                    assert constrained_line not in self.constraints
-                    self.constraints[constrained_line] = {value:None}
+            self.values[value] = constrained_line
+            if constrained_line not in self.constraints:
+                self.constraints[constrained_line] = {value:None}
+            else:
+                self.constraints[constrained_line] |= {value:None}
         return self
 
     def is_equal(self, values):
@@ -5309,7 +5307,7 @@ def parse_btor2(modelfile, outputfile):
 
     if Array.ARRAY_SIZE_BOUND > 0:
         print("array mapping profile:")
-        print(f"Out of {Array.number_of_variable_arrays} arrays {Array.number_of_mapped_arrays} mapped")
+        print(f"out of {Array.number_of_variable_arrays} arrays {Array.number_of_mapped_arrays} mapped")
         print(f"{Expression.total_number_of_generated_expressions} generated expressions")
         Expression.total_number_of_generated_expressions = 0
 
