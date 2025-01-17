@@ -325,6 +325,9 @@ class Array(Sort):
 
     ARRAY_SIZE_BOUND = 0 # array size in bits
 
+    number_of_variable_arrays = 0
+    number_of_mapped_arrays = 0
+
     def __init__(self, nid, array_size_line, element_size_line, comment, line_no):
         super().__init__(nid, comment, line_no)
         self.array_size_line = array_size_line
@@ -714,6 +717,8 @@ class Variable(Expression):
     def __init__(self, nid, sid_line, domain, symbol, comment, line_no, index):
         super().__init__(nid, sid_line, domain, comment, line_no)
         self.symbol = symbol
+        if isinstance(sid_line, Array):
+            Array.number_of_variable_arrays += 1
         self.new_mapped_array(index)
 
     def new_mapped_array(self, index):
@@ -722,6 +727,7 @@ class Variable(Expression):
             if not isinstance(self.sid_line, Bitvector):
                 raise model_error("bitvector", self.line_no)
         elif self.sid_line.is_mapped_array():
+            Array.number_of_mapped_arrays += 1
             self.array = {}
             for index in range(2**self.sid_line.array_size_line.size):
                 self.array[index] = type(self)(self.nid + index + 1, self.sid_line.element_size_line,
@@ -5270,6 +5276,7 @@ def parse_btor2(modelfile, outputfile):
 
     if Array.ARRAY_SIZE_BOUND > 0:
         print("array mapping profile:")
+        print(f"Out of {Array.number_of_variable_arrays} arrays {Array.number_of_mapped_arrays} mapped")
         print(f"{Expression.total_number_of_generated_expressions} generated expressions")
         Expression.total_number_of_generated_expressions = 0
 
