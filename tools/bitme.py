@@ -568,10 +568,11 @@ class Values:
 class Expression(Line):
     total_number_of_generated_expressions = 0
 
-    def __init__(self, nid, sid_line, domain, comment, line_no):
+    def __init__(self, nid, sid_line, domain, depth, comment, line_no):
         super().__init__(nid, comment, line_no)
         self.sid_line = sid_line
         self.domain = domain
+        self.depth = depth
         self.cache_values = {}
         self.z3_lambda = None
         self.bitwuzla_lambda = None
@@ -613,7 +614,7 @@ class Constant(Expression):
     true = None
 
     def __init__(self, nid, sid_line, value, comment, line_no):
-        super().__init__(nid, sid_line, {}, comment, line_no)
+        super().__init__(nid, sid_line, {}, 0, comment, line_no)
         if not sid_line.is_value(value):
             raise model_error(f"{value} in range of {sid_line.size}-bit bitvector", line_no)
         self.print_value = value
@@ -713,7 +714,7 @@ class Consth(Constant):
 
 class Constant_Array(Expression):
     def __init__(self, sid_line, constant_line):
-        super().__init__(None, sid_line, {}, constant_line.comment, constant_line.line_no)
+        super().__init__(None, sid_line, {}, 0, constant_line.comment, constant_line.line_no)
         self.nid = constant_line.nid # reuse nid of constant_line
         self.constant_line = constant_line
         if not isinstance(sid_line, Array):
@@ -753,7 +754,7 @@ class Variable(Expression):
     inputs = {}
 
     def __init__(self, nid, sid_line, domain, symbol, comment, line_no, index):
-        super().__init__(nid, sid_line, domain, comment, line_no)
+        super().__init__(nid, sid_line, domain, 0, comment, line_no)
         self.symbol = symbol
         if isinstance(sid_line, Array):
             Array.number_of_variable_arrays += 1
@@ -943,7 +944,7 @@ class State(Variable):
 
     def __init__(self, nid, sid_line, symbol, comment, line_no, index = None):
         # domain is ordered set by using dictionary with None values
-        Variable.__init__(self, nid, sid_line, {self:None}, symbol, comment, line_no, index)
+        super().__init__(nid, sid_line, {self:None}, symbol, comment, line_no, index)
         self.name = f"state{self.nid}"
         self.init_line = None
         self.next_line = None
@@ -1045,7 +1046,7 @@ class State(Variable):
 
 class Indexed(Expression):
     def __init__(self, nid, sid_line, arg1_line, comment, line_no):
-        super().__init__(nid, sid_line, arg1_line.domain, comment, line_no)
+        super().__init__(nid, sid_line, arg1_line.domain, arg1_line.depth + 1, comment, line_no)
         self.arg1_line = arg1_line
         if not isinstance(arg1_line, Expression):
             raise model_error("expression operand", line_no)
@@ -1172,7 +1173,7 @@ class Unary(Expression):
     keywords = {OP_NOT, OP_INC, OP_DEC, OP_NEG}
 
     def __init__(self, nid, op, sid_line, arg1_line, comment, line_no):
-        super().__init__(nid, sid_line, arg1_line.domain, comment, line_no)
+        super().__init__(nid, sid_line, arg1_line.domain, arg1_line.depth + 1, comment, line_no)
         assert op in Unary.keywords
         self.op = op
         self.arg1_line = arg1_line
@@ -1266,7 +1267,8 @@ class Binary(Expression):
     keywords = {OP_IMPLIES, OP_EQ, OP_NEQ, OP_SGT, OP_UGT, OP_SGTE, OP_UGTE, OP_SLT, OP_ULT, OP_SLTE, OP_ULTE, OP_AND, OP_OR, OP_XOR, OP_SLL, OP_SRL, OP_SRA, OP_ADD, OP_SUB, OP_MUL, OP_SDIV, OP_UDIV, OP_SREM, OP_UREM, OP_CONCAT, OP_READ}
 
     def __init__(self, nid, op, sid_line, arg1_line, arg2_line, comment, line_no):
-        super().__init__(nid, sid_line, arg1_line.domain | arg2_line.domain, comment, line_no)
+        super().__init__(nid, sid_line, arg1_line.domain | arg2_line.domain,
+            max(arg1_line.depth, arg2_line.depth) + 1, comment, line_no)
         assert op in Binary.keywords
         self.op = op
         self.arg1_line = arg1_line
@@ -1837,7 +1839,8 @@ class Ternary(Expression):
     keywords = {OP_ITE, OP_WRITE}
 
     def __init__(self, nid, op, sid_line, arg1_line, arg2_line, arg3_line, comment, line_no):
-        super().__init__(nid, sid_line, arg1_line.domain | arg2_line.domain | arg3_line.domain, comment, line_no)
+        super().__init__(nid, sid_line, arg1_line.domain | arg2_line.domain | arg3_line.domain,
+            max(arg1_line.depth, arg2_line.depth, arg3_line.depth) + 1, comment, line_no)
         assert op in Ternary.keywords
         self.op = op
         self.arg1_line = arg1_line
