@@ -288,9 +288,6 @@ class Bool(Bitvector):
         assert Bool.boolean is None
         Bool.boolean = self
 
-    def match_sorts(self, sort):
-        return super().match_sorts(sort)
-
     def get_z3(self):
         if self.z3 is None:
             self.z3 = z3.BoolSort()
@@ -382,19 +379,30 @@ class Values:
     cache_NOT = {}
     cache_IMPLIES = {}
 
-    def __init__(self, sid_line):
-        self.sid_line = sid_line
+    def __init__(self, exp_line):
+        self.exp_line = exp_line
         self.values = {}
         self.constraints = {}
 
+    def __str__(self):
+        string = ""
+        for value in self.values:
+            if string:
+                string += ", "
+            string += f"{value}"
+        return f"{{{string}}}: {self.exp_line}"
+
+    def match_sorts(self, values):
+        return self.exp_line.sid_line.match_sorts(values.exp_line.sid_line)
+
     def FALSE():
         if Values.cache_false is None:
-            Values.cache_false = Values(Bool.boolean).set_value(Bool.boolean, 0, Constant.true)
+            Values.cache_false = Values(Constant.false).set_value(Bool.boolean, 0, Constant.true)
         return Values.cache_false
 
     def TRUE():
         if Values.cache_true is None:
-            Values.cache_true = Values(Bool.boolean).set_value(Bool.boolean, 1, Constant.true)
+            Values.cache_true = Values(Constant.true).set_value(Bool.boolean, 1, Constant.true)
         return Values.cache_true
 
     def AND(constraint1_line, constraint2_line):
@@ -459,30 +467,30 @@ class Values:
         if constraining_line == Constant.true:
             return self
         else:
-            results = Values(self.sid_line)
+            results = Values(self.exp_line)
             for constraint_line in self.constraints:
                 constrained_line = Values.AND(constraining_line, constraint_line)
                 for value in self.constraints[constraint_line]:
-                    results.set_value(self.sid_line, value, constrained_line)
+                    results.set_value(self.exp_line.sid_line, value, constrained_line)
             return results
 
     def copy(self):
-        results = Values(self.sid_line)
+        results = Values(self.exp_line)
         for value in self.values:
             constraint = self.values[value]
-            results.set_value(self.sid_line, value, constraint)
+            results.set_value(self.exp_line.sid_line, value, constraint)
         return results
 
     def merge(self, values):
-        assert self.sid_line == values.sid_line
+        assert self.match_sorts(values)
         results = self.copy()
         for value in values.values:
             constraint = values.values[value]
-            results.set_value(values.sid_line, value, constraint)
+            results.set_value(values.exp_line.sid_line, value, constraint)
         return results
 
     def get_boolean_constraints(self):
-        assert isinstance(self.sid_line, Bool)
+        assert isinstance(self.exp_line.sid_line, Bool)
         assert len(self.values) <= 2
         false_line = Constant.false
         true_line = Constant.false
@@ -498,7 +506,7 @@ class Values:
     def get_expression(self):
         # naive transition from domain propagation to bit blasting
         assert len(self.values) > 0
-        if isinstance(self.sid_line, Bool):
+        if isinstance(self.exp_line.sid_line, Bool):
             # constraint on false value implies constraint on true value
             return Values.IMPLIES(*self.get_boolean_constraints())
         else:
@@ -508,24 +516,24 @@ class Values:
                 if constraint_line != Constant.true:
                     if constraint_line != Constant.false:
                         if exp_line is None:
-                            exp_line = Zero(next_nid(), self.sid_line,
+                            exp_line = Zero(next_nid(), self.exp_line.sid_line,
                                 "unreachable-value", "unreachable value", 0)
-                        exp_line = Ite(next_nid(), self.sid_line,
+                        exp_line = Ite(next_nid(), self.exp_line.sid_line,
                             constraint_line,
-                            Constd(next_nid(), self.sid_line, value,
+                            Constd(next_nid(), self.exp_line.sid_line, value,
                                 constraint_line.comment, constraint_line.line_no),
                             exp_line,
                             constraint_line.comment, constraint_line.line_no)
                 else:
-                    exp_line = Constd(next_nid(), self.sid_line, value,
+                    exp_line = Constd(next_nid(), self.exp_line.sid_line, value,
                         constraint_line.comment, constraint_line.line_no)
             assert exp_line is not None
             return exp_line
 
     def set_value(self, sid_line, value, constraining_line):
-        assert self.sid_line == sid_line
+        assert self.exp_line.sid_line.match_sorts(sid_line)
         assert isinstance(value, int)
-        assert 0 <= value < 2**sid_line.size
+        assert sid_line.is_unsigned_value(value)
         if constraining_line != Constant.false:
             if value not in self.values:
                 Values.total_number_of_values += 1
@@ -627,8 +635,7 @@ class Constant(Expression):
     def get_values(self, step):
         if 0 not in self.cache_values:
             if Instance.PROPAGATE > 0:
-                self.cache_values[0] = Values(self.sid_line).set_value(self.sid_line, self.value,
-                    Constant.true)
+                self.cache_values[0] = Values(self).set_value(self.sid_line, self.value, Constant.true)
             else:
                 self.cache_values[0] = self
         return self.cache_values[0]
@@ -780,7 +787,7 @@ class Variable(Expression):
     def get_values(self, step):
         if 0 not in self.cache_values:
             if isinstance(self.sid_line, Bitvector) and self.sid_line.size <= Instance.PROPAGATE:
-                self.cache_values[0] = Values(self.sid_line)
+                self.cache_values[0] = Values(self)
                 for value in range(2**self.sid_line.size):
                     self.cache_values[0].set_value(self.sid_line, value,
                         Comparison(next_nid(), OP_EQ, Bool.boolean,
@@ -832,10 +839,19 @@ class Instance:
     PROPAGATE_ITE = True
     LAMBDAS = True
 
-    def __init__(self):
+    def __init__(self, instance_of):
+        self.instance_of = instance_of
         self.cache_instance = {}
         self.cache_z3_instance = {}
         self.cache_bitwuzla_instance = {}
+
+    def __str__(self):
+        string = ""
+        for step in self.cache_instance:
+            if string:
+                string += "\n"
+            string += f"{step}: {self.cache_instance[step]}"
+        return f"{self.instance_of}{"\n" if string else ""}{string}"
 
     def has_instance(self, step):
         return step in self.cache_instance
@@ -933,7 +949,7 @@ class State(Variable):
         self.next_line = None
         self.cache_z3_name = {}
         self.cache_bitwuzla_name = {}
-        self.instance = Instance()
+        self.instance = Instance(self)
         self.instance.init_instance(self) # initialize with itself upon creation of state
         self.new_state(index)
         # rotor-dependent program counter declaration
@@ -1044,7 +1060,7 @@ class Indexed(Expression):
         return self.copy(arg1_line)
 
     def propagate(self, arg1_value, op_lambda):
-        results = Values(self.sid_line)
+        results = Values(self)
         for value in arg1_value.values:
             constraint_line = arg1_value.values[value]
             results.set_value(self.sid_line, op_lambda(value), constraint_line)
@@ -1077,7 +1093,7 @@ class Ext(Indexed):
             if Instance.PROPAGATE_UNARY and isinstance(arg1_value, Values):
                 if self.op == OP_SEXT:
                     self.cache_values[step] = self.propagate(arg1_value,
-                        lambda x: arg1_value.sid_line.get_signed_value(x) % 2**self.sid_line.size)
+                        lambda x: self.arg1_line.sid_line.get_signed_value(x) % 2**self.sid_line.size)
                 else:
                     assert self.op == OP_UEXT
                     self.cache_values[step] = self.propagate(arg1_value, lambda x: x)
@@ -1185,7 +1201,7 @@ class Unary(Expression):
         return self.copy(arg1_line)
 
     def propagate(self, arg1_value, op_lambda):
-        results = Values(self.sid_line)
+        results = Values(self)
         for value in arg1_value.values:
             constraint_line = arg1_value.values[value]
             results.set_value(self.sid_line, op_lambda(value) % 2**self.sid_line.size, constraint_line)
@@ -1277,7 +1293,7 @@ class Binary(Expression):
         return self.copy(arg1_line, arg2_line)
 
     def propagate(self, arg1_value, arg2_value, op_lambda):
-        results = Values(self.sid_line)
+        results = Values(self)
         for value1 in arg1_value.values:
             for value2 in arg2_value.values:
                 constraint1_line = arg1_value.values[value1]
@@ -1362,25 +1378,25 @@ class Comparison(Binary):
                             lambda x, y: x != y)
                     elif self.op == OP_SGT:
                         self.cache_values[step] = self.propagate(arg1_value, arg2_value,
-                            lambda x, y: arg1_value.sid_line.get_signed_value(x) > arg2_value.sid_line.get_signed_value(y))
+                            lambda x, y: self.arg1_line.sid_line.get_signed_value(x) > self.arg2_line.sid_line.get_signed_value(y))
                     elif self.op == OP_UGT:
                         self.cache_values[step] = self.propagate(arg1_value, arg2_value,
                             lambda x, y: x > y)
                     elif self.op == OP_SGTE:
                         self.cache_values[step] = self.propagate(arg1_value, arg2_value,
-                            lambda x, y: arg1_value.sid_line.get_signed_value(x) >= arg2_value.sid_line.get_signed_value(y))
+                            lambda x, y: self.arg1_line.sid_line.get_signed_value(x) >= self.arg2_line.sid_line.get_signed_value(y))
                     elif self.op == OP_UGTE:
                         self.cache_values[step] = self.propagate(arg1_value, arg2_value,
                             lambda x, y: x >= y)
                     elif self.op == OP_SLT:
                         self.cache_values[step] = self.propagate(arg1_value, arg2_value,
-                            lambda x, y: arg1_value.sid_line.get_signed_value(x) < arg2_value.sid_line.get_signed_value(y))
+                            lambda x, y: self.arg1_line.sid_line.get_signed_value(x) < self.arg2_line.sid_line.get_signed_value(y))
                     elif self.op == OP_ULT:
                         self.cache_values[step] = self.propagate(arg1_value, arg2_value,
                             lambda x, y: x < y)
                     elif self.op == OP_SLTE:
                         self.cache_values[step] = self.propagate(arg1_value, arg2_value,
-                            lambda x, y: arg1_value.sid_line.get_signed_value(x) <= arg2_value.sid_line.get_signed_value(y))
+                            lambda x, y: self.arg1_line.sid_line.get_signed_value(x) <= self.arg2_line.sid_line.get_signed_value(y))
                     else:
                         assert self.op == OP_ULTE
                         self.cache_values[step] = self.propagate(arg1_value, arg2_value,
@@ -1588,7 +1604,7 @@ class Computation(Binary):
                             lambda x, y: x >> y)
                     elif self.op == OP_SRA:
                         self.cache_values[step] = self.propagate(arg1_value, arg2_value,
-                            lambda x, y: arg1_value.sid_line.get_signed_value(x) >> y)
+                            lambda x, y: self.arg1_line.sid_line.get_signed_value(x) >> y)
                     elif self.op == OP_ADD:
                         self.cache_values[step] = self.propagate(arg1_value, arg2_value,
                             lambda x, y: x + y)
@@ -1600,24 +1616,24 @@ class Computation(Binary):
                             lambda x, y: x * y)
                     elif self.op == OP_SDIV:
                         self.cache_values[step] = self.propagate(arg1_value, arg2_value,
-                            lambda x, y: int(arg1_value.sid_line.get_signed_value(x) /
-                                arg2_value.sid_line.get_signed_value(y))
+                            lambda x, y: int(self.arg1_line.sid_line.get_signed_value(x) /
+                                self.arg2_line.sid_line.get_signed_value(y))
                                 if not (y == 0 or
-                                    (arg1_value.sid_line.get_signed_value(x) ==
+                                    (self.arg1_line.sid_line.get_signed_value(x) ==
                                         -2**(self.sid_line.size - 1) and
-                                        arg2_value.sid_line.get_signed_value(y) == -1))
+                                        self.arg2_line.sid_line.get_signed_value(y) == -1))
                                     else -1 if y == 0 else -2**(self.sid_line.size - 1))
                     elif self.op == OP_UDIV:
                         self.cache_values[step] = self.propagate(arg1_value, arg2_value,
                             lambda x, y: int(x / y) if y != 0 else 2**self.sid_line.size - 1)
                     elif self.op == OP_SREM:
                         self.cache_values[step] = self.propagate(arg1_value, arg2_value,
-                            lambda x, y: arg1_value.sid_line.get_signed_value(x) %
-                                arg2_value.sid_line.get_signed_value(y)
+                            lambda x, y: self.arg1_line.sid_line.get_signed_value(x) %
+                                self.arg2_line.sid_line.get_signed_value(y)
                                 if not (y == 0 or
-                                    (arg1_value.sid_line.get_signed_value(x) ==
+                                    (self.arg1_line.sid_line.get_signed_value(x) ==
                                         -2**(self.sid_line.size - 1) and
-                                        arg2_value.sid_line.get_signed_value(y) == -1))
+                                        self.arg2_line.sid_line.get_signed_value(y) == -1))
                                     else x if y == 0 else 0)
                     else:
                         assert self.op == OP_UREM
@@ -1703,7 +1719,7 @@ class Concat(Binary):
             if Instance.PROPAGATE_BINARY:
                 if isinstance(arg1_value, Values) and isinstance(arg2_value, Values):
                     self.cache_values[step] = self.propagate(arg1_value, arg2_value,
-                        lambda x, y: (x << arg2_value.sid_line.size) + y)
+                        lambda x, y: (x << self.arg2_line.sid_line.size) + y)
                     return self.cache_values[step]
             arg1_value = arg1_value.get_expression()
             arg2_value = arg2_value.get_expression()
@@ -1852,7 +1868,7 @@ class Ite(Ternary):
         if not arg2_line.sid_line.match_sorts(arg3_line.sid_line):
             raise model_error("compatible second and third operand sorts", line_no)
         self.ite_cache = {}
-        self.instance = Instance()
+        self.instance = Instance(self)
         if Ite.branching_conditions is None and comment == "; branch true condition":
             Ite.branching_conditions = self
         elif Ite.non_branching_conditions is None and comment == "; branch false condition":
@@ -2201,7 +2217,7 @@ class Property(Line):
         super().__init__(nid, comment, line_no)
         self.property_line = property_line
         self.symbol = symbol
-        self.instance = Instance()
+        self.instance = Instance(self)
         if not isinstance(property_line, Expression):
             raise model_error("expression operand", line_no)
         if not isinstance(property_line.sid_line, Bool):
