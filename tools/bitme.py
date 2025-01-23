@@ -405,6 +405,93 @@ class Values:
             Values.cache_true = Values(Constant.true).set_value(Bool.boolean, 1, Constant.true)
         return Values.cache_true
 
+    def intersect(values1, values2):
+        assert values1[0].match_sorts(values2[0])
+        if values1[1]:
+            if values2[1]:
+                results = {}
+                for value1 in values1[1]:
+                    if value1 in values2[1]:
+                        results[value1] = None
+                if len(results) > 0:
+                    return (values1[0], results)
+        return False
+
+    def is_AND_SAT(constraint1_line, constraint2_line):
+        values1 = Values.is_SAT(constraint1_line)
+        values2 = Values.is_SAT(constraint2_line)
+        if values1 == False or values2 == False:
+            return False
+        elif values1 == True:
+            return values2
+        elif values2 == True:
+            return values1
+        else:
+            return Values.intersect(values1, values2)
+
+    def union(values1, values2):
+        assert values1[0].match_sorts(values2[0])
+        if values1[1]:
+            if values2[1]:
+                results = {}
+                for value1 in values1[1]:
+                    results[value1] = None
+                for value2 in values2[1]:
+                    results[value2] = None
+                if len(results) == 2**values1[0].size:
+                    return True
+                else:
+                    return (values1[0], results)
+            else:
+                return values1
+        else:
+            return values2
+
+    def is_OR_SAT(constraint1_line, constraint2_line):
+        values1 = Values.is_SAT(constraint1_line)
+        values2 = Values.is_SAT(constraint2_line)
+        if values1 == True or values2 == True:
+            return True
+        elif values1 == False:
+            return values2
+        elif values2 == False:
+            return values1
+        else:
+            return Values.union(values1, values2)
+
+    def is_SAT(constraint_line):
+        if isinstance(constraint_line, Comparison):
+            if constraint_line.op == OP_EQ:
+                return (constraint_line.arg2_line.sid_line, {constraint_line.arg2_line.value:None})
+            elif constraint_line.op == OP_UGTE:
+                if constraint_line.arg2_line.value == 0:
+                    return True
+                else:
+                    results = {}
+                    for value in range(constraint_line.arg2_line.value, 2**constraint_line.arg2_line.sid_line.size):
+                        results[value] = None
+                    return (constraint_line.arg2_line.sid_line, results)
+            else:
+                assert constraint_line.op == OP_ULTE
+                if constraint_line.arg2_line.value == 2**constraint_line.arg2_line.sid_line.size - 1:
+                    return True
+                else:
+                    results = {}
+                    for value in range(0, constraint_line.arg2_line.value + 1):
+                        results[value] = None
+                    return (constraint_line.arg2_line.sid_line, results)
+        elif isinstance(constraint_line, Logical):
+            if constraint_line.op == OP_AND:
+                return Values.is_AND_SAT(constraint_line.arg1_line, constraint_line.arg2_line)
+            else:
+                assert constraint_line.op == OP_OR
+                return Values.is_OR_SAT(constraint_line.arg1_line, constraint_line.arg2_line)
+        elif constraint_line == Constant.true:
+            return True
+        else:
+            assert constraint_line == Constant.false
+            return False
+
     def is_AND_subsumed(constraint1_line, constraint2_line):
         return isinstance(constraint1_line, Logical) and constraint1_line.op == OP_OR and (constraint2_line == constraint1_line.arg1_line or constraint2_line == constraint1_line.arg2_line)
 
@@ -569,6 +656,11 @@ class Values:
                     del self.constraints[constraint_line][value]
                     if not self.constraints[constraint_line]:
                         del self.constraints[constraint_line]
+            SAT = Values.is_SAT(constrained_line)
+            if SAT == True:
+                constrained_line = Constant.true
+            elif SAT == False:
+                constrained_line = Constant.false
             self.values[value] = constrained_line
             if constrained_line not in self.constraints:
                 self.constraints[constrained_line] = {value:None}
