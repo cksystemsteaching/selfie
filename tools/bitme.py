@@ -624,6 +624,9 @@ class Expression(Line):
         if not isinstance(sid_line, Sort):
             raise model_error("sort", line_no)
 
+    def print_deep(self):
+        print(self)
+
     def get_domain(self):
         # filter out uninitialized states
         return [state for state in self.domain if state.init_line is not None]
@@ -674,6 +677,9 @@ class Constant(Expression):
                 assert self.value == 1
                 if Constant.true is None:
                     Constant.true = self
+
+    def print_deep(self):
+        print(self)
 
     def get_mapped_array_expression_for(self, index):
         return self
@@ -1234,6 +1240,10 @@ class Unary(Expression):
     def __str__(self):
         return f"{self.nid} {self.op} {self.sid_line.nid} {self.arg1_line.nid} {self.comment}"
 
+    def print_deep(self):
+        self.arg1_line.print_deep()
+        print(self)
+
     def copy(self, arg1_line):
         if self.arg1_line is not arg1_line:
             Expression.total_number_of_generated_expressions += 1
@@ -1325,6 +1335,11 @@ class Binary(Expression):
 
     def __str__(self):
         return f"{self.nid} {self.op} {self.sid_line.nid} {self.arg1_line.nid} {self.arg2_line.nid} {self.comment}"
+
+    def print_deep(self):
+        self.arg1_line.print_deep()
+        self.arg2_line.print_deep()
+        print(self)
 
     def copy(self, arg1_line, arg2_line):
         if self.arg1_line is not arg1_line or self.arg2_line is not arg2_line:
