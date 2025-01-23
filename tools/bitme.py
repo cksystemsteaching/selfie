@@ -412,7 +412,7 @@ class Values:
                 results = {}
                 for value1 in values1[1]:
                     if value1 in values2[1]:
-                        results[value1] = None
+                        results[value1] = values2[1][value1]
                 if len(results) > 0:
                     return (values1[0], results)
         return False
@@ -435,9 +435,9 @@ class Values:
             if values2[1]:
                 results = {}
                 for value1 in values1[1]:
-                    results[value1] = None
+                    results[value1] = values1[1][value1]
                 for value2 in values2[1]:
-                    results[value2] = None
+                    results[value2] = values2[1][value2]
                 if len(results) == 2**values1[0].size:
                     return True
                 else:
@@ -462,14 +462,14 @@ class Values:
     def is_SAT(constraint_line):
         if isinstance(constraint_line, Comparison):
             if constraint_line.op == OP_EQ:
-                return (constraint_line.arg2_line.sid_line, {constraint_line.arg2_line.value:None})
+                return (constraint_line.arg2_line.sid_line, {constraint_line.arg2_line.value:constraint_line.arg1_line})
             elif constraint_line.op == OP_UGTE:
                 if constraint_line.arg2_line.value == 0:
                     return True
                 else:
                     results = {}
                     for value in range(constraint_line.arg2_line.value, 2**constraint_line.arg2_line.sid_line.size):
-                        results[value] = None
+                        results[value] = constraint_line.arg1_line
                     return (constraint_line.arg2_line.sid_line, results)
             else:
                 assert constraint_line.op == OP_ULTE
@@ -478,7 +478,7 @@ class Values:
                 else:
                     results = {}
                     for value in range(0, constraint_line.arg2_line.value + 1):
-                        results[value] = None
+                        results[value] = constraint_line.arg1_line
                     return (constraint_line.arg2_line.sid_line, results)
         elif isinstance(constraint_line, Logical):
             if constraint_line.op == OP_AND:
@@ -661,6 +661,20 @@ class Values:
                 constrained_line = Constant.true
             elif SAT == False:
                 constrained_line = Constant.false
+            else:
+                if constrained_line.depth > len(SAT[1]):
+                    # constraint depth greater than number of per-value constraints
+                    constrained_line = Constant.true
+                    for SAT_value in SAT[1]:
+                        comparison_line = Comparison(next_nid(), OP_EQ, Bool.boolean,
+                            SAT[1][SAT_value],
+                            Constd(next_nid(), SAT[1][SAT_value].sid_line, SAT_value,
+                                SAT[1][SAT_value].comment, SAT[1][SAT_value].line_no),
+                            SAT[1][SAT_value].comment, SAT[1][SAT_value].line_no)
+                        if constrained_line == Constant.true:
+                            constrained_line = comparison_line
+                        else:
+                            constrained_line = Values.OR(comparison_line, constrained_line)
             self.values[value] = constrained_line
             if constrained_line not in self.constraints:
                 self.constraints[constrained_line] = {value:None}
