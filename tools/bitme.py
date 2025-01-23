@@ -576,6 +576,27 @@ class Values:
                 self.constraints[constrained_line] |= {value:None}
         return self
 
+    def set_interval(self, sid_line, value, var_line, interval):
+        if interval[0] == interval[1]:
+            return self.set_value(sid_line, value,
+                Comparison(next_nid(), OP_EQ, Bool.boolean,
+                    var_line,
+                    Constd(next_nid(), var_line.sid_line, interval[0], var_line.comment, var_line.line_no),
+                    var_line.comment, var_line.line_no))
+        else:
+            assert 0 <= interval[0] < interval[1]
+            return self.set_value(sid_line, value,
+                Logical(next_nid(), OP_AND, Bool.boolean,
+                    Comparison(next_nid(), OP_UGTE, Bool.boolean,
+                        var_line,
+                        Constd(next_nid(), var_line.sid_line, interval[0], var_line.comment, var_line.line_no),
+                        var_line.comment, var_line.line_no),
+                    Comparison(next_nid(), OP_ULTE, Bool.boolean,
+                        var_line,
+                        Constd(next_nid(), var_line.sid_line, interval[1], var_line.comment, var_line.line_no),
+                        var_line.comment, var_line.line_no),
+                    var_line.comment, var_line.line_no))
+
     def is_equal(self, values):
         # naive check for semantical equivalence
         if not isinstance(values, Values) or len(self.values) != len(values.values) or len(self.constraints) != len(values.constraints):
@@ -1318,7 +1339,7 @@ class Binary(Expression):
         arg2_line = self.arg2_line.get_mapped_array_expression_for(None)
         return self.copy(arg1_line, arg2_line)
 
-    def propagate(self, arg1_value, arg2_value, op_lambda):
+    def propagate_values(self, arg1_value, arg2_value, op_lambda):
         results = Values(self)
         for value1 in arg1_value.values:
             for value2 in arg2_value.values:
@@ -1326,6 +1347,35 @@ class Binary(Expression):
                 constraint2_line = arg2_value.values[value2]
                 results.set_value(self.sid_line, op_lambda(value1, value2),
                     Values.AND(constraint1_line, constraint2_line))
+        return results
+
+    def propagate(self, arg1_value, arg2_value, op_lambda):
+        var_line = None
+        intervals = {}
+        results = Values(self)
+        for value1 in arg1_value.values:
+            for value2 in arg2_value.values:
+                constraint1_line = arg1_value.values[value1]
+                constraint2_line = arg2_value.values[value2]
+                constraint_line = Values.AND(constraint1_line, constraint2_line)
+                if isinstance(constraint_line, Comparison) and constraint_line.op == OP_EQ and (var_line is None or var_line == constraint_line.arg1_line) and isinstance(constraint_line.arg2_line, Constant):
+                    var_line = constraint_line.arg1_line
+                    value = constraint_line.arg2_line.value
+                    result = op_lambda(value1, value2)
+                    if result not in intervals:
+                        intervals[result] = (value, value)
+                    elif value == intervals[result][0] - 1:
+                        intervals[result] = (value, intervals[result][1])
+                    elif value == intervals[result][1] + 1:
+                        intervals[result] = (intervals[result][0], value)
+                    elif value < intervals[result][0] - 1 or value > intervals[result][1]:
+                        results.set_interval(self.sid_line, result, var_line, intervals[result])
+                        intervals[result] = (value, value)
+                else:
+                    return self.propagate_values(arg1_value, arg2_value, op_lambda)
+        assert intervals
+        for result in intervals:
+            results.set_interval(self.sid_line, result, var_line, intervals[result])
         return results
 
 class Implies(Binary):
