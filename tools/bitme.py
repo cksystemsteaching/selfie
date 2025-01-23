@@ -405,6 +405,9 @@ class Values:
             Values.cache_true = Values(Constant.true).set_value(Bool.boolean, 1, Constant.true)
         return Values.cache_true
 
+    def is_AND_subsumed(constraint1_line, constraint2_line):
+        return isinstance(constraint1_line, Logical) and constraint1_line.op == OP_OR and (constraint2_line == constraint1_line.arg1_line or constraint2_line == constraint1_line.arg2_line)
+
     def AND(constraint1_line, constraint2_line):
         if constraint1_line == Constant.true and constraint2_line == Constant.true:
             return Constant.true
@@ -414,12 +417,23 @@ class Values:
             return constraint1_line
         elif constraint1_line == constraint2_line:
             return constraint1_line
+        elif Values.is_AND_subsumed(constraint1_line, constraint2_line):
+            return constraint2_line
+        elif Values.is_AND_subsumed(constraint2_line, constraint1_line):
+            return constraint1_line
+        elif Values.is_OR_subsumed(constraint1_line, constraint2_line):
+            return constraint1_line
+        elif Values.is_OR_subsumed(constraint2_line, constraint1_line):
+            return constraint2_line
         elif (constraint1_line, constraint2_line) not in Values.cache_AND:
             constraint_line = Logical(next_nid(), OP_AND, Bool.boolean,
                 constraint1_line, constraint2_line, constraint1_line.comment, constraint1_line.line_no)
             Values.cache_AND[(constraint1_line, constraint2_line)] = constraint_line
             Values.cache_AND[(constraint2_line, constraint1_line)] = constraint_line
         return Values.cache_AND[(constraint1_line, constraint2_line)]
+
+    def is_OR_subsumed(constraint1_line, constraint2_line):
+        return isinstance(constraint1_line, Logical) and constraint1_line.op == OP_AND and (constraint2_line == constraint1_line.arg1_line or constraint2_line == constraint1_line.arg2_line)
 
     def OR(constraint1_line, constraint2_line):
         if constraint1_line == Constant.true or constraint2_line == Constant.true:
@@ -430,6 +444,14 @@ class Values:
             return constraint1_line
         elif constraint1_line == constraint2_line:
             return constraint1_line
+        elif Values.is_OR_subsumed(constraint1_line, constraint2_line):
+            return constraint2_line
+        elif Values.is_OR_subsumed(constraint2_line, constraint1_line):
+            return constraint1_line
+        elif Values.is_AND_subsumed(constraint1_line, constraint2_line):
+            return constraint1_line
+        elif Values.is_AND_subsumed(constraint2_line, constraint1_line):
+            return constraint2_line
         elif (constraint1_line, constraint2_line) not in Values.cache_OR:
             constraint_line = Logical(next_nid(), OP_OR, Bool.boolean,
                 constraint1_line, constraint2_line, constraint1_line.comment, constraint1_line.line_no)
@@ -442,6 +464,8 @@ class Values:
             return Constant.false
         elif constraint1_line == Constant.false:
             return Constant.true
+        elif isinstance(constraint1_line, Unary) and constraint1_line.op == OP_NOT:
+            return constraint1_line.arg1_line
         elif constraint1_line not in Values.cache_NOT:
             Values.cache_NOT[constraint1_line] = Unary(next_nid(), OP_NOT, Bool.boolean,
                 constraint1_line, constraint1_line.comment, constraint1_line.line_no)
