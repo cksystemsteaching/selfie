@@ -369,263 +369,189 @@ class Array(Sort):
                 self.element_size_line.get_bitwuzla(tm))
         return self.bitwuzla
 
-class Values:
-    total_number_of_values = 0
+class Constraints:
+    total_number_of_constraints = 0
 
-    cache_false = None
-    cache_true = None
-    cache_AND = {}
-    cache_OR = {}
-    cache_NOT = {}
-    cache_IMPLIES = {}
-
-    def __init__(self, exp_line):
-        self.exp_line = exp_line
-        self.values = {}
-        self.constraints = {}
+    def __init__(self, var_line, value):
+        self.var_line = var_line
+        self.values = {value:None}
 
     def __str__(self):
         string = ""
         for value in self.values:
             if string:
                 string += ", "
-            string += f"{value}"
+            string += f"{value}:{self.values[value]}"
+        return f"{{{string}}}: {self.var_line}"
+
+    def match_sorts(self, constraints):
+        return self.var_line.sid_line.match_sorts(constraints.var_line.sid_line)
+
+    def AND(constraints1, constraints2):
+        if constraints1 is Constant.true:
+            return constraints2
+        elif constraints2 is Constant.true:
+            return constraints1
+        elif constraints1 is Constant.false or constraints2 is Constant.false:
+            return Constant.false
+        else:
+            assert isinstance(constraints1, Constraints) and isinstance(constraints2, Constraints)
+            assert constraints1.values and constraints2.values
+            assert constraints1.match_sorts(constraints2)
+            assert constraints1.var_line == constraints2.var_line
+            results = Constant.false
+            for value in constraints1.values:
+                if value in constraints2.values:
+                    Constraints.total_number_of_constraints += 1
+                    if results is Constant.false:
+                        results = Constraints(constraints1.var_line, value)
+                    else:
+                        assert constraints2.values[value] is None
+                        results.values[value] = constraints2.values[value]
+            return results
+
+    def OR(constraints1, constraints2):
+        if constraints1 is Constant.false:
+            return constraints2
+        elif constraints2 is Constant.false:
+            return constraints1
+        elif constraints1 is Constant.true or constraints2 is Constant.true:
+            return Constant.true
+        else:
+            assert isinstance(constraints1, Constraints) and isinstance(constraints2, Constraints)
+            assert constraints1.values and constraints2.values
+            assert constraints1.match_sorts(constraints2)
+            assert constraints1.var_line == constraints2.var_line
+            results = Constant.false
+            for value in constraints1.values:
+                Constraints.total_number_of_constraints += 1
+                if results is Constant.false:
+                    results = Constraints(constraints1.var_line, value)
+                else:
+                    assert constraints1.values[value] is None
+                    results.values[value] = constraints1.values[value]
+            for value in constraints2.values:
+                Constraints.total_number_of_constraints += 1
+                assert constraints2.values[value] is None
+                results.values[value] = constraints2.values[value]
+            return results
+
+    def get_expression(self):
+        assert self.values
+        exp_line = Constant.false
+        for value in self.values:
+            comparison_line = Comparison(next_nid(), OP_EQ, Bool.boolean,
+                self.var_line,
+                Constd(next_nid(), self.var_line.sid_line, value,
+                    self.var_line.comment, self.var_line.line_no),
+                self.var_line.comment, self.var_line.line_no)
+            if exp_line is Constant.false:
+                exp_line = comparison_line
+            else:
+                exp_line = Logical(next_nid(), OP_OR, Bool.boolean,
+                    comparison_line,
+                    exp_line,
+                    self.var_line.comment, self.var_line.line_no)
+        return exp_line
+
+    def NOT(constraints1):
+        if constraints1 is Constant.true:
+            return Constant.false
+        elif constraints1 is Constant.false:
+            return Constant.true
+        else:
+            assert isinstance(constraints1, Constraints)
+            return Unary(next_nid(), OP_NOT, Bool.boolean,
+                constraints1.get_expression(),
+                constraints1.var_line.comment, constraints1.var_line.line_no)
+
+    def IMPLIES(constraints1, constraints2):
+        if constraints1 is Constant.false or constraints2 is Constant.true:
+            return Constant.true
+        elif constraints1 is Constant.true:
+            return constraints2
+        elif constraints2 is Constant.false:
+            return Constraints.NOT(constraints1)
+        elif constraints1 is constraints2:
+            return Constant.true
+        else:
+            assert isinstance(constraints1, Constraints) and isinstance(constraints2, Constraints)
+            return Implies(next_nid(), OP_IMPLIES, Bool.boolean,
+                constraints1.get_expression(), constraints2.get_expression(),
+                constraints1.var_line.comment, constraints1.var_line.line_no)
+
+class Values:
+    total_number_of_values = 0
+
+    false = None
+    true = None
+
+    def __init__(self, exp_line):
+        self.exp_line = exp_line
+        self.values = {}
+
+    def __str__(self):
+        string = ""
+        for value in self.values:
+            if string:
+                string += ", "
+            string += f"{value}:{self.values[value]}"
         return f"{{{string}}}: {self.exp_line}"
 
     def match_sorts(self, values):
         return self.exp_line.sid_line.match_sorts(values.exp_line.sid_line)
 
-    def FALSE():
-        if Values.cache_false is None:
-            Values.cache_false = Values(Constant.false).set_value(Bool.boolean, 0, Constant.true)
-        return Values.cache_false
-
-    def TRUE():
-        if Values.cache_true is None:
-            Values.cache_true = Values(Constant.true).set_value(Bool.boolean, 1, Constant.true)
-        return Values.cache_true
-
-    def intersect(values1, values2):
-        assert values1[0].match_sorts(values2[0])
-        if values1[1]:
-            if values2[1]:
-                results = {}
-                for value1 in values1[1]:
-                    if value1 in values2[1]:
-                        results[value1] = values2[1][value1]
-                if len(results) > 0:
-                    return (values1[0], results)
-        return False
-
-    def is_AND_SAT(constraint1_line, constraint2_line):
-        values1 = Values.is_SAT(constraint1_line)
-        values2 = Values.is_SAT(constraint2_line)
-        if values1 == False or values2 == False:
-            return False
-        elif values1 == True:
-            return values2
-        elif values2 == True:
-            return values1
-        else:
-            return Values.intersect(values1, values2)
-
-    def union(values1, values2):
-        assert values1[0].match_sorts(values2[0])
-        if values1[1]:
-            if values2[1]:
-                results = {}
-                for value1 in values1[1]:
-                    results[value1] = values1[1][value1]
-                for value2 in values2[1]:
-                    results[value2] = values2[1][value2]
-                if len(results) == 2**values1[0].size:
-                    return True
-                else:
-                    return (values1[0], results)
-            else:
-                return values1
-        else:
-            return values2
-
-    def is_OR_SAT(constraint1_line, constraint2_line):
-        values1 = Values.is_SAT(constraint1_line)
-        values2 = Values.is_SAT(constraint2_line)
-        if values1 == True or values2 == True:
-            return True
-        elif values1 == False:
-            return values2
-        elif values2 == False:
-            return values1
-        else:
-            return Values.union(values1, values2)
-
-    def is_SAT(constraint_line):
-        if isinstance(constraint_line, Comparison):
-            if constraint_line.op == OP_EQ:
-                return (constraint_line.arg2_line.sid_line, {constraint_line.arg2_line.value:constraint_line.arg1_line})
-            elif constraint_line.op == OP_UGTE:
-                if constraint_line.arg2_line.value == 0:
-                    return True
-                else:
-                    results = {}
-                    for value in range(constraint_line.arg2_line.value, 2**constraint_line.arg2_line.sid_line.size):
-                        results[value] = constraint_line.arg1_line
-                    return (constraint_line.arg2_line.sid_line, results)
-            else:
-                assert constraint_line.op == OP_ULTE
-                if constraint_line.arg2_line.value == 2**constraint_line.arg2_line.sid_line.size - 1:
-                    return True
-                else:
-                    results = {}
-                    for value in range(0, constraint_line.arg2_line.value + 1):
-                        results[value] = constraint_line.arg1_line
-                    return (constraint_line.arg2_line.sid_line, results)
-        elif isinstance(constraint_line, Logical):
-            if constraint_line.op == OP_AND:
-                return Values.is_AND_SAT(constraint_line.arg1_line, constraint_line.arg2_line)
-            else:
-                assert constraint_line.op == OP_OR
-                return Values.is_OR_SAT(constraint_line.arg1_line, constraint_line.arg2_line)
-        elif constraint_line == Constant.true:
-            return True
-        else:
-            assert constraint_line == Constant.false
-            return False
-
-    def is_AND_subsumed(constraint1_line, constraint2_line):
-        return isinstance(constraint1_line, Logical) and constraint1_line.op == OP_OR and (constraint2_line == constraint1_line.arg1_line or constraint2_line == constraint1_line.arg2_line)
-
-    def AND(constraint1_line, constraint2_line):
-        if constraint1_line == Constant.true and constraint2_line == Constant.true:
-            return Constant.true
-        elif constraint1_line == Constant.true:
-            return constraint2_line
-        elif constraint2_line == Constant.true:
-            return constraint1_line
-        elif constraint1_line == constraint2_line:
-            return constraint1_line
-        elif Values.is_AND_subsumed(constraint1_line, constraint2_line):
-            return constraint2_line
-        elif Values.is_AND_subsumed(constraint2_line, constraint1_line):
-            return constraint1_line
-        elif Values.is_OR_subsumed(constraint1_line, constraint2_line):
-            return constraint1_line
-        elif Values.is_OR_subsumed(constraint2_line, constraint1_line):
-            return constraint2_line
-        elif (constraint1_line, constraint2_line) not in Values.cache_AND:
-            constraint_line = Logical(next_nid(), OP_AND, Bool.boolean,
-                constraint1_line, constraint2_line, constraint1_line.comment, constraint1_line.line_no)
-            Values.cache_AND[(constraint1_line, constraint2_line)] = constraint_line
-            Values.cache_AND[(constraint2_line, constraint1_line)] = constraint_line
-        return Values.cache_AND[(constraint1_line, constraint2_line)]
-
-    def is_OR_subsumed(constraint1_line, constraint2_line):
-        return isinstance(constraint1_line, Logical) and constraint1_line.op == OP_AND and (constraint2_line == constraint1_line.arg1_line or constraint2_line == constraint1_line.arg2_line)
-
-    def OR(constraint1_line, constraint2_line):
-        if constraint1_line == Constant.true or constraint2_line == Constant.true:
-            return Constant.true
-        elif constraint1_line == Constant.false:
-            return constraint2_line
-        elif constraint2_line == Constant.false:
-            return constraint1_line
-        elif constraint1_line == constraint2_line:
-            return constraint1_line
-        elif Values.is_OR_subsumed(constraint1_line, constraint2_line):
-            return constraint2_line
-        elif Values.is_OR_subsumed(constraint2_line, constraint1_line):
-            return constraint1_line
-        elif Values.is_AND_subsumed(constraint1_line, constraint2_line):
-            return constraint1_line
-        elif Values.is_AND_subsumed(constraint2_line, constraint1_line):
-            return constraint2_line
-        elif (constraint1_line, constraint2_line) not in Values.cache_OR:
-            constraint_line = Logical(next_nid(), OP_OR, Bool.boolean,
-                constraint1_line, constraint2_line, constraint1_line.comment, constraint1_line.line_no)
-            Values.cache_OR[(constraint1_line, constraint2_line)] = constraint_line
-            Values.cache_OR[(constraint2_line, constraint1_line)] = constraint_line
-        return Values.cache_OR[(constraint1_line, constraint2_line)]
-
-    def NOT(constraint1_line):
-        if constraint1_line == Constant.true:
-            return Constant.false
-        elif constraint1_line == Constant.false:
-            return Constant.true
-        elif isinstance(constraint1_line, Unary) and constraint1_line.op == OP_NOT:
-            return constraint1_line.arg1_line
-        elif constraint1_line not in Values.cache_NOT:
-            Values.cache_NOT[constraint1_line] = Unary(next_nid(), OP_NOT, Bool.boolean,
-                constraint1_line, constraint1_line.comment, constraint1_line.line_no)
-        return Values.cache_NOT[constraint1_line]
-
-    def IMPLIES(constraint1_line, constraint2_line):
-        if constraint1_line == Constant.false or constraint2_line == Constant.true:
-            return Constant.true
-        elif constraint1_line == Constant.true:
-            return constraint2_line
-        elif constraint2_line == Constant.false:
-            return Values.NOT(constraint1_line)
-        elif constraint1_line == constraint2_line:
-            return Constant.true
-        elif (constraint1_line, constraint2_line) not in Values.cache_IMPLIES:
-            constraint_line = Implies(next_nid(), OP_IMPLIES, Bool.boolean,
-                constraint1_line, constraint2_line, constraint1_line.comment, constraint1_line.line_no)
-            Values.cache_IMPLIES[(constraint1_line, constraint2_line)] = constraint_line
-        return Values.cache_IMPLIES[(constraint1_line, constraint2_line)]
-
-    def constrain(self, constraining_line):
-        assert constraining_line != Constant.false
-        if constraining_line == Constant.true:
+    def constrain(self, constraints):
+        assert self.values
+        assert constraints is not Constant.false
+        if constraints is Constant.true:
             return self
         else:
+            assert isinstance(constraints, Constraints)
             results = Values(self.exp_line)
-            for constraint_line in self.constraints:
-                constrained_line = Values.AND(constraining_line, constraint_line)
-                for value in self.constraints[constraint_line]:
-                    results.set_value(self.exp_line.sid_line, value, constrained_line)
+            for value in self.values:
+                results.set_value(self.exp_line.sid_line, value,
+                    Constraints.AND(self.values[value], constraints))
             return results
 
-    def copy(self):
+    def merge(self, values):
+        assert self.values
+        assert isinstance(values, Values)
+        assert self.match_sorts(values)
+        assert values.values
         results = Values(self.exp_line)
         for value in self.values:
-            constraint = self.values[value]
-            results.set_value(self.exp_line.sid_line, value, constraint)
-        return results
-
-    def merge(self, values):
-        assert self.match_sorts(values)
-        results = self.copy()
+            results.set_value(self.exp_line.sid_line, value, self.values[value])
         for value in values.values:
-            constraint = values.values[value]
-            results.set_value(values.exp_line.sid_line, value, constraint)
+            results.set_value(self.exp_line.sid_line, value, values.values[value])
         return results
 
     def get_boolean_constraints(self):
         assert isinstance(self.exp_line.sid_line, Bool)
         assert len(self.values) <= 2
-        false_line = Constant.false
-        true_line = Constant.false
+        false_constraint = Constant.false
+        true_constraint = Constant.false
         for value in self.values:
-            constraint_line = self.values[value]
+            constraints = self.values[value]
             if value == 0:
-                false_line = constraint_line
+                false_constraint = constraints
             else:
                 assert value == 1
-                true_line = constraint_line
-        return false_line, true_line
+                true_constraint = constraints
+        return false_constraint, true_constraint
 
     def get_expression(self):
         # naive transition from domain propagation to bit blasting
         assert len(self.values) > 0
         if isinstance(self.exp_line.sid_line, Bool):
-            # constraint on false value implies constraint on true value
-            return Values.IMPLIES(*self.get_boolean_constraints())
+            # constraints on false value implies constraints on true value
+            return Constraints.IMPLIES(*self.get_boolean_constraints())
         else:
             exp_line = None
             for value in self.values:
-                constraint_line = self.values[value]
-                if constraint_line != Constant.true:
-                    if constraint_line != Constant.false:
+                constraint_line = self.values[value].get_expression()
+                if constraint_line is not Constant.true:
+                    if constraint_line is not Constant.false:
                         if exp_line is None:
                             exp_line = Zero(next_nid(), self.exp_line.sid_line,
                                 "unreachable-value", "unreachable value", 0)
@@ -641,71 +567,23 @@ class Values:
             assert exp_line is not None
             return exp_line
 
-    def set_value(self, sid_line, value, constraining_line):
+    def set_value(self, sid_line, value, constraints):
         assert self.exp_line.sid_line.match_sorts(sid_line)
         assert isinstance(value, int)
         assert sid_line.is_unsigned_value(value)
-        if constraining_line != Constant.false:
+        if constraints is not Constant.false:
+            assert constraints is Constant.true or isinstance(constraints, Constraints)
             if value not in self.values:
                 Values.total_number_of_values += 1
-                constrained_line = constraining_line
+                self.values[value] = constraints
             else:
-                constraint_line = self.values[value]
-                constrained_line = Values.OR(constraining_line, constraint_line)
-                if constrained_line != constraint_line:
-                    del self.constraints[constraint_line][value]
-                    if not self.constraints[constraint_line]:
-                        del self.constraints[constraint_line]
-            SAT = Values.is_SAT(constrained_line)
-            if SAT == True:
-                constrained_line = Constant.true
-            elif SAT == False:
-                constrained_line = Constant.false
-            else:
-                if constrained_line.depth > len(SAT[1]):
-                    # constraint depth greater than number of per-value constraints
-                    constrained_line = Constant.true
-                    for SAT_value in SAT[1]:
-                        comparison_line = Comparison(next_nid(), OP_EQ, Bool.boolean,
-                            SAT[1][SAT_value],
-                            Constd(next_nid(), SAT[1][SAT_value].sid_line, SAT_value,
-                                SAT[1][SAT_value].comment, SAT[1][SAT_value].line_no),
-                            SAT[1][SAT_value].comment, SAT[1][SAT_value].line_no)
-                        if constrained_line == Constant.true:
-                            constrained_line = comparison_line
-                        else:
-                            constrained_line = Values.OR(comparison_line, constrained_line)
-            self.values[value] = constrained_line
-            if constrained_line not in self.constraints:
-                self.constraints[constrained_line] = {value:None}
-            else:
-                self.constraints[constrained_line] |= {value:None}
+                assert self.values[value] is not Constant.false
+                self.values[value] = Constraints.OR(self.values[value], constraints)
         return self
-
-    def set_interval(self, sid_line, value, var_line, interval):
-        if interval[0] == interval[1]:
-            return self.set_value(sid_line, value,
-                Comparison(next_nid(), OP_EQ, Bool.boolean,
-                    var_line,
-                    Constd(next_nid(), var_line.sid_line, interval[0], var_line.comment, var_line.line_no),
-                    var_line.comment, var_line.line_no))
-        else:
-            assert 0 <= interval[0] < interval[1]
-            return self.set_value(sid_line, value,
-                Logical(next_nid(), OP_AND, Bool.boolean,
-                    Comparison(next_nid(), OP_UGTE, Bool.boolean,
-                        var_line,
-                        Constd(next_nid(), var_line.sid_line, interval[0], var_line.comment, var_line.line_no),
-                        var_line.comment, var_line.line_no),
-                    Comparison(next_nid(), OP_ULTE, Bool.boolean,
-                        var_line,
-                        Constd(next_nid(), var_line.sid_line, interval[1], var_line.comment, var_line.line_no),
-                        var_line.comment, var_line.line_no),
-                    var_line.comment, var_line.line_no))
 
     def is_equal(self, values):
         # naive check for semantical equivalence
-        if not isinstance(values, Values) or len(self.values) != len(values.values) or len(self.constraints) != len(values.constraints):
+        if not isinstance(values, Values) or len(self.values) != len(values.values):
             return False
         else:
             for value in self.values:
@@ -715,6 +593,16 @@ class Values:
                 else:
                     return False
             return True
+
+    def FALSE():
+        if Values.false is None:
+            Values.false = Values(Constant.false).set_value(Bool.boolean, 0, Constant.true)
+        return Values.false
+
+    def TRUE():
+        if Values.true is None:
+            Values.true = Values(Constant.true).set_value(Bool.boolean, 1, Constant.true)
+        return Values.true
 
 class Expression(Line):
     total_number_of_generated_expressions = 0
@@ -947,12 +835,7 @@ class Variable(Expression):
             if isinstance(self.sid_line, Bitvector) and self.sid_line.size <= Instance.PROPAGATE:
                 self.cache_values[0] = Values(self)
                 for value in range(2**self.sid_line.size):
-                    self.cache_values[0].set_value(self.sid_line, value,
-                        Comparison(next_nid(), OP_EQ, Bool.boolean,
-                            self,
-                            Constd(next_nid(), self.sid_line, value,
-                                self.comment, self.line_no),
-                            self.comment, self.line_no))
+                    self.cache_values[0].set_value(self.sid_line, value, Constraints(self, value))
             else:
                 self.cache_values[0] = self
         return self.cache_values[0]
@@ -1220,8 +1103,7 @@ class Indexed(Expression):
     def propagate(self, arg1_value, op_lambda):
         results = Values(self)
         for value in arg1_value.values:
-            constraint_line = arg1_value.values[value]
-            results.set_value(self.sid_line, op_lambda(value), constraint_line)
+            results.set_value(self.sid_line, op_lambda(value), arg1_value.values[value])
         return results
 
 class Ext(Indexed):
@@ -1365,8 +1247,8 @@ class Unary(Expression):
     def propagate(self, arg1_value, op_lambda):
         results = Values(self)
         for value in arg1_value.values:
-            constraint_line = arg1_value.values[value]
-            results.set_value(self.sid_line, op_lambda(value) % 2**self.sid_line.size, constraint_line)
+            results.set_value(self.sid_line, op_lambda(value) % 2**self.sid_line.size,
+                arg1_value.values[value])
         return results
 
     def get_values(self, step):
@@ -1460,43 +1342,12 @@ class Binary(Expression):
         arg2_line = self.arg2_line.get_mapped_array_expression_for(None)
         return self.copy(arg1_line, arg2_line)
 
-    def propagate_values(self, arg1_value, arg2_value, op_lambda):
-        results = Values(self)
-        for value1 in arg1_value.values:
-            for value2 in arg2_value.values:
-                constraint1_line = arg1_value.values[value1]
-                constraint2_line = arg2_value.values[value2]
-                results.set_value(self.sid_line, op_lambda(value1, value2),
-                    Values.AND(constraint1_line, constraint2_line))
-        return results
-
     def propagate(self, arg1_value, arg2_value, op_lambda):
-        var_line = None
-        intervals = {}
         results = Values(self)
         for value1 in arg1_value.values:
             for value2 in arg2_value.values:
-                constraint1_line = arg1_value.values[value1]
-                constraint2_line = arg2_value.values[value2]
-                constraint_line = Values.AND(constraint1_line, constraint2_line)
-                if isinstance(constraint_line, Comparison) and constraint_line.op == OP_EQ and (var_line is None or var_line == constraint_line.arg1_line) and isinstance(constraint_line.arg2_line, Constant):
-                    var_line = constraint_line.arg1_line
-                    value = constraint_line.arg2_line.value
-                    result = op_lambda(value1, value2)
-                    if result not in intervals:
-                        intervals[result] = (value, value)
-                    elif value == intervals[result][0] - 1:
-                        intervals[result] = (value, intervals[result][1])
-                    elif value == intervals[result][1] + 1:
-                        intervals[result] = (intervals[result][0], value)
-                    elif value < intervals[result][0] - 1 or value > intervals[result][1]:
-                        results.set_interval(self.sid_line, result, var_line, intervals[result])
-                        intervals[result] = (value, value)
-                else:
-                    return self.propagate_values(arg1_value, arg2_value, op_lambda)
-        assert intervals
-        for result in intervals:
-            results.set_interval(self.sid_line, result, var_line, intervals[result])
+                results.set_value(self.sid_line, op_lambda(value1, value2),
+                    Constraints.AND(arg1_value.values[value1], arg2_value.values[value2]))
         return results
 
 class Implies(Binary):
@@ -1516,8 +1367,8 @@ class Implies(Binary):
         if step not in self.cache_values:
             arg1_value = self.arg1_line.get_values(step)
             if Instance.PROPAGATE_BINARY and isinstance(arg1_value, Values):
-                false_line, true_line = arg1_value.get_boolean_constraints()
-                if false_line == Constant.true:
+                false_constraint, true_constraint = arg1_value.get_boolean_constraints()
+                if false_constraint is Constant.true:
                     self.cache_values[step] = Values.TRUE()
                     return self.cache_values[step]
                 else:
@@ -1675,9 +1526,9 @@ class Logical(Binary):
                 if isinstance(self.sid_line, Bool):
                     arg1_value = self.arg1_line.get_values(step)
                     if isinstance(arg1_value, Values):
-                        false_line, true_line = arg1_value.get_boolean_constraints()
+                        false_constraint, true_constraint = arg1_value.get_boolean_constraints()
                         if self.op == OP_AND:
-                            if false_line == Constant.true:
+                            if false_constraint is Constant.true:
                                 self.cache_values[step] = Values.FALSE()
                                 return self.cache_values[step]
                             else:
@@ -1688,7 +1539,7 @@ class Logical(Binary):
                                         lambda x, y: 1 if x == 1 and y == 1 else 0)
                                     return self.cache_values[step]
                         elif self.op == OP_OR:
-                            if true_line == Constant.true:
+                            if true_constraint is Constant.true:
                                 self.cache_values[step] = Values.TRUE()
                                 return self.cache_values[step]
                             else:
@@ -2091,25 +1942,25 @@ class Ite(Ternary):
         if step not in self.cache_values:
             arg1_value = self.arg1_line.get_values(step)
             if Instance.PROPAGATE_ITE and isinstance(arg1_value, Values):
-                false_line, true_line = arg1_value.get_boolean_constraints()
-                if false_line == Constant.false:
+                false_constraint, true_constraint = arg1_value.get_boolean_constraints()
+                if false_constraint is Constant.false:
                     arg2_value = self.arg2_line.get_values(step)
                     if isinstance(arg2_value, Values):
-                        self.cache_values[step] = arg2_value.constrain(true_line)
+                        self.cache_values[step] = arg2_value.constrain(true_constraint)
                         return self.cache_values[step]
-                    elif true_line == Constant.true:
+                    elif true_constraint is Constant.true:
                         # true case holds unconditionally
                         self.cache_values[step] = arg2_value.get_expression()
                         return self.cache_values[step]
                     else:
                         # lazy evaluation of false case
                         arg3_value = self.arg3_line.get_values(step)
-                elif true_line == Constant.false:
+                elif true_constraint is Constant.false:
                     arg3_value = self.arg3_line.get_values(step)
                     if isinstance(arg3_value, Values):
-                        self.cache_values[step] = arg3_value.constrain(false_line)
+                        self.cache_values[step] = arg3_value.constrain(false_constraint)
                         return self.cache_values[step]
-                    elif false_line == Constant.true:
+                    elif false_constraint is Constant.true:
                         # false case holds unconditionally
                         self.cache_values[step] = arg3_value.get_expression()
                         return self.cache_values[step]
@@ -2120,8 +1971,8 @@ class Ite(Ternary):
                     arg2_value = self.arg2_line.get_values(step)
                     arg3_value = self.arg3_line.get_values(step)
                     if isinstance(arg2_value, Values) and isinstance(arg3_value, Values):
-                        arg2_value = arg2_value.constrain(true_line)
-                        arg3_value = arg3_value.constrain(false_line)
+                        arg2_value = arg2_value.constrain(true_constraint)
+                        arg3_value = arg3_value.constrain(false_constraint)
                         self.cache_values[step] = arg2_value.merge(arg3_value)
                         return self.cache_values[step]
             else:
@@ -5201,7 +5052,7 @@ def print_message(message, step = None, level = None):
 
 def print_message_with_propagation_profile(message, step = None, level = None):
     if Instance.PROPAGATE is not None:
-        print_message(f"({Values.total_number_of_values}, {Expression.total_number_of_generated_expressions}) {message}", step, level)
+        print_message(f"({Values.total_number_of_values}, {Constraints.total_number_of_constraints}, {Expression.total_number_of_generated_expressions}) {message}", step, level)
     else:
         print_message(message, step, level)
 
