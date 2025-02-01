@@ -372,9 +372,15 @@ class Array(Sort):
 class Constraints:
     total_number_of_constraints = 0
 
+    ordering = {}
+
     def __init__(self, var_line, value):
         self.var_line = var_line
         self.values = {value:None}
+        self.off = Constant.false
+        self.on = Constant.true
+        if self.var_line not in ordering:
+            ordering[self.var_line] = None
 
     def __str__(self):
         string = ""
@@ -387,7 +393,7 @@ class Constraints:
     def match_sorts(self, constraints):
         return self.var_line.sid_line.match_sorts(constraints.var_line.sid_line)
 
-    def AND(constraints1, constraints2):
+    def intersection(constraints1, constraints2):
         if constraints1 is Constant.true:
             return constraints2
         elif constraints2 is Constant.true:
@@ -410,7 +416,7 @@ class Constraints:
                         results.values[value] = constraints2.values[value]
             return results
 
-    def OR(constraints1, constraints2):
+    def union(constraints1, constraints2):
         if constraints1 is Constant.false:
             return constraints2
         elif constraints2 is Constant.false:
@@ -437,7 +443,6 @@ class Constraints:
             return results
 
     def get_expression(self):
-        assert self.values
         exp_line = Constant.false
         for value in self.values:
             comparison_line = Comparison(next_nid(), OP_EQ, Bool.boolean,
@@ -452,7 +457,39 @@ class Constraints:
                     comparison_line,
                     exp_line,
                     self.var_line.comment, self.var_line.line_no)
-        return exp_line
+        return Constraints.OR(Constraints.AND(exp_line, self.on), self.off)
+
+    def AND(constraints1, constraints2):
+        if constraints1 is Constant.false or constraints2 is Constant.false:
+            return Constant.false
+        elif constraints1 is Constant.true:
+            return constraints2
+        elif constraints2 is Constant.true:
+            return constraints1
+        elif constraints1 is constraints2:
+            return constraints1
+        else:
+            constraints1_line = constraints1.get_expression()
+            constraints2_line = constraints2.get_expression()
+            return Logical(next_nid(), OP_AND, Bool.boolean,
+                constraints1_line, constraints2_line,
+                constraints1_line.comment, constraints1_line.line_no)
+
+    def OR(constraints1, constraints2):
+        if constraints1 is Constant.true or constraints2 is Constant.true:
+            return Constant.true
+        elif constraints1 is Constant.false:
+            return constraints2
+        elif constraints2 is Constant.false:
+            return constraints1
+        elif constraints1 is constraints2:
+            return constraints1
+        else:
+            constraints1_line = constraints1.get_expression()
+            constraints2_line = constraints2.get_expression()
+            return Logical(next_nid(), OP_OR, Bool.boolean,
+                constraints1_line, constraints2_line,
+                constraints1_line.comment, constraints1_line.line_no)
 
     def NOT(constraints1):
         if constraints1 is Constant.true:
@@ -460,10 +497,10 @@ class Constraints:
         elif constraints1 is Constant.false:
             return Constant.true
         else:
-            assert isinstance(constraints1, Constraints)
+            constraints1_line = constraints1.get_expression()
             return Unary(next_nid(), OP_NOT, Bool.boolean,
-                constraints1.get_expression(),
-                constraints1.var_line.comment, constraints1.var_line.line_no)
+                constraints1_line,
+                constraints1_line.comment, constraints1_line.line_no)
 
     def IMPLIES(constraints1, constraints2):
         if constraints1 is Constant.false or constraints2 is Constant.true:
@@ -475,10 +512,11 @@ class Constraints:
         elif constraints1 is constraints2:
             return Constant.true
         else:
-            assert isinstance(constraints1, Constraints) and isinstance(constraints2, Constraints)
+            constraints1_line = constraints1.get_expression()
+            constraints2_line = constraints2.get_expression()
             return Implies(next_nid(), OP_IMPLIES, Bool.boolean,
-                constraints1.get_expression(), constraints2.get_expression(),
-                constraints1.var_line.comment, constraints1.var_line.line_no)
+                constraints1_line, constraints2_line,
+                constraints1_line.comment, constraints1_line.line_no)
 
 class Values:
     total_number_of_values = 0
@@ -501,6 +539,16 @@ class Values:
     def match_sorts(self, values):
         return self.exp_line.sid_line.match_sorts(values.exp_line.sid_line)
 
+    def FALSE():
+        if Values.false is None:
+            Values.false = Values(Constant.false).set_value(Bool.boolean, 0, Constant.true)
+        return Values.false
+
+    def TRUE():
+        if Values.true is None:
+            Values.true = Values(Constant.true).set_value(Bool.boolean, 1, Constant.true)
+        return Values.true
+
     def constrain(self, constraints):
         assert self.values
         assert constraints is not Constant.false
@@ -511,7 +559,7 @@ class Values:
             results = Values(self.exp_line)
             for value in self.values:
                 results.set_value(self.exp_line.sid_line, value,
-                    Constraints.AND(self.values[value], constraints))
+                    Constraints.intersection(self.values[value], constraints))
             return results
 
     def merge(self, values):
@@ -578,7 +626,7 @@ class Values:
                 self.values[value] = constraints
             else:
                 assert self.values[value] is not Constant.false
-                self.values[value] = Constraints.OR(self.values[value], constraints)
+                self.values[value] = Constraints.union(self.values[value], constraints)
         return self
 
     def is_equal(self, values):
@@ -593,16 +641,6 @@ class Values:
                 else:
                     return False
             return True
-
-    def FALSE():
-        if Values.false is None:
-            Values.false = Values(Constant.false).set_value(Bool.boolean, 0, Constant.true)
-        return Values.false
-
-    def TRUE():
-        if Values.true is None:
-            Values.true = Values(Constant.true).set_value(Bool.boolean, 1, Constant.true)
-        return Values.true
 
 class Expression(Line):
     total_number_of_generated_expressions = 0
@@ -1347,7 +1385,7 @@ class Binary(Expression):
         for value1 in arg1_value.values:
             for value2 in arg2_value.values:
                 results.set_value(self.sid_line, op_lambda(value1, value2),
-                    Constraints.AND(arg1_value.values[value1], arg2_value.values[value2]))
+                    Constraints.intersection(arg1_value.values[value1], arg2_value.values[value2]))
         return results
 
 class Implies(Binary):
