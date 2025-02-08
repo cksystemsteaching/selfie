@@ -379,8 +379,8 @@ class Constraints:
         self.values = {value:None}
         self.off = Constant.false
         self.on = Constant.true
-        if self.var_line not in ordering:
-            ordering[self.var_line] = None
+        if self.var_line not in Constraints.ordering:
+            Constraints.ordering[self.var_line] = None
 
     def __str__(self):
         string = ""
@@ -524,8 +524,9 @@ class Values:
     false = None
     true = None
 
-    def __init__(self, exp_line):
-        self.exp_line = exp_line
+    def __init__(self, sid_line):
+        assert isinstance(sid_line, Bitvector)
+        self.sid_line = sid_line
         self.values = {}
 
     def __str__(self):
@@ -534,19 +535,19 @@ class Values:
             if string:
                 string += ", "
             string += f"{value}:{self.values[value]}"
-        return f"{{{string}}}: {self.exp_line}"
+        return f"{{{string}}}: {self.sid_line}"
 
     def match_sorts(self, values):
-        return self.exp_line.sid_line.match_sorts(values.exp_line.sid_line)
+        return self.sid_line.match_sorts(values.sid_line)
 
     def FALSE():
         if Values.false is None:
-            Values.false = Values(Constant.false).set_value(Bool.boolean, 0, Constant.true)
+            Values.false = Values(Bool.boolean).set_value(Bool.boolean, 0, Constant.true)
         return Values.false
 
     def TRUE():
         if Values.true is None:
-            Values.true = Values(Constant.true).set_value(Bool.boolean, 1, Constant.true)
+            Values.true = Values(Bool.boolean).set_value(Bool.boolean, 1, Constant.true)
         return Values.true
 
     def constrain(self, constraints):
@@ -556,9 +557,9 @@ class Values:
             return self
         else:
             assert isinstance(constraints, Constraints)
-            results = Values(self.exp_line)
+            results = Values(self.sid_line)
             for value in self.values:
-                results.set_value(self.exp_line.sid_line, value,
+                results.set_value(self.sid_line, value,
                     Constraints.intersection(self.values[value], constraints))
             return results
 
@@ -567,15 +568,15 @@ class Values:
         assert isinstance(values, Values)
         assert self.match_sorts(values)
         assert values.values
-        results = Values(self.exp_line)
+        results = Values(self.sid_line)
         for value in self.values:
-            results.set_value(self.exp_line.sid_line, value, self.values[value])
+            results.set_value(self.sid_line, value, self.values[value])
         for value in values.values:
-            results.set_value(self.exp_line.sid_line, value, values.values[value])
+            results.set_value(self.sid_line, value, values.values[value])
         return results
 
     def get_boolean_constraints(self):
-        assert isinstance(self.exp_line.sid_line, Bool)
+        assert isinstance(self.sid_line, Bool)
         assert len(self.values) <= 2
         false_constraint = Constant.false
         true_constraint = Constant.false
@@ -591,7 +592,7 @@ class Values:
     def get_expression(self):
         # naive transition from domain propagation to bit blasting
         assert len(self.values) > 0
-        if isinstance(self.exp_line.sid_line, Bool):
+        if isinstance(self.sid_line, Bool):
             # constraints on false value implies constraints on true value
             return Constraints.IMPLIES(*self.get_boolean_constraints())
         else:
@@ -601,22 +602,22 @@ class Values:
                 if constraint_line is not Constant.true:
                     if constraint_line is not Constant.false:
                         if exp_line is None:
-                            exp_line = Zero(next_nid(), self.exp_line.sid_line,
+                            exp_line = Zero(next_nid(), self.sid_line,
                                 "unreachable-value", "unreachable value", 0)
-                        exp_line = Ite(next_nid(), self.exp_line.sid_line,
+                        exp_line = Ite(next_nid(), self.sid_line,
                             constraint_line,
-                            Constd(next_nid(), self.exp_line.sid_line, value,
+                            Constd(next_nid(), self.sid_line, value,
                                 constraint_line.comment, constraint_line.line_no),
                             exp_line,
                             constraint_line.comment, constraint_line.line_no)
                 else:
-                    exp_line = Constd(next_nid(), self.exp_line.sid_line, value,
+                    exp_line = Constd(next_nid(), self.sid_line, value,
                         constraint_line.comment, constraint_line.line_no)
             assert exp_line is not None
             return exp_line
 
     def set_value(self, sid_line, value, constraints):
-        assert self.exp_line.sid_line.match_sorts(sid_line)
+        assert self.sid_line.match_sorts(sid_line)
         assert isinstance(value, int)
         assert sid_line.is_unsigned_value(value)
         if constraints is not Constant.false:
@@ -719,7 +720,7 @@ class Constant(Expression):
     def get_values(self, step):
         if 0 not in self.cache_values:
             if Instance.PROPAGATE > 0:
-                self.cache_values[0] = Values(self).set_value(self.sid_line, self.value, Constant.true)
+                self.cache_values[0] = Values(self.sid_line).set_value(self.sid_line, self.value, Constant.true)
             else:
                 self.cache_values[0] = self
         return self.cache_values[0]
@@ -871,7 +872,7 @@ class Variable(Expression):
     def get_values(self, step):
         if 0 not in self.cache_values:
             if isinstance(self.sid_line, Bitvector) and self.sid_line.size <= Instance.PROPAGATE:
-                self.cache_values[0] = Values(self)
+                self.cache_values[0] = Values(self.sid_line)
                 for value in range(2**self.sid_line.size):
                     self.cache_values[0].set_value(self.sid_line, value, Constraints(self, value))
             else:
@@ -1139,7 +1140,7 @@ class Indexed(Expression):
         return self.copy(arg1_line)
 
     def propagate(self, arg1_value, op_lambda):
-        results = Values(self)
+        results = Values(self.sid_line)
         for value in arg1_value.values:
             results.set_value(self.sid_line, op_lambda(value), arg1_value.values[value])
         return results
@@ -1283,7 +1284,7 @@ class Unary(Expression):
         return self.copy(arg1_line)
 
     def propagate(self, arg1_value, op_lambda):
-        results = Values(self)
+        results = Values(self.sid_line)
         for value in arg1_value.values:
             results.set_value(self.sid_line, op_lambda(value) % 2**self.sid_line.size,
                 arg1_value.values[value])
@@ -1381,7 +1382,7 @@ class Binary(Expression):
         return self.copy(arg1_line, arg2_line)
 
     def propagate(self, arg1_value, arg2_value, op_lambda):
-        results = Values(self)
+        results = Values(self.sid_line)
         for value1 in arg1_value.values:
             for value2 in arg2_value.values:
                 results.set_value(self.sid_line, op_lambda(value1, value2),
