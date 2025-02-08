@@ -681,6 +681,42 @@ class Values:
         assert isinstance(self.sid_line, Bitvec)
         return self.apply_unary(self.sid_line, lambda x: -x % 2**self.sid_line.size)
 
+    def apply_binary(self, values, op):
+        results = Values(self.sid_line)
+        for value1 in self.values:
+            for value2 in values.values:
+                results.set_value(self.sid_line, op(value1, value2),
+                    Constraints.intersection(self.values[value1], values.values[value2]))
+        return results
+
+    def Implies(self, values):
+        assert isinstance(self.sid_line, Bool) and isinstance(values.sid_line, Bool)
+        return self.apply_binary(values, lambda x, y: 1 if x == 0 else y)
+
+    def And(self, values):
+        assert isinstance(self.sid_line, Bool) and isinstance(values.sid_line, Bool)
+        return self.apply_binary(values, lambda x, y: 1 if x == 1 and y == 1 else 0)
+
+    def Or(self, values):
+        assert isinstance(self.sid_line, Bool) and isinstance(values.sid_line, Bool)
+        return self.apply_binary(values, lambda x, y: 1 if x == 1 or y == 1 else 0)
+
+    def Xor(self, values):
+        assert isinstance(self.sid_line, Bool) and isinstance(values.sid_line, Bool)
+        return self.apply_binary(values, lambda x, y: 1 if (x == 1 and y == 0) or (x == 0 and y == 1) else 0)
+
+    def __and__(self, values):
+        assert isinstance(self.sid_line, Bitvec) and self.sid_line.match_sorts(values.sid_line)
+        return self.apply_binary(values, lambda x, y: x & y)
+
+    def __or__(self, values):
+        assert isinstance(self.sid_line, Bitvec) and self.sid_line.match_sorts(values.sid_line)
+        return self.apply_binary(values, lambda x, y: x | y)
+
+    def __xor__(self, values):
+        assert isinstance(self.sid_line, Bitvec) and self.sid_line.match_sorts(values.sid_line)
+        return self.apply_binary(values, lambda x, y: x ^ y)
+
 class Expression(Line):
     total_number_of_generated_expressions = 0
 
@@ -1434,11 +1470,10 @@ class Implies(Binary):
                     self.cache_values[step] = Values.TRUE()
                     return self.cache_values[step]
                 else:
-                    # lazy evaluation of implied value
+                    # lazy evaluation of implied values
                     arg2_value = self.arg2_line.get_values(step)
                     if isinstance(arg2_value, Values):
-                        self.cache_values[step] = self.propagate(arg1_value, arg2_value,
-                            lambda x, y: 1 if x == 0 else y)
+                        self.cache_values[step] = arg1_value.Implies(arg2_value)
                         return self.cache_values[step]
             else:
                 arg2_value = self.arg2_line.get_values(step)
@@ -1597,8 +1632,7 @@ class Logical(Binary):
                                 # lazy evaluation of second operand
                                 arg2_value = self.arg2_line.get_values(step)
                                 if isinstance(arg2_value, Values):
-                                    self.cache_values[step] = self.propagate(arg1_value, arg2_value,
-                                        lambda x, y: 1 if x == 1 and y == 1 else 0)
+                                    self.cache_values[step] = arg1_value.And(arg2_value)
                                     return self.cache_values[step]
                         elif self.op == OP_OR:
                             if true_constraint is Constant.true:
@@ -1608,15 +1642,13 @@ class Logical(Binary):
                                 # lazy evaluation of second operand
                                 arg2_value = self.arg2_line.get_values(step)
                                 if isinstance(arg2_value, Values):
-                                    self.cache_values[step] = self.propagate(arg1_value, arg2_value,
-                                        lambda x, y: 1 if x == 1 or y == 1 else 0)
+                                    self.cache_values[step] = arg1_value.Or(arg2_value)
                                     return self.cache_values[step]
                         else:
                             assert self.op == OP_XOR
                             arg2_value = self.arg2_line.get_values(step)
                             if isinstance(arg2_value, Values):
-                                self.cache_values[step] = self.propagate(arg1_value, arg2_value,
-                                    lambda x, y: 1 if (x == 1 and y == 0) or (x == 0 and y == 1) else 0)
+                                self.cache_values[step] = arg1_value.Xor(arg2_value)
                                 return self.cache_values[step]
                     arg2_value = self.arg2_line.get_values(step)
                 else:
@@ -1624,15 +1656,12 @@ class Logical(Binary):
                     arg2_value = self.arg2_line.get_values(step)
                     if isinstance(arg1_value, Values) and isinstance(arg2_value, Values):
                         if self.op == OP_AND:
-                            self.cache_values[step] = self.propagate(arg1_value, arg2_value,
-                                lambda x, y: x & y)
+                            self.cache_values[step] = arg1_value & arg2_value
                         elif self.op == OP_OR:
-                            self.cache_values[step] = self.propagate(arg1_value, arg2_value,
-                                lambda x, y: x | y)
+                            self.cache_values[step] = arg1_value | arg2_value
                         else:
                             assert self.op == OP_XOR
-                            self.cache_values[step] = self.propagate(arg1_value, arg2_value,
-                                lambda x, y: x ^ y)
+                            self.cache_values[step] = arg1_value ^ arg2_value
                         return self.cache_values[step]
             else:
                 arg1_value = self.arg1_line.get_values(step)
