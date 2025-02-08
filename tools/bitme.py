@@ -681,41 +681,45 @@ class Values:
         assert isinstance(self.sid_line, Bitvec)
         return self.apply_unary(self.sid_line, lambda x: -x % 2**self.sid_line.size)
 
-    def apply_binary(self, values, op):
-        results = Values(self.sid_line)
+    def apply_binary(self, sid_line, values, op):
+        results = Values(sid_line)
         for value1 in self.values:
             for value2 in values.values:
-                results.set_value(self.sid_line, op(value1, value2),
+                results.set_value(sid_line, op(value1, value2),
                     Constraints.intersection(self.values[value1], values.values[value2]))
         return results
 
     def Implies(self, values):
         assert isinstance(self.sid_line, Bool) and isinstance(values.sid_line, Bool)
-        return self.apply_binary(values, lambda x, y: 1 if x == 0 else y)
+        return self.apply_binary(self.sid_line, values, lambda x, y: 1 if x == 0 else y)
 
     def And(self, values):
         assert isinstance(self.sid_line, Bool) and isinstance(values.sid_line, Bool)
-        return self.apply_binary(values, lambda x, y: 1 if x == 1 and y == 1 else 0)
+        return self.apply_binary(self.sid_line, values, lambda x, y: 1 if x == 1 and y == 1 else 0)
 
     def Or(self, values):
         assert isinstance(self.sid_line, Bool) and isinstance(values.sid_line, Bool)
-        return self.apply_binary(values, lambda x, y: 1 if x == 1 or y == 1 else 0)
+        return self.apply_binary(self.sid_line, values, lambda x, y: 1 if x == 1 or y == 1 else 0)
 
     def Xor(self, values):
         assert isinstance(self.sid_line, Bool) and isinstance(values.sid_line, Bool)
-        return self.apply_binary(values, lambda x, y: 1 if (x == 1 and y == 0) or (x == 0 and y == 1) else 0)
+        return self.apply_binary(self.sid_line, values, lambda x, y: 1 if (x == 1 and y == 0) or (x == 0 and y == 1) else 0)
 
     def __and__(self, values):
         assert isinstance(self.sid_line, Bitvec) and self.sid_line.match_sorts(values.sid_line)
-        return self.apply_binary(values, lambda x, y: x & y)
+        return self.apply_binary(self.sid_line, values, lambda x, y: x & y)
 
     def __or__(self, values):
         assert isinstance(self.sid_line, Bitvec) and self.sid_line.match_sorts(values.sid_line)
-        return self.apply_binary(values, lambda x, y: x | y)
+        return self.apply_binary(self.sid_line, values, lambda x, y: x | y)
 
     def __xor__(self, values):
         assert isinstance(self.sid_line, Bitvec) and self.sid_line.match_sorts(values.sid_line)
-        return self.apply_binary(values, lambda x, y: x ^ y)
+        return self.apply_binary(self.sid_line, values, lambda x, y: x ^ y)
+
+    def Concat(self, values, sid_line):
+        assert isinstance(self.sid_line, Bitvec) and isinstance(values.sid_line, Bitvec)
+        return self.apply_binary(sid_line, values, lambda x, y: (x << values.sid_line.size) + y)
 
 class Expression(Line):
     total_number_of_generated_expressions = 0
@@ -1857,8 +1861,7 @@ class Concat(Binary):
             arg2_value = self.arg2_line.get_values(step)
             if Instance.PROPAGATE_BINARY:
                 if isinstance(arg1_value, Values) and isinstance(arg2_value, Values):
-                    self.cache_values[step] = self.propagate(arg1_value, arg2_value,
-                        lambda x, y: (x << self.arg2_line.sid_line.size) + y)
+                    self.cache_values[step] = arg1_value.Concat(arg2_value, self.sid_line)
                     return self.cache_values[step]
             arg1_value = arg1_value.get_expression()
             arg2_value = arg2_value.get_expression()
