@@ -643,6 +643,44 @@ class Values:
                     return False
             return True
 
+    def apply_unary(self, sid_line, op):
+        results = Values(sid_line)
+        for value in self.values:
+            results.set_value(sid_line, op(value), self.values[value])
+        return results
+
+    def SignExt(self, sid_line):
+        assert isinstance(self.sid_line, Bitvec)
+        return self.apply_unary(sid_line, lambda x: self.sid_line.get_signed_value(x) % 2**sid_line.size)
+
+    def ZeroExt(self, sid_line):
+        assert isinstance(self.sid_line, Bitvec)
+        return self.apply_unary(sid_line, lambda x: x)
+
+    def Extract(self, sid_line, u, l):
+        assert isinstance(self.sid_line, Bitvec)
+        return self.apply_unary(sid_line, lambda x: (x & 2**(u + 1) - 1) >> l)
+
+    def Not(self):
+        assert isinstance(self.sid_line, Bool)
+        return self.apply_unary(self.sid_line, lambda x: 1 if x == 0 else 0)
+
+    def __invert__(self):
+        assert isinstance(self.sid_line, Bitvec)
+        return self.apply_unary(self.sid_line, lambda x: ~x % 2**self.sid_line.size)
+
+    def Inc(self):
+        assert isinstance(self.sid_line, Bitvec)
+        return self.apply_unary(self.sid_line, lambda x: (x + 1) % 2**self.sid_line.size)
+
+    def Dec(self):
+        assert isinstance(self.sid_line, Bitvec)
+        return self.apply_unary(self.sid_line, lambda x: (x - 1) % 2**self.sid_line.size)
+
+    def __neg__(self):
+        assert isinstance(self.sid_line, Bitvec)
+        return self.apply_unary(self.sid_line, lambda x: -x % 2**self.sid_line.size)
+
 class Expression(Line):
     total_number_of_generated_expressions = 0
 
@@ -1139,12 +1177,6 @@ class Indexed(Expression):
         arg1_line = self.arg1_line.get_mapped_array_expression_for(None)
         return self.copy(arg1_line)
 
-    def propagate(self, arg1_value, op_lambda):
-        results = Values(self.sid_line)
-        for value in arg1_value.values:
-            results.set_value(self.sid_line, op_lambda(value), arg1_value.values[value])
-        return results
-
 class Ext(Indexed):
     keywords = {OP_SEXT, OP_UEXT}
 
@@ -1171,11 +1203,10 @@ class Ext(Indexed):
             arg1_value = self.arg1_line.get_values(step)
             if Instance.PROPAGATE_UNARY and isinstance(arg1_value, Values):
                 if self.op == OP_SEXT:
-                    self.cache_values[step] = self.propagate(arg1_value,
-                        lambda x: self.arg1_line.sid_line.get_signed_value(x) % 2**self.sid_line.size)
+                    self.cache_values[step] = arg1_value.SignExt(self.sid_line)
                 else:
                     assert self.op == OP_UEXT
-                    self.cache_values[step] = self.propagate(arg1_value, lambda x: x)
+                    self.cache_values[step] = arg1_value.ZeroExt(self.sid_line)
                 return self.cache_values[step]
             arg1_value = arg1_value.get_expression()
             self.cache_values[step] = self.copy(arg1_value)
@@ -1229,8 +1260,7 @@ class Slice(Indexed):
         if step not in self.cache_values:
             arg1_value = self.arg1_line.get_values(step)
             if Instance.PROPAGATE_UNARY and isinstance(arg1_value, Values):
-                self.cache_values[step] = self.propagate(arg1_value,
-                    lambda x: (x & 2**(self.u + 1) - 1) >> self.l)
+                self.cache_values[step] = arg1_value.Extract(self.sid_line, self.u, self.l)
                 return self.cache_values[step]
             arg1_value = arg1_value.get_expression()
             self.cache_values[step] = self.copy(arg1_value)
@@ -1283,49 +1313,42 @@ class Unary(Expression):
         arg1_line = self.arg1_line.get_mapped_array_expression_for(None)
         return self.copy(arg1_line)
 
-    def propagate(self, arg1_value, op_lambda):
-        results = Values(self.sid_line)
-        for value in arg1_value.values:
-            results.set_value(self.sid_line, op_lambda(value) % 2**self.sid_line.size,
-                arg1_value.values[value])
-        return results
-
     def get_values(self, step):
         if step not in self.cache_values:
             arg1_value = self.arg1_line.get_values(step)
             if Instance.PROPAGATE_UNARY and isinstance(arg1_value, Values):
                 if self.op == OP_NOT:
                     if isinstance(self.sid_line, Bool):
-                        self.cache_values[step] = self.propagate(arg1_value,
-                            lambda x: 1 if x == 0 else 0)
+                        self.cache_values[step] = arg1_value.Not()
                     else:
-                        self.cache_values[step] = self.propagate(arg1_value, lambda x: ~x)
+                        self.cache_values[step] = ~arg1_value
                 elif self.op == OP_INC:
-                    self.cache_values[step] = self.propagate(arg1_value, lambda x: x + 1)
+                    self.cache_values[step] = arg1_value.Inc()
                 elif self.op == OP_DEC:
-                    self.cache_values[step] = self.propagate(arg1_value, lambda x: x - 1)
+                    self.cache_values[step] = arg1_value.Dec()
                 else:
                     assert self.op == OP_NEG
-                    self.cache_values[step] = self.propagate(arg1_value, lambda x: -x)
+                    self.cache_values[step] = -arg1_value
                 return self.cache_values[step]
-            arg1_value= arg1_value.get_expression()
+            arg1_value = arg1_value.get_expression()
             self.cache_values[step] = self.copy(arg1_value)
         return self.cache_values[step]
 
     def get_z3(self):
         if self.z3 is None:
+            z3_arg1 = self.arg1_line.get_z3()
             if self.op == OP_NOT:
                 if isinstance(self.sid_line, Bool):
-                    self.z3 = z3.Not(self.arg1_line.get_z3())
+                    self.z3 = z3.Not(z3_arg1)
                 else:
-                    self.z3 = ~self.arg1_line.get_z3()
+                    self.z3 = ~z3_arg1
             elif self.op == OP_INC:
-                self.z3 = self.arg1_line.get_z3() + 1
+                self.z3 = z3_arg1 + 1
             elif self.op == OP_DEC:
-                self.z3 = self.arg1_line.get_z3() - 1
+                self.z3 = z3_arg1 - 1
             else:
                 assert self.op == OP_NEG
-                self.z3 = -self.arg1_line.get_z3()
+                self.z3 = -z3_arg1
         return self.z3
 
     def get_bitwuzla(self, tm):
