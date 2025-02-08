@@ -690,16 +690,28 @@ class Values:
         return results
 
     def Implies(self, values):
-        assert isinstance(self.sid_line, Bool) and isinstance(values.sid_line, Bool)
-        return self.apply_binary(self.sid_line, values, lambda x, y: 1 if x == 0 else y)
+        assert isinstance(self.sid_line, Bool)
+        if values is None:
+            return Values.TRUE()
+        else:
+            assert isinstance(values.sid_line, Bool)
+            return self.apply_binary(self.sid_line, values, lambda x, y: 1 if x == 0 else y)
 
     def And(self, values):
-        assert isinstance(self.sid_line, Bool) and isinstance(values.sid_line, Bool)
-        return self.apply_binary(self.sid_line, values, lambda x, y: 1 if x == 1 and y == 1 else 0)
+        assert isinstance(self.sid_line, Bool)
+        if values is None:
+            return Values.FALSE()
+        else:
+            assert isinstance(values.sid_line, Bool)
+            return self.apply_binary(self.sid_line, values, lambda x, y: 1 if x == 1 and y == 1 else 0)
 
     def Or(self, values):
-        assert isinstance(self.sid_line, Bool) and isinstance(values.sid_line, Bool)
-        return self.apply_binary(self.sid_line, values, lambda x, y: 1 if x == 1 or y == 1 else 0)
+        assert isinstance(self.sid_line, Bool)
+        if values is None:
+            return Values.TRUE()
+        else:
+            assert isinstance(values.sid_line, Bool)
+            return self.apply_binary(self.sid_line, values, lambda x, y: 1 if x == 1 or y == 1 else 0)
 
     def Xor(self, values):
         assert isinstance(self.sid_line, Bool) and isinstance(values.sid_line, Bool)
@@ -1471,7 +1483,7 @@ class Implies(Binary):
             if Instance.PROPAGATE_BINARY and isinstance(arg1_value, Values):
                 false_constraint, true_constraint = arg1_value.get_boolean_constraints()
                 if false_constraint is Constant.true:
-                    self.cache_values[step] = Values.TRUE()
+                    self.cache_values[step] = arg1_value.Implies(None)
                     return self.cache_values[step]
                 else:
                     # lazy evaluation of implied values
@@ -1630,7 +1642,7 @@ class Logical(Binary):
                         false_constraint, true_constraint = arg1_value.get_boolean_constraints()
                         if self.op == OP_AND:
                             if false_constraint is Constant.true:
-                                self.cache_values[step] = Values.FALSE()
+                                self.cache_values[step] = arg1_value.And(None)
                                 return self.cache_values[step]
                             else:
                                 # lazy evaluation of second operand
@@ -1640,7 +1652,7 @@ class Logical(Binary):
                                     return self.cache_values[step]
                         elif self.op == OP_OR:
                             if true_constraint is Constant.true:
-                                self.cache_values[step] = Values.TRUE()
+                                self.cache_values[step] = arg1_value.Or(None)
                                 return self.cache_values[step]
                             else:
                                 # lazy evaluation of second operand
