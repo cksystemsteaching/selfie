@@ -404,7 +404,7 @@ class Constraints:
             assert isinstance(constraints1, Constraints) and isinstance(constraints2, Constraints)
             assert constraints1.values and constraints2.values
             assert constraints1.match_sorts(constraints2)
-            assert constraints1.var_line == constraints2.var_line
+            assert constraints1.var_line is constraints2.var_line
             results = Constant.false
             for value in constraints1.values:
                 if value in constraints2.values:
@@ -427,7 +427,7 @@ class Constraints:
             assert isinstance(constraints1, Constraints) and isinstance(constraints2, Constraints)
             assert constraints1.values and constraints2.values
             assert constraints1.match_sorts(constraints2)
-            assert constraints1.var_line == constraints2.var_line
+            assert constraints1.var_line is constraints2.var_line
             results = Constant.false
             for value in constraints1.values:
                 Constraints.total_number_of_constraints += 1
@@ -540,41 +540,6 @@ class Values:
     def match_sorts(self, values):
         return self.sid_line.match_sorts(values.sid_line)
 
-    def FALSE():
-        if Values.false is None:
-            Values.false = Values(Bool.boolean).set_value(Bool.boolean, 0, Constant.true)
-        return Values.false
-
-    def TRUE():
-        if Values.true is None:
-            Values.true = Values(Bool.boolean).set_value(Bool.boolean, 1, Constant.true)
-        return Values.true
-
-    def constrain(self, constraints):
-        assert self.values
-        assert constraints is not Constant.false
-        if constraints is Constant.true:
-            return self
-        else:
-            assert isinstance(constraints, Constraints)
-            results = Values(self.sid_line)
-            for value in self.values:
-                results.set_value(self.sid_line, value,
-                    Constraints.intersection(self.values[value], constraints))
-            return results
-
-    def merge(self, values):
-        assert self.values
-        assert isinstance(values, Values)
-        assert self.match_sorts(values)
-        assert values.values
-        results = Values(self.sid_line)
-        for value in self.values:
-            results.set_value(self.sid_line, value, self.values[value])
-        for value in values.values:
-            results.set_value(self.sid_line, value, values.values[value])
-        return results
-
     def get_boolean_constraints(self):
         assert isinstance(self.sid_line, Bool)
         assert len(self.values) <= 2
@@ -643,6 +608,10 @@ class Values:
                     return False
             return True
 
+    # naive per-value semantics of value sets
+
+    # unary operators
+
     def apply_unary(self, sid_line, op):
         results = Values(sid_line)
         for value in self.values:
@@ -681,6 +650,8 @@ class Values:
         assert isinstance(self.sid_line, Bitvec)
         return self.apply_unary(self.sid_line, lambda x: -x % 2**self.sid_line.size)
 
+    # binary operators
+
     def apply_binary(self, sid_line, values, op):
         results = Values(sid_line)
         for value1 in self.values:
@@ -689,6 +660,16 @@ class Values:
                     Constraints.intersection(self.values[value1], values.values[value2]))
         return results
 
+    def FALSE():
+        if Values.false is None:
+            Values.false = Values(Bool.boolean).set_value(Bool.boolean, 0, Constant.true)
+        return Values.false
+
+    def TRUE():
+        if Values.true is None:
+            Values.true = Values(Bool.boolean).set_value(Bool.boolean, 1, Constant.true)
+        return Values.true
+
     def Implies(self, values):
         assert isinstance(self.sid_line, Bool)
         false_constraint, _ = self.get_boolean_constraints()
@@ -696,8 +677,53 @@ class Values:
             assert values is None
             return Values.TRUE()
         else:
+            # lazy evaluation of implied values
             assert isinstance(values, Values) and isinstance(values.sid_line, Bool)
-            return self.apply_binary(self.sid_line, values, lambda x, y: 1 if x == 0 else y)
+            return self.apply_binary(Bool.boolean, values, lambda x, y: 1 if x == 0 else y)
+
+    def __eq__(self, values):
+        assert isinstance(self.sid_line, Bitvec) and self.sid_line.match_sorts(values.sid_line)
+        return self.apply_binary(Bool.boolean, values, lambda x, y: x == y)
+
+    def __ne__(self, values):
+        assert isinstance(self.sid_line, Bitvec) and self.sid_line.match_sorts(values.sid_line)
+        return self.apply_binary(Bool.boolean, values, lambda x, y: x != y)
+
+    def __gt__(self, values):
+        assert isinstance(self.sid_line, Bitvec) and self.sid_line.match_sorts(values.sid_line)
+        return self.apply_binary(Bool.boolean, values,
+            lambda x, y: self.sid_line.get_signed_value(x) > values.sid_line.get_signed_value(y))
+
+    def UGT(self, values):
+        assert isinstance(self.sid_line, Bitvec) and self.sid_line.match_sorts(values.sid_line)
+        return self.apply_binary(Bool.boolean, values, lambda x, y: x > y)
+
+    def __ge__(self, values):
+        assert isinstance(self.sid_line, Bitvec) and self.sid_line.match_sorts(values.sid_line)
+        return self.apply_binary(Bool.boolean, values,
+            lambda x, y: self.sid_line.get_signed_value(x) >= values.sid_line.get_signed_value(y))
+
+    def UGE(self, values):
+        assert isinstance(self.sid_line, Bitvec) and self.sid_line.match_sorts(values.sid_line)
+        return self.apply_binary(Bool.boolean, values, lambda x, y: x >= y)
+
+    def __lt__(self, values):
+        assert isinstance(self.sid_line, Bitvec) and self.sid_line.match_sorts(values.sid_line)
+        return self.apply_binary(Bool.boolean, values,
+            lambda x, y: self.sid_line.get_signed_value(x) < values.sid_line.get_signed_value(y))
+
+    def ULT(self, values):
+        assert isinstance(self.sid_line, Bitvec) and self.sid_line.match_sorts(values.sid_line)
+        return self.apply_binary(Bool.boolean, values, lambda x, y: x < y)
+
+    def __le__(self, values):
+        assert isinstance(self.sid_line, Bitvec) and self.sid_line.match_sorts(values.sid_line)
+        return self.apply_binary(Bool.boolean, values,
+            lambda x, y: self.sid_line.get_signed_value(x) <= values.sid_line.get_signed_value(y))
+
+    def ULE(self, values):
+        assert isinstance(self.sid_line, Bitvec) and self.sid_line.match_sorts(values.sid_line)
+        return self.apply_binary(Bool.boolean, values, lambda x, y: x <= y)
 
     def And(self, values):
         assert isinstance(self.sid_line, Bool)
@@ -706,8 +732,9 @@ class Values:
             assert values is None
             return Values.FALSE()
         else:
+            # lazy evaluation of second operand
             assert isinstance(values, Values) and isinstance(values.sid_line, Bool)
-            return self.apply_binary(self.sid_line, values, lambda x, y: 1 if x == 1 and y == 1 else 0)
+            return self.apply_binary(Bool.boolean, values, lambda x, y: 1 if x == 1 and y == 1 else 0)
 
     def Or(self, values):
         assert isinstance(self.sid_line, Bool)
@@ -716,12 +743,13 @@ class Values:
             assert values is None
             return Values.TRUE()
         else:
+            # lazy evaluation of second operand
             assert isinstance(values, Values) and isinstance(values.sid_line, Bool)
-            return self.apply_binary(self.sid_line, values, lambda x, y: 1 if x == 1 or y == 1 else 0)
+            return self.apply_binary(Bool.boolean, values, lambda x, y: 1 if x == 1 or y == 1 else 0)
 
     def Xor(self, values):
         assert isinstance(self.sid_line, Bool) and isinstance(values.sid_line, Bool)
-        return self.apply_binary(self.sid_line, values, lambda x, y: 1 if (x == 1 and y == 0) or (x == 0 and y == 1) else 0)
+        return self.apply_binary(Bool.boolean, values, lambda x, y: 1 if (x == 1 and y == 0) or (x == 0 and y == 1) else 0)
 
     def __and__(self, values):
         assert isinstance(self.sid_line, Bitvec) and self.sid_line.match_sorts(values.sid_line)
@@ -739,6 +767,33 @@ class Values:
         assert isinstance(self.sid_line, Bitvec) and isinstance(values.sid_line, Bitvec)
         return self.apply_binary(sid_line, values, lambda x, y: (x << values.sid_line.size) + y)
 
+    # ternary operators
+
+    def constrain(self, constraints):
+        assert self.values
+        assert constraints is not Constant.false
+        if constraints is Constant.true:
+            return self
+        else:
+            assert isinstance(constraints, Constraints)
+            results = Values(self.sid_line)
+            for value in self.values:
+                results.set_value(self.sid_line, value,
+                    Constraints.intersection(self.values[value], constraints))
+            return results
+
+    def merge(self, values):
+        assert self.values
+        assert isinstance(values, Values)
+        assert self.match_sorts(values)
+        assert values.values
+        results = Values(self.sid_line)
+        for value in self.values:
+            results.set_value(self.sid_line, value, self.values[value])
+        for value in values.values:
+            results.set_value(self.sid_line, value, values.values[value])
+        return results
+
     def If(self, values2, values3):
         false_constraint, true_constraint = self.get_boolean_constraints()
         if false_constraint is Constant.false:
@@ -748,6 +803,7 @@ class Values:
             assert values3 is not None
             return values3.constrain(false_constraint)
         else:
+            # lazy evaluation of true and false case
             values2 = values2.constrain(true_constraint)
             values3 = values3.constrain(false_constraint)
             return values2.merge(values3)
@@ -810,7 +866,7 @@ class Constant(Expression):
         self.print_value = value
         self.signed_value = sid_line.get_signed_value(value)
         self.value = sid_line.get_unsigned_value(value)
-        if sid_line == Bool.boolean:
+        if sid_line is Bool.boolean:
             assert 0 <= self.value <= 1
             if self.value == 0:
                 if Constant.false is None:
@@ -1184,7 +1240,7 @@ class State(Variable):
         if step == -1:
             step = 0
         instance = self.get_instance(step - 1)
-        if instance == self:
+        if instance is self:
             # uninitialized state
             return super().get_values(step - 1)
         else:
@@ -1551,36 +1607,26 @@ class Comparison(Binary):
             if Instance.PROPAGATE_BINARY:
                 if isinstance(arg1_value, Values) and isinstance(arg2_value, Values):
                     if self.op == OP_EQ:
-                        self.cache_values[step] = self.propagate(arg1_value, arg2_value,
-                            lambda x, y: x == y)
+                        self.cache_values[step] = arg1_value == arg2_value
                     elif self.op == OP_NEQ:
-                        self.cache_values[step] = self.propagate(arg1_value, arg2_value,
-                            lambda x, y: x != y)
+                        self.cache_values[step] = arg1_value != arg2_value
                     elif self.op == OP_SGT:
-                        self.cache_values[step] = self.propagate(arg1_value, arg2_value,
-                            lambda x, y: self.arg1_line.sid_line.get_signed_value(x) > self.arg2_line.sid_line.get_signed_value(y))
+                        self.cache_values[step] = arg1_value > arg2_value
                     elif self.op == OP_UGT:
-                        self.cache_values[step] = self.propagate(arg1_value, arg2_value,
-                            lambda x, y: x > y)
+                        self.cache_values[step] = arg1_value.UGT(arg2_value)
                     elif self.op == OP_SGTE:
-                        self.cache_values[step] = self.propagate(arg1_value, arg2_value,
-                            lambda x, y: self.arg1_line.sid_line.get_signed_value(x) >= self.arg2_line.sid_line.get_signed_value(y))
+                        self.cache_values[step] = arg1_value >= arg2_value
                     elif self.op == OP_UGTE:
-                        self.cache_values[step] = self.propagate(arg1_value, arg2_value,
-                            lambda x, y: x >= y)
+                        self.cache_values[step] = arg1_value.UGE(arg2_value)
                     elif self.op == OP_SLT:
-                        self.cache_values[step] = self.propagate(arg1_value, arg2_value,
-                            lambda x, y: self.arg1_line.sid_line.get_signed_value(x) < self.arg2_line.sid_line.get_signed_value(y))
+                        self.cache_values[step] = arg1_value < arg2_value
                     elif self.op == OP_ULT:
-                        self.cache_values[step] = self.propagate(arg1_value, arg2_value,
-                            lambda x, y: x < y)
+                        self.cache_values[step] = arg1_value.ULT(arg2_value)
                     elif self.op == OP_SLTE:
-                        self.cache_values[step] = self.propagate(arg1_value, arg2_value,
-                            lambda x, y: self.arg1_line.sid_line.get_signed_value(x) <= self.arg2_line.sid_line.get_signed_value(y))
+                        self.cache_values[step] = arg1_value <= arg2_value
                     else:
                         assert self.op == OP_ULTE
-                        self.cache_values[step] = self.propagate(arg1_value, arg2_value,
-                            lambda x, y: x <= y)
+                        self.cache_values[step] = arg1_value.ULE(arg2_value)
                     return self.cache_values[step]
             arg1_value = arg1_value.get_expression()
             arg2_value = arg2_value.get_expression()
@@ -1589,27 +1635,29 @@ class Comparison(Binary):
 
     def get_z3(self):
         if self.z3 is None:
+            z3_arg1 = self.arg1_line.get_z3()
+            z3_arg2 = self.arg2_line.get_z3()
             if self.op == OP_EQ:
-                self.z3 = self.arg1_line.get_z3() == self.arg2_line.get_z3()
+                self.z3 = z3_arg1 == z3_arg2
             elif self.op == OP_NEQ:
-                self.z3 = self.arg1_line.get_z3() != self.arg2_line.get_z3()
+                self.z3 = z3_arg1 != z3_arg2
             elif self.op == OP_SGT:
-                self.z3 = self.arg1_line.get_z3() > self.arg2_line.get_z3()
+                self.z3 = z3_arg1 > z3_arg2
             elif self.op == OP_UGT:
-                self.z3 = z3.UGT(self.arg1_line.get_z3(), self.arg2_line.get_z3())
+                self.z3 = z3.UGT(z3_arg1, z3_arg2)
             elif self.op == OP_SGTE:
-                self.z3 = self.arg1_line.get_z3() >= self.arg2_line.get_z3()
+                self.z3 = z3_arg1 >= z3_arg2
             elif self.op == OP_UGTE:
-                self.z3 = z3.UGE(self.arg1_line.get_z3(), self.arg2_line.get_z3())
+                self.z3 = z3.UGE(z3_arg1, z3_arg2)
             elif self.op == OP_SLT:
-                self.z3 = self.arg1_line.get_z3() < self.arg2_line.get_z3()
+                self.z3 = z3_arg1 < z3_arg2
             elif self.op == OP_ULT:
-                self.z3 = z3.ULT(self.arg1_line.get_z3(), self.arg2_line.get_z3())
+                self.z3 = z3.ULT(z3_arg1, z3_arg2)
             elif self.op == OP_SLTE:
-                self.z3 = self.arg1_line.get_z3() <= self.arg2_line.get_z3()
+                self.z3 = z3_arg1 <= z3_arg2
             else:
                 assert self.op == OP_ULTE
-                self.z3 = z3.ULE(self.arg1_line.get_z3(), self.arg2_line.get_z3())
+                self.z3 = z3.ULE(z3_arg1, z3_arg2)
         return self.z3
 
     def get_bitwuzla(self, tm):
@@ -1708,22 +1756,24 @@ class Logical(Binary):
 
     def get_z3(self):
         if self.z3 is None:
+            z3_arg1 = self.arg1_line.get_z3()
+            z3_arg2 = self.arg2_line.get_z3()
             if isinstance(self.sid_line, Bool):
                 if self.op == OP_AND:
-                    self.z3 = z3.And(self.arg1_line.get_z3(), self.arg2_line.get_z3())
+                    self.z3 = z3.And(z3_arg1, z3_arg2)
                 elif self.op == OP_OR:
-                    self.z3 = z3.Or(self.arg1_line.get_z3(), self.arg2_line.get_z3())
+                    self.z3 = z3.Or(z3_arg1, z3_arg2)
                 else:
                     assert self.op == OP_XOR
-                    self.z3 = z3.Xor(self.arg1_line.get_z3(), self.arg2_line.get_z3())
+                    self.z3 = z3.Xor(z3_arg1, z3_arg2)
             else:
                 if self.op == OP_AND:
-                    self.z3 = self.arg1_line.get_z3() & self.arg2_line.get_z3()
+                    self.z3 = z3_arg1 & z3_arg2
                 elif self.op == OP_OR:
-                    self.z3 = self.arg1_line.get_z3() | self.arg2_line.get_z3()
+                    self.z3 = z3_arg1 | z3_arg2
                 else:
                     assert self.op == OP_XOR
-                    self.z3 = self.arg1_line.get_z3() ^ self.arg2_line.get_z3()
+                    self.z3 = z3_arg1 ^ z3_arg2
         return self.z3
 
     def get_bitwuzla(self, tm):
@@ -2078,7 +2128,7 @@ class Ite(Ternary):
                         self.cache_values[step] = arg2_value.get_expression()
                         return self.cache_values[step]
                     else:
-                        # lazy evaluation of false case
+                        # lazy evaluation of false case into expression
                         arg3_value = self.arg3_line.get_values(step)
                 elif true_constraint is Constant.false:
                     arg3_value = self.arg3_line.get_values(step)
@@ -2090,9 +2140,10 @@ class Ite(Ternary):
                         self.cache_values[step] = arg3_value.get_expression()
                         return self.cache_values[step]
                     else:
-                        # lazy evaluation of true case
+                        # lazy evaluation of true case into expression
                         arg2_value = self.arg2_line.get_values(step)
                 else:
+                    # lazy evaluation of true and false case
                     arg2_value = self.arg2_line.get_values(step)
                     arg3_value = self.arg3_line.get_values(step)
                     if isinstance(arg2_value, Values) and isinstance(arg3_value, Values):
