@@ -790,8 +790,8 @@ class Values:
         return self.apply_binary(self.sid_line, values, lambda x, y: (x * y) % 2**self.sid_line.size)
 
     def __div__(self, values):
-        # using the integer portion of division, not floor division,
-        # because int(x / y) != x // y if x < 0 or y < 0 since
+        # using the integer portion of division, not floor division with the // operator,
+        # because int(x / y) != x // y in Python if x < 0 or y < 0 since
         # the integer portion of division truncates towards 0 whereas
         # floor division truncates towards negative infinity
         assert isinstance(self.sid_line, Bitvec) and self.sid_line.match_sorts(values.sid_line)
@@ -809,8 +809,8 @@ class Values:
 
     def SRem(self, values):
         # using the integer portion of division, not the % operator,
-        # because x % y != x - int(x / y) * y if x < 0 since
-        # the % operator in Python computes modulo, not remainder,
+        # because x % y != x - int(x / y) * y in Python if x < 0 since
+        # the % operator in Python computes Euclidean modulus, not remainder,
         # such that x // y * y + x % y == x holds in Python for all x and y even if x < 0
         assert isinstance(self.sid_line, Bitvec) and self.sid_line.match_sorts(values.sid_line)
         return self.apply_binary(self.sid_line, values,
