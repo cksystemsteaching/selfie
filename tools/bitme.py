@@ -547,10 +547,10 @@ class Values:
         true_constraint = Constant.false
         for value in self.values:
             constraints = self.values[value]
-            if value == 0:
+            if not value:
                 false_constraint = constraints
             else:
-                assert value == 1
+                assert value
                 true_constraint = constraints
         return false_constraint, true_constraint
 
@@ -583,8 +583,8 @@ class Values:
 
     def set_value(self, sid_line, value, constraints):
         assert self.sid_line.match_sorts(sid_line)
-        assert isinstance(value, int)
-        assert sid_line.is_unsigned_value(value)
+        assert not isinstance(sid_line, Bool) or isinstance(value, bool)
+        assert not isinstance(sid_line, Bitvec) or sid_line.is_unsigned_value(value)
         if constraints is not Constant.false:
             assert constraints is Constant.true or isinstance(constraints, Constraints)
             if value not in self.values:
@@ -632,7 +632,7 @@ class Values:
 
     def Not(self):
         assert isinstance(self.sid_line, Bool)
-        return self.apply_unary(self.sid_line, lambda x: 1 if x == 0 else 0)
+        return self.apply_unary(self.sid_line, lambda x: not x)
 
     def __invert__(self):
         assert isinstance(self.sid_line, Bitvec)
@@ -662,12 +662,12 @@ class Values:
 
     def FALSE():
         if Values.false is None:
-            Values.false = Values(Bool.boolean).set_value(Bool.boolean, 0, Constant.true)
+            Values.false = Values(Bool.boolean).set_value(Bool.boolean, False, Constant.true)
         return Values.false
 
     def TRUE():
         if Values.true is None:
-            Values.true = Values(Bool.boolean).set_value(Bool.boolean, 1, Constant.true)
+            Values.true = Values(Bool.boolean).set_value(Bool.boolean, True, Constant.true)
         return Values.true
 
     def Implies(self, values):
@@ -679,7 +679,7 @@ class Values:
         else:
             # lazy evaluation of implied values
             assert isinstance(values, Values) and isinstance(values.sid_line, Bool)
-            return self.apply_binary(Bool.boolean, values, lambda x, y: 1 if x == 0 else y)
+            return self.apply_binary(Bool.boolean, values, lambda x, y: (not x) or y)
 
     def __eq__(self, values):
         assert isinstance(self.sid_line, Bitvec) and self.sid_line.match_sorts(values.sid_line)
@@ -734,7 +734,7 @@ class Values:
         else:
             # lazy evaluation of second operand
             assert isinstance(values, Values) and isinstance(values.sid_line, Bool)
-            return self.apply_binary(Bool.boolean, values, lambda x, y: 1 if x == 1 and y == 1 else 0)
+            return self.apply_binary(Bool.boolean, values, lambda x, y: x and y)
 
     def Or(self, values):
         assert isinstance(self.sid_line, Bool)
@@ -745,11 +745,11 @@ class Values:
         else:
             # lazy evaluation of second operand
             assert isinstance(values, Values) and isinstance(values.sid_line, Bool)
-            return self.apply_binary(Bool.boolean, values, lambda x, y: 1 if x == 1 or y == 1 else 0)
+            return self.apply_binary(Bool.boolean, values, lambda x, y: x or y)
 
     def Xor(self, values):
         assert isinstance(self.sid_line, Bool) and isinstance(values.sid_line, Bool)
-        return self.apply_binary(Bool.boolean, values, lambda x, y: 1 if (x == 1 and y == 0) or (x == 0 and y == 1) else 0)
+        return self.apply_binary(Bool.boolean, values, lambda x, y: x != y)
 
     def __and__(self, values):
         assert isinstance(self.sid_line, Bitvec) and self.sid_line.match_sorts(values.sid_line)
@@ -885,7 +885,8 @@ class Constant(Expression):
     def get_values(self, step):
         if 0 not in self.cache_values:
             if Instance.PROPAGATE > 0:
-                self.cache_values[0] = Values(self.sid_line).set_value(self.sid_line, self.value, Constant.true)
+                value = bool(self.value) if isinstance(self.sid_line, Bool) else self.value
+                self.cache_values[0] = Values(self.sid_line).set_value(self.sid_line, value, Constant.true)
             else:
                 self.cache_values[0] = self
         return self.cache_values[0]
@@ -1038,8 +1039,12 @@ class Variable(Expression):
         if 0 not in self.cache_values:
             if isinstance(self.sid_line, Bitvector) and self.sid_line.size <= Instance.PROPAGATE:
                 self.cache_values[0] = Values(self.sid_line)
-                for value in range(2**self.sid_line.size):
-                    self.cache_values[0].set_value(self.sid_line, value, Constraints(self, value))
+                if isinstance(self.sid_line, Bool):
+                    self.cache_values[0].set_value(self.sid_line, False, Constraints(self, 0))
+                    self.cache_values[0].set_value(self.sid_line, True, Constraints(self, 1))
+                else:
+                    for value in range(2**self.sid_line.size):
+                        self.cache_values[0].set_value(self.sid_line, value, Constraints(self, value))
             else:
                 self.cache_values[0] = self
         return self.cache_values[0]
@@ -1596,9 +1601,6 @@ class Comparison(Binary):
             raise model_error("bitvector first operand", line_no)
         if not arg1_line.sid_line.match_sorts(arg2_line.sid_line):
             raise model_error("compatible first and second operand sorts", line_no)
-
-    def propagate(self, arg1_value, arg2_value, op_lambda):
-        return super().propagate(arg1_value, arg2_value, lambda x, y: 1 if op_lambda(x, y) else 0)
 
     def get_values(self, step):
         if step not in self.cache_values:
