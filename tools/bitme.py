@@ -465,6 +465,9 @@ class Clause:
 class DNF:
     dnfs = {}
 
+    conjunctions = {}
+    disjunctions = {}
+
     def __init__(self, clause):
         self.clauses = {clause:None}
 
@@ -499,6 +502,10 @@ class DNF:
             return Constant.false
         elif dnf1 is dnf2:
             return dnf1
+        elif dnf1 in DNF.conjunctions and dnf2 in DNF.conjunctions[dnf1]:
+            return DNF.conjunctions[dnf1][dnf2]
+        elif dnf2 in DNF.conjunctions and dnf1 in DNF.conjunctions[dnf2]:
+            return DNF.conjunctions[dnf2][dnf1]
         else:
             assert isinstance(dnf1, DNF) and isinstance(dnf2, DNF)
             assert dnf1.clauses and dnf2.clauses
@@ -512,9 +519,16 @@ class DNF:
                         else:
                             dnf.clauses[clause] = None
             if dnf is not Constant.false:
-                return dnf.cache_dnf()
+                dnf = dnf.cache_dnf()
+            if dnf1 not in DNF.conjunctions:
+                DNF.conjunctions[dnf1] = {dnf2:dnf}
             else:
-                return Constant.false
+                DNF.conjunctions[dnf1] |= {dnf2:dnf}
+            if dnf2 not in DNF.conjunctions:
+                DNF.conjunctions[dnf2] = {dnf1:dnf}
+            else:
+                DNF.conjunctions[dnf2] |= {dnf1:dnf}
+            return dnf
 
     def disjunction(dnf1, dnf2):
         if dnf1 is Constant.false:
@@ -525,6 +539,10 @@ class DNF:
             return Constant.true
         elif dnf1 is dnf2:
             return dnf1
+        elif dnf1 in DNF.disjunctions and dnf2 in DNF.disjunctions[dnf1]:
+            return DNF.disjunctions[dnf1][dnf2]
+        elif dnf2 in DNF.disjunctions and dnf1 in DNF.disjunctions[dnf2]:
+            return DNF.disjunctions[dnf2][dnf1]
         else:
             assert isinstance(dnf1, DNF) and isinstance(dnf2, DNF)
             assert dnf1.clauses and dnf2.clauses
@@ -536,7 +554,16 @@ class DNF:
                     dnf.clauses[clause] = None
             for clause in dnf2.clauses:
                 dnf.clauses[clause] = None
-            return dnf.cache_dnf()
+            dnf = dnf.cache_dnf()
+            if dnf1 not in DNF.disjunctions:
+                DNF.disjunctions[dnf1] = {dnf2:dnf}
+            else:
+                DNF.disjunctions[dnf1] |= {dnf2:dnf}
+            if dnf2 not in DNF.disjunctions:
+                DNF.disjunctions[dnf2] = {dnf1:dnf}
+            else:
+                DNF.disjunctions[dnf2] |= {dnf1:dnf}
+            return dnf
 
     def get_expression(self):
         exp_line = Constant.false
