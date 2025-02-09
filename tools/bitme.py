@@ -434,14 +434,20 @@ class Clause:
         return Clause(Literal.create_literal(var_line, value)).cache_clause()
 
     def and_clause(self, clause):
+        and_clause = Constant.false
+        for literal in self.literals:
+            if and_clause is Constant.false:
+                and_clause = Clause(literal)
+            else:
+                and_clause.literals[literal] = None
         for literal in clause.literals:
-            if literal not in self.literals:
-                for self_literal in self.literals:
-                    if self_literal.is_conflicting(literal):
+            if literal not in and_clause.literals:
+                for clause_literal in and_clause.literals:
+                    if clause_literal.is_conflicting(literal):
                         return Constant.false
                     else:
-                        self.literals[literal] = None
-        return self.cache_clause()
+                        and_clause.literals[literal] = None
+        return and_clause.cache_clause()
 
     def get_expression(self):
         clause_line = Constant.false
