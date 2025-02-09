@@ -691,26 +691,32 @@ class Values:
 
     def Implies(self, values):
         assert isinstance(self.sid_line, Bool)
-        if values is None:
+        false_constraint, _ = self.get_boolean_constraints()
+        if false_constraint is Constant.true:
+            assert values is None
             return Values.TRUE()
         else:
-            assert isinstance(values.sid_line, Bool)
+            assert isinstance(values, Values) and isinstance(values.sid_line, Bool)
             return self.apply_binary(self.sid_line, values, lambda x, y: 1 if x == 0 else y)
 
     def And(self, values):
         assert isinstance(self.sid_line, Bool)
-        if values is None:
+        false_constraint, _ = self.get_boolean_constraints()
+        if false_constraint is Constant.true:
+            assert values is None
             return Values.FALSE()
         else:
-            assert isinstance(values.sid_line, Bool)
+            assert isinstance(values, Values) and isinstance(values.sid_line, Bool)
             return self.apply_binary(self.sid_line, values, lambda x, y: 1 if x == 1 and y == 1 else 0)
 
     def Or(self, values):
         assert isinstance(self.sid_line, Bool)
-        if values is None:
+        _, true_constraint = self.get_boolean_constraints()
+        if true_constraint is Constant.true:
+            assert values is None
             return Values.TRUE()
         else:
-            assert isinstance(values.sid_line, Bool)
+            assert isinstance(values, Values) and isinstance(values.sid_line, Bool)
             return self.apply_binary(self.sid_line, values, lambda x, y: 1 if x == 1 or y == 1 else 0)
 
     def Xor(self, values):
@@ -732,6 +738,19 @@ class Values:
     def Concat(self, values, sid_line):
         assert isinstance(self.sid_line, Bitvec) and isinstance(values.sid_line, Bitvec)
         return self.apply_binary(sid_line, values, lambda x, y: (x << values.sid_line.size) + y)
+
+    def If(self, values2, values3):
+        false_constraint, true_constraint = self.get_boolean_constraints()
+        if false_constraint is Constant.false:
+            assert values2 is not None
+            return values2.constrain(true_constraint)
+        elif true_constraint is Constant.false:
+            assert values3 is not None
+            return values3.constrain(false_constraint)
+        else:
+            values2 = values2.constrain(true_constraint)
+            values3 = values3.constrain(false_constraint)
+            return values2.merge(values3)
 
 class Expression(Line):
     total_number_of_generated_expressions = 0
@@ -1481,7 +1500,7 @@ class Implies(Binary):
         if step not in self.cache_values:
             arg1_value = self.arg1_line.get_values(step)
             if Instance.PROPAGATE_BINARY and isinstance(arg1_value, Values):
-                false_constraint, true_constraint = arg1_value.get_boolean_constraints()
+                false_constraint, _ = arg1_value.get_boolean_constraints()
                 if false_constraint is Constant.true:
                     self.cache_values[step] = arg1_value.Implies(None)
                     return self.cache_values[step]
@@ -2052,7 +2071,7 @@ class Ite(Ternary):
                 if false_constraint is Constant.false:
                     arg2_value = self.arg2_line.get_values(step)
                     if isinstance(arg2_value, Values):
-                        self.cache_values[step] = arg2_value.constrain(true_constraint)
+                        self.cache_values[step] = arg1_value.If(arg2_value, None)
                         return self.cache_values[step]
                     elif true_constraint is Constant.true:
                         # true case holds unconditionally
@@ -2064,7 +2083,7 @@ class Ite(Ternary):
                 elif true_constraint is Constant.false:
                     arg3_value = self.arg3_line.get_values(step)
                     if isinstance(arg3_value, Values):
-                        self.cache_values[step] = arg3_value.constrain(false_constraint)
+                        self.cache_values[step] = arg1_value.If(None, arg3_value)
                         return self.cache_values[step]
                     elif false_constraint is Constant.true:
                         # false case holds unconditionally
@@ -2077,9 +2096,7 @@ class Ite(Ternary):
                     arg2_value = self.arg2_line.get_values(step)
                     arg3_value = self.arg3_line.get_values(step)
                     if isinstance(arg2_value, Values) and isinstance(arg3_value, Values):
-                        arg2_value = arg2_value.constrain(true_constraint)
-                        arg3_value = arg3_value.constrain(false_constraint)
-                        self.cache_values[step] = arg2_value.merge(arg3_value)
+                        self.cache_values[step] = arg1_value.If(arg2_value, arg3_value)
                         return self.cache_values[step]
             else:
                 arg2_value = self.arg2_line.get_values(step)
