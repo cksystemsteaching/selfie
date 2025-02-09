@@ -369,154 +369,208 @@ class Array(Sort):
                 self.element_size_line.get_bitwuzla(tm))
         return self.bitwuzla
 
-class Constraints:
-    total_number_of_constraints = 0
-
-    ordering = {}
+class Literal:
+    literals = {}
 
     def __init__(self, var_line, value):
         self.var_line = var_line
-        self.values = {value:None}
-        self.off = Constant.false
-        self.on = Constant.true
-        if self.var_line not in Constraints.ordering:
-            Constraints.ordering[self.var_line] = None
+        self.value = value
+
+    def __str__(self):
+        return f"{self.var_line.symbol} == {self.value}"
+
+    def size():
+        size = 0
+        for var_line in Literal.literals:
+            size += len(Literal.literals[var_line])
+        return size
+
+    def create_literal(var_line, value):
+        if var_line not in Literal.literals:
+            Literal.literals[var_line] = {}
+        if value not in Literal.literals[var_line]:
+            Literal.literals[var_line][value] = Literal(var_line, value)
+        return Literal.literals[var_line][value]
+
+    def is_conflicting(self, literal):
+        assert self.var_line is not literal.var_line or self.value != literal.value
+        return self.var_line is literal.var_line
+
+    def get_expression(self):
+        return Comparison(next_nid(), OP_EQ, Bool.boolean,
+            self.var_line,
+            Constd(next_nid(), self.var_line.sid_line, self.value,
+                self.var_line.comment, self.var_line.line_no),
+            self.var_line.comment, self.var_line.line_no)
+
+class Clause:
+    clauses = {}
+
+    def __init__(self, literal):
+        self.literals = {literal:None}
 
     def __str__(self):
         string = ""
-        for value in self.values:
+        for literal in self.literals:
             if string:
                 string += ", "
-            string += f"{value}:{self.values[value]}"
-        return f"{{{string}}}: {self.var_line}"
+            string += f"{literal}"
+        return f"[{string}]"
 
-    def match_sorts(self, constraints):
-        return self.var_line.sid_line.match_sorts(constraints.var_line.sid_line)
+    def __hash__(self):
+        return id(self)
 
-    def intersection(constraints1, constraints2):
-        if constraints1 is Constant.true:
-            return constraints2
-        elif constraints2 is Constant.true:
-            return constraints1
-        elif constraints1 is Constant.false or constraints2 is Constant.false:
-            return Constant.false
-        else:
-            assert isinstance(constraints1, Constraints) and isinstance(constraints2, Constraints)
-            assert constraints1.values and constraints2.values
-            assert constraints1.match_sorts(constraints2)
-            assert constraints1.var_line is constraints2.var_line
-            results = Constant.false
-            for value in constraints1.values:
-                if value in constraints2.values:
-                    Constraints.total_number_of_constraints += 1
-                    if results is Constant.false:
-                        results = Constraints(constraints1.var_line, value)
+    def __eq__(self, clause):
+        return self.literals == clause.literals
+
+    def cache_clause(self):
+        for clause in Clause.clauses:
+            if self == clause:
+                return clause
+        Clause.clauses[self] = None
+        return self
+
+    def create_clause(var_line, value):
+        return Clause(Literal.create_literal(var_line, value)).cache_clause()
+
+    def and_clause(self, clause):
+        for literal in clause.literals:
+            if literal not in self.literals:
+                for self_literal in self.literals:
+                    if self_literal.is_conflicting(literal):
+                        return Constant.false
                     else:
-                        assert constraints2.values[value] is None
-                        results.values[value] = constraints2.values[value]
-            return results
+                        self.literals[literal] = None
+        return self.cache_clause()
 
-    def union(constraints1, constraints2):
-        if constraints1 is Constant.false:
-            return constraints2
-        elif constraints2 is Constant.false:
-            return constraints1
-        elif constraints1 is Constant.true or constraints2 is Constant.true:
-            return Constant.true
+    def get_expression(self):
+        clause_line = Constant.false
+        for literal in self.literals:
+            literal_line = literal.get_expression()
+            if clause_line is Constant.false:
+                clause_line = literal_line
+            else:
+                clause_line = Logical(next_nid(), OP_AND, Bool.boolean,
+                    literal_line,
+                    clause_line,
+                    literal_line.comment, literal_line.line_no)
+        return clause_line
+
+class DNF:
+    dnfs = {}
+
+    def __init__(self, clause):
+        self.clauses = {clause:None}
+
+    def __str__(self):
+        string = ""
+        for clause in self.clauses:
+            string += f"{clause}\n"
+        return f"{{{string}}}"
+
+    def __hash__(self):
+        return id(self)
+
+    def __eq__(self, dnf):
+        return self.clauses == dnf.clauses
+
+    def cache_dnf(self):
+        for dnf in DNF.dnfs:
+            if self == dnf:
+                return dnf
+        DNF.dnfs[self] = None
+        return self
+
+    def create_DNF(var_line, value):
+        return DNF(Clause.create_clause(var_line, value)).cache_dnf()
+
+    def conjunction(dnf1, dnf2):
+        if dnf1 is Constant.true:
+            return dnf2
+        elif dnf2 is Constant.true:
+            return dnf1
+        elif dnf1 is Constant.false or dnf2 is Constant.false:
+            return Constant.false
+        elif dnf1 is dnf2:
+            return dnf1
         else:
-            assert isinstance(constraints1, Constraints) and isinstance(constraints2, Constraints)
-            assert constraints1.values and constraints2.values
-            assert constraints1.match_sorts(constraints2)
-            assert constraints1.var_line is constraints2.var_line
-            results = Constant.false
-            for value in constraints1.values:
-                Constraints.total_number_of_constraints += 1
-                if results is Constant.false:
-                    results = Constraints(constraints1.var_line, value)
+            assert isinstance(dnf1, DNF) and isinstance(dnf2, DNF)
+            assert dnf1.clauses and dnf2.clauses
+            dnf = Constant.false
+            for clause1 in dnf1.clauses:
+                for clause2 in dnf2.clauses:
+                    clause = clause1.and_clause(clause2)
+                    if clause is not Constant.false:
+                        if dnf is Constant.false:
+                            dnf = DNF(clause)
+                        else:
+                            dnf.clauses[clause] = None
+            if dnf is not Constant.false:
+                return dnf.cache_dnf()
+            else:
+                return Constant.false
+
+    def disjunction(dnf1, dnf2):
+        if dnf1 is Constant.false:
+            return dnf2
+        elif dnf2 is Constant.false:
+            return dnf1
+        elif dnf1 is Constant.true or dnf2 is Constant.true:
+            return Constant.true
+        elif dnf1 is dnf2:
+            return dnf1
+        else:
+            assert isinstance(dnf1, DNF) and isinstance(dnf2, DNF)
+            assert dnf1.clauses and dnf2.clauses
+            dnf = Constant.false
+            for clause in dnf1.clauses:
+                if dnf is Constant.false:
+                    dnf = DNF(clause)
                 else:
-                    assert constraints1.values[value] is None
-                    results.values[value] = constraints1.values[value]
-            for value in constraints2.values:
-                Constraints.total_number_of_constraints += 1
-                assert constraints2.values[value] is None
-                results.values[value] = constraints2.values[value]
-            return results
+                    dnf.clauses[clause] = None
+            for clause in dnf2.clauses:
+                dnf.clauses[clause] = None
+            return dnf.cache_dnf()
 
     def get_expression(self):
         exp_line = Constant.false
-        for value in self.values:
-            comparison_line = Comparison(next_nid(), OP_EQ, Bool.boolean,
-                self.var_line,
-                Constd(next_nid(), self.var_line.sid_line, value,
-                    self.var_line.comment, self.var_line.line_no),
-                self.var_line.comment, self.var_line.line_no)
+        for clause in self.clauses:
+            clause_line = clause.get_expression()
             if exp_line is Constant.false:
-                exp_line = comparison_line
+                exp_line = clause_line
             else:
                 exp_line = Logical(next_nid(), OP_OR, Bool.boolean,
-                    comparison_line,
+                    clause_line,
                     exp_line,
-                    self.var_line.comment, self.var_line.line_no)
-        return Constraints.OR(Constraints.AND(exp_line, self.on), self.off)
+                    clause_line.comment, clause_line.line_no)
+        return exp_line
 
-    def AND(constraints1, constraints2):
-        if constraints1 is Constant.false or constraints2 is Constant.false:
+    def NOT(dnf1):
+        if dnf1 is Constant.true:
             return Constant.false
-        elif constraints1 is Constant.true:
-            return constraints2
-        elif constraints2 is Constant.true:
-            return constraints1
-        elif constraints1 is constraints2:
-            return constraints1
-        else:
-            constraints1_line = constraints1.get_expression()
-            constraints2_line = constraints2.get_expression()
-            return Logical(next_nid(), OP_AND, Bool.boolean,
-                constraints1_line, constraints2_line,
-                constraints1_line.comment, constraints1_line.line_no)
-
-    def OR(constraints1, constraints2):
-        if constraints1 is Constant.true or constraints2 is Constant.true:
-            return Constant.true
-        elif constraints1 is Constant.false:
-            return constraints2
-        elif constraints2 is Constant.false:
-            return constraints1
-        elif constraints1 is constraints2:
-            return constraints1
-        else:
-            constraints1_line = constraints1.get_expression()
-            constraints2_line = constraints2.get_expression()
-            return Logical(next_nid(), OP_OR, Bool.boolean,
-                constraints1_line, constraints2_line,
-                constraints1_line.comment, constraints1_line.line_no)
-
-    def NOT(constraints1):
-        if constraints1 is Constant.true:
-            return Constant.false
-        elif constraints1 is Constant.false:
+        elif dnf1 is Constant.false:
             return Constant.true
         else:
-            constraints1_line = constraints1.get_expression()
+            dnf1_line = dnf1.get_expression()
             return Unary(next_nid(), OP_NOT, Bool.boolean,
-                constraints1_line,
-                constraints1_line.comment, constraints1_line.line_no)
+                dnf1_line,
+                dnf1_line.comment, dnf1_line.line_no)
 
-    def IMPLIES(constraints1, constraints2):
-        if constraints1 is Constant.false or constraints2 is Constant.true:
+    def IMPLIES(dnf1, dnf2):
+        if dnf1 is Constant.false or dnf2 is Constant.true:
             return Constant.true
-        elif constraints1 is Constant.true:
-            return constraints2
-        elif constraints2 is Constant.false:
-            return Constraints.NOT(constraints1)
-        elif constraints1 is constraints2:
+        elif dnf1 is Constant.true:
+            return dnf2
+        elif dnf2 is Constant.false:
+            return DNF.NOT(dnf1)
+        elif dnf1 is dnf2:
             return Constant.true
         else:
-            constraints1_line = constraints1.get_expression()
-            constraints2_line = constraints2.get_expression()
+            dnf1_line = dnf1.get_expression()
+            dnf2_line = dnf2.get_expression()
             return Implies(next_nid(), OP_IMPLIES, Bool.boolean,
-                constraints1_line, constraints2_line,
-                constraints1_line.comment, constraints1_line.line_no)
+                dnf1_line, dnf2_line,
+                dnf1_line.comment, dnf1_line.line_no)
 
 class Values:
     total_number_of_values = 0
@@ -546,20 +600,20 @@ class Values:
         false_constraint = Constant.false
         true_constraint = Constant.false
         for value in self.values:
-            constraints = self.values[value]
+            constraint = self.values[value]
             if not value:
-                false_constraint = constraints
+                false_constraint = constraint
             else:
                 assert value
-                true_constraint = constraints
+                true_constraint = constraint
         return false_constraint, true_constraint
 
     def get_expression(self):
         # naive transition from domain propagation to bit blasting
         assert len(self.values) > 0
         if isinstance(self.sid_line, Bool):
-            # constraints on false value implies constraints on true value
-            return Constraints.IMPLIES(*self.get_boolean_constraints())
+            # constraint on false value implies constraint on true value
+            return DNF.IMPLIES(*self.get_boolean_constraints())
         else:
             exp_line = None
             for value in self.values:
@@ -581,18 +635,18 @@ class Values:
             assert exp_line is not None
             return exp_line
 
-    def set_value(self, sid_line, value, constraints):
+    def set_value(self, sid_line, value, constraint):
         assert self.sid_line.match_sorts(sid_line)
         assert not isinstance(sid_line, Bool) or isinstance(value, bool)
         assert not isinstance(sid_line, Bitvec) or sid_line.is_unsigned_value(value)
-        if constraints is not Constant.false:
-            assert constraints is Constant.true or isinstance(constraints, Constraints)
+        if constraint is not Constant.false:
+            assert constraint is Constant.true or isinstance(constraint, DNF)
             if value not in self.values:
                 Values.total_number_of_values += 1
-                self.values[value] = constraints
+                self.values[value] = constraint
             else:
                 assert self.values[value] is not Constant.false
-                self.values[value] = Constraints.union(self.values[value], constraints)
+                self.values[value] = DNF.disjunction(self.values[value], constraint)
         return self
 
     def is_equal(self, values):
@@ -657,7 +711,7 @@ class Values:
         for value1 in self.values:
             for value2 in values.values:
                 results.set_value(sid_line, op(value1, value2),
-                    Constraints.intersection(self.values[value1], values.values[value2]))
+                    DNF.conjunction(self.values[value1], values.values[value2]))
         return results
 
     def FALSE():
@@ -833,17 +887,17 @@ class Values:
 
     # ternary operators
 
-    def constrain(self, constraints):
+    def constrain(self, constraint):
         assert self.values
-        assert constraints is not Constant.false
-        if constraints is Constant.true:
+        assert constraint is not Constant.false
+        if constraint is Constant.true:
             return self
         else:
-            assert isinstance(constraints, Constraints)
+            assert isinstance(constraint, DNF)
             results = Values(self.sid_line)
             for value in self.values:
                 results.set_value(self.sid_line, value,
-                    Constraints.intersection(self.values[value], constraints))
+                    DNF.conjunction(self.values[value], constraint))
             return results
 
     def merge(self, values):
@@ -1104,11 +1158,11 @@ class Variable(Expression):
             if isinstance(self.sid_line, Bitvector) and self.sid_line.size <= Instance.PROPAGATE:
                 self.cache_values[0] = Values(self.sid_line)
                 if isinstance(self.sid_line, Bool):
-                    self.cache_values[0].set_value(self.sid_line, False, Constraints(self, 0))
-                    self.cache_values[0].set_value(self.sid_line, True, Constraints(self, 1))
+                    self.cache_values[0].set_value(self.sid_line, False, DNF.create_DNF(self, 0))
+                    self.cache_values[0].set_value(self.sid_line, True, DNF.create_DNF(self, 1))
                 else:
                     for value in range(2**self.sid_line.size):
-                        self.cache_values[0].set_value(self.sid_line, value, Constraints(self, value))
+                        self.cache_values[0].set_value(self.sid_line, value, DNF.create_DNF(self, value))
             else:
                 self.cache_values[0] = self
         return self.cache_values[0]
@@ -5261,7 +5315,7 @@ def print_message(message, step = None, level = None):
 
 def print_message_with_propagation_profile(message, step = None, level = None):
     if Instance.PROPAGATE is not None:
-        print_message(f"({Values.total_number_of_values}, {Constraints.total_number_of_constraints}, {Expression.total_number_of_generated_expressions}) {message}", step, level)
+        print_message(f"({Values.total_number_of_values}, {len(DNF.dnfs)}, {len(Clause.clauses)}, {Literal.size()}, {Expression.total_number_of_generated_expressions}) {message}", step, level)
     else:
         print_message(message, step, level)
 
