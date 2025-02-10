@@ -483,15 +483,38 @@ class DNF:
     def __eq__(self, dnf):
         return self.clauses == dnf.clauses
 
-    def cache_dnf(self):
-        for dnf in DNF.dnfs:
-            if self == dnf:
-                return dnf
-        DNF.dnfs[self] = None
-        return self
+    def cache_dnf(dnf):
+        if isinstance(dnf, DNF):
+            for cached_dnf in DNF.dnfs:
+                if dnf == cached_dnf:
+                    return cached_dnf
+            DNF.dnfs[dnf] = None
+        return dnf
 
     def create_DNF(var_line, value):
         return DNF(Clause.create_clause(var_line, value)).cache_dnf()
+
+    def is_conjunction_cached(dnf1, dnf2):
+        return (dnf1 in DNF.conjunctions and dnf2 in DNF.conjunctions[dnf1]) or (dnf2 in DNF.conjunctions and dnf1 in DNF.conjunctions[dnf2])
+
+    def get_cached_conjunction(dnf1, dnf2):
+        assert DNF.is_conjunction_cached(dnf1, dnf2)
+        if dnf1 in DNF.conjunctions and dnf2 in DNF.conjunctions[dnf1]:
+            return DNF.conjunctions[dnf1][dnf2]
+        elif dnf2 in DNF.conjunctions and dnf1 in DNF.conjunctions[dnf2]:
+            return DNF.conjunctions[dnf2][dnf1]
+
+    def cache_conjunction(dnf, dnf1, dnf2):
+        dnf = DNF.cache_dnf(dnf)
+        if dnf1 not in DNF.conjunctions:
+            DNF.conjunctions[dnf1] = {dnf2:dnf}
+        else:
+            DNF.conjunctions[dnf1] |= {dnf2:dnf}
+        if dnf2 not in DNF.conjunctions:
+            DNF.conjunctions[dnf2] = {dnf1:dnf}
+        else:
+            DNF.conjunctions[dnf2] |= {dnf1:dnf}
+        return dnf
 
     def conjunction(dnf1, dnf2):
         if dnf1 is Constant.true:
@@ -502,33 +525,44 @@ class DNF:
             return Constant.false
         elif dnf1 is dnf2:
             return dnf1
-        elif dnf1 in DNF.conjunctions and dnf2 in DNF.conjunctions[dnf1]:
-            return DNF.conjunctions[dnf1][dnf2]
-        elif dnf2 in DNF.conjunctions and dnf1 in DNF.conjunctions[dnf2]:
-            return DNF.conjunctions[dnf2][dnf1]
         else:
             assert isinstance(dnf1, DNF) and isinstance(dnf2, DNF)
-            assert dnf1.clauses and dnf2.clauses
-            dnf = Constant.false
-            for clause1 in dnf1.clauses:
-                for clause2 in dnf2.clauses:
-                    clause = clause1.and_clause(clause2)
-                    if clause is not Constant.false:
-                        if dnf is Constant.false:
-                            dnf = DNF(clause)
-                        else:
-                            dnf.clauses[clause] = None
-            if dnf is not Constant.false:
-                dnf = dnf.cache_dnf()
-            if dnf1 not in DNF.conjunctions:
-                DNF.conjunctions[dnf1] = {dnf2:dnf}
+            if DNF.is_conjunction_cached(dnf1, dnf2):
+                return DNF.get_cached_conjunction(dnf1, dnf2)
             else:
-                DNF.conjunctions[dnf1] |= {dnf2:dnf}
-            if dnf2 not in DNF.conjunctions:
-                DNF.conjunctions[dnf2] = {dnf1:dnf}
-            else:
-                DNF.conjunctions[dnf2] |= {dnf1:dnf}
-            return dnf
+                assert dnf1.clauses and dnf2.clauses
+                dnf = Constant.false
+                for clause1 in dnf1.clauses:
+                    for clause2 in dnf2.clauses:
+                        clause = clause1.and_clause(clause2)
+                        if clause is not Constant.false:
+                            if dnf is Constant.false:
+                                dnf = DNF(clause)
+                            else:
+                                dnf.clauses[clause] = None
+                return DNF.cache_conjunction(dnf, dnf1, dnf2)
+
+    def is_disjunction_cached(dnf1, dnf2):
+        return (dnf1 in DNF.disjunctions and dnf2 in DNF.disjunctions[dnf1]) or (dnf2 in DNF.disjunctions and dnf1 in DNF.disjunctions[dnf2])
+
+    def get_cached_disjunction(dnf1, dnf2):
+        assert DNF.is_disjunction_cached(dnf1, dnf2)
+        if dnf1 in DNF.disjunctions and dnf2 in DNF.disjunctions[dnf1]:
+            return DNF.disjunctions[dnf1][dnf2]
+        elif dnf2 in DNF.disjunctions and dnf1 in DNF.disjunctions[dnf2]:
+            return DNF.disjunctions[dnf2][dnf1]
+
+    def cache_disjunction(dnf, dnf1, dnf2):
+        dnf = DNF.cache_dnf(dnf)
+        if dnf1 not in DNF.disjunctions:
+            DNF.disjunctions[dnf1] = {dnf2:dnf}
+        else:
+            DNF.disjunctions[dnf1] |= {dnf2:dnf}
+        if dnf2 not in DNF.disjunctions:
+            DNF.disjunctions[dnf2] = {dnf1:dnf}
+        else:
+            DNF.disjunctions[dnf2] |= {dnf1:dnf}
+        return dnf
 
     def disjunction(dnf1, dnf2):
         if dnf1 is Constant.false:
@@ -539,31 +573,21 @@ class DNF:
             return Constant.true
         elif dnf1 is dnf2:
             return dnf1
-        elif dnf1 in DNF.disjunctions and dnf2 in DNF.disjunctions[dnf1]:
-            return DNF.disjunctions[dnf1][dnf2]
-        elif dnf2 in DNF.disjunctions and dnf1 in DNF.disjunctions[dnf2]:
-            return DNF.disjunctions[dnf2][dnf1]
         else:
             assert isinstance(dnf1, DNF) and isinstance(dnf2, DNF)
-            assert dnf1.clauses and dnf2.clauses
-            dnf = Constant.false
-            for clause in dnf1.clauses:
-                if dnf is Constant.false:
-                    dnf = DNF(clause)
-                else:
+            if DNF.is_disjunction_cached(dnf1, dnf2):
+                return DNF.get_cached_disjunction(dnf1, dnf2)
+            else:
+                assert dnf1.clauses and dnf2.clauses
+                dnf = Constant.false
+                for clause in dnf1.clauses:
+                    if dnf is Constant.false:
+                        dnf = DNF(clause)
+                    else:
+                        dnf.clauses[clause] = None
+                for clause in dnf2.clauses:
                     dnf.clauses[clause] = None
-            for clause in dnf2.clauses:
-                dnf.clauses[clause] = None
-            dnf = dnf.cache_dnf()
-            if dnf1 not in DNF.disjunctions:
-                DNF.disjunctions[dnf1] = {dnf2:dnf}
-            else:
-                DNF.disjunctions[dnf1] |= {dnf2:dnf}
-            if dnf2 not in DNF.disjunctions:
-                DNF.disjunctions[dnf2] = {dnf1:dnf}
-            else:
-                DNF.disjunctions[dnf2] |= {dnf1:dnf}
-            return dnf
+                return DNF.cache_disjunction(dnf, dnf1, dnf2)
 
     def get_expression(self):
         exp_line = Constant.false
