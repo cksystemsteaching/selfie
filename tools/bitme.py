@@ -404,7 +404,7 @@ class Literal:
             self.var_line.comment, self.var_line.line_no)
 
 class Clause:
-    clauses = []
+    clauses = {}
 
     def __init__(self, literal):
         self.literals = [literal]
@@ -417,6 +417,9 @@ class Clause:
             string += f"{literal}"
         return f"[{string}]"
 
+    def __hash__(self):
+        return id(self)
+
     def __eq__(self, clause):
         return self.literals == clause.literals
 
@@ -425,7 +428,7 @@ class Clause:
         for clause in Clause.clauses:
             if self == clause:
                 return clause
-        Clause.clauses.append(self)
+        Clause.clauses[self] = None
         return self
 
     def create_clause(var_line, value):
@@ -461,7 +464,7 @@ class Clause:
         return clause_line
 
 class DNF:
-    dnfs = []
+    dnfs = {}
 
     conjunctions = {}
     disjunctions = {}
@@ -487,7 +490,7 @@ class DNF:
             for cached_dnf in DNF.dnfs:
                 if dnf == cached_dnf:
                     return cached_dnf
-            DNF.dnfs.append(dnf)
+            DNF.dnfs[dnf] = None
         return dnf
 
     def create_DNF(var_line, value):
