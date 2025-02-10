@@ -377,7 +377,7 @@ class Literal:
         self.value = value
 
     def __str__(self):
-        return f"{self.var_line.symbol} == {self.value}"
+        return f"{self.var_line.name} == {self.value}"
 
     def size():
         size = 0
@@ -404,10 +404,10 @@ class Literal:
             self.var_line.comment, self.var_line.line_no)
 
 class Clause:
-    clauses = {}
+    clauses = []
 
     def __init__(self, literal):
-        self.literals = {literal:None}
+        self.literals = [literal]
 
     def __str__(self):
         string = ""
@@ -417,17 +417,15 @@ class Clause:
             string += f"{literal}"
         return f"[{string}]"
 
-    def __hash__(self):
-        return id(self)
-
     def __eq__(self, clause):
         return self.literals == clause.literals
 
     def cache_clause(self):
+        self.literals.sort(key=id)
         for clause in Clause.clauses:
             if self == clause:
                 return clause
-        Clause.clauses[self] = None
+        Clause.clauses.append(self)
         return self
 
     def create_clause(var_line, value):
@@ -439,14 +437,14 @@ class Clause:
             if and_clause is Constant.false:
                 and_clause = Clause(literal)
             else:
-                and_clause.literals[literal] = None
+                and_clause.literals.append(literal)
         for literal in clause.literals:
             if literal not in and_clause.literals:
                 for clause_literal in and_clause.literals:
                     if clause_literal.is_conflicting(literal):
                         return Constant.false
                     else:
-                        and_clause.literals[literal] = None
+                        and_clause.literals.append(literal)
         return and_clause.cache_clause()
 
     def get_expression(self):
@@ -463,13 +461,13 @@ class Clause:
         return clause_line
 
 class DNF:
-    dnfs = {}
+    dnfs = []
 
     conjunctions = {}
     disjunctions = {}
 
     def __init__(self, clause):
-        self.clauses = {clause:None}
+        self.clauses = [clause]
 
     def __str__(self):
         string = ""
@@ -485,10 +483,11 @@ class DNF:
 
     def cache_dnf(dnf):
         if isinstance(dnf, DNF):
+            dnf.clauses.sort(key=id)
             for cached_dnf in DNF.dnfs:
                 if dnf == cached_dnf:
                     return cached_dnf
-            DNF.dnfs[dnf] = None
+            DNF.dnfs.append(dnf)
         return dnf
 
     def create_DNF(var_line, value):
@@ -538,8 +537,8 @@ class DNF:
                         if clause is not Constant.false:
                             if dnf is Constant.false:
                                 dnf = DNF(clause)
-                            else:
-                                dnf.clauses[clause] = None
+                            elif clause not in dnf.clauses:
+                                dnf.clauses.append(clause)
                 return DNF.cache_conjunction(dnf, dnf1, dnf2)
 
     def is_disjunction_cached(dnf1, dnf2):
@@ -584,9 +583,9 @@ class DNF:
                     if dnf is Constant.false:
                         dnf = DNF(clause)
                     else:
-                        dnf.clauses[clause] = None
+                        dnf.clauses.append(clause)
                 for clause in dnf2.clauses:
-                    dnf.clauses[clause] = None
+                    dnf.clauses.append(clause)
                 return DNF.cache_disjunction(dnf, dnf1, dnf2)
 
     def get_expression(self):
