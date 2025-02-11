@@ -726,19 +726,19 @@ class DNF:
                 dnf1_line,
                 dnf1_line.comment, dnf1_line.line_no)
 
-    def IMPLIES(dnf1, dnf2):
-        if dnf1 is Constant.false or dnf2 is Constant.true:
-            return Constant.true
+    def AND(dnf1, dnf2):
+        if dnf1 is Constant.false or dnf2 is Constant.false:
+            return Constant.false
         elif dnf1 is Constant.true:
             return dnf2.get_expression()
-        elif dnf2 is Constant.false:
-            return DNF.NOT(dnf1)
+        elif dnf2 is Constant.true:
+            return dnf1.get_expression()
         elif dnf1 is dnf2:
-            return Constant.true
+            return dnf1.get_expression()
         else:
             dnf1_line = dnf1.get_expression()
             dnf2_line = dnf2.get_expression()
-            return Implies(next_nid(), OP_IMPLIES, Bool.boolean,
+            return Logical(next_nid(), OP_AND, Bool.boolean,
                 dnf1_line, dnf2_line,
                 dnf1_line.comment, dnf1_line.line_no)
 
@@ -782,8 +782,9 @@ class Values:
         # naive transition from domain propagation to bit blasting
         assert len(self.values) > 0
         if isinstance(self.sid_line, Bool):
-            # constraint on false value implies constraint on true value
-            return DNF.IMPLIES(*self.get_boolean_constraints())
+            # constraint on false value must not hold and constraint on true value must hold
+            false_constraint, true_constraint = self.get_boolean_constraints()
+            return DNF.AND(DNF.NOT(false_constraint), true_constraint)
         else:
             exp_line = None
             for value in self.values:
