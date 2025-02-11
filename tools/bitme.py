@@ -390,7 +390,7 @@ class Literal:
             size += len(Literal.literals[var_line])
         return size
 
-    def create_literal(var_line, l, u):
+    def create_cached_literal(var_line, l, u):
         if var_line not in Literal.literals:
             Literal.literals[var_line] = {}
         if l not in Literal.literals[var_line]:
@@ -399,22 +399,30 @@ class Literal:
             Literal.literals[var_line][l][u] = Literal(var_line, l, u)
         return Literal.literals[var_line][l][u]
 
-    def is_conflicting(self, literal):
-        return self.var_line is literal.var_line and (self.l > literal.u or self.u < literal.l)
-
-    def conjunction(self, literal):
+    def is_intersection_empty(self, literal):
         assert self.var_line is literal.var_line
-        assert not self.is_conflicting(literal)
+        # self.l <= self.u and literal.l <= literal.u
+        return self.l > literal.u or self.u < literal.l
+
+    def intersection(self, literal):
+        assert self.var_line is literal.var_line
+        assert not self.is_intersection_empty(literal)
         if literal.l <= self.l:
             if self.u <= literal.u:
+                # literal.l <= self.l <= self.u <= literal.u
                 return self
             else:
-                return Literal.create_literal(self.var_line, self.l, literal.u)
+                assert self.l <= literal.u # intersection is not empty
+                # literal.l <= self.l <= literal.u < self.u
+                return Literal.create_cached_literal(self.var_line, self.l, literal.u)
         else:
             if literal.u <= self.u:
+                # self.l < literal.l <= literal.u <= self.u
                 return literal
             else:
-                return Literal.create_literal(self.var_line, literal.l, self.u)
+                assert literal.l <= self.u # intersection is not empty
+                # self.l < literal.l <= self.u < literal.u
+                return Literal.create_cached_literal(self.var_line, literal.l, self.u)
 
     def get_expression(self):
         if self.l == self.u:
@@ -467,8 +475,8 @@ class Clause:
             Clause.clauses[clause] = None
         return clause
 
-    def create_clause(var_line, l, u):
-        return Clause.cache_clause(Clause(Literal.create_literal(var_line, l, u)))
+    def create_cached_clause(var_line, l, u):
+        return Clause.cache_clause(Clause(Literal.create_cached_literal(var_line, l, u)))
 
     def is_conjunction_cached(self, clause):
         return (self in Clause.conjunctions and clause in Clause.conjunctions[self]) or (clause in Clause.conjunctions and self in Clause.conjunctions[clause])
@@ -506,10 +514,11 @@ class Clause:
                     conjunction.literals[literal.var_line] = literal
             for literal in clause.literals.values():
                 if literal.var_line in conjunction.literals:
-                    if conjunction.literals[literal.var_line].is_conflicting(literal):
+                    if conjunction.literals[literal.var_line].is_intersection_empty(literal):
                         return Clause.cache_conjunction(Constant.false, self, clause)
                     else:
-                        conjunction.literals[literal.var_line] = conjunction.literals[literal.var_line].conjunction(literal)
+                        # compute interval intersection
+                        conjunction.literals[literal.var_line] = conjunction.literals[literal.var_line].intersection(literal)
                 else:
                     conjunction.literals[literal.var_line] = literal
             return Clause.cache_conjunction(conjunction, self, clause)
@@ -556,8 +565,8 @@ class DNF:
             DNF.dnfs[dnf] = None
         return dnf
 
-    def create_DNF(var_line, value):
-        return DNF(Clause.create_clause(var_line, value, value)).cache_dnf()
+    def create_cached_DNF(var_line, value):
+        return DNF(Clause.create_cached_clause(var_line, value, value)).cache_dnf()
 
     def is_conjunction_cached(dnf1, dnf2):
         return (dnf1 in DNF.conjunctions and dnf2 in DNF.conjunctions[dnf1]) or (dnf2 in DNF.conjunctions and dnf1 in DNF.conjunctions[dnf2])
@@ -630,21 +639,23 @@ class DNF:
         return dnf
 
     def reduce_intervals(intervals):
-        intervals.sort(key=lambda x: x[0])
+        intervals.sort(key=lambda x: x[0]) # sort by lower interval bound
         result = []
         for l, u in intervals:
             if not result:
                 result = [(l, u)]
-                last_l = l
-                last_u = u
-            elif l <= last_u + 1:
-                assert l >= last_l
-                last_u = max(last_u, u)
-                result[-1] = (last_l, last_u)
+                previous_l = l
+                previous_u = u
+            elif l <= previous_u + 1:
+                # current interval is adjacent to or even overlaps with previous interval
+                assert l >= previous_l
+                previous_u = max(previous_u, u)
+                result[-1] = (previous_l, previous_u)
             else:
+                # there is at least one value between current and previous interval
                 result.append((l, u))
-                last_l = l
-                last_u = u
+                previous_l = l
+                previous_u = u
         return result
 
     def reduce_dnf(self):
@@ -652,6 +663,7 @@ class DNF:
         intervals = {}
         for clause in self.clauses:
             if len(clause.literals) == 1:
+                # gather intervals per variable
                 literal = list(clause.literals.values())[0]
                 interval = (literal.l, literal.u)
                 if literal.var_line not in intervals:
@@ -659,22 +671,23 @@ class DNF:
                 else:
                     intervals[literal.var_line].append(interval)
             else:
+                # non-unit clauses remain unchanged
                 dnf.clauses[clause] = None
         reduced_intervals = {}
         for var_line in intervals:
             reduced_intervals[var_line] = DNF.reduce_intervals(intervals[var_line])
         for var_line in reduced_intervals:
             for l, u in reduced_intervals[var_line]:
-                clause = Clause.create_clause(var_line, l, u)
-                if dnf is Constant.false:
-                    dnf = DNF(clause)
+                if l == 0 and u == 2**var_line.sid_line.size - 1:
+                    # unit clause is true for all variable values
+                    return Constant.true
                 else:
-                    dnf.clauses[clause] = None
-        # TODO: generalize to any bitvector sort
-        if len(dnf.clauses) == 1 and list(list(dnf.clauses)[0].literals.values())[0].l == 0 and list(list(dnf.clauses)[0].literals.values())[0].u == 255:
-            return Constant.true
-        else:
-            return dnf
+                    clause = Clause.create_cached_clause(var_line, l, u)
+                    if dnf is Constant.false:
+                        dnf = DNF(clause)
+                    else:
+                        dnf.clauses[clause] = None
+        return dnf.cache_dnf()
 
     def disjunction(dnf1, dnf2):
         if dnf1 is Constant.false:
@@ -699,8 +712,7 @@ class DNF:
                         dnf.clauses[clause] = None
                 for clause in dnf2.clauses:
                     dnf.clauses[clause] = None
-                dnf = dnf.reduce_dnf()
-                return DNF.cache_disjunction(dnf, dnf1, dnf2)
+                return DNF.cache_disjunction(dnf.reduce_dnf(), dnf1, dnf2)
 
     def get_expression(self):
         exp_line = Constant.false
@@ -788,6 +800,7 @@ class Values:
         else:
             exp_line = None
             for value in self.values:
+                # TODO: values may have to be sorted by constraints
                 constraint_line = self.values[value].get_expression()
                 if constraint_line is not Constant.true:
                     if constraint_line is not Constant.false:
@@ -1329,11 +1342,11 @@ class Variable(Expression):
             if isinstance(self.sid_line, Bitvector) and self.sid_line.size <= Instance.PROPAGATE:
                 self.cache_values[0] = Values(self.sid_line)
                 if isinstance(self.sid_line, Bool):
-                    self.cache_values[0].set_value(self.sid_line, False, DNF.create_DNF(self, 0))
-                    self.cache_values[0].set_value(self.sid_line, True, DNF.create_DNF(self, 1))
+                    self.cache_values[0].set_value(self.sid_line, False, DNF.create_cached_DNF(self, 0))
+                    self.cache_values[0].set_value(self.sid_line, True, DNF.create_cached_DNF(self, 1))
                 else:
                     for value in range(2**self.sid_line.size):
-                        self.cache_values[0].set_value(self.sid_line, value, DNF.create_DNF(self, value))
+                        self.cache_values[0].set_value(self.sid_line, value, DNF.create_cached_DNF(self, value))
             else:
                 self.cache_values[0] = self
         return self.cache_values[0]
