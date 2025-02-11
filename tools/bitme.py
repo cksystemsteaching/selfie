@@ -645,7 +645,7 @@ class DNF:
         if dnf1 is Constant.false or dnf2 is Constant.true:
             return Constant.true
         elif dnf1 is Constant.true:
-            return dnf2
+            return dnf2.get_expression()
         elif dnf2 is Constant.false:
             return DNF.NOT(dnf1)
         elif dnf1 is dnf2:
