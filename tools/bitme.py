@@ -372,12 +372,17 @@ class Array(Sort):
 class Literal:
     literals = {}
 
-    def __init__(self, var_line, value):
+    def __init__(self, var_line, l, u):
+        assert l <= u
         self.var_line = var_line
-        self.value = value
+        self.l = l
+        self.u = u
 
     def __str__(self):
-        return f"{self.var_line.name} == {self.value}"
+        if self.l == self.u:
+            return f"{self.var_line.name} == {self.l}"
+        else:
+            return f"{self.l} <= {self.var_line.name} <= {self.u}"
 
     def size():
         size = 0
@@ -385,22 +390,52 @@ class Literal:
             size += len(Literal.literals[var_line])
         return size
 
-    def create_literal(var_line, value):
+    def create_literal(var_line, l, u):
         if var_line not in Literal.literals:
             Literal.literals[var_line] = {}
-        if value not in Literal.literals[var_line]:
-            Literal.literals[var_line][value] = Literal(var_line, value)
-        return Literal.literals[var_line][value]
+        if l not in Literal.literals[var_line]:
+            Literal.literals[var_line][l] = {}
+        if u not in Literal.literals[var_line][l]:
+            Literal.literals[var_line][l][u] = Literal(var_line, l, u)
+        return Literal.literals[var_line][l][u]
 
     def is_conflicting(self, literal):
-        return self.var_line is literal.var_line and self.value != literal.value
+        return self.var_line is literal.var_line and (self.l > literal.u or self.u < literal.l)
+
+    def conjunction(self, literal):
+        assert self.var_line is literal.var_line
+        assert not self.is_conflicting(literal)
+        if literal.l <= self.l:
+            if self.u <= literal.u:
+                return self
+            else:
+                return Literal.create_literal(self.var_line, self.l, literal.u)
+        else:
+            if literal.u <= self.u:
+                return literal
+            else:
+                return Literal.create_literal(self.var_line, literal.l, self.u)
 
     def get_expression(self):
-        return Comparison(next_nid(), OP_EQ, Bool.boolean,
-            self.var_line,
-            Constd(next_nid(), self.var_line.sid_line, self.value,
-                self.var_line.comment, self.var_line.line_no),
-            self.var_line.comment, self.var_line.line_no)
+        if self.l == self.u:
+            return Comparison(next_nid(), OP_EQ, Bool.boolean,
+                self.var_line,
+                Constd(next_nid(), self.var_line.sid_line, self.l,
+                    self.var_line.comment, self.var_line.line_no),
+                self.var_line.comment, self.var_line.line_no)
+        else:
+            return Logical(next_nid(), OP_AND, Bool.boolean,
+                Comparison(next_nid(), OP_UGTE, Bool.boolean,
+                    self.var_line,
+                    Constd(next_nid(), self.var_line.sid_line, self.l,
+                        self.var_line.comment, self.var_line.line_no),
+                    self.var_line.comment, self.var_line.line_no),
+                Comparison(next_nid(), OP_ULTE, Bool.boolean,
+                    self.var_line,
+                    Constd(next_nid(), self.var_line.sid_line, self.u,
+                        self.var_line.comment, self.var_line.line_no),
+                    self.var_line.comment, self.var_line.line_no),
+                self.var_line.comment, self.var_line.line_no)
 
 class Clause:
     clauses = {}
@@ -432,8 +467,8 @@ class Clause:
             Clause.clauses[clause] = None
         return clause
 
-    def create_clause(var_line, value):
-        return Clause.cache_clause(Clause(Literal.create_literal(var_line, value)))
+    def create_clause(var_line, l, u):
+        return Clause.cache_clause(Clause(Literal.create_literal(var_line, l, u)))
 
     def is_conjunction_cached(self, clause):
         return (self in Clause.conjunctions and clause in Clause.conjunctions[self]) or (clause in Clause.conjunctions and self in Clause.conjunctions[clause])
@@ -473,6 +508,8 @@ class Clause:
                 if literal.var_line in conjunction.literals:
                     if conjunction.literals[literal.var_line].is_conflicting(literal):
                         return Clause.cache_conjunction(Constant.false, self, clause)
+                    else:
+                        conjunction.literals[literal.var_line] = conjunction.literals[literal.var_line].conjunction(literal)
                 else:
                     conjunction.literals[literal.var_line] = literal
             return Clause.cache_conjunction(conjunction, self, clause)
@@ -520,7 +557,7 @@ class DNF:
         return dnf
 
     def create_DNF(var_line, value):
-        return DNF(Clause.create_clause(var_line, value)).cache_dnf()
+        return DNF(Clause.create_clause(var_line, value, value)).cache_dnf()
 
     def is_conjunction_cached(dnf1, dnf2):
         return (dnf1 in DNF.conjunctions and dnf2 in DNF.conjunctions[dnf1]) or (dnf2 in DNF.conjunctions and dnf1 in DNF.conjunctions[dnf2])
@@ -592,6 +629,53 @@ class DNF:
             DNF.disjunctions[dnf2] |= {dnf1:dnf}
         return dnf
 
+    def reduce_intervals(intervals):
+        intervals.sort(key=lambda x: x[0])
+        result = []
+        for l, u in intervals:
+            if not result:
+                result = [(l, u)]
+                last_l = l
+                last_u = u
+            elif l <= last_u + 1:
+                assert l >= last_l
+                last_u = max(last_u, u)
+                result[-1] = (last_l, last_u)
+            else:
+                result.append((l, u))
+                last_l = l
+                last_u = u
+        return result
+
+    def reduce_dnf(self):
+        dnf = Constant.false
+        intervals = {}
+        for clause in self.clauses:
+            if len(clause.literals) == 1:
+                literal = list(clause.literals.values())[0]
+                interval = (literal.l, literal.u)
+                if literal.var_line not in intervals:
+                    intervals[literal.var_line] = [interval]
+                else:
+                    intervals[literal.var_line].append(interval)
+            else:
+                dnf.clauses[clause] = None
+        reduced_intervals = {}
+        for var_line in intervals:
+            reduced_intervals[var_line] = DNF.reduce_intervals(intervals[var_line])
+        for var_line in reduced_intervals:
+            for l, u in reduced_intervals[var_line]:
+                clause = Clause.create_clause(var_line, l, u)
+                if dnf is Constant.false:
+                    dnf = DNF(clause)
+                else:
+                    dnf.clauses[clause] = None
+        # TODO: generalize to any bitvector sort
+        if len(dnf.clauses) == 1 and list(list(dnf.clauses)[0].literals.values())[0].l == 0 and list(list(dnf.clauses)[0].literals.values())[0].u == 255:
+            return Constant.true
+        else:
+            return dnf
+
     def disjunction(dnf1, dnf2):
         if dnf1 is Constant.false:
             return dnf2
@@ -615,6 +699,7 @@ class DNF:
                         dnf.clauses[clause] = None
                 for clause in dnf2.clauses:
                     dnf.clauses[clause] = None
+                dnf = dnf.reduce_dnf()
                 return DNF.cache_disjunction(dnf, dnf1, dnf2)
 
     def get_expression(self):
