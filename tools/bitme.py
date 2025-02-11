@@ -557,6 +557,10 @@ class DNF:
     def __eq__(self, dnf):
         return self.clauses == dnf.clauses
 
+    def __lt__(self, dnf):
+        # for sorting cached constraints when generating expressions for value sets
+        return id(self) < id(dnf)
+
     def cache_dnf(dnf):
         if isinstance(dnf, DNF):
             for cached_dnf in DNF.dnfs:
@@ -798,25 +802,32 @@ class Values:
             false_constraint, true_constraint = self.get_boolean_constraints()
             return DNF.AND(DNF.NOT(false_constraint), true_constraint)
         else:
-            exp_line = None
+            non_true_values = {}
             for value in self.values:
-                # TODO: values may have to be sorted by constraints
                 constraint_line = self.values[value].get_expression()
-                if constraint_line is not Constant.true:
-                    if constraint_line is not Constant.false:
-                        if exp_line is None:
-                            exp_line = Zero(next_nid(), self.sid_line,
-                                "unreachable-value", "unreachable value", 0)
-                        exp_line = Ite(next_nid(), self.sid_line,
-                            constraint_line,
-                            Constd(next_nid(), self.sid_line, value,
-                                constraint_line.comment, constraint_line.line_no),
-                            exp_line,
-                            constraint_line.comment, constraint_line.line_no)
-                else:
-                    exp_line = Constd(next_nid(), self.sid_line, value,
+                assert constraint_line is not Constant.false
+                if constraint_line is Constant.true:
+                    # picking first value with true constraint, ignoring all other values
+                    return Constd(next_nid(), self.sid_line, value,
                         constraint_line.comment, constraint_line.line_no)
-            assert exp_line is not None
+                else:
+                    non_true_values[value] = self.values[value]
+            assert non_true_values
+            exp_line = None
+            # sort values with non-true constraints by cached constraint id
+            # TODO: check if sorting is necessary for consistency
+            non_true_values = sorted(non_true_values.items(), key=lambda x: x[1])
+            for value in non_true_values:
+                constraint_line = value[1].get_expression()
+                if exp_line is None:
+                    exp_line = Zero(next_nid(), self.sid_line,
+                        "unreachable-value", "unreachable value", 0)
+                exp_line = Ite(next_nid(), self.sid_line,
+                    constraint_line,
+                    Constd(next_nid(), self.sid_line, value[0],
+                        constraint_line.comment, constraint_line.line_no),
+                    exp_line,
+                    constraint_line.comment, constraint_line.line_no)
             return exp_line
 
     def set_value(self, sid_line, value, constraint):
