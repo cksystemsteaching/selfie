@@ -813,15 +813,13 @@ class Values:
                 else:
                     non_true_values[value] = self.values[value]
             assert non_true_values
-            exp_line = None
+            exp_line = exp_line = Zero(next_nid(), self.sid_line,
+                "unreachable-value", "unreachable value", 0)
             # sort values with non-true constraints by cached constraint id
             # TODO: check if sorting is necessary for consistency
             non_true_values = sorted(non_true_values.items(), key=lambda x: x[1])
             for value in non_true_values:
                 constraint_line = value[1].get_expression()
-                if exp_line is None:
-                    exp_line = Zero(next_nid(), self.sid_line,
-                        "unreachable-value", "unreachable value", 0)
                 exp_line = Ite(next_nid(), self.sid_line,
                     constraint_line,
                     Constd(next_nid(), self.sid_line, value[0],
