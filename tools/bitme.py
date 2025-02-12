@@ -5993,7 +5993,7 @@ def branching_bmc(solver, kmin, kmax, args, step, level):
                 else:
                     solver.assert_state_is_not_changing(next_line, step)
                 if not state_change and next_line == list(Next.nexts.values())[-1]:
-                    print_message("no states changed: terminating\n", step, level)
+                    print_message_with_propagation_profile("no states changed: terminating\n", step, level)
                     return
         else:
             # compute next step
@@ -6043,6 +6043,8 @@ def branching_bmc(solver, kmin, kmax, args, step, level):
 
         step += 1
 
+    print_message_with_propagation_profile("reached kmax: terminating\n", step, level)
+
 def bmc(solver, kmin, kmax, args):
     print_separator('-')
     print_message(f"bounded model checking: -kmin {kmin} -kmax {kmax}\n")
@@ -6054,7 +6056,7 @@ def bmc(solver, kmin, kmax, args):
     print_message("initializing", 0, 0)
     solver.simplify()
 
-    return branching_bmc(solver, kmin, kmax, args, 0, 0)
+    branching_bmc(solver, kmin, kmax, args, 0, 0)
 
 # rotor model generator
 
