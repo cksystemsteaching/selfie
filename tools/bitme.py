@@ -900,11 +900,20 @@ class Values:
     # binary operators
 
     def apply_binary(self, sid_line, values, op):
-        results = Values(sid_line)
+        constraints = {}
         for value1 in self.values:
             for value2 in values.values:
-                results.set_value(sid_line, op(value1, value2),
-                    DNF.conjunction(self.values[value1], values.values[value2]))
+                value = op(value1, value2)
+                constraint = DNF.conjunction(self.values[value1], values.values[value2])
+                # gather unique constraints
+                if value not in constraints:
+                    constraints[value] = {constraint:None}
+                elif constraint not in constraints[value]:
+                    constraints[value] |= {constraint:None}
+        results = Values(sid_line)
+        for value in constraints:
+            for constraint in constraints[value]:
+                results.set_value(sid_line, value, constraint)
         return results
 
     def FALSE():
