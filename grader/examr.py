@@ -40,12 +40,13 @@ def formality(text):
     return len(re.findall(formal, text, re.IGNORECASE))
 
 class Student:
-    def __init__(self, firstname, lastname, studentID, email, q_total, q_length, q_formality, a_total, a_length, a_formality):
+    def __init__(self, firstname, lastname, studentID, email, major, q_total, q_length, q_formality, a_total, a_length, a_formality):
         self.number_of_qas = 1
         self.firstname     = firstname
         self.lastname      = lastname
         self.studentID     = studentID
         self.email         = email
+        self.major         = major
         self.q_total       = q_total
         self.q_length      = q_length
         self.q_formality   = q_formality
@@ -141,6 +142,7 @@ def process_files(response_file, analysis_file, class_id, year, attempt):
                     row['Lastname'],
                     row['Student ID'],
                     row['Email'],
+                    row['Major'],
                     float(row['Grade Question']),
                     len(row['Ask Question']),
                     formality(row['Ask Question']),
@@ -168,7 +170,7 @@ def process_files(response_file, analysis_file, class_id, year, attempt):
 
     assign_similarity(students, uniqueIDs, old_uniqueIDs, q_similarity, a_similarity)
 
-    fieldnames = 'Unique ID', 'Firstname', 'Lastname', 'Student ID', 'Email', 'Total Average', 'Number of Q&As', 'Length of Answers', 'Formality of Answers', 'Similarity of Answers', 'Length of Questions', 'Formality of Questions', 'Similarity of Questions', 'Totel Length of Q&As', 'Question Average', 'Answer Average'
+    fieldnames = 'Unique ID', 'Firstname', 'Lastname', 'Student ID', 'Email', 'Major', 'Total Average', 'Number of Q&As', 'Length of Answers', 'Formality of Answers', 'Similarity of Answers', 'Length of Questions', 'Formality of Questions', 'Similarity of Questions', 'Totel Length of Q&As', 'Question Average', 'Answer Average'
 
     csv_writer = csv.DictWriter(analysis_file, fieldnames=fieldnames)
 
@@ -181,6 +183,7 @@ def process_files(response_file, analysis_file, class_id, year, attempt):
             'Lastname': student[1].lastname,
             'Student ID': student[1].studentID,
             'Email': student[1].email,
+            'Major': student[1].major,
             'Total Average': (student[1].q_total + student[1].a_total) / student[1].number_of_qas / 2,
             'Number of Q&As': student[1].number_of_qas,
             'Length of Answers': student[1].a_length,
@@ -210,7 +213,7 @@ def main(argv):
     analysis_file = ''
 
     class_id = 'IOS'
-    year     = '2023'
+    year     = '2024'
     attempt  = '1st'
 
     try:
