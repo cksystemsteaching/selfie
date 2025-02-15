@@ -84,6 +84,12 @@ def compute_similarity(students, uniqueIDs, row_num, message, strings, old_strin
 
     return similarity
 
+def compute_question_similarity(students, uniqueIDs, row_num, questions, old_questions, old_uniqueIDs, old_row_num, old_firstnames, old_lastnames):
+    return compute_similarity(students, uniqueIDs, row_num, "Question", questions, old_questions, old_uniqueIDs, old_row_num, old_firstnames, old_lastnames)
+
+def compute_answer_similarity(students, uniqueIDs, row_num, answers, old_answers, old_uniqueIDs, old_row_num, old_firstnames, old_lastnames):
+    return compute_similarity(students, uniqueIDs, row_num, "Answer", answers, old_answers, old_uniqueIDs, old_row_num, old_firstnames, old_lastnames)
+
 def assign_similarity(students, uniqueIDs, old_uniqueIDs, q_similarity, a_similarity):
     all_uniqueIDs = uniqueIDs + old_uniqueIDs
 
@@ -165,8 +171,8 @@ def process_files(response_file, analysis_file, class_id, year, attempt):
             old_questions.append(row['Ask Question'])
             old_answers.append(row['Answer Question'])
 
-    q_similarity = compute_similarity(students, uniqueIDs, row_num, "Question", questions, old_questions, old_uniqueIDs, old_row_num, old_firstnames, old_lastnames)
-    a_similarity = compute_similarity(students, uniqueIDs, row_num, "Answer", answers, old_answers, old_uniqueIDs, old_row_num, old_firstnames, old_lastnames)
+    q_similarity = compute_question_similarity(students, uniqueIDs, row_num, questions, old_questions, old_uniqueIDs, old_row_num, old_firstnames, old_lastnames)
+    a_similarity = compute_answer_similarity(students, uniqueIDs, row_num, answers, old_answers, old_uniqueIDs, old_row_num, old_firstnames, old_lastnames)
 
     assign_similarity(students, uniqueIDs, old_uniqueIDs, q_similarity, a_similarity)
 
