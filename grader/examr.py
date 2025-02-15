@@ -129,6 +129,8 @@ def process_files(response_file, analysis_file, class_id, year, attempt):
 
     csv_reader = csv.DictReader(response_file)
 
+    old = True
+
     for i, row in enumerate(csv_reader, start=2):
         if (row['Class'] == class_id and row['Year'] == year and row['Attempt'] == attempt):
             uniqueIDs.append(row['Unique ID'])
@@ -163,13 +165,18 @@ def process_files(response_file, analysis_file, class_id, year, attempt):
                 students[row['Unique ID']].a_total       += float(row['Grade Answer'])
                 students[row['Unique ID']].a_length      += len(row['Answer Question'])
                 students[row['Unique ID']].a_formality   += formality(row['Answer Question'])
-        else:
+
+             # assuming anything appearing after current class is newer
+            old = False
+        elif old:
             old_uniqueIDs.append(row['Unique ID'])
             old_row_num.append(i)
             old_firstnames.append(row['Firstname'])
             old_lastnames.append(row['Lastname'])
             old_questions.append(row['Ask Question'])
             old_answers.append(row['Answer Question'])
+        else:
+            break
 
     q_similarity = compute_question_similarity(students, uniqueIDs, row_num, questions, old_questions, old_uniqueIDs, old_row_num, old_firstnames, old_lastnames)
     a_similarity = compute_answer_similarity(students, uniqueIDs, row_num, answers, old_answers, old_uniqueIDs, old_row_num, old_firstnames, old_lastnames)
@@ -204,7 +211,8 @@ def process_files(response_file, analysis_file, class_id, year, attempt):
         })
 
     print(f'Number of students: {len(students)}')
-    print(f'Total number of Q&As {len(questions)}')
+    print(f'Total number of Q&As: {len(questions)}')
+    print(f'Total number of old Q&As: {len(old_questions)}')
     print(f'Average number of Q&As per student: {len(questions) / len(students)}')
     print(f'Average length of answers per student: {a_length / len(students)}')
     print(f'Average formality of answers per student: {a_formality / len(students)}')
