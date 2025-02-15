@@ -50,11 +50,15 @@ class Student:
         self.q_total       = q_total
         self.q_length      = q_length
         self.q_formality   = q_formality
+        self.q_number_of_s = 0
         self.q_similarity  = float(0)
         self.a_total       = a_total
         self.a_length      = a_length
         self.a_formality   = a_formality
+        self.a_number_of_s = 0
         self.a_similarity  = float(0)
+
+similarity_threshold = 0.95
 
 def compute_similarity(students, uniqueIDs, row_num, message, strings, old_strings, old_uniqueIDs, old_row_num, old_firstnames, old_lastnames):
     all_strings = strings + old_strings
@@ -69,7 +73,7 @@ def compute_similarity(students, uniqueIDs, row_num, message, strings, old_strin
                 # similarity[x][y] = get_cosine_similarity(strings[x], all_strings[y])
                 similarity[x][y] = get_lasered_cosine_similarity(vectors[x], vectors[y])
 
-                if similarity[x][y] > 0.95:
+                if similarity[x][y] > similarity_threshold:
                     print(f'{message} similarity {similarity[x][y]} at:')
                     print(f'[{row_num[x]}]: {uniqueIDs[x]} ({students[uniqueIDs[x]].firstname} {students[uniqueIDs[x]].lastname})')
                     if y <= len(strings):
@@ -98,7 +102,11 @@ def assign_similarity(students, uniqueIDs, old_uniqueIDs, q_similarity, a_simila
 
         for y in range(len(all_uniqueIDs)):
             if x != y:
+                if q_similarity[x][y] > similarity_threshold:
+                    student.q_number_of_s += 1
                 student.q_similarity += q_similarity[x][y]
+                if a_similarity[x][y] > similarity_threshold:
+                    student.a_number_of_s += 1
                 student.a_similarity += a_similarity[x][y]
 
         if (len(all_uniqueIDs) > 1):
@@ -183,7 +191,7 @@ def process_files(response_file, analysis_file, class_id, year, attempt):
 
     assign_similarity(students, uniqueIDs, old_uniqueIDs, q_similarity, a_similarity)
 
-    fieldnames = 'Unique ID', 'Firstname', 'Lastname', 'Student ID', 'Email', 'Major', 'Total Average', 'Number of Q&As', 'Length of Answers', 'Formality of Answers', 'Similarity of Answers', 'Length of Questions', 'Formality of Questions', 'Similarity of Questions', 'Totel Length of Q&As', 'Question Average', 'Answer Average'
+    fieldnames = 'Unique ID', 'Firstname', 'Lastname', 'Student ID', 'Email', 'Major', 'Total Average', 'Number of Q&As', 'Length of Answers', 'Formality of Answers', 'Number of Similar Answers', 'Similarity of Answers', 'Length of Questions', 'Formality of Questions', 'Number of Similar Questions', 'Similarity of Questions', 'Totel Length of Q&As', 'Question Average', 'Answer Average'
 
     csv_writer = csv.DictWriter(analysis_file, fieldnames=fieldnames)
 
@@ -201,9 +209,11 @@ def process_files(response_file, analysis_file, class_id, year, attempt):
             'Number of Q&As': student[1].number_of_qas,
             'Length of Answers': student[1].a_length,
             'Formality of Answers': student[1].a_formality,
+            'Number of Similar Answers':student[1].a_number_of_s,
             'Similarity of Answers': student[1].a_similarity,
             'Length of Questions': student[1].q_length,
             'Formality of Questions': student[1].q_formality,
+            'Number of Similar Questions':student[1].q_number_of_s,
             'Similarity of Questions': student[1].q_similarity,
             'Totel Length of Q&As': student[1].q_length + student[1].a_length,
             'Question Average': student[1].q_total / student[1].number_of_qas,
