@@ -41,22 +41,23 @@ def formality(text):
 
 class Student:
     def __init__(self, firstname, lastname, studentID, email, major, q_total, q_length, q_formality, a_total, a_length, a_formality):
-        self.number_of_qas = 1
-        self.firstname     = firstname
-        self.lastname      = lastname
-        self.studentID     = studentID
-        self.email         = email
-        self.major         = major
-        self.q_total       = q_total
-        self.q_length      = q_length
-        self.q_formality   = q_formality
-        self.q_number_of_s = 0
-        self.q_similarity  = float(0)
-        self.a_total       = a_total
-        self.a_length      = a_length
-        self.a_formality   = a_formality
-        self.a_number_of_s = 0
-        self.a_similarity  = float(0)
+        self.number_of_qas            = 1
+        self.firstname                = firstname
+        self.lastname                 = lastname
+        self.studentID                = studentID
+        self.email                    = email
+        self.major                    = major
+        self.number_of_duplicates     = 0
+        self.q_total                  = q_total
+        self.q_length                 = q_length
+        self.q_formality              = q_formality
+        self.q_number_of_similarities = 0
+        self.q_similarity             = float(0)
+        self.a_total                  = a_total
+        self.a_length                 = a_length
+        self.a_formality              = a_formality
+        self.a_number_of_similarities = 0
+        self.a_similarity             = float(0)
 
 similarity_threshold = 0.95
 
@@ -94,7 +95,7 @@ def compute_question_similarity(students, uniqueIDs, row_num, questions, old_que
 def compute_answer_similarity(students, uniqueIDs, row_num, answers, old_answers, old_uniqueIDs, old_row_num, old_firstnames, old_lastnames):
     return compute_similarity(students, uniqueIDs, row_num, "Answer", answers, old_answers, old_uniqueIDs, old_row_num, old_firstnames, old_lastnames)
 
-def assign_similarity(students, uniqueIDs, old_uniqueIDs, q_similarity, a_similarity):
+def assign_similarity(students, rows, uniqueIDs, old_uniqueIDs, q_similarity, a_similarity):
     all_uniqueIDs = uniqueIDs + old_uniqueIDs
 
     for x in range(len(uniqueIDs)):
@@ -102,11 +103,23 @@ def assign_similarity(students, uniqueIDs, old_uniqueIDs, q_similarity, a_simila
 
         for y in range(len(all_uniqueIDs)):
             if x != y:
+                if q_similarity[x][y] > similarity_threshold and a_similarity[x][y] > similarity_threshold:
+                    if y <= len(uniqueIDs) and uniqueIDs[x] == uniqueIDs[y]:
+                        student.number_of_duplicates += 1
+                        student.number_of_qas -= 1
+                        student.q_total       -= float(rows[y]['Grade Question'])
+                        student.q_length      -= len(rows[y]['Ask Question'])
+                        student.q_formality   -= formality(rows[y]['Ask Question'])
+                        student.a_total       -= float(rows[y]['Grade Answer'])
+                        student.a_length      -= len(rows[y]['Answer Question'])
+                        student.a_formality   -= formality(rows[y]['Answer Question'])
                 if q_similarity[x][y] > similarity_threshold:
-                    student.q_number_of_s += 1
+                    if y > len(uniqueIDs) or uniqueIDs[x] != uniqueIDs[y]:
+                        student.q_number_of_similarities += 1
                 student.q_similarity += q_similarity[x][y]
                 if a_similarity[x][y] > similarity_threshold:
-                    student.a_number_of_s += 1
+                    if y > len(uniqueIDs) or uniqueIDs[x] != uniqueIDs[y]:
+                        student.a_number_of_similarities += 1
                 student.a_similarity += a_similarity[x][y]
 
         if (len(all_uniqueIDs) > 1):
@@ -139,7 +152,9 @@ def process_files(response_file, analysis_file, class_id, year, attempt):
 
     old = True
 
-    for i, row in enumerate(csv_reader, start=2):
+    rows = enumerate(csv_reader, start=2)
+
+    for i, row in rows:
         if (row['Class'] == class_id and row['Year'] == year and row['Attempt'] == attempt):
             uniqueIDs.append(row['Unique ID'])
             row_num.append(i)
@@ -189,9 +204,9 @@ def process_files(response_file, analysis_file, class_id, year, attempt):
     q_similarity = compute_question_similarity(students, uniqueIDs, row_num, questions, old_questions, old_uniqueIDs, old_row_num, old_firstnames, old_lastnames)
     a_similarity = compute_answer_similarity(students, uniqueIDs, row_num, answers, old_answers, old_uniqueIDs, old_row_num, old_firstnames, old_lastnames)
 
-    assign_similarity(students, uniqueIDs, old_uniqueIDs, q_similarity, a_similarity)
+    assign_similarity(students, rows, uniqueIDs, old_uniqueIDs, q_similarity, a_similarity)
 
-    fieldnames = 'Unique ID', 'Firstname', 'Lastname', 'Student ID', 'Email', 'Major', 'Total Average', 'Number of Q&As', 'Length of Answers', 'Formality of Answers', 'Number of Similar Answers', 'Similarity of Answers', 'Length of Questions', 'Formality of Questions', 'Number of Similar Questions', 'Similarity of Questions', 'Totel Length of Q&As', 'Question Average', 'Answer Average'
+    fieldnames = 'Unique ID', 'Firstname', 'Lastname', 'Student ID', 'Email', 'Major', 'Total Average', 'Number of Q&As', 'Number of Duplicates', 'Length of Answers', 'Formality of Answers', 'Number of Similar Answers', 'Similarity of Answers', 'Length of Questions', 'Formality of Questions', 'Number of Similar Questions', 'Similarity of Questions', 'Totel Length of Q&As', 'Question Average', 'Answer Average'
 
     csv_writer = csv.DictWriter(analysis_file, fieldnames=fieldnames)
 
@@ -207,13 +222,14 @@ def process_files(response_file, analysis_file, class_id, year, attempt):
             'Major': student[1].major,
             'Total Average': (student[1].q_total + student[1].a_total) / student[1].number_of_qas / 2,
             'Number of Q&As': student[1].number_of_qas,
+            'Number of Duplicates': student[1].number_of_duplicates,
             'Length of Answers': student[1].a_length,
             'Formality of Answers': student[1].a_formality,
-            'Number of Similar Answers':student[1].a_number_of_s,
+            'Number of Similar Answers':student[1].a_number_of_similarities,
             'Similarity of Answers': student[1].a_similarity,
             'Length of Questions': student[1].q_length,
             'Formality of Questions': student[1].q_formality,
-            'Number of Similar Questions':student[1].q_number_of_s,
+            'Number of Similar Questions':student[1].q_number_of_similarities,
             'Similarity of Questions': student[1].q_similarity,
             'Totel Length of Q&As': student[1].q_length + student[1].a_length,
             'Question Average': student[1].q_total / student[1].number_of_qas,
@@ -229,6 +245,7 @@ def process_files(response_file, analysis_file, class_id, year, attempt):
     print(f'Average length of questions per student: {q_length / len(students)}')
     print(f'Average formality of questions per student: {q_formality / len(students)}')
     print(f'Average length of Q&As per student: {(q_length + a_length) / len(students)}')
+    print('Profile includes duplicates')
 
 import sys, getopt
 
