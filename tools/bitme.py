@@ -445,60 +445,115 @@ class Literal:
                     self.var_line.comment, self.var_line.line_no),
                 self.var_line.comment, self.var_line.line_no)
 
-class Clause:
-    clauses = {}
-
+class Inputs:
     conjunctions = {}
+    disjunctions = {}
 
+    def cache(inputs):
+        if isinstance(inputs, Inputs):
+            return type(inputs).cache(inputs)
+        else:
+            return inputs
+
+    def is_conjunction_cached(inputs1, inputs2):
+        return (inputs1 in Inputs.conjunctions and inputs2 in Inputs.conjunctions[inputs1]) or (inputs2 in Inputs.conjunctions and inputs1 in Inputs.conjunctions[inputs2])
+
+    def get_cached_conjunction(inputs1, inputs2):
+        assert Inputs.is_conjunction_cached(inputs1, inputs2)
+        if inputs1 in Inputs.conjunctions and inputs2 in Inputs.conjunctions[inputs1]:
+            return Inputs.conjunctions[inputs1][inputs2]
+        elif inputs2 in Inputs.conjunctions and inputs1 in Inputs.conjunctions[inputs2]:
+            return Inputs.conjunctions[inputs2][inputs1]
+
+    def cache_conjunction(inputs, inputs1, inputs2):
+        inputs = Inputs.cache(inputs)
+        if inputs1 not in Inputs.conjunctions:
+            Inputs.conjunctions[inputs1] = {inputs2:inputs}
+        else:
+            Inputs.conjunctions[inputs1] |= {inputs2:inputs}
+        if inputs2 not in Inputs.conjunctions:
+            Inputs.conjunctions[inputs2] = {inputs1:inputs}
+        else:
+            Inputs.conjunctions[inputs2] |= {inputs1:inputs}
+        return inputs
+
+    def conjunction(inputs1, inputs2):
+        if inputs1 is Constant.true:
+            return inputs2
+        elif inputs2 is Constant.true:
+            return inputs1
+        elif inputs1 is Constant.false or inputs2 is Constant.false:
+            return Constant.false
+        elif inputs1 is inputs2:
+            return inputs1
+        else:
+            return inputs1.conjunction(inputs2)
+
+    def is_disjunction_cached(inputs1, inputs2):
+        return (inputs1 in Inputs.disjunctions and inputs2 in Inputs.disjunctions[inputs1]) or (inputs2 in Inputs.disjunctions and inputs1 in Inputs.disjunctions[inputs2])
+
+    def get_cached_disjunction(inputs1, inputs2):
+        assert Inputs.is_disjunction_cached(inputs1, inputs2)
+        if inputs1 in Inputs.disjunctions and inputs2 in Inputs.disjunctions[inputs1]:
+            return Inputs.disjunctions[inputs1][inputs2]
+        elif inputs2 in Inputs.disjunctions and inputs1 in Inputs.disjunctions[inputs2]:
+            return Inputs.disjunctions[inputs2][inputs1]
+
+    def cache_disjunction(inputs, inputs1, inputs2):
+        inputs = Inputs.cache(inputs)
+        if inputs1 not in Inputs.disjunctions:
+            Inputs.disjunctions[inputs1] = {inputs2:inputs}
+        else:
+            Inputs.disjunctions[inputs1] |= {inputs2:inputs}
+        if inputs2 not in Inputs.disjunctions:
+            Inputs.disjunctions[inputs2] = {inputs1:inputs}
+        else:
+            Inputs.disjunctions[inputs2] |= {inputs1:inputs}
+        return inputs
+
+    def disjunction(inputs1, inputs2):
+        if inputs1 is Constant.false:
+            return inputs2
+        elif inputs2 is Constant.false:
+            return inputs1
+        elif inputs1 is Constant.true or inputs2 is Constant.true:
+            return Constant.true
+        elif inputs1 is inputs2:
+            return inputs1
+        else:
+            return inputs1.disjunction(inputs2)
+
+class Clause(Inputs):
     def __init__(self, literal):
         self.literals = {literal.var_line:literal}
-
-    def __str__(self):
-        string = ""
-        for literal in self.literals.values():
-            if string:
-                string += ", "
-            string += f"{literal}"
-        return f"[{string}]"
 
     def __hash__(self):
         return id(self)
 
     def __eq__(self, clause):
-        return self.literals == clause.literals
+        return type(self) is type(clause) and self.literals == clause.literals
 
-    def cache_clause(clause):
+    def cache(clause):
         if isinstance(clause, Clause):
-            for cached_clause in Clause.clauses:
+            for cached_clause in type(clause).clauses:
                 if clause == cached_clause:
                     return cached_clause
-            Clause.clauses[clause] = None
+            type(clause).clauses[clause] = None
         return clause
 
-    def create_cached_clause(var_line, l, u):
-        return Clause.cache_clause(Clause(Literal.create_cached_literal(var_line, l, u)))
+class Conjunctive_Clause(Clause):
+    clauses = {}
 
-    def is_conjunction_cached(self, clause):
-        return (self in Clause.conjunctions and clause in Clause.conjunctions[self]) or (clause in Clause.conjunctions and self in Clause.conjunctions[clause])
+    def __str__(self):
+        string = ""
+        for literal in self.literals.values():
+            if string:
+                string += " & "
+            string += f"{literal}"
+        return f"[{string}]"
 
-    def get_cached_conjunction(self, clause):
-        assert self.is_conjunction_cached(clause)
-        if self in Clause.conjunctions and clause in Clause.conjunctions[self]:
-            return Clause.conjunctions[self][clause]
-        elif clause in Clause.conjunctions and self in Clause.conjunctions[clause]:
-            return Clause.conjunctions[clause][self]
-
-    def cache_conjunction(clause, clause1, clause2):
-        clause = Clause.cache_clause(clause)
-        if clause1 not in Clause.conjunctions:
-            Clause.conjunctions[clause1] = {clause2:clause}
-        else:
-            Clause.conjunctions[clause1] |= {clause2:clause}
-        if clause2 not in Clause.conjunctions:
-            Clause.conjunctions[clause2] = {clause1:clause}
-        else:
-            Clause.conjunctions[clause2] |= {clause1:clause}
-        return clause
+    def create_cached_conjunction(var_line, l, u):
+        return Conjunctive_Clause.cache(Conjunctive_Clause(Literal.create_cached_literal(var_line, l, u)))
 
     def conjunction(self, clause):
         if self is clause:
@@ -509,7 +564,7 @@ class Clause:
             conjunction = Constant.false
             for literal in self.literals.values():
                 if conjunction is Constant.false:
-                    conjunction = Clause(literal)
+                    conjunction = Conjunctive_Clause(literal)
                 else:
                     conjunction.literals[literal.var_line] = literal
             for literal in clause.literals.values():
@@ -536,14 +591,25 @@ class Clause:
                     literal_line.comment, literal_line.line_no)
         return clause_line
 
-class DNF:
-    dnfs = {}
+# new_number_of_clauses = old_max_number_of_literals ** old_number_of_clauses
 
-    conjunctions = {}
-    disjunctions = {}
+# new_max_number_of_literals = old_number_of_clauses
+
+class DNF(Inputs):
+    dnfs = {}
 
     def __init__(self, clause):
         self.clauses = {clause:None}
+
+    def __hash__(self):
+        return id(self)
+
+    def __eq__(self, dnf):
+        return type(self) is type(dnf) and self.clauses == dnf.clauses
+
+    def __lt__(self, inputs):
+        # for sorting cached inputs when generating expressions for value sets
+        return id(self) < id(inputs)
 
     def __str__(self):
         string = ""
@@ -551,17 +617,7 @@ class DNF:
             string += f"{clause}\n"
         return f"{{{string}}}"
 
-    def __hash__(self):
-        return id(self)
-
-    def __eq__(self, dnf):
-        return self.clauses == dnf.clauses
-
-    def __lt__(self, dnf):
-        # for sorting cached constraints when generating expressions for value sets
-        return id(self) < id(dnf)
-
-    def cache_dnf(dnf):
+    def cache(dnf):
         if isinstance(dnf, DNF):
             for cached_dnf in DNF.dnfs:
                 if dnf == cached_dnf:
@@ -570,77 +626,24 @@ class DNF:
         return dnf
 
     def create_cached_DNF(var_line, value):
-        return DNF(Clause.create_cached_clause(var_line, value, value)).cache_dnf()
+        return DNF.cache(DNF(Conjunctive_Clause.create_cached_conjunction(var_line, value, value)))
 
-    def is_conjunction_cached(dnf1, dnf2):
-        return (dnf1 in DNF.conjunctions and dnf2 in DNF.conjunctions[dnf1]) or (dnf2 in DNF.conjunctions and dnf1 in DNF.conjunctions[dnf2])
-
-    def get_cached_conjunction(dnf1, dnf2):
-        assert DNF.is_conjunction_cached(dnf1, dnf2)
-        if dnf1 in DNF.conjunctions and dnf2 in DNF.conjunctions[dnf1]:
-            return DNF.conjunctions[dnf1][dnf2]
-        elif dnf2 in DNF.conjunctions and dnf1 in DNF.conjunctions[dnf2]:
-            return DNF.conjunctions[dnf2][dnf1]
-
-    def cache_conjunction(dnf, dnf1, dnf2):
-        dnf = DNF.cache_dnf(dnf)
-        if dnf1 not in DNF.conjunctions:
-            DNF.conjunctions[dnf1] = {dnf2:dnf}
+    def conjunction(self, inputs):
+        assert isinstance(inputs, DNF)
+        if Inputs.is_conjunction_cached(self, inputs):
+            return Inputs.get_cached_conjunction(self, inputs)
         else:
-            DNF.conjunctions[dnf1] |= {dnf2:dnf}
-        if dnf2 not in DNF.conjunctions:
-            DNF.conjunctions[dnf2] = {dnf1:dnf}
-        else:
-            DNF.conjunctions[dnf2] |= {dnf1:dnf}
-        return dnf
-
-    def conjunction(dnf1, dnf2):
-        if dnf1 is Constant.true:
-            return dnf2
-        elif dnf2 is Constant.true:
-            return dnf1
-        elif dnf1 is Constant.false or dnf2 is Constant.false:
-            return Constant.false
-        elif dnf1 is dnf2:
-            return dnf1
-        else:
-            assert isinstance(dnf1, DNF) and isinstance(dnf2, DNF)
-            if DNF.is_conjunction_cached(dnf1, dnf2):
-                return DNF.get_cached_conjunction(dnf1, dnf2)
-            else:
-                assert dnf1.clauses and dnf2.clauses
-                dnf = Constant.false
-                for clause1 in dnf1.clauses:
-                    for clause2 in dnf2.clauses:
-                        clause = clause1.conjunction(clause2)
-                        if clause is not Constant.false:
-                            if dnf is Constant.false:
-                                dnf = DNF(clause)
-                            else:
-                                dnf.clauses[clause] = None
-                return DNF.cache_conjunction(dnf, dnf1, dnf2)
-
-    def is_disjunction_cached(dnf1, dnf2):
-        return (dnf1 in DNF.disjunctions and dnf2 in DNF.disjunctions[dnf1]) or (dnf2 in DNF.disjunctions and dnf1 in DNF.disjunctions[dnf2])
-
-    def get_cached_disjunction(dnf1, dnf2):
-        assert DNF.is_disjunction_cached(dnf1, dnf2)
-        if dnf1 in DNF.disjunctions and dnf2 in DNF.disjunctions[dnf1]:
-            return DNF.disjunctions[dnf1][dnf2]
-        elif dnf2 in DNF.disjunctions and dnf1 in DNF.disjunctions[dnf2]:
-            return DNF.disjunctions[dnf2][dnf1]
-
-    def cache_disjunction(dnf, dnf1, dnf2):
-        dnf = DNF.cache_dnf(dnf)
-        if dnf1 not in DNF.disjunctions:
-            DNF.disjunctions[dnf1] = {dnf2:dnf}
-        else:
-            DNF.disjunctions[dnf1] |= {dnf2:dnf}
-        if dnf2 not in DNF.disjunctions:
-            DNF.disjunctions[dnf2] = {dnf1:dnf}
-        else:
-            DNF.disjunctions[dnf2] |= {dnf1:dnf}
-        return dnf
+            assert self.clauses and inputs.clauses
+            dnf = Constant.false
+            for clause1 in self.clauses:
+                for clause2 in inputs.clauses:
+                    clause = clause1.conjunction(clause2)
+                    if clause is not Constant.false:
+                        if dnf is Constant.false:
+                            dnf = DNF(clause)
+                        else:
+                            dnf.clauses[clause] = None
+            return Inputs.cache_conjunction(dnf, self, inputs)
 
     def reduce_intervals(intervals):
         intervals.sort(key=lambda x: x[0]) # sort by lower interval bound
@@ -686,37 +689,28 @@ class DNF:
                     # unit clause is true for all variable values
                     return Constant.true
                 else:
-                    clause = Clause.create_cached_clause(var_line, l, u)
+                    clause = Conjunctive_Clause.create_cached_conjunction(var_line, l, u)
                     if dnf is Constant.false:
                         dnf = DNF(clause)
                     else:
                         dnf.clauses[clause] = None
-        return dnf.cache_dnf()
+        return DNF.cache(dnf)
 
-    def disjunction(dnf1, dnf2):
-        if dnf1 is Constant.false:
-            return dnf2
-        elif dnf2 is Constant.false:
-            return dnf1
-        elif dnf1 is Constant.true or dnf2 is Constant.true:
-            return Constant.true
-        elif dnf1 is dnf2:
-            return dnf1
+    def disjunction(self, inputs):
+        assert isinstance(inputs, DNF)
+        if Inputs.is_disjunction_cached(self, inputs):
+            return Inputs.get_cached_disjunction(self, inputs)
         else:
-            assert isinstance(dnf1, DNF) and isinstance(dnf2, DNF)
-            if DNF.is_disjunction_cached(dnf1, dnf2):
-                return DNF.get_cached_disjunction(dnf1, dnf2)
-            else:
-                assert dnf1.clauses and dnf2.clauses
-                dnf = Constant.false
-                for clause in dnf1.clauses:
-                    if dnf is Constant.false:
-                        dnf = DNF(clause)
-                    else:
-                        dnf.clauses[clause] = None
-                for clause in dnf2.clauses:
+            assert self.clauses and inputs.clauses
+            dnf = Constant.false
+            for clause in self.clauses:
+                if dnf is Constant.false:
+                    dnf = DNF(clause)
+                else:
                     dnf.clauses[clause] = None
-                return DNF.cache_disjunction(dnf.reduce_dnf(), dnf1, dnf2)
+            for clause in inputs.clauses:
+                dnf.clauses[clause] = None
+            return Inputs.cache_disjunction(dnf.reduce_dnf(), self, inputs)
 
     def get_expression(self):
         exp_line = Constant.false
@@ -839,7 +833,7 @@ class Values:
                 self.values[value] = constraint
             else:
                 assert self.values[value] is not Constant.false
-                self.values[value] = DNF.disjunction(self.values[value], constraint)
+                self.values[value] = Inputs.disjunction(self.values[value], constraint)
         return self
 
     def is_equal(self, values):
@@ -904,7 +898,7 @@ class Values:
         for value1 in self.values:
             for value2 in values.values:
                 value = op(value1, value2)
-                constraint = DNF.conjunction(self.values[value1], values.values[value2])
+                constraint = Inputs.conjunction(self.values[value1], values.values[value2])
                 # gather unique constraints
                 if value not in constraints:
                     constraints[value] = {constraint:None}
@@ -1099,7 +1093,7 @@ class Values:
             results = Values(self.sid_line)
             for value in self.values:
                 results.set_value(self.sid_line, value,
-                    DNF.conjunction(self.values[value], constraint))
+                    Inputs.conjunction(self.values[value], constraint))
             return results
 
     def merge(self, values):
@@ -5517,7 +5511,7 @@ def print_message(message, step = None, level = None):
 
 def print_message_with_propagation_profile(message, step = None, level = None):
     if Instance.PROPAGATE is not None:
-        print_message(f"({Values.total_number_of_values}, {len(DNF.dnfs)}, {len(Clause.clauses)}, {Literal.size()}, {Expression.total_number_of_generated_expressions}) {message}", step, level)
+        print_message(f"({Values.total_number_of_values}, {len(DNF.dnfs)}, {len(Conjunctive_Clause.clauses)}, {Literal.size()}, {Expression.total_number_of_generated_expressions}) {message}", step, level)
     else:
         print_message(message, step, level)
 
