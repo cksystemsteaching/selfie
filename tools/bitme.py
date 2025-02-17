@@ -552,7 +552,7 @@ class Conjunctive_Clause(Clause):
         return f"[{string}]"
 
     def create_cached_conjunction(var_line, l, u):
-        return Conjunctive_Clause.cache(Conjunctive_Clause(Literal.create_cached_literal(var_line, l, u)))
+        return Clause.cache(Conjunctive_Clause(Literal.create_cached_literal(var_line, l, u)))
 
     def conjunction(self, clause):
         assert isinstance(clause, Conjunctive_Clause)
@@ -589,8 +589,8 @@ class Conjunctive_Clause(Clause):
             cnf = Constant.true
             for literal1 in self.literals.values():
                 for literal2 in clause.literals.values():
-                    clause1 = Disjunctive_Clause.cache(Disjunctive_Clause(literal1.var_line, {literal1:None}))
-                    clause2 = Disjunctive_Clause.cache(Disjunctive_Clause(literal2.var_line, {literal2:None}))
+                    clause1 = Clause.cache(Disjunctive_Clause(literal1.var_line, {literal1:None}))
+                    clause2 = Clause.cache(Disjunctive_Clause(literal2.var_line, {literal2:None}))
                     disjunction = clause1.disjunction(clause2)
                     if disjunction is not Constant.true:
                         if cnf is Constant.true:
@@ -629,7 +629,7 @@ class Disjunctive_Clause(Clause):
         return f"[{string}]"
 
     def create_cached_disjunction(var_line, l, u):
-        return Disjunctive_Clause.cache(Disjunctive_Clause(var_line, {Literal.create_cached_literal(var_line, l, u):None}))
+        return Clause.cache(Disjunctive_Clause(var_line, {Literal.create_cached_literal(var_line, l, u):None}))
 
     def conjunction(self, clause):
         assert isinstance(clause, Disjunctive_Clause)
@@ -643,8 +643,8 @@ class Disjunctive_Clause(Clause):
                 for literal1 in self.literals[var_line1]:
                     for var_line2 in clause.literals:
                         for literal2 in clause.literals[var_line2]:
-                            clause1 = Conjunctive_Clause.cache(Conjunctive_Clause(literal1))
-                            clause2 = Conjunctive_Clause.cache(Conjunctive_Clause(literal2))
+                            clause1 = Clause.cache(Conjunctive_Clause(literal1))
+                            clause2 = Clause.cache(Conjunctive_Clause(literal2))
                             conjunction = clause1.conjunction(clause2)
                             if conjunction is not Constant.false:
                                 if dnf is Constant.true:
@@ -695,17 +695,15 @@ class Disjunctive_Clause(Clause):
 
 # new_max_number_of_literals = old_number_of_clauses
 
-class DNF(Inputs):
-    dnfs = {}
-
+class Normal_Form(Inputs):
     def __init__(self, clause):
         self.clauses = {clause:None}
 
     def __hash__(self):
         return id(self)
 
-    def __eq__(self, dnf):
-        return type(self) is type(dnf) and self.clauses == dnf.clauses
+    def __eq__(self, nf):
+        return type(self) is type(nf) and self.clauses == nf.clauses
 
     def __lt__(self, inputs):
         # for sorting cached inputs when generating expressions for value sets
@@ -717,16 +715,48 @@ class DNF(Inputs):
             string += f"{clause}\n"
         return f"{{{string}}}"
 
-    def cache(dnf):
-        if isinstance(dnf, DNF):
-            for cached_dnf in DNF.dnfs:
-                if dnf == cached_dnf:
-                    return cached_dnf
-            DNF.dnfs[dnf] = None
-        return dnf
+    def cache(nf):
+        if isinstance(nf, Normal_Form):
+            for cached_nf in type(nf).nfs:
+                if nf == cached_nf:
+                    return cached_nf
+            type(nf).nfs[nf] = None
+        return nf
+
+class CNF(Normal_Form):
+    nfs = {}
+
+    def create_cached_CNF(var_line, value):
+        return Normal_Form.cache(CNF(Disjunctive_Clause.create_cached_disjunction(var_line, value, value)))
+
+    def get_DNF(self):
+        if self.is_other_form_cached():
+            return self.get_cached_other_form()
+        else:
+            assert self.clauses
+            dnf = Constant.true
+            for clause in self.clauses:
+                dnf = Inputs.conjunction(dnf, DNF(clause))
+            return Normal_Form.cache_other_form(self, dnf)
+
+    def get_expression(self):
+        exp_line = Constant.false
+        for clause in self.clauses:
+            clause_line = clause.get_expression()
+            if exp_line is Constant.false:
+                exp_line = clause_line
+            else:
+                exp_line = Logical(next_nid(), OP_AND, Bool.boolean,
+                    clause_line,
+                    exp_line,
+                    clause_line.comment, clause_line.line_no)
+        return exp_line
+
+class DNF(Normal_Form):
+    nfs = {}
 
     def create_cached_DNF(var_line, value):
-        return DNF.cache(DNF(Conjunctive_Clause.create_cached_conjunction(var_line, value, value)))
+        return Normal_Form.cache(DNF(Conjunctive_Clause.create_cached_conjunction(var_line, value, value)))
 
     def conjunction(self, inputs):
         assert isinstance(inputs, DNF)
@@ -794,7 +824,7 @@ class DNF(Inputs):
                         dnf = DNF(clause)
                     else:
                         dnf.clauses[clause] = None
-        return DNF.cache(dnf)
+        return Normal_Form.cache(dnf)
 
     def disjunction(self, inputs):
         assert isinstance(inputs, DNF)
@@ -811,6 +841,16 @@ class DNF(Inputs):
             for clause in inputs.clauses:
                 dnf.clauses[clause] = None
             return Inputs.cache_disjunction(dnf.reduce_dnf(), self, inputs)
+
+    def get_CNF(self):
+        if self.is_other_form_cached():
+            return self.get_cached_other_form()
+        else:
+            assert self.clauses
+            cnf = Constant.false
+            for clause in self.clauses:
+                cnf = Inputs.disjunction(cnf, CNF(clause))
+            return Normal_Form.cache_other_form(self, cnf)
 
     def get_expression(self):
         exp_line = Constant.false
@@ -5611,7 +5651,7 @@ def print_message(message, step = None, level = None):
 
 def print_message_with_propagation_profile(message, step = None, level = None):
     if Instance.PROPAGATE is not None:
-        print_message(f"({Values.total_number_of_values}, {len(DNF.dnfs)}, {len(Conjunctive_Clause.clauses)}, {Literal.size()}, {Expression.total_number_of_generated_expressions}) {message}", step, level)
+        print_message(f"({Values.total_number_of_values}, {len(DNF.nfs)}, {len(Conjunctive_Clause.clauses)}, {Literal.size()}, {Expression.total_number_of_generated_expressions}) {message}", step, level)
     else:
         print_message(message, step, level)
 
