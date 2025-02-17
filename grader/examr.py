@@ -102,9 +102,9 @@ def assign_similarity(students, rows, uniqueIDs, old_uniqueIDs, q_similarity, a_
         student = students[uniqueIDs[x]]
 
         for y in range(len(all_uniqueIDs)):
-            if x != y:
+            if x < y:
                 if q_similarity[x][y] > similarity_threshold and a_similarity[x][y] > similarity_threshold:
-                    if y <= len(uniqueIDs) and uniqueIDs[x] == uniqueIDs[y]:
+                    if y < len(uniqueIDs) and uniqueIDs[x] == uniqueIDs[y]:
                         student.number_of_duplicates += 1
                         student.number_of_qas -= 1
                         student.q_total       -= float(rows[y]['Grade Question'])
@@ -114,18 +114,18 @@ def assign_similarity(students, rows, uniqueIDs, old_uniqueIDs, q_similarity, a_
                         student.a_length      -= len(rows[y]['Answer Question'])
                         student.a_formality   -= formality(rows[y]['Answer Question'])
                 if q_similarity[x][y] > similarity_threshold:
-                    if y > len(uniqueIDs) or uniqueIDs[x] != uniqueIDs[y]:
+                    if y >= len(uniqueIDs) or uniqueIDs[x] != uniqueIDs[y]:
                         student.q_number_of_similarities += 1
                 student.q_similarity += q_similarity[x][y]
                 if a_similarity[x][y] > similarity_threshold:
-                    if y > len(uniqueIDs) or uniqueIDs[x] != uniqueIDs[y]:
+                    if y >= len(uniqueIDs) or uniqueIDs[x] != uniqueIDs[y]:
                         student.a_number_of_similarities += 1
                 student.a_similarity += a_similarity[x][y]
 
-        if (len(all_uniqueIDs) > 1):
-            # normalize again
-            student.q_similarity /= len(all_uniqueIDs) - 1
-            student.a_similarity /= len(all_uniqueIDs) - 1
+        if len(all_uniqueIDs) > 1:
+            # normalize
+            student.q_similarity /= len(all_uniqueIDs) - 1 - x
+            student.a_similarity /= len(all_uniqueIDs) - 1 - x
 
 import csv
 
