@@ -696,8 +696,10 @@ class Disjunctive_Clause(Clause):
 # new_max_number_of_literals = old_number_of_clauses
 
 class Normal_Form(Inputs):
-    def __init__(self, clause):
-        self.clauses = {clause:None}
+    other_forms = {}
+
+    def __init__(self, clauses):
+        self.clauses = clauses
 
     def __hash__(self):
         return id(self)
@@ -723,8 +725,29 @@ class Normal_Form(Inputs):
             type(nf).nfs[nf] = None
         return nf
 
+    def is_other_form_cached(self):
+        return self in other_forms
+
+    def get_cached_other_form(self):
+        assert self.is_other_form_cached()
+        return other_forms[self]
+
+    def cache_other_form(self, other_form):
+        assert not self.is_other_form_cached()
+        other_forms[self] = other_form
+
 class CNF(Normal_Form):
     nfs = {}
+
+    def __init__(self, clause):
+        if isinstance(clause, Disjunctive_Clause):
+            super().__init__({clause:None})
+        else:
+            assert isinstance(clause, Conjunctive_Clause)
+            clauses = {}
+            for literal in clause.literals:
+                clauses[Clause.cache(Disjunctive_Clause(literal.var_line, {literal:None}))] = None
+            super().__init__(clauses)
 
     def create_cached_CNF(var_line, value):
         return Normal_Form.cache(CNF(Disjunctive_Clause.create_cached_disjunction(var_line, value, value)))
@@ -737,7 +760,7 @@ class CNF(Normal_Form):
             dnf = Constant.true
             for clause in self.clauses:
                 dnf = Inputs.conjunction(dnf, DNF(clause))
-            return Normal_Form.cache_other_form(self, dnf)
+            return self.cache_other_form(dnf)
 
     def get_expression(self):
         exp_line = Constant.false
@@ -754,6 +777,16 @@ class CNF(Normal_Form):
 
 class DNF(Normal_Form):
     nfs = {}
+
+    def __init__(self, clause):
+        if isinstance(clause, Conjunctive_Clause):
+            super().__init__({clause:None})
+        else:
+            assert isinstance(clause, Disjunctive_Clause)
+            clauses = {}
+            for literal in clause.literals:
+                clauses[Clause.cache(Conjunctive_Clause(literal))] = None
+            super().__init__(clauses)
 
     def create_cached_DNF(var_line, value):
         return Normal_Form.cache(DNF(Conjunctive_Clause.create_cached_conjunction(var_line, value, value)))
@@ -850,7 +883,7 @@ class DNF(Normal_Form):
             cnf = Constant.false
             for clause in self.clauses:
                 cnf = Inputs.disjunction(cnf, CNF(clause))
-            return Normal_Form.cache_other_form(self, cnf)
+            return self.cache_other_form(cnf)
 
     def get_expression(self):
         exp_line = Constant.false
