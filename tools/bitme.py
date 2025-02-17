@@ -555,6 +555,7 @@ class Conjunctive_Clause(Clause):
         return Conjunctive_Clause.cache(Conjunctive_Clause(Literal.create_cached_literal(var_line, l, u)))
 
     def conjunction(self, clause):
+        assert isinstance(clause, Conjunctive_Clause)
         if self is clause:
             return self
         elif self.is_conjunction_cached(clause):
@@ -577,6 +578,26 @@ class Conjunctive_Clause(Clause):
                 else:
                     conjunction.literals[var_line] = literal
             return Inputs.cache_conjunction(conjunction, self, clause)
+
+    def disjunction(self, clause):
+        assert isinstance(clause, Conjunctive_Clause)
+        if self is clause:
+            return self
+        elif self.is_disjunction_cached(clause):
+            return self.get_cached_disjunction(clause)
+        else:
+            cnf = Constant.true
+            for literal1 in self.literals.values():
+                for literal2 in clause.literals.values():
+                    clause1 = Disjunctive_Clause.cache(Disjunctive_Clause(literal1.var_line, {literal1:None}))
+                    clause2 = Disjunctive_Clause.cache(Disjunctive_Clause(literal2.var_line, {literal2:None}))
+                    disjunction = clause1.disjunction(clause2)
+                    if disjunction is not Constant.true:
+                        if cnf is Constant.true:
+                            cnf = CNF(disjunction)
+                        else:
+                            cnf.clauses[disjunction] = None
+            return Inputs.cache_disjunction(cnf, self, clause)
 
     def get_expression(self):
         clause_line = Constant.false
@@ -610,15 +631,38 @@ class Disjunctive_Clause(Clause):
     def create_cached_disjunction(var_line, l, u):
         return Disjunctive_Clause.cache(Disjunctive_Clause(var_line, {Literal.create_cached_literal(var_line, l, u):None}))
 
+    def conjunction(self, clause):
+        assert isinstance(clause, Disjunctive_Clause)
+        if self is clause:
+            return self
+        elif self.is_conjunction_cached(clause):
+            return self.get_cached_conjunction(clause)
+        else:
+            dnf = Constant.false
+            for var_line1 in self.literals:
+                for literal1 in self.literals[var_line1]:
+                    for var_line2 in clause.literals:
+                        for literal2 in clause.literals[var_line2]:
+                            clause1 = Conjunctive_Clause.cache(Conjunctive_Clause(literal1))
+                            clause2 = Conjunctive_Clause.cache(Conjunctive_Clause(literal2))
+                            conjunction = clause1.conjunction(clause2)
+                            if conjunction is not Constant.false:
+                                if dnf is Constant.true:
+                                    dnf = DNF(conjunction)
+                                else:
+                                    dnf.clauses[conjunction] = None
+            return Inputs.cache_conjunction(dnf, self, clause)
+
     def disjunction(self, clause):
+        assert isinstance(clause, Disjunctive_Clause)
         if self is clause:
             return self
         elif self.is_disjunction_cached(clause):
             return self.get_cached_disjunction(clause)
         else:
-            disjunction = Constant.false
+            disjunction = Constant.true
             for var_line in self.literals:
-                if disjunction is Constant.false:
+                if disjunction is Constant.true:
                     disjunction = Disjunctive_Clause(var_line, self.literals[var_line])
                 else:
                     disjunction.literals[var_line] = self.literals[var_line]
