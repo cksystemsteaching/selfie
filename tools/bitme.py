@@ -399,15 +399,11 @@ class Literal:
             Literal.literals[var_line][l][u] = Literal(var_line, l, u)
         return Literal.literals[var_line][l][u]
 
-    def is_intersection_empty(self, literal):
-        assert self.var_line is literal.var_line
-        # self.l <= self.u and literal.l <= literal.u
-        return self.l > literal.u or self.u < literal.l
-
     def intersection(self, literal):
         assert self.var_line is literal.var_line
-        assert not self.is_intersection_empty(literal)
-        if literal.l <= self.l:
+        if self.l > literal.u or self.u < literal.l:
+            return Constant.false
+        elif literal.l <= self.l:
             if self.u <= literal.u:
                 # literal.l <= self.l <= self.u <= literal.u
                 return self
@@ -524,8 +520,8 @@ class Inputs:
             return inputs1.disjunction(inputs2)
 
 class Clause(Inputs):
-    def __init__(self, literal):
-        self.literals = {literal.var_line:literal}
+    def __init__(self, literals):
+        self.literals = literals
 
     def __hash__(self):
         return id(self)
@@ -543,6 +539,9 @@ class Clause(Inputs):
 
 class Conjunctive_Clause(Clause):
     clauses = {}
+
+    def __init__(self, literal):
+        super().__init__({literal.var_line:literal})
 
     def __str__(self):
         string = ""
@@ -568,19 +567,21 @@ class Conjunctive_Clause(Clause):
                 else:
                     conjunction.literals[literal.var_line] = literal
             for literal in clause.literals.values():
-                if literal.var_line in conjunction.literals:
-                    if conjunction.literals[literal.var_line].is_intersection_empty(literal):
-                        return Clause.cache_conjunction(Constant.false, self, clause)
+                var_line = literal.var_line
+                if var_line in conjunction.literals:
+                    intersection_literal = conjunction.literals[var_line].intersection(literal)
+                    if intersection_literal is Constant.false:
+                        return Inputs.cache_conjunction(Constant.false, self, clause)
                     else:
-                        # compute interval intersection
-                        conjunction.literals[literal.var_line] = conjunction.literals[literal.var_line].intersection(literal)
+                        conjunction.literals[var_line] = intersection_literal
                 else:
-                    conjunction.literals[literal.var_line] = literal
-            return Clause.cache_conjunction(conjunction, self, clause)
+                    conjunction.literals[var_line] = literal
+            return Inputs.cache_conjunction(conjunction, self, clause)
 
     def get_expression(self):
         clause_line = Constant.false
         for literal in self.literals.values():
+            var_line = literal.var_line
             literal_line = literal.get_expression()
             if clause_line is Constant.false:
                 clause_line = literal_line
@@ -588,7 +589,62 @@ class Conjunctive_Clause(Clause):
                 clause_line = Logical(next_nid(), OP_AND, Bool.boolean,
                     literal_line,
                     clause_line,
-                    literal_line.comment, literal_line.line_no)
+                    var_line.comment, var_line.line_no)
+        return clause_line
+
+class Disjunctive_Clause(Clause):
+    clauses = {}
+
+    def __init__(self, var_line, literals):
+        super().__init__({var_line:literals})
+
+    def __str__(self):
+        string = ""
+        for var_line in self.literals:
+            for literal in self.literals[var_line]:
+                if string:
+                    string += " | "
+                string += f"{literal}"
+        return f"[{string}]"
+
+    def create_cached_disjunction(var_line, l, u):
+        return Disjunctive_Clause.cache(Disjunctive_Clause(var_line, {Literal.create_cached_literal(var_line, l, u):None}))
+
+    def disjunction(self, clause):
+        if self is clause:
+            return self
+        elif self.is_disjunction_cached(clause):
+            return self.get_cached_disjunction(clause)
+        else:
+            disjunction = Constant.false
+            for var_line in self.literals:
+                if disjunction is Constant.false:
+                    disjunction = Disjunctive_Clause(var_line, self.literals[var_line])
+                else:
+                    disjunction.literals[var_line] = self.literals[var_line]
+            for var_line in clause.literals:
+                if var_line in disjunction.literals:
+                    union_literals = Literal.union(disjunction.literals[var_line], clause.literals[var_line])
+                    if union_literals is Constant.true:
+                        return Inputs.cache_disjunction(Constant.true, self, clause)
+                    else:
+                        disjunction.literals[var_line] = union_literals
+                else:
+                    disjunction.literals[var_line] = clause.literals[var_line]
+            return Inputs.cache_disjunction(disjunction, self, clause)
+
+    def get_expression(self):
+        clause_line = Constant.false
+        for var_line in self.literals:
+            for literal in self.literals[var_line]:
+                literal_line = literal.get_expression()
+                if clause_line is Constant.false:
+                    clause_line = literal_line
+                else:
+                    clause_line = Logical(next_nid(), OP_OR, Bool.boolean,
+                        literal_line,
+                        clause_line,
+                        var_line.comment, var_line.line_no)
         return clause_line
 
 # new_number_of_clauses = old_max_number_of_literals ** old_number_of_clauses
