@@ -189,7 +189,7 @@ def process_files(response_file, analysis_file, class_id, year, attempt):
                 students[row['Unique ID']].a_length      += len(row['Answer Question'])
                 students[row['Unique ID']].a_formality   += formality(row['Answer Question'])
 
-            rows[i] = row
+            rows[i - 2] = row
 
              # assuming anything appearing after current class is newer
             old = False
@@ -201,7 +201,7 @@ def process_files(response_file, analysis_file, class_id, year, attempt):
             old_questions.append(row['Ask Question'])
             old_answers.append(row['Answer Question'])
 
-            rows[i] = row
+            rows[i - 2] = row
         else:
             break
 
