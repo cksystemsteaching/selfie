@@ -369,87 +369,29 @@ class Array(Sort):
                 self.element_size_line.get_bitwuzla(tm))
         return self.bitwuzla
 
-class Literal:
-    literals = {}
-
-    def __init__(self, var_line, l, u):
-        assert l <= u
-        self.var_line = var_line
-        self.l = l
-        self.u = u
-
-    def __str__(self):
-        if self.l == self.u:
-            return f"{self.var_line.name} == {self.l}"
-        else:
-            return f"{self.l} <= {self.var_line.name} <= {self.u}"
-
-    def size():
-        size = 0
-        for var_line in Literal.literals:
-            size += len(Literal.literals[var_line])
-        return size
-
-    def create_cached_literal(var_line, l, u):
-        if var_line not in Literal.literals:
-            Literal.literals[var_line] = {}
-        if l not in Literal.literals[var_line]:
-            Literal.literals[var_line][l] = {}
-        if u not in Literal.literals[var_line][l]:
-            Literal.literals[var_line][l][u] = Literal(var_line, l, u)
-        return Literal.literals[var_line][l][u]
-
-    def intersection(self, literal):
-        assert self.var_line is literal.var_line
-        if self.l > literal.u or self.u < literal.l:
-            return Constant.false
-        elif literal.l <= self.l:
-            if self.u <= literal.u:
-                # literal.l <= self.l <= self.u <= literal.u
-                return self
-            else:
-                assert self.l <= literal.u # intersection is not empty
-                # literal.l <= self.l <= literal.u < self.u
-                return Literal.create_cached_literal(self.var_line, self.l, literal.u)
-        else:
-            if literal.u <= self.u:
-                # self.l < literal.l <= literal.u <= self.u
-                return literal
-            else:
-                assert literal.l <= self.u # intersection is not empty
-                # self.l < literal.l <= self.u < literal.u
-                return Literal.create_cached_literal(self.var_line, literal.l, self.u)
-
-    def get_expression(self):
-        if self.l == self.u:
-            return Comparison(next_nid(), OP_EQ, Bool.boolean,
-                self.var_line,
-                Constd(next_nid(), self.var_line.sid_line, self.l,
-                    self.var_line.comment, self.var_line.line_no),
-                self.var_line.comment, self.var_line.line_no)
-        else:
-            return Logical(next_nid(), OP_AND, Bool.boolean,
-                Comparison(next_nid(), OP_UGTE, Bool.boolean,
-                    self.var_line,
-                    Constd(next_nid(), self.var_line.sid_line, self.l,
-                        self.var_line.comment, self.var_line.line_no),
-                    self.var_line.comment, self.var_line.line_no),
-                Comparison(next_nid(), OP_ULTE, Bool.boolean,
-                    self.var_line,
-                    Constd(next_nid(), self.var_line.sid_line, self.u,
-                        self.var_line.comment, self.var_line.line_no),
-                    self.var_line.comment, self.var_line.line_no),
-                self.var_line.comment, self.var_line.line_no)
-
 class Inputs:
     conjunctions = {}
     disjunctions = {}
+    applications = {}
 
     def cache(inputs):
         if isinstance(inputs, Inputs):
-            return type(inputs).cache(inputs)
+            return inputs.cache()
         else:
             return inputs
+
+    def is_application_cached(self):
+        return self in Inputs.applications
+
+    def get_cached_application(self):
+        assert self.is_application_cached()
+        return Input.applications[self]
+
+    def cache_application(self, application):
+        assert not self.is_application_cached()
+        Input.applications[application] = self
+        Input.applications[self] = application
+        return application
 
     def is_conjunction_cached(inputs1, inputs2):
         return (inputs1 in Inputs.conjunctions and inputs2 in Inputs.conjunctions[inputs1]) or (inputs2 in Inputs.conjunctions and inputs1 in Inputs.conjunctions[inputs2])
@@ -519,254 +461,99 @@ class Inputs:
         else:
             return inputs1.disjunction(inputs2)
 
-class Clause(Inputs):
-    def __init__(self, literals):
-        self.literals = literals
+    def NOT(inputs):
+        if inputs is Constant.true:
+            return Constant.false
+        elif inputs is Constant.false:
+            return Constant.true
+        else:
+            inputs_line = inputs.get_expression()
+            return Unary(next_nid(), OP_NOT, Bool.boolean,
+                inputs_line,
+                inputs_line.comment, inputs_line.line_no)
 
-    def __hash__(self):
-        return id(self)
+    def AND(inputs1, inputs2):
+        if inputs1 is Constant.false or inputs2 is Constant.false:
+            return Constant.false
+        elif inputs1 is Constant.true:
+            return inputs2.get_expression()
+        elif inputs2 is Constant.true:
+            return inputs1.get_expression()
+        elif inputs1 is inputs2:
+            return inputs1.get_expression()
+        else:
+            inputs1_line = inputs1.get_expression()
+            inputs2_line = inputs2.get_expression()
+            return Logical(next_nid(), OP_AND, Bool.boolean,
+                inputs1_line, inputs2_line,
+                inputs1_line.comment, inputs1_line.line_no)
 
-    def __eq__(self, clause):
-        return type(self) is type(clause) and self.literals == clause.literals
+class Literal(Inputs):
+    literals = {}
 
-    def cache(clause):
-        if isinstance(clause, Clause):
-            for cached_clause in type(clause).clauses:
-                if clause == cached_clause:
-                    return cached_clause
-            type(clause).clauses[clause] = None
-        return clause
+    def number_of_literals():
+        size = 0
+        for var_line in Literal.literals:
+            size += len(Literal.literals[var_line])
+        return size
 
-class Conjunctive_Clause(Clause):
-    clauses = {}
-
-    def __init__(self, literal):
-        super().__init__({literal.var_line:literal})
+    def __init__(self, var_line, l, u):
+        assert l <= u
+        self.var_line = var_line
+        self.l = l
+        self.u = u
 
     def __str__(self):
-        string = ""
-        for literal in self.literals.values():
-            if string:
-                string += " & "
-            string += f"{literal}"
-        return f"[{string}]"
-
-    def create_cached_conjunction(var_line, l, u):
-        return Clause.cache(Conjunctive_Clause(Literal.create_cached_literal(var_line, l, u)))
-
-    def conjunction(self, clause):
-        assert isinstance(clause, Conjunctive_Clause)
-        if self is clause:
-            return self
-        elif self.is_conjunction_cached(clause):
-            return self.get_cached_conjunction(clause)
+        if self.l == self.u:
+            return f"{self.var_line.name} == {self.l}"
         else:
-            conjunction = Constant.false
-            for literal in self.literals.values():
-                if conjunction is Constant.false:
-                    conjunction = Conjunctive_Clause(literal)
-                else:
-                    conjunction.literals[literal.var_line] = literal
-            for literal in clause.literals.values():
-                var_line = literal.var_line
-                if var_line in conjunction.literals:
-                    intersection_literal = conjunction.literals[var_line].intersection(literal)
-                    if intersection_literal is Constant.false:
-                        return Inputs.cache_conjunction(Constant.false, self, clause)
-                    else:
-                        conjunction.literals[var_line] = intersection_literal
-                else:
-                    conjunction.literals[var_line] = literal
-            return Inputs.cache_conjunction(conjunction, self, clause)
-
-    def get_expression(self):
-        clause_line = Constant.false
-        for literal in self.literals.values():
-            var_line = literal.var_line
-            literal_line = literal.get_expression()
-            if clause_line is Constant.false:
-                clause_line = literal_line
-            else:
-                clause_line = Logical(next_nid(), OP_AND, Bool.boolean,
-                    literal_line,
-                    clause_line,
-                    var_line.comment, var_line.line_no)
-        return clause_line
-
-class Disjunctive_Clause(Clause):
-    clauses = {}
-
-    def __init__(self, var_line, literals):
-        super().__init__({var_line:literals})
-
-    def __str__(self):
-        string = ""
-        for var_line in self.literals:
-            for literal in self.literals[var_line]:
-                if string:
-                    string += " | "
-                string += f"{literal}"
-        return f"[{string}]"
-
-    def create_cached_disjunction(var_line, l, u):
-        return Clause.cache(Disjunctive_Clause(var_line, {Literal.create_cached_literal(var_line, l, u):None}))
-
-    def disjunction(self, clause):
-        assert isinstance(clause, Disjunctive_Clause)
-        if self is clause:
-            return self
-        elif self.is_disjunction_cached(clause):
-            return self.get_cached_disjunction(clause)
-        else:
-            disjunction = Constant.true
-            for var_line in self.literals:
-                if disjunction is Constant.true:
-                    disjunction = Disjunctive_Clause(var_line, self.literals[var_line])
-                else:
-                    disjunction.literals[var_line] = self.literals[var_line]
-            for var_line in clause.literals:
-                if var_line in disjunction.literals:
-                    union_literals = Literal.union(disjunction.literals[var_line], clause.literals[var_line])
-                    if union_literals is Constant.true:
-                        return Inputs.cache_disjunction(Constant.true, self, clause)
-                    else:
-                        disjunction.literals[var_line] = union_literals
-                else:
-                    disjunction.literals[var_line] = clause.literals[var_line]
-            return Inputs.cache_disjunction(disjunction, self, clause)
-
-    def get_expression(self):
-        clause_line = Constant.false
-        for var_line in self.literals:
-            for literal in self.literals[var_line]:
-                literal_line = literal.get_expression()
-                if clause_line is Constant.false:
-                    clause_line = literal_line
-                else:
-                    clause_line = Logical(next_nid(), OP_OR, Bool.boolean,
-                        literal_line,
-                        clause_line,
-                        var_line.comment, var_line.line_no)
-        return clause_line
-
-# new_number_of_clauses = old_max_number_of_literals ** old_number_of_clauses
-
-# new_max_number_of_literals = old_number_of_clauses
-
-class Normal_Form(Inputs):
-    other_forms = {}
-
-    def __init__(self, clauses):
-        self.clauses = clauses
-
-    def __hash__(self):
-        return id(self)
-
-    def __eq__(self, nf):
-        return type(self) is type(nf) and self.clauses == nf.clauses
+            return f"{self.l} <= {self.var_line.name} <= {self.u}"
 
     def __lt__(self, inputs):
         # for sorting cached inputs when generating expressions for value sets
         return id(self) < id(inputs)
 
-    def __str__(self):
-        string = ""
-        for clause in self.clauses:
-            string += f"{clause}\n"
-        return f"{{{string}}}"
-
-    def cache(nf):
-        if isinstance(nf, Normal_Form):
-            for cached_nf in type(nf).nfs:
-                if nf == cached_nf:
-                    return cached_nf
-            type(nf).nfs[nf] = None
-        return nf
-
-    def is_other_form_cached(self):
-        return self in other_forms
-
-    def get_cached_other_form(self):
-        assert self.is_other_form_cached()
-        return other_forms[self]
-
-    def cache_other_form(self, other_form):
-        assert not self.is_other_form_cached()
-        other_forms[self] = other_form
-
-class CNF(Normal_Form):
-    nfs = {}
-
-    def __init__(self, clause):
-        if isinstance(clause, Disjunctive_Clause):
-            super().__init__({clause:None})
-        else:
-            assert isinstance(clause, Conjunctive_Clause)
-            clauses = {}
-            for literal in clause.literals:
-                clauses[Clause.cache(Disjunctive_Clause(literal.var_line, {literal:None}))] = None
-            super().__init__(clauses)
-
-    def create_cached_CNF(var_line, value):
-        return Normal_Form.cache(CNF(Disjunctive_Clause.create_cached_disjunction(var_line, value, value)))
-
-    def get_DNF(self):
-        if self.is_other_form_cached():
-            return self.get_cached_other_form()
-        else:
-            assert self.clauses
-            dnf = Constant.true
-            for clause in self.clauses:
-                dnf = Inputs.conjunction(dnf, DNF(clause))
-            return self.cache_other_form(dnf)
-
-    def get_expression(self):
-        exp_line = Constant.false
-        for clause in self.clauses:
-            clause_line = clause.get_expression()
-            if exp_line is Constant.false:
-                exp_line = clause_line
+    def cache(self):
+        if self.var_line not in Literal.literals:
+            Literal.literals[self.var_line] = {}
+        if self.l not in Literal.literals[self.var_line]:
+            Literal.literals[self.var_line][self.l] = {}
+        if self.u not in Literal.literals[self.var_line][self.l]:
+            if self.l == 0 and self.u == 2**self.var_line.sid_line.size - 1:
+                # literal holds for all variable values
+                Literal.literals[self.var_line][self.l][self.u] = Constant.true
             else:
-                exp_line = Logical(next_nid(), OP_AND, Bool.boolean,
-                    clause_line,
-                    exp_line,
-                    clause_line.comment, clause_line.line_no)
-        return exp_line
+                Literal.literals[self.var_line][self.l][self.u] = self
+        return Literal.literals[self.var_line][self.l][self.u]
 
-class DNF(Normal_Form):
-    nfs = {}
+    def create_cached_literal(var_line, l, u):
+        return Literal(var_line, l, u).cache()
 
-    def __init__(self, clause):
-        if isinstance(clause, Conjunctive_Clause):
-            super().__init__({clause:None})
+    def intersection(self, literal):
+        assert self.var_line is literal.var_line
+        if self.l > literal.u or self.u < literal.l:
+            return Constant.false
+        elif literal.l <= self.l:
+            if self.u <= literal.u:
+                # literal.l <= self.l <= self.u <= literal.u
+                return self
+            else:
+                assert self.l <= literal.u # intersection is not empty
+                # literal.l <= self.l <= literal.u < self.u
+                return Literal(self.var_line, self.l, literal.u)
         else:
-            assert isinstance(clause, Disjunctive_Clause)
-            clauses = {}
-            for literal in clause.literals:
-                clauses[Clause.cache(Conjunctive_Clause(literal))] = None
-            super().__init__(clauses)
-
-    def create_cached_DNF(var_line, value):
-        return Normal_Form.cache(DNF(Conjunctive_Clause.create_cached_conjunction(var_line, value, value)))
+            if literal.u <= self.u:
+                # self.l < literal.l <= literal.u <= self.u
+                return literal
+            else:
+                assert literal.l <= self.u # intersection is not empty
+                # self.l < literal.l <= self.u < literal.u
+                return Literal(self.var_line, literal.l, self.u)
 
     def conjunction(self, inputs):
-        assert isinstance(inputs, DNF)
-        if Inputs.is_conjunction_cached(self, inputs):
-            return Inputs.get_cached_conjunction(self, inputs)
-        else:
-            assert self.clauses and inputs.clauses
-            dnf = Constant.false
-            for clause1 in self.clauses:
-                for clause2 in inputs.clauses:
-                    clause = clause1.conjunction(clause2)
-                    if clause is not Constant.false:
-                        if dnf is Constant.false:
-                            dnf = DNF(clause)
-                        else:
-                            dnf.clauses[clause] = None
-            return Inputs.cache_conjunction(dnf, self, inputs)
+        return Inputs.conjunction(Conjunction({self:None}).cache(), inputs)
 
-    def reduce_intervals(intervals):
+    def union(intervals):
         intervals.sort(key=lambda x: x[0]) # sort by lower interval bound
         result = []
         for l, u in intervals:
@@ -786,102 +573,298 @@ class DNF(Normal_Form):
                 previous_u = u
         return result
 
-    def reduce_dnf(self):
-        dnf = Constant.false
-        intervals = {}
-        for clause in self.clauses:
-            if len(clause.literals) == 1:
-                # gather intervals per variable
-                literal = list(clause.literals.values())[0]
-                interval = (literal.l, literal.u)
-                if literal.var_line not in intervals:
-                    intervals[literal.var_line] = [interval]
-                else:
-                    intervals[literal.var_line].append(interval)
-            else:
-                # non-unit clauses remain unchanged
-                dnf.clauses[clause] = None
-        reduced_intervals = {}
-        for var_line in intervals:
-            reduced_intervals[var_line] = DNF.reduce_intervals(intervals[var_line])
-        for var_line in reduced_intervals:
-            for l, u in reduced_intervals[var_line]:
-                if l == 0 and u == 2**var_line.sid_line.size - 1:
-                    # unit clause is true for all variable values
-                    return Constant.true
-                else:
-                    clause = Conjunctive_Clause.create_cached_conjunction(var_line, l, u)
-                    if dnf is Constant.false:
-                        dnf = DNF(clause)
-                    else:
-                        dnf.clauses[clause] = None
-        return Normal_Form.cache(dnf)
-
     def disjunction(self, inputs):
-        assert isinstance(inputs, DNF)
-        if Inputs.is_disjunction_cached(self, inputs):
-            return Inputs.get_cached_disjunction(self, inputs)
-        else:
-            assert self.clauses and inputs.clauses
-            dnf = Constant.false
-            for clause in self.clauses:
-                if dnf is Constant.false:
-                    dnf = DNF(clause)
-                else:
-                    dnf.clauses[clause] = None
-            for clause in inputs.clauses:
-                dnf.clauses[clause] = None
-            return Inputs.cache_disjunction(dnf.reduce_dnf(), self, inputs)
-
-    def get_CNF(self):
-        if self.is_other_form_cached():
-            return self.get_cached_other_form()
-        else:
-            assert self.clauses
-            cnf = Constant.false
-            for clause in self.clauses:
-                cnf = Inputs.disjunction(cnf, CNF(clause))
-            return self.cache_other_form(cnf)
+        return Inputs.disjunction(Disjunction({self:None}).cache(), inputs)
 
     def get_expression(self):
-        exp_line = Constant.false
-        for clause in self.clauses:
-            clause_line = clause.get_expression()
-            if exp_line is Constant.false:
-                exp_line = clause_line
-            else:
-                exp_line = Logical(next_nid(), OP_OR, Bool.boolean,
-                    clause_line,
-                    exp_line,
-                    clause_line.comment, clause_line.line_no)
-        return exp_line
-
-    def NOT(dnf1):
-        if dnf1 is Constant.true:
-            return Constant.false
-        elif dnf1 is Constant.false:
-            return Constant.true
+        if self.l == self.u:
+            return Comparison(next_nid(), OP_EQ, Bool.boolean,
+                self.var_line,
+                Constd(next_nid(), self.var_line.sid_line, self.l,
+                    self.var_line.comment, self.var_line.line_no),
+                self.var_line.comment, self.var_line.line_no)
         else:
-            dnf1_line = dnf1.get_expression()
-            return Unary(next_nid(), OP_NOT, Bool.boolean,
-                dnf1_line,
-                dnf1_line.comment, dnf1_line.line_no)
-
-    def AND(dnf1, dnf2):
-        if dnf1 is Constant.false or dnf2 is Constant.false:
-            return Constant.false
-        elif dnf1 is Constant.true:
-            return dnf2.get_expression()
-        elif dnf2 is Constant.true:
-            return dnf1.get_expression()
-        elif dnf1 is dnf2:
-            return dnf1.get_expression()
-        else:
-            dnf1_line = dnf1.get_expression()
-            dnf2_line = dnf2.get_expression()
             return Logical(next_nid(), OP_AND, Bool.boolean,
-                dnf1_line, dnf2_line,
-                dnf1_line.comment, dnf1_line.line_no)
+                Comparison(next_nid(), OP_UGTE, Bool.boolean,
+                    self.var_line,
+                    Constd(next_nid(), self.var_line.sid_line, self.l,
+                        self.var_line.comment, self.var_line.line_no),
+                    self.var_line.comment, self.var_line.line_no),
+                Comparison(next_nid(), OP_ULTE, Bool.boolean,
+                    self.var_line,
+                    Constd(next_nid(), self.var_line.sid_line, self.u,
+                        self.var_line.comment, self.var_line.line_no),
+                    self.var_line.comment, self.var_line.line_no),
+                self.var_line.comment, self.var_line.line_no)
+
+class Conjunction(Inputs):
+    NORMALIZE = True
+
+    conjunctions = {}
+
+    def __init__(self, inputs):
+        self.inputs = inputs
+
+    def __str__(self):
+        string = ""
+        for arg in self.inputs:
+            if string:
+                string += " & "
+            string += f"{arg}"
+        return f"[{string}]"
+
+    def __hash__(self):
+        return id(self)
+
+    def __eq__(self, inputs):
+        return type(self) is type(inputs) and self.inputs == inputs.inputs
+
+    def __lt__(self, inputs):
+        # for sorting cached inputs when generating expressions for value sets
+        return id(self) < id(inputs)
+
+    def cache(self):
+        for cached_conjunction in Conjunction.conjunctions:
+            if self == cached_conjunction:
+                return cached_conjunction
+        Conjunction.conjunctions[self] = None
+        return self
+
+    def create_cached_conjunction(var_line, l, u):
+        return Conjunction({Literal.create_cached_literal(var_line, l, u):None}).cache()
+
+    def evaluate(self):
+        assert self.inputs
+        literals = {}
+        for literal in self.inputs:
+            if isinstance(literal, Literal):
+                if literal.var_line not in literals:
+                    literals[literal.var_line] = literal
+                else:
+                    intersection_literal = literals[literal.var_line].intersection(literal)
+                    if intersection_literal is Constant.false:
+                        return Constant.false
+                    else:
+                        literals[literal.var_line] = intersection_literal
+        intersection = Constant.false
+        for var_line in literals:
+            literal = literals[var_line].cache()
+            if intersection is Constant.false:
+                intersection = Conjunction({literal:None})
+            else:
+                intersection.inputs[literal] = None
+        for arg in self.inputs:
+            if not isinstance(arg, Literal):
+                if intersection is Constant.false:
+                    intersection = Conjunction({arg:None})
+                else:
+                    intersection.inputs[arg] = None
+        return intersection
+
+    def conjunction(self, inputs):
+        assert isinstance(inputs, Inputs)
+        if self is inputs:
+            return self
+        elif self.is_conjunction_cached(inputs):
+            return self.get_cached_conjunction(inputs)
+        else:
+            assert self.inputs
+            if isinstance(inputs, Disjunction) and Conjunction.NORMALIZE:
+                conjunction = Disjunction({self:None}).conjunction(inputs)
+                return Inputs.cache_conjunction(conjunction, self, inputs)
+            elif not isinstance(inputs, Conjunction):
+                inputs = Conjunction({inputs:None})
+            else:
+                assert inputs.inputs
+            conjunction = Constant.false
+            for arg in self.inputs:
+                if conjunction is Constant.false:
+                    conjunction = Conjunction({arg:None})
+                else:
+                    conjunction.inputs[arg] = None
+            for arg in inputs.inputs:
+                conjunction.inputs[arg] = None
+            if isinstance(conjunction, Conjunction):
+                conjunction = conjunction.evaluate()
+                if isinstance(conjunction, Conjunction) and len(conjunction.inputs) == 1:
+                    conjunction = list(conjunction.inputs)[0]
+            return Inputs.cache_conjunction(conjunction, self, inputs)
+
+    def disjunction(self, inputs):
+        assert isinstance(inputs, Inputs)
+        if self is inputs:
+            return self
+        elif Inputs.is_disjunction_cached(self, inputs):
+            return Inputs.get_cached_disjunction(self, inputs)
+        else:
+            assert self.inputs
+            if not isinstance(inputs, Conjunction):
+                inputs = Conjunction({inputs:None})
+            else:
+                assert inputs.inputs
+            conjunction = Constant.true
+            for arg1 in self.inputs:
+                for arg2 in inputs.inputs:
+                    arg = arg1.disjunction(arg2)
+                    if arg is Constant.false:
+                        return Inputs.cache_disjunction(Constant.false, self, inputs)
+                    elif arg is not Constant.true:
+                        if conjunction is Constant.true:
+                            conjunction = Conjunction({arg:None})
+                        else:
+                            conjunction.inputs[arg] = None
+            if isinstance(conjunction, Conjunction):
+                conjunction = conjunction.evaluate()
+                if isinstance(conjunction, Conjunction) and len(conjunction.inputs) == 1:
+                    conjunction = list(conjunction.inputs)[0]
+            return Inputs.cache_disjunction(conjunction, self, inputs)
+
+    def get_expression(self):
+        conjunction_line = Constant.false
+        for arg in self.inputs:
+            arg_line = arg.get_expression()
+            if conjunction_line is Constant.false:
+                conjunction_line = arg_line
+            else:
+                conjunction_line = Logical(next_nid(), OP_AND, Bool.boolean,
+                    arg_line,
+                    conjunction_line,
+                    arg_line.comment, arg_line.line_no)
+        return conjunction_line
+
+class Disjunction(Inputs):
+    NORMALIZE = True
+
+    disjunctions = {}
+
+    def __init__(self, inputs):
+        self.inputs = inputs
+
+    def __str__(self):
+        string = ""
+        for arg in self.inputs:
+            if string:
+                string += " | "
+            string += f"{arg}"
+        return f"{{{string}}}"
+
+    def __hash__(self):
+        return id(self)
+
+    def __eq__(self, inputs):
+        return type(self) is type(inputs) and self.inputs == inputs.inputs
+
+    def __lt__(self, inputs):
+        # for sorting cached inputs when generating expressions for value sets
+        return id(self) < id(inputs)
+
+    def cache(self):
+        for cached_disjunction in Disjunction.disjunctions:
+            if self == cached_disjunction:
+                return cached_disjunction
+        Disjunction.disjunctions[self] = None
+        return self
+
+    def create_cached_disjunction(var_line, l, u):
+        return Disjunction({Literal.create_cached_literal(var_line, l, u):None}).cache()
+
+    def evaluate(self):
+        assert self.inputs
+        intervals = {}
+        for literal in self.inputs:
+            if isinstance(literal, Literal):
+                if literal.var_line not in intervals:
+                    intervals[literal.var_line] = [(literal.l, literal.u)]
+                else:
+                    intervals[literal.var_line].append((literal.l, literal.u))
+        union = Constant.true
+        for var_line in intervals:
+            for interval in Literal.union(intervals[var_line]):
+                literal = Literal.create_cached_literal(var_line, interval[0], interval[1])
+                if literal is Constant.true:
+                    return Constant.true
+                elif union is Constant.true:
+                    union = Disjunction({literal:None})
+                else:
+                    union.inputs[literal] = None
+        for arg in self.inputs:
+            if not isinstance(arg, Literal):
+                if union is Constant.true:
+                    union = Disjunction({arg:None})
+                else:
+                    union.inputs[arg] = None
+        return union
+
+    def conjunction(self, inputs):
+        assert isinstance(inputs, Inputs)
+        if self is inputs:
+            return self
+        elif Inputs.is_conjunction_cached(self, inputs):
+            return Inputs.get_cached_conjunction(self, inputs)
+        else:
+            assert self.inputs
+            if not isinstance(inputs, Disjunction):
+                inputs = Disjunction({inputs:None})
+            else:
+                assert inputs.inputs
+            disjunction = Constant.false
+            for arg1 in self.inputs:
+                for arg2 in inputs.inputs:
+                    arg = arg1.conjunction(arg2)
+                    if arg is Constant.true:
+                        return Inputs.cache_conjunction(Constant.true, self, inputs)
+                    elif arg is not Constant.false:
+                        if disjunction is Constant.false:
+                            disjunction = Disjunction({arg:None})
+                        else:
+                            disjunction.inputs[arg] = None
+            if isinstance(disjunction, Disjunction):
+                disjunction = disjunction.evaluate()
+                if isinstance(disjunction, Disjunction) and len(disjunction.inputs) == 1:
+                    disjunction = list(disjunction.inputs)[0]
+            return Inputs.cache_conjunction(disjunction, self, inputs)
+
+    def disjunction(self, inputs):
+        assert isinstance(inputs, Inputs)
+        if self is inputs:
+            return self
+        elif self.is_disjunction_cached(inputs):
+            return self.get_cached_disjunction(inputs)
+        else:
+            assert self.inputs
+            if isinstance(inputs, Conjunction) and Disjunction.NORMALIZE:
+                disjunction = Conjunction({self:None}).disjunction(inputs)
+                return Inputs.cache_disjunction(disjunction, self, inputs)
+            elif not isinstance(inputs, Disjunction):
+                inputs = Disjunction({inputs:None})
+            else:
+                assert inputs.inputs
+            disjunction = Constant.true
+            for arg in self.inputs:
+                if disjunction is Constant.true:
+                    disjunction = Disjunction({arg:None})
+                else:
+                    disjunction.inputs[arg] = None
+            for arg in inputs.inputs:
+                disjunction.inputs[arg] = None
+            if isinstance(disjunction, Disjunction):
+                disjunction = disjunction.evaluate()
+                if isinstance(disjunction, Disjunction) and len(disjunction.inputs) == 1:
+                    disjunction = list(disjunction.inputs)[0]
+            return Inputs.cache_disjunction(disjunction, self, inputs)
+
+    def get_expression(self):
+        disjunction_line = Constant.true
+        for arg in self.inputs:
+            arg_line = arg.get_expression()
+            if disjunction_line is Constant.true:
+                disjunction_line = arg_line
+            else:
+                disjunction_line = Logical(next_nid(), OP_OR, Bool.boolean,
+                    arg_line,
+                    disjunction_line,
+                    arg_line.comment, arg_line.line_no)
+        return disjunction_line
 
 class Values:
     total_number_of_values = 0
@@ -925,7 +908,7 @@ class Values:
         if isinstance(self.sid_line, Bool):
             # constraint on false value must not hold and constraint on true value must hold
             false_constraint, true_constraint = self.get_boolean_constraints()
-            return DNF.AND(DNF.NOT(false_constraint), true_constraint)
+            return Inputs.AND(Inputs.NOT(false_constraint), true_constraint)
         else:
             non_true_values = {}
             for value in self.values:
@@ -958,7 +941,7 @@ class Values:
         assert not isinstance(sid_line, Bool) or isinstance(value, bool)
         assert not isinstance(sid_line, Bitvec) or sid_line.is_unsigned_value(value)
         if constraint is not Constant.false:
-            assert constraint is Constant.true or isinstance(constraint, DNF)
+            assert constraint is Constant.true or isinstance(constraint, Inputs)
             if value not in self.values:
                 Values.total_number_of_values += 1
                 self.values[value] = constraint
@@ -1220,7 +1203,7 @@ class Values:
         if constraint is Constant.true:
             return self
         else:
-            assert isinstance(constraint, DNF)
+            assert isinstance(constraint, Inputs)
             results = Values(self.sid_line)
             for value in self.values:
                 results.set_value(self.sid_line, value,
@@ -1485,11 +1468,14 @@ class Variable(Expression):
             if isinstance(self.sid_line, Bitvector) and self.sid_line.size <= Instance.PROPAGATE:
                 self.cache_values[0] = Values(self.sid_line)
                 if isinstance(self.sid_line, Bool):
-                    self.cache_values[0].set_value(self.sid_line, False, DNF.create_cached_DNF(self, 0))
-                    self.cache_values[0].set_value(self.sid_line, True, DNF.create_cached_DNF(self, 1))
+                    self.cache_values[0].set_value(self.sid_line, False,
+                        Literal.create_cached_literal(self, 0, 0))
+                    self.cache_values[0].set_value(self.sid_line, True,
+                        Literal.create_cached_literal(self, 1, 1))
                 else:
                     for value in range(2**self.sid_line.size):
-                        self.cache_values[0].set_value(self.sid_line, value, DNF.create_cached_DNF(self, value))
+                        self.cache_values[0].set_value(self.sid_line, value,
+                            Literal.create_cached_literal(self, value, value))
             else:
                 self.cache_values[0] = self
         return self.cache_values[0]
@@ -5642,7 +5628,7 @@ def print_message(message, step = None, level = None):
 
 def print_message_with_propagation_profile(message, step = None, level = None):
     if Instance.PROPAGATE is not None:
-        print_message(f"({Values.total_number_of_values}, {len(DNF.nfs)}, {len(Conjunctive_Clause.clauses)}, {Literal.size()}, {Expression.total_number_of_generated_expressions}) {message}", step, level)
+        print_message(f"({Values.total_number_of_values}, {len(Conjunction.conjunctions)}, {len(Disjunction.disjunctions)}, {Literal.number_of_literals()}, {Expression.total_number_of_generated_expressions}) {message}", step, level)
     else:
         print_message(message, step, level)
 
