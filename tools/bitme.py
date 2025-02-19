@@ -370,50 +370,9 @@ class Array(Sort):
         return self.bitwuzla
 
 class Inputs:
-    conjunctions = {}
-    disjunctions = {}
-    applications = {}
-
-    def cache(inputs):
-        if isinstance(inputs, Inputs):
-            return inputs.cache()
-        else:
-            return inputs
-
-    def is_application_cached(self):
-        return self in Inputs.applications
-
-    def get_cached_application(self):
-        assert self.is_application_cached()
-        return Input.applications[self]
-
-    def cache_application(self, application):
-        assert not self.is_application_cached()
-        Input.applications[application] = self
-        Input.applications[self] = application
-        return application
-
-    def is_conjunction_cached(inputs1, inputs2):
-        return (inputs1 in Inputs.conjunctions and inputs2 in Inputs.conjunctions[inputs1]) or (inputs2 in Inputs.conjunctions and inputs1 in Inputs.conjunctions[inputs2])
-
-    def get_cached_conjunction(inputs1, inputs2):
-        assert Inputs.is_conjunction_cached(inputs1, inputs2)
-        if inputs1 in Inputs.conjunctions and inputs2 in Inputs.conjunctions[inputs1]:
-            return Inputs.conjunctions[inputs1][inputs2]
-        elif inputs2 in Inputs.conjunctions and inputs1 in Inputs.conjunctions[inputs2]:
-            return Inputs.conjunctions[inputs2][inputs1]
-
-    def cache_conjunction(inputs, inputs1, inputs2):
-        inputs = Inputs.cache(inputs)
-        if inputs1 not in Inputs.conjunctions:
-            Inputs.conjunctions[inputs1] = {inputs2:inputs}
-        else:
-            Inputs.conjunctions[inputs1] |= {inputs2:inputs}
-        if inputs2 not in Inputs.conjunctions:
-            Inputs.conjunctions[inputs2] = {inputs1:inputs}
-        else:
-            Inputs.conjunctions[inputs2] |= {inputs1:inputs}
-        return inputs
+    def __lt__(self, inputs):
+        # for sorting input constraints when generating expressions for value sets
+        return id(self) < id(inputs)
 
     def conjunction(inputs1, inputs2):
         if inputs1 is Constant.true:
@@ -426,28 +385,6 @@ class Inputs:
             return inputs1
         else:
             return inputs1.conjunction(inputs2)
-
-    def is_disjunction_cached(inputs1, inputs2):
-        return (inputs1 in Inputs.disjunctions and inputs2 in Inputs.disjunctions[inputs1]) or (inputs2 in Inputs.disjunctions and inputs1 in Inputs.disjunctions[inputs2])
-
-    def get_cached_disjunction(inputs1, inputs2):
-        assert Inputs.is_disjunction_cached(inputs1, inputs2)
-        if inputs1 in Inputs.disjunctions and inputs2 in Inputs.disjunctions[inputs1]:
-            return Inputs.disjunctions[inputs1][inputs2]
-        elif inputs2 in Inputs.disjunctions and inputs1 in Inputs.disjunctions[inputs2]:
-            return Inputs.disjunctions[inputs2][inputs1]
-
-    def cache_disjunction(inputs, inputs1, inputs2):
-        inputs = Inputs.cache(inputs)
-        if inputs1 not in Inputs.disjunctions:
-            Inputs.disjunctions[inputs1] = {inputs2:inputs}
-        else:
-            Inputs.disjunctions[inputs1] |= {inputs2:inputs}
-        if inputs2 not in Inputs.disjunctions:
-            Inputs.disjunctions[inputs2] = {inputs1:inputs}
-        else:
-            Inputs.disjunctions[inputs2] |= {inputs1:inputs}
-        return inputs
 
     def disjunction(inputs1, inputs2):
         if inputs1 is Constant.false:
@@ -489,19 +426,14 @@ class Inputs:
                 inputs1_line.comment, inputs1_line.line_no)
 
 class Literal(Inputs):
-    literals = {}
-
-    def number_of_literals():
-        size = 0
-        for var_line in Literal.literals:
-            size += len(Literal.literals[var_line])
-        return size
+    total_number_of_literals = 0
 
     def __init__(self, var_line, l, u):
         assert l <= u
         self.var_line = var_line
         self.l = l
         self.u = u
+        Literal.total_number_of_literals += 1
 
     def __str__(self):
         if self.l == self.u:
@@ -509,25 +441,17 @@ class Literal(Inputs):
         else:
             return f"{self.l} <= {self.var_line.name} <= {self.u}"
 
-    def __lt__(self, inputs):
-        # for sorting cached inputs when generating expressions for value sets
-        return id(self) < id(inputs)
+    def __hash__(self):
+        return id(self)
 
-    def cache(self):
-        if self.var_line not in Literal.literals:
-            Literal.literals[self.var_line] = {}
-        if self.l not in Literal.literals[self.var_line]:
-            Literal.literals[self.var_line][self.l] = {}
-        if self.u not in Literal.literals[self.var_line][self.l]:
-            if self.l == 0 and self.u == 2**self.var_line.sid_line.size - 1:
-                # literal holds for all variable values
-                Literal.literals[self.var_line][self.l][self.u] = Constant.true
-            else:
-                Literal.literals[self.var_line][self.l][self.u] = self
-        return Literal.literals[self.var_line][self.l][self.u]
+    def __eq__(self, inputs):
+        return type(self) is type(inputs) and self.var_line is inputs.var_line and self.l == inputs.l and self.u == inputs.u
 
-    def create_cached_literal(var_line, l, u):
-        return Literal(var_line, l, u).cache()
+    def check_interval(self):
+        if self.l == 0 and self.u == 2**self.var_line.sid_line.size - 1:
+            return Constant.true
+        else:
+            return self
 
     def intersection(self, literal):
         assert self.var_line is literal.var_line
@@ -540,7 +464,7 @@ class Literal(Inputs):
             else:
                 assert self.l <= literal.u # intersection is not empty
                 # literal.l <= self.l <= literal.u < self.u
-                return Literal(self.var_line, self.l, literal.u)
+                return Literal(self.var_line, self.l, literal.u).check_interval()
         else:
             if literal.u <= self.u:
                 # self.l < literal.l <= literal.u <= self.u
@@ -548,10 +472,10 @@ class Literal(Inputs):
             else:
                 assert literal.l <= self.u # intersection is not empty
                 # self.l < literal.l <= self.u < literal.u
-                return Literal(self.var_line, literal.l, self.u)
+                return Literal(self.var_line, literal.l, self.u).check_interval()
 
     def conjunction(self, inputs):
-        return Inputs.conjunction(Conjunction({self:None}).cache(), inputs)
+        return Inputs.conjunction(Conjunction({self:None}), inputs)
 
     def union(intervals):
         intervals.sort(key=lambda x: x[0]) # sort by lower interval bound
@@ -574,7 +498,7 @@ class Literal(Inputs):
         return result
 
     def disjunction(self, inputs):
-        return Inputs.disjunction(Disjunction({self:None}).cache(), inputs)
+        return Inputs.disjunction(Disjunction({self:None}), inputs)
 
     def get_expression(self):
         if self.l == self.u:
@@ -598,12 +522,13 @@ class Literal(Inputs):
                 self.var_line.comment, self.var_line.line_no)
 
 class Conjunction(Inputs):
-    NORMALIZE = True
+    total_number_of_conjunctions = 0
 
-    conjunctions = {}
+    APPLY = True
 
     def __init__(self, inputs):
         self.inputs = inputs
+        Conjunction.total_number_of_conjunctions += 1
 
     def __str__(self):
         string = ""
@@ -618,20 +543,6 @@ class Conjunction(Inputs):
 
     def __eq__(self, inputs):
         return type(self) is type(inputs) and self.inputs == inputs.inputs
-
-    def __lt__(self, inputs):
-        # for sorting cached inputs when generating expressions for value sets
-        return id(self) < id(inputs)
-
-    def cache(self):
-        for cached_conjunction in Conjunction.conjunctions:
-            if self == cached_conjunction:
-                return cached_conjunction
-        Conjunction.conjunctions[self] = None
-        return self
-
-    def create_cached_conjunction(var_line, l, u):
-        return Conjunction({Literal.create_cached_literal(var_line, l, u):None}).cache()
 
     def evaluate(self):
         assert self.inputs
@@ -648,7 +559,7 @@ class Conjunction(Inputs):
                         literals[literal.var_line] = intersection_literal
         intersection = Constant.false
         for var_line in literals:
-            literal = literals[var_line].cache()
+            literal = literals[var_line]
             if intersection is Constant.false:
                 intersection = Conjunction({literal:None})
             else:
@@ -663,16 +574,14 @@ class Conjunction(Inputs):
 
     def conjunction(self, inputs):
         assert isinstance(inputs, Inputs)
-        if self is inputs:
+        if self == inputs:
             return self
-        elif self.is_conjunction_cached(inputs):
-            return self.get_cached_conjunction(inputs)
         else:
             assert self.inputs
-            if isinstance(inputs, Disjunction) and Conjunction.NORMALIZE:
-                conjunction = Disjunction({self:None}).conjunction(inputs)
-                return Inputs.cache_conjunction(conjunction, self, inputs)
+            if isinstance(inputs, Disjunction) and Conjunction.APPLY:
+                return Disjunction({self:None}).conjunction(inputs)
             elif not isinstance(inputs, Conjunction):
+                # do not apply conjunction
                 inputs = Conjunction({inputs:None})
             else:
                 assert inputs.inputs
@@ -688,14 +597,12 @@ class Conjunction(Inputs):
                 conjunction = conjunction.evaluate()
                 if isinstance(conjunction, Conjunction) and len(conjunction.inputs) == 1:
                     conjunction = list(conjunction.inputs)[0]
-            return Inputs.cache_conjunction(conjunction, self, inputs)
+            return conjunction
 
     def disjunction(self, inputs):
         assert isinstance(inputs, Inputs)
-        if self is inputs:
+        if self == inputs:
             return self
-        elif Inputs.is_disjunction_cached(self, inputs):
-            return Inputs.get_cached_disjunction(self, inputs)
         else:
             assert self.inputs
             if not isinstance(inputs, Conjunction):
@@ -707,7 +614,7 @@ class Conjunction(Inputs):
                 for arg2 in inputs.inputs:
                     arg = arg1.disjunction(arg2)
                     if arg is Constant.false:
-                        return Inputs.cache_disjunction(Constant.false, self, inputs)
+                        return Constant.false
                     elif arg is not Constant.true:
                         if conjunction is Constant.true:
                             conjunction = Conjunction({arg:None})
@@ -717,7 +624,7 @@ class Conjunction(Inputs):
                 conjunction = conjunction.evaluate()
                 if isinstance(conjunction, Conjunction) and len(conjunction.inputs) == 1:
                     conjunction = list(conjunction.inputs)[0]
-            return Inputs.cache_disjunction(conjunction, self, inputs)
+            return conjunction
 
     def get_expression(self):
         conjunction_line = Constant.false
@@ -733,12 +640,13 @@ class Conjunction(Inputs):
         return conjunction_line
 
 class Disjunction(Inputs):
-    NORMALIZE = True
+    total_number_of_disjunctions = 0
 
-    disjunctions = {}
+    APPLY = True
 
     def __init__(self, inputs):
         self.inputs = inputs
+        Disjunction.total_number_of_disjunctions += 1
 
     def __str__(self):
         string = ""
@@ -754,20 +662,6 @@ class Disjunction(Inputs):
     def __eq__(self, inputs):
         return type(self) is type(inputs) and self.inputs == inputs.inputs
 
-    def __lt__(self, inputs):
-        # for sorting cached inputs when generating expressions for value sets
-        return id(self) < id(inputs)
-
-    def cache(self):
-        for cached_disjunction in Disjunction.disjunctions:
-            if self == cached_disjunction:
-                return cached_disjunction
-        Disjunction.disjunctions[self] = None
-        return self
-
-    def create_cached_disjunction(var_line, l, u):
-        return Disjunction({Literal.create_cached_literal(var_line, l, u):None}).cache()
-
     def evaluate(self):
         assert self.inputs
         intervals = {}
@@ -780,7 +674,7 @@ class Disjunction(Inputs):
         union = Constant.true
         for var_line in intervals:
             for interval in Literal.union(intervals[var_line]):
-                literal = Literal.create_cached_literal(var_line, interval[0], interval[1])
+                literal = Literal(var_line, interval[0], interval[1]).check_interval()
                 if literal is Constant.true:
                     return Constant.true
                 elif union is Constant.true:
@@ -797,10 +691,8 @@ class Disjunction(Inputs):
 
     def conjunction(self, inputs):
         assert isinstance(inputs, Inputs)
-        if self is inputs:
+        if self == inputs:
             return self
-        elif Inputs.is_conjunction_cached(self, inputs):
-            return Inputs.get_cached_conjunction(self, inputs)
         else:
             assert self.inputs
             if not isinstance(inputs, Disjunction):
@@ -812,7 +704,7 @@ class Disjunction(Inputs):
                 for arg2 in inputs.inputs:
                     arg = arg1.conjunction(arg2)
                     if arg is Constant.true:
-                        return Inputs.cache_conjunction(Constant.true, self, inputs)
+                        return Constant.true
                     elif arg is not Constant.false:
                         if disjunction is Constant.false:
                             disjunction = Disjunction({arg:None})
@@ -822,20 +714,18 @@ class Disjunction(Inputs):
                 disjunction = disjunction.evaluate()
                 if isinstance(disjunction, Disjunction) and len(disjunction.inputs) == 1:
                     disjunction = list(disjunction.inputs)[0]
-            return Inputs.cache_conjunction(disjunction, self, inputs)
+            return disjunction
 
     def disjunction(self, inputs):
         assert isinstance(inputs, Inputs)
-        if self is inputs:
+        if self == inputs:
             return self
-        elif self.is_disjunction_cached(inputs):
-            return self.get_cached_disjunction(inputs)
         else:
             assert self.inputs
-            if isinstance(inputs, Conjunction) and Disjunction.NORMALIZE:
-                disjunction = Conjunction({self:None}).disjunction(inputs)
-                return Inputs.cache_disjunction(disjunction, self, inputs)
+            if isinstance(inputs, Conjunction) and Disjunction.APPLY:
+                return Conjunction({self:None}).disjunction(inputs)
             elif not isinstance(inputs, Disjunction):
+                # do not apply disjunction
                 inputs = Disjunction({inputs:None})
             else:
                 assert inputs.inputs
@@ -851,7 +741,7 @@ class Disjunction(Inputs):
                 disjunction = disjunction.evaluate()
                 if isinstance(disjunction, Disjunction) and len(disjunction.inputs) == 1:
                     disjunction = list(disjunction.inputs)[0]
-            return Inputs.cache_disjunction(disjunction, self, inputs)
+            return disjunction
 
     def get_expression(self):
         disjunction_line = Constant.true
@@ -1467,14 +1357,12 @@ class Variable(Expression):
             if isinstance(self.sid_line, Bitvector) and self.sid_line.size <= Instance.PROPAGATE:
                 self.cache_values[0] = Values(self.sid_line)
                 if isinstance(self.sid_line, Bool):
-                    self.cache_values[0].set_value(self.sid_line, False,
-                        Literal.create_cached_literal(self, 0, 0))
-                    self.cache_values[0].set_value(self.sid_line, True,
-                        Literal.create_cached_literal(self, 1, 1))
+                    self.cache_values[0].set_value(self.sid_line, False, Literal(self, 0, 0))
+                    self.cache_values[0].set_value(self.sid_line, True, Literal(self, 1, 1))
                 else:
                     for value in range(2**self.sid_line.size):
                         self.cache_values[0].set_value(self.sid_line, value,
-                            Literal.create_cached_literal(self, value, value))
+                            Literal(self, value, value))
             else:
                 self.cache_values[0] = self
         return self.cache_values[0]
@@ -5627,7 +5515,7 @@ def print_message(message, step = None, level = None):
 
 def print_message_with_propagation_profile(message, step = None, level = None):
     if Instance.PROPAGATE is not None:
-        print_message(f"({Values.total_number_of_values}, {len(Conjunction.conjunctions)}, {len(Disjunction.disjunctions)}, {Literal.number_of_literals()}, {Expression.total_number_of_generated_expressions}) {message}", step, level)
+        print_message(f"({Values.total_number_of_values}, {Conjunction.total_number_of_conjunctions}, {Disjunction.total_number_of_disjunctions}, {Literal.total_number_of_literals}, {Expression.total_number_of_generated_expressions}) {message}", step, level)
     else:
         print_message(message, step, level)
 
@@ -6089,6 +5977,7 @@ def branching_bmc(solver, kmin, kmax, args, step, level):
                     print_separator('v', step, level)
                     print_message(f"{bad}\n", step, level)
                     solver.print_inputs(Variable.inputs, step, level)
+                    print_message_with_propagation_profile("propagation profile\n", step, level)
                     print_separator('^', step, level)
                 solver.pop()
 
