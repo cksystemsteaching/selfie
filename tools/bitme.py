@@ -244,7 +244,7 @@ class Sort(Line):
         super().__init__(nid, comment, line_no)
 
     def match_sorts(self, sort):
-        return type(self) == type(sort)
+        return type(self) is type(sort)
 
 class Bitvector(Sort):
     keyword = BITVEC
@@ -442,7 +442,9 @@ class Literal(Inputs):
             return f"{self.l} <= {self.var_line.name} <= {self.u}"
 
     def __hash__(self):
-        return id(self)
+        return (((id(self.var_line) <<
+                self.var_line.sid_line.size) + self.l) <<
+                    self.var_line.sid_line.size) + self.u
 
     def __eq__(self, inputs):
         return type(self) is type(inputs) and self.var_line is inputs.var_line and self.l == inputs.l and self.u == inputs.u
@@ -539,7 +541,7 @@ class Conjunction(Inputs):
         return f"[{string}]"
 
     def __hash__(self):
-        return id(self)
+        return id(self.inputs)
 
     def __eq__(self, inputs):
         return type(self) is type(inputs) and self.inputs == inputs.inputs
@@ -657,7 +659,7 @@ class Disjunction(Inputs):
         return f"{{{string}}}"
 
     def __hash__(self):
-        return id(self)
+        return id(self.inputs)
 
     def __eq__(self, inputs):
         return type(self) is type(inputs) and self.inputs == inputs.inputs
@@ -778,6 +780,10 @@ class Values:
     def match_sorts(self, values):
         return self.sid_line.match_sorts(values.sid_line)
 
+    def is_equal(self, values):
+        # naive check for semantical equivalence
+        return type(self) is type(values) and self.match_sorts(values) and self.values == values.values
+
     def get_boolean_constraints(self):
         assert isinstance(self.sid_line, Bool)
         assert len(self.values) <= 2
@@ -839,19 +845,6 @@ class Values:
                 assert self.values[value] is not Constant.false
                 self.values[value] = Inputs.disjunction(self.values[value], constraint)
         return self
-
-    def is_equal(self, values):
-        # naive check for semantical equivalence
-        if not isinstance(values, Values) or len(self.values) != len(values.values):
-            return False
-        else:
-            for value in self.values:
-                if value in values.values:
-                    if self.values[value] != values.values[value]:
-                        return False
-                else:
-                    return False
-            return True
 
     # naive per-value semantics of value sets
 
@@ -6000,7 +5993,7 @@ def branching_bmc(solver, kmin, kmax, args, step, level):
                     solver.assert_this([next_line], step)
                 else:
                     solver.assert_state_is_not_changing(next_line, step)
-                if not state_change and next_line == list(Next.nexts.values())[-1]:
+                if not state_change and next_line is list(Next.nexts.values())[-1]:
                     print_message_with_propagation_profile("no states changed: terminating\n", step, level)
                     return
         else:
