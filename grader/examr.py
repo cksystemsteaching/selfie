@@ -141,6 +141,7 @@ def process_files(response_file, analysis_file, class_id, year, attempt):
 
     uniqueIDs   = []
     row_num     = []
+    rows        = []
     questions   = []
     answers     = []
     q_length    = 0
@@ -152,12 +153,11 @@ def process_files(response_file, analysis_file, class_id, year, attempt):
 
     old = True
 
-    rows = {}
-
     for i, row in enumerate(csv_reader, start=2):
         if (row['Class'] == class_id and row['Year'] == year and row['Attempt'] == attempt):
             uniqueIDs.append(row['Unique ID'])
             row_num.append(i)
+            rows.append(row)
 
             questions.append(row['Ask Question'])
             q_length    += len(row['Ask Question'])
@@ -189,8 +189,6 @@ def process_files(response_file, analysis_file, class_id, year, attempt):
                 students[row['Unique ID']].a_length      += len(row['Answer Question'])
                 students[row['Unique ID']].a_formality   += formality(row['Answer Question'])
 
-            rows[i - 2] = row
-
              # assuming anything appearing after current class is newer
             old = False
         elif old:
@@ -200,8 +198,6 @@ def process_files(response_file, analysis_file, class_id, year, attempt):
             old_lastnames.append(row['Lastname'])
             old_questions.append(row['Ask Question'])
             old_answers.append(row['Answer Question'])
-
-            rows[i - 2] = row
         else:
             break
 
