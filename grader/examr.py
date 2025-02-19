@@ -77,7 +77,7 @@ def compute_similarity(students, uniqueIDs, row_num, message, strings, old_strin
                 if similarity[x][y] > similarity_threshold:
                     print(f'{message} similarity {similarity[x][y]} at:')
                     print(f'[{row_num[x]}]: {uniqueIDs[x]} ({students[uniqueIDs[x]].firstname} {students[uniqueIDs[x]].lastname})')
-                    if y <= len(strings):
+                    if y < len(strings):
                         print(f'[{row_num[y]}]: {uniqueIDs[y]} ({students[uniqueIDs[y]].firstname} {students[uniqueIDs[y]].lastname})')
                     else:
                         print(f'[{old_row_num[y - len(strings)]}]: {old_uniqueIDs[y - len(strings)]} ({old_firstnames[y - len(strings)]} {old_lastnames[y - len(strings)]}) [old response]')
