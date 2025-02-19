@@ -1211,10 +1211,9 @@ class Values:
             return results
 
     def merge(self, values):
-        assert self.values
         assert isinstance(values, Values)
         assert self.match_sorts(values)
-        assert values.values
+        assert self.values or values.values
         results = Values(self.sid_line)
         for value in self.values:
             results.set_value(self.sid_line, value, self.values[value])
