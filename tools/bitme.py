@@ -819,7 +819,7 @@ class Values:
             assert non_true_values
             exp_line = exp_line = Zero(next_nid(), self.sid_line,
                 "unreachable-value", "unreachable value", 0)
-            # sort values with non-true constraints by cached constraint id
+            # sort values with non-true constraints by constraint id
             # TODO: check if sorting is necessary for consistency
             non_true_values = sorted(non_true_values.items(), key=lambda x: x[1])
             for value in non_true_values:
@@ -5961,7 +5961,8 @@ def branching_bmc(solver, kmin, kmax, args, step, level):
                     print_separator('v', step, level)
                     print_message(f"{bad}\n", step, level)
                     solver.print_inputs(Variable.inputs, step, level)
-                    print_message_with_propagation_profile("propagation profile\n", step, level)
+                    if Instance.PROPAGATE is not None:
+                        print_message_with_propagation_profile("propagation profile\n", step, level)
                     print_separator('^', step, level)
                 solver.pop()
 
