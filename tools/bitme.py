@@ -891,20 +891,11 @@ class Values:
     # binary operators
 
     def apply_binary(self, sid_line, values, op):
-        constraints = {}
+        results = Values(sid_line)
         for value1 in self.values:
             for value2 in values.values:
-                value = op(value1, value2)
-                constraint = Inputs.conjunction(self.values[value1], values.values[value2])
-                # gather unique constraints
-                if value not in constraints:
-                    constraints[value] = {constraint:None}
-                elif constraint not in constraints[value]:
-                    constraints[value] |= {constraint:None}
-        results = Values(sid_line)
-        for value in constraints:
-            for constraint in constraints[value]:
-                results.set_value(sid_line, value, constraint)
+                results.set_value(sid_line, op(value1, value2),
+                    Inputs.conjunction(self.values[value1], values.values[value2]))
         return results
 
     def FALSE():
