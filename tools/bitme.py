@@ -477,7 +477,7 @@ class Literal(Inputs):
                 return Literal(self.var_line, literal.l, self.u).check_interval()
 
     def conjunction(self, inputs):
-        return Inputs.conjunction(Conjunction({self:None}), inputs)
+        return Conjunction({self:None}).conjunction(inputs)
 
     def union(intervals):
         intervals.sort(key=lambda x: x[0]) # sort by lower interval bound
@@ -500,7 +500,7 @@ class Literal(Inputs):
         return result
 
     def disjunction(self, inputs):
-        return Inputs.disjunction(Disjunction({self:None}), inputs)
+        return Disjunction({self:None}).disjunction(inputs)
 
     def get_expression(self):
         if self.l == self.u:
