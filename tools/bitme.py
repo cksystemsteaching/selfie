@@ -574,6 +574,13 @@ class Conjunction(Inputs):
                     intersection.inputs[arg] = None
         return intersection
 
+    def reduce(inputs):
+        if isinstance(inputs, Conjunction):
+            inputs = inputs.evaluate()
+            if isinstance(inputs, Conjunction) and len(inputs.inputs) == 1:
+                return list(inputs.inputs)[0]
+        return inputs
+
     def conjunction(self, inputs):
         assert isinstance(inputs, Inputs)
         if self == inputs:
@@ -595,11 +602,7 @@ class Conjunction(Inputs):
                     conjunction.inputs[arg] = None
             for arg in inputs.inputs:
                 conjunction.inputs[arg] = None
-            if isinstance(conjunction, Conjunction):
-                conjunction = conjunction.evaluate()
-                if isinstance(conjunction, Conjunction) and len(conjunction.inputs) == 1:
-                    conjunction = list(conjunction.inputs)[0]
-            return conjunction
+            return Conjunction.reduce(conjunction)
 
     def disjunction(self, inputs):
         assert isinstance(inputs, Inputs)
@@ -622,10 +625,7 @@ class Conjunction(Inputs):
                             conjunction = Conjunction({arg:None})
                         else:
                             conjunction.inputs[arg] = None
-            if isinstance(conjunction, Conjunction):
-                conjunction = conjunction.evaluate()
-                if isinstance(conjunction, Conjunction) and len(conjunction.inputs) == 1:
-                    conjunction = list(conjunction.inputs)[0]
+            conjunction = Conjunction.reduce(conjunction)
             return conjunction
 
     def get_expression(self):
@@ -691,6 +691,13 @@ class Disjunction(Inputs):
                     union.inputs[arg] = None
         return union
 
+    def reduce(inputs):
+        if isinstance(inputs, Disjunction):
+            inputs = inputs.evaluate()
+            if isinstance(inputs, Disjunction) and len(inputs.inputs) == 1:
+                return list(inputs.inputs)[0]
+        return inputs
+
     def conjunction(self, inputs):
         assert isinstance(inputs, Inputs)
         if self == inputs:
@@ -712,10 +719,7 @@ class Disjunction(Inputs):
                             disjunction = Disjunction({arg:None})
                         else:
                             disjunction.inputs[arg] = None
-            if isinstance(disjunction, Disjunction):
-                disjunction = disjunction.evaluate()
-                if isinstance(disjunction, Disjunction) and len(disjunction.inputs) == 1:
-                    disjunction = list(disjunction.inputs)[0]
+            disjunction = Disjunction.reduce(disjunction)
             return disjunction
 
     def disjunction(self, inputs):
@@ -739,11 +743,7 @@ class Disjunction(Inputs):
                     disjunction.inputs[arg] = None
             for arg in inputs.inputs:
                 disjunction.inputs[arg] = None
-            if isinstance(disjunction, Disjunction):
-                disjunction = disjunction.evaluate()
-                if isinstance(disjunction, Disjunction) and len(disjunction.inputs) == 1:
-                    disjunction = list(disjunction.inputs)[0]
-            return disjunction
+            return Disjunction.reduce(disjunction)
 
     def get_expression(self):
         disjunction_line = Constant.true
