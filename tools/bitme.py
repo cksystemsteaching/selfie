@@ -793,10 +793,13 @@ class ANF(Inputs):
             if not inputs.values:
                 return Constant.false
             elif len(inputs.values) == 2**inputs.var_line.sid_line.size:
-                for constraint in inputs.values.values():
-                    if constraint is not Constant.true:
+                constraint = None
+                for value in inputs.values:
+                    if constraint is None:
+                        constraint = inputs.values[value]
+                    elif inputs.values[value] != constraint:
                         return inputs
-                return Constant.true
+                return constraint
         return inputs
 
     def conjunction(self, inputs):
