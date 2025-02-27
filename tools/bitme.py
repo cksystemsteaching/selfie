@@ -369,72 +369,8 @@ class Array(Sort):
                 self.element_size_line.get_bitwuzla(tm))
         return self.bitwuzla
 
-class Inputs:
-    def __lt__(self, inputs):
-        # for sorting input constraints when generating expressions for value sets
-        return id(self) < id(inputs)
-
-    def is_false(inputs):
-        return inputs is Constant.false
-
-    def is_true(inputs):
-        return not Inputs.is_false(inputs) and not isinstance(inputs, ANF)
-
-    def conjunction(inputs1, inputs2):
-        if Inputs.is_false(inputs1) or Inputs.is_false(inputs2):
-            return Constant.false
-        elif Inputs.is_true(inputs1):
-            return inputs2
-        elif Inputs.is_true(inputs2):
-            return inputs1
-        elif inputs1 is inputs2:
-            return inputs1
-        else:
-            return inputs1.conjunction(inputs2)
-
-    def disjunction(inputs1, inputs2):
-        if Inputs.is_false(inputs1):
-            return inputs2
-        elif Inputs.is_false(inputs2):
-            return inputs1
-        elif Inputs.is_true(inputs1):
-            return inputs1
-        elif Inputs.is_true(inputs2):
-            return inputs2
-        elif inputs1 is inputs2:
-            return inputs1
-        else:
-            return inputs1.disjunction(inputs2)
-
-    def NOT(inputs):
-        if Inputs.is_false(inputs):
-            return Constant.true
-        elif Inputs.is_true(inputs):
-            return Constant.false
-        else:
-            inputs_line = inputs.get_expression()
-            return Unary(next_nid(), OP_NOT, Bool.boolean,
-                inputs_line,
-                inputs_line.comment, inputs_line.line_no)
-
-    def AND(inputs1, inputs2):
-        if Inputs.is_false(inputs1) or Inputs.is_false(inputs2):
-            return Constant.false
-        elif Inputs.is_true(inputs1):
-            return inputs2.get_expression()
-        elif Inputs.is_true(inputs2):
-            return inputs1.get_expression()
-        elif inputs1 is inputs2:
-            return inputs1.get_expression()
-        else:
-            inputs1_line = inputs1.get_expression()
-            inputs2_line = inputs2.get_expression()
-            return Logical(next_nid(), OP_AND, Bool.boolean,
-                inputs1_line, inputs2_line,
-                inputs1_line.comment, inputs1_line.line_no)
-
-class ANF(Inputs):
-    total_number_of_values = 0
+class BVDD:
+    total_number_of_constraints = 0
 
     def __init__(self, var_line):
         self.var_line = var_line
@@ -446,7 +382,7 @@ class ANF(Inputs):
             if string:
                 string += " X "
             string += f"{value}"
-            if isinstance(self.values[value], ANF):
+            if isinstance(self.values[value], BVDD):
                 string += f" & {self.values[value]}"
             else:
                 string += f" -> {self.values[value]}"
@@ -458,15 +394,25 @@ class ANF(Inputs):
     def __eq__(self, inputs):
         return type(self) is type(inputs) and self.var_line is inputs.var_line and self.values == inputs.values
 
+    def __lt__(self, inputs):
+        # for sorting input constraints when generating expressions for value sets
+        return id(self) < id(inputs)
+
+    def is_false(inputs):
+        return inputs is Constant.false
+
+    def is_true(inputs):
+        return isinstance(inputs, bool) or isinstance(inputs, int)
+
     def set_constraint(self, value, constraint):
         assert value not in self.values
-        if not Inputs.is_false(constraint):
+        if not BVDD.is_false(constraint):
             self.values[value] = constraint
-            ANF.total_number_of_values += 1
+            BVDD.total_number_of_constraints += 1
         return self
 
     def reduce(inputs):
-        if isinstance(inputs, ANF):
+        if isinstance(inputs, BVDD):
             if not inputs.values:
                 return Constant.false
             elif len(inputs.values) == 2**inputs.var_line.sid_line.size:
@@ -479,34 +425,46 @@ class ANF(Inputs):
                 return constraint
         return inputs
 
-    def conjunction(self, inputs):
-        assert isinstance(inputs, ANF)
+    def intersection(self, inputs):
+        assert isinstance(inputs, BVDD)
         if self.var_line > inputs.var_line:
-            return inputs.conjunction(self)
+            return inputs.intersection(self)
         else:
-            result = ANF(self.var_line)
+            result = BVDD(self.var_line)
             if self.var_line < inputs.var_line:
                 for value in self.values:
-                    result.set_constraint(value, Inputs.conjunction(self.values[value], inputs))
+                    result.set_constraint(value, BVDD.conjunction(self.values[value], inputs))
             else:
                 assert self.var_line is inputs.var_line
                 for value in self.values:
                     if value in inputs.values:
                         result.set_constraint(value,
-                            Inputs.conjunction(self.values[value], inputs.values[value]))
-        return ANF.reduce(result)
+                            BVDD.conjunction(self.values[value], inputs.values[value]))
+        return BVDD.reduce(result)
 
-    def disjunction(self, inputs):
-        assert isinstance(inputs, ANF)
-        if self.var_line > inputs.var_line:
-            return inputs.disjunction(self)
+    def conjunction(inputs1, inputs2):
+        if BVDD.is_false(inputs1) or BVDD.is_false(inputs2):
+            return Constant.false
+        elif BVDD.is_true(inputs1):
+            return inputs2
+        elif BVDD.is_true(inputs2):
+            return inputs1
+        elif inputs1 is inputs2:
+            return inputs1
         else:
-            result = ANF(self.var_line)
+            return inputs1.intersection(inputs2)
+
+    def union(self, inputs):
+        assert isinstance(inputs, BVDD)
+        if self.var_line > inputs.var_line:
+            return inputs.union(self)
+        else:
+            result = BVDD(self.var_line)
             if self.var_line < inputs.var_line:
                 for value in range(2**self.var_line.sid_line.size):
                     if value in self.values:
                         result.set_constraint(value,
-                            Inputs.disjunction(self.values[value], inputs))
+                            BVDD.disjunction(self.values[value], inputs))
                     else:
                         result.set_constraint(value, inputs)
             else:
@@ -514,35 +472,76 @@ class ANF(Inputs):
                 for value in self.values:
                     if value in inputs.values:
                         result.set_constraint(value,
-                            Inputs.disjunction(self.values[value], inputs.values[value]))
+                            BVDD.disjunction(self.values[value], inputs.values[value]))
                     else:
                         result.set_constraint(value, self.values[value])
                 for value in inputs.values:
                     if value not in self.values:
                         result.set_constraint(value, inputs.values[value])
-        return ANF.reduce(result)
+        return BVDD.reduce(result)
+
+    def disjunction(inputs1, inputs2):
+        if BVDD.is_false(inputs1):
+            return inputs2
+        elif BVDD.is_false(inputs2):
+            return inputs1
+        elif BVDD.is_true(inputs1):
+            return inputs1
+        elif BVDD.is_true(inputs2):
+            return inputs2
+        elif inputs1 is inputs2:
+            return inputs1
+        else:
+            return inputs1.union(inputs2)
 
     def get_expression(self):
-        ANF_line = Constant.true
+        BVDD_line = Constant.true
         for value in self.values:
             constraint_line = Comparison(next_nid(), OP_EQ, Bool.boolean,
                 self.var_line,
                 Constd(next_nid(), self.var_line.sid_line, value,
                     self.var_line.comment, self.var_line.line_no),
                 self.var_line.comment, self.var_line.line_no)
-            if isinstance(self.values[value], ANF):
+            if isinstance(self.values[value], BVDD):
                 constraint_line = Logical(next_nid(), OP_AND, Bool.boolean,
                     constraint_line,
                     self.values[value].get_expression(),
                     constraint_line.comment, constraint_line.line_no)
-            if ANF_line is Constant.true:
-                ANF_line = constraint_line
+            if BVDD_line is Constant.true:
+                BVDD_line = constraint_line
             else:
-                ANF_line = Logical(next_nid(), OP_XOR, Bool.boolean,
+                BVDD_line = Logical(next_nid(), OP_XOR, Bool.boolean,
                     constraint_line,
-                    ANF_line,
+                    BVDD_line,
                     constraint_line.comment, constraint_line.line_no)
-        return ANF_line
+        return BVDD_line
+
+    def NOT(inputs):
+        if BVDD.is_false(inputs):
+            return Constant.true
+        elif BVDD.is_true(inputs):
+            return Constant.false
+        else:
+            inputs_line = inputs.get_expression()
+            return Unary(next_nid(), OP_NOT, Bool.boolean,
+                inputs_line,
+                inputs_line.comment, inputs_line.line_no)
+
+    def AND(inputs1, inputs2):
+        if BVDD.is_false(inputs1) or BVDD.is_false(inputs2):
+            return Constant.false
+        elif BVDD.is_true(inputs1):
+            return inputs2.get_expression()
+        elif BVDD.is_true(inputs2):
+            return inputs1.get_expression()
+        elif inputs1 is inputs2:
+            return inputs1.get_expression()
+        else:
+            inputs1_line = inputs1.get_expression()
+            inputs2_line = inputs2.get_expression()
+            return Logical(next_nid(), OP_AND, Bool.boolean,
+                inputs1_line, inputs2_line,
+                inputs1_line.comment, inputs1_line.line_no)
 
 class Values:
     total_number_of_values = 0
@@ -590,7 +589,7 @@ class Values:
         if isinstance(self.sid_line, Bool):
             # constraint on false value must not hold and constraint on true value must hold
             false_constraint, true_constraint = self.get_boolean_constraints()
-            return Inputs.AND(Inputs.NOT(false_constraint), true_constraint)
+            return BVDD.AND(BVDD.NOT(false_constraint), true_constraint)
         else:
             non_true_values = {}
             for value in self.values:
@@ -622,14 +621,14 @@ class Values:
         assert self.sid_line.match_sorts(sid_line)
         assert not isinstance(sid_line, Bool) or isinstance(value, bool)
         assert not isinstance(sid_line, Bitvec) or sid_line.is_unsigned_value(value)
-        if not Inputs.is_false(constraint):
-            assert Inputs.is_true(constraint) or isinstance(constraint, ANF)
+        if not BVDD.is_false(constraint):
+            assert BVDD.is_true(constraint) or isinstance(constraint, BVDD)
             if value not in self.values:
                 Values.total_number_of_values += 1
                 self.values[value] = constraint
             else:
-                assert not Inputs.is_false(self.values[value])
-                self.values[value] = Inputs.disjunction(self.values[value], constraint)
+                assert not BVDD.is_false(self.values[value])
+                self.values[value] = BVDD.disjunction(self.values[value], constraint)
         return self
 
     # naive per-value semantics of value sets
@@ -681,7 +680,7 @@ class Values:
         for value1 in self.values:
             for value2 in values.values:
                 results.set_value(sid_line, op(value1, value2),
-                    Inputs.conjunction(self.values[value1], values.values[value2]))
+                    BVDD.conjunction(self.values[value1], values.values[value2]))
         return results
 
     def FALSE():
@@ -697,7 +696,7 @@ class Values:
     def Implies(self, values):
         assert isinstance(self.sid_line, Bool)
         false_constraint, _ = self.get_boolean_constraints()
-        if Inputs.is_true(false_constraint):
+        if BVDD.is_true(false_constraint):
             assert values is None
             return Values.TRUE()
         else:
@@ -752,7 +751,7 @@ class Values:
     def And(self, values):
         assert isinstance(self.sid_line, Bool)
         false_constraint, _ = self.get_boolean_constraints()
-        if Inputs.is_true(false_constraint):
+        if BVDD.is_true(false_constraint):
             assert values is None
             return Values.FALSE()
         else:
@@ -763,7 +762,7 @@ class Values:
     def Or(self, values):
         assert isinstance(self.sid_line, Bool)
         _, true_constraint = self.get_boolean_constraints()
-        if Inputs.is_true(true_constraint):
+        if BVDD.is_true(true_constraint):
             assert values is None
             return Values.TRUE()
         else:
@@ -859,15 +858,15 @@ class Values:
 
     def constrain(self, constraint):
         assert self.values
-        assert not Inputs.is_false(constraint)
-        if Inputs.is_true(constraint):
+        assert not BVDD.is_false(constraint)
+        if BVDD.is_true(constraint):
             return self
         else:
-            assert isinstance(constraint, ANF)
+            assert isinstance(constraint, BVDD)
             results = Values(self.sid_line)
             for value in self.values:
                 results.set_value(self.sid_line, value,
-                    Inputs.conjunction(self.values[value], constraint))
+                    BVDD.conjunction(self.values[value], constraint))
             return results
 
     def merge(self, values):
@@ -883,10 +882,10 @@ class Values:
 
     def If(self, values2, values3):
         false_constraint, true_constraint = self.get_boolean_constraints()
-        if Inputs.is_false(false_constraint):
+        if BVDD.is_false(false_constraint):
             assert values2 is not None
             return values2.constrain(true_constraint)
-        elif Inputs.is_false(true_constraint):
+        elif BVDD.is_false(true_constraint):
             assert values3 is not None
             return values3.constrain(false_constraint)
         else:
@@ -1131,12 +1130,12 @@ class Variable(Expression):
             if isinstance(self.sid_line, Bitvector) and self.sid_line.size <= Instance.PROPAGATE:
                 self.cache_values[0] = Values(self.sid_line)
                 if isinstance(self.sid_line, Bool):
-                    self.cache_values[0].set_value(self.sid_line, False, ANF(self).set_constraint(0, False))
-                    self.cache_values[0].set_value(self.sid_line, True, ANF(self).set_constraint(1, True))
+                    self.cache_values[0].set_value(self.sid_line, False, BVDD(self).set_constraint(0, False))
+                    self.cache_values[0].set_value(self.sid_line, True, BVDD(self).set_constraint(1, True))
                 else:
                     for value in range(2**self.sid_line.size):
                         self.cache_values[0].set_value(self.sid_line, value,
-                            ANF(self).set_constraint(value, value))
+                            BVDD(self).set_constraint(value, value))
             else:
                 self.cache_values[0] = self
         return self.cache_values[0]
@@ -1646,7 +1645,7 @@ class Implies(Binary):
             arg1_value = self.arg1_line.get_values(step)
             if Instance.PROPAGATE_BINARY and isinstance(arg1_value, Values):
                 false_constraint, _ = arg1_value.get_boolean_constraints()
-                if Inputs.is_true(false_constraint):
+                if BVDD.is_true(false_constraint):
                     self.cache_values[step] = arg1_value.Implies(None)
                     return self.cache_values[step]
                 else:
@@ -1794,7 +1793,7 @@ class Logical(Binary):
                     if isinstance(arg1_value, Values):
                         false_constraint, true_constraint = arg1_value.get_boolean_constraints()
                         if self.op == OP_AND:
-                            if Inputs.is_true(false_constraint):
+                            if BVDD.is_true(false_constraint):
                                 self.cache_values[step] = arg1_value.And(None)
                                 return self.cache_values[step]
                             else:
@@ -1804,7 +1803,7 @@ class Logical(Binary):
                                     self.cache_values[step] = arg1_value.And(arg2_value)
                                     return self.cache_values[step]
                         elif self.op == OP_OR:
-                            if Inputs.is_true(true_constraint):
+                            if BVDD.is_true(true_constraint):
                                 self.cache_values[step] = arg1_value.Or(None)
                                 return self.cache_values[step]
                             else:
@@ -2181,24 +2180,24 @@ class Ite(Ternary):
             arg1_value = self.arg1_line.get_values(step)
             if Instance.PROPAGATE_ITE and isinstance(arg1_value, Values):
                 false_constraint, true_constraint = arg1_value.get_boolean_constraints()
-                if Inputs.is_false(false_constraint):
+                if BVDD.is_false(false_constraint):
                     arg2_value = self.arg2_line.get_values(step)
                     if isinstance(arg2_value, Values):
                         self.cache_values[step] = arg1_value.If(arg2_value, None)
                         return self.cache_values[step]
-                    elif Inputs.is_true(true_constraint):
+                    elif BVDD.is_true(true_constraint):
                         # true case holds unconditionally
                         self.cache_values[step] = arg2_value.get_expression()
                         return self.cache_values[step]
                     else:
                         # lazy evaluation of false case into expression
                         arg3_value = self.arg3_line.get_values(step)
-                elif Inputs.is_false(true_constraint):
+                elif BVDD.is_false(true_constraint):
                     arg3_value = self.arg3_line.get_values(step)
                     if isinstance(arg3_value, Values):
                         self.cache_values[step] = arg1_value.If(None, arg3_value)
                         return self.cache_values[step]
-                    elif Inputs.is_true(false_constraint):
+                    elif BVDD.is_true(false_constraint):
                         # false case holds unconditionally
                         self.cache_values[step] = arg3_value.get_expression()
                         return self.cache_values[step]
@@ -5289,7 +5288,7 @@ def print_message(message, step = None, level = None):
 
 def print_message_with_propagation_profile(message, step = None, level = None):
     if Instance.PROPAGATE is not None:
-        print_message(f"({Values.total_number_of_values}, {ANF.total_number_of_values}, {Expression.total_number_of_generated_expressions}) {message}", step, level)
+        print_message(f"({Values.total_number_of_values}, {BVDD.total_number_of_constraints}, {Expression.total_number_of_generated_expressions}) {message}", step, level)
     else:
         print_message(message, step, level)
 
