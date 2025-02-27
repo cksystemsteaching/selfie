@@ -12326,6 +12326,8 @@ int main(int argc, char** argv) {
   init_target();
   init_kernel();
 
+  printf("%s: This is Andreas Auer's Selfie!\n", selfie_name);
+
   exit_code = selfie(0);
 
   return exit_selfie(exit_code, " [ ( -m | -d | -r | -y ) 0-4096 ... ]");
