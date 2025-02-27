@@ -374,35 +374,43 @@ class Inputs:
         # for sorting input constraints when generating expressions for value sets
         return id(self) < id(inputs)
 
+    def is_false(inputs):
+        return inputs is Constant.false
+
+    def is_true(inputs):
+        return not Inputs.is_false(inputs) and not isinstance(inputs, ANF)
+
     def conjunction(inputs1, inputs2):
-        if inputs1 is Constant.true:
-            return inputs2
-        elif inputs2 is Constant.true:
-            return inputs1
-        elif inputs1 is Constant.false or inputs2 is Constant.false:
+        if Inputs.is_false(inputs1) or Inputs.is_false(inputs2):
             return Constant.false
+        elif Inputs.is_true(inputs1):
+            return inputs2
+        elif Inputs.is_true(inputs2):
+            return inputs1
         elif inputs1 is inputs2:
             return inputs1
         else:
             return inputs1.conjunction(inputs2)
 
     def disjunction(inputs1, inputs2):
-        if inputs1 is Constant.false:
+        if Inputs.is_false(inputs1):
             return inputs2
-        elif inputs2 is Constant.false:
+        elif Inputs.is_false(inputs2):
             return inputs1
-        elif inputs1 is Constant.true or inputs2 is Constant.true:
-            return Constant.true
+        elif Inputs.is_true(inputs1):
+            return inputs1
+        elif Inputs.is_true(inputs2):
+            return inputs2
         elif inputs1 is inputs2:
             return inputs1
         else:
             return inputs1.disjunction(inputs2)
 
     def NOT(inputs):
-        if inputs is Constant.true:
-            return Constant.false
-        elif inputs is Constant.false:
+        if Inputs.is_false(inputs):
             return Constant.true
+        elif Inputs.is_true(inputs):
+            return Constant.false
         else:
             inputs_line = inputs.get_expression()
             return Unary(next_nid(), OP_NOT, Bool.boolean,
@@ -410,11 +418,11 @@ class Inputs:
                 inputs_line.comment, inputs_line.line_no)
 
     def AND(inputs1, inputs2):
-        if inputs1 is Constant.false or inputs2 is Constant.false:
+        if Inputs.is_false(inputs1) or Inputs.is_false(inputs2):
             return Constant.false
-        elif inputs1 is Constant.true:
+        elif Inputs.is_true(inputs1):
             return inputs2.get_expression()
-        elif inputs2 is Constant.true:
+        elif Inputs.is_true(inputs2):
             return inputs1.get_expression()
         elif inputs1 is inputs2:
             return inputs1.get_expression()
@@ -424,339 +432,6 @@ class Inputs:
             return Logical(next_nid(), OP_AND, Bool.boolean,
                 inputs1_line, inputs2_line,
                 inputs1_line.comment, inputs1_line.line_no)
-
-class Literal(Inputs):
-    total_number_of_literals = 0
-
-    def __init__(self, var_line, l, u):
-        assert l <= u
-        self.var_line = var_line
-        self.l = l
-        self.u = u
-        Literal.total_number_of_literals += 1
-
-    def __str__(self):
-        if self.l == self.u:
-            return f"{self.var_line.name} == {self.l}"
-        else:
-            return f"{self.l} <= {self.var_line.name} <= {self.u}"
-
-    def __hash__(self):
-        return (((id(self.var_line) <<
-                self.var_line.sid_line.size) + self.l) <<
-                    self.var_line.sid_line.size) + self.u
-
-    def __eq__(self, inputs):
-        return type(self) is type(inputs) and self.var_line is inputs.var_line and self.l == inputs.l and self.u == inputs.u
-
-    def check_interval(self):
-        if self.l == 0 and self.u == 2**self.var_line.sid_line.size - 1:
-            return Constant.true
-        else:
-            return self
-
-    def intersection(self, literal):
-        assert self.var_line is literal.var_line
-        if self.l > literal.u or self.u < literal.l:
-            return Constant.false
-        elif literal.l <= self.l:
-            if self.u <= literal.u:
-                # literal.l <= self.l <= self.u <= literal.u
-                return self
-            else:
-                assert self.l <= literal.u # intersection is not empty
-                # literal.l <= self.l <= literal.u < self.u
-                return Literal(self.var_line, self.l, literal.u).check_interval()
-        else:
-            if literal.u <= self.u:
-                # self.l < literal.l <= literal.u <= self.u
-                return literal
-            else:
-                assert literal.l <= self.u # intersection is not empty
-                # self.l < literal.l <= self.u < literal.u
-                return Literal(self.var_line, literal.l, self.u).check_interval()
-
-    def conjunction(self, inputs):
-        return Conjunction({self:None}).conjunction(inputs)
-
-    def union(intervals):
-        intervals.sort(key=lambda x: x[0]) # sort by lower interval bound
-        result = []
-        for l, u in intervals:
-            if not result:
-                result = [(l, u)]
-                previous_l = l
-                previous_u = u
-            elif l <= previous_u + 1:
-                # current interval is adjacent to or even overlaps with previous interval
-                assert l >= previous_l
-                previous_u = max(previous_u, u)
-                result[-1] = (previous_l, previous_u)
-            else:
-                # there is at least one value between current and previous interval
-                result.append((l, u))
-                previous_l = l
-                previous_u = u
-        return result
-
-    def disjunction(self, inputs):
-        return Disjunction({self:None}).disjunction(inputs)
-
-    def get_expression(self):
-        if self.l == self.u:
-            return Comparison(next_nid(), OP_EQ, Bool.boolean,
-                self.var_line,
-                Constd(next_nid(), self.var_line.sid_line, self.l,
-                    self.var_line.comment, self.var_line.line_no),
-                self.var_line.comment, self.var_line.line_no)
-        else:
-            return Logical(next_nid(), OP_AND, Bool.boolean,
-                Comparison(next_nid(), OP_UGTE, Bool.boolean,
-                    self.var_line,
-                    Constd(next_nid(), self.var_line.sid_line, self.l,
-                        self.var_line.comment, self.var_line.line_no),
-                    self.var_line.comment, self.var_line.line_no),
-                Comparison(next_nid(), OP_ULTE, Bool.boolean,
-                    self.var_line,
-                    Constd(next_nid(), self.var_line.sid_line, self.u,
-                        self.var_line.comment, self.var_line.line_no),
-                    self.var_line.comment, self.var_line.line_no),
-                self.var_line.comment, self.var_line.line_no)
-
-class Conjunction(Inputs):
-    total_number_of_conjunctions = 0
-
-    APPLY = True
-
-    def __init__(self, inputs):
-        self.inputs = inputs
-        Conjunction.total_number_of_conjunctions += 1
-
-    def __str__(self):
-        string = ""
-        for arg in self.inputs:
-            if string:
-                string += " & "
-            string += f"{arg}"
-        return f"[{string}]"
-
-    def __hash__(self):
-        return id(self.inputs)
-
-    def __eq__(self, inputs):
-        return type(self) is type(inputs) and self.inputs == inputs.inputs
-
-    def evaluate(self):
-        assert self.inputs
-        literals = {}
-        for literal in self.inputs:
-            if isinstance(literal, Literal):
-                if literal.var_line not in literals:
-                    literals[literal.var_line] = literal
-                else:
-                    intersection_literal = literals[literal.var_line].intersection(literal)
-                    if intersection_literal is Constant.false:
-                        return Constant.false
-                    else:
-                        literals[literal.var_line] = intersection_literal
-        intersection = Constant.false
-        for var_line in literals:
-            literal = literals[var_line]
-            if intersection is Constant.false:
-                intersection = Conjunction({literal:None})
-            else:
-                intersection.inputs[literal] = None
-        for arg in self.inputs:
-            if not isinstance(arg, Literal):
-                if intersection is Constant.false:
-                    intersection = Conjunction({arg:None})
-                else:
-                    intersection.inputs[arg] = None
-        return intersection
-
-    def reduce(inputs):
-        if isinstance(inputs, Conjunction):
-            inputs = inputs.evaluate()
-            if isinstance(inputs, Conjunction) and len(inputs.inputs) == 1:
-                return list(inputs.inputs)[0]
-        return inputs
-
-    def conjunction(self, inputs):
-        assert isinstance(inputs, Inputs)
-        if self == inputs:
-            return self
-        else:
-            assert self.inputs
-            if isinstance(inputs, Disjunction) and Conjunction.APPLY:
-                return Disjunction({self:None}).conjunction(inputs)
-            elif not isinstance(inputs, Conjunction):
-                # do not apply conjunction
-                inputs = Conjunction({inputs:None})
-            else:
-                assert inputs.inputs
-            conjunction = Constant.false
-            for arg in self.inputs:
-                if conjunction is Constant.false:
-                    conjunction = Conjunction({arg:None})
-                else:
-                    conjunction.inputs[arg] = None
-            for arg in inputs.inputs:
-                conjunction.inputs[arg] = None
-            return Conjunction.reduce(conjunction)
-
-    def disjunction(self, inputs):
-        assert isinstance(inputs, Inputs)
-        if self == inputs:
-            return self
-        else:
-            assert self.inputs
-            if not isinstance(inputs, Conjunction):
-                inputs = Conjunction({inputs:None})
-            else:
-                assert inputs.inputs
-            conjunction = Constant.true
-            for arg1 in self.inputs:
-                for arg2 in inputs.inputs:
-                    arg = arg1.disjunction(arg2)
-                    if arg is Constant.false:
-                        return Constant.false
-                    elif arg is not Constant.true:
-                        if conjunction is Constant.true:
-                            conjunction = Conjunction({arg:None})
-                        else:
-                            conjunction.inputs[arg] = None
-            conjunction = Conjunction.reduce(conjunction)
-            return conjunction
-
-    def get_expression(self):
-        conjunction_line = Constant.false
-        for arg in self.inputs:
-            arg_line = arg.get_expression()
-            if conjunction_line is Constant.false:
-                conjunction_line = arg_line
-            else:
-                conjunction_line = Logical(next_nid(), OP_AND, Bool.boolean,
-                    arg_line,
-                    conjunction_line,
-                    arg_line.comment, arg_line.line_no)
-        return conjunction_line
-
-class Disjunction(Inputs):
-    total_number_of_disjunctions = 0
-
-    APPLY = True
-
-    def __init__(self, inputs):
-        self.inputs = inputs
-        Disjunction.total_number_of_disjunctions += 1
-
-    def __str__(self):
-        string = ""
-        for arg in self.inputs:
-            if string:
-                string += " | "
-            string += f"{arg}"
-        return f"{{{string}}}"
-
-    def __hash__(self):
-        return id(self.inputs)
-
-    def __eq__(self, inputs):
-        return type(self) is type(inputs) and self.inputs == inputs.inputs
-
-    def evaluate(self):
-        assert self.inputs
-        intervals = {}
-        for literal in self.inputs:
-            if isinstance(literal, Literal):
-                if literal.var_line not in intervals:
-                    intervals[literal.var_line] = [(literal.l, literal.u)]
-                else:
-                    intervals[literal.var_line].append((literal.l, literal.u))
-        union = Constant.true
-        for var_line in intervals:
-            for interval in Literal.union(intervals[var_line]):
-                literal = Literal(var_line, interval[0], interval[1]).check_interval()
-                if literal is Constant.true:
-                    return Constant.true
-                elif union is Constant.true:
-                    union = Disjunction({literal:None})
-                else:
-                    union.inputs[literal] = None
-        for arg in self.inputs:
-            if not isinstance(arg, Literal):
-                if union is Constant.true:
-                    union = Disjunction({arg:None})
-                else:
-                    union.inputs[arg] = None
-        return union
-
-    def reduce(inputs):
-        if isinstance(inputs, Disjunction):
-            inputs = inputs.evaluate()
-            if isinstance(inputs, Disjunction) and len(inputs.inputs) == 1:
-                return list(inputs.inputs)[0]
-        return inputs
-
-    def conjunction(self, inputs):
-        assert isinstance(inputs, Inputs)
-        if self == inputs:
-            return self
-        else:
-            assert self.inputs
-            if not isinstance(inputs, Disjunction):
-                inputs = Disjunction({inputs:None})
-            else:
-                assert inputs.inputs
-            disjunction = Constant.false
-            for arg1 in self.inputs:
-                for arg2 in inputs.inputs:
-                    arg = arg1.conjunction(arg2)
-                    if arg is Constant.true:
-                        return Constant.true
-                    elif arg is not Constant.false:
-                        if disjunction is Constant.false:
-                            disjunction = Disjunction({arg:None})
-                        else:
-                            disjunction.inputs[arg] = None
-            disjunction = Disjunction.reduce(disjunction)
-            return disjunction
-
-    def disjunction(self, inputs):
-        assert isinstance(inputs, Inputs)
-        if self == inputs:
-            return self
-        else:
-            assert self.inputs
-            if isinstance(inputs, Conjunction) and Disjunction.APPLY:
-                return Conjunction({self:None}).disjunction(inputs)
-            elif not isinstance(inputs, Disjunction):
-                # do not apply disjunction
-                inputs = Disjunction({inputs:None})
-            else:
-                assert inputs.inputs
-            disjunction = Constant.true
-            for arg in self.inputs:
-                if disjunction is Constant.true:
-                    disjunction = Disjunction({arg:None})
-                else:
-                    disjunction.inputs[arg] = None
-            for arg in inputs.inputs:
-                disjunction.inputs[arg] = None
-            return Disjunction.reduce(disjunction)
-
-    def get_expression(self):
-        disjunction_line = Constant.true
-        for arg in self.inputs:
-            arg_line = arg.get_expression()
-            if disjunction_line is Constant.true:
-                disjunction_line = arg_line
-            else:
-                disjunction_line = Logical(next_nid(), OP_OR, Bool.boolean,
-                    arg_line,
-                    disjunction_line,
-                    arg_line.comment, arg_line.line_no)
-        return disjunction_line
 
 class ANF(Inputs):
     total_number_of_values = 0
@@ -771,8 +446,10 @@ class ANF(Inputs):
             if string:
                 string += " X "
             string += f"{value}"
-            if self.values[value] is not Constant.true:
+            if isinstance(self.values[value], ANF):
                 string += f" & {self.values[value]}"
+            else:
+                string += f" -> {self.values[value]}"
         return f"{{{string}}}"
 
     def __hash__(self):
@@ -781,9 +458,9 @@ class ANF(Inputs):
     def __eq__(self, inputs):
         return type(self) is type(inputs) and self.var_line is inputs.var_line and self.values == inputs.values
 
-    def set_value(self, value, constraint):
+    def set_constraint(self, value, constraint):
         assert value not in self.values
-        if constraint is not Constant.false:
+        if not Inputs.is_false(constraint):
             self.values[value] = constraint
             ANF.total_number_of_values += 1
         return self
@@ -810,12 +487,12 @@ class ANF(Inputs):
             result = ANF(self.var_line)
             if self.var_line < inputs.var_line:
                 for value in self.values:
-                    result.set_value(value, Inputs.conjunction(self.values[value], inputs))
+                    result.set_constraint(value, Inputs.conjunction(self.values[value], inputs))
             else:
                 assert self.var_line is inputs.var_line
                 for value in self.values:
                     if value in inputs.values:
-                        result.set_value(value,
+                        result.set_constraint(value,
                             Inputs.conjunction(self.values[value], inputs.values[value]))
         return ANF.reduce(result)
 
@@ -828,21 +505,21 @@ class ANF(Inputs):
             if self.var_line < inputs.var_line:
                 for value in range(2**self.var_line.sid_line.size):
                     if value in self.values:
-                        result.set_value(value,
+                        result.set_constraint(value,
                             Inputs.disjunction(self.values[value], inputs))
                     else:
-                        result.set_value(value, inputs)
+                        result.set_constraint(value, inputs)
             else:
                 assert self.var_line is inputs.var_line
                 for value in self.values:
                     if value in inputs.values:
-                        result.set_value(value,
+                        result.set_constraint(value,
                             Inputs.disjunction(self.values[value], inputs.values[value]))
                     else:
-                        result.set_value(value, self.values[value])
+                        result.set_constraint(value, self.values[value])
                 for value in inputs.values:
                     if value not in self.values:
-                        result.set_value(value, inputs.values[value])
+                        result.set_constraint(value, inputs.values[value])
         return ANF.reduce(result)
 
     def get_expression(self):
@@ -853,7 +530,7 @@ class ANF(Inputs):
                 Constd(next_nid(), self.var_line.sid_line, value,
                     self.var_line.comment, self.var_line.line_no),
                 self.var_line.comment, self.var_line.line_no)
-            if self.values[value] is not Constant.true:
+            if isinstance(self.values[value], ANF):
                 constraint_line = Logical(next_nid(), OP_AND, Bool.boolean,
                     constraint_line,
                     self.values[value].get_expression(),
@@ -945,13 +622,13 @@ class Values:
         assert self.sid_line.match_sorts(sid_line)
         assert not isinstance(sid_line, Bool) or isinstance(value, bool)
         assert not isinstance(sid_line, Bitvec) or sid_line.is_unsigned_value(value)
-        if constraint is not Constant.false:
-            assert constraint is Constant.true or isinstance(constraint, Inputs)
+        if not Inputs.is_false(constraint):
+            assert Inputs.is_true(constraint) or isinstance(constraint, ANF)
             if value not in self.values:
                 Values.total_number_of_values += 1
                 self.values[value] = constraint
             else:
-                assert self.values[value] is not Constant.false
+                assert not Inputs.is_false(self.values[value])
                 self.values[value] = Inputs.disjunction(self.values[value], constraint)
         return self
 
@@ -1009,18 +686,18 @@ class Values:
 
     def FALSE():
         if Values.false is None:
-            Values.false = Values(Bool.boolean).set_value(Bool.boolean, False, Constant.true)
+            Values.false = Values(Bool.boolean).set_value(Bool.boolean, False, False)
         return Values.false
 
     def TRUE():
         if Values.true is None:
-            Values.true = Values(Bool.boolean).set_value(Bool.boolean, True, Constant.true)
+            Values.true = Values(Bool.boolean).set_value(Bool.boolean, True, True)
         return Values.true
 
     def Implies(self, values):
         assert isinstance(self.sid_line, Bool)
         false_constraint, _ = self.get_boolean_constraints()
-        if false_constraint is Constant.true:
+        if Inputs.is_true(false_constraint):
             assert values is None
             return Values.TRUE()
         else:
@@ -1075,7 +752,7 @@ class Values:
     def And(self, values):
         assert isinstance(self.sid_line, Bool)
         false_constraint, _ = self.get_boolean_constraints()
-        if false_constraint is Constant.true:
+        if Inputs.is_true(false_constraint):
             assert values is None
             return Values.FALSE()
         else:
@@ -1086,7 +763,7 @@ class Values:
     def Or(self, values):
         assert isinstance(self.sid_line, Bool)
         _, true_constraint = self.get_boolean_constraints()
-        if true_constraint is Constant.true:
+        if Inputs.is_true(true_constraint):
             assert values is None
             return Values.TRUE()
         else:
@@ -1182,11 +859,11 @@ class Values:
 
     def constrain(self, constraint):
         assert self.values
-        assert constraint is not Constant.false
-        if constraint is Constant.true:
+        assert not Inputs.is_false(constraint)
+        if Inputs.is_true(constraint):
             return self
         else:
-            assert isinstance(constraint, Inputs)
+            assert isinstance(constraint, ANF)
             results = Values(self.sid_line)
             for value in self.values:
                 results.set_value(self.sid_line, value,
@@ -1206,10 +883,10 @@ class Values:
 
     def If(self, values2, values3):
         false_constraint, true_constraint = self.get_boolean_constraints()
-        if false_constraint is Constant.false:
+        if Inputs.is_false(false_constraint):
             assert values2 is not None
             return values2.constrain(true_constraint)
-        elif true_constraint is Constant.false:
+        elif Inputs.is_false(true_constraint):
             assert values3 is not None
             return values3.constrain(false_constraint)
         else:
@@ -1296,7 +973,7 @@ class Constant(Expression):
         if 0 not in self.cache_values:
             if Instance.PROPAGATE > 0:
                 value = bool(self.value) if isinstance(self.sid_line, Bool) else self.value
-                self.cache_values[0] = Values(self.sid_line).set_value(self.sid_line, value, Constant.true)
+                self.cache_values[0] = Values(self.sid_line).set_value(self.sid_line, value, value)
             else:
                 self.cache_values[0] = self
         return self.cache_values[0]
@@ -1454,12 +1131,12 @@ class Variable(Expression):
             if isinstance(self.sid_line, Bitvector) and self.sid_line.size <= Instance.PROPAGATE:
                 self.cache_values[0] = Values(self.sid_line)
                 if isinstance(self.sid_line, Bool):
-                    self.cache_values[0].set_value(self.sid_line, False, ANF(self).set_value(0, Constant.true))
-                    self.cache_values[0].set_value(self.sid_line, True, ANF(self).set_value(1, Constant.true))
+                    self.cache_values[0].set_value(self.sid_line, False, ANF(self).set_constraint(0, False))
+                    self.cache_values[0].set_value(self.sid_line, True, ANF(self).set_constraint(1, True))
                 else:
                     for value in range(2**self.sid_line.size):
                         self.cache_values[0].set_value(self.sid_line, value,
-                            ANF(self).set_value(value, Constant.true))
+                            ANF(self).set_constraint(value, value))
             else:
                 self.cache_values[0] = self
         return self.cache_values[0]
@@ -1969,7 +1646,7 @@ class Implies(Binary):
             arg1_value = self.arg1_line.get_values(step)
             if Instance.PROPAGATE_BINARY and isinstance(arg1_value, Values):
                 false_constraint, _ = arg1_value.get_boolean_constraints()
-                if false_constraint is Constant.true:
+                if Inputs.is_true(false_constraint):
                     self.cache_values[step] = arg1_value.Implies(None)
                     return self.cache_values[step]
                 else:
@@ -2117,7 +1794,7 @@ class Logical(Binary):
                     if isinstance(arg1_value, Values):
                         false_constraint, true_constraint = arg1_value.get_boolean_constraints()
                         if self.op == OP_AND:
-                            if false_constraint is Constant.true:
+                            if Inputs.is_true(false_constraint):
                                 self.cache_values[step] = arg1_value.And(None)
                                 return self.cache_values[step]
                             else:
@@ -2127,7 +1804,7 @@ class Logical(Binary):
                                     self.cache_values[step] = arg1_value.And(arg2_value)
                                     return self.cache_values[step]
                         elif self.op == OP_OR:
-                            if true_constraint is Constant.true:
+                            if Inputs.is_true(true_constraint):
                                 self.cache_values[step] = arg1_value.Or(None)
                                 return self.cache_values[step]
                             else:
@@ -2504,24 +2181,24 @@ class Ite(Ternary):
             arg1_value = self.arg1_line.get_values(step)
             if Instance.PROPAGATE_ITE and isinstance(arg1_value, Values):
                 false_constraint, true_constraint = arg1_value.get_boolean_constraints()
-                if false_constraint is Constant.false:
+                if Inputs.is_false(false_constraint):
                     arg2_value = self.arg2_line.get_values(step)
                     if isinstance(arg2_value, Values):
                         self.cache_values[step] = arg1_value.If(arg2_value, None)
                         return self.cache_values[step]
-                    elif true_constraint is Constant.true:
+                    elif Inputs.is_true(true_constraint):
                         # true case holds unconditionally
                         self.cache_values[step] = arg2_value.get_expression()
                         return self.cache_values[step]
                     else:
                         # lazy evaluation of false case into expression
                         arg3_value = self.arg3_line.get_values(step)
-                elif true_constraint is Constant.false:
+                elif Inputs.is_false(true_constraint):
                     arg3_value = self.arg3_line.get_values(step)
                     if isinstance(arg3_value, Values):
                         self.cache_values[step] = arg1_value.If(None, arg3_value)
                         return self.cache_values[step]
-                    elif false_constraint is Constant.true:
+                    elif Inputs.is_true(false_constraint):
                         # false case holds unconditionally
                         self.cache_values[step] = arg3_value.get_expression()
                         return self.cache_values[step]
