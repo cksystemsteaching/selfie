@@ -403,11 +403,11 @@ class BVDD:
         if bvdd is Constant.false:
             return True
         else:
-            assert bvdd is Constant.true or isinstance(bvdd, bool) or BVDD.is_inputs(bvdd)
+            assert isinstance(bvdd, bool) or BVDD.is_inputs(bvdd)
             return False
 
     def is_always_true(bvdd):
-        if bvdd is Constant.true or isinstance(bvdd, bool):
+        if isinstance(bvdd, bool):
             return True
         else:
             assert bvdd is Constant.false or BVDD.is_inputs(bvdd)
@@ -427,11 +427,12 @@ class BVDD:
             assert BVDD.is_inputs(bvdd)
             return False
 
-    def set_input(self, input_value, inputs_or_output):
+    def set_input(self, sid_line, input_value, inputs_or_output):
         assert input_value not in self.inputs
         self.inputs[input_value] = inputs_or_output
         BVDD.total_number_of_inputs += 1
         if BVDD.is_output(inputs_or_output):
+            assert sid_line.is_unsigned_value(inputs_or_output)
             BVDD.total_number_of_outputs += 1
         return self
 
@@ -449,68 +450,68 @@ class BVDD:
                 return inputs_or_output
         return bvdd
 
-    def get_inputs(self, output):
+    def get_inputs(self, sid_line, output):
         inputs = BVDD(self.var_line)
         for input_value in self.inputs:
             inputs_or_output = self.inputs[input_value]
             if BVDD.is_output(inputs_or_output):
                 if inputs_or_output == output:
-                    inputs.set_input(input_value, output)
+                    inputs.set_input(sid_line, input_value, output)
             else:
                 assert BVDD.is_inputs(inputs_or_output)
-                inputs.set_input(input_value, inputs_or_output.get_inputs(output))
+                inputs.set_input(sid_line, input_value, inputs_or_output.get_inputs(sid_line, output))
         return BVDD.reduce(inputs)
 
-    def apply_unary(self, op):
+    def apply_unary(self, sid_line, op):
         inputs = BVDD(self.var_line)
         for input_value in self.inputs:
-            inputs.set_input(input_value, BVDD.apply(op, self.inputs[input_value]))
+            inputs.set_input(sid_line, input_value, BVDD.apply(sid_line, op, self.inputs[input_value]))
         return BVDD.reduce(inputs)
 
-    def apply_binary(self, op, bvdd):
+    def apply_binary(self, sid_line, op, bvdd):
         assert BVDD.is_inputs(bvdd)
         if self.var_line > bvdd.var_line:
             inputs = BVDD(bvdd.var_line)
             for input_value in bvdd.inputs:
-                inputs.set_input(input_value, BVDD.apply(op, self, bvdd.inputs[input_value]))
+                inputs.set_input(sid_line, input_value, BVDD.apply(sid_line, op, self, bvdd.inputs[input_value]))
         else:
             inputs = BVDD(self.var_line)
             if self.var_line < bvdd.var_line:
                 for input_value in self.inputs:
-                    inputs.set_input(input_value, BVDD.apply(op, self.inputs[input_value], bvdd))
+                    inputs.set_input(sid_line, input_value, BVDD.apply(sid_line, op, self.inputs[input_value], bvdd))
             else:
                 for input_value in self.inputs:
                     if input_value in bvdd.inputs:
-                        inputs.set_input(input_value, BVDD.apply(op,
+                        inputs.set_input(sid_line, input_value, BVDD.apply(sid_line, op,
                             self.inputs[input_value], bvdd.inputs[input_value]))
         return BVDD.reduce(inputs)
 
-    def apply(op, bvdd1, bvdd2 = None):
+    def apply(sid_line, op, bvdd1, bvdd2 = None):
         if bvdd2 is None:
             if BVDD.is_output(bvdd1):
                 return op(bvdd1)
             else:
                 assert BVDD.is_inputs(bvdd1)
-                return bvdd1.apply_unary(op)
+                return bvdd1.apply_unary(sid_line, op)
         else:
             if BVDD.is_output(bvdd1):
                 if BVDD.is_output(bvdd2):
                     return op(bvdd1, bvdd2)
                 else:
                     assert BVDD.is_inputs(bvdd2)
-                    return bvdd2.apply_unary(lambda y: op(bvdd1, y))
+                    return bvdd2.apply_unary(sid_line, lambda y: op(bvdd1, y))
             else:
                 assert BVDD.is_inputs(bvdd1)
                 if BVDD.is_output(bvdd2):
-                    return bvdd1.apply_unary(lambda x: op(x, bvdd2))
+                    return bvdd1.apply_unary(sid_line, lambda x: op(x, bvdd2))
                 else:
                     assert BVDD.is_inputs(bvdd2)
-                    return bvdd1.apply_binary(op, bvdd2)
+                    return bvdd1.apply_binary(sid_line, op, bvdd2)
 
-    def merge(self, bvdd):
+    def merge(self, sid_line, bvdd):
         assert BVDD.is_inputs(bvdd)
         if self.var_line > bvdd.var_line:
-            return bvdd.merge(self)
+            return bvdd.merge(sid_line, self)
         else:
             inputs = BVDD(self.var_line)
             if self.var_line < bvdd.var_line:
@@ -518,9 +519,9 @@ class BVDD:
                     if input_value in self.inputs:
                         # assert: intersection of self and bvdd is empty
                         assert BVDD.is_inputs(self.inputs[input_value])
-                        inputs.set_input(input_value, self.inputs[input_value].merge(bvdd))
+                        inputs.set_input(sid_line, input_value, self.inputs[input_value].merge(sid_line, bvdd))
                     else:
-                        inputs.set_input(input_value, bvdd)
+                        inputs.set_input(sid_line, input_value, bvdd)
             else:
                 assert self.var_line is bvdd.var_line
                 for input_value in self.inputs:
@@ -528,13 +529,13 @@ class BVDD:
                         # assert: intersection of self and bvdd is empty
                         assert BVDD.is_inputs(self.inputs[input_value])
                         assert BVDD.is_inputs(bvdd.inputs[input_value])
-                        inputs.set_input(input_value,
-                            self.inputs[input_value].merge(bvdd.inputs[input_value]))
+                        inputs.set_input(sid_line, input_value,
+                            self.inputs[input_value].merge(sid_line, bvdd.inputs[input_value]))
                     else:
-                        inputs.set_input(input_value, self.inputs[input_value])
+                        inputs.set_input(sid_line, input_value, self.inputs[input_value])
                 for input_value in bvdd.inputs:
                     if input_value not in self.inputs:
-                        inputs.set_input(input_value, bvdd.inputs[input_value])
+                        inputs.set_input(sid_line, input_value, bvdd.inputs[input_value])
         return BVDD.reduce(inputs)
 
     def get_expression(self, sid_line):
@@ -580,6 +581,7 @@ class Values:
         assert self.sid_line.match_sorts(sid_line)
         self.values = values
         if BVDD.is_output(values):
+            assert sid_line.is_unsigned_value(values)
             BVDD.total_number_of_outputs += 1
         return self
 
@@ -588,14 +590,14 @@ class Values:
         if BVDD.is_output(self.values):
             return False if self.values is False else Constant.false
         else:
-            return self.values.get_inputs(False)
+            return self.values.get_inputs(self.sid_line, False)
 
     def get_true_constraint(self):
         assert isinstance(self.sid_line, Bool)
         if BVDD.is_output(self.values):
             return True if self.values is True else Constant.false
         else:
-            return self.values.get_inputs(True)
+            return self.values.get_inputs(self.sid_line, True)
 
     def get_boolean_constraints(self):
         assert isinstance(self.sid_line, Bool)
@@ -611,7 +613,7 @@ class Values:
     # unary operators
 
     def apply_unary(self, sid_line, op):
-        return Values(sid_line).set_values(sid_line, BVDD.apply(op, self.values))
+        return Values(sid_line).set_values(sid_line, BVDD.apply(sid_line, op, self.values))
 
     def SignExt(self, sid_line):
         assert isinstance(self.sid_line, Bitvec)
@@ -648,7 +650,7 @@ class Values:
     # binary operators
 
     def apply_binary(self, sid_line, values, op):
-        return Values(sid_line).set_values(sid_line, BVDD.apply(op, self.values, values.values))
+        return Values(sid_line).set_values(sid_line, BVDD.apply(sid_line, op, self.values, values.values))
 
     def FALSE():
         if Values.false is None:
@@ -826,13 +828,13 @@ class Values:
     def constrain(self, constraint):
         assert not BVDD.is_always_false(constraint)
         return Values(self.sid_line).set_values(self.sid_line,
-            BVDD.apply(lambda x, y: x, self.values, constraint))
+            BVDD.apply(self.sid_line, lambda x, y: x, self.values, constraint))
 
     def merge(self, values):
         assert isinstance(values, Values)
         assert self.match_sorts(values)
         assert BVDD.is_inputs(self.values) and BVDD.is_inputs(values.values)
-        return Values(self.sid_line).set_values(self.sid_line, self.values.merge(values.values))
+        return Values(self.sid_line).set_values(self.sid_line, self.values.merge(self.sid_line, values.values))
 
     def If(self, values2, values3):
         false_constraint, true_constraint = self.get_boolean_constraints()
@@ -1087,10 +1089,10 @@ class Variable(Expression):
             if isinstance(self.sid_line, Bitvector) and self.sid_line.size <= Instance.PROPAGATE:
                 bvdd = BVDD(self)
                 if isinstance(self.sid_line, Bool):
-                    bvdd.set_input(0, False).set_input(1, True)
+                    bvdd.set_input(self.sid_line, 0, False).set_input(self.sid_line, 1, True)
                 else:
                     for value in range(2**self.sid_line.size):
-                        bvdd.set_input(value, value)
+                        bvdd.set_input(self.sid_line, value, value)
                 self.cache_values[0] = Values(self.sid_line).set_values(self.sid_line, bvdd)
             else:
                 self.cache_values[0] = self
