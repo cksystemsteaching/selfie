@@ -389,12 +389,6 @@ class BVDD:
                 string += f" -> {self.inputs[input_value]}"
         return f"{{{string}}}"
 
-    def __hash__(self):
-        return id(self)
-
-    def __eq__(self, bvdd):
-        return type(self) is type(bvdd) and self.var_line is bvdd.var_line and self.inputs == bvdd.inputs
-
     def __lt__(self, bvdd):
         # for sorting BVDDs when generating expressions for value sets
         return id(self) < id(bvdd)
