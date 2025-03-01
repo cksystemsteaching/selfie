@@ -393,6 +393,24 @@ class BVDD:
         # for sorting BVDDs when generating expressions for value sets
         return id(self) < id(bvdd)
 
+    def number_of_inputs(bvdd):
+        if BVDD.is_inputs(bvdd):
+            n = len(bvdd.inputs)
+            for input_value in bvdd.inputs:
+                n += BVDD.number_of_inputs(bvdd.inputs[input_value])
+            return n
+        else:
+            return 0
+
+    def number_of_values(bvdd):
+        if BVDD.is_inputs(bvdd):
+            n = 0
+            for input_value in bvdd.inputs:
+                n += BVDD.number_of_values(bvdd.inputs[input_value])
+            return n
+        else:
+            return 1
+
     def is_always_false(bvdd):
         if bvdd is Constant.false:
             return True
@@ -554,6 +572,12 @@ class BVDD:
             return bvdd.get_expression(sid_line)
 
 class Values:
+    max_number_of_inputs = 0
+    max_number_of_values = 0
+
+    avg_number_of_inputs = 0
+    avg_number_of_values = 0
+
     false = None
     true = None
 
@@ -577,6 +601,16 @@ class Values:
         if BVDD.is_output(values):
             assert sid_line.is_unsigned_value(values)
             BVDD.total_number_of_outputs += 1
+        Values.max_number_of_inputs = max(Values.max_number_of_inputs, BVDD.number_of_inputs(self.values))
+        Values.max_number_of_values = max(Values.max_number_of_values, BVDD.number_of_values(self.values))
+        if Values.avg_number_of_inputs == 0:
+            Values.avg_number_of_inputs = BVDD.number_of_inputs(self.values)
+        else:
+            Values.avg_number_of_inputs = (Values.avg_number_of_inputs + BVDD.number_of_inputs(self.values)) // 2
+        if Values.avg_number_of_values == 0:
+            Values.avg_number_of_values = BVDD.number_of_values(self.values)
+        else:
+            Values.avg_number_of_values = (Values.avg_number_of_values + BVDD.number_of_values(self.values)) // 2
         return self
 
     def get_false_constraint(self):
@@ -5240,7 +5274,7 @@ def print_message(message, step = None, level = None):
 
 def print_message_with_propagation_profile(message, step = None, level = None):
     if Instance.PROPAGATE is not None:
-        print_message(f"({BVDD.total_number_of_outputs}, {BVDD.total_number_of_inputs}, {Expression.total_number_of_generated_expressions}) {message}", step, level)
+        print_message(f"({BVDD.total_number_of_outputs}, {BVDD.total_number_of_inputs}, {Values.max_number_of_values}, {Values.max_number_of_inputs}, {Values.avg_number_of_values}, {Values.avg_number_of_inputs}, {Expression.total_number_of_generated_expressions}) {message}", step, level)
     else:
         print_message(message, step, level)
 
@@ -5694,7 +5728,7 @@ def branching_bmc(solver, kmin, kmax, args, step, level):
         if step >= kmin:
             # check bad properties from kmin on
             for bad in Bad.bads.values():
-                print_message_with_propagation_profile(bad, step, level)
+                print_message_with_propagation_profile(bad.symbol, step, level)
                 solver.push()
                 solver.assert_this([bad], step)
                 result = solver.prove()
