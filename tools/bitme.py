@@ -370,8 +370,10 @@ class Array(Sort):
         return self.bitwuzla
 
 class BVDD:
-    total_number_of_inputs = 0
-    total_number_of_outputs = 0
+    number_of_solutions = 0
+    max_number_of_solutions = 0
+    avg_number_of_solutions = 0
+    total_number_of_solutions = 0
 
     def __init__(self, var_line):
         self.var_line = var_line
@@ -381,9 +383,9 @@ class BVDD:
         string = ""
         for input_value in self.inputs:
             if string:
-                string += " X "
+                string += ",\n"
             string += f"{input_value}"
-            if isinstance(self.inputs[input_value], BVDD):
+            if BVDD.is_inputs(self.inputs[input_value]):
                 string += f" & {self.inputs[input_value]}"
             else:
                 string += f" -> {self.inputs[input_value]}"
@@ -394,22 +396,14 @@ class BVDD:
         return id(self) < id(bvdd)
 
     def number_of_inputs(bvdd):
-        if BVDD.is_inputs(bvdd):
-            n = len(bvdd.inputs)
-            for input_value in bvdd.inputs:
-                n += BVDD.number_of_inputs(bvdd.inputs[input_value])
-            return n
+        if BVDD.is_output(bvdd):
+            return 1
         else:
-            return 0
-
-    def number_of_values(bvdd):
-        if BVDD.is_inputs(bvdd):
+            assert BVDD.is_inputs(bvdd)
             n = 0
             for input_value in bvdd.inputs:
-                n += BVDD.number_of_values(bvdd.inputs[input_value])
-            return n
-        else:
-            return 1
+                n += BVDD.number_of_inputs(bvdd.inputs[input_value])
+        return n
 
     def is_always_false(bvdd):
         if bvdd is Constant.false:
@@ -442,10 +436,9 @@ class BVDD:
     def set_input(self, sid_line, input_value, inputs_or_output):
         assert input_value not in self.inputs
         self.inputs[input_value] = inputs_or_output
-        BVDD.total_number_of_inputs += 1
         if BVDD.is_output(inputs_or_output):
             assert sid_line.is_unsigned_value(inputs_or_output)
-            BVDD.total_number_of_outputs += 1
+            BVDD.number_of_solutions += 1
         return self
 
     def reduce(bvdd):
@@ -573,10 +566,13 @@ class BVDD:
 
 class Values:
     max_number_of_inputs = 0
-    max_number_of_values = 0
+    max_number_of_outputs = 0
 
     avg_number_of_inputs = 0
-    avg_number_of_values = 0
+    avg_number_of_outputs = 0
+
+    last_number_of_inputs = 0
+    last_number_of_outputs = 0
 
     false = None
     true = None
@@ -598,19 +594,7 @@ class Values:
     def set_values(self, sid_line, values):
         assert self.sid_line.match_sorts(sid_line)
         self.values = values
-        if BVDD.is_output(values):
-            assert sid_line.is_unsigned_value(values)
-            BVDD.total_number_of_outputs += 1
-        Values.max_number_of_inputs = max(Values.max_number_of_inputs, BVDD.number_of_inputs(self.values))
-        Values.max_number_of_values = max(Values.max_number_of_values, BVDD.number_of_values(self.values))
-        if Values.avg_number_of_inputs == 0:
-            Values.avg_number_of_inputs = BVDD.number_of_inputs(self.values)
-        else:
-            Values.avg_number_of_inputs = (Values.avg_number_of_inputs + BVDD.number_of_inputs(self.values)) // 2
-        if Values.avg_number_of_values == 0:
-            Values.avg_number_of_values = BVDD.number_of_values(self.values)
-        else:
-            Values.avg_number_of_values = (Values.avg_number_of_values + BVDD.number_of_values(self.values)) // 2
+        assert not BVDD.is_output(values) or sid_line.is_unsigned_value(values)
         return self
 
     def get_false_constraint(self):
@@ -5274,7 +5258,16 @@ def print_message(message, step = None, level = None):
 
 def print_message_with_propagation_profile(message, step = None, level = None):
     if Instance.PROPAGATE is not None:
-        print_message(f"({BVDD.total_number_of_outputs}, {BVDD.total_number_of_inputs}, {Values.max_number_of_values}, {Values.max_number_of_inputs}, {Values.avg_number_of_values}, {Values.avg_number_of_inputs}, {Expression.total_number_of_generated_expressions}) {message}", step, level)
+        BVDD.total_number_of_solutions += BVDD.number_of_solutions
+        BVDD.max_number_of_solutions = max(BVDD.max_number_of_solutions, BVDD.number_of_solutions)
+        BVDD.avg_number_of_solutions += BVDD.number_of_solutions
+        if BVDD.avg_number_of_solutions > BVDD.number_of_solutions:
+            BVDD.avg_number_of_solutions //= 2
+        string = f"({BVDD.total_number_of_solutions}, {BVDD.max_number_of_solutions}, "
+        string += f"{BVDD.number_of_solutions}, {BVDD.avg_number_of_solutions}, "
+        string += f"{Expression.total_number_of_generated_expressions}) {message}"
+        print_message(string, step, level)
+        BVDD.number_of_solutions = 0
     else:
         print_message(message, step, level)
 
@@ -5767,7 +5760,10 @@ def branching_bmc(solver, kmin, kmax, args, step, level):
             # compute next step
             solver.assert_this(Next.nexts.values(), step)
 
-        print_message_with_propagation_profile("transitioning", step, level)
+        if args.print_transition:
+            print_message_with_propagation_profile("transitioning\n", step, level)
+        else:
+            print_message("transitioning", step, level)
         solver.simplify()
 
         if args.branching and Ite.branching_conditions and Ite.non_branching_conditions:
@@ -5927,6 +5923,7 @@ def main():
     parser.add_argument('--print-pc', action='store_true') # only for rotor models
     parser.add_argument('--check-termination', action='store_true')
     parser.add_argument('--unconstraining-bad', action='store_true')
+    parser.add_argument('--print-transition', action='store_true')
     parser.add_argument('--branching', action='store_true') # only for rotor models
 
     args = parser.parse_args()
