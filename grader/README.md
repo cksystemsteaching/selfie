@@ -55,11 +55,12 @@ Then, on the web:
 And then, in a terminal where your selfie installation is:
 
 1. Change directory to the root directory of your selfie installation (from https://github.com/cksystemsteaching/selfie).
-2. Change the `origin` remote name to `upstream`: `git remote rename origin upstream`
-3. Add your `myselfie` repository on GitHub as `origin`: `git remote add origin git@github.com:<yourusername>/myselfie.git`
-4. Update your installation from `upstream`: `git fetch upstream` (or, initially `git fetch --unshallow upstream` if you are on [repl.it](https://repl.it))
-5. Mirror your installation to your `myselfie` repository on GitHub: `git push --mirror origin`
-6. Set up the main branch of your installation to push to your `myselfie` repository: `git branch --set-upstream-to=origin/main main`
+2. Make sure you have an initialized git repository by running `git status`. If this command returns `fatal: not a git repository` run `git init` to initialize the repository
+3. Change the `origin` remote name to `upstream`: `git remote rename origin upstream`
+4. Add your `myselfie` repository on GitHub as `origin`: `git remote add origin git@github.com:<yourusername>/myselfie.git`
+5. Update your installation from `upstream`: `git fetch upstream` (or, initially `git fetch --unshallow upstream` if you are on [repl.it](https://repl.it))
+6. Mirror your installation to your `myselfie` repository on GitHub: `git push --mirror origin`
+7. Set up the main branch of your installation to push to your `myselfie` repository: `git branch --set-upstream-to=origin/main main`
 
 Your selfie installation as well as your `myselfie` repository on GitHub are successfully set up and ready for submitting solutions of assignments.
 
