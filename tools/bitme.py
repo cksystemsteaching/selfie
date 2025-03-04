@@ -565,14 +565,7 @@ class BVDD:
             return bvdd.get_expression(sid_line)
 
 class Values:
-    max_number_of_inputs = 0
-    max_number_of_outputs = 0
-
-    avg_number_of_inputs = 0
-    avg_number_of_outputs = 0
-
-    last_number_of_inputs = 0
-    last_number_of_outputs = 0
+    total_number_of_constants = 0
 
     false = None
     true = None
@@ -594,7 +587,9 @@ class Values:
     def set_values(self, sid_line, values):
         assert self.sid_line.match_sorts(sid_line)
         self.values = values
-        assert not BVDD.is_output(values) or sid_line.is_unsigned_value(values)
+        if BVDD.is_output(values):
+            assert sid_line.is_unsigned_value(values)
+            Values.total_number_of_constants += 1
         return self
 
     def get_false_constraint(self):
@@ -5258,13 +5253,14 @@ def print_message(message, step = None, level = None):
 
 def print_message_with_propagation_profile(message, step = None, level = None):
     if Instance.PROPAGATE is not None:
+
         BVDD.total_number_of_solutions += BVDD.number_of_solutions
         BVDD.max_number_of_solutions = max(BVDD.max_number_of_solutions, BVDD.number_of_solutions)
         BVDD.avg_number_of_solutions += BVDD.number_of_solutions
         if BVDD.avg_number_of_solutions > BVDD.number_of_solutions:
             BVDD.avg_number_of_solutions //= 2
-        string = f"({BVDD.total_number_of_solutions}, {BVDD.max_number_of_solutions}, "
-        string += f"{BVDD.number_of_solutions}, {BVDD.avg_number_of_solutions}, "
+        string = f"({Values.total_number_of_constants}, {BVDD.total_number_of_solutions}, "
+        string += f"{BVDD.max_number_of_solutions}, {BVDD.number_of_solutions}, {BVDD.avg_number_of_solutions}, "
         string += f"{Expression.total_number_of_generated_expressions}) {message}"
         print_message(string, step, level)
         BVDD.number_of_solutions = 0
