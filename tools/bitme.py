@@ -673,7 +673,6 @@ class Values:
         assert isinstance(self.sid_line, Bool)
         false_constraint = self.get_false_constraint()
         if BVDD.is_always_true(false_constraint):
-            assert values is None
             return Values.TRUE()
         else:
             # lazy evaluation of implied values
@@ -728,7 +727,6 @@ class Values:
         assert isinstance(self.sid_line, Bool)
         false_constraint = self.get_false_constraint()
         if BVDD.is_always_true(false_constraint):
-            assert values is None
             return Values.FALSE()
         else:
             # lazy evaluation of second operand
@@ -739,7 +737,6 @@ class Values:
         assert isinstance(self.sid_line, Bool)
         true_constraint = self.get_true_constraint()
         if BVDD.is_always_true(true_constraint):
-            assert values is None
             return Values.TRUE()
         else:
             # lazy evaluation of second operand
@@ -5746,7 +5743,7 @@ class BVDD_Solver():
         self.stack = []
         self.proven = {}
         self.unproven = {}
-        self.satisfied = {}
+        self.constraint = Values.TRUE()
 
     def push(self):
         if self.non_BVDD:
@@ -5757,7 +5754,7 @@ class BVDD_Solver():
         else:
             self.prove()
             assert not self.unproven
-            self.stack.append(self.proven)
+            self.stack.append((self.constraint, self.proven))
             self.proven = {}
 
     def pop(self):
@@ -5769,7 +5766,7 @@ class BVDD_Solver():
         else:
             assert self.stack
             # TODO: unprove proven
-            self.proven = self.stack.pop()
+            self.constraint, self.proven = self.stack.pop()
             self.unproven = {}
 
     def assert_this(self, assertions, step):
@@ -5811,8 +5808,8 @@ class BVDD_Solver():
         self.non_BVDD = True
         self.proven |= self.unproven
         self.unproven = {}
-        self.stack.append(self.proven)
-        for assertions in self.stack:
+        self.stack.append((self.constraint, self.proven))
+        for constraint, assertions in self.stack:
             for step in assertions:
                 for assertion in assertions[step]:
                     if assertions[step][assertion]:
@@ -5821,6 +5818,7 @@ class BVDD_Solver():
                         self.assert_not_this([assertion], step)
             if assertions is not self.proven:
                 self.push()
+        self.constraint = Values.TRUE()
         self.proven = {}
         self.stack = []
         return self.prove()
@@ -5838,7 +5836,6 @@ class BVDD_Solver():
                 return bitwuzla_SAT
             return z3_SAT
         else:
-            SAT = False
             for step in self.unproven:
                 for assertion in self.unproven[step]:
                     if isinstance(assertion, Transitional):
@@ -5848,19 +5845,18 @@ class BVDD_Solver():
                         instance = assertion.get_bvdd_step(step)
                         assert isinstance(instance.sid_line, Bool)
                         if isinstance(instance, Values):
-                            if self.unproven[step][assertion]:
-                                false_constraint, true_constraint = instance.get_boolean_constraints()
+                            if self.unproven[step][assertion] is True:
+                                self.constraint = instance.And(self.constraint)
                             else:
-                                true_constraint, false_constraint = instance.get_boolean_constraints()
-                            if not BVDD.is_always_true(false_constraint) and not BVDD.is_always_false(true_constraint):
-                                # TODO: check conjunction, apply as constraint
-                                SAT = True
-                                self.satisfied = instance
+                                assert self.unproven[step][assertion] is False
+                                self.constraint = instance.Not().And(self.constraint)
                         else:
                             return self.solve()
+                # TODO: constraining transitions
             self.proven |= self.unproven
             self.unproven = {}
-            return SAT
+            false_constraint, true_constraint = self.constraint.get_boolean_constraints()
+            return not BVDD.is_always_true(false_constraint) and not BVDD.is_always_false(true_constraint)
 
     def is_SAT(self, result):
         return result
@@ -5875,7 +5871,7 @@ class BVDD_Solver():
             if self.bitwuzla_solver:
                 self.bitwuzla_solver.print_inputs(inputs, step, level)
         else:
-            print(self.satisfied.get_true_constraint())
+            print(self.constraint.get_true_constraint())
 
 # bitme bounded model checker
 
