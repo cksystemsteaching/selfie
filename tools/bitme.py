@@ -1121,6 +1121,9 @@ class Input(Variable):
     def __str__(self):
         return f"{self.nid} {Input.keyword} {self.sid_line.nid} {self.symbol} {self.comment}"
 
+    def get_step_name(self, step):
+        return self.name
+
     def get_z3_name(self, step):
         return self.get_z3()
 
@@ -2206,6 +2209,15 @@ class Ite(Ternary):
         self.instance.set_instance(self, step)
         return self.instance.get_bitwuzla_instance(step, tm)
 
+    def set_bvdd_step(self, step):
+        # only needed for branching
+        self.instance.set_instance(self, step)
+
+    def get_bvdd_step(self, step):
+        # only needed for branching
+        self.set_bvdd_step(step)
+        return self.instance.get_instance(step)
+
 class Write(Ternary):
     keyword = OP_WRITE
 
@@ -2371,6 +2383,15 @@ class Init(Transitional):
                 [self.state_line.get_bitwuzla_name(0, tm),
                 self.state_line.get_bitwuzla_instance(-1, tm)])
 
+    def set_bvdd_step(self, step):
+        assert step == 0, f"bvdd init with {step} != 0"
+        self.state_line.set_instance(self.exp_line, -1)
+
+    def get_bvdd_step(self, step):
+        assert step == 0, f"bvdd init with {step} != 0"
+        self.set_bvdd_step(step)
+        return self.state_line.get_instance(-1)
+
 class Next(Transitional):
     keyword = OP_NEXT
 
@@ -2460,6 +2481,13 @@ class Next(Transitional):
                     self.state_line.get_bitwuzla_name(step, tm)])
         return self.cache_bitwuzla_state_is_not_changing[step]
 
+    def set_bvdd_step(self, step):
+        self.state_line.set_instance(self.exp_line, step)
+
+    def get_bvdd_step(self, step):
+        self.set_bvdd_step(step)
+        return self.state_line.get_instance(step)
+
 class Property(Line):
     keywords = {OP_CONSTRAINT, OP_BAD}
 
@@ -2483,6 +2511,13 @@ class Property(Line):
     def get_bitwuzla_step(self, step, tm):
         self.instance.set_instance(self.property_line, step)
         return self.instance.get_bitwuzla_instance(step, tm)
+
+    def set_bvdd_step(self, step):
+        self.instance.set_instance(self.property_line, step)
+
+    def get_bvdd_step(self, step):
+        self.set_bvdd_step(step)
+        return self.instance.get_instance(step)
 
 class Constraint(Property):
     keyword = OP_CONSTRAINT
@@ -5621,7 +5656,7 @@ class Z3_Solver(Solver):
 
     def simplify(self):
         # no effective simplification yet found in Z3
-        return self
+        pass
 
     def prove(self):
         return self.solver.check()
@@ -5670,7 +5705,7 @@ class Bitwuzla_Solver(Solver):
 
     def simplify(self):
         # possibly increases performance
-        return self.prove()
+        self.prove()
 
     def prove(self):
         return self.solver.check_sat()
@@ -5700,6 +5735,147 @@ class Bitwuzla_Solver(Solver):
             print_message("%s = %s\n" % (input_variable.get_bitwuzla_name(step, self.tm),
                 self.solver.get_value(input_variable.get_bitwuzla_instance(step - 1, self.tm))),
                 step, level)
+
+# BVDD solver
+
+class BVDD_Solver():
+    def __init__(self, z3_solver, bitwuzla_solver):
+        self.z3_solver = z3_solver
+        self.bitwuzla_solver = bitwuzla_solver
+        self.non_BVDD = False
+        self.stack = []
+        self.proven = {}
+        self.unproven = {}
+        self.satisfied = {}
+
+    def push(self):
+        if self.non_BVDD:
+            if self.z3_solver:
+                self.z3_solver.push()
+            if self.bitwuzla_solver:
+                self.bitwuzla_solver.push()
+        else:
+            self.prove()
+            assert not self.unproven
+            self.stack.append(self.proven)
+            self.proven = {}
+
+    def pop(self):
+        if self.non_BVDD:
+            if self.z3_solver:
+                self.z3_solver.pop()
+            if self.bitwuzla_solver:
+                self.bitwuzla_solver.pop()
+        else:
+            assert self.stack
+            # TODO: unprove proven
+            self.proven = self.stack.pop()
+            self.unproven = {}
+
+    def assert_this(self, assertions, step):
+        if self.non_BVDD:
+            if self.z3_solver:
+                self.z3_solver.assert_this(assertions, step)
+            if self.bitwuzla_solver:
+                self.bitwuzla_solver.assert_this(assertions, step)
+        else:
+            for assertion in assertions:
+                if step not in self.unproven:
+                    self.unproven[step] = {assertion:True}
+                else:
+                    assert assertion not in self.unproven[step]
+                    self.unproven[step] |= {assertion:True}
+
+    def assert_not_this(self, assertions, step):
+        if self.non_BVDD:
+            if self.z3_solver:
+                self.z3_solver.assert_not_this(assertions, step)
+            if self.bitwuzla_solver:
+                self.bitwuzla_solver.assert_not_this(assertions, step)
+        else:
+            for assertion in assertions:
+                if step not in self.unproven:
+                    self.unproven[step] = {assertion:False}
+                else:
+                    assert assertion not in self.unproven[step]
+                    self.unproven[step] |= {assertion:False}
+
+    def simplify(self):
+        if self.non_BVDD:
+            if self.z3_solver:
+                self.z3_solver.simplify()
+            if self.bitwuzla_solver:
+                self.bitwuzla_solver.simplify()
+
+    def solve(self):
+        self.non_BVDD = True
+        self.proven |= self.unproven
+        self.unproven = {}
+        self.stack.append(self.proven)
+        for assertions in self.stack:
+            for step in assertions:
+                for assertion in assertions[step]:
+                    if assertions[step][assertion]:
+                        self.assert_this([assertion], step)
+                    else:
+                        self.assert_not_this([assertion], step)
+            if assertions is not self.proven:
+                self.push()
+        self.proven = {}
+        self.stack = []
+        return self.prove()
+
+    def prove(self):
+        if self.non_BVDD:
+            z3_SAT = False
+            if self.z3_solver:
+                result = self.z3_solver.prove()
+                z3_SAT = self.z3_solver.is_SAT(result)
+            if self.bitwuzla_solver:
+                result = self.bitwuzla_solver.prove()
+                bitwuzla_SAT = self.bitwuzla_solver.is_SAT(result)
+                assert not self.z3_solver or z3_SAT == bitwuzla_SAT
+                return bitwuzla_SAT
+            return z3_SAT
+        else:
+            SAT = False
+            for step in self.unproven:
+                for assertion in self.unproven[step]:
+                    if isinstance(assertion, Transitional):
+                        assertion.set_bvdd_step(step)
+                for assertion in self.unproven[step]:
+                    if isinstance(assertion, Ite) or isinstance(assertion, Property):
+                        instance = assertion.get_bvdd_step(step)
+                        assert isinstance(instance.sid_line, Bool)
+                        if isinstance(instance, Values):
+                            if self.unproven[step][assertion]:
+                                false_constraint, true_constraint = instance.get_boolean_constraints()
+                            else:
+                                true_constraint, false_constraint = instance.get_boolean_constraints()
+                            if not BVDD.is_always_true(false_constraint) and not BVDD.is_always_false(true_constraint):
+                                # TODO: check conjunction, apply as constraint
+                                SAT = True
+                                self.satisfied = instance
+                        else:
+                            return self.solve()
+            self.proven |= self.unproven
+            self.unproven = {}
+            return SAT
+
+    def is_SAT(self, result):
+        return result
+
+    def is_UNSAT(self, result):
+        return not result
+
+    def print_inputs(self, inputs, step, level):
+        if self.non_BVDD:
+            if self.z3_solver:
+                self.z3_solver.print_inputs(inputs, step, level)
+            if self.bitwuzla_solver:
+                self.bitwuzla_solver.print_inputs(inputs, step, level)
+        else:
+            print(self.satisfied.get_true_constraint())
 
 # bitme bounded model checker
 
