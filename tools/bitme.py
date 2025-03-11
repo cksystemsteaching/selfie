@@ -435,10 +435,11 @@ class BVDD:
 
     def set_input(self, sid_line, input_value, inputs_or_output):
         assert input_value not in self.inputs
-        self.inputs[input_value] = inputs_or_output
-        if BVDD.is_output(inputs_or_output):
-            assert sid_line.is_unsigned_value(inputs_or_output)
-            BVDD.number_of_solutions += 1
+        if inputs_or_output is not Constant.false:
+            self.inputs[input_value] = inputs_or_output
+            if BVDD.is_output(inputs_or_output):
+                assert sid_line.is_unsigned_value(inputs_or_output)
+                BVDD.number_of_solutions += 1
         return self
 
     def reduce(bvdd):
@@ -543,6 +544,37 @@ class BVDD:
                         inputs.set_input(sid_line, input_value, bvdd.inputs[input_value])
         return BVDD.reduce(inputs)
 
+    def exclude_binary(self, sid_line, bvdd):
+        assert BVDD.is_inputs(bvdd)
+        if self.var_line > bvdd.var_line:
+            inputs = BVDD(bvdd.var_line)
+            for input_value in bvdd.inputs:
+                inputs.set_input(sid_line, input_value, BVDD.exclude(sid_line, self, bvdd.inputs[input_value]))
+        else:
+            inputs = BVDD(self.var_line)
+            if self.var_line < bvdd.var_line:
+                for input_value in self.inputs:
+                    inputs.set_input(sid_line, input_value, BVDD.exclude(sid_line, self.inputs[input_value], bvdd))
+            else:
+                for input_value in self.inputs:
+                    if input_value in bvdd.inputs:
+                        inputs.set_input(sid_line, input_value, BVDD.exclude(sid_line,
+                            self.inputs[input_value], bvdd.inputs[input_value]))
+                    else:
+                        inputs.set_input(sid_line, input_value, self.inputs[input_value])
+        return BVDD.reduce(inputs)
+
+    def exclude(sid_line, bvdd1, bvdd2):
+        if BVDD.is_output(bvdd2):
+            return Constant.false
+        else:
+            assert BVDD.is_inputs(bvdd2)
+            if BVDD.is_output(bvdd1):
+                return bvdd1
+            else:
+                assert BVDD.is_inputs(bvdd1)
+                return bvdd1.exclude_binary(sid_line, bvdd2)
+
     def get_expression(self, sid_line):
         exp_line = Zero(next_nid(), sid_line, "unreachable-value", "unreachable value", 0)
         # TODO: check if sorting (here by input value) is necessary for consistency
@@ -586,10 +618,13 @@ class Values:
 
     def set_values(self, sid_line, values):
         assert self.sid_line.match_sorts(sid_line)
-        self.values = values
-        if BVDD.is_output(values):
-            assert sid_line.is_unsigned_value(values)
-            Values.total_number_of_constants += 1
+        if values is Constant.false:
+            self.values = None
+        else:
+            self.values = values
+            if BVDD.is_output(values):
+                assert sid_line.is_unsigned_value(values)
+                Values.total_number_of_constants += 1
         return self
 
     def get_false_constraint(self):
@@ -853,6 +888,15 @@ class Values:
             values2 = values2.constrain(true_constraint)
             values3 = values3.constrain(false_constraint)
             return values2.merge(values3)
+
+    # BVDD solver
+
+    def exclude(self, constraint):
+        if BVDD.is_always_false(constraint):
+            return self
+        else:
+            return Values(self.sid_line).set_values(self.sid_line,
+                BVDD.exclude(self.sid_line, self.values, constraint))
 
 class Expression(Line):
     total_number_of_generated_expressions = 0
@@ -1166,14 +1210,17 @@ class Instance:
         assert self.has_instance(step)
         return self.cache_instance[step]
 
+    def set_cached_instance(self, instance, step):
+        self.cache_instance[step] = instance
+
     def init_instance(self, instance):
-        self.cache_instance[-1] = instance
+        self.set_cached_instance(instance, -1)
 
     def set_instance(self, instance, step):
         # bad instances may be overwritten if proven false
-        self.cache_instance[step] = instance
+        self.set_cached_instance(instance, step)
         if Instance.PROPAGATE is not None:
-            self.cache_instance[step] = self.cache_instance[step].get_values(step)
+            self.set_cached_instance(self.get_instance(step).get_values(step), step)
 
     def get_z3_select(self, step):
         if step not in self.cache_z3_instance:
@@ -2185,6 +2232,15 @@ class Ite(Ternary):
             self.cache_values[step] = self.copy(arg1_value, arg2_value, arg3_value)
         return self.cache_values[step]
 
+    def get_instance(self):
+        return self.instance
+
+    def get_step(self, step):
+        return self.get_instance().get_instance(step)
+
+    def set_step(self, step):
+        self.get_instance().set_instance(self, step)
+
     def get_z3(self):
         if self.z3 is None:
             self.z3 = z3.If(self.arg1_line.get_z3(), self.arg2_line.get_z3(), self.arg3_line.get_z3())
@@ -2192,8 +2248,8 @@ class Ite(Ternary):
 
     def get_z3_step(self, step):
         # only needed for branching
-        self.instance.set_instance(self, step)
-        return self.instance.get_z3_instance(step)
+        self.set_step(step)
+        return self.get_instance().get_z3_instance(step)
 
     def get_bitwuzla(self, tm):
         if self.bitwuzla is None:
@@ -2203,17 +2259,8 @@ class Ite(Ternary):
 
     def get_bitwuzla_step(self, step, tm):
         # only needed for branching
-        self.instance.set_instance(self, step)
-        return self.instance.get_bitwuzla_instance(step, tm)
-
-    def set_bvdd_step(self, step):
-        # only needed for branching
-        self.instance.set_instance(self, step)
-
-    def get_bvdd_step(self, step):
-        # only needed for branching
-        self.set_bvdd_step(step)
-        return self.instance.get_instance(step)
+        self.set_step(step)
+        return self.get_instance().get_bitwuzla_instance(step, tm)
 
 class Write(Ternary):
     keyword = OP_WRITE
@@ -2362,9 +2409,20 @@ class Init(Transitional):
         else:
             return f"{self.nid} {Init.keyword} {self.sid_line.nid} {self.state_line.nid} {self.exp_line.nid} {self.comment}"
 
+    def get_instance(self):
+        return self.state_line.instance
+
+    def get_step(self, step):
+        assert step == 0, f"bvdd init with {step} != 0"
+        return self.state_line.get_instance(-1)
+
+    def set_step(self, step):
+        assert step == 0, f"bvdd init with {step} != 0"
+        self.state_line.set_instance(self.exp_line, -1)
+
     def get_z3_step(self, step):
         assert step == 0, f"z3 init with {step} != 0"
-        self.state_line.set_instance(self.exp_line, -1)
+        self.set_step(-1)
         if Instance.PROPAGATE is not None:
             return z3.BoolVal(True)
         else:
@@ -2372,22 +2430,13 @@ class Init(Transitional):
 
     def get_bitwuzla_step(self, step, tm):
         assert step == 0, f"bitwuzla init with {step} != 0"
-        self.state_line.set_instance(self.exp_line, -1)
+        self.set_step(-1)
         if Instance.PROPAGATE is not None:
             return tm.mk_true()
         else:
             return tm.mk_term(bitwuzla.Kind.EQUAL,
                 [self.state_line.get_bitwuzla_name(0, tm),
                 self.state_line.get_bitwuzla_instance(-1, tm)])
-
-    def set_bvdd_step(self, step):
-        assert step == 0, f"bvdd init with {step} != 0"
-        self.state_line.set_instance(self.exp_line, -1)
-
-    def get_bvdd_step(self, step):
-        assert step == 0, f"bvdd init with {step} != 0"
-        self.set_bvdd_step(step)
-        return self.state_line.get_instance(-1)
 
 class Next(Transitional):
     keyword = OP_NEXT
@@ -2414,9 +2463,18 @@ class Next(Transitional):
         else:
             return f"{self.nid} {Next.keyword} {self.sid_line.nid} {self.state_line.nid} {self.exp_line.nid} {self.comment}"
 
+    def get_instance(self):
+        return self.state_line.instance
+
+    def get_step(self, step):
+        return self.state_line.get_instance(step)
+
+    def set_step(self, step):
+        self.state_line.set_instance(self.exp_line, step)
+
     def get_z3_step(self, step):
         if step not in self.cache_z3_next_state:
-            self.state_line.set_instance(self.exp_line, step)
+            self.set_step(step)
             if Instance.PROPAGATE is not None:
                 self.cache_z3_next_state[step] = z3.BoolVal(True)
             else:
@@ -2425,8 +2483,8 @@ class Next(Transitional):
 
     def get_z3_is_state_changing(self, step):
         if step not in self.cache_z3_is_state_changing:
-            self.state_line.set_instance(self.exp_line, step)
-            if self.state_line.get_instance(step).is_equal(self.state_line.get_instance(step - 1)):
+            self.set_step(step)
+            if self.get_step(step).is_equal(self.get_step(step - 1)):
                 self.cache_z3_is_state_changing[step] = z3.BoolVal(False)
             else:
                 self.cache_z3_is_state_changing[step] = self.state_line.get_z3_instance(step) != self.state_line.get_z3_instance(step - 1)
@@ -2435,7 +2493,7 @@ class Next(Transitional):
     def get_z3_state_is_not_changing(self, step):
         if step not in self.cache_z3_state_is_not_changing:
             if Instance.PROPAGATE is not None:
-                self.state_line.set_instance(self.exp_line, step)
+                self.set_step(step)
                 self.cache_z3_state_is_not_changing[step] = self.state_line.get_z3_instance(step) == self.state_line.get_z3_instance(step - 1)
             else:
                 self.state_line.set_instance(self.state_line, step)
@@ -2444,7 +2502,7 @@ class Next(Transitional):
 
     def get_bitwuzla_step(self, step, tm):
         if step not in self.cache_bitwuzla_next_state:
-            self.state_line.set_instance(self.exp_line, step)
+            self.set_step(step)
             if Instance.PROPAGATE is not None:
                 self.cache_bitwuzla_next_state[step] = tm.mk_true()
             else:
@@ -2455,8 +2513,8 @@ class Next(Transitional):
 
     def get_bitwuzla_is_state_changing(self, step, tm):
         if step not in self.cache_bitwuzla_is_state_changing:
-            self.state_line.set_instance(self.exp_line, step)
-            if self.state_line.get_instance(step).is_equal(self.state_line.get_instance(step - 1)):
+            self.set_step(step)
+            if self.get_step(step).is_equal(self.get_step(step - 1)):
                 self.cache_bitwuzla_is_state_changing[step] = tm.mk_false()
             else:
                 self.cache_bitwuzla_is_state_changing[step] = tm.mk_term(bitwuzla.Kind.DISTINCT,
@@ -2467,7 +2525,7 @@ class Next(Transitional):
     def get_bitwuzla_state_is_not_changing(self, step, tm):
         if step not in self.cache_bitwuzla_state_is_not_changing:
             if Instance.PROPAGATE is not None:
-                self.state_line.set_instance(self.exp_line, step)
+                self.set_step(step)
                 self.cache_bitwuzla_state_is_not_changing[step] = tm.mk_term(bitwuzla.Kind.EQUAL,
                     [self.state_line.get_bitwuzla_instance(step, tm),
                     self.state_line.get_bitwuzla_instance(step - 1, tm)])
@@ -2477,13 +2535,6 @@ class Next(Transitional):
                     [self.state_line.get_bitwuzla_name(step + 1, tm),
                     self.state_line.get_bitwuzla_name(step, tm)])
         return self.cache_bitwuzla_state_is_not_changing[step]
-
-    def set_bvdd_step(self, step):
-        self.state_line.set_instance(self.exp_line, step)
-
-    def get_bvdd_step(self, step):
-        self.set_bvdd_step(step)
-        return self.state_line.get_instance(step)
 
 class Property(Line):
     keywords = {OP_CONSTRAINT, OP_BAD}
@@ -2501,20 +2552,22 @@ class Property(Line):
     def set_mapped_array_expression(self):
         self.property_line = self.property_line.get_mapped_array_expression_for(None)
 
-    def get_z3_step(self, step):
+    def get_instance(self):
+        return self.instance
+
+    def get_step(self, step):
+        return self.instance.get_instance(step)
+
+    def set_step(self, step):
         self.instance.set_instance(self.property_line, step)
-        return self.instance.get_z3_instance(step)
+
+    def get_z3_step(self, step):
+        self.set_step(step)
+        return self.get_instance().get_z3_instance(step)
 
     def get_bitwuzla_step(self, step, tm):
-        self.instance.set_instance(self.property_line, step)
-        return self.instance.get_bitwuzla_instance(step, tm)
-
-    def set_bvdd_step(self, step):
-        self.instance.set_instance(self.property_line, step)
-
-    def get_bvdd_step(self, step):
-        self.set_bvdd_step(step)
-        return self.instance.get_instance(step)
+        self.set_step(step)
+        return self.get_instance().get_bitwuzla_instance(step, tm)
 
 class Constraint(Property):
     keyword = OP_CONSTRAINT
@@ -5765,7 +5818,6 @@ class BVDD_Solver():
                 self.bitwuzla_solver.pop()
         else:
             assert self.stack
-            # TODO: unprove proven
             self.constraint, self.proven = self.stack.pop()
             self.unproven = {}
 
@@ -5839,20 +5891,27 @@ class BVDD_Solver():
             for step in self.unproven:
                 for assertion in self.unproven[step]:
                     if isinstance(assertion, Transitional):
-                        assertion.set_bvdd_step(step)
+                        assertion.set_step(step)
                 for assertion in self.unproven[step]:
                     if isinstance(assertion, Ite) or isinstance(assertion, Property):
-                        instance = assertion.get_bvdd_step(step)
-                        assert isinstance(instance.sid_line, Bool)
-                        if isinstance(instance, Values):
+                        assertion.set_step(step)
+                        condition = assertion.get_step(step)
+                        assert isinstance(condition.sid_line, Bool)
+                        if isinstance(condition, Values):
                             if self.unproven[step][assertion] is True:
-                                self.constraint = instance.And(self.constraint)
+                                self.constraint = condition.And(self.constraint)
                             else:
                                 assert self.unproven[step][assertion] is False
-                                self.constraint = instance.Not().And(self.constraint)
+                                self.constraint = condition.Not().And(self.constraint)
                         else:
                             return self.solve()
-                # TODO: constraining transitions
+                false_constraint, true_constraint = self.constraint.get_boolean_constraints()
+                for assertion in self.unproven[step]:
+                    if isinstance(assertion, Transitional):
+                        instance = assertion.get_instance()
+                        assert isinstance(instance.get_instance(step), Values)
+                        instance.set_cached_instance(instance.get_instance(step).constrain(true_constraint), step)
+                        instance.set_cached_instance(instance.get_instance(step).exclude(false_constraint), step)
             self.proven |= self.unproven
             self.unproven = {}
             false_constraint, true_constraint = self.constraint.get_boolean_constraints()
