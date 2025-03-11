@@ -610,6 +610,9 @@ class Values:
     def __str__(self):
         return f"{self.sid_line}: {self.values}"
 
+    def __hash__(self):
+        return id(self)
+
     def match_sorts(self, values):
         return self.sid_line.match_sorts(values.sid_line)
 
@@ -715,11 +718,11 @@ class Values:
             return self.apply_binary(Bool.boolean, values, lambda x, y: (not x) or y)
 
     def __eq__(self, values):
-        assert isinstance(self.sid_line, Bitvec) and self.sid_line.match_sorts(values.sid_line)
+        assert isinstance(self.sid_line, Bitvector) and self.sid_line.match_sorts(values.sid_line)
         return self.apply_binary(Bool.boolean, values, lambda x, y: x == y)
 
     def __ne__(self, values):
-        assert isinstance(self.sid_line, Bitvec) and self.sid_line.match_sorts(values.sid_line)
+        assert isinstance(self.sid_line, Bitvector) and self.sid_line.match_sorts(values.sid_line)
         return self.apply_binary(Bool.boolean, values, lambda x, y: x != y)
 
     def __gt__(self, values):
@@ -2472,6 +2475,14 @@ class Next(Transitional):
     def set_step(self, step):
         self.state_line.set_instance(self.exp_line, step)
 
+    def is_state_changing(self, step):
+        self.set_step(step)
+        return self.get_step(step) != self.get_step(step - 1)
+
+    def state_is_not_changing(self, step):
+        self.set_step(step)
+        return self.get_step(step) == self.get_step(step - 1)
+
     def get_z3_step(self, step):
         if step not in self.cache_z3_next_state:
             self.set_step(step)
@@ -2481,7 +2492,7 @@ class Next(Transitional):
                 self.cache_z3_next_state[step] = self.state_line.get_z3_name(step + 1) == self.state_line.get_z3_instance(step)
         return self.cache_z3_next_state[step]
 
-    def get_z3_is_state_changing(self, step):
+    def is_z3_state_changing(self, step):
         if step not in self.cache_z3_is_state_changing:
             self.set_step(step)
             if self.get_step(step).is_equal(self.get_step(step - 1)):
@@ -2490,7 +2501,7 @@ class Next(Transitional):
                 self.cache_z3_is_state_changing[step] = self.state_line.get_z3_instance(step) != self.state_line.get_z3_instance(step - 1)
         return self.cache_z3_is_state_changing[step]
 
-    def get_z3_state_is_not_changing(self, step):
+    def z3_state_is_not_changing(self, step):
         if step not in self.cache_z3_state_is_not_changing:
             if Instance.PROPAGATE is not None:
                 self.set_step(step)
@@ -2511,7 +2522,7 @@ class Next(Transitional):
                     self.state_line.get_bitwuzla_instance(step, tm)])
         return self.cache_bitwuzla_next_state[step]
 
-    def get_bitwuzla_is_state_changing(self, step, tm):
+    def is_bitwuzla_state_changing(self, step, tm):
         if step not in self.cache_bitwuzla_is_state_changing:
             self.set_step(step)
             if self.get_step(step).is_equal(self.get_step(step - 1)):
@@ -2522,7 +2533,7 @@ class Next(Transitional):
                     self.state_line.get_bitwuzla_instance(step - 1, tm)])
         return self.cache_bitwuzla_is_state_changing[step]
 
-    def get_bitwuzla_state_is_not_changing(self, step, tm):
+    def bitwuzla_state_is_not_changing(self, step, tm):
         if step not in self.cache_bitwuzla_state_is_not_changing:
             if Instance.PROPAGATE is not None:
                 self.set_step(step)
@@ -5718,10 +5729,10 @@ class Z3_Solver(Solver):
         return result == z3.unsat
 
     def assert_is_state_changing(self, next_line, step):
-        return self.solver.add(next_line.get_z3_is_state_changing(step))
+        self.solver.add(next_line.is_z3_state_changing(step))
 
     def assert_state_is_not_changing(self, next_line, step):
-        return self.solver.add(next_line.get_z3_state_is_not_changing(step))
+        self.solver.add(next_line.z3_state_is_not_changing(step))
 
     def print_pc(self, pc, step, level):
         self.prove()
@@ -5767,10 +5778,10 @@ class Bitwuzla_Solver(Solver):
         return result is bitwuzla.Result.UNSAT
 
     def assert_is_state_changing(self, next_line, step):
-        return self.solver.assert_formula(next_line.get_bitwuzla_is_state_changing(step, self.tm))
+        self.solver.assert_formula(next_line.is_bitwuzla_state_changing(step, self.tm))
 
     def assert_state_is_not_changing(self, next_line, step):
-        return self.solver.assert_formula(next_line.get_bitwuzla_state_is_not_changing(step, self.tm))
+        self.solver.assert_formula(next_line.bitwuzla_state_is_not_changing(step, self.tm))
 
     def print_pc(self, pc, step, level):
         self.prove()
@@ -5788,7 +5799,7 @@ class Bitwuzla_Solver(Solver):
 
 # BVDD solver
 
-class BVDD_Solver():
+class BVDD_Solver(Solver):
     def __init__(self, z3_solver, bitwuzla_solver):
         self.z3_solver = z3_solver
         self.bitwuzla_solver = bitwuzla_solver
@@ -5905,13 +5916,18 @@ class BVDD_Solver():
                                 self.constraint = condition.Not().And(self.constraint)
                         else:
                             return self.solve()
+                    elif isinstance(assertion, Values):
+                        assert isinstance(assertion.sid_line, Bool)
+                        assert self.unproven[step][assertion]
+                        self.constraint = assertion.And(self.constraint)
                 false_constraint, true_constraint = self.constraint.get_boolean_constraints()
-                for assertion in self.unproven[step]:
-                    if isinstance(assertion, Transitional):
-                        instance = assertion.get_instance()
-                        assert isinstance(assertion.get_step(step), Values)
-                        instance.set_cached_instance(assertion.get_step(step).constrain(true_constraint), step)
-                        instance.set_cached_instance(assertion.get_step(step).exclude(false_constraint), step)
+                if not BVDD.is_always_false(true_constraint):
+                    for assertion in self.unproven[step]:
+                        if isinstance(assertion, Transitional):
+                            instance = assertion.get_instance()
+                            assert isinstance(assertion.get_step(step), Values)
+                            instance.set_cached_instance(assertion.get_step(step).constrain(true_constraint), step)
+                            instance.set_cached_instance(assertion.get_step(step).exclude(false_constraint), step)
             self.proven |= self.unproven
             self.unproven = {}
             false_constraint, true_constraint = self.constraint.get_boolean_constraints()
@@ -5922,6 +5938,24 @@ class BVDD_Solver():
 
     def is_UNSAT(self, result):
         return not result
+
+    def assert_is_state_changing(self, next_line, step):
+        if self.non_BVDD:
+            if self.z3_solver:
+                self.z3_solver.assert_is_state_changing(next_line, step)
+            if self.bitwuzla_solver:
+                self.bitwuzla_solver.assert_is_state_changing(next_line, step)
+        else:
+            self.assert_this([next_line.is_state_changing(step)], step)
+
+    def assert_state_is_not_changing(self, next_line, step):
+        if self.non_BVDD:
+            if self.z3_solver:
+                self.z3_solver.assert_state_is_not_changing(next_line, step)
+            if self.bitwuzla_solver:
+                self.bitwuzla_solver.assert_state_is_not_changing(next_line, step)
+        else:
+            self.assert_this([next_line.state_is_not_changing(step)], step)
 
     def print_pc(self, pc, step, level):
         if self.non_BVDD:
