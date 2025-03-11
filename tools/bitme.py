@@ -2415,6 +2415,9 @@ class Init(Transitional):
     def get_instance(self):
         return self.state_line.instance
 
+    def set_cached_instance(self, instance, step):
+        self.get_instance().init_instance(instance)
+
     def get_step(self, step):
         assert step == 0, f"bvdd init with {step} != 0"
         return self.state_line.get_instance(-1)
@@ -2468,6 +2471,9 @@ class Next(Transitional):
 
     def get_instance(self):
         return self.state_line.instance
+
+    def set_cached_instance(self, instance, step):
+        self.get_instance().set_cached_instance(instance, step)
 
     def get_step(self, step):
         return self.state_line.get_instance(step)
@@ -5924,10 +5930,10 @@ class BVDD_Solver(Solver):
                 if not BVDD.is_always_false(true_constraint):
                     for assertion in self.unproven[step]:
                         if isinstance(assertion, Transitional):
-                            instance = assertion.get_instance()
-                            assert isinstance(assertion.get_step(step), Values)
-                            instance.set_cached_instance(assertion.get_step(step).constrain(true_constraint), step)
-                            instance.set_cached_instance(assertion.get_step(step).exclude(false_constraint), step)
+                            values = assertion.get_step(step)
+                            assert isinstance(values, Values)
+                            values = values.constrain(true_constraint).exclude(false_constraint)
+                            assertion.set_cached_instance(values, step)
             self.proven |= self.unproven
             self.unproven = {}
             false_constraint, true_constraint = self.constraint.get_boolean_constraints()
