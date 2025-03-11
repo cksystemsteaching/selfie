@@ -5909,9 +5909,9 @@ class BVDD_Solver():
                 for assertion in self.unproven[step]:
                     if isinstance(assertion, Transitional):
                         instance = assertion.get_instance()
-                        assert isinstance(instance.get_instance(step), Values)
-                        instance.set_cached_instance(instance.get_instance(step).constrain(true_constraint), step)
-                        instance.set_cached_instance(instance.get_instance(step).exclude(false_constraint), step)
+                        assert isinstance(assertion.get_step(step), Values)
+                        instance.set_cached_instance(assertion.get_step(step).constrain(true_constraint), step)
+                        instance.set_cached_instance(assertion.get_step(step).exclude(false_constraint), step)
             self.proven |= self.unproven
             self.unproven = {}
             false_constraint, true_constraint = self.constraint.get_boolean_constraints()
@@ -5922,6 +5922,18 @@ class BVDD_Solver():
 
     def is_UNSAT(self, result):
         return not result
+
+    def print_pc(self, pc, step, level):
+        if self.non_BVDD:
+            if self.z3_solver:
+                self.z3_solver.print_pc(pc, step, level)
+            if self.bitwuzla_solver:
+                self.bitwuzla_solver.print_pc(pc, step, level)
+        else:
+            self.prove()
+            pc_value = pc.get_instance(step - 1)
+            print_message(f"{pc}\n", step, level)
+            print_message("%s = %s\n" % (pc.get_step_name(step), pc_value), step, level)
 
     def print_inputs(self, inputs, step, level):
         if self.non_BVDD:
