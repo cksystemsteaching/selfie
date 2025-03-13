@@ -926,6 +926,12 @@ class Expression(Line):
         # checking semantical equivalence is delegated to solvers
         return False
 
+    def get_values(self, step):
+        # versioning needed for support of branching in BVDD solver
+        if step not in self.cache_values or self.cache_values[step][1] not in BVDD_Solver.versions:
+            self.cache_values[step] = (self.compute_values(step), BVDD_Solver.version)
+        return self.cache_values[step][0]
+
     def get_expression(self):
         return self
 
@@ -975,17 +981,19 @@ class Constant(Expression):
     def get_mapped_array_expression_for(self, index):
         return self
 
-    def get_values(self, step):
-        if 0 not in self.cache_values:
-            if Instance.PROPAGATE > 0:
-                if isinstance(self.sid_line, Bool):
-                    self.cache_values[0] = Values.TRUE() if bool(self.value) else Values.FALSE()
-                else:
-                    assert isinstance(self.sid_line, Bitvec)
-                    self.cache_values[0] = Values(self.sid_line).set_values(self.sid_line, self.value)
+    def compute_values(self, step):
+        assert step == 0
+        if Instance.PROPAGATE > 0:
+            if isinstance(self.sid_line, Bool):
+                return Values.TRUE() if bool(self.value) else Values.FALSE()
             else:
-                self.cache_values[0] = self
-        return self.cache_values[0]
+                assert isinstance(self.sid_line, Bitvec)
+                return Values(self.sid_line).set_values(self.sid_line, self.value)
+        else:
+            return self
+
+    def get_values(self, step):
+        return super().get_values(0)
 
     def get_z3(self):
         if self.z3 is None:
@@ -1135,19 +1143,21 @@ class Variable(Expression):
             assert not self.sid_line.is_mapped_array()
             return self
 
-    def get_values(self, step):
-        if 0 not in self.cache_values:
-            if isinstance(self.sid_line, Bitvector) and self.sid_line.size <= Instance.PROPAGATE:
-                bvdd = BVDD(self)
-                if isinstance(self.sid_line, Bool):
-                    bvdd.set_input(self.sid_line, 0, False).set_input(self.sid_line, 1, True)
-                else:
-                    for value in range(2**self.sid_line.size):
-                        bvdd.set_input(self.sid_line, value, value)
-                self.cache_values[0] = Values(self.sid_line).set_values(self.sid_line, bvdd)
+    def compute_values(self, step):
+        assert step == 0
+        if isinstance(self.sid_line, Bitvector) and self.sid_line.size <= Instance.PROPAGATE:
+            bvdd = BVDD(self)
+            if isinstance(self.sid_line, Bool):
+                bvdd.set_input(self.sid_line, 0, False).set_input(self.sid_line, 1, True)
             else:
-                self.cache_values[0] = self
-        return self.cache_values[0]
+                for value in range(2**self.sid_line.size):
+                    bvdd.set_input(self.sid_line, value, value)
+            return Values(self.sid_line).set_values(self.sid_line, bvdd)
+        else:
+            return self
+
+    def get_values(self, step):
+        return super().get_values(0)
 
     def get_z3(self):
         if self.z3 is None:
@@ -1353,7 +1363,7 @@ class State(Variable):
         instance = self.get_instance(step - 1)
         if instance is self:
             # uninitialized state
-            return super().get_values(step - 1)
+            return super().get_values(0)
         else:
             return instance
 
@@ -1436,19 +1446,17 @@ class Ext(Indexed):
         else:
             return self
 
-    def get_values(self, step):
-        if step not in self.cache_values:
-            arg1_value = self.arg1_line.get_values(step)
-            if Instance.PROPAGATE_UNARY and isinstance(arg1_value, Values):
-                if self.op == OP_SEXT:
-                    self.cache_values[step] = arg1_value.SignExt(self.sid_line)
-                else:
-                    assert self.op == OP_UEXT
-                    self.cache_values[step] = arg1_value.ZeroExt(self.sid_line)
-                return self.cache_values[step]
+    def compute_values(self, step):
+        arg1_value = self.arg1_line.get_values(step)
+        if Instance.PROPAGATE_UNARY and isinstance(arg1_value, Values):
+            if self.op == OP_SEXT:
+                return arg1_value.SignExt(self.sid_line)
+            else:
+                assert self.op == OP_UEXT
+                return arg1_value.ZeroExt(self.sid_line)
+        else:
             arg1_value = arg1_value.get_expression()
-            self.cache_values[step] = self.copy(arg1_value)
-        return self.cache_values[step]
+            return self.copy(arg1_value)
 
     def get_z3(self):
         if self.z3 is None:
@@ -1494,15 +1502,13 @@ class Slice(Indexed):
         else:
             return self
 
-    def get_values(self, step):
-        if step not in self.cache_values:
-            arg1_value = self.arg1_line.get_values(step)
-            if Instance.PROPAGATE_UNARY and isinstance(arg1_value, Values):
-                self.cache_values[step] = arg1_value.Extract(self.sid_line, self.u, self.l)
-                return self.cache_values[step]
+    def compute_values(self, step):
+        arg1_value = self.arg1_line.get_values(step)
+        if Instance.PROPAGATE_UNARY and isinstance(arg1_value, Values):
+            return arg1_value.Extract(self.sid_line, self.u, self.l)
+        else:
             arg1_value = arg1_value.get_expression()
-            self.cache_values[step] = self.copy(arg1_value)
-        return self.cache_values[step]
+            return self.copy(arg1_value)
 
     def get_z3(self):
         if self.z3 is None:
@@ -1551,26 +1557,24 @@ class Unary(Expression):
         arg1_line = self.arg1_line.get_mapped_array_expression_for(None)
         return self.copy(arg1_line)
 
-    def get_values(self, step):
-        if step not in self.cache_values:
-            arg1_value = self.arg1_line.get_values(step)
-            if Instance.PROPAGATE_UNARY and isinstance(arg1_value, Values):
-                if self.op == OP_NOT:
-                    if isinstance(self.sid_line, Bool):
-                        self.cache_values[step] = arg1_value.Not()
-                    else:
-                        self.cache_values[step] = ~arg1_value
-                elif self.op == OP_INC:
-                    self.cache_values[step] = arg1_value.Inc()
-                elif self.op == OP_DEC:
-                    self.cache_values[step] = arg1_value.Dec()
+    def compute_values(self, step):
+        arg1_value = self.arg1_line.get_values(step)
+        if Instance.PROPAGATE_UNARY and isinstance(arg1_value, Values):
+            if self.op == OP_NOT:
+                if isinstance(self.sid_line, Bool):
+                    return arg1_value.Not()
                 else:
-                    assert self.op == OP_NEG
-                    self.cache_values[step] = -arg1_value
-                return self.cache_values[step]
+                    return ~arg1_value
+            elif self.op == OP_INC:
+                return arg1_value.Inc()
+            elif self.op == OP_DEC:
+                return arg1_value.Dec()
+            else:
+                assert self.op == OP_NEG
+                return -arg1_value
+        else:
             arg1_value = arg1_value.get_expression()
-            self.cache_values[step] = self.copy(arg1_value)
-        return self.cache_values[step]
+            return self.copy(arg1_value)
 
     def get_z3(self):
         if self.z3 is None:
@@ -1655,26 +1659,22 @@ class Implies(Binary):
         if not arg1_line.sid_line.match_sorts(arg2_line.sid_line):
             raise model_error("compatible first and second operand sorts", line_no)
 
-    def get_values(self, step):
-        if step not in self.cache_values:
-            arg1_value = self.arg1_line.get_values(step)
-            if Instance.PROPAGATE_BINARY and isinstance(arg1_value, Values):
-                false_constraint = arg1_value.get_false_constraint()
-                if BVDD.is_always_true(false_constraint):
-                    self.cache_values[step] = arg1_value.Implies(None)
-                    return self.cache_values[step]
-                else:
-                    # lazy evaluation of implied values
-                    arg2_value = self.arg2_line.get_values(step)
-                    if isinstance(arg2_value, Values):
-                        self.cache_values[step] = arg1_value.Implies(arg2_value)
-                        return self.cache_values[step]
+    def compute_values(self, step):
+        arg1_value = self.arg1_line.get_values(step)
+        if Instance.PROPAGATE_BINARY and isinstance(arg1_value, Values):
+            false_constraint = arg1_value.get_false_constraint()
+            if BVDD.is_always_true(false_constraint):
+                return arg1_value.Implies(None)
             else:
+                # lazy evaluation of implied values
                 arg2_value = self.arg2_line.get_values(step)
-            arg1_value = arg1_value.get_expression()
-            arg2_value = arg2_value.get_expression()
-            self.cache_values[step] = self.copy(arg1_value, arg2_value)
-        return self.cache_values[step]
+                if isinstance(arg2_value, Values):
+                    return arg1_value.Implies(arg2_value)
+        else:
+            arg2_value = self.arg2_line.get_values(step)
+        arg1_value = arg1_value.get_expression()
+        arg2_value = arg2_value.get_expression()
+        return self.copy(arg1_value, arg2_value)
 
     def get_z3(self):
         if self.z3 is None:
@@ -1700,38 +1700,35 @@ class Comparison(Binary):
         if not arg1_line.sid_line.match_sorts(arg2_line.sid_line):
             raise model_error("compatible first and second operand sorts", line_no)
 
-    def get_values(self, step):
-        if step not in self.cache_values:
-            arg1_value = self.arg1_line.get_values(step)
-            arg2_value = self.arg2_line.get_values(step)
-            if Instance.PROPAGATE_BINARY:
-                if isinstance(arg1_value, Values) and isinstance(arg2_value, Values):
-                    if self.op == OP_EQ:
-                        self.cache_values[step] = arg1_value == arg2_value
-                    elif self.op == OP_NEQ:
-                        self.cache_values[step] = arg1_value != arg2_value
-                    elif self.op == OP_SGT:
-                        self.cache_values[step] = arg1_value > arg2_value
-                    elif self.op == OP_UGT:
-                        self.cache_values[step] = arg1_value.UGT(arg2_value)
-                    elif self.op == OP_SGTE:
-                        self.cache_values[step] = arg1_value >= arg2_value
-                    elif self.op == OP_UGTE:
-                        self.cache_values[step] = arg1_value.UGE(arg2_value)
-                    elif self.op == OP_SLT:
-                        self.cache_values[step] = arg1_value < arg2_value
-                    elif self.op == OP_ULT:
-                        self.cache_values[step] = arg1_value.ULT(arg2_value)
-                    elif self.op == OP_SLTE:
-                        self.cache_values[step] = arg1_value <= arg2_value
-                    else:
-                        assert self.op == OP_ULTE
-                        self.cache_values[step] = arg1_value.ULE(arg2_value)
-                    return self.cache_values[step]
-            arg1_value = arg1_value.get_expression()
-            arg2_value = arg2_value.get_expression()
-            self.cache_values[step] = self.copy(arg1_value, arg2_value)
-        return self.cache_values[step]
+    def compute_values(self, step):
+        arg1_value = self.arg1_line.get_values(step)
+        arg2_value = self.arg2_line.get_values(step)
+        if Instance.PROPAGATE_BINARY:
+            if isinstance(arg1_value, Values) and isinstance(arg2_value, Values):
+                if self.op == OP_EQ:
+                    return arg1_value == arg2_value
+                elif self.op == OP_NEQ:
+                    return arg1_value != arg2_value
+                elif self.op == OP_SGT:
+                    return arg1_value > arg2_value
+                elif self.op == OP_UGT:
+                    return arg1_value.UGT(arg2_value)
+                elif self.op == OP_SGTE:
+                    return arg1_value >= arg2_value
+                elif self.op == OP_UGTE:
+                    return arg1_value.UGE(arg2_value)
+                elif self.op == OP_SLT:
+                    return arg1_value < arg2_value
+                elif self.op == OP_ULT:
+                    return arg1_value.ULT(arg2_value)
+                elif self.op == OP_SLTE:
+                    return arg1_value <= arg2_value
+                else:
+                    assert self.op == OP_ULTE
+                    return arg1_value.ULE(arg2_value)
+        arg1_value = arg1_value.get_expression()
+        arg2_value = arg2_value.get_expression()
+        return self.copy(arg1_value, arg2_value)
 
     def get_z3(self):
         if self.z3 is None:
@@ -1800,59 +1797,51 @@ class Logical(Binary):
         if not arg1_line.sid_line.match_sorts(arg2_line.sid_line):
             raise model_error("compatible first and second operand sorts", line_no)
 
-    def get_values(self, step):
-        if step not in self.cache_values:
-            if Instance.PROPAGATE_BINARY:
-                if isinstance(self.sid_line, Bool):
-                    arg1_value = self.arg1_line.get_values(step)
-                    if isinstance(arg1_value, Values):
-                        false_constraint, true_constraint = arg1_value.get_boolean_constraints()
-                        if self.op == OP_AND:
-                            if BVDD.is_always_true(false_constraint):
-                                self.cache_values[step] = arg1_value.And(None)
-                                return self.cache_values[step]
-                            else:
-                                # lazy evaluation of second operand
-                                arg2_value = self.arg2_line.get_values(step)
-                                if isinstance(arg2_value, Values):
-                                    self.cache_values[step] = arg1_value.And(arg2_value)
-                                    return self.cache_values[step]
-                        elif self.op == OP_OR:
-                            if BVDD.is_always_true(true_constraint):
-                                self.cache_values[step] = arg1_value.Or(None)
-                                return self.cache_values[step]
-                            else:
-                                # lazy evaluation of second operand
-                                arg2_value = self.arg2_line.get_values(step)
-                                if isinstance(arg2_value, Values):
-                                    self.cache_values[step] = arg1_value.Or(arg2_value)
-                                    return self.cache_values[step]
+    def compute_values(self, step):
+        if Instance.PROPAGATE_BINARY:
+            if isinstance(self.sid_line, Bool):
+                arg1_value = self.arg1_line.get_values(step)
+                if isinstance(arg1_value, Values):
+                    false_constraint, true_constraint = arg1_value.get_boolean_constraints()
+                    if self.op == OP_AND:
+                        if BVDD.is_always_true(false_constraint):
+                            return arg1_value.And(None)
                         else:
-                            assert self.op == OP_XOR
+                            # lazy evaluation of second operand
                             arg2_value = self.arg2_line.get_values(step)
                             if isinstance(arg2_value, Values):
-                                self.cache_values[step] = arg1_value.Xor(arg2_value)
-                                return self.cache_values[step]
-                    arg2_value = self.arg2_line.get_values(step)
-                else:
-                    arg1_value = self.arg1_line.get_values(step)
-                    arg2_value = self.arg2_line.get_values(step)
-                    if isinstance(arg1_value, Values) and isinstance(arg2_value, Values):
-                        if self.op == OP_AND:
-                            self.cache_values[step] = arg1_value & arg2_value
-                        elif self.op == OP_OR:
-                            self.cache_values[step] = arg1_value | arg2_value
+                                return arg1_value.And(arg2_value)
+                    elif self.op == OP_OR:
+                        if BVDD.is_always_true(true_constraint):
+                            return arg1_value.Or(None)
                         else:
-                            assert self.op == OP_XOR
-                            self.cache_values[step] = arg1_value ^ arg2_value
-                        return self.cache_values[step]
+                            # lazy evaluation of second operand
+                            arg2_value = self.arg2_line.get_values(step)
+                            if isinstance(arg2_value, Values):
+                                return arg1_value.Or(arg2_value)
+                    else:
+                        assert self.op == OP_XOR
+                        arg2_value = self.arg2_line.get_values(step)
+                        if isinstance(arg2_value, Values):
+                            return arg1_value.Xor(arg2_value)
+                arg2_value = self.arg2_line.get_values(step)
             else:
                 arg1_value = self.arg1_line.get_values(step)
                 arg2_value = self.arg2_line.get_values(step)
-            arg1_value = arg1_value.get_expression()
-            arg2_value = arg2_value.get_expression()
-            self.cache_values[step] = self.copy(arg1_value, arg2_value)
-        return self.cache_values[step]
+                if isinstance(arg1_value, Values) and isinstance(arg2_value, Values):
+                    if self.op == OP_AND:
+                        return arg1_value & arg2_value
+                    elif self.op == OP_OR:
+                        return arg1_value | arg2_value
+                    else:
+                        assert self.op == OP_XOR
+                        return arg1_value ^ arg2_value
+        else:
+            arg1_value = self.arg1_line.get_values(step)
+            arg2_value = self.arg2_line.get_values(step)
+        arg1_value = arg1_value.get_expression()
+        arg2_value = arg2_value.get_expression()
+        return self.copy(arg1_value, arg2_value)
 
     def get_z3(self):
         if self.z3 is None:
@@ -1911,38 +1900,35 @@ class Computation(Binary):
         if not arg1_line.sid_line.match_sorts(arg2_line.sid_line):
             raise model_error("compatible first and second operand sorts", line_no)
 
-    def get_values(self, step):
-        if step not in self.cache_values:
-            arg1_value = self.arg1_line.get_values(step)
-            arg2_value = self.arg2_line.get_values(step)
-            if Instance.PROPAGATE_BINARY:
-                if isinstance(arg1_value, Values) and isinstance(arg2_value, Values):
-                    if self.op == OP_SLL:
-                        self.cache_values[step] = arg1_value << arg2_value
-                    elif self.op == OP_SRL:
-                        self.cache_values[step] = arg1_value.LShR(arg2_value)
-                    elif self.op == OP_SRA:
-                        self.cache_values[step] = arg1_value >> arg2_value
-                    elif self.op == OP_ADD:
-                        self.cache_values[step] = arg1_value + arg2_value
-                    elif self.op == OP_SUB:
-                        self.cache_values[step] = arg1_value - arg2_value
-                    elif self.op == OP_MUL:
-                        self.cache_values[step] = arg1_value * arg2_value
-                    elif self.op == OP_SDIV:
-                        self.cache_values[step] = arg1_value / arg2_value
-                    elif self.op == OP_UDIV:
-                        self.cache_values[step] = arg1_value.UDiv(arg2_value)
-                    elif self.op == OP_SREM:
-                        self.cache_values[step] = arg1_value.SRem(arg2_value)
-                    else:
-                        assert self.op == OP_UREM
-                        self.cache_values[step] = arg1_value.URem(arg2_value)
-                    return self.cache_values[step]
-            arg1_value = arg1_value.get_expression()
-            arg2_value = arg2_value.get_expression()
-            self.cache_values[step] = self.copy(arg1_value, arg2_value)
-        return self.cache_values[step]
+    def compute_values(self, step):
+        arg1_value = self.arg1_line.get_values(step)
+        arg2_value = self.arg2_line.get_values(step)
+        if Instance.PROPAGATE_BINARY:
+            if isinstance(arg1_value, Values) and isinstance(arg2_value, Values):
+                if self.op == OP_SLL:
+                    return arg1_value << arg2_value
+                elif self.op == OP_SRL:
+                    return arg1_value.LShR(arg2_value)
+                elif self.op == OP_SRA:
+                    return arg1_value >> arg2_value
+                elif self.op == OP_ADD:
+                    return arg1_value + arg2_value
+                elif self.op == OP_SUB:
+                    return arg1_value - arg2_value
+                elif self.op == OP_MUL:
+                    return arg1_value * arg2_value
+                elif self.op == OP_SDIV:
+                    return arg1_value / arg2_value
+                elif self.op == OP_UDIV:
+                    return arg1_value.UDiv(arg2_value)
+                elif self.op == OP_SREM:
+                    return arg1_value.SRem(arg2_value)
+                else:
+                    assert self.op == OP_UREM
+                    return arg1_value.URem(arg2_value)
+        arg1_value = arg1_value.get_expression()
+        arg2_value = arg2_value.get_expression()
+        return self.copy(arg1_value, arg2_value)
 
     def get_z3(self):
         if self.z3 is None:
@@ -2013,18 +1999,15 @@ class Concat(Binary):
         if sid_line.size != arg1_line.sid_line.size + arg2_line.sid_line.size:
             raise model_error("compatible bitvector result", line_no)
 
-    def get_values(self, step):
-        if step not in self.cache_values:
-            arg1_value = self.arg1_line.get_values(step)
-            arg2_value = self.arg2_line.get_values(step)
-            if Instance.PROPAGATE_BINARY:
-                if isinstance(arg1_value, Values) and isinstance(arg2_value, Values):
-                    self.cache_values[step] = arg1_value.Concat(arg2_value, self.sid_line)
-                    return self.cache_values[step]
-            arg1_value = arg1_value.get_expression()
-            arg2_value = arg2_value.get_expression()
-            self.cache_values[step] = self.copy(arg1_value, arg2_value)
-        return self.cache_values[step]
+    def compute_values(self, step):
+        arg1_value = self.arg1_line.get_values(step)
+        arg2_value = self.arg2_line.get_values(step)
+        if Instance.PROPAGATE_BINARY:
+            if isinstance(arg1_value, Values) and isinstance(arg2_value, Values):
+                return arg1_value.Concat(arg2_value, self.sid_line)
+        arg1_value = arg1_value.get_expression()
+        arg2_value = arg2_value.get_expression()
+        return self.copy(arg1_value, arg2_value)
 
     def get_z3(self):
         if self.z3 is None:
@@ -2115,12 +2098,10 @@ class Read(Binary):
             self.read_cache = self.read_array(arg1_line, arg2_line)
         return self.read_cache
 
-    def get_values(self, step):
-        if step not in self.cache_values:
-            arg1_value = self.arg1_line.get_values(step).get_expression()
-            arg2_value = self.arg2_line.get_values(step).get_expression()
-            self.cache_values[step] = self.copy(arg1_value, arg2_value)
-        return self.cache_values[step]
+    def compute_values(self, step):
+        arg1_value = self.arg1_line.get_values(step).get_expression()
+        arg2_value = self.arg2_line.get_values(step).get_expression()
+        return self.copy(arg1_value, arg2_value)
 
     def get_z3(self):
         if self.z3 is None:
@@ -2190,50 +2171,43 @@ class Ite(Ternary):
             self.ite_cache[index] = self.copy(arg1_line, arg2_line, arg3_line)
         return self.ite_cache[index]
 
-    def get_values(self, step):
-        if step not in self.cache_values:
-            arg1_value = self.arg1_line.get_values(step)
-            if Instance.PROPAGATE_ITE and isinstance(arg1_value, Values):
-                false_constraint, true_constraint = arg1_value.get_boolean_constraints()
-                if BVDD.is_always_false(false_constraint):
-                    arg2_value = self.arg2_line.get_values(step)
-                    if isinstance(arg2_value, Values):
-                        self.cache_values[step] = arg1_value.If(arg2_value, None)
-                        return self.cache_values[step]
-                    elif BVDD.is_always_true(true_constraint):
-                        # true case holds unconditionally
-                        self.cache_values[step] = arg2_value.get_expression()
-                        return self.cache_values[step]
-                    else:
-                        # lazy evaluation of false case into expression
-                        arg3_value = self.arg3_line.get_values(step)
-                elif BVDD.is_always_false(true_constraint):
-                    arg3_value = self.arg3_line.get_values(step)
-                    if isinstance(arg3_value, Values):
-                        self.cache_values[step] = arg1_value.If(None, arg3_value)
-                        return self.cache_values[step]
-                    elif BVDD.is_always_true(false_constraint):
-                        # false case holds unconditionally
-                        self.cache_values[step] = arg3_value.get_expression()
-                        return self.cache_values[step]
-                    else:
-                        # lazy evaluation of true case into expression
-                        arg2_value = self.arg2_line.get_values(step)
+    def compute_values(self, step):
+        arg1_value = self.arg1_line.get_values(step)
+        if Instance.PROPAGATE_ITE and isinstance(arg1_value, Values):
+            false_constraint, true_constraint = arg1_value.get_boolean_constraints()
+            if BVDD.is_always_false(false_constraint):
+                arg2_value = self.arg2_line.get_values(step)
+                if isinstance(arg2_value, Values):
+                    return arg1_value.If(arg2_value, None)
+                elif BVDD.is_always_true(true_constraint):
+                    # true case holds unconditionally
+                    return arg2_value.get_expression()
                 else:
-                    # lazy evaluation of true and false case
-                    arg2_value = self.arg2_line.get_values(step)
+                    # lazy evaluation of false case into expression
                     arg3_value = self.arg3_line.get_values(step)
-                    if isinstance(arg2_value, Values) and isinstance(arg3_value, Values):
-                        self.cache_values[step] = arg1_value.If(arg2_value, arg3_value)
-                        return self.cache_values[step]
+            elif BVDD.is_always_false(true_constraint):
+                arg3_value = self.arg3_line.get_values(step)
+                if isinstance(arg3_value, Values):
+                    return arg1_value.If(None, arg3_value)
+                elif BVDD.is_always_true(false_constraint):
+                    # false case holds unconditionally
+                    return arg3_value.get_expression()
+                else:
+                    # lazy evaluation of true case into expression
+                    arg2_value = self.arg2_line.get_values(step)
             else:
+                # lazy evaluation of true and false case
                 arg2_value = self.arg2_line.get_values(step)
                 arg3_value = self.arg3_line.get_values(step)
-            arg1_value = arg1_value.get_expression()
-            arg2_value = arg2_value.get_expression()
-            arg3_value = arg3_value.get_expression()
-            self.cache_values[step] = self.copy(arg1_value, arg2_value, arg3_value)
-        return self.cache_values[step]
+                if isinstance(arg2_value, Values) and isinstance(arg3_value, Values):
+                    return arg1_value.If(arg2_value, arg3_value)
+        else:
+            arg2_value = self.arg2_line.get_values(step)
+            arg3_value = self.arg3_line.get_values(step)
+        arg1_value = arg1_value.get_expression()
+        arg2_value = arg2_value.get_expression()
+        arg3_value = arg3_value.get_expression()
+        return self.copy(arg1_value, arg2_value, arg3_value)
 
     def get_instance(self):
         return self.instance
@@ -2317,13 +2291,11 @@ class Write(Ternary):
             self.write_cache[index] = self.write_array(arg1_line, arg2_line, arg3_line, index)
         return self.write_cache[index]
 
-    def get_values(self, step):
-        if step not in self.cache_values:
-            arg1_value = self.arg1_line.get_values(step).get_expression()
-            arg2_value = self.arg2_line.get_values(step).get_expression()
-            arg3_value = self.arg3_line.get_values(step).get_expression()
-            self.cache_values[step] = self.copy(arg1_value, arg2_value, arg3_value)
-        return self.cache_values[step]
+    def compute_values(self, step):
+        arg1_value = self.arg1_line.get_values(step).get_expression()
+        arg2_value = self.arg2_line.get_values(step).get_expression()
+        arg3_value = self.arg3_line.get_values(step).get_expression()
+        return self.copy(arg1_value, arg2_value, arg3_value)
 
     def get_z3(self):
         if self.z3 is None:
@@ -2416,14 +2388,15 @@ class Init(Transitional):
         return self.state_line.instance
 
     def set_cached_instance(self, instance, step):
+        assert step == 0, f"set cached init with {step} != 0"
         self.get_instance().init_instance(instance)
 
     def get_step(self, step):
-        assert step == 0, f"bvdd init with {step} != 0"
+        assert step == 0, f"get init with {step} != 0"
         return self.state_line.get_instance(-1)
 
     def set_step(self, step):
-        assert step == 0, f"bvdd init with {step} != 0"
+        assert step == 0, f"set init with {step} != 0"
         self.state_line.set_instance(self.exp_line, -1)
 
     def get_z3_step(self, step):
@@ -5806,6 +5779,10 @@ class Bitwuzla_Solver(Solver):
 # BVDD solver
 
 class BVDD_Solver(Solver):
+    versions = {0:None}
+    version = 0
+    bump = 1
+
     def __init__(self, z3_solver, bitwuzla_solver):
         self.z3_solver = z3_solver
         self.bitwuzla_solver = bitwuzla_solver
@@ -5826,6 +5803,9 @@ class BVDD_Solver(Solver):
             assert not self.unproven
             self.stack.append((self.constraint, self.proven))
             self.proven = {}
+            BVDD_Solver.version = BVDD_Solver.bump
+            BVDD_Solver.bump += 1
+            BVDD_Solver.versions[BVDD_Solver.version] = None
 
     def pop(self):
         if self.non_BVDD:
@@ -5837,6 +5817,8 @@ class BVDD_Solver(Solver):
             assert self.stack
             self.constraint, self.proven = self.stack.pop()
             self.unproven = {}
+            del BVDD_Solver.versions[BVDD_Solver.version]
+            BVDD_Solver.version = list(BVDD_Solver.versions)[-1]
 
     def assert_this(self, assertions, step):
         if self.non_BVDD:
@@ -5924,10 +5906,10 @@ class BVDD_Solver(Solver):
                             return self.solve()
                     elif isinstance(assertion, Values):
                         assert isinstance(assertion.sid_line, Bool)
-                        assert self.unproven[step][assertion]
+                        assert self.unproven[step][assertion] is True
                         self.constraint = assertion.And(self.constraint)
                 false_constraint, true_constraint = self.constraint.get_boolean_constraints()
-                if not BVDD.is_always_false(true_constraint):
+                if not BVDD.is_always_true(false_constraint) and not BVDD.is_always_false(true_constraint):
                     for assertion in self.unproven[step]:
                         if isinstance(assertion, Transitional):
                             values = assertion.get_step(step)
