@@ -2401,7 +2401,7 @@ class Init(Transitional):
 
     def get_z3_step(self, step):
         assert step == 0, f"z3 init with {step} != 0"
-        self.set_step(-1)
+        self.set_step(0)
         if Instance.PROPAGATE is not None:
             return z3.BoolVal(True)
         else:
@@ -2409,7 +2409,7 @@ class Init(Transitional):
 
     def get_bitwuzla_step(self, step, tm):
         assert step == 0, f"bitwuzla init with {step} != 0"
-        self.set_step(-1)
+        self.set_step(0)
         if Instance.PROPAGATE is not None:
             return tm.mk_true()
         else:
