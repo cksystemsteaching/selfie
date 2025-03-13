@@ -5979,7 +5979,17 @@ def branching_bmc(solver, kmin, kmax, args, step, level):
             solver.print_pc(State.pc, step, level)
 
         # assert all constraints
-        solver.assert_this(Constraint.constraints.values(), step)
+        for constraint in Constraint.constraints.values():
+            print_message_with_propagation_profile(constraint.symbol, step, level)
+            solver.assert_this([constraint], step)
+            result = solver.prove()
+            if solver.is_UNSAT(result):
+                print_separator('v', step, level)
+                print_message(f"{constraint}\n", step, level)
+                if Instance.PROPAGATE is not None:
+                    print_message_with_propagation_profile("propagation profile\n", step, level)
+                print_separator('^', step, level)
+                return
 
         if step >= kmin:
             # check bad properties from kmin on
