@@ -5905,17 +5905,19 @@ class BVDD_Solver(Solver):
                         else:
                             return self.solve()
                     elif isinstance(assertion, Values):
-                        assert isinstance(assertion.sid_line, Bool)
-                        assert self.unproven[step][assertion] is True
-                        self.constraint = assertion.And(self.constraint)
+                         # support termination check
+                         assert isinstance(assertion.sid_line, Bool)
+                         assert self.unproven[step][assertion] is True
+                         self.constraint = assertion.And(self.constraint)
                 false_constraint, true_constraint = self.constraint.get_boolean_constraints()
                 if not BVDD.is_always_true(false_constraint) and not BVDD.is_always_false(true_constraint):
                     for assertion in self.unproven[step]:
                         if isinstance(assertion, Transitional):
                             values = assertion.get_step(step)
-                            assert isinstance(values, Values)
-                            values = values.constrain(true_constraint).exclude(false_constraint)
-                            assertion.set_cached_instance(values, step)
+                            if isinstance(values, Values):
+                                values = values.constrain(true_constraint).exclude(false_constraint)
+                                # constraining cached instances requires versioning cached values
+                                assertion.set_cached_instance(values, step)
             self.proven |= self.unproven
             self.unproven = {}
             false_constraint, true_constraint = self.constraint.get_boolean_constraints()
