@@ -5723,29 +5723,34 @@ class BVDD_Solver(Solver):
     def __init__(self, z3_solver, bitwuzla_solver):
         self.z3_solver = z3_solver
         self.bitwuzla_solver = bitwuzla_solver
-        self.non_BVDD = False
+        self.fallback = False
         self.stack = []
+        self.constraint = Values.TRUE()
         self.proven = {}
         self.unproven = {}
-        self.constraint = Values.TRUE()
 
     def push(self):
-        if self.non_BVDD:
+        if self.fallback:
             if self.z3_solver:
                 self.z3_solver.push()
             if self.bitwuzla_solver:
                 self.bitwuzla_solver.push()
         else:
-            self.prove()
-            assert not self.unproven
-            self.stack.append((self.constraint, self.proven))
+            # push before proving to enable fallback to other solvers
+            self.stack.append((self.constraint, self.proven | self.unproven))
+            self.prove() # may trigger fallback to other solvers
             self.proven = {}
-            BVDD_Solver.version = BVDD_Solver.bump
-            BVDD_Solver.bump += 1
-            BVDD_Solver.versions[BVDD_Solver.version] = None
+            assert not self.unproven
+            if not self.fallback:
+                # proving may have strengthened constraint
+                _, proven = self.stack.pop()
+                self.stack.append((self.constraint, proven))
+                BVDD_Solver.version = BVDD_Solver.bump
+                BVDD_Solver.bump += 1
+                BVDD_Solver.versions[BVDD_Solver.version] = None
 
     def pop(self):
-        if self.non_BVDD:
+        if self.fallback:
             if self.z3_solver:
                 self.z3_solver.pop()
             if self.bitwuzla_solver:
@@ -5758,7 +5763,7 @@ class BVDD_Solver(Solver):
             BVDD_Solver.version = list(BVDD_Solver.versions)[-1]
 
     def assert_this(self, assertions, step):
-        if self.non_BVDD:
+        if self.fallback:
             if self.z3_solver:
                 self.z3_solver.assert_this(assertions, step)
             if self.bitwuzla_solver:
@@ -5772,7 +5777,7 @@ class BVDD_Solver(Solver):
                     self.unproven[step] |= {assertion:True}
 
     def assert_not_this(self, assertions, step):
-        if self.non_BVDD:
+        if self.fallback:
             if self.z3_solver:
                 self.z3_solver.assert_not_this(assertions, step)
             if self.bitwuzla_solver:
@@ -5786,18 +5791,19 @@ class BVDD_Solver(Solver):
                     self.unproven[step] |= {assertion:False}
 
     def simplify(self):
-        if self.non_BVDD:
+        if self.fallback:
             if self.z3_solver:
                 self.z3_solver.simplify()
             if self.bitwuzla_solver:
                 self.bitwuzla_solver.simplify()
 
     def solve(self):
-        self.non_BVDD = True
+        self.fallback = True
+        self.constraint = Values.TRUE()
         self.proven |= self.unproven
         self.unproven = {}
-        self.stack.append((self.constraint, self.proven))
-        for constraint, assertions in self.stack:
+        self.stack.append((None, self.proven))
+        for _, assertions in self.stack:
             for step in assertions:
                 for assertion in assertions[step]:
                     if assertions[step][assertion]:
@@ -5805,14 +5811,14 @@ class BVDD_Solver(Solver):
                     else:
                         self.assert_not_this([assertion], step)
             if assertions is not self.proven:
+                # push with other solvers except for top of stack
                 self.push()
-        self.constraint = Values.TRUE()
         self.proven = {}
         self.stack = []
         return self.prove()
 
     def prove(self):
-        if self.non_BVDD:
+        if self.fallback:
             z3_SAT = False
             if self.z3_solver:
                 result = self.z3_solver.prove()
@@ -5855,6 +5861,8 @@ class BVDD_Solver(Solver):
                                 values = values.constrain(true_constraint).exclude(false_constraint)
                                 # constraining cached instances requires versioning cached values
                                 assertion.set_cached_instance(values, step)
+                            else:
+                                return self.solve()
             self.proven |= self.unproven
             self.unproven = {}
             false_constraint, true_constraint = self.constraint.get_boolean_constraints()
@@ -5867,7 +5875,7 @@ class BVDD_Solver(Solver):
         return not result
 
     def assert_is_state_changing(self, next_line, step):
-        if self.non_BVDD:
+        if self.fallback:
             if self.z3_solver:
                 self.z3_solver.assert_is_state_changing(next_line, step)
             if self.bitwuzla_solver:
@@ -5876,7 +5884,7 @@ class BVDD_Solver(Solver):
             self.assert_this([next_line.is_state_changing(step)], step)
 
     def assert_state_is_not_changing(self, next_line, step):
-        if self.non_BVDD:
+        if self.fallback:
             if self.z3_solver:
                 self.z3_solver.assert_state_is_not_changing(next_line, step)
             if self.bitwuzla_solver:
@@ -5885,7 +5893,7 @@ class BVDD_Solver(Solver):
             self.assert_this([next_line.state_is_not_changing(step)], step)
 
     def print_pc(self, pc, step, level):
-        if self.non_BVDD:
+        if self.fallback:
             if self.z3_solver:
                 self.z3_solver.print_pc(pc, step, level)
             if self.bitwuzla_solver:
@@ -5897,7 +5905,7 @@ class BVDD_Solver(Solver):
             print_message("%s = %s\n" % (pc.get_step_name(step), pc_value), step, level)
 
     def print_inputs(self, inputs, step, level):
-        if self.non_BVDD:
+        if self.fallback:
             if self.z3_solver:
                 self.z3_solver.print_inputs(inputs, step, level)
             if self.bitwuzla_solver:
