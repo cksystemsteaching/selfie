@@ -21,6 +21,11 @@
 
 # for debugging segfaults: import faulthandler; faulthandler.enable()
 
+import sys
+
+# TODO: introduce input intervals in BVDDs to avoid this
+sys.setrecursionlimit(1500)
+
 import ctypes
 
 try:
