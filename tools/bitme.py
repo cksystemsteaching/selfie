@@ -621,6 +621,9 @@ class Values:
     def is_equal(self, values):
         return type(self) is type(values) and self.match_sorts(values) and self.values == values.values
 
+    def number_of_inputs(self):
+        return BVDD.number_of_inputs(self.values)
+
     def set_values(self, sid_line, values):
         assert self.sid_line.match_sorts(sid_line)
         if values is Constant.false:
@@ -894,7 +897,7 @@ class Values:
             values3 = values3.constrain(false_constraint)
             return values2.merge(values3)
 
-    # BVDD solver
+    # bitme solver
 
     def exclude(self, constraint):
         if BVDD.is_always_false(constraint):
@@ -929,9 +932,9 @@ class Expression(Line):
         return False
 
     def get_values(self, step):
-        # versioning needed for support of branching in BVDD solver
-        if step not in self.cache_values or self.cache_values[step][1] not in BVDD_Solver.versions:
-            self.cache_values[step] = (self.compute_values(step), BVDD_Solver.version)
+        # versioning needed for support of branching in bitme solver
+        if step not in self.cache_values or self.cache_values[step][1] not in Bitme_Solver.versions:
+            self.cache_values[step] = (self.compute_values(step), Bitme_Solver.version)
         return self.cache_values[step][0]
 
     def get_expression(self):
@@ -5718,9 +5721,9 @@ class Bitwuzla_Solver(Solver):
                 self.solver.get_value(input_variable.get_bitwuzla_instance(step - 1, self.tm))),
                 step, level)
 
-# BVDD solver
+# bitme solver
 
-class BVDD_Solver(Solver):
+class Bitme_Solver(Solver):
     versions = {0:None}
     version = 0
     bump = 1
@@ -5750,9 +5753,9 @@ class BVDD_Solver(Solver):
                 # proving may have strengthened constraint
                 _, proven = self.stack.pop()
                 self.stack.append((self.constraint, proven))
-                BVDD_Solver.version = BVDD_Solver.bump
-                BVDD_Solver.bump += 1
-                BVDD_Solver.versions[BVDD_Solver.version] = None
+                Bitme_Solver.version = Bitme_Solver.bump
+                Bitme_Solver.bump += 1
+                Bitme_Solver.versions[Bitme_Solver.version] = None
 
     def pop(self):
         if self.fallback:
@@ -5764,8 +5767,8 @@ class BVDD_Solver(Solver):
             assert self.stack
             self.constraint, self.proven = self.stack.pop()
             self.unproven = {}
-            del BVDD_Solver.versions[BVDD_Solver.version]
-            BVDD_Solver.version = list(BVDD_Solver.versions)[-1]
+            del Bitme_Solver.versions[Bitme_Solver.version]
+            Bitme_Solver.version = list(Bitme_Solver.versions)[-1]
 
     def assert_this(self, assertions, step):
         if self.fallback:
@@ -6168,13 +6171,23 @@ def main():
         else:
             kmin = kmax = 0
 
-        if is_Z3_present and args.use_Z3:
-            solver = Z3_Solver()
-            bmc(solver, kmin, kmax, args)
+        z3_solver = None
+        bitwuzla_solver = None
 
-        if is_bitwuzla_present and args.use_bitwuzla:
-            solver = Bitwuzla_Solver()
-            bmc(solver, kmin, kmax, args)
+        if is_Z3_present:
+            z3_solver = Z3_Solver()
+        if is_bitwuzla_present:
+            bitwuzla_solver = Bitwuzla_Solver()
+
+        bitme_solver = Bitme_Solver(z3_solver, bitwuzla_solver)
+
+        if not args.use_Z3 and not args.use_bitwuzla:
+            bmc(bitme_solver, kmin, kmax, args)
+        else:
+            if args.use_Z3 and is_Z3_present:
+                bmc(z3_solver, kmin, kmax, args)
+            if args.use_bitwuzla and is_bitwuzla_present:
+                bmc(bitwuzla_solver, kmin, kmax, args)
 
     print_separator('#')
 
