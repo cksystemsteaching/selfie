@@ -382,6 +382,16 @@ class BVDD:
         self.inputs = 0
         self.inputs_or_outputs = {}
 
+    def get_input_values(inputs):
+        input_value = 0
+        input_values = []
+        while inputs != 0:
+            if inputs % 2 == 1:
+                input_values += [input_value]
+            inputs //= 2
+            input_value += 1
+        return input_values
+
     def __str__(self):
         string = ""
         for inputs_or_output in self.inputs_or_outputs:
@@ -399,24 +409,15 @@ class BVDD:
         # for sorting BVDDs when generating expressions for value sets
         return id(self) < id(bvdd)
 
-    def get_input_values(inputs):
-        input_value = 0
-        input_values = []
-        while inputs != 0:
-            if inputs % 2 == 1:
-                input_values += [input_value]
-            inputs //= 2
-            input_value += 1
-        return input_values
-
     def number_of_inputs(bvdd):
         if BVDD.is_output(bvdd):
-            return 1
+            return 0
         else:
             assert BVDD.is_inputs(bvdd)
             n = 0
-            for input_value in BVDD.get_input_values(bvdd.inputs):
-                n += BVDD.number_of_inputs(bvdd.inputs[input_value])
+            for inputs_or_output in bvdd.inputs_or_outputs:
+                n += bvdd.inputs_or_outputs[inputs_or_output].bit_count()
+                n += BVDD.number_of_inputs(inputs_or_output)
         return n
 
     def is_always_false(bvdd):
@@ -613,6 +614,12 @@ class BVDD:
                 return bvdd1.exclude_binary(sid_line, bvdd2)
 
     def get_expression(self, sid_line):
+        inputs_sid_line = Bitvec(next_nid(), 2**self.var_line.sid_line.size,
+            self.var_line.comment, self.var_line.line_no)
+        inputs_zero_line = Constd(next_nid(), inputs_sid_line, 0,
+            self.var_line.comment, self.var_line.line_no)
+        inputs_one_line = Constd(next_nid(), inputs_sid_line, 1,
+            self.var_line.comment, self.var_line.line_no)
         exp_line = Zero(next_nid(), sid_line, "unreachable-value", "unreachable value", 0)
         # TODO: check if sorting is necessary for consistency
         booleans = sorted([key for key in self.inputs_or_outputs if isinstance(key, bool)])
@@ -620,21 +627,32 @@ class BVDD:
         bvdds = sorted([key for key in self.inputs_or_outputs if isinstance(key, BVDD)])
         assert len(booleans + integers + bvdds) == len(self.inputs_or_outputs)
         for inputs_or_output in booleans + integers + bvdds:
-            input_line = None
-            for input_value in BVDD.get_input_values(self.inputs_or_outputs[inputs_or_output]):
+            if self.inputs_or_outputs[inputs_or_output].bit_count() == 1:
                 comparison_line = Comparison(next_nid(), OP_EQ, Bool.boolean,
-                    self.var_line,
-                    Constd(next_nid(), self.var_line.sid_line, input_value,
+                    Constd(next_nid(), self.var_line.sid_line,
+                        int(math.log2(self.inputs_or_outputs[inputs_or_output])),
                         self.var_line.comment, self.var_line.line_no),
+                    self.var_line,
                     self.var_line.comment, self.var_line.line_no)
-                if input_line is None:
-                    input_line = comparison_line
-                else:
-                    input_line = Logical(next_nid(), OP_OR, Bool.boolean,
-                        comparison_line, input_line,
-                        self.var_line.comment, self.var_line.line_no)
+            else:
+                comparison_line = Comparison(next_nid(), OP_NEQ, Bool.boolean,
+                    Logical(next_nid(), OP_AND, inputs_sid_line,
+                        Constd(next_nid(), inputs_sid_line,
+                            self.inputs_or_outputs[inputs_or_output],
+                            self.var_line.comment, self.var_line.line_no),
+                        Computation(next_nid(), OP_SLL, inputs_sid_line,
+                            inputs_one_line,
+                            Ext(next_nid(), OP_UEXT, inputs_sid_line, self.var_line,
+                                2**self.var_line.sid_line.size - self.var_line.sid_line.size,
+                                self.var_line.comment, self.var_line.line_no),
+                            self.var_line.comment, self.var_line.line_no),
+                        self.var_line.comment, self.var_line.line_no),
+                    inputs_zero_line,
+                    self.var_line.comment, self.var_line.line_no)
             exp_line = Ite(next_nid(), sid_line,
-                input_line, BVDD.get_bvdd_expression(sid_line, inputs_or_output), exp_line,
+                comparison_line,
+                BVDD.get_bvdd_expression(sid_line, inputs_or_output),
+                exp_line,
                 self.var_line.comment, self.var_line.line_no)
         return exp_line
 
