@@ -379,13 +379,13 @@ class BVDD:
 
     def __init__(self, var_line):
         self.var_line = var_line
-        self.inputs = {}
+        self.inputs = 0
         self.inputs_or_outputs = {}
 
     def __str__(self):
         string = ""
         for inputs_or_output in self.inputs_or_outputs:
-            for input_value in self.inputs_or_outputs[inputs_or_output]:
+            for input_value in BVDD.get_input_values(self.inputs_or_outputs[inputs_or_output]):
                 if string:
                     string += ",\n"
                 string += f"{input_value}"
@@ -399,13 +399,23 @@ class BVDD:
         # for sorting BVDDs when generating expressions for value sets
         return id(self) < id(bvdd)
 
+    def get_input_values(inputs):
+        input_value = 0
+        input_values = []
+        while inputs != 0:
+            if inputs % 2 == 1:
+                input_values += [input_value]
+            inputs //= 2
+            input_value += 1
+        return input_values
+
     def number_of_inputs(bvdd):
         if BVDD.is_output(bvdd):
             return 1
         else:
             assert BVDD.is_inputs(bvdd)
             n = 0
-            for input_value in bvdd.inputs:
+            for input_value in BVDD.get_input_values(bvdd.inputs):
                 n += BVDD.number_of_inputs(bvdd.inputs[input_value])
         return n
 
@@ -438,22 +448,18 @@ class BVDD:
             return False
 
     def set_input(self, sid_line, input_values, inputs_or_output):
-        if isinstance(input_values, int):
-            assert input_values not in self.inputs
-            input_values = {input_values:inputs_or_output}
-        else:
-            input_values = {input_value:inputs_or_output for input_value in input_values}
-            assert not (input_values.keys() & self.inputs.keys())
+        assert 0 < input_values < 2**2**self.var_line.sid_line.size
+        assert not (input_values & self.inputs)
         if inputs_or_output is not Constant.false:
             self.inputs |= input_values
             if inputs_or_output not in self.inputs_or_outputs:
                 self.inputs_or_outputs[inputs_or_output] = input_values
             else:
-                assert not (input_values.keys() & self.inputs_or_outputs[inputs_or_output].keys())
+                assert not (input_values & self.inputs_or_outputs[inputs_or_output])
                 self.inputs_or_outputs[inputs_or_output] |= input_values
             if BVDD.is_output(inputs_or_output):
                 assert sid_line.is_unsigned_value(inputs_or_output)
-                BVDD.number_of_solutions += len(input_values)
+                BVDD.number_of_solutions += input_values.bit_count()
         return self
 
     def reduce(bvdd):
@@ -461,7 +467,7 @@ class BVDD:
             if not bvdd.inputs:
                 return Constant.false
             elif len(bvdd.inputs_or_outputs) == 1:
-                if len(*bvdd.inputs_or_outputs.values()) == 2**bvdd.var_line.sid_line.size:
+                if next(iter(bvdd.inputs_or_outputs.values())) == 2**2**bvdd.var_line.sid_line.size - 1:
                     return next(iter(bvdd.inputs_or_outputs.keys()))
         return bvdd
 
@@ -499,14 +505,14 @@ class BVDD:
                         BVDD.apply(sid_line, op, inputs_or_output, bvdd))
             else:
                 for inputs_or_output1 in self.inputs_or_outputs:
-                    input_values1 = self.inputs_or_outputs[inputs_or_output1].keys() & bvdd.inputs.keys()
+                    input_values1 = self.inputs_or_outputs[inputs_or_output1] & bvdd.inputs
                     if input_values1:
                         for inputs_or_output2 in bvdd.inputs_or_outputs:
-                            input_values2 = input_values1 & bvdd.inputs_or_outputs[inputs_or_output2].keys()
+                            input_values2 = input_values1 & bvdd.inputs_or_outputs[inputs_or_output2]
                             if input_values2:
                                 inputs.set_input(sid_line, input_values2,
                                     BVDD.apply(sid_line, op, inputs_or_output1, inputs_or_output2))
-                                input_values1 -= bvdd.inputs_or_outputs[inputs_or_output2].keys()
+                                input_values1 &= ~bvdd.inputs_or_outputs[inputs_or_output2]
         return BVDD.reduce(inputs)
 
     def apply(sid_line, op, bvdd1, bvdd2 = None):
@@ -543,27 +549,27 @@ class BVDD:
                     assert BVDD.is_inputs(inputs_or_output)
                     inputs.set_input(sid_line, self.inputs_or_outputs[inputs_or_output],
                         inputs_or_output.merge(sid_line, bvdd))
-                if len(self.inputs) < 2**self.var_line.sid_line.size:
-                    input_values = list(range(2**self.var_line.sid_line.size)) - self.inputs.keys()
+                if self.inputs < 2**2**self.var_line.sid_line.size - 1:
+                    input_values = 2**2**self.var_line.sid_line.size - 1 - self.inputs
                     inputs.set_input(sid_line, input_values, bvdd)
             else:
                 assert self.var_line is bvdd.var_line
                 for inputs_or_output1 in self.inputs_or_outputs:
-                    input_values1 = self.inputs_or_outputs[inputs_or_output1].keys()
-                    if input_values1 & bvdd.inputs.keys():
+                    input_values1 = self.inputs_or_outputs[inputs_or_output1]
+                    if input_values1 & bvdd.inputs:
                         for inputs_or_output2 in bvdd.inputs_or_outputs:
-                            input_values2 = input_values1 & bvdd.inputs_or_outputs[inputs_or_output2].keys()
+                            input_values2 = input_values1 & bvdd.inputs_or_outputs[inputs_or_output2]
                             if input_values2:
                                 # assert: intersection of self and bvdd is empty
                                 assert BVDD.is_inputs(inputs_or_output1)
                                 assert BVDD.is_inputs(inputs_or_output2)
                                 inputs.set_input(sid_line, input_values2,
                                     inputs_or_output1.merge(sid_line, inputs_or_output2))
-                                input_values1 -= bvdd.inputs_or_outputs[inputs_or_output2].keys()
+                                input_values1 &= ~bvdd.inputs_or_outputs[inputs_or_output2]
                     if input_values1:
                         inputs.set_input(sid_line, input_values1, inputs_or_output1)
                 for inputs_or_output2 in bvdd.inputs_or_outputs:
-                    input_values2 = bvdd.inputs_or_outputs[inputs_or_output2].keys() - self.inputs.keys()
+                    input_values2 = bvdd.inputs_or_outputs[inputs_or_output2] & ~self.inputs
                     if input_values2:
                         inputs.set_input(sid_line, input_values2, inputs_or_output2)
         return BVDD.reduce(inputs)
@@ -583,14 +589,14 @@ class BVDD:
                         BVDD.exclude(sid_line, inputs_or_output, bvdd))
             else:
                 for inputs_or_output1 in self.inputs_or_outputs:
-                    input_values1 = self.inputs_or_outputs[inputs_or_output1].keys()
-                    if input_values1 & bvdd.inputs.keys():
+                    input_values1 = self.inputs_or_outputs[inputs_or_output1]
+                    if input_values1 & bvdd.inputs:
                         for inputs_or_output2 in bvdd.inputs_or_outputs:
-                            input_values2 = input_values1 & bvdd.inputs_or_outputs[inputs_or_output2].keys()
+                            input_values2 = input_values1 & bvdd.inputs_or_outputs[inputs_or_output2]
                             if input_values2:
                                 inputs.set_input(sid_line, input_values2,
                                     BVDD.exclude(sid_line, inputs_or_output1, inputs_or_output2))
-                                input_values1 -= bvdd.inputs_or_outputs[inputs_or_output2].keys()
+                                input_values1 &= ~bvdd.inputs_or_outputs[inputs_or_output2]
                     if input_values1:
                         inputs.set_input(sid_line, input_values1, inputs_or_output1)
         return BVDD.reduce(inputs)
@@ -615,7 +621,7 @@ class BVDD:
         assert len(booleans + integers + bvdds) == len(self.inputs_or_outputs)
         for inputs_or_output in booleans + integers + bvdds:
             input_line = None
-            for input_value in sorted(self.inputs_or_outputs[inputs_or_output]):
+            for input_value in BVDD.get_input_values(self.inputs_or_outputs[inputs_or_output]):
                 comparison_line = Comparison(next_nid(), OP_EQ, Bool.boolean,
                     self.var_line,
                     Constd(next_nid(), self.var_line.sid_line, input_value,
@@ -1185,10 +1191,10 @@ class Variable(Expression):
         if isinstance(self.sid_line, Bitvector) and self.sid_line.size <= Instance.PROPAGATE:
             bvdd = BVDD(self)
             if isinstance(self.sid_line, Bool):
-                bvdd.set_input(self.sid_line, 0, False).set_input(self.sid_line, 1, True)
+                bvdd.set_input(self.sid_line, 2**0, False).set_input(self.sid_line, 2**1, True)
             else:
                 for value in range(2**self.sid_line.size):
-                    bvdd.set_input(self.sid_line, value, value)
+                    bvdd.set_input(self.sid_line, 2**value, value)
             return Values(self.sid_line).set_values(self.sid_line, bvdd)
         else:
             return self
