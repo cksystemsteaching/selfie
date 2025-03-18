@@ -367,6 +367,16 @@ class Array(Sort):
             self.element_size_line.get_bitwuzla(tm))
 
 class BVDD:
+    # a bitvector decision diagram (BVDD) is
+    # a reduced ordered algebraic decision diagram (ROADD)
+    # over bitvectors rather than bits
+
+    # given an n-bit bitvector, we use 2**n-bit unsigned integers
+    # to represent sets of n-bit bitvector constants that in turn
+    # represent branches in BVDDs:
+    # Theta(2**n)-time set intersection and union with
+    # O(2**n/n) and Omega(n*(2**n-1)/2**n) spatial overhead
+
     number_of_solutions = 0
     max_number_of_solutions = 0
     avg_number_of_solutions = 0
@@ -463,8 +473,11 @@ class BVDD:
             if not bvdd.inputs:
                 return Constant.false
             elif len(bvdd.inputs_or_outputs) == 1:
+                # children are all isomorphic
                 if next(iter(bvdd.inputs_or_outputs.values())) == 2**2**bvdd.var_line.sid_line.size - 1:
+                    # remove bvdds that have all children and all children are isomorphic
                     return next(iter(bvdd.inputs_or_outputs.keys()))
+            # assert: all children are non-isomorphic due to hashing equivalent objects to the same hash
         return bvdd
 
     def get_inputs(self, sid_line, output):
