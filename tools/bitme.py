@@ -480,7 +480,7 @@ class BVDD:
             # assert: all children are non-isomorphic due to hashing equivalent objects to the same hash
         return bvdd
 
-    def get_inputs(self, sid_line, output):
+    def get_inputs_for_output(self, sid_line, output):
         inputs = BVDD(self.var_line)
         for inputs_or_output in self.inputs_or_outputs:
             if BVDD.is_output(inputs_or_output):
@@ -489,7 +489,7 @@ class BVDD:
             else:
                 assert BVDD.is_inputs(inputs_or_output)
                 inputs.set_input(sid_line, self.inputs_or_outputs[inputs_or_output],
-                    inputs_or_output.get_inputs(sid_line, output))
+                    inputs_or_output.get_inputs_for_output(sid_line, output))
         return BVDD.reduce(inputs)
 
     def apply_unary(self, sid_line, op):
@@ -712,14 +712,14 @@ class Values:
         if BVDD.is_output(self.values):
             return False if self.values is False else Constant.false
         else:
-            return self.values.get_inputs(self.sid_line, False)
+            return self.values.get_inputs_for_output(self.sid_line, False)
 
     def get_true_constraint(self):
         assert isinstance(self.sid_line, Bool)
         if BVDD.is_output(self.values):
             return True if self.values is True else Constant.false
         else:
-            return self.values.get_inputs(self.sid_line, True)
+            return self.values.get_inputs_for_output(self.sid_line, True)
 
     def get_boolean_constraints(self):
         assert isinstance(self.sid_line, Bool)
