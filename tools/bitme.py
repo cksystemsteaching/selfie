@@ -382,6 +382,8 @@ class BVDD:
     avg_number_of_solutions = 0
     total_number_of_solutions = 0
 
+    total_number_of_constants = 0
+
     def __init__(self, var_line):
         self.var_line = var_line
         self.inputs = 0
@@ -413,6 +415,23 @@ class BVDD:
     def __lt__(self, bvdd):
         # for sorting BVDDs when generating expressions for value sets
         return id(self) < id(bvdd)
+
+    def get_BVDD(sid_line, value_or_var_line):
+        if isinstance(value_or_var_line, bool) or isinstance(value_or_var_line, int):
+            assert sid_line.is_unsigned_value(value_or_var_line)
+            BVDD.total_number_of_constants += 1
+            return value_or_var_line
+        else:
+            assert isinstance(value_or_var_line, Variable)
+            bvdd = BVDD(value_or_var_line)
+            if isinstance(value_or_var_line.sid_line, Bool):
+                bvdd.set_input(value_or_var_line.sid_line, 2**0, False)
+                bvdd.set_input(value_or_var_line.sid_line, 2**1, True)
+            else:
+                for value in range(2**value_or_var_line.sid_line.size):
+                    bvdd.set_input(value_or_var_line.sid_line, 2**value, value)
+            BVDD.total_number_of_constants += 2**value_or_var_line.sid_line.size
+            return bvdd
 
     def number_of_inputs(bvdd):
         if BVDD.is_output(bvdd):
@@ -671,7 +690,6 @@ class BVDD:
             return bvdd.get_expression(sid_line)
 
 class Values:
-    total_number_of_constants = 0
 
     false = None
     true = None
@@ -696,15 +714,15 @@ class Values:
     def number_of_inputs(self):
         return BVDD.number_of_inputs(self.values)
 
-    def set_values(self, sid_line, values):
+    def set_values(self, sid_line, values_or_var_line):
         assert self.sid_line.match_sorts(sid_line)
-        if values is Constant.false:
+        if values_or_var_line is Constant.false:
             self.values = None
+        elif isinstance(values_or_var_line, BVDD):
+            self.values = values_or_var_line
         else:
-            self.values = values
-            if BVDD.is_output(values):
-                assert sid_line.is_unsigned_value(values)
-                Values.total_number_of_constants += 1
+            assert isinstance(values_or_var_line, bool) or isinstance(values_or_var_line, int) or isinstance(values_or_var_line, Variable)
+            self.values = BVDD.get_BVDD(sid_line, values_or_var_line)
         return self
 
     def get_false_constraint(self):
@@ -1215,13 +1233,7 @@ class Variable(Expression):
     def compute_values(self, step):
         assert step == 0
         if isinstance(self.sid_line, Bitvector) and self.sid_line.size <= Instance.PROPAGATE:
-            bvdd = BVDD(self)
-            if isinstance(self.sid_line, Bool):
-                bvdd.set_input(self.sid_line, 2**0, False).set_input(self.sid_line, 2**1, True)
-            else:
-                for value in range(2**self.sid_line.size):
-                    bvdd.set_input(self.sid_line, 2**value, value)
-            return Values(self.sid_line).set_values(self.sid_line, bvdd)
+            return Values(self.sid_line).set_values(self.sid_line, self)
         else:
             return self
 
@@ -5351,7 +5363,7 @@ def print_message_with_propagation_profile(message, step = None, level = None):
         BVDD.avg_number_of_solutions += BVDD.number_of_solutions
         if BVDD.avg_number_of_solutions > BVDD.number_of_solutions:
             BVDD.avg_number_of_solutions //= 2
-        string = f"({Values.total_number_of_constants}, {BVDD.total_number_of_solutions}, "
+        string = f"({BVDD.total_number_of_constants}, {BVDD.total_number_of_solutions}, "
         string += f"{BVDD.max_number_of_solutions}, {BVDD.number_of_solutions}, {BVDD.avg_number_of_solutions}, "
         string += f"{Expression.total_number_of_generated_expressions}) {message}"
         print_message(string, step, level)
