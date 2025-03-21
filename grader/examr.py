@@ -27,7 +27,7 @@ def get_vectors(strings):
 
     return Laser().embed_sentences(corpus, lang=languages)
 
-# requires: pip3 install sklearn
+# requires: pip3 install scikit-learn
 
 from sklearn.metrics.pairwise import cosine_similarity
 
