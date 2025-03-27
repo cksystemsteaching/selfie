@@ -366,6 +366,60 @@ class Array(Sort):
         return tm.mk_array_sort(self.array_size_line.get_bitwuzla(tm),
             self.element_size_line.get_bitwuzla(tm))
 
+class Exit:
+    def number_of_inputs(self):
+        return 0
+
+    def number_of_exits(self, exits = {}):
+        if self in exits:
+            return exits, 0
+        else:
+            return exits | {self:None}, 1
+
+    def has_exit(self, exit):
+        return self is exit
+
+    def extract(self, exit):
+        if self is exit:
+            return exit
+        else:
+            return Constant.false
+
+    def dealias(self, aliases):
+        if self in aliases:
+            return aliases[self]
+        else:
+            return self
+
+    def reduce(self):
+        return self
+
+    def get_mapped_exit(self, bvdd, new_exits, inorder = True):
+        old_exit = (self, bvdd) if inorder else (bvdd, self)
+        if old_exit in new_exits:
+            return new_exits, new_exits[old_exit]
+        else:
+            new_exit = Exit()
+            return new_exits | {old_exit:new_exit}, new_exit
+
+    def apply_binary(self, bvdd, binary_exits = {}, inorder = True):
+        if isinstance(bvdd, Exit):
+            return self.get_mapped_exit(bvdd, binary_exits, inorder)
+        else:
+            return bvdd.apply_binary(self, binary_exits, not inorder)
+
+    def merge(self, bvdd, merge_exits = {}, inorder = True):
+        assert bvdd is None
+        return self.get_mapped_exit(None, merge_exits, inorder)
+
+    def exclude(self, bvdd, exclude_exits = {}):
+        return self.get_mapped_exit(bvdd, exclude_exits)
+
+    def get_expression(self, values):
+        assert self in values.exits, f"exit {self} not in values {values}"
+        return Constd(next_nid(), values.sid_line, int(values.exits[self]),
+            "domain-propagated value", 0)
+
 class BVDD:
     # a bitvector decision diagram (BVDD) is
     # a reduced ordered algebraic decision diagram (ROADD)
@@ -382,12 +436,10 @@ class BVDD:
     avg_number_of_solutions = 0
     total_number_of_solutions = 0
 
-    total_number_of_constants = 0
-
     def __init__(self, var_line):
         self.var_line = var_line
         self.inputs = 0
-        self.inputs_or_outputs = {}
+        self.exits = {}
 
     def get_input_values(inputs):
         input_value = 0
@@ -401,263 +453,230 @@ class BVDD:
 
     def __str__(self):
         string = ""
-        for inputs_or_output in self.inputs_or_outputs:
-            for input_value in BVDD.get_input_values(self.inputs_or_outputs[inputs_or_output]):
+        for exit in self.exits:
+            for input_value in BVDD.get_input_values(self.exits[exit]):
                 if string:
                     string += ",\n"
                 string += f"{input_value}"
-                if BVDD.is_inputs(inputs_or_output):
-                    string += f" & {inputs_or_output}"
+                if isinstance(exit, BVDD):
+                    string += f" & {exit}"
                 else:
-                    string += f" -> {inputs_or_output}"
+                    string += f" -> {exit}"
         return f"{{{string}}}"
 
     def __lt__(self, bvdd):
         # for sorting BVDDs when generating expressions for value sets
         return id(self) < id(bvdd)
 
-    def get_BVDD(sid_line, value_or_var_line):
-        if isinstance(value_or_var_line, bool) or isinstance(value_or_var_line, int):
-            assert sid_line.is_unsigned_value(value_or_var_line)
-            BVDD.total_number_of_constants += 1
-            return value_or_var_line
-        else:
-            assert isinstance(value_or_var_line, Variable)
-            bvdd = BVDD(value_or_var_line)
-            if isinstance(value_or_var_line.sid_line, Bool):
-                bvdd.set_input(value_or_var_line.sid_line, 2**0, False)
-                bvdd.set_input(value_or_var_line.sid_line, 2**1, True)
-            else:
-                for value in range(2**value_or_var_line.sid_line.size):
-                    bvdd.set_input(value_or_var_line.sid_line, 2**value, value)
-            BVDD.total_number_of_constants += 2**value_or_var_line.sid_line.size
-            return bvdd
-
-    def number_of_inputs(bvdd):
-        if BVDD.is_output(bvdd):
-            return 0
-        else:
-            assert BVDD.is_inputs(bvdd)
-            n = 0
-            for inputs_or_output in bvdd.inputs_or_outputs:
-                n += bvdd.inputs_or_outputs[inputs_or_output].bit_count()
-                n += BVDD.number_of_inputs(inputs_or_output)
+    def number_of_inputs(self):
+        n = 0
+        for exit in self.exits:
+            n += self.exits[exit].bit_count()
+            n += exit.number_of_inputs()
         return n
+
+    def number_of_exits(self, exits = {}):
+        n = 0
+        for exit in self.exits:
+            exits, m = exit.number_of_exits(exits)
+            n += m
+        return exits, n
 
     def is_always_false(bvdd):
         if bvdd is Constant.false:
             return True
         else:
-            assert isinstance(bvdd, bool) or BVDD.is_inputs(bvdd)
+            assert isinstance(bvdd, Exit) or isinstance(bvdd, BVDD)
             return False
 
     def is_always_true(bvdd):
-        if isinstance(bvdd, bool):
+        if isinstance(bvdd, Exit):
             return True
         else:
-            assert bvdd is Constant.false or BVDD.is_inputs(bvdd)
+            assert bvdd is Constant.false or isinstance(bvdd, BVDD)
             return False
 
-    def is_inputs(bvdd):
-        if isinstance(bvdd, BVDD):
-            return True
-        else:
-            assert isinstance(bvdd, bool) or isinstance(bvdd, int)
-            return False
-
-    def is_output(bvdd):
-        if isinstance(bvdd, bool) or isinstance(bvdd, int):
-            return True
-        else:
-            assert BVDD.is_inputs(bvdd)
-            return False
-
-    def set_input(self, sid_line, input_values, inputs_or_output):
-        assert 0 < input_values < 2**2**self.var_line.sid_line.size
-        assert not (input_values & self.inputs)
-        if inputs_or_output is not Constant.false:
-            self.inputs |= input_values
-            if inputs_or_output not in self.inputs_or_outputs:
-                self.inputs_or_outputs[inputs_or_output] = input_values
+    def set_input(self, inputs, exit):
+        assert 0 < inputs < 2**2**self.var_line.sid_line.size
+        assert not (inputs & self.inputs)
+        if exit is not Constant.false:
+            self.inputs |= inputs
+            if exit not in self.exits:
+                self.exits[exit] = inputs
             else:
-                assert not (input_values & self.inputs_or_outputs[inputs_or_output])
-                self.inputs_or_outputs[inputs_or_output] |= input_values
-            if BVDD.is_output(inputs_or_output):
-                assert sid_line.is_unsigned_value(inputs_or_output)
-                BVDD.number_of_solutions += input_values.bit_count()
+                assert not (inputs & self.exits[exit])
+                self.exits[exit] |= inputs
+            if isinstance(exit, Exit):
+                BVDD.number_of_solutions += inputs.bit_count()
         return self
 
-    def reduce(bvdd):
-        if BVDD.is_inputs(bvdd):
-            if not bvdd.inputs:
-                return Constant.false
-            elif len(bvdd.inputs_or_outputs) == 1:
-                # children are all isomorphic
-                if next(iter(bvdd.inputs_or_outputs.values())) == 2**2**bvdd.var_line.sid_line.size - 1:
-                    # remove bvdds that have all children and all children are isomorphic
-                    return next(iter(bvdd.inputs_or_outputs.keys()))
-            # assert: all children are non-isomorphic due to hashing equivalent objects to the same hash
-        return bvdd
+    def has_exit(self, bvdd_exit):
+        for exit in self.exits:
+            if exit.has_exit(bvdd_exit):
+                return True
+        return False
 
-    def get_inputs_for_output(self, sid_line, output):
-        inputs = BVDD(self.var_line)
-        for inputs_or_output in self.inputs_or_outputs:
-            if BVDD.is_output(inputs_or_output):
-                if inputs_or_output == output:
-                    inputs.set_input(sid_line, self.inputs_or_outputs[inputs_or_output], output)
+    def extract(self, bvdd_exit):
+        bvdd = BVDD(self.var_line)
+        for exit in self.exits:
+            bvdd.set_input(self.exits[exit], exit.extract(bvdd_exit))
+        return bvdd.reduce()
+
+    def dealias(self, aliases):
+        bvdd = BVDD(self.var_line)
+        for exit in self.exits:
+            inputs = self.exits[exit]
+            if isinstance(exit, tuple):
+                new_exit = aliases[exit] if exit in aliases else exit
             else:
-                assert BVDD.is_inputs(inputs_or_output)
-                inputs.set_input(sid_line, self.inputs_or_outputs[inputs_or_output],
-                    inputs_or_output.get_inputs_for_output(sid_line, output))
-        return BVDD.reduce(inputs)
+                new_exit = exit.dealias(aliases)
+            bvdd.set_input(inputs, new_exit)
+        return bvdd.reduce()
 
-    def apply_unary(self, sid_line, op):
-        inputs = BVDD(self.var_line)
-        for inputs_or_output in self.inputs_or_outputs:
-            inputs.set_input(sid_line, self.inputs_or_outputs[inputs_or_output],
-                BVDD.apply(sid_line, op, inputs_or_output))
-        return BVDD.reduce(inputs)
+    def reduce(self):
+        if not self.inputs:
+            return Constant.false
+        elif len(self.exits) == 1:
+            # children are all isomorphic
+            if next(iter(self.exits.values())) == 2**2**self.var_line.sid_line.size - 1:
+                # remove bvdds that have all children and all children are isomorphic
+                return next(iter(self.exits.keys()))
+        # assert: all children are non-isomorphic due to hashing equivalent objects to the same hash
+        return self
 
-    def apply_binary(self, sid_line, op, bvdd):
-        assert BVDD.is_inputs(bvdd)
-        if self.var_line > bvdd.var_line:
-            inputs = BVDD(bvdd.var_line)
-            for inputs_or_output in bvdd.inputs_or_outputs:
-                inputs.set_input(sid_line, bvdd.inputs_or_outputs[inputs_or_output],
-                    BVDD.apply(sid_line, op, self, inputs_or_output))
+    def apply_binary(self, bvdd, binary_exits = {}, inorder = True):
+        if isinstance(bvdd, Exit):
+            binary_bvdd = BVDD(self.var_line)
+            for exit in self.exits:
+                binary_exits, new_bvdd = exit.apply_binary(bvdd, binary_exits, inorder)
+                binary_bvdd.set_input(self.exits[exit], new_bvdd)
         else:
-            inputs = BVDD(self.var_line)
-            if self.var_line < bvdd.var_line:
-                for inputs_or_output in self.inputs_or_outputs:
-                    inputs.set_input(sid_line, self.inputs_or_outputs[inputs_or_output],
-                        BVDD.apply(sid_line, op, inputs_or_output, bvdd))
+            assert isinstance(bvdd, BVDD)
+            if self.var_line > bvdd.var_line:
+                binary_bvdd = BVDD(bvdd.var_line)
+                for exit in bvdd.exits:
+                    binary_exits, new_bvdd = self.apply_binary(exit, binary_exits)
+                    binary_bvdd.set_input(bvdd.exits[exit], new_bvdd)
             else:
-                for inputs_or_output1 in self.inputs_or_outputs:
-                    input_values1 = self.inputs_or_outputs[inputs_or_output1] & bvdd.inputs
-                    if input_values1:
-                        for inputs_or_output2 in bvdd.inputs_or_outputs:
-                            input_values2 = input_values1 & bvdd.inputs_or_outputs[inputs_or_output2]
-                            if input_values2:
-                                inputs.set_input(sid_line, input_values2,
-                                    BVDD.apply(sid_line, op, inputs_or_output1, inputs_or_output2))
-                                input_values1 &= ~bvdd.inputs_or_outputs[inputs_or_output2]
-        return BVDD.reduce(inputs)
-
-    def apply(sid_line, op, bvdd1, bvdd2 = None):
-        if bvdd2 is None:
-            if BVDD.is_output(bvdd1):
-                return op(bvdd1)
-            else:
-                assert BVDD.is_inputs(bvdd1)
-                return bvdd1.apply_unary(sid_line, op)
-        else:
-            if BVDD.is_output(bvdd1):
-                if BVDD.is_output(bvdd2):
-                    return op(bvdd1, bvdd2)
+                binary_bvdd = BVDD(self.var_line)
+                if self.var_line < bvdd.var_line:
+                    for exit in self.exits:
+                        binary_exits, new_bvdd = exit.apply_binary(bvdd, binary_exits)
+                        binary_bvdd.set_input(self.exits[exit], new_bvdd)
                 else:
-                    assert BVDD.is_inputs(bvdd2)
-                    return bvdd2.apply_unary(sid_line, lambda y: op(bvdd1, y))
+                    assert self.var_line is bvdd.var_line
+                    for exit1 in self.exits:
+                        inputs1 = self.exits[exit1] & bvdd.inputs
+                        if inputs1:
+                            for exit2 in bvdd.exits:
+                                inputs2 = inputs1 & bvdd.exits[exit2]
+                                if inputs2:
+                                    binary_exits, new_bvdd = exit1.apply_binary(exit2, binary_exits)
+                                    binary_bvdd.set_input(inputs2, new_bvdd)
+                                    inputs1 &= ~bvdd.exits[exit2]
+        return binary_exits, binary_bvdd.reduce()
+
+    def merge(self, bvdd, merge_exits = {}, inorder = True):
+        if bvdd is None:
+            merge_bvdd = BVDD(self.var_line)
+            for exit in self.exits:
+                merge_exits, new_bvdd = exit.merge(None, merge_exits, inorder)
+                merge_bvdd.set_input(self.exits[exit], new_bvdd)
+        else:
+            assert isinstance(bvdd, BVDD)
+            if self.var_line > bvdd.var_line:
+                return bvdd.merge(self, merge_exits, not inorder)
             else:
-                assert BVDD.is_inputs(bvdd1)
-                if BVDD.is_output(bvdd2):
-                    return bvdd1.apply_unary(sid_line, lambda x: op(x, bvdd2))
+                merge_bvdd = BVDD(self.var_line)
+                if self.var_line < bvdd.var_line:
+                    for exit in self.exits:
+                        # assert: intersection of self and bvdd is empty
+                        assert isinstance(exit, BVDD)
+                        merge_exits, new_bvdd = exit.merge(bvdd, merge_exits, inorder)
+                        merge_bvdd.set_input(self.exits[exit], new_bvdd)
+                    if self.inputs < 2**2**self.var_line.sid_line.size - 1:
+                        inputs = 2**2**self.var_line.sid_line.size - 1 - self.inputs
+                        merge_exits, new_bvdd = bvdd.merge(None, merge_exits, not inorder)
+                        merge_bvdd.set_input(inputs, new_bvdd)
                 else:
-                    assert BVDD.is_inputs(bvdd2)
-                    return bvdd1.apply_binary(sid_line, op, bvdd2)
+                    assert self.var_line is bvdd.var_line
+                    for exit1 in self.exits:
+                        inputs1 = self.exits[exit1]
+                        if inputs1 & bvdd.inputs:
+                            for exit2 in bvdd.exits:
+                                inputs2 = inputs1 & bvdd.exits[exit2]
+                                if inputs2:
+                                    # assert: intersection of self and bvdd is empty
+                                    assert isinstance(exit1, BVDD)
+                                    assert isinstance(exit2, BVDD)
+                                    merge_exits, new_bvdd = exit1.merge(exit2, merge_exits, inorder)
+                                    merge_bvdd.set_input(inputs2, new_bvdd)
+                                    inputs1 &= ~bvdd.exits[exit2]
+                        if inputs1:
+                            merge_exits, new_bvdd = exit1.merge(None, merge_exits, inorder)
+                            merge_bvdd.set_input(inputs1, new_bvdd)
+                    for exit2 in bvdd.exits:
+                        inputs2 = bvdd.exits[exit2] & ~self.inputs
+                        if inputs2:
+                            merge_exits, new_bvdd = exit2.merge(None, merge_exits, not inorder)
+                            merge_bvdd.set_input(inputs2, new_bvdd)
+        return merge_exits, merge_bvdd.reduce()
 
-    def merge(self, sid_line, bvdd):
-        assert BVDD.is_inputs(bvdd)
-        if self.var_line > bvdd.var_line:
-            return bvdd.merge(sid_line, self)
-        else:
-            inputs = BVDD(self.var_line)
-            if self.var_line < bvdd.var_line:
-                for inputs_or_output in self.inputs_or_outputs:
-                    # assert: intersection of self and bvdd is empty
-                    assert BVDD.is_inputs(inputs_or_output)
-                    inputs.set_input(sid_line, self.inputs_or_outputs[inputs_or_output],
-                        inputs_or_output.merge(sid_line, bvdd))
-                if self.inputs < 2**2**self.var_line.sid_line.size - 1:
-                    input_values = 2**2**self.var_line.sid_line.size - 1 - self.inputs
-                    inputs.set_input(sid_line, input_values, bvdd)
-            else:
-                assert self.var_line is bvdd.var_line
-                for inputs_or_output1 in self.inputs_or_outputs:
-                    input_values1 = self.inputs_or_outputs[inputs_or_output1]
-                    if input_values1 & bvdd.inputs:
-                        for inputs_or_output2 in bvdd.inputs_or_outputs:
-                            input_values2 = input_values1 & bvdd.inputs_or_outputs[inputs_or_output2]
-                            if input_values2:
-                                # assert: intersection of self and bvdd is empty
-                                assert BVDD.is_inputs(inputs_or_output1)
-                                assert BVDD.is_inputs(inputs_or_output2)
-                                inputs.set_input(sid_line, input_values2,
-                                    inputs_or_output1.merge(sid_line, inputs_or_output2))
-                                input_values1 &= ~bvdd.inputs_or_outputs[inputs_or_output2]
-                    if input_values1:
-                        inputs.set_input(sid_line, input_values1, inputs_or_output1)
-                for inputs_or_output2 in bvdd.inputs_or_outputs:
-                    input_values2 = bvdd.inputs_or_outputs[inputs_or_output2] & ~self.inputs
-                    if input_values2:
-                        inputs.set_input(sid_line, input_values2, inputs_or_output2)
-        return BVDD.reduce(inputs)
-
-    def exclude_binary(self, sid_line, bvdd):
-        assert BVDD.is_inputs(bvdd)
-        if self.var_line > bvdd.var_line:
-            inputs = BVDD(bvdd.var_line)
-            for inputs_or_output in bvdd.inputs_or_outputs:
-                inputs.set_input(sid_line, bvdd.inputs_or_outputs[inputs_or_output],
-                    BVDD.exclude(sid_line, self, inputs_or_output))
-        else:
-            inputs = BVDD(self.var_line)
-            if self.var_line < bvdd.var_line:
-                for inputs_or_output in self.inputs_or_outputs:
-                    inputs.set_input(sid_line, self.inputs_or_outputs[inputs_or_output],
-                        BVDD.exclude(sid_line, inputs_or_output, bvdd))
-            else:
-                for inputs_or_output1 in self.inputs_or_outputs:
-                    input_values1 = self.inputs_or_outputs[inputs_or_output1]
-                    if input_values1 & bvdd.inputs:
-                        for inputs_or_output2 in bvdd.inputs_or_outputs:
-                            input_values2 = input_values1 & bvdd.inputs_or_outputs[inputs_or_output2]
-                            if input_values2:
-                                inputs.set_input(sid_line, input_values2,
-                                    BVDD.exclude(sid_line, inputs_or_output1, inputs_or_output2))
-                                input_values1 &= ~bvdd.inputs_or_outputs[inputs_or_output2]
-                    if input_values1:
-                        inputs.set_input(sid_line, input_values1, inputs_or_output1)
-        return BVDD.reduce(inputs)
-
-    def exclude(sid_line, bvdd1, bvdd2):
-        if BVDD.is_output(bvdd2):
+    def exclude(self, bvdd, exclude_exits = {}):
+        if isinstance(bvdd, Exit):
             return Constant.false
         else:
-            assert BVDD.is_inputs(bvdd2)
-            if BVDD.is_output(bvdd1):
-                return bvdd1
+            if bvdd is None:
+                exclude_bvdd = BVDD(self.var_line)
+                for exit in self.exits:
+                    exclude_exits, new_bvdd = exit.exclude(None, exclude_exits)
+                    exclude_bvdd.set_input(self.exits[exit], new_bvdd)
             else:
-                assert BVDD.is_inputs(bvdd1)
-                return bvdd1.exclude_binary(sid_line, bvdd2)
+                assert isinstance(bvdd, BVDD)
+                if self.var_line > bvdd.var_line:
+                    exclude_bvdd = BVDD(bvdd.var_line)
+                    for exit in bvdd.exits:
+                        exclude_exits, new_bvdd = self.exclude(exit, exclude_exits)
+                        exclude_bvdd.set_input(bvdd.exits[exit], new_bvdd)
+                else:
+                    exclude_bvdd = BVDD(self.var_line)
+                    if self.var_line < bvdd.var_line:
+                        for exit in self.exits:
+                            exclude_exits, new_bvdd = exit.exclude(bvdd, exclude_exits)
+                            exclude_bvdd.set_input(self.exits[exit], new_bvdd)
+                    else:
+                        assert self.var_line is bvdd.var_line
+                        for exit1 in self.exits:
+                            inputs1 = self.exits[exit1]
+                            if inputs1 & bvdd.inputs:
+                                for exit2 in bvdd.exits:
+                                    inputs2 = inputs1 & bvdd.exits[exit2]
+                                    if inputs2:
+                                        exclude_exits, new_bvdd = exit1.exclude(exit2, exclude_exits)
+                                        exclude_bvdd.set_input(inputs2, new_bvdd)
+                                        inputs1 &= ~bvdd.exits[exit2]
+                            if inputs1:
+                                exclude_exits, new_bvdd = exit1.exclude(None, exclude_exits)
+                                exclude_bvdd.set_input(inputs1, new_bvdd)
+            return exclude_exits, exclude_bvdd.reduce()
 
-    def get_expression(self, sid_line):
+    def get_expression(self, values):
         inputs_sid_line = Bitvec(next_nid(), 2**self.var_line.sid_line.size,
             self.var_line.comment, self.var_line.line_no)
         inputs_zero_line = Constd(next_nid(), inputs_sid_line, 0,
             self.var_line.comment, self.var_line.line_no)
         inputs_one_line = Constd(next_nid(), inputs_sid_line, 1,
             self.var_line.comment, self.var_line.line_no)
-        exp_line = Zero(next_nid(), sid_line, "unreachable-value", "unreachable value", 0)
+        exp_line = Zero(next_nid(), values.sid_line, "unreachable-value", "unreachable value", 0)
         # TODO: check if sorting is necessary for consistency
-        booleans = sorted([key for key in self.inputs_or_outputs if isinstance(key, bool)])
-        integers = sorted([key for key in self.inputs_or_outputs if isinstance(key, int) and not isinstance(key, bool)])
-        bvdds = sorted([key for key in self.inputs_or_outputs if isinstance(key, BVDD)])
-        assert len(booleans + integers + bvdds) == len(self.inputs_or_outputs)
-        for inputs_or_output in booleans + integers + bvdds:
-            if self.inputs_or_outputs[inputs_or_output].bit_count() == 1:
+        exits = sorted([key for key in self.exits if isinstance(key, Exit)])
+        bvdds = sorted([key for key in self.exits if isinstance(key, BVDD)])
+        assert len(exits + bvdds) == len(self.exits)
+        for exit in exits + bvdds:
+            if self.exits[exit].bit_count() == 1:
                 comparison_line = Comparison(next_nid(), OP_EQ, Bool.boolean,
                     Constd(next_nid(), self.var_line.sid_line,
-                        int(math.log2(self.inputs_or_outputs[inputs_or_output])),
+                        int(math.log2(self.exits[exit])),
                         self.var_line.comment, self.var_line.line_no),
                     self.var_line,
                     self.var_line.comment, self.var_line.line_no)
@@ -665,7 +684,7 @@ class BVDD:
                 comparison_line = Comparison(next_nid(), OP_NEQ, Bool.boolean,
                     Logical(next_nid(), OP_AND, inputs_sid_line,
                         Constd(next_nid(), inputs_sid_line,
-                            self.inputs_or_outputs[inputs_or_output],
+                            self.exits[exit],
                             self.var_line.comment, self.var_line.line_no),
                         Computation(next_nid(), OP_SLL, inputs_sid_line,
                             inputs_one_line,
@@ -676,20 +695,16 @@ class BVDD:
                         self.var_line.comment, self.var_line.line_no),
                     inputs_zero_line,
                     self.var_line.comment, self.var_line.line_no)
-            exp_line = Ite(next_nid(), sid_line,
+            exp_line = Ite(next_nid(), values.sid_line,
                 comparison_line,
-                BVDD.get_bvdd_expression(sid_line, inputs_or_output),
+                exit.get_expression(values),
                 exp_line,
                 self.var_line.comment, self.var_line.line_no)
         return exp_line
 
-    def get_bvdd_expression(sid_line, bvdd):
-        if BVDD.is_output(bvdd):
-            return Constd(next_nid(), sid_line, int(bvdd), "domain-propagated value", 0)
-        else:
-            return bvdd.get_expression(sid_line)
 
 class Values:
+    total_number_of_constants = 0
 
     false = None
     true = None
@@ -698,46 +713,88 @@ class Values:
         assert isinstance(sid_line, Bitvector)
         self.sid_line = sid_line
         self.values = None
+        self.exits = None
+        self.bvdd = Constant.false
 
     def __str__(self):
-        return f"{self.sid_line}: {self.values}"
-
-    def __hash__(self):
-        return id(self)
+        return f"{self.sid_line}: {self.values} {self.exits} {self.bvdd}"
 
     def match_sorts(self, values):
         return self.sid_line.match_sorts(values.sid_line)
 
     def is_equal(self, values):
-        return type(self) is type(values) and self.match_sorts(values) and self.values == values.values
+        return type(self) is type(values) and self.match_sorts(values) and self.values == values.values and self.bvdd == values.bvdd
 
     def number_of_inputs(self):
-        return BVDD.number_of_inputs(self.values)
+        return BVDD.number_of_inputs(self.bvdd)
 
-    def set_values(self, sid_line, values_or_var_line):
-        assert self.sid_line.match_sorts(sid_line)
-        if values_or_var_line is Constant.false:
-            self.values = None
-        elif isinstance(values_or_var_line, BVDD):
-            self.values = values_or_var_line
+    def is_consistent(self):
+        if len(self.values) != len(self.exits):
+            return False
+        elif len(self.values) != self.bvdd.number_of_exits()[1]:
+            return False
         else:
-            assert isinstance(values_or_var_line, bool) or isinstance(values_or_var_line, int) or isinstance(values_or_var_line, Variable)
-            self.values = BVDD.get_BVDD(sid_line, values_or_var_line)
+            for value in self.values:
+                if self.values[value] not in self.exits:
+                    return False
+                elif self.exits[self.values[value]] != value:
+                    return False
+                elif not self.bvdd.has_exit(self.values[value]):
+                    return False
+            return True
+
+    def set_values(self, sid_line, values_or_var_line, exits = None, bvdd = None):
+        assert self.sid_line.match_sorts(sid_line)
+        if isinstance(values_or_var_line, bool) or isinstance(values_or_var_line, int):
+            assert sid_line.is_unsigned_value(values_or_var_line)
+            self.bvdd = Exit()
+            self.values = {values_or_var_line:self.bvdd}
+            self.exits = {self.bvdd:values_or_var_line}
+            Values.total_number_of_constants += 1
+        elif isinstance(values_or_var_line, Variable):
+            self.bvdd = BVDD(values_or_var_line)
+            if isinstance(values_or_var_line.sid_line, Bool):
+                false_exit = Exit()
+                true_exit = Exit()
+                self.values = {False:false_exit, True:true_exit}
+                self.exits = {false_exit:False, true_exit:True}
+                self.bvdd.set_input(2**0, false_exit)
+                self.bvdd.set_input(2**1, true_exit)
+            else:
+                self.values = {}
+                self.exits = {}
+                for value in range(2**values_or_var_line.sid_line.size):
+                    value_exit = Exit()
+                    self.values |= {value:value_exit}
+                    self.exits |= {value_exit:value}
+                    self.bvdd.set_input(2**value, value_exit)
+            Values.total_number_of_constants += 2**values_or_var_line.sid_line.size
+        else:
+            assert isinstance(values_or_var_line, dict) and isinstance(exits, dict) and (isinstance(bvdd, Exit) or isinstance(bvdd, BVDD))
+            self.values = values_or_var_line
+            self.exits = exits
+            self.bvdd = bvdd
         return self
 
     def get_false_constraint(self):
         assert isinstance(self.sid_line, Bool)
-        if BVDD.is_output(self.values):
-            return False if self.values is False else Constant.false
+        if False in self.values:
+            if True in self.values:
+                return self.bvdd.extract(self.values[False])
+            else:
+                return self.bvdd
         else:
-            return self.values.get_inputs_for_output(self.sid_line, False)
+            return Constant.false
 
     def get_true_constraint(self):
         assert isinstance(self.sid_line, Bool)
-        if BVDD.is_output(self.values):
-            return True if self.values is True else Constant.false
+        if True in self.values:
+            if False in self.values:
+                return self.bvdd.extract(self.values[True])
+            else:
+                return self.bvdd
         else:
-            return self.values.get_inputs_for_output(self.sid_line, True)
+            return Constant.false
 
     def get_boolean_constraints(self):
         assert isinstance(self.sid_line, Bool)
@@ -746,14 +803,31 @@ class Values:
     def get_expression(self):
         # naive transition from domain propagation to bit blasting
         assert isinstance(self.sid_line, Bitvector)
-        return BVDD.get_bvdd_expression(self.sid_line, self.values)
+        return self.bvdd.get_expression(self)
 
     # per-value semantics of value sets
 
     # unary operators
 
+    def compute_unary(self, sid_line, op):
+        new_values = {}
+        new_exits = {}
+        aliases = {}
+        for value in self.values:
+            exit = self.values[value]
+            op_value = op(value)
+            assert sid_line.is_unsigned_value(op_value)
+            if op_value in new_values:
+                aliases |= {exit:new_values[op_value]}
+            else:
+                new_values |= {op_value:exit}
+                new_exits |= {exit:op_value}
+        return new_values, new_exits, aliases
+
     def apply_unary(self, sid_line, op):
-        return Values(sid_line).set_values(sid_line, BVDD.apply(sid_line, op, self.values))
+        new_values, new_exits, aliases = self.compute_unary(sid_line, op)
+        return Values(sid_line).set_values(sid_line,
+            new_values, new_exits, self.bvdd.dealias(aliases))
 
     def SignExt(self, sid_line):
         assert isinstance(self.sid_line, Bitvec)
@@ -789,8 +863,42 @@ class Values:
 
     # binary operators
 
+    def compute_binary(self, sid_line, values, op, exits):
+        new_values = {}
+        new_exits = {}
+        aliases = {}
+        for exit in exits:
+            if op is None:
+                if values is None or exit[1] is None:
+                    assert isinstance(exit[0], Exit)
+                    # ignore right exit of merge, constrain, and exclude
+                    op_value = self.exits[exit[0]]
+                else:
+                    assert isinstance(values, Values)
+                    assert exit[0] is None and isinstance(exit[1], Exit)
+                    # ignore left exit of merge
+                    op_value = values.exits[exit[1]]
+            else:
+                assert isinstance(values, Values)
+                assert isinstance(exit[0], Exit) and isinstance(exit[1], Exit)
+                op_value = op(self.exits[exit[0]], values.exits[exit[1]])
+                assert sid_line.is_unsigned_value(op_value)
+            if op_value in new_values:
+                aliases |= {exits[exit]:new_values[op_value]}
+            else:
+                new_values |= {op_value:exits[exit]}
+                new_exits |= {exits[exit]:op_value}
+        return new_values, new_exits, aliases
+
     def apply_binary(self, sid_line, values, op):
-        return Values(sid_line).set_values(sid_line, BVDD.apply(sid_line, op, self.values, values.values))
+        assert isinstance(values, Values)
+        exits, bvdd = self.bvdd.apply_binary(values.bvdd)
+        if bvdd is Constant.false:
+            # TODO: check whether reachable
+            return Values(sid_line)
+        else:
+            new_values, new_exits, aliases = self.compute_binary(sid_line, values, op, exits)
+            return Values(sid_line).set_values(sid_line, new_values, new_exits, bvdd.dealias(aliases))
 
     def FALSE():
         if Values.false is None:
@@ -964,14 +1072,23 @@ class Values:
 
     def constrain(self, constraint):
         assert not BVDD.is_always_false(constraint)
-        return Values(self.sid_line).set_values(self.sid_line,
-            BVDD.apply(self.sid_line, lambda x, y: x, self.values, constraint))
+        exits, bvdd = self.bvdd.apply_binary(constraint)
+        if bvdd is Constant.false:
+            # TODO: check whether reachable
+            return Values(self.sid_line)
+        else:
+            new_values, new_exits, aliases = self.compute_binary(self.sid_line, None, None, exits)
+            assert not aliases
+            return Values(self.sid_line).set_values(self.sid_line, new_values, new_exits, bvdd)
 
     def merge(self, values):
         assert isinstance(values, Values)
         assert self.match_sorts(values)
-        assert BVDD.is_inputs(self.values) and BVDD.is_inputs(values.values)
-        return Values(self.sid_line).set_values(self.sid_line, self.values.merge(self.sid_line, values.values))
+        assert isinstance(self.bvdd, BVDD) and isinstance(values.bvdd, BVDD)
+        exits, bvdd = self.bvdd.merge(values.bvdd)
+        assert bvdd is not Constant.false
+        new_values, new_exits, aliases = self.compute_binary(self.sid_line, values, None, exits)
+        return Values(self.sid_line).set_values(self.sid_line, new_values, new_exits, bvdd.dealias(aliases))
 
     def If(self, values2, values3):
         false_constraint, true_constraint = self.get_boolean_constraints()
@@ -993,8 +1110,11 @@ class Values:
         if BVDD.is_always_false(constraint):
             return self
         else:
-            return Values(self.sid_line).set_values(self.sid_line,
-                BVDD.exclude(self.sid_line, self.values, constraint))
+            exits, bvdd = self.bvdd.exclude(constraint)
+            assert bvdd is not Constant.false
+            new_values, new_exits, aliases = self.compute_binary(self.sid_line, None, None, exits)
+            assert not aliases
+            return Values(self.sid_line).set_values(self.sid_line, new_values, new_exits, bvdd)
 
 class Expression(Line):
     total_number_of_generated_expressions = 0
@@ -5363,7 +5483,7 @@ def print_message_with_propagation_profile(message, step = None, level = None):
         BVDD.avg_number_of_solutions += BVDD.number_of_solutions
         if BVDD.avg_number_of_solutions > BVDD.number_of_solutions:
             BVDD.avg_number_of_solutions //= 2
-        string = f"({BVDD.total_number_of_constants}, {BVDD.total_number_of_solutions}, "
+        string = f"({Values.total_number_of_constants}, {BVDD.total_number_of_solutions}, "
         string += f"{BVDD.max_number_of_solutions}, {BVDD.number_of_solutions}, {BVDD.avg_number_of_solutions}, "
         string += f"{Expression.total_number_of_generated_expressions}) {message}"
         print_message(string, step, level)
