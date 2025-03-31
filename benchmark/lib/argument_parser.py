@@ -6,7 +6,8 @@ def init_parser():
     parser.add_argument(
         '-m', '--model-type',
         required=False,
-        help="Specify models, you can find available models in config and add new ones"
+        help="Specify models, you can find available models in config and add new ones",
+        default="starc-32bit-riscv-smt"
     )
 
     parser.add_argument(

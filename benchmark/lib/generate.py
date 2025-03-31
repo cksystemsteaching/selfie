@@ -1,4 +1,4 @@
-from .checks import execute
+from .checks import execute, is_tool_available
 from .print import custom_exit
 from .model_config_parser import ModelConfig, ModelConfigParser
 import lib.config as cfg
@@ -6,6 +6,7 @@ from pathlib import Path
 
 import shutil
 from queue import Queue
+from typing import List, Dict, Any
 
 def create_model(source_file: str, model_type: str, output: str = ""):
     """
@@ -42,7 +43,6 @@ def create_models_from_dir(source_dir: str, model_type: str, output: str = ""):
         output_paths.append(create_model(file.resolve(), model_type, output))
 
     return output_paths
-
 
 class BaseSourceProcessor:
     def __init__(self, model_config: ModelConfig):
@@ -81,7 +81,11 @@ class GenericSourceProcessor(BaseSourceProcessor):
     def __init__(self, model_config: ModelConfig):
         super().__init__(model_config)
 
-    def compile_source(self):
+    def check_compiler(self) -> bool:
+        self.compiler = self.model_config.compilation_command.split()[0]
+        return is_tool_available(self.compiler)
+
+    def compile_source(self) -> bool:
         """
         Compiles source into RISC-V machine code using compiler defined in config.
         Invokes Rotor using command defined in config.
@@ -91,15 +95,22 @@ class GenericSourceProcessor(BaseSourceProcessor):
         """
         self.compiled_source = self.model_config.source_file.with_suffix(".out")
 
+        if not self.check_compiler():
+            return False
+
         returncode, output = execute(
             self.model_config.compilation_command.format(
                 source_file=self.model_config.source_file,
                 output_machine_code=self.compiled_source
             )
         )
+        return True
 
     def generate_model(self):
-        self.compile_source()
+        if not self.compile_source():
+            print(f"Warning: Compiler {self.compiler} not available")
+            return
+
         returncode, output = execute(
             self.model_config.model_generation_command.format(
                 rotor=cfg.rotor_path,
@@ -127,25 +138,84 @@ def generate_all_examples() -> None:
     Output directory is also specified by a config file.
     """
     clean_examples()
+    models = get_all_models()
 
-    q = Queue(maxsize=0)
-    q.put((cfg.config["models"], []))
+    for model in models:
+        parts = model.split("-")
+        # All but the last part
+        model_name = "-".join(parts[:-1])
 
-    while not q.empty():
-        curr_val = q.get()
-        for key, value in curr_val[0].items():
+        # Just the last part
+        model_suffix = parts[-1]
+
+        files = [file for file in cfg.examples_dir.iterdir()]
+        for file in files:
+            if file.suffix != ".c":
+                continue
+            output_dir = Path(cfg.models_dir) / model
+            output = output_dir / Path(file.stem + "-" + model_name + "." + model_suffix)
+            print(f"Output: {output}")
+            create_model(file, model, output)
+
+
+def get_all_models(path_str: str = "") -> List[str]:
+    """
+    Traverse the nested 'models' dictionary under cfg.config, drilling down
+    according to a dash-delimited path (e.g., "starc-64bit-riscv"). Collect
+    all model types for which a 'command' key is found.
+
+    For example, if path_str is "starc-64bit", we go to:
+        cfg.config["models"]["starc"]["64bit"]
+    and then search every sub-dictionary below it for 'command'.
+
+    Args:
+        path_str (str): A dash-delimited path specifying a nested location
+                        in cfg.config["models"]. If empty, we stay at the
+                        top level (i.e., "models").
+
+    Returns:
+        List[str]: A list of model types. Each entry is a dash-delimited path
+                   of keys (e.g., "riscv-btor2") leading to a 'command' node.
+                   Returns an empty list if the specified path does not exist
+                   or if no 'command' keys are found.
+    """
+    model_types: List[str] = []
+
+    # Start at the top-level "models" dictionary. Use .get() to avoid KeyError
+    # if "models" is missing; default to an empty dict in that case.
+    models_dict: Dict[str, Any] = cfg.config.get("models", {})
+
+    # Only split path_str if it's non-empty; otherwise, remain at the top level.
+    path_segments = path_str.split("-") if path_str else []
+
+    # Safely drill down into the nested dictionary according to path_segments.
+    current_node: Dict[str, Any] = models_dict
+    for segment in path_segments:
+        # Check that segment is a valid key and is still a dictionary
+        if segment in current_node and isinstance(current_node[segment], dict):
+            current_node = current_node[segment]
+        else:
+            # If the segment doesn't exist or isn't a dictionary, bail out.
+            return []
+
+    # Use a queue to traverse the dictionary (BFS) below our current_node.
+    # We'll look for any sub-node containing a key "command".
+    queue = Queue()
+    queue.put((current_node, []))  # (dict_node, path_keys_so_far)
+
+    while not queue.empty():
+        dict_node, path_keys = queue.get()
+
+        for key, value in dict_node.items():
             if isinstance(value, dict):
-                q.put((value, curr_val[1] + [key]))
+                # If it's another dict, enqueue it for further exploration
+                queue.put((value, path_keys + [key]))
             else:
-                if key == 'command':
-                    # Provide a model type based on config file structure
-                    model_type = "-".join(curr_val[1])
-                    # Generate output directory based on config file structure and base models directory
-                    output_dir = f"{cfg.models_dir}" + "/" + "/".join(curr_val[1])
+                # If it's not a dict, check if this key is "command"
+                if key == "command":
+                    # Build the dash-delimited path from path_keys
+                    # (the last key is "command", so we omit it)
+                    model_type = "-".join(path_keys)
+                    model_types.append(model_type)
 
-                    files = [file for file in cfg.examples_dir.iterdir()]
-                    for file in files:
-                        if file.suffix != ".c":
-                            continue
-                        output = output_dir + "/" + file.stem + "." + curr_val[1][-1]
-                        create_model(file, model_type, output)
+    return model_types
