@@ -35,6 +35,7 @@ def init_parser():
     parser.add_argument(
         '--output', '-o',
         required=False,
+        default="",
         help="output"
     )
 

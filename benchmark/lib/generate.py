@@ -2,10 +2,10 @@ from .checks import execute
 from .print import custom_exit
 from .model_config_parser import ModelConfig, ModelConfigParser
 import lib.config as cfg
+from pathlib import Path
 
 import shutil
 from queue import Queue
-
 
 def create_model(source_file: str, model_type: str, output: str = ""):
     """
@@ -13,7 +13,7 @@ def create_model(source_file: str, model_type: str, output: str = ""):
 
     Process of generation differs based on a language used (C* is compiled by Rotor itelf).
     Other languages need to be compiled to RISC-V machine code before model can be generated.
- 
+
     Returns:
     str: path of generated model
     """
@@ -27,6 +27,21 @@ def create_model(source_file: str, model_type: str, output: str = ""):
 
     print(f"Generated model: {model_config.output}")
     return model
+
+
+def create_models_from_dir(source_dir: str, model_type: str, output: str = ""):
+    """
+    Create models from all `.c` files found in a specified directory.
+    """
+    print(f"Generating models from directory: {source_dir}")
+    output_paths = []
+    files = [file for file in Path(source_dir).iterdir()]
+    for file in files:
+        if file.suffix != ".c":
+            continue
+        output_paths.append(create_model(file.resolve(), model_type, output))
+
+    return output_paths
 
 
 class BaseSourceProcessor:
