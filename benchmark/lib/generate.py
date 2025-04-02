@@ -36,7 +36,7 @@ def create_model(source_file: str, model_type_base: str, output: str = ""):
     return models
 
 
-def create_models_from_dir(source_dir: str, model_type: str, output: str = ""):
+def create_models_from_dir(source_dir: str, model_type_base: str, output: str = ""):
     """
     Create models from all `.c` files found in a specified directory.
     """
@@ -46,7 +46,7 @@ def create_models_from_dir(source_dir: str, model_type: str, output: str = ""):
     for file in files:
         if file.suffix != ".c":
             continue
-        output_paths.append(create_model(file.resolve(), model_type, output))
+        output_paths.append(create_model(file.resolve(), model_type_base, output))
 
     return output_paths
 

@@ -1,6 +1,6 @@
 from lib.exceptions import ToolNotAvailableError, DirectoryNotFoundError, InternalToolNotAvailableError, TimeoutException
 import lib.config as cfg
-from lib.generate import generate_all_examples, clean_examples, create_model, create_models_from_dir, get_all_models
+from lib.generate import generate_all_examples, clean_examples, create_model, create_models_from_dir, get_all_model_types
 from lib.print import custom_exit
 import lib.argument_parser as arg_parser
 from lib.solver import Z3Solver
@@ -12,10 +12,6 @@ if __name__ == "__main__":
     try:
         parser = arg_parser.init_parser()
         args = parser.parse_args()
-
-        models = get_all_models("starc-64bit")
-        for model in models:
-            print(model)
 
         if len(sys.argv) <= 1:
             parser.print_help()
@@ -29,11 +25,11 @@ if __name__ == "__main__":
             generate_all_examples()
             custom_exit("Generated all examples sucessfuly")
 
-        if args.model_type and args.source:
+        if args.model_base and args.source:
             if os.path.isdir(args.source):
-                model_paths = create_models_from_dir(args.source, args.model_type, args.output)
+                model_paths = create_models_from_dir(args.source, args.model_base, args.output)
             else:
-                model_path = create_model(args.source, args.model_type, args.output)
+                model_path = create_model(args.source, args.model_base, args.output)
 
             if args.benchmark:
                 Z3Solver(model_path).benchmark()

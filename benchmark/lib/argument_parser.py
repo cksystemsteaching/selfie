@@ -4,7 +4,7 @@ def init_parser():
     parser = argparse.ArgumentParser(description="Tool for generating SMT models from RISC-V machine code and benchmarking SMT solvers using these models")
 
     parser.add_argument(
-        '-m', '--model-type',
+        '-m', '--model-base',
         required=False,
         help="Specify models, you can find available models in config and add new ones",
         default="starc-32bit-riscv-smt"
