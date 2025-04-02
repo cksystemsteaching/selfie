@@ -118,6 +118,8 @@ def check_bitwise_and_or_not() -> List[Check]:
     return list(flatmap(check_instruction, [AND_INSTRUCTION, OR_INSTRUCTION, NOT_INSTRUCTION])) + \
         check_mipster_execution('precedence.c', 42,
                                 'bitwise and, or & not ' + ' operators respect the precedence of the C operators: &,|,~') + \
+        check_mipster_execution('precedence3.c', 42,
+                                'bitwise and, or & not ' + ' operators respect the precedence of the C operators: &,|,~') + \
         check_mipster_execution('precedence2.c', 42,
                                 'bitwise and, or & not ' + ' operators respect the precedence of the C operators: +,-')
 
