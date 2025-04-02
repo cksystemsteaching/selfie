@@ -8,7 +8,7 @@ import shutil
 from queue import Queue
 from typing import List, Dict, Any
 
-def create_model(source_file: str, model_type: str, output: str = ""):
+def create_model(source_file: str, model_type_base: str, output: str = ""):
     """
     Generates a model from a provided source file.
 
@@ -18,16 +18,22 @@ def create_model(source_file: str, model_type: str, output: str = ""):
     Returns:
     str: path of generated model
     """
-    model_config = ModelConfigParser(source_file, model_type, output).get_config()
+    model_types = get_all_model_types(model_type_base)
 
-    print(f"Generating model from the source: {model_config.source_file}")
-    if not model_config.compilation_command:
-        model = CStarSourceProcessor(model_config).generate_model()
-    else:
-        model = GenericSourceProcessor(model_config).generate_model()
+    models = []
+    for model_type in model_types:
+        model_config = ModelConfigParser(source_file, model_type, output).get_config()
 
-    print(f"Generated model: {model_config.output}")
-    return model
+        print(f"Generating model from the source: {model_config.source_file}")
+        if not model_config.compilation_command:
+            model = CStarSourceProcessor(model_config).generate_model()
+        else:
+            model = GenericSourceProcessor(model_config).generate_model()
+
+        print(f"Generated model: {model_config.output}")
+        models.append(model)
+
+    return models
 
 
 def create_models_from_dir(source_dir: str, model_type: str, output: str = ""):
@@ -138,7 +144,7 @@ def generate_all_examples() -> None:
     Output directory is also specified by a config file.
     """
     clean_examples()
-    models = get_all_models()
+    models = get_all_model_types()
 
     for model in models:
         parts = model.split("-")
@@ -158,7 +164,7 @@ def generate_all_examples() -> None:
             create_model(file, model, output)
 
 
-def get_all_models(path_str: str = "") -> List[str]:
+def get_all_model_types(path_base: str = "") -> List[str]:
     """
     Traverse the nested 'models' dictionary under cfg.config, drilling down
     according to a dash-delimited path (e.g., "starc-64bit-riscv"). Collect
@@ -186,7 +192,7 @@ def get_all_models(path_str: str = "") -> List[str]:
     models_dict: Dict[str, Any] = cfg.config.get("models", {})
 
     # Only split path_str if it's non-empty; otherwise, remain at the top level.
-    path_segments = path_str.split("-") if path_str else []
+    path_segments = path_base.split("-") if path_base else []
 
     # Safely drill down into the nested dictionary according to path_segments.
     current_node: Dict[str, Any] = models_dict
@@ -215,7 +221,7 @@ def get_all_models(path_str: str = "") -> List[str]:
                 if key == "command":
                     # Build the dash-delimited path from path_keys
                     # (the last key is "command", so we omit it)
-                    model_type = "-".join(path_keys)
+                    model_type = path_base + "-" + "-".join(path_keys)
                     model_types.append(model_type)
 
     return model_types
