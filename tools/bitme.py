@@ -367,6 +367,21 @@ class Array(Sort):
             self.element_size_line.get_bitwuzla(tm))
 
 class Exit:
+    bump = 0
+    exits = {}
+
+    def new():
+        if Exit.bump not in Exit.exits:
+            exit = Exit()
+            Exit.exits[Exit.bump] = exit
+        else:
+            exit = Exit.exits[Exit.bump]
+        Exit.bump += 1
+        return exit
+
+    def free():
+        Exit.bump = 0
+
     def number_of_inputs(self):
         return 0
 
@@ -399,8 +414,22 @@ class Exit:
         if old_exit in new_exits:
             return new_exits, new_exits[old_exit]
         else:
-            new_exit = Exit()
+            new_exit = Exit.new()
             return new_exits | {old_exit:new_exit}, new_exit
+
+    def compute_unary(self, sid_line, op, old_exits, new_values = None, new_exits = None):
+        new_values = {} if new_values is None else new_values
+        new_exits = {} if new_exits is None else new_exits
+        new_value = op(old_exits[self])
+        assert sid_line.is_unsigned_value(new_value)
+        if new_value in new_values:
+            new_exit = new_values[new_value]
+        else:
+            new_exit = Exit.new()
+            assert new_exit not in new_exits
+            new_values |= {new_value:new_exit}
+            new_exits |= {new_exit:new_value}
+        return new_values, new_exits, new_exit
 
     def apply_binary(self, bvdd, binary_exits = {}, inorder = True):
         if isinstance(bvdd, Exit):
@@ -526,10 +555,7 @@ class BVDD:
         bvdd = BVDD(self.var_line)
         for exit in self.exits:
             inputs = self.exits[exit]
-            if isinstance(exit, tuple):
-                new_exit = aliases[exit] if exit in aliases else exit
-            else:
-                new_exit = exit.dealias(aliases)
+            new_exit = exit.dealias(aliases)
             bvdd.set_input(inputs, new_exit)
         return bvdd.reduce()
 
@@ -543,6 +569,14 @@ class BVDD:
                 return next(iter(self.exits.keys()))
         # assert: all children are non-isomorphic due to hashing equivalent objects to the same hash
         return self
+
+    def compute_unary(self, sid_line, op, old_exits, new_values = None, new_exits = None):
+        unary_bvdd = BVDD(self.var_line)
+        for exit in self.exits:
+            new_values, new_exits, new_bvdd = exit.compute_unary(sid_line, op,
+                old_exits, new_values, new_exits)
+            unary_bvdd.set_input(self.exits[exit], new_bvdd)
+        return new_values, new_exits, unary_bvdd.reduce()
 
     def apply_binary(self, bvdd, binary_exits = {}, inorder = True):
         if isinstance(bvdd, Exit):
@@ -705,6 +739,7 @@ class BVDD:
 
 class Values:
     total_number_of_constants = 0
+    max_number_of_values = 0
 
     false = None
     true = None
@@ -747,15 +782,15 @@ class Values:
         assert self.sid_line.match_sorts(sid_line)
         if isinstance(values_or_var_line, bool) or isinstance(values_or_var_line, int):
             assert sid_line.is_unsigned_value(values_or_var_line)
-            self.bvdd = Exit()
+            self.bvdd = Exit.new()
             self.values = {values_or_var_line:self.bvdd}
             self.exits = {self.bvdd:values_or_var_line}
             Values.total_number_of_constants += 1
         elif isinstance(values_or_var_line, Variable):
             self.bvdd = BVDD(values_or_var_line)
             if isinstance(values_or_var_line.sid_line, Bool):
-                false_exit = Exit()
-                true_exit = Exit()
+                false_exit = Exit.new()
+                true_exit = Exit.new()
                 self.values = {False:false_exit, True:true_exit}
                 self.exits = {false_exit:False, true_exit:True}
                 self.bvdd.set_input(2**0, false_exit)
@@ -764,7 +799,7 @@ class Values:
                 self.values = {}
                 self.exits = {}
                 for value in range(2**values_or_var_line.sid_line.size):
-                    value_exit = Exit()
+                    value_exit = Exit.new()
                     self.values |= {value:value_exit}
                     self.exits |= {value_exit:value}
                     self.bvdd.set_input(2**value, value_exit)
@@ -774,6 +809,9 @@ class Values:
             self.values = values_or_var_line
             self.exits = exits
             self.bvdd = bvdd
+        Values.max_number_of_values = max(Values.max_number_of_values, len(self.values))
+        # for debugging assert self.is_consistent():
+        Exit.free()
         return self
 
     def get_false_constraint(self):
@@ -809,25 +847,9 @@ class Values:
 
     # unary operators
 
-    def compute_unary(self, sid_line, op):
-        new_values = {}
-        new_exits = {}
-        aliases = {}
-        for value in self.values:
-            exit = self.values[value]
-            op_value = op(value)
-            assert sid_line.is_unsigned_value(op_value)
-            if op_value in new_values:
-                aliases |= {exit:new_values[op_value]}
-            else:
-                new_values |= {op_value:exit}
-                new_exits |= {exit:op_value}
-        return new_values, new_exits, aliases
-
     def apply_unary(self, sid_line, op):
-        new_values, new_exits, aliases = self.compute_unary(sid_line, op)
-        return Values(sid_line).set_values(sid_line,
-            new_values, new_exits, self.bvdd.dealias(aliases))
+        new_values, new_exits, new_bvdd = self.bvdd.compute_unary(sid_line, op, self.exits)
+        return Values(sid_line).set_values(sid_line, new_values, new_exits, new_bvdd)
 
     def SignExt(self, sid_line):
         assert isinstance(self.sid_line, Bitvec)
@@ -5483,7 +5505,8 @@ def print_message_with_propagation_profile(message, step = None, level = None):
         BVDD.avg_number_of_solutions += BVDD.number_of_solutions
         if BVDD.avg_number_of_solutions > BVDD.number_of_solutions:
             BVDD.avg_number_of_solutions //= 2
-        string = f"({Values.total_number_of_constants}, {BVDD.total_number_of_solutions}, "
+        string = f"({Values.total_number_of_constants}, {Values.max_number_of_values}, "
+        string += f"{len(Exit.exits)}, {BVDD.total_number_of_solutions}, "
         string += f"{BVDD.max_number_of_solutions}, {BVDD.number_of_solutions}, {BVDD.avg_number_of_solutions}, "
         string += f"{Expression.total_number_of_generated_expressions}) {message}"
         print_message(string, step, level)
