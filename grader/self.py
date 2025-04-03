@@ -140,6 +140,8 @@ def check_logical_and_or_not() -> List[Check]:
         check_mipster_execution('advanced-logical-expressions.c', 42,
                                 'advanced boolean expressions work when executed with MIPSTER') + \
         check_mipster_execution('precedence.c', 42,
+                                'operator precedence works correctly when executed with MIPSTER') + \
+        check_mipster_execution('precedence2.c', 42,
                                 'operator precedence works correctly when executed with MIPSTER')
 
 
