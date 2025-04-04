@@ -766,7 +766,7 @@ class Values:
         return type(self) is type(values) and self.match_sorts(values) and self.values == values.values and self.bvdd == values.bvdd
 
     def number_of_inputs(self):
-        return BVDD.number_of_inputs(self.bvdd)
+        return self.bvdd.number_of_inputs()
 
     def is_consistent(self):
         if len(self.values) != len(self.exits):
@@ -816,7 +816,7 @@ class Values:
             self.bvdd = bvdd
         # assert self.bvdd is canonical
         Exit.free()
-        Values.current_number_of_inputs = max(Values.current_number_of_inputs, self.bvdd.number_of_inputs())
+        Values.current_number_of_inputs = max(Values.current_number_of_inputs, self.number_of_inputs())
         Values.max_number_of_values = max(Values.max_number_of_values, len(self.values))
         # for debugging assert self.is_consistent():
         return self
