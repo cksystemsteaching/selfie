@@ -385,7 +385,7 @@ class Exit:
     def __init__(self):
         self.bump = Exit.bump
 
-    def __str__(self):
+    def __repr__(self):
         return f"Exit({self.bump})"
 
     def number_of_inputs(self):
@@ -462,10 +462,7 @@ class BVDD:
     # Theta(2**n)-time set intersection and union with
     # O(2**n/n) and Omega(n*(2**n-1)/2**n) spatial overhead
 
-    number_of_solutions = 0
-    max_number_of_solutions = 0
-    avg_number_of_solutions = 0
-    total_number_of_solutions = 0
+    bvdds = {}
 
     def __init__(self, var_line):
         self.var_line = var_line
@@ -495,6 +492,14 @@ class BVDD:
                     string += f" -> {exit}"
         return f"{{{string}}}"
 
+    def __hash__(self):
+        return hash((self.var_line, self.inputs, tuple(self.exits)))
+
+    def __eq__(self, bvdd):
+        return (isinstance(bvdd, BVDD) and
+            self.var_line is bvdd.var_line and
+            self.inputs == bvdd.inputs and
+            self.exits == bvdd.exits)
 
     def number_of_inputs(self):
         n = 0
@@ -534,8 +539,6 @@ class BVDD:
             else:
                 assert not (inputs & self.exits[exit])
                 self.exits[exit] |= inputs
-            if not isinstance(exit, BVDD):
-                BVDD.number_of_solutions += inputs.bit_count()
         return self
 
     def has_exit(self, bvdd_exit):
@@ -562,7 +565,9 @@ class BVDD:
             # sort children by inputs to obtain canonical BVDDs
             self.exits = dict(sorted(self.exits.items(), key=lambda x: x[1]))
         # assert: all children are non-isomorphic due to hashing equivalent objects to the same hash
-        return self
+        if self not in BVDD.bvdds:
+            BVDD.bvdds[self] = self
+        return BVDD.bvdds[self]
 
     def compute_unary(self, sid_line, op, old_exits, new_values = None, new_exits = None):
         unary_bvdd = BVDD(self.var_line)
@@ -738,6 +743,7 @@ class BVDD:
 
 class Values:
     total_number_of_constants = 0
+    current_number_of_inputs = 0
     max_number_of_values = 0
 
     false = None
@@ -809,9 +815,10 @@ class Values:
             self.exits = exits
             self.bvdd = bvdd
         # assert self.bvdd is canonical
+        Exit.free()
+        Values.current_number_of_inputs = max(Values.current_number_of_inputs, self.bvdd.number_of_inputs())
         Values.max_number_of_values = max(Values.max_number_of_values, len(self.values))
         # for debugging assert self.is_consistent():
-        Exit.free()
         return self
 
     def get_false_constraint(self):
@@ -5475,18 +5482,11 @@ def print_message(message, step = None, level = None):
 
 def print_message_with_propagation_profile(message, step = None, level = None):
     if Instance.PROPAGATE is not None:
-
-        BVDD.total_number_of_solutions += BVDD.number_of_solutions
-        BVDD.max_number_of_solutions = max(BVDD.max_number_of_solutions, BVDD.number_of_solutions)
-        BVDD.avg_number_of_solutions += BVDD.number_of_solutions
-        if BVDD.avg_number_of_solutions > BVDD.number_of_solutions:
-            BVDD.avg_number_of_solutions //= 2
-        string = f"({Values.total_number_of_constants}, {Values.max_number_of_values}, "
-        string += f"{len(Exit.exits)}, {BVDD.total_number_of_solutions}, "
-        string += f"{BVDD.max_number_of_solutions}, {BVDD.number_of_solutions}, {BVDD.avg_number_of_solutions}, "
+        string = f"({Values.total_number_of_constants}, {Values.current_number_of_inputs}, "
+        string += f"{Values.max_number_of_values}, {len(Exit.exits)}, {len(BVDD.bvdds)}, "
         string += f"{Expression.total_number_of_generated_expressions}) {message}"
         print_message(string, step, level)
-        BVDD.number_of_solutions = 0
+        Values.current_number_of_inputs = 0
     else:
         print_message(message, step, level)
 
