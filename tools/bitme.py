@@ -395,35 +395,20 @@ class Exit:
         return self is exit
 
     def extract(self, exit):
-        if self is exit:
+        if self.has_exit(exit):
             return exit
         else:
             return Constant.false
 
-    def dealias(self, aliases):
-        if self in aliases:
-            return aliases[self]
-        else:
-            return self
-
     def reduce(self):
         return self
 
-    def get_mapped_exit(self, bvdd, new_exits, inorder = True):
-        old_exit = (self, bvdd) if inorder else (bvdd, self)
-        if old_exit in new_exits:
-            return new_exits, new_exits[old_exit]
-        else:
-            new_exit = Exit.new()
-            return new_exits | {old_exit:new_exit}, new_exit
-
-    def compute_unary(self, sid_line, op, old_exits, new_values = None, new_exits = None):
+    def dealias(new_value, new_values, new_exits):
         new_values = {} if new_values is None else new_values
         new_exits = {} if new_exits is None else new_exits
-        new_value = op(old_exits[self])
-        assert sid_line.is_unsigned_value(new_value)
         if new_value in new_values:
             new_exit = new_values[new_value]
+            assert new_exit in new_exits
         else:
             new_exit = Exit.new()
             assert new_exit not in new_exits
@@ -431,18 +416,29 @@ class Exit:
             new_exits |= {new_exit:new_value}
         return new_values, new_exits, new_exit
 
-    def apply_binary(self, bvdd, binary_exits = {}, inorder = True):
-        if isinstance(bvdd, Exit):
-            return self.get_mapped_exit(bvdd, binary_exits, inorder)
+    def compute_unary(self, sid_line, op, old_exits, new_values = None, new_exits = None):
+        new_value = op(old_exits[self])
+        assert sid_line.is_unsigned_value(new_value)
+        return Exit.dealias(new_value, new_values, new_exits)
+
+    def get_binary_exit(self, bvdd, inorder = True):
+        if inorder:
+            return self, bvdd
         else:
-            return bvdd.apply_binary(self, binary_exits, not inorder)
+            return bvdd, self
 
-    def merge(self, bvdd, merge_exits = {}, inorder = True):
+    def apply_binary(self, bvdd, inorder = True):
+        if isinstance(bvdd, Exit):
+            return self.get_binary_exit(bvdd, inorder)
+        else:
+            return bvdd.apply_binary(self, not inorder)
+
+    def merge(self, bvdd, inorder = True):
         assert bvdd is None
-        return self.get_mapped_exit(None, merge_exits, inorder)
+        return self.get_binary_exit(None, inorder)
 
-    def exclude(self, bvdd, exclude_exits = {}):
-        return self.get_mapped_exit(bvdd, exclude_exits)
+    def exclude(self, bvdd):
+        return self.get_binary_exit(bvdd)
 
     def get_expression(self, values):
         assert self in values.exits, f"exit {self} not in values {values}"
@@ -535,7 +531,7 @@ class BVDD:
             else:
                 assert not (inputs & self.exits[exit])
                 self.exits[exit] |= inputs
-            if isinstance(exit, Exit):
+            if not isinstance(exit, BVDD):
                 BVDD.number_of_solutions += inputs.bit_count()
         return self
 
@@ -549,14 +545,6 @@ class BVDD:
         bvdd = BVDD(self.var_line)
         for exit in self.exits:
             bvdd.set_input(self.exits[exit], exit.extract(bvdd_exit))
-        return bvdd.reduce()
-
-    def dealias(self, aliases):
-        bvdd = BVDD(self.var_line)
-        for exit in self.exits:
-            inputs = self.exits[exit]
-            new_exit = exit.dealias(aliases)
-            bvdd.set_input(inputs, new_exit)
         return bvdd.reduce()
 
     def reduce(self):
@@ -578,25 +566,45 @@ class BVDD:
             unary_bvdd.set_input(self.exits[exit], new_bvdd)
         return new_values, new_exits, unary_bvdd.reduce()
 
-    def apply_binary(self, bvdd, binary_exits = {}, inorder = True):
+    def compute_binary(bvdd, sid_line, op, left_exits, right_exits, new_values = None, new_exits = None):
+        if isinstance(bvdd, tuple):
+            if op is None:
+                if bvdd[1] is None or right_exits is None:
+                    # ignore right exit of constrain, merge, and exclude
+                    new_value = left_exits[bvdd[0]]
+                else:
+                    assert bvdd[0] is None
+                    # ignore left exit of merge
+                    new_value = right_exits[bvdd[1]]
+            else:
+                new_value = op(left_exits[bvdd[0]], right_exits[bvdd[1]])
+                assert sid_line.is_unsigned_value(new_value)
+            return Exit.dealias(new_value, new_values, new_exits)
+        else:
+            assert isinstance(bvdd, BVDD)
+            binary_bvdd = BVDD(bvdd.var_line)
+            for exit in bvdd.exits:
+                new_values, new_exits, new_bvdd = BVDD.compute_binary(exit, sid_line, op,
+                    left_exits, right_exits, new_values, new_exits)
+                binary_bvdd.set_input(bvdd.exits[exit], new_bvdd)
+            return new_values, new_exits, binary_bvdd.reduce()
+
+    def apply_binary(self, bvdd, inorder = True):
         if isinstance(bvdd, Exit):
             binary_bvdd = BVDD(self.var_line)
             for exit in self.exits:
-                binary_exits, new_bvdd = exit.apply_binary(bvdd, binary_exits, inorder)
-                binary_bvdd.set_input(self.exits[exit], new_bvdd)
+                binary_bvdd.set_input(self.exits[exit], exit.apply_binary(bvdd, inorder))
         else:
             assert isinstance(bvdd, BVDD)
             if self.var_line > bvdd.var_line:
                 binary_bvdd = BVDD(bvdd.var_line)
                 for exit in bvdd.exits:
-                    binary_exits, new_bvdd = self.apply_binary(exit, binary_exits)
-                    binary_bvdd.set_input(bvdd.exits[exit], new_bvdd)
+                    binary_bvdd.set_input(bvdd.exits[exit], self.apply_binary(exit))
             else:
                 binary_bvdd = BVDD(self.var_line)
                 if self.var_line < bvdd.var_line:
                     for exit in self.exits:
-                        binary_exits, new_bvdd = exit.apply_binary(bvdd, binary_exits)
-                        binary_bvdd.set_input(self.exits[exit], new_bvdd)
+                        binary_bvdd.set_input(self.exits[exit], exit.apply_binary(bvdd))
                 else:
                     assert self.var_line is bvdd.var_line
                     for exit1 in self.exits:
@@ -605,33 +613,29 @@ class BVDD:
                             for exit2 in bvdd.exits:
                                 inputs2 = inputs1 & bvdd.exits[exit2]
                                 if inputs2:
-                                    binary_exits, new_bvdd = exit1.apply_binary(exit2, binary_exits)
-                                    binary_bvdd.set_input(inputs2, new_bvdd)
+                                    binary_bvdd.set_input(inputs2, exit1.apply_binary(exit2))
                                     inputs1 &= ~bvdd.exits[exit2]
-        return binary_exits, binary_bvdd.reduce()
+        return binary_bvdd.reduce()
 
-    def merge(self, bvdd, merge_exits = {}, inorder = True):
+    def merge(self, bvdd, inorder = True):
         if bvdd is None:
             merge_bvdd = BVDD(self.var_line)
             for exit in self.exits:
-                merge_exits, new_bvdd = exit.merge(None, merge_exits, inorder)
-                merge_bvdd.set_input(self.exits[exit], new_bvdd)
+                merge_bvdd.set_input(self.exits[exit], exit.merge(None, inorder))
         else:
             assert isinstance(bvdd, BVDD)
             if self.var_line > bvdd.var_line:
-                return bvdd.merge(self, merge_exits, not inorder)
+                return bvdd.merge(self, not inorder)
             else:
                 merge_bvdd = BVDD(self.var_line)
                 if self.var_line < bvdd.var_line:
                     for exit in self.exits:
                         # assert: intersection of self and bvdd is empty
                         assert isinstance(exit, BVDD)
-                        merge_exits, new_bvdd = exit.merge(bvdd, merge_exits, inorder)
-                        merge_bvdd.set_input(self.exits[exit], new_bvdd)
+                        merge_bvdd.set_input(self.exits[exit], exit.merge(bvdd, inorder))
                     if self.inputs < 2**2**self.var_line.sid_line.size - 1:
                         inputs = 2**2**self.var_line.sid_line.size - 1 - self.inputs
-                        merge_exits, new_bvdd = bvdd.merge(None, merge_exits, not inorder)
-                        merge_bvdd.set_input(inputs, new_bvdd)
+                        merge_bvdd.set_input(inputs, bvdd.merge(None, not inorder))
                 else:
                     assert self.var_line is bvdd.var_line
                     for exit1 in self.exits:
@@ -643,41 +647,35 @@ class BVDD:
                                     # assert: intersection of self and bvdd is empty
                                     assert isinstance(exit1, BVDD)
                                     assert isinstance(exit2, BVDD)
-                                    merge_exits, new_bvdd = exit1.merge(exit2, merge_exits, inorder)
-                                    merge_bvdd.set_input(inputs2, new_bvdd)
+                                    merge_bvdd.set_input(inputs2, exit1.merge(exit2, inorder))
                                     inputs1 &= ~bvdd.exits[exit2]
                         if inputs1:
-                            merge_exits, new_bvdd = exit1.merge(None, merge_exits, inorder)
-                            merge_bvdd.set_input(inputs1, new_bvdd)
+                            merge_bvdd.set_input(inputs1, exit1.merge(None, inorder))
                     for exit2 in bvdd.exits:
                         inputs2 = bvdd.exits[exit2] & ~self.inputs
                         if inputs2:
-                            merge_exits, new_bvdd = exit2.merge(None, merge_exits, not inorder)
-                            merge_bvdd.set_input(inputs2, new_bvdd)
-        return merge_exits, merge_bvdd.reduce()
+                            merge_bvdd.set_input(inputs2, exit2.merge(None, not inorder))
+        return merge_bvdd.reduce()
 
-    def exclude(self, bvdd, exclude_exits = {}):
+    def exclude(self, bvdd):
         if isinstance(bvdd, Exit):
             return Constant.false
         else:
             if bvdd is None:
                 exclude_bvdd = BVDD(self.var_line)
                 for exit in self.exits:
-                    exclude_exits, new_bvdd = exit.exclude(None, exclude_exits)
-                    exclude_bvdd.set_input(self.exits[exit], new_bvdd)
+                    exclude_bvdd.set_input(self.exits[exit], exit.exclude(None))
             else:
                 assert isinstance(bvdd, BVDD)
                 if self.var_line > bvdd.var_line:
                     exclude_bvdd = BVDD(bvdd.var_line)
                     for exit in bvdd.exits:
-                        exclude_exits, new_bvdd = self.exclude(exit, exclude_exits)
-                        exclude_bvdd.set_input(bvdd.exits[exit], new_bvdd)
+                        exclude_bvdd.set_input(bvdd.exits[exit], self.exclude(exit))
                 else:
                     exclude_bvdd = BVDD(self.var_line)
                     if self.var_line < bvdd.var_line:
                         for exit in self.exits:
-                            exclude_exits, new_bvdd = exit.exclude(bvdd, exclude_exits)
-                            exclude_bvdd.set_input(self.exits[exit], new_bvdd)
+                            exclude_bvdd.set_input(self.exits[exit], exit.exclude(bvdd))
                     else:
                         assert self.var_line is bvdd.var_line
                         for exit1 in self.exits:
@@ -686,13 +684,11 @@ class BVDD:
                                 for exit2 in bvdd.exits:
                                     inputs2 = inputs1 & bvdd.exits[exit2]
                                     if inputs2:
-                                        exclude_exits, new_bvdd = exit1.exclude(exit2, exclude_exits)
-                                        exclude_bvdd.set_input(inputs2, new_bvdd)
+                                        exclude_bvdd.set_input(inputs2, exit1.exclude(exit2))
                                         inputs1 &= ~bvdd.exits[exit2]
                             if inputs1:
-                                exclude_exits, new_bvdd = exit1.exclude(None, exclude_exits)
-                                exclude_bvdd.set_input(inputs1, new_bvdd)
-            return exclude_exits, exclude_bvdd.reduce()
+                                exclude_bvdd.set_input(inputs1, exit1.exclude(None))
+            return exclude_bvdd.reduce()
 
     def get_expression(self, values):
         inputs_sid_line = Bitvec(next_nid(), 2**self.var_line.sid_line.size,
@@ -885,42 +881,15 @@ class Values:
 
     # binary operators
 
-    def compute_binary(self, sid_line, values, op, exits):
-        new_values = {}
-        new_exits = {}
-        aliases = {}
-        for exit in exits:
-            if op is None:
-                if values is None or exit[1] is None:
-                    assert isinstance(exit[0], Exit)
-                    # ignore right exit of merge, constrain, and exclude
-                    op_value = self.exits[exit[0]]
-                else:
-                    assert isinstance(values, Values)
-                    assert exit[0] is None and isinstance(exit[1], Exit)
-                    # ignore left exit of merge
-                    op_value = values.exits[exit[1]]
-            else:
-                assert isinstance(values, Values)
-                assert isinstance(exit[0], Exit) and isinstance(exit[1], Exit)
-                op_value = op(self.exits[exit[0]], values.exits[exit[1]])
-                assert sid_line.is_unsigned_value(op_value)
-            if op_value in new_values:
-                aliases |= {exits[exit]:new_values[op_value]}
-            else:
-                new_values |= {op_value:exits[exit]}
-                new_exits |= {exits[exit]:op_value}
-        return new_values, new_exits, aliases
-
     def apply_binary(self, sid_line, values, op):
         assert isinstance(values, Values)
-        exits, bvdd = self.bvdd.apply_binary(values.bvdd)
-        if bvdd is Constant.false:
+        new_bvdd = self.bvdd.apply_binary(values.bvdd)
+        if new_bvdd is Constant.false:
             # TODO: check whether reachable
             return Values(sid_line)
-        else:
-            new_values, new_exits, aliases = self.compute_binary(sid_line, values, op, exits)
-            return Values(sid_line).set_values(sid_line, new_values, new_exits, bvdd.dealias(aliases))
+        new_values, new_exits, new_bvdd = BVDD.compute_binary(new_bvdd,
+            sid_line, op, self.exits, values.exits)
+        return Values(sid_line).set_values(sid_line, new_values, new_exits, new_bvdd)
 
     def FALSE():
         if Values.false is None:
@@ -1094,23 +1063,25 @@ class Values:
 
     def constrain(self, constraint):
         assert not BVDD.is_always_false(constraint)
-        exits, bvdd = self.bvdd.apply_binary(constraint)
-        if bvdd is Constant.false:
+        new_bvdd = self.bvdd.apply_binary(constraint)
+        if new_bvdd is Constant.false:
             # TODO: check whether reachable
             return Values(self.sid_line)
-        else:
-            new_values, new_exits, aliases = self.compute_binary(self.sid_line, None, None, exits)
-            assert not aliases
-            return Values(self.sid_line).set_values(self.sid_line, new_values, new_exits, bvdd)
+        new_values, new_exits, new_bvdd = BVDD.compute_binary(new_bvdd,
+            self.sid_line, None, self.exits, None)
+        return Values(self.sid_line).set_values(self.sid_line,
+            new_values, new_exits, new_bvdd)
 
     def merge(self, values):
         assert isinstance(values, Values)
         assert self.match_sorts(values)
         assert isinstance(self.bvdd, BVDD) and isinstance(values.bvdd, BVDD)
-        exits, bvdd = self.bvdd.merge(values.bvdd)
-        assert bvdd is not Constant.false
-        new_values, new_exits, aliases = self.compute_binary(self.sid_line, values, None, exits)
-        return Values(self.sid_line).set_values(self.sid_line, new_values, new_exits, bvdd.dealias(aliases))
+        new_bvdd = self.bvdd.merge(values.bvdd)
+        assert new_bvdd is not Constant.false
+        new_values, new_exits, new_bvdd = BVDD.compute_binary(new_bvdd,
+            self.sid_line, None, self.exits, values.exits)
+        return Values(self.sid_line).set_values(self.sid_line,
+            new_values, new_exits, new_bvdd)
 
     def If(self, values2, values3):
         false_constraint, true_constraint = self.get_boolean_constraints()
@@ -1132,11 +1103,12 @@ class Values:
         if BVDD.is_always_false(constraint):
             return self
         else:
-            exits, bvdd = self.bvdd.exclude(constraint)
-            assert bvdd is not Constant.false
-            new_values, new_exits, aliases = self.compute_binary(self.sid_line, None, None, exits)
-            assert not aliases
-            return Values(self.sid_line).set_values(self.sid_line, new_values, new_exits, bvdd)
+            new_bvdd = self.bvdd.exclude(constraint)
+            assert new_bvdd is not Constant.false
+            new_values, new_exits, new_bvdd = BVDD.compute_binary(new_bvdd,
+                self.sid_line, None, self.exits, None)
+            return Values(self.sid_line).set_values(self.sid_line,
+                new_values, new_exits, new_bvdd)
 
 class Expression(Line):
     total_number_of_generated_expressions = 0
