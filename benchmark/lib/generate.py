@@ -26,12 +26,12 @@ def create_model(source_file: str, model_type_base: str, output: str = ""):
 
         print(f"Generating model from the source: {model_config.source_file}")
         if not model_config.compilation_command:
-            model = CStarSourceProcessor(model_config).generate_model()
+            model_path = CStarSourceProcessor(model_config).generate_model()
         else:
-            model = GenericSourceProcessor(model_config).generate_model()
+            model_path = GenericSourceProcessor(model_config).generate_model()
 
         print(f"Generated model: {model_config.output}")
-        models.append(model)
+        models.append(model_path)
 
     return models
 
@@ -194,34 +194,38 @@ def get_all_model_types(path_base: str = "") -> List[str]:
     # Only split path_str if it's non-empty; otherwise, remain at the top level.
     path_segments = path_base.split("-") if path_base else []
 
-    # Safely drill down into the nested dictionary according to path_segments.
+    #Drill down into the nested dictionary according to path_segments.
     current_node: Dict[str, Any] = models_dict
     for segment in path_segments:
-        # Check that segment is a valid key and is still a dictionary
+        # Try to drill down
         if segment in current_node and isinstance(current_node[segment], dict):
             current_node = current_node[segment]
-        else:
-            # If the segment doesn't exist or isn't a dictionary, bail out.
-            return []
+        else: 
+            current_node = [None]
 
     # Use a queue to traverse the dictionary (BFS) below our current_node.
-    # We'll look for any sub-node containing a key "command".
     queue = Queue()
     queue.put((current_node, []))  # (dict_node, path_keys_so_far)
 
     while not queue.empty():
         dict_node, path_keys = queue.get()
 
-        for key, value in dict_node.items():
-            if isinstance(value, dict):
+        if not isinstance(dict_node,dict) or is_dict_of_strings(dict_node):
+            if path_keys:
+                model_type = f"{path_base}-{'-'.join(path_keys)}"
+            else:
+                model_type = path_base
+
+            model_types.append(model_type)
+
+        else:
+            for key, value in dict_node.items():
                 # If it's another dict, enqueue it for further exploration
                 queue.put((value, path_keys + [key]))
-            else:
-                # If it's not a dict, check if this key is "command"
-                if key == "command":
-                    # Build the dash-delimited path from path_keys
-                    # (the last key is "command", so we omit it)
-                    model_type = path_base + "-" + "-".join(path_keys)
-                    model_types.append(model_type)
-
+            
     return model_types
+
+def is_dict_of_strings(value):
+    if not isinstance(value, dict):
+        return False
+    return all(isinstance(k, str) and isinstance(v, str) for k, v in value.items())
