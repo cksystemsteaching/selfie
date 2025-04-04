@@ -382,6 +382,12 @@ class Exit:
     def free():
         Exit.bump = 0
 
+    def __init__(self):
+        self.bump = Exit.bump
+
+    def __str__(self):
+        return f"Exit({self.bump})"
+
     def number_of_inputs(self):
         return 0
 
@@ -489,9 +495,6 @@ class BVDD:
                     string += f" -> {exit}"
         return f"{{{string}}}"
 
-    def __lt__(self, bvdd):
-        # for sorting BVDDs when generating expressions for value sets
-        return id(self) < id(bvdd)
 
     def number_of_inputs(self):
         n = 0
@@ -555,6 +558,9 @@ class BVDD:
             if next(iter(self.exits.values())) == 2**2**self.var_line.sid_line.size - 1:
                 # remove bvdds that have all children and all children are isomorphic
                 return next(iter(self.exits.keys()))
+        else:
+            # sort children by inputs to obtain canonical BVDDs
+            self.exits = dict(sorted(self.exits.items(), key=lambda x: x[1]))
         # assert: all children are non-isomorphic due to hashing equivalent objects to the same hash
         return self
 
@@ -698,11 +704,8 @@ class BVDD:
         inputs_one_line = Constd(next_nid(), inputs_sid_line, 1,
             self.var_line.comment, self.var_line.line_no)
         exp_line = Zero(next_nid(), values.sid_line, "unreachable-value", "unreachable value", 0)
-        # TODO: check if sorting is necessary for consistency
-        exits = sorted([key for key in self.exits if isinstance(key, Exit)])
-        bvdds = sorted([key for key in self.exits if isinstance(key, BVDD)])
-        assert len(exits + bvdds) == len(self.exits)
-        for exit in exits + bvdds:
+        # assert self.exits are sorted by inputs
+        for exit in self.exits:
             if self.exits[exit].bit_count() == 1:
                 comparison_line = Comparison(next_nid(), OP_EQ, Bool.boolean,
                     Constd(next_nid(), self.var_line.sid_line,
@@ -805,6 +808,7 @@ class Values:
             self.values = values_or_var_line
             self.exits = exits
             self.bvdd = bvdd
+        # assert self.bvdd is canonical
         Values.max_number_of_values = max(Values.max_number_of_values, len(self.values))
         # for debugging assert self.is_consistent():
         Exit.free()
