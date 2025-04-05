@@ -5,8 +5,9 @@ examples_dir: "examples/symbolic"
 models_dir: "models"
 
 output_dir: "models"
-default_output: &default_output ""
+default_output: ""
 
+allowed_languages: [.c, .cstar]
 allowed_formats: [smt2,btor2]
 
 models:
@@ -15,39 +16,31 @@ models:
       riscv: 
         btor2:
           command: "{rotor} -c {source_file} - 1 -o {output}"
-          output: *default_output
 
         smt2: 
           command: "{rotor} -c {source_file}  - 1 -k -smt -nocomments -o {output}"
-          output: *default_output
       
       riscu:
         btor2:
           command: "{rotor} -c {source_file} - 1 -riscuonly -o {output}"
-          output: *default_output
 
         smt2: 
           command: "{rotor} -c {source_file} - 1 -riscuonly -k -smt -nocomments -o {output}"
-          output: *default_output
 
     32bit:
       riscv:
         btor2: 
           command: "{rotor} -m32 -c {source_file} - 1 -o {output}"
-          output: *default_output
 
         smt2: 
           command: "{rotor} -m32 -c {source_file} - 1 -k -smt -nocomments -o {output}"
-          output: *default_output
       
       riscu:
         btor2: 
           command: "{rotor} -m32 -c {source_file} - 1 -riscuonly -o {output}"
-          output: *default_output
 
         smt2: 
           command: "{rotor} -m32 -c {source_file} - 1 -k -smt -nocomments -o {output}"
-          output: *default_output
   gcc:
 
     rv64imac:
@@ -55,22 +48,18 @@ models:
       
       btor2: 
         command: "{rotor} -l {source_file} - 1 -o {output}"
-        output: *default_output
 
       smt2:
         command: "{rotor} -l {source_file} - 1 -k -smt -nocomments -o {output}"
-        output: *default_output
 
     rv32imac:
       compilation: "riscv64-unknown-elf-gcc -mabi=ilp32 -march=rv32imac -Wall -Wextra -D'uint64_t=unsigned long' {source_file} -o {output_machine_code}" 
 
       btor2: 
         command: "{rotor} -l {source_file} - 1 -o {output}"
-        output: *default_output
 
       smt2:
         command: "{rotor} -l {source_file} - 1 -k -smt -nocomments -o {output}"
-        output: *default_output
 
     rv32im:
       compilation: "riscv64-unknown-elf-gcc -mabi=ilp32 -march=rv32im -Wall -Wextra -D'uint64_t=unsigned long' {source_file} -o {output_machine_code}"
@@ -78,20 +67,16 @@ models:
       fullriscv:
         btor2: 
           command: "{rotor} -l {source_file} - 1 -o {output}"
-          output: *default_output
 
         smt2: 
           command: "{rotor} -l {source_file} - 1 -k -smt -nocomments -o {output}"
-          output: *default_output
 
       nocompressed:
         btor2: 
           command: "{rotor} -l {source_file} - 1 -noRVC -o {output}"
-          output: *default_output
 
         smt2: 
           command: "{rotor} -l {source_file} - 1 -noRVC -k -smt -nocomments -o {output}"
-          output: *default_output
     
     rv32i:
       compilation: "riscv64-unknown-elf-gcc -mabi=ilp32 -march=rv32i -Wall -Wextra -D'uint64_t=unsigned long' {source_file} -o {output_machine_code}"
@@ -100,19 +85,15 @@ models:
 
         btor2:
           command: "{rotor} -l {source_file} - 1 -o {output}"
-          output: *default_output
 
         smt2: 
           command: "{rotor} -l {source_file} - 1 -k -smt -nocomments -o {output}"
-          output: *default_output
 
       nocompressed:
       
         btor2: 
           command: "{rotor} -l {source_file} - 1 -noRVC -noRVM -o {output}"
-          output: *default_output
 
         smt2: 
           command: "{rotor} -l {source_file} - 1 -noRVC -noRVM -k -smt -nocomments -o {output}"
-          output: *default_output
 
