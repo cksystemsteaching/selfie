@@ -1,12 +1,11 @@
 from .checks import execute, is_tool_available
 from .print import custom_exit
 from .model_config_parser import ModelConfig, ModelConfigParser
+from .model_types import get_all_model_types
 import lib.config as cfg
 from pathlib import Path
 
 import shutil
-from queue import Queue
-from typing import List, Dict, Any
 
 def create_model(source_file: str, model_type_base: str, output: str = ""):
     """
@@ -162,70 +161,3 @@ def generate_all_examples() -> None:
             output = output_dir / Path(file.stem + "-" + model_name + "." + model_suffix)
             print(f"Output: {output}")
             create_model(file, model, output)
-
-
-def get_all_model_types(path_base: str = "") -> List[str]:
-    """
-    Traverse the nested 'models' dictionary under cfg.config, drilling down
-    according to a dash-delimited path (e.g., "starc-64bit-riscv"). Collect
-    all model types for which a 'command' key is found.
-
-    For example, if path_str is "starc-64bit", we go to:
-        cfg.config["models"]["starc"]["64bit"]
-    and then search every sub-dictionary below it for 'command'.
-
-    Args:
-        path_str (str): A dash-delimited path specifying a nested location
-                        in cfg.config["models"]. If empty, we stay at the
-                        top level (i.e., "models").
-
-    Returns:
-        List[str]: A list of model types. Each entry is a dash-delimited path
-                   of keys (e.g., "riscv-btor2") leading to a 'command' node.
-                   Returns an empty list if the specified path does not exist
-                   or if no 'command' keys are found.
-    """
-    model_types: List[str] = []
-
-    # Start at the top-level "models" dictionary. Use .get() to avoid KeyError
-    # if "models" is missing; default to an empty dict in that case.
-    models_dict: Dict[str, Any] = cfg.config.get("models", {})
-
-    # Only split path_str if it's non-empty; otherwise, remain at the top level.
-    path_segments = path_base.split("-") if path_base else []
-
-    #Drill down into the nested dictionary according to path_segments.
-    current_node: Dict[str, Any] = models_dict
-    for segment in path_segments:
-        # Try to drill down
-        if segment in current_node and isinstance(current_node[segment], dict):
-            current_node = current_node[segment]
-        else: 
-            current_node = [None]
-
-    # Use a queue to traverse the dictionary (BFS) below our current_node.
-    queue = Queue()
-    queue.put((current_node, []))  # (dict_node, path_keys_so_far)
-
-    while not queue.empty():
-        dict_node, path_keys = queue.get()
-
-        if not isinstance(dict_node,dict) or is_dict_of_strings(dict_node):
-            if path_keys:
-                model_type = f"{path_base}-{'-'.join(path_keys)}"
-            else:
-                model_type = path_base
-
-            model_types.append(model_type)
-
-        else:
-            for key, value in dict_node.items():
-                # If it's another dict, enqueue it for further exploration
-                queue.put((value, path_keys + [key]))
-            
-    return model_types
-
-def is_dict_of_strings(value):
-    if not isinstance(value, dict):
-        return False
-    return all(isinstance(k, str) and isinstance(v, str) for k, v in value.items())

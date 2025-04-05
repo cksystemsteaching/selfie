@@ -7,6 +7,8 @@ models_dir: "models"
 output_dir: "models"
 default_output: &default_output ""
 
+allowed_formats: [smt2,btor2]
+
 models:
   starc:
     64bit:
