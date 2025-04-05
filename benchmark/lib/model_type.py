@@ -3,57 +3,86 @@ from lib.exceptions import ParsingError
 
 from queue import Queue
 from typing import List, Dict, Any
+from pathlib import Path
 
 class ModelType:
     def __init__(self, model_base: str):
         self.model_base = model_base
-        self.parsed_model_type_bases = self.model_base.split("-")
-        self.top_level = cfg.config["models"]
-        self.parse()
+        self.model_type_bases = self.model_base.split("-")
+        self.parser = ModelConfigParser(self.model_type_bases)
     
-    def parse(self):
-        current_level = self.top_level
-
-        for level in self.parsed_model_type_bases:
-            if level in current_level:
-                current_level = current_level[level]
-            else: 
-                raise ParsingError(self.model_base, level)
-
-        # Check if type has specified Rotor command and output in config file
-        required_values = ['command', 'output']
-        for value in required_values:
-            if value not in current_level:
-                raise ValueError(f"{value} not present/or at the wrong place in specified model type")
-        
-        allowed_formats = cfg.config["allowed_formats"]
-        if self.get_format() not in allowed_formats:
-            raise ValueError(f"{self.get_format()} is not an allowed format")
-        # print("LEVELS")
-        # print(self.levels)
-
-    def search_for_compile_command(self):
-        current_level = self.top_level
-
-        for level in self.parsed_model_type_bases:
-            if level in current_level:
-                if 'compilation' in current_level:
-                    self.compilation_command = current_level["compilation"]
-                current_level = current_level[level]
-            else:
-                raise ParsingError(self.model_base, level)
-
+    def get_model_type_bases(self):
+        return self.model_type_bases
+    
     def get_model_output_spec(self):
         """
         Return a transformed model base that is appropriate to use
         as a part of output file name to further specify it.
         This is used if no specific output name is passed as an argument.
         """
-        return "_" + self.parsed_model_type_bases[:-1].join("_") + "." + self.get_format()
-                
-
+        return "_" + self.model_type_bases[:-1].join("_") + "." + self.get_format()
+    
     def get_format(self):
-        return self.model_base.split("-")[-1]
+        return self.parser.parse_format()
+
+    def get_compile_cmd(self):
+        return self.parser.parse_compile_cmd()
+    
+    def get_model_generation_cmd(self):
+        return self.parser.parse_model_generation_cmd()
+    
+    def get_default_output_path(self):
+        return self.parser.parse_default_output_path()
+
+class ModelConfigParser:
+    def __init__(self, model_type_bases: List[str]):
+        self.top_level = cfg.config["models"]
+        self.model_type_bases = model_type_bases
+        self.check()
+
+    def check(self):
+        current_level = self.top_level
+
+        for level in self.model_type_bases:
+            if level in current_level:
+                current_level = current_level[level]
+            else: 
+                raise ParsingError(self.model_base, level)
+
+        # Check if type has specified Rotor command in config file
+        required_values = ['command']
+        for value in required_values:
+            if value not in current_level:
+                raise ValueError(f"{value} not present/or at the wrong place in specified model type")
+        
+        allowed_formats = cfg.config["allowed_formats"]
+        if self.parse_format() not in allowed_formats:
+            raise ValueError(f"{self.parse_format()} is not an allowed format")
+    
+    def parse_format(self):
+        return self.model_type_bases[-1]
+    
+    def parse_model_generation_cmd(self):
+        current_level = self.top_level
+
+        for level in self.model_type_bases:
+            current_level = current_level[level]
+        
+        return current_level["command"]
+    
+    def parse_compile_cmd(self):
+        """
+        That we can drill down with provided bases does not have to be checked since it was already checked in constructor.
+        """
+        current_level = self.top_level
+
+        for level in self.model_type_bases:
+            if 'compilation' in current_level:
+                return current_level["compilation"]
+            current_level = current_level[level]
+        
+        return ""      
+
 
 def get_all_model_types(path_base: str = "") -> List[str]:
     """
@@ -114,9 +143,8 @@ def get_all_model_types(path_base: str = "") -> List[str]:
                 # If it's another dict, enqueue it for further exploration
                 queue.put((value, path_keys + [key]))
             
-    #return list(map(lambda model: ModelType(model),model_types))
     print(f"Model types:{model_types}")
-    return model_types
+    return list(map(lambda model: ModelType(model),model_types))
 
 def is_dict_of_strings(value):
     if not isinstance(value, dict):
