@@ -1,11 +1,10 @@
 from lib.exceptions import ToolNotAvailableError, DirectoryNotFoundError, InternalToolNotAvailableError, TimeoutException
 import lib.config as cfg
-from lib.generate import generate_all_examples, clean_examples, create_model, create_models_from_dir, get_all_model_types
+from lib.generate import generate_all_examples, clean_examples, create_models, create_models_from_dir, get_all_model_types
 from lib.print import custom_exit
 import lib.argument_parser as arg_parser
 from lib.solver import Z3Solver
-
-import os
+from lib.paths import SourcePath, OutputPath
 import sys
 
 if __name__ == "__main__":
@@ -25,11 +24,8 @@ if __name__ == "__main__":
             generate_all_examples()
             custom_exit("Generated all examples sucessfuly")
 
-        if args.model_base and args.source:
-            if os.path.isdir(args.source):
-                model_paths = create_models_from_dir(args.source, args.model_base, args.output)
-            else:
-                model_path = create_model(args.source, args.model_base, args.output)
+        if args.source:
+            model_path = create_models(SourcePath(args.source), args.model_base, OutputPath(args.output))
 
             if args.benchmark:
                 Z3Solver(model_path).benchmark()
