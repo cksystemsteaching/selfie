@@ -1,3 +1,5 @@
+import lib.config as cfg
+
 import argparse
 
 def init_parser():
@@ -36,7 +38,7 @@ def init_parser():
     parser.add_argument(
         '--output', '-o',
         required=False,
-        default="",
+        default=cfg.config["default_output"],
         help="output"
     )
 
