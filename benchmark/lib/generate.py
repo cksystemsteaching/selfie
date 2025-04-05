@@ -48,20 +48,6 @@ def create_models(source: SourcePath, model_type_base: str, output: OutputPath) 
         
         return models
 
-
-def create_models_from_dir(source_dir: SourcePath, model_type_base: str, output_path: OutputPath):
-    """
-    Create models from all allowed languges (specified in config file) files found in a specified directory.
-    """
-    print(f"Generating models from directory: {source_dir}")
-    output_paths = []
-    files = [file for file in source_dir.iterdir()]
-    for file in files:
-        if file.suffix in cfg.config["allowed_languages"]:
-            output_paths.append(create_models(SourcePath(file), model_type_base, output_path))
-
-    return output_paths
-
 class BaseSourceProcessor:
     def __init__(self, model_config: ModelGenerationConfig):
         self.model_config = model_config
