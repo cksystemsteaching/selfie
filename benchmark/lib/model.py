@@ -18,5 +18,3 @@ class SMTModel(Model):
 class BTORModel(Model):
     def __init__(self, output_path):
         super().__init__(output_path, BTORModelParser(output_path))
-
-

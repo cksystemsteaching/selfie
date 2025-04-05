@@ -8,7 +8,6 @@ import os
 from pathlib import Path
 
     
-
 class ModelGenerationConfig:
     def __init__(self, source_path: SourcePath, model_type: ModelType, output_path: OutputPath):
         self.source_path = source_path
