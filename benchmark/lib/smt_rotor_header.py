@@ -61,6 +61,9 @@ class RotorParser:
     def parse_header(cls, file_path) -> RotorHeader:
         header = RotorHeader()
         flags = []
+            
+        comment_pattern = re.compile(r'^\s*;')
+        blank_pattern = re.compile(r'^\s*$')
         
         with open(file_path, 'r') as f:
             for line in f:
@@ -69,7 +72,10 @@ class RotorParser:
                     if match := pattern.search(line):
                         value = match.group(1) if match.groups() else None
                         cls._set_header_field(header, field, value, flags)
-        
+
+                # Stop when parser is out of header
+                if not comment_pattern.search(line) and not blank_pattern.search(line):
+                    break
         header.flags = flags
         return header
 
