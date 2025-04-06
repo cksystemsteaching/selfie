@@ -21,7 +21,7 @@ if __name__ == "__main__":
 
         # Initialize logging
         verbosity = args.verbosity or 4
-        configure_logging(verbosity. OutputPath("bt.log"))
+        configure_logging(verbosity, OutputPath("bt.log"))
 
         if args.clean:
             clean_examples()
