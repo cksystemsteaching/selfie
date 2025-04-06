@@ -367,23 +367,18 @@ class Array(Sort):
             self.element_size_line.get_bitwuzla(tm))
 
 class Exit:
-    bump = 0
     exits = {}
 
-    def new():
-        if Exit.bump not in Exit.exits:
-            exit = Exit()
-            Exit.exits[Exit.bump] = exit
+    def new(ID, offset = 0):
+        if ID + offset not in Exit.exits:
+            exit = Exit(ID, offset)
+            Exit.exits[ID + offset] = exit
         else:
-            exit = Exit.exits[Exit.bump]
-        Exit.bump += 1
+            exit = Exit.exits[ID + offset]
         return exit
 
-    def free():
-        Exit.bump = 0
-
-    def __init__(self):
-        self.bump = Exit.bump
+    def __init__(self, ID, offset):
+        self.bump = ID + offset
 
     def __repr__(self):
         return f"Exit({self.bump})"
@@ -409,23 +404,23 @@ class Exit:
     def reduce(self):
         return self
 
-    def dealias(new_value, new_values, new_exits):
+    def dealias(new_value, new_values, new_exits, ID, offset):
         new_values = {} if new_values is None else new_values
         new_exits = {} if new_exits is None else new_exits
         if new_value in new_values:
             new_exit = new_values[new_value]
             assert new_exit in new_exits
         else:
-            new_exit = Exit.new()
+            new_exit = Exit.new(ID, offset)
             assert new_exit not in new_exits
             new_values |= {new_value:new_exit}
             new_exits |= {new_exit:new_value}
         return new_values, new_exits, new_exit
 
-    def compute_unary(self, sid_line, op, old_exits, new_values = None, new_exits = None):
+    def compute_unary(self, sid_line, op, old_exits, new_values = None, new_exits = None, ID = 0, offset = 0):
         new_value = op(old_exits[self])
         assert sid_line.is_unsigned_value(new_value)
-        return Exit.dealias(new_value, new_values, new_exits)
+        return Exit.dealias(new_value, new_values, new_exits, ID, offset)
 
     def get_binary_exit(self, bvdd, inorder = True):
         if inorder:
@@ -481,6 +476,8 @@ class BVDD:
         self.var_line = var_line
         self.inputs = 0
         self.outputs = {}
+        self.number_of_my_exits = 0
+        self.number_of_other_exits = 0
 
     def get_input_values(inputs):
         input_value = 0
@@ -529,6 +526,9 @@ class BVDD:
             n += m
         return exits, n
 
+    def get_number_of_exits(self):
+        return self.number_of_my_exits + self.number_of_other_exits
+
     def is_always_false(bvdd):
         if bvdd is Constant.false:
             return True
@@ -550,6 +550,10 @@ class BVDD:
             self.inputs |= inputs
             if output not in self.outputs:
                 self.outputs[output] = inputs
+                if isinstance(output, tuple) or isinstance(output, Exit):
+                    self.number_of_my_exits += 1
+                else:
+                    self.number_of_other_exits += output.get_number_of_exits()
             else:
                 assert not (inputs & self.outputs[output])
                 self.outputs[output] |= inputs
@@ -567,7 +571,7 @@ class BVDD:
             bvdd.set_input(self.outputs[output], output.extract(exit))
         return bvdd.reduce()
 
-    def reduce(self):
+    def reduce(self, sort = True):
         if not self.inputs:
             return Constant.false
         elif len(self.outputs) == 1:
@@ -575,7 +579,7 @@ class BVDD:
             if next(iter(self.outputs.values())) == 2**2**self.var_line.sid_line.size - 1:
                 # remove BVDDs that have all outputs and all outputs are isomorphic
                 return next(iter(self.outputs.keys()))
-        else:
+        elif sort:
             # sort outputs by inputs to obtain canonical BVDDs
             self.outputs = dict(sorted(self.outputs.items(), key=lambda x: x[1]))
         # assert: outputs are all isomorphic due to hashing equivalent objects to the same hash
@@ -583,15 +587,18 @@ class BVDD:
             BVDD.bvdds[self] = self
         return BVDD.bvdds[self]
 
-    def compute_unary(self, sid_line, op, old_exits, new_values = None, new_exits = None):
+    def compute_unary(self, sid_line, op, old_exits, new_values = None, new_exits = None, ID = 0, offset = 0):
         unary_bvdd = BVDD(self.var_line)
         for output in self.outputs:
             new_values, new_exits, new_bvdd = output.compute_unary(sid_line, op,
-                old_exits, new_values, new_exits)
+                old_exits, new_values, new_exits,
+                unary_bvdd.number_of_my_exits,
+                unary_bvdd.number_of_other_exits + offset)
             unary_bvdd.set_input(self.outputs[output], new_bvdd)
-        return new_values, new_exits, unary_bvdd.reduce()
+        # assert outputs of unary_bvdd are sorted
+        return new_values, new_exits, unary_bvdd.reduce(False)
 
-    def compute_binary(bvdd, sid_line, op, left_exits, right_exits, new_values = None, new_exits = None):
+    def compute_binary(bvdd, sid_line, op, left_exits, right_exits, new_values = None, new_exits = None, ID = 0, offset = 0):
         if isinstance(bvdd, tuple):
             if op is None:
                 if bvdd[1] is None or right_exits is None:
@@ -604,15 +611,19 @@ class BVDD:
             else:
                 new_value = op(left_exits[bvdd[0]], right_exits[bvdd[1]])
                 assert sid_line.is_unsigned_value(new_value)
-            return Exit.dealias(new_value, new_values, new_exits)
+            return Exit.dealias(new_value, new_values, new_exits, ID, offset)
         else:
             assert isinstance(bvdd, BVDD)
             binary_bvdd = BVDD(bvdd.var_line)
             for output in bvdd.outputs:
                 new_values, new_exits, new_bvdd = BVDD.compute_binary(output,
-                    sid_line, op, left_exits, right_exits, new_values, new_exits)
+                    sid_line, op,
+                    left_exits, right_exits, new_values, new_exits,
+                    binary_bvdd.number_of_my_exits,
+                    binary_bvdd.number_of_other_exits + offset)
                 binary_bvdd.set_input(bvdd.outputs[output], new_bvdd)
-            return new_values, new_exits, binary_bvdd.reduce()
+            # assert outputs of binary_bvdd are sorted
+            return new_values, new_exits, binary_bvdd.reduce(False)
 
     def apply_binary(self, bvdd, inorder = True):
         if isinstance(bvdd, Exit):
@@ -824,7 +835,10 @@ class Values:
         return self.sid_line.match_sorts(values.sid_line)
 
     def is_equal(self, values):
-        return type(self) is type(values) and self.match_sorts(values) and self.values == values.values and self.bvdd == values.bvdd
+        return (type(self) is type(values) and
+            self.match_sorts(values) and
+            self.values == values.values and
+            self.bvdd == values.bvdd)
 
     def number_of_inputs(self):
         return self.bvdd.number_of_inputs()
@@ -848,15 +862,15 @@ class Values:
         assert self.sid_line.match_sorts(sid_line)
         if isinstance(values_or_var_line, bool) or isinstance(values_or_var_line, int):
             assert sid_line.is_unsigned_value(values_or_var_line)
-            self.bvdd = Exit.new()
+            self.bvdd = Exit.new(0)
             self.values = {values_or_var_line:self.bvdd}
             self.exits = {self.bvdd:values_or_var_line}
             Values.total_number_of_constants += 1
         elif isinstance(values_or_var_line, Variable):
             self.bvdd = BVDD(values_or_var_line)
             if isinstance(values_or_var_line.sid_line, Bool):
-                false_exit = Exit.new()
-                true_exit = Exit.new()
+                false_exit = Exit.new(0)
+                true_exit = Exit.new(1)
                 self.values = {False:false_exit, True:true_exit}
                 self.exits = {false_exit:False, true_exit:True}
                 self.bvdd.set_input(2**0, false_exit)
@@ -865,7 +879,7 @@ class Values:
                 self.values = {}
                 self.exits = {}
                 for value in range(2**values_or_var_line.sid_line.size):
-                    value_exit = Exit.new()
+                    value_exit = Exit.new(value)
                     self.values |= {value:value_exit}
                     self.exits |= {value_exit:value}
                     self.bvdd.set_input(2**value, value_exit)
@@ -876,7 +890,6 @@ class Values:
             self.exits = exits
             self.bvdd = bvdd
         # assert self.bvdd is canonical
-        Exit.free()
         Values.current_number_of_inputs = max(Values.current_number_of_inputs, self.number_of_inputs())
         Values.max_number_of_values = max(Values.max_number_of_values, len(self.values))
         # for debugging assert self.is_consistent():
