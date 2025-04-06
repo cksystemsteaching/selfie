@@ -44,6 +44,7 @@ class SMT2ModelParser(ModelParser):
             'blank_lines': 0,
             'define_count': 0,
             'is_rotor_generated': False,
+            'rotor_header': None
         }
         
         # Regex patterns
@@ -61,7 +62,7 @@ class SMT2ModelParser(ModelParser):
                 # Check for rotor signature first
                 if not self.stats['is_rotor_generated'] and self.rotor_signature.match(line):
                     self.stats['is_rotor_generated'] = True
-                    self.rotor_header = RotorParser.parse_header(self.path)
+                    self.stats['rotor_header'] = RotorParser.parse_header(self.path)
 
                 self.stats['total_lines'] += 1
                 
@@ -78,24 +79,6 @@ class SMT2ModelParser(ModelParser):
                     
     
         return self.stats
-
-    def log(self):
-        self.parse()
-        print("SMT-LIBv2 File Analysis:")
-        print(f"File name: {self.path.name}")
-        if len(self.path.parents) > 1:
-            print(f"File path: {self.path}")
-        print(f"Total lines: {self.stats['total_lines']}")
-        print(f"Code lines: {self.stats['code_lines']}")
-        print(f"Comment lines: {self.stats['comment_lines']}")
-        print(f"Blank lines: {self.stats['blank_lines']}")
-        print(f"define-fun commands: {self.stats['define_count']}")
-        
-        if self.stats['is_rotor_generated'] and self.rotor_header:
-            print("\nRotor-Specific Information:")
-            self.rotor_header.log()
-
-
 class BTORModelParser(ModelParser):
     def __init__(self, output_path: OutputPath):
         super().__init__(output_path)

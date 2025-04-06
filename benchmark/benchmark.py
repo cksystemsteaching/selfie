@@ -34,7 +34,7 @@ if __name__ == "__main__":
         if args.source:
             models = create_models(SourcePath(args.source), args.model_base, OutputPath(args.output))
             for model in models:
-                model.log()
+                model.show()
                 
             if args.benchmark:
                 for model in models:

@@ -1,7 +1,7 @@
 from lib.model_parser import SMT2ModelParser, BTORModelParser
 from lib.paths import OutputPath
 from lib.model_generation_config import ModelGenerationConfig
-
+from lib.model_presenter import SMT2ModelPresenter, OutputFormat
 import lib.config as cfg
 
 class Model:
@@ -21,6 +21,11 @@ class SMT2Model(Model):
     def __init__(self, output_path: OutputPath):
         super().__init__(output_path, SMT2ModelParser(output_path))
 
+    def show(self):
+        presenter = SMT2ModelPresenter(self)
+        
+        presenter.show(format=OutputFormat.PLAIN)  # Simple text
+        presenter.show(format=OutputFormat.VERBOSE)  # Fancy bordered output
 
 class BTORModel(Model):
     def __init__(self, output_path: OutputPath):
