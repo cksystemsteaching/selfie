@@ -19,9 +19,15 @@ class OutputPath:
     
     def _validate_path(self) -> None:
         if not self._path.parent.exists():
-            raise ValueError(f"Parent directory does not exist: {self._path.parent}")
+            raise ex.FileValidationError(f"Parent directory of provided output does not exist: {self._path}",
+                self._path,
+                parent_dir=self._path.parent
+            )
         if not self._path.parent.is_dir():
-            raise ValueError(f"Parent path is not a directory: {self._path.parent}")
+            raise ex.FileValidationError(f"Parent path of provided output is not a directory: {self._path}",
+                self._path,
+                parent=self._path.parent
+            )
     
     def try_build_output_path(self, filename: str, suffix: str) -> Path:
         if self._path.is_dir():
@@ -62,9 +68,11 @@ class SourcePath:
         
         if self._path.suffix.lower() not in cfg.config['allowed_languages']:
             allowed = ', '.join(cfg.config['allowed_languages'])
-            raise ValueError(
-                f"File extension '{self._path.suffix}' not allowed. "
-                f"Allowed extensions: {allowed}"
+            raise ex.FileValidationError(
+                f"Source extension '{self._path.suffix}' not allowed. Allowed source extensions: {allowed}",
+                self._path,
+                path_suffix=self._path.suffix,
+                allowed_extensions=cfg.config['allowed_languages']
             )
     
     # Make it behave like a Path object
