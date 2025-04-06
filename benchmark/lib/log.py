@@ -14,7 +14,7 @@ def get_log_level(verbosity: int) -> str:
 
 def configure_logging(
     verbosity: int = 4,          # 0-4 scale (default: 3=INFO)
-    log_dir: Union[Path, str] = None,
+    log_file: Union[Path, str] = None,
 ):
     """Initialize logging with verbosity levels"""
     
@@ -38,11 +38,8 @@ def configure_logging(
     root_logger.addHandler(console_handler)
     
     # File handler (if enabled)
-    if log_dir:
-        log_dir = Path(log_dir)
-        log_dir.mkdir(exist_ok=True)
-        
-        file_handler = logging.FileHandler(log_dir / "bt_debug.log")
+    if log_file:        
+        file_handler = logging.FileHandler(log_file)
         file_handler.setLevel(file_level)
         file_handler.setFormatter(logging.Formatter(
             '%(asctime)s %(name)s %(levelname)s %(message)s'
