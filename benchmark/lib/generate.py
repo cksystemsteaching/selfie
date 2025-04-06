@@ -4,11 +4,14 @@ from .model_config_parser import ModelGenerationConfig
 from .model_type import get_all_model_types
 from .paths import SourcePath, OutputPath
 from .model import model_factory
+import logging
 
 import lib.config as cfg
 from pathlib import Path
 
 import shutil
+
+log = logging.getLogger("bt.generate")
 
 def create_models(source: SourcePath, model_type_base: str, output: OutputPath) -> list:
     """
@@ -23,7 +26,6 @@ def create_models(source: SourcePath, model_type_base: str, output: OutputPath) 
         List of paths to generated models
     """
     if source.is_dir():
-        print(f"Generating models from directory: {source}")
         models = []
         for file in source.iterdir():
             if file.suffix.lower() in cfg.config["allowed_languages"]:
@@ -32,7 +34,7 @@ def create_models(source: SourcePath, model_type_base: str, output: OutputPath) 
                 )
         return models
     else:
-        print(f"Generating model from source: {source}")
+        log.info(f"Generating model from source: {source}")
         model_types = get_all_model_types(model_type_base)
         models = []
         
@@ -44,7 +46,7 @@ def create_models(source: SourcePath, model_type_base: str, output: OutputPath) 
             else:
                 model_path = GenericSourceProcessor(model_config).generate_model()
 
-            print(f"Generated model: {model_config.output_path}")
+            log.info(f"Generated model: {model_config.output_path}")
             models.append(model_factory(model_config))
         
         return models

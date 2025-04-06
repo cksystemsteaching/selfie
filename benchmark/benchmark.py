@@ -5,7 +5,10 @@ from lib.print import custom_exit
 import lib.argument_parser as arg_parser
 from lib.solver import Z3Solver
 from lib.paths import SourcePath, OutputPath
+from lib.log import configure_logging
+
 import sys
+import logging
 
 if __name__ == "__main__":
     try:
@@ -16,6 +19,7 @@ if __name__ == "__main__":
             parser.print_help()
             exit()
 
+        configure_logging()
         if args.clean:
             clean_examples()
             custom_exit("Output directories cleaned")
