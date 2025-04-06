@@ -25,10 +25,11 @@ if __name__ == "__main__":
             custom_exit("Generated all examples sucessfuly")
 
         if args.source:
-            model_path = create_models(SourcePath(args.source), args.model_base, OutputPath(args.output))
+            models = create_models(SourcePath(args.source), args.model_base, OutputPath(args.output))
 
             if args.benchmark:
-                Z3Solver(model_path).benchmark()
+                for model in models:
+                    Z3Solver(model, 10).benchmark()
                 exit(0)
 
         if not args.source:

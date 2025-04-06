@@ -3,6 +3,7 @@ from .print import custom_exit
 from .model_config_parser import ModelGenerationConfig
 from .model_type import get_all_model_types
 from .paths import SourcePath, OutputPath
+from .model import model_factory
 
 import lib.config as cfg
 from pathlib import Path
@@ -42,9 +43,9 @@ def create_models(source: SourcePath, model_type_base: str, output: OutputPath) 
                 model_path = CStarSourceProcessor(model_config).generate_model()
             else:
                 model_path = GenericSourceProcessor(model_config).generate_model()
-            
-            print(f"Generated model: {model_config.output}")
-            models.append(model_path)
+
+            print(f"Generated model: {model_config.output_path}")
+            models.append(model_factory(model_config))
         
         return models
 
@@ -72,13 +73,13 @@ class CStarSourceProcessor(BaseSourceProcessor):
             self.model_config.model_generation_cmd.format(
                 rotor=cfg.rotor_path,
                 source_file=self.model_config.source_path,
-                output=self.model_config.output
+                output=self.model_config.output_path
             )
         )
         if returncode != 0:
             custom_exit(output, cfg.EXIT_MODEL_GENERATION_ERROR)
 
-        return self.model_config.output
+        return self.model_config.output_path
 
 
 class GenericSourceProcessor(BaseSourceProcessor):
@@ -119,14 +120,14 @@ class GenericSourceProcessor(BaseSourceProcessor):
             self.model_config.model_generation_command.format(
                 rotor=cfg.rotor_path,
                 source_file=self.compiled_source,
-                output=self.model_config.output
+                output=self.model_config.output_path
             )
         )
         self.compiled_source.unlink()
         if returncode != 0:
             custom_exit(output, cfg.EXIT_MODEL_GENERATION_ERROR)
 
-        return self.model_config.output
+        return self.model_config.output_path
 
 
 def clean_examples() -> None:

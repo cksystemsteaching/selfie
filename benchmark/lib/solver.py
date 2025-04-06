@@ -1,11 +1,14 @@
+from lib.model import Model
+
 from pathlib import Path
 import subprocess
 import time
 
 
 class BaseSolver:
-    def __init__(self, model_path: Path):
+    def __init__(self, model_path: Model, timeout: int):
         self.model_path = model_path
+        self.timeout = timeout
 
     def run():
         raise NotImplementedError("Abstract method")
