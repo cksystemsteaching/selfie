@@ -1,6 +1,6 @@
 from lib.model_parser import SMT2ModelParser, BTORModelParser
 from lib.paths import OutputPath
-from lib.model_config_parser import ModelGenerationConfig
+from lib.model_generation_config import ModelGenerationConfig
 
 import lib.config as cfg
 

@@ -1,6 +1,6 @@
 from .checks import execute, is_tool_available
 from .print import custom_exit
-from .model_config_parser import ModelGenerationConfig
+from .model_generation_config import ModelGenerationConfig
 from .model_type import get_all_model_types
 from .paths import SourcePath, OutputPath
 from .model import model_factory
