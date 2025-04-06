@@ -13,7 +13,7 @@ def init_parser():
     )
 
     parser.add_argument(
-        '--source', '-s',
+        '-s', '--source',
         required=False,
         help="Source file"
     )
@@ -21,7 +21,8 @@ def init_parser():
     parser.add_argument(
         '--clean',
         action="store_true",
-        help="Recursively cleans output directories"
+        required=False,
+        help="Recursively cleans directories that were used to store examples"
     )
 
     parser.add_argument(
@@ -31,15 +32,24 @@ def init_parser():
     )
 
     parser.add_argument(
-        '--benchmark', '-b',
+        '-b', '--benchmark',
         required=False,
     )
 
     parser.add_argument(
-        '--output', '-o',
+        '-o', '--output',
         required=False,
         default=cfg.config["default_output"],
-        help="output"
+        help="Output path for the generated model - if not provided BT will generate one from source path and model type"
+    )
+
+    parser.add_argument(
+        '-v' , '--verbosity',
+        required=False,
+        type=int,
+        choices=range(0, 5),  # 0-4
+        default=4,
+        help="Logging verbosity: 0=CRITICAL, 1=ERROR, 2=WARNING, 3=INFO, 4=DEBUG"
     )
 
     return parser

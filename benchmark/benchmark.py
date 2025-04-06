@@ -19,7 +19,10 @@ if __name__ == "__main__":
             parser.print_help()
             exit()
 
-        configure_logging()
+        # Initialize logging
+        verbosity = args.verbosity or 4
+        configure_logging(verbosity. OutputPath("bt.log"))
+
         if args.clean:
             clean_examples()
             custom_exit("Output directories cleaned")
