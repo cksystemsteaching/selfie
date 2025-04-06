@@ -24,9 +24,9 @@ class OutputPath:
     
     def try_build_output_path(self, filename: str, suffix: str) -> Path:
         if self._path.is_dir():
-            return self._path / Path(filename).with_suffix(f".{suffix.lstrip('.')}")
-        return self._path
-    
+            self._path = self._path / Path(filename).with_suffix(f".{suffix.lstrip('.')}")
+        
+        return self
     # Make it behave like a Path object
     def __getattr__(self, attr):
         """Delegate attribute access to the underlying Path object"""

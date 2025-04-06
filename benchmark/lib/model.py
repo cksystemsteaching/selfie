@@ -1,5 +1,5 @@
 from model_parser import SMT2ModelParser, BTORModelParser
-
+from paths import OutputPath
 class Model:
     def __init__(self, output_path, parser):
         self.output_path = output_path
@@ -10,11 +10,11 @@ class Model:
         self.parser.log()
 
 
-class SMTModel(Model):
-    def __init__(self, output_path):
+class SMT2Model(Model):
+    def __init__(self, output_path: OutputPath):
         super().__init__(output_path, SMT2ModelParser(output_path))
 
 
 class BTORModel(Model):
-    def __init__(self, output_path):
+    def __init__(self, output_path: OutputPath):
         super().__init__(output_path, BTORModelParser(output_path))

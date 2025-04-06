@@ -1,8 +1,10 @@
 from abc import ABC, abstractmethod
+from paths import OutputPath
+
 from pathlib import Path
 
 class ModelParser:
-    def __init__(self, path: Path):
+    def __init__(self, path: OutputPath):
         self.path
 
     @abstractmethod
@@ -14,6 +16,7 @@ class ModelParser:
         pass
 
 class SMT2ModelParser(ModelParser):
+    def __init__(self, path: OutputPath)
     def parse(self):
         pass
 

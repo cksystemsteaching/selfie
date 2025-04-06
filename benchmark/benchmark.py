@@ -1,6 +1,6 @@
 from lib.exceptions import ToolNotAvailableError, DirectoryNotFoundError, InternalToolNotAvailableError, TimeoutException
 import lib.config as cfg
-from lib.generate import generate_all_examples, clean_examples, create_models, create_models_from_dir, get_all_model_types
+from lib.generate import generate_all_examples, clean_examples, create_models
 from lib.print import custom_exit
 import lib.argument_parser as arg_parser
 from lib.solver import Z3Solver
