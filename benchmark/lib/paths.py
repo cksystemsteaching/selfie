@@ -2,6 +2,7 @@ from pathlib import Path
 from typing import Union
 
 import lib.config as cfg
+import lib.exceptions as ex
 
 from pathlib import Path
 from typing import Union, Optional
@@ -54,9 +55,8 @@ class SourcePath:
     
     def _validate_path(self) -> None:
         if not self._path.exists():
-            raise ValueError(f"Source file does not exist: {self._path}")
+            raise ex.FileValidationError(f"Source file does not exist.", self._path)
         
-        # Make sure to import your cfg object
         if self._path.is_dir(): 
             return
         
