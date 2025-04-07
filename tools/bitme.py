@@ -943,6 +943,19 @@ class CFLOBVDD:
     def true(k):
         return CFLOBVDD.constant(Bool.boolean, k, 1)
 
+    def flip_value_tuple(self):
+        assert len(self.value_tuple) == 2
+        return CFLOBVDD.representative(self.sid_line, self.grouping,
+            {1:self.value_tuple[2], 2:self.value_tuple[1]})
+
+    def complement(self):
+        if self == CFLOBVDD.false(self.g.level):
+            return CFLOBVDD.true(self.g.level)
+        elif self == CFLOBVDD.true(self.g.level):
+            return CFLOBVDD.false(self.g.level)
+        else:
+            return self.flip_value_tuple()
+
     def projection(sid_line, k, i, number_of_bits):
         assert 0 <= i < 2**k
         assert number_of_bits == sid_line.size
