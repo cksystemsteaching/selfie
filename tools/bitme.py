@@ -813,6 +813,100 @@ class BVDD:
                 self.var_line.comment, self.var_line.line_no)
         return exp_line
 
+class Grouping:
+    def __init__(self, level, number_of_exits = 1):
+        self.level = level
+        self.number_of_exits = number_of_exits
+
+class Internal_Grouping(Grouping):
+    representatives = {}
+
+    def __init__(self, k):
+        super().__init__(k)
+        self.a_connection = None
+        self.a_return_tuple = {}
+        self.number_of_b_connections = None
+        self.b_connections = {}
+        self.b_return_tuples = {}
+
+    def __repr__(self):
+        return ("(" + f"a_c: {self.a_connection}\n" +
+            f"a_r: {self.a_return_tuple}\n" +
+            f"n_of_b: {self.number_of_b_connections}\n" +
+            f"b_c: {self.b_connections}\n" +
+            f"b_r: {self.b_return_tuples}") + ")"
+
+    def representative(self):
+        if self not in Internal_Grouping.representatives:
+            Internal_Grouping.representatives[self] = self
+        return Internal_Grouping.representatives[self]
+
+    def no_distinction_proto(k):
+        if k == 0:
+            return Dont_Care_Grouping.representative()
+        else:
+            g = Internal_Grouping(k)
+
+            g.a_connection = Internal_Grouping.no_distinction_proto(k - 1)
+            g.a_return_tuple[1] = 1
+            g.number_of_b_connections = 1
+            g.b_connections[1] = g.a_connection
+            g.b_return_tuples[1]= {1:1}
+
+            return g.representative();
+
+class Dont_Care_Grouping(Grouping):
+    representatives = None
+
+    def __init__(self):
+        super().__init__(0)
+
+    def __repr__(self):
+        return "dontcare"
+
+    def representative():
+        if Dont_Care_Grouping.representatives is None:
+            Dont_Care_Grouping.representatives = Dont_Care_Grouping()
+        return Dont_Care_Grouping.representatives
+
+class Fork_Grouping(Grouping):
+    def __init__(self, number_of_bits):
+        super().__init__(0, 2**number_of_bits)
+        self.inputs = {}
+
+class CFLOBVDD:
+    representatives = {}
+
+    def __init__(self, sid_line, g, v):
+        self.sid_line = sid_line
+        self.grouping = g
+        self.value_tuple = v
+
+    def __str__(self):
+        return (f"sid: {self.sid_line}\n" +
+            f"g: [{self.grouping}]\n" +
+            f"v: {self.value_tuple}")
+
+    def representative(sid_line, g, v):
+        for i in v:
+            assert sid_line.is_unsigned_value(v[i])
+
+        g = CFLOBVDD(sid_line, g, v)
+
+        if g not in CFLOBVDD.representatives:
+            CFLOBVDD.representatives[g] = g
+        return CFLOBVDD.representatives[g]
+
+    def constant(sid_line, k, v):
+        return CFLOBVDD.representative(sid_line,
+            Internal_Grouping.no_distinction_proto(k), {1:v})
+
+    def false(k):
+        return CFLOBVDD.constant(Bool.boolean, k, 0)
+
+    def true(k):
+        return CFLOBVDD.constant(Bool.boolean, k, 1)
+
 class Values:
     total_number_of_constants = 0
     current_number_of_inputs = 0
