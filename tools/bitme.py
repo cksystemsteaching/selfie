@@ -821,13 +821,13 @@ class Grouping:
 class Internal_Grouping(Grouping):
     representatives = {}
 
-    def __init__(self, k):
-        super().__init__(k)
+    def __init__(self, k, number_of_exits = 1):
+        super().__init__(k, number_of_exits)
         self.a_connection = None
-        self.a_return_tuple = {}
+        self.a_return_tuple = None
         self.number_of_b_connections = None
-        self.b_connections = {}
-        self.b_return_tuples = {}
+        self.b_connections = None
+        self.b_return_tuples = None
 
     def __repr__(self):
         return ("(" + f"a_c: {self.a_connection}\n" +
@@ -848,12 +848,38 @@ class Internal_Grouping(Grouping):
             g = Internal_Grouping(k)
 
             g.a_connection = Internal_Grouping.no_distinction_proto(k - 1)
-            g.a_return_tuple[1] = 1
+            g.a_return_tuple = {1:1}
             g.number_of_b_connections = 1
-            g.b_connections[1] = g.a_connection
-            g.b_return_tuples[1]= {1:1}
+            g.b_connections = {1:g.a_connection}
+            g.b_return_tuples= {1:{1:1}}
 
             return g.representative();
+
+    def projection_proto(k, i, number_of_bits):
+        if k == 0:
+            assert i == 0
+            return BV_Fork_Grouping.representative(number_of_bits)
+        else:
+            g = Internal_Grouping(k, 2**number_of_bits)
+            exits = dict([(e, e) for e in range(1, 2**number_of_bits + 1)])
+            if i < 2**(k - 1):
+                g.a_connection = Internal_Grouping.projection_proto(k - 1,
+                    i, number_of_bits)
+                g.a_return_tuple = exits
+
+                g.number_of_b_connections = 2**number_of_bits
+                no_distinction_proto = Internal_Grouping.no_distinction_proto(k - 1)
+                g.b_connections = dict([(e, no_distinction_proto) for e in range(1, 2**number_of_bits + 1)])
+                g.b_return_tuples = dict([(e, {1:e}) for e in range(1, 2**number_of_bits + 1)])
+            else:
+                g.a_connection = Internal_Grouping.no_distinction_proto(k - 1)
+                g.a_return_tuple = {1:1}
+
+                g.number_of_b_connections = 1
+                g.b_connections = {1:Internal_Grouping.projection_proto(k - 1,
+                    i - 2**(k - 1), number_of_bits)}
+                g.b_return_tuples = {1:exits}
+            return g.representative()
 
 class Dont_Care_Grouping(Grouping):
     representatives = None
@@ -869,10 +895,20 @@ class Dont_Care_Grouping(Grouping):
             Dont_Care_Grouping.representatives = Dont_Care_Grouping()
         return Dont_Care_Grouping.representatives
 
-class Fork_Grouping(Grouping):
+class BV_Fork_Grouping(Grouping):
+    representatives = {}
+
     def __init__(self, number_of_bits):
         super().__init__(0, 2**number_of_bits)
-        self.inputs = {}
+        self.inputs = dict([(i + 1, 2**i) for i in range(2**number_of_bits)])
+
+    def __repr__(self):
+        return f"fork: {self.number_of_exits}"
+
+    def representative(number_of_bits):
+        if number_of_bits not in BV_Fork_Grouping.representatives:
+            BV_Fork_Grouping.representatives[number_of_bits] = BV_Fork_Grouping(number_of_bits)
+        return BV_Fork_Grouping.representatives[number_of_bits]
 
 class CFLOBVDD:
     representatives = {}
@@ -906,6 +942,13 @@ class CFLOBVDD:
 
     def true(k):
         return CFLOBVDD.constant(Bool.boolean, k, 1)
+
+    def projection(sid_line, k, i, number_of_bits):
+        assert 0 <= i < 2**k
+        assert number_of_bits == sid_line.size
+        return CFLOBVDD.representative(sid_line,
+            Internal_Grouping.projection_proto(k, i, number_of_bits),
+            dict([(v + 1, v) for v in range(2**number_of_bits)]))
 
 class Values:
     total_number_of_constants = 0
