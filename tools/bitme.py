@@ -821,6 +821,9 @@ class Grouping:
     def number_of_paths(self):
         return sum(self.number_of_paths_per_exit.values())
 
+    def number_of_solutions(self):
+        return sum(self.number_of_solutions_per_exit.values())
+
     def is_consistent(self):
         return (len(self.number_of_paths_per_exit) == self.number_of_exits and
             self.number_of_paths() >= self.number_of_exits)
@@ -836,6 +839,7 @@ class Internal_Grouping(Grouping):
         self.b_connections = None
         self.b_return_tuples = None
         self.number_of_paths_per_exit = None
+        self.number_of_solutions_per_exit = None
 
     def __repr__(self):
         return ("(" + f"a_c: {self.a_connection}\n" +
@@ -849,20 +853,24 @@ class Internal_Grouping(Grouping):
     def is_consistent(self):
         return super().is_consistent()
 
-    def pre_compute_number_of_paths_per_exit(self):
+    def pre_compute_number_of_paths_and_solutions_per_exit(self):
         # also serves as consistency check
         self.number_of_paths_per_exit = dict([(i, 0) for i in range(1, self.number_of_exits + 1)])
+        self.number_of_solutions_per_exit = dict([(i, 0) for i in range(1, self.number_of_exits + 1)])
         g_a = self.a_connection
         for b_i in self.b_connections:
             a_number_of_paths = g_a.number_of_paths_per_exit[b_i]
+            a_number_of_solutions = g_a.number_of_solutions_per_exit[b_i]
             g_b = self.b_connections[b_i]
             for b_e_i in range(1, g_b.number_of_exits + 1):
                 e_i = self.b_return_tuples[b_i][b_e_i]
                 b_number_of_paths = g_b.number_of_paths_per_exit[b_e_i]
+                b_number_of_solutions = g_b.number_of_solutions_per_exit[b_e_i]
                 self.number_of_paths_per_exit[e_i] += a_number_of_paths * b_number_of_paths
+                self.number_of_solutions_per_exit[e_i] += a_number_of_solutions * b_number_of_solutions
 
     def representative(self):
-        self.pre_compute_number_of_paths_per_exit()
+        self.pre_compute_number_of_paths_and_solutions_per_exit()
         if self not in Internal_Grouping.representatives:
             assert self.is_consistent()
             Internal_Grouping.representatives[self] = self
@@ -918,6 +926,7 @@ class Dont_Care_Grouping(Grouping):
         assert 0 < number_of_bits <= 8
         super().__init__(0)
         self.number_of_paths_per_exit = {1:2**number_of_bits}
+        self.number_of_solutions_per_exit = {1:1}
 
     def __repr__(self):
         return "dontcare"
@@ -940,6 +949,7 @@ class BV_Fork_Grouping(Grouping):
         super().__init__(0, 2**number_of_bits)
         self.inputs = dict([(i + 1, 2**i) for i in range(2**number_of_bits)])
         self.number_of_paths_per_exit = dict([(i, 1) for i in range(1, self.number_of_exits + 1)])
+        self.number_of_solutions_per_exit = self.number_of_paths_per_exit
 
     def __repr__(self):
         return f"fork: {self.inputs}"
@@ -968,6 +978,9 @@ class CFLOBVDD:
 
     def number_of_paths(self):
         return self.grouping.number_of_paths()
+
+    def number_of_solutions(self):
+        return self.grouping.number_of_solutions()
 
     def is_consistent(self):
         return (len(self.value_tuple) == self.grouping.number_of_exits and
