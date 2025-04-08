@@ -817,8 +817,6 @@ class Grouping:
     def __init__(self, level, number_of_exits = 1):
         self.level = level
         self.number_of_exits = number_of_exits
-        # pre-compute and propagate number of paths per exit for fast profiling
-        self.number_of_paths_per_exit = dict([(i, 1) for i in range(1, number_of_exits + 1)])
 
     def number_of_paths(self):
         return sum(self.number_of_paths_per_exit.values())
@@ -837,6 +835,7 @@ class Internal_Grouping(Grouping):
         self.number_of_b_connections = None
         self.b_connections = None
         self.b_return_tuples = None
+        self.number_of_paths_per_exit = None
 
     def __repr__(self):
         return ("(" + f"a_c: {self.a_connection}\n" +
@@ -869,13 +868,13 @@ class Internal_Grouping(Grouping):
             Internal_Grouping.representatives[self] = self
         return Internal_Grouping.representatives[self]
 
-    def no_distinction_proto(k):
+    def no_distinction_proto(k, number_of_bits):
         if k == 0:
-            return Dont_Care_Grouping.representative()
+            return Dont_Care_Grouping.representative(number_of_bits)
         else:
             g = Internal_Grouping(k)
 
-            g.a_connection = Internal_Grouping.no_distinction_proto(k - 1)
+            g.a_connection = Internal_Grouping.no_distinction_proto(k - 1, number_of_bits)
             g.a_return_tuple = {1:1}
             g.number_of_b_connections = 1
             g.b_connections = {1:g.a_connection}
@@ -898,11 +897,11 @@ class Internal_Grouping(Grouping):
                 g.a_return_tuple = exits
 
                 g.number_of_b_connections = 2**number_of_bits
-                no_distinction_proto = Internal_Grouping.no_distinction_proto(k - 1)
+                no_distinction_proto = Internal_Grouping.no_distinction_proto(k - 1, number_of_bits)
                 g.b_connections = dict([(e, no_distinction_proto) for e in range(1, 2**number_of_bits + 1)])
                 g.b_return_tuples = dict([(e, {1:e}) for e in range(1, 2**number_of_bits + 1)])
             else:
-                g.a_connection = Internal_Grouping.no_distinction_proto(k - 1)
+                g.a_connection = Internal_Grouping.no_distinction_proto(k - 1, number_of_bits)
                 g.a_return_tuple = {1:1}
 
                 g.number_of_b_connections = 1
@@ -915,8 +914,10 @@ class Internal_Grouping(Grouping):
 class Dont_Care_Grouping(Grouping):
     representatives = None
 
-    def __init__(self):
+    def __init__(self, number_of_bits):
+        assert 0 < number_of_bits <= 8
         super().__init__(0)
+        self.number_of_paths_per_exit = {1:2**number_of_bits}
 
     def __repr__(self):
         return "dontcare"
@@ -924,9 +925,9 @@ class Dont_Care_Grouping(Grouping):
     def is_consistent(self):
         return super().is_consistent()
 
-    def representative():
+    def representative(number_of_bits):
         if Dont_Care_Grouping.representatives is None:
-            Dont_Care_Grouping.representatives = Dont_Care_Grouping()
+            Dont_Care_Grouping.representatives = Dont_Care_Grouping(number_of_bits)
             assert Dont_Care_Grouping.representatives.is_consistent()
         return Dont_Care_Grouping.representatives
 
@@ -938,6 +939,7 @@ class BV_Fork_Grouping(Grouping):
         assert 0 < number_of_bits <= 8
         super().__init__(0, 2**number_of_bits)
         self.inputs = dict([(i + 1, 2**i) for i in range(2**number_of_bits)])
+        self.number_of_paths_per_exit = dict([(i, 1) for i in range(1, self.number_of_exits + 1)])
 
     def __repr__(self):
         return f"fork: {self.inputs}"
@@ -982,15 +984,15 @@ class CFLOBVDD:
             CFLOBVDD.representatives[g] = g
         return CFLOBVDD.representatives[g]
 
-    def constant(sid_line, k, v):
+    def constant(sid_line, k, v, number_of_bits):
         return CFLOBVDD.representative(sid_line,
-            Internal_Grouping.no_distinction_proto(k), {1:v})
+            Internal_Grouping.no_distinction_proto(k, number_of_bits), {1:v})
 
-    def false(k):
-        return CFLOBVDD.constant(Bool.boolean, k, 0)
+    def false(k, number_of_bits):
+        return CFLOBVDD.constant(Bool.boolean, k, 0, number_of_bits)
 
-    def true(k):
-        return CFLOBVDD.constant(Bool.boolean, k, 1)
+    def true(k, number_of_bits):
+        return CFLOBVDD.constant(Bool.boolean, k, 1, number_of_bits)
 
     def flip_value_tuple(self):
         assert len(self.value_tuple) == 2
