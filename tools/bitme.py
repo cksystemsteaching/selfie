@@ -850,20 +850,20 @@ class Internal_Grouping(Grouping):
     def is_consistent(self):
         return super().is_consistent()
 
-    def compute_number_of_paths_per_exit(self):
+    def pre_compute_number_of_paths_per_exit(self):
+        # also serves as consistency check
         self.number_of_paths_per_exit = dict([(i, 0) for i in range(1, self.number_of_exits + 1)])
         g_a = self.a_connection
         for b_i in self.b_connections:
-            a_e_i = self.a_return_tuple[b_i]
-            a_number_of_paths = g_a.number_of_paths_per_exit[a_e_i]
+            a_number_of_paths = g_a.number_of_paths_per_exit[b_i]
             g_b = self.b_connections[b_i]
-            for e_i in self.b_return_tuples[b_i]:
-                b_i_e_i = self.b_return_tuples[b_i][e_i]
-                b_number_of_paths = g_b.number_of_paths_per_exit[b_i_e_i]
+            for b_e_i in range(1, g_b.number_of_exits + 1):
+                e_i = self.b_return_tuples[b_i][b_e_i]
+                b_number_of_paths = g_b.number_of_paths_per_exit[b_e_i]
                 self.number_of_paths_per_exit[e_i] += a_number_of_paths * b_number_of_paths
 
     def representative(self):
-        self.compute_number_of_paths_per_exit()
+        self.pre_compute_number_of_paths_per_exit()
         if self not in Internal_Grouping.representatives:
             assert self.is_consistent()
             Internal_Grouping.representatives[self] = self
@@ -900,7 +900,7 @@ class Internal_Grouping(Grouping):
                 g.number_of_b_connections = 2**number_of_bits
                 no_distinction_proto = Internal_Grouping.no_distinction_proto(k - 1)
                 g.b_connections = dict([(e, no_distinction_proto) for e in range(1, 2**number_of_bits + 1)])
-                g.b_return_tuples = dict([(e, {e:1}) for e in range(1, 2**number_of_bits + 1)])
+                g.b_return_tuples = dict([(e, {1:e}) for e in range(1, 2**number_of_bits + 1)])
             else:
                 g.a_connection = Internal_Grouping.no_distinction_proto(k - 1)
                 g.a_return_tuple = {1:1}
