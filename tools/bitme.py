@@ -826,7 +826,9 @@ class Grouping:
 
     def is_consistent(self):
         return (len(self.number_of_paths_per_exit) == self.number_of_exits and
-            self.number_of_paths() >= self.number_of_exits)
+            self.number_of_paths() >= self.number_of_exits and
+            len(self.number_of_solutions_per_exit) == self.number_of_exits and
+            self.number_of_solutions() >= self.number_of_exits)
 
 class Internal_Grouping(Grouping):
     representatives = {}
@@ -984,7 +986,8 @@ class CFLOBVDD:
 
     def is_consistent(self):
         return (len(self.value_tuple) == self.grouping.number_of_exits and
-            self.number_of_paths() >= self.grouping.number_of_exits)
+            self.number_of_paths() >= self.grouping.number_of_exits and
+            self.number_of_solutions() >= self.grouping.number_of_exits)
 
     def representative(sid_line, g, v):
         for i in v:
