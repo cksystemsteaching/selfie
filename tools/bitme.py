@@ -818,6 +818,9 @@ class Grouping:
         self.level = level
         self.number_of_exits = number_of_exits
 
+    def __repr__(self):
+        return f"{self.level} w/ {self.number_of_exits} exits"
+
     def number_of_paths(self):
         return sum(self.number_of_paths_per_exit.values())
 
@@ -826,15 +829,14 @@ class Grouping:
 
     def is_consistent(self):
         return (len(self.number_of_paths_per_exit) == self.number_of_exits and
-            self.number_of_paths() >= self.number_of_exits and
             len(self.number_of_solutions_per_exit) == self.number_of_exits and
-            self.number_of_solutions() >= self.number_of_exits)
+            self.number_of_paths() >= self.number_of_solutions() >= self.number_of_exits)
 
 class Internal_Grouping(Grouping):
     representatives = {}
 
-    def __init__(self, k, number_of_exits = 1):
-        super().__init__(k, number_of_exits)
+    def __init__(self, level, number_of_exits = 1):
+        super().__init__(level, number_of_exits)
         self.a_connection = None
         self.a_return_tuple = None
         self.number_of_b_connections = None
@@ -844,13 +846,14 @@ class Internal_Grouping(Grouping):
         self.number_of_solutions_per_exit = None
 
     def __repr__(self):
-        return ("(" + f"a_c: {self.a_connection}\n" +
-            f"a_r: {self.a_return_tuple}\n" +
-            f"n_of_b: {self.number_of_b_connections}\n" +
-            f"b_c: {self.b_connections}\n" +
-            f"b_r: {self.b_return_tuples}\n" +
-            f"n_of_e: {self.number_of_exits}\n" +
-            f"p_e: {self.number_of_paths_per_exit}" ")")
+        indentation = " " * (CFLOBVDD.max_level - self.level + 1)
+        return (indentation + "\n" +
+            indentation + "internal @ " + super().__repr__() + ":\n" +
+            indentation + f"a_c: {self.a_connection}\n" +
+            indentation + f"a_r: {self.a_return_tuple}\n" +
+            indentation + f"n_of_b: {self.number_of_b_connections}\n" +
+            indentation + f"b_c: {self.b_connections}\n" +
+            indentation + f"b_r: {self.b_return_tuples}")
 
     def is_consistent(self):
         return super().is_consistent()
@@ -878,13 +881,13 @@ class Internal_Grouping(Grouping):
             Internal_Grouping.representatives[self] = self
         return Internal_Grouping.representatives[self]
 
-    def no_distinction_proto(k, number_of_bits):
-        if k == 0:
-            return Dont_Care_Grouping.representative(number_of_bits)
+    def no_distinction_proto(level, number_of_input_bits):
+        if level == 0:
+            return Dont_Care_Grouping.representative(number_of_input_bits)
         else:
-            g = Internal_Grouping(k)
+            g = Internal_Grouping(level)
 
-            g.a_connection = Internal_Grouping.no_distinction_proto(k - 1, number_of_bits)
+            g.a_connection = Internal_Grouping.no_distinction_proto(level - 1, number_of_input_bits)
             g.a_return_tuple = {1:1}
             g.number_of_b_connections = 1
             g.b_connections = {1:g.a_connection}
@@ -892,31 +895,31 @@ class Internal_Grouping(Grouping):
 
             return g.representative();
 
-    def projection_proto(k, i, number_of_bits):
-        if k == 0:
-            assert i == 0
-            return BV_Fork_Grouping.representative(number_of_bits)
+    def projection_proto(level, input_i, number_of_input_bits):
+        if level == 0:
+            assert input_i == 0
+            return BV_Fork_Grouping.representative(number_of_input_bits)
         else:
-            g = Internal_Grouping(k, 2**number_of_bits)
+            g = Internal_Grouping(level, 2**number_of_input_bits)
 
-            exits = dict([(e, e) for e in range(1, 2**number_of_bits + 1)])
+            exits = dict([(e, e) for e in range(1, 2**number_of_input_bits + 1)])
 
-            if i < 2**(k - 1):
-                g.a_connection = Internal_Grouping.projection_proto(k - 1,
-                    i, number_of_bits)
+            if input_i < 2**(level - 1):
+                g.a_connection = Internal_Grouping.projection_proto(level - 1,
+                    input_i, number_of_input_bits)
                 g.a_return_tuple = exits
 
-                g.number_of_b_connections = 2**number_of_bits
-                no_distinction_proto = Internal_Grouping.no_distinction_proto(k - 1, number_of_bits)
-                g.b_connections = dict([(e, no_distinction_proto) for e in range(1, 2**number_of_bits + 1)])
-                g.b_return_tuples = dict([(e, {1:e}) for e in range(1, 2**number_of_bits + 1)])
+                g.number_of_b_connections = 2**number_of_input_bits
+                no_distinction_proto = Internal_Grouping.no_distinction_proto(level - 1, number_of_input_bits)
+                g.b_connections = dict([(e, no_distinction_proto) for e in range(1, 2**number_of_input_bits + 1)])
+                g.b_return_tuples = dict([(e, {1:e}) for e in range(1, 2**number_of_input_bits + 1)])
             else:
-                g.a_connection = Internal_Grouping.no_distinction_proto(k - 1, number_of_bits)
+                g.a_connection = Internal_Grouping.no_distinction_proto(level - 1, number_of_input_bits)
                 g.a_return_tuple = {1:1}
 
                 g.number_of_b_connections = 1
-                g.b_connections = {1:Internal_Grouping.projection_proto(k - 1,
-                    i - 2**(k - 1), number_of_bits)}
+                g.b_connections = {1:Internal_Grouping.projection_proto(level - 1,
+                    input_i - 2**(level - 1), number_of_input_bits)}
                 g.b_return_tuples = {1:exits}
 
             return g.representative()
@@ -924,21 +927,21 @@ class Internal_Grouping(Grouping):
 class Dont_Care_Grouping(Grouping):
     representatives = None
 
-    def __init__(self, number_of_bits):
-        assert 0 < number_of_bits <= 8
+    def __init__(self, number_of_input_bits):
+        assert 0 < number_of_input_bits <= 8
         super().__init__(0)
-        self.number_of_paths_per_exit = {1:2**number_of_bits}
+        self.number_of_paths_per_exit = {1:2**number_of_input_bits}
         self.number_of_solutions_per_exit = {1:1}
 
     def __repr__(self):
-        return "dontcare"
+        return "dontcare @ " + super().__repr__()
 
     def is_consistent(self):
         return super().is_consistent()
 
-    def representative(number_of_bits):
+    def representative(number_of_input_bits):
         if Dont_Care_Grouping.representatives is None:
-            Dont_Care_Grouping.representatives = Dont_Care_Grouping(number_of_bits)
+            Dont_Care_Grouping.representatives = Dont_Care_Grouping(number_of_input_bits)
             assert Dont_Care_Grouping.representatives.is_consistent()
         return Dont_Care_Grouping.representatives
 
@@ -946,37 +949,45 @@ class BV_Fork_Grouping(Grouping):
     # generalizing CFLOBDDs to bitvector variables with up to 8 bits
     representatives = {}
 
-    def __init__(self, number_of_bits):
-        assert 0 < number_of_bits <= 8
-        super().__init__(0, 2**number_of_bits)
-        self.inputs = dict([(i + 1, 2**i) for i in range(2**number_of_bits)])
+    def __init__(self, number_of_input_bits):
+        assert 0 < number_of_input_bits <= 8
+        super().__init__(0, 2**number_of_input_bits)
+        self.inputs = dict([(i + 1, 2**i) for i in range(2**number_of_input_bits)])
         self.number_of_paths_per_exit = dict([(i, 1) for i in range(1, self.number_of_exits + 1)])
         self.number_of_solutions_per_exit = self.number_of_paths_per_exit
 
     def __repr__(self):
-        return f"fork: {self.inputs}"
+        indentation = " " * (CFLOBVDD.max_level - self.level + 1)
+        return (indentation + "\n" +
+            indentation + "fork @ " + super().__repr__() + ":\n" +
+            indentation + f"{self.inputs}")
 
     def is_consistent(self):
         return super().is_consistent() and len(self.inputs) == self.number_of_exits
 
-    def representative(number_of_bits):
-        if number_of_bits not in BV_Fork_Grouping.representatives:
-            BV_Fork_Grouping.representatives[number_of_bits] = BV_Fork_Grouping(number_of_bits)
-            assert BV_Fork_Grouping.representatives[number_of_bits].is_consistent()
-        return BV_Fork_Grouping.representatives[number_of_bits]
+    def representative(number_of_input_bits):
+        if number_of_input_bits not in BV_Fork_Grouping.representatives:
+            BV_Fork_Grouping.representatives[number_of_input_bits] = BV_Fork_Grouping(number_of_input_bits)
+            assert BV_Fork_Grouping.representatives[number_of_input_bits].is_consistent()
+        return BV_Fork_Grouping.representatives[number_of_input_bits]
 
 class CFLOBVDD:
+    max_level = 0
+
     representatives = {}
 
-    def __init__(self, sid_line, g, v):
-        self.sid_line = sid_line
-        self.grouping = g
-        self.value_tuple = v
+    def __init__(self, grouping, outputs, number_of_input_bits, number_of_output_bits):
+        self.grouping = grouping
+        self.outputs = outputs
+        self.number_of_input_bits = number_of_input_bits
+        self.number_of_output_bits = number_of_output_bits
 
     def __str__(self):
-        return (f"sid: {self.sid_line}\n" +
-            f"g: [{self.grouping}]\n" +
-            f"v: {self.value_tuple}")
+        return ("CFLOBVDD with\n" +
+            f"g: {self.grouping}\n" +
+            f"o: {self.outputs}\n" +
+            f"n_of_i_b: {self.number_of_input_bits}\n" +
+            f"n_of_o_b: {self.number_of_output_bits}")
 
     def number_of_paths(self):
         return self.grouping.number_of_paths()
@@ -985,50 +996,53 @@ class CFLOBVDD:
         return self.grouping.number_of_solutions()
 
     def is_consistent(self):
-        return (len(self.value_tuple) == self.grouping.number_of_exits and
-            self.number_of_paths() >= self.grouping.number_of_exits and
-            self.number_of_solutions() >= self.grouping.number_of_exits)
+        return (self.grouping.is_consistent() and
+            len(self.outputs) == self.grouping.number_of_exits and
+            all([0 <= self.outputs[i] < 2**self.number_of_output_bits for i in self.outputs]))
 
-    def representative(sid_line, g, v):
-        for i in v:
-            assert sid_line.is_unsigned_value(v[i])
+    def representative(grouping, outputs, number_of_input_bits, number_of_output_bits):
+        cflobvdd = CFLOBVDD(grouping, outputs, number_of_input_bits, number_of_output_bits)
+        if cflobvdd not in CFLOBVDD.representatives:
+            assert cflobvdd.is_consistent()
+            CFLOBVDD.representatives[cflobvdd] = cflobvdd
+        return CFLOBVDD.representatives[cflobvdd]
 
-        g = CFLOBVDD(sid_line, g, v)
+    def constant(level, output, number_of_input_bits, number_of_output_bits):
+        return CFLOBVDD.representative(
+            Internal_Grouping.no_distinction_proto(level, number_of_input_bits),
+            {1:output},
+            number_of_input_bits,
+            number_of_output_bits)
 
-        if g not in CFLOBVDD.representatives:
-            assert g.is_consistent()
-            CFLOBVDD.representatives[g] = g
-        return CFLOBVDD.representatives[g]
+    def false(level, number_of_input_bits):
+        return CFLOBVDD.constant(level, 0, number_of_input_bits, 1)
 
-    def constant(sid_line, k, v, number_of_bits):
-        return CFLOBVDD.representative(sid_line,
-            Internal_Grouping.no_distinction_proto(k, number_of_bits), {1:v})
-
-    def false(k, number_of_bits):
-        return CFLOBVDD.constant(Bool.boolean, k, 0, number_of_bits)
-
-    def true(k, number_of_bits):
-        return CFLOBVDD.constant(Bool.boolean, k, 1, number_of_bits)
+    def true(level, number_of_input_bits):
+        return CFLOBVDD.constant(level, 1, number_of_input_bits, 1)
 
     def flip_value_tuple(self):
-        assert len(self.value_tuple) == 2
-        return CFLOBVDD.representative(self.sid_line, self.grouping,
-            {1:self.value_tuple[2], 2:self.value_tuple[1]})
+        assert len(self.outputs) == 2
+        return CFLOBVDD.representative(self.grouping,
+            {1:self.outputs[2], 2:self.outputs[1]},
+            self.number_of_input_bits,
+            self.number_of_output_bits)
 
     def complement(self):
-        if self == CFLOBVDD.false(self.g.level):
-            return CFLOBVDD.true(self.g.level)
-        elif self == CFLOBVDD.true(self.g.level):
-            return CFLOBVDD.false(self.g.level)
+        if self == CFLOBVDD.false(self.grouping.level, self.number_of_input_bits):
+            return CFLOBVDD.true(self.grouping.level, self.number_of_input_bits)
+        elif self == CFLOBVDD.true(self.grouping.level, self.number_of_input_bits):
+            return CFLOBVDD.false(self.grouping.level, self.number_of_input_bits)
         else:
             return self.flip_value_tuple()
 
-    def projection(sid_line, k, i, number_of_bits):
-        assert 0 <= i < 2**k
-        assert number_of_bits == sid_line.size
-        return CFLOBVDD.representative(sid_line,
-            Internal_Grouping.projection_proto(k, i, number_of_bits),
-            dict([(v + 1, v) for v in range(2**number_of_bits)]))
+    def projection(level, input_i, number_of_bits):
+        assert 0 <= input_i < 2**level
+        CFLOBVDD.max_level = max(CFLOBVDD.max_level, level)
+        return CFLOBVDD.representative(
+            Internal_Grouping.projection_proto(level, input_i, number_of_bits),
+            dict([(output + 1, output) for output in range(2**number_of_bits)]),
+            number_of_bits,
+            number_of_bits)
 
 class Values:
     total_number_of_constants = 0
