@@ -855,6 +855,20 @@ class Internal_Grouping(Grouping):
             indentation + f"b_c: {self.b_connections}\n" +
             indentation + f"b_r: {self.b_return_tuples}")
 
+    def get_solutions(self, exit_i, index_i):
+        solutions = []
+        for b_i in self.b_return_tuples:
+            b_rt = self.b_return_tuples[b_i]
+            for b_e_i in b_rt:
+                if exit_i == b_rt[b_e_i]:
+                    solutions += ["(" +
+                        "&".join(self.a_connection.get_solutions(b_i, index_i) +
+                            self.b_connections[b_i].get_solutions(b_e_i,
+                                index_i + 2**(self.level - 1))) +
+                        ")"]
+                    break
+        return ["[" + "|".join(solutions) + "]"]
+
     def is_consistent(self):
         return super().is_consistent()
 
@@ -936,6 +950,10 @@ class Dont_Care_Grouping(Grouping):
     def __repr__(self):
         return "dontcare @ " + super().__repr__()
 
+    def get_solutions(self, exit_i, index_i):
+        assert exit_i == 1
+        return [f"[dontcare @ {index_i}]"]
+
     def is_consistent(self):
         return super().is_consistent()
 
@@ -961,6 +979,24 @@ class BV_Fork_Grouping(Grouping):
         return (indentation + "\n" +
             indentation + "fork @ " + super().__repr__() + ":\n" +
             indentation + f"{self.inputs}")
+
+    def get_input_values(self, exit_i):
+        inputs = self.inputs[exit_i]
+        input_value = 0
+        input_values = []
+        while inputs != 0:
+            if inputs % 2 == 1:
+                input_values += [input_value]
+            inputs //= 2
+            input_value += 1
+        return input_values
+
+    def get_solutions(self, exit_i, index_i):
+        assert 1 <= exit_i <= self.number_of_exits
+        return ["[" +
+            f"input @ {index_i}: " +
+            "|".join([str(input_value) for input_value in self.get_input_values(exit_i)]) +
+            "]"]
 
     def is_consistent(self):
         return super().is_consistent() and len(self.inputs) == self.number_of_exits
@@ -994,6 +1030,14 @@ class CFLOBVDD:
 
     def number_of_solutions(self):
         return self.grouping.number_of_solutions()
+
+    def get_solutions(self):
+        solutions = ""
+        for exit_i in self.outputs:
+            solutions += (f"{self.outputs[exit_i]} <- " +
+                self.grouping.get_solutions(exit_i, 0)[0] +
+                "\n")
+        return solutions
 
     def is_consistent(self):
         return (self.grouping.is_consistent() and
