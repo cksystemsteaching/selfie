@@ -832,6 +832,75 @@ class Grouping:
             len(self.number_of_solutions_per_exit) == self.number_of_exits and
             self.number_of_paths() >= self.number_of_solutions() >= self.number_of_exits)
 
+class Dont_Care_Grouping(Grouping):
+    representatives = None
+
+    def __init__(self, number_of_input_bits):
+        assert 0 < number_of_input_bits <= 8
+        super().__init__(0)
+        self.number_of_paths_per_exit = {1:2**number_of_input_bits}
+        self.number_of_solutions_per_exit = {1:1}
+
+    def __repr__(self):
+        return "dontcare @ " + super().__repr__()
+
+    def get_solutions(self, exit_i, index_i):
+        assert exit_i == 1
+        return [f"[dontcare @ {index_i}]"]
+
+    def is_consistent(self):
+        return super().is_consistent()
+
+    def representative(number_of_input_bits):
+        if Dont_Care_Grouping.representatives is None:
+            Dont_Care_Grouping.representatives = Dont_Care_Grouping(number_of_input_bits)
+            assert Dont_Care_Grouping.representatives.is_consistent()
+        return Dont_Care_Grouping.representatives
+
+class BV_Fork_Grouping(Grouping):
+    # generalizing CFLOBDDs to bitvector variables with up to 8 bits
+    representatives = {}
+
+    def __init__(self, number_of_input_bits):
+        assert 0 < number_of_input_bits <= 8
+        super().__init__(0, 2**number_of_input_bits)
+        self.inputs = dict([(i + 1, 2**i) for i in range(2**number_of_input_bits)])
+        self.number_of_paths_per_exit = dict([(i, 1) for i in range(1, self.number_of_exits + 1)])
+        self.number_of_solutions_per_exit = self.number_of_paths_per_exit
+
+    def __repr__(self):
+        indentation = " " * (CFLOBVDD.max_level - self.level + 1)
+        return (indentation + "\n" +
+            indentation + "fork @ " + super().__repr__() + ":\n" +
+            indentation + f"{self.inputs}")
+
+    def get_input_values(self, exit_i):
+        inputs = self.inputs[exit_i]
+        input_value = 0
+        input_values = []
+        while inputs != 0:
+            if inputs % 2 == 1:
+                input_values += [input_value]
+            inputs //= 2
+            input_value += 1
+        return input_values
+
+    def get_solutions(self, exit_i, index_i):
+        assert 1 <= exit_i <= self.number_of_exits
+        return ["[" +
+            f"input @ {index_i}: " +
+            "|".join([str(input_value) for input_value in self.get_input_values(exit_i)]) +
+            "]"]
+
+    def is_consistent(self):
+        return super().is_consistent() and len(self.inputs) == self.number_of_exits
+
+    def representative(number_of_input_bits):
+        if number_of_input_bits not in BV_Fork_Grouping.representatives:
+            BV_Fork_Grouping.representatives[number_of_input_bits] = BV_Fork_Grouping(number_of_input_bits)
+            assert BV_Fork_Grouping.representatives[number_of_input_bits].is_consistent()
+        return BV_Fork_Grouping.representatives[number_of_input_bits]
+
 class Internal_Grouping(Grouping):
     representatives = {}
 
@@ -937,75 +1006,6 @@ class Internal_Grouping(Grouping):
                 g.b_return_tuples = {1:exits}
 
             return g.representative()
-
-class Dont_Care_Grouping(Grouping):
-    representatives = None
-
-    def __init__(self, number_of_input_bits):
-        assert 0 < number_of_input_bits <= 8
-        super().__init__(0)
-        self.number_of_paths_per_exit = {1:2**number_of_input_bits}
-        self.number_of_solutions_per_exit = {1:1}
-
-    def __repr__(self):
-        return "dontcare @ " + super().__repr__()
-
-    def get_solutions(self, exit_i, index_i):
-        assert exit_i == 1
-        return [f"[dontcare @ {index_i}]"]
-
-    def is_consistent(self):
-        return super().is_consistent()
-
-    def representative(number_of_input_bits):
-        if Dont_Care_Grouping.representatives is None:
-            Dont_Care_Grouping.representatives = Dont_Care_Grouping(number_of_input_bits)
-            assert Dont_Care_Grouping.representatives.is_consistent()
-        return Dont_Care_Grouping.representatives
-
-class BV_Fork_Grouping(Grouping):
-    # generalizing CFLOBDDs to bitvector variables with up to 8 bits
-    representatives = {}
-
-    def __init__(self, number_of_input_bits):
-        assert 0 < number_of_input_bits <= 8
-        super().__init__(0, 2**number_of_input_bits)
-        self.inputs = dict([(i + 1, 2**i) for i in range(2**number_of_input_bits)])
-        self.number_of_paths_per_exit = dict([(i, 1) for i in range(1, self.number_of_exits + 1)])
-        self.number_of_solutions_per_exit = self.number_of_paths_per_exit
-
-    def __repr__(self):
-        indentation = " " * (CFLOBVDD.max_level - self.level + 1)
-        return (indentation + "\n" +
-            indentation + "fork @ " + super().__repr__() + ":\n" +
-            indentation + f"{self.inputs}")
-
-    def get_input_values(self, exit_i):
-        inputs = self.inputs[exit_i]
-        input_value = 0
-        input_values = []
-        while inputs != 0:
-            if inputs % 2 == 1:
-                input_values += [input_value]
-            inputs //= 2
-            input_value += 1
-        return input_values
-
-    def get_solutions(self, exit_i, index_i):
-        assert 1 <= exit_i <= self.number_of_exits
-        return ["[" +
-            f"input @ {index_i}: " +
-            "|".join([str(input_value) for input_value in self.get_input_values(exit_i)]) +
-            "]"]
-
-    def is_consistent(self):
-        return super().is_consistent() and len(self.inputs) == self.number_of_exits
-
-    def representative(number_of_input_bits):
-        if number_of_input_bits not in BV_Fork_Grouping.representatives:
-            BV_Fork_Grouping.representatives[number_of_input_bits] = BV_Fork_Grouping(number_of_input_bits)
-            assert BV_Fork_Grouping.representatives[number_of_input_bits].is_consistent()
-        return BV_Fork_Grouping.representatives[number_of_input_bits]
 
 class CFLOBVDD:
     max_level = 0
