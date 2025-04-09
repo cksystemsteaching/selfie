@@ -846,7 +846,7 @@ class Dont_Care_Grouping(Grouping):
 
     def get_solutions(self, exit_i, index_i):
         assert exit_i == 1
-        return [f"[dontcare @ {index_i}]"]
+        return [(index_i, 0)]
 
     def is_consistent(self):
         return super().is_consistent()
@@ -874,8 +874,7 @@ class BV_Fork_Grouping(Grouping):
             indentation + "fork @ " + super().__repr__() + ":\n" +
             indentation + f"{self.inputs}")
 
-    def get_input_values(self, exit_i):
-        inputs = self.inputs[exit_i]
+    def get_input_values(inputs):
         input_value = 0
         input_values = []
         while inputs != 0:
@@ -887,10 +886,7 @@ class BV_Fork_Grouping(Grouping):
 
     def get_solutions(self, exit_i, index_i):
         assert 1 <= exit_i <= self.number_of_exits
-        return ["[" +
-            f"input @ {index_i}: " +
-            "|".join([str(input_value) for input_value in self.get_input_values(exit_i)]) +
-            "]"]
+        return [(index_i, self.inputs[exit_i])]
 
     def is_consistent(self):
         return super().is_consistent() and len(self.inputs) == self.number_of_exits
@@ -930,13 +926,11 @@ class Internal_Grouping(Grouping):
             b_rt = self.b_return_tuples[b_i]
             for b_e_i in b_rt:
                 if exit_i == b_rt[b_e_i]:
-                    solutions += ["(" +
-                        "&".join(self.a_connection.get_solutions(b_i, index_i) +
-                            self.b_connections[b_i].get_solutions(b_e_i,
-                                index_i + 2**(self.level - 1))) +
-                        ")"]
+                    solutions += [(self.a_connection.get_solutions(b_i, index_i),
+                        self.b_connections[b_i].get_solutions(b_e_i,
+                            index_i + 2**(self.level - 1)))]
                     break
-        return ["[" + "|".join(solutions) + "]"]
+        return solutions
 
     def is_consistent(self):
         return super().is_consistent()
@@ -1031,11 +1025,41 @@ class CFLOBVDD:
     def number_of_solutions(self):
         return self.grouping.number_of_solutions()
 
-    def get_solutions(self):
+    def get_printed_solutions(solutions, with_dont_care = False):
+        printed_solutions = []
+        for solution in solutions:
+            if isinstance(solution[0], int):
+                assert isinstance(solution[1], int)
+                index_i = solution[0]
+                inputs = solution[1]
+                if inputs == 0:
+                    if with_dont_care:
+                        printed_solutions += [f"[dontcare @ {index_i}]"]
+                else:
+                    printed_solutions += ["[" +
+                        f"input @ {index_i}: " +
+                        "|".join([str(input_value) for input_value in BV_Fork_Grouping.get_input_values(inputs)]) +
+                        "]"]
+            else:
+                a_solutions = CFLOBVDD.get_printed_solutions(solution[0], with_dont_care)
+                b_solutions = CFLOBVDD.get_printed_solutions(solution[1], with_dont_care)
+                if a_solutions:
+                    if b_solutions:
+                        printed_solutions += ["(" + "&".join(a_solutions + b_solutions) + ")"]
+                    else:
+                        printed_solutions += a_solutions
+                elif b_solutions:
+                    printed_solutions += b_solutions
+        if len(printed_solutions) > 1:
+            return ["[" + "|".join(printed_solutions) + "]"]
+        else:
+            return printed_solutions
+
+    def print_solutions(self):
         solutions = ""
         for exit_i in self.outputs:
             solutions += (f"{self.outputs[exit_i]} <- " +
-                self.grouping.get_solutions(exit_i, 0)[0] +
+                CFLOBVDD.get_printed_solutions(self.grouping.get_solutions(exit_i, 0))[0] +
                 "\n")
         return solutions
 
