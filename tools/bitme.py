@@ -984,59 +984,52 @@ class BV_Internal_Grouping(Grouping):
             return g.representative();
 
     def projection_proto(level, input_i, number_of_input_bits, number_of_output_bits):
-        # generalizing CFLOBDD projection to bitvectors of size number_of_output_bits
-        # where number_of_output_bits % number_of_input_bits == 0 and
-        # number_of_output_bits // number_of_input_bits is a power of 2
+        # generalizing CFLOBDD projection to bitvectors of size >= 1
         if level == 0:
             assert input_i == 0 and number_of_output_bits == number_of_input_bits
             return BV_Fork_Grouping.representative(number_of_input_bits)
         else:
-            assert (2**level * number_of_input_bits) % number_of_output_bits == 0
+            assert 0 <= input_i < 2**level
+            assert number_of_output_bits % number_of_input_bits == 0
+            assert 0 < number_of_output_bits <= (2**level - input_i) * number_of_input_bits
 
             g = BV_Internal_Grouping(level, 2**number_of_output_bits)
 
-            if number_of_output_bits == 2**level * number_of_input_bits:
-                assert input_i == 0
-                number_of_output_bits //= 2
-
+            if input_i < 2**(level - 1):
+                a_number_of_output_bits = min((2**(level - 1) - input_i) * number_of_input_bits,
+                    number_of_output_bits)
                 g.a_connection = BV_Internal_Grouping.projection_proto(level - 1,
-                    input_i, number_of_input_bits, number_of_output_bits)
-                g.a_return_tuple = dict([(e, e) for e in range(1, 2**number_of_output_bits + 1)])
+                    input_i, number_of_input_bits, a_number_of_output_bits)
+                g.a_return_tuple = dict([(e, e)
+                    for e in range(1, 2**a_number_of_output_bits + 1)])
 
-                g.number_of_b_connections = 2**number_of_output_bits
-                g.b_connections = dict([(e, g.a_connection)
-                    for e in range(1, 2**number_of_output_bits + 1)])
-                g.b_return_tuples = dict([(c,
-                    dict([(e, 2**number_of_output_bits * (c - 1) + e) for e in range(1, 2**number_of_output_bits + 1)]))
-                    for c in range(1, 2**number_of_output_bits + 1)])
+                input_i = 2**(level - 1)
             else:
-                assert 2**(level - 1) * number_of_input_bits % number_of_output_bits == 0
+                a_number_of_output_bits = 0
 
-                exits = dict([(e, e) for e in range(1, 2**number_of_output_bits + 1)])
+                g.a_connection = BV_Internal_Grouping.no_distinction_proto(level - 1,
+                    number_of_input_bits)
+                g.a_return_tuple = {1:1}
 
-                if input_i < 2**(level - 1) * number_of_input_bits // number_of_output_bits:
-                    g.a_connection = BV_Internal_Grouping.projection_proto(level - 1,
-                        input_i, number_of_input_bits, number_of_output_bits)
-                    g.a_return_tuple = exits
+            g.number_of_b_connections = 2**a_number_of_output_bits
 
-                    g.number_of_b_connections = 2**number_of_output_bits
-                    no_distinction_proto = BV_Internal_Grouping.no_distinction_proto(level - 1,
-                        number_of_input_bits)
-                    g.b_connections = dict([(e, no_distinction_proto)
-                        for e in range(1, 2**number_of_output_bits + 1)])
-                    g.b_return_tuples = dict([(c, {1:c})
-                        for c in range(1, 2**number_of_output_bits + 1)])
-                else:
-                    g.a_connection = BV_Internal_Grouping.no_distinction_proto(level - 1,
-                        number_of_input_bits)
-                    g.a_return_tuple = {1:1}
+            b_number_of_output_bits = number_of_output_bits - a_number_of_output_bits
 
-                    g.number_of_b_connections = 1
-                    g.b_connections = {1:BV_Internal_Grouping.projection_proto(level - 1,
-                        input_i - 2**(level - 1) * number_of_input_bits // number_of_output_bits,
-                        number_of_input_bits,
-                        number_of_output_bits)}
-                    g.b_return_tuples = {1:exits}
+            if b_number_of_output_bits == 0:
+                projection_proto = BV_Internal_Grouping.no_distinction_proto(level - 1,
+                    number_of_input_bits)
+            else:
+                projection_proto = BV_Internal_Grouping.projection_proto(level - 1,
+                    input_i - 2**(level - 1),
+                    number_of_input_bits,
+                    b_number_of_output_bits)
+
+            g.b_connections = dict([(c, projection_proto)
+                for c in range(1, g.number_of_b_connections + 1)])
+            g.b_return_tuples = dict([(c,
+                dict([(e, 2**b_number_of_output_bits * (c - 1) + e)
+                    for e in range(1, 2**b_number_of_output_bits + 1)]))
+                for c in range(1, g.number_of_b_connections + 1)])
 
             return g.representative()
 
@@ -1154,11 +1147,9 @@ class CFLOBVDD:
             return self.flip_value_tuple()
 
     def projection(level, input_i, number_of_input_bits, number_of_output_bits):
+        assert 0 <= input_i < 2**level
         assert number_of_output_bits % number_of_input_bits == 0
-        assert (number_of_output_bits // number_of_input_bits ==
-            2**int(math.log2(number_of_output_bits // number_of_input_bits)))
-        assert 2**level * number_of_input_bits % number_of_output_bits == 0
-        assert 0 <= input_i < 2**level * number_of_input_bits // number_of_output_bits
+        assert number_of_output_bits <= (2**level - input_i) * number_of_input_bits
         CFLOBVDD.max_level = max(CFLOBVDD.max_level, level)
         return CFLOBVDD.representative(
             BV_Internal_Grouping.projection_proto(level,
