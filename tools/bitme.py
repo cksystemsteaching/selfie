@@ -890,16 +890,16 @@ class BV_Fork_Grouping(Grouping):
         return [(index_i, self.inputs[exit_i])]
 
     def is_consistent(self):
-        union = 0
-        for inputs in self.inputs:
-            if self.inputs[inputs] & union != 0:
-                return False
-            else:
-                union |= self.inputs[inputs]
-        if union <= 0 or union >= 2**2**self.number_of_input_bits:
-            return False
+        if not(super().is_consistent() and len(self.inputs) == self.number_of_exits):
+            assert False
         else:
-            return super().is_consistent() and len(self.inputs) == self.number_of_exits
+            union = 0
+            for inputs in self.inputs:
+                if self.inputs[inputs] & union != 0:
+                    assert False
+                else:
+                    union |= self.inputs[inputs]
+            return 0 < union < 2**2**self.number_of_input_bits
 
     def representative(number_of_input_bits):
         if number_of_input_bits not in BV_Fork_Grouping.representatives:
@@ -1035,7 +1035,7 @@ class CFLOBVDD:
     def number_of_solutions(self):
         return self.grouping.number_of_solutions()
 
-    def get_printed_paths(paths, just_solutions = False):
+    def get_printed_paths(paths, full_paths = True):
         printed_paths = []
         for path in paths:
             if isinstance(path[0], int):
@@ -1043,7 +1043,7 @@ class CFLOBVDD:
                 index_i = path[0]
                 inputs = path[1]
                 if inputs == 0:
-                    if just_solutions:
+                    if full_paths:
                         printed_paths += [f"[dontcare @ {index_i}]"]
                 else:
                     printed_paths += ["[" +
@@ -1051,8 +1051,8 @@ class CFLOBVDD:
                         "|".join([str(input_value) for input_value in BV_Fork_Grouping.get_input_values(inputs)]) +
                         "]"]
             else:
-                a_paths = CFLOBVDD.get_printed_paths(path[0], just_solutions)
-                b_paths = CFLOBVDD.get_printed_paths(path[1], just_solutions)
+                a_paths = CFLOBVDD.get_printed_paths(path[0], full_paths)
+                b_paths = CFLOBVDD.get_printed_paths(path[1], full_paths)
                 if a_paths:
                     if b_paths:
                         printed_paths += ["(" + "&".join(a_paths + b_paths) + ")"]
