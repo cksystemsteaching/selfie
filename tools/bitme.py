@@ -844,7 +844,7 @@ class Dont_Care_Grouping(Grouping):
     def __repr__(self):
         return "dontcare @ " + super().__repr__()
 
-    def get_solutions(self, exit_i, index_i):
+    def get_paths(self, exit_i, index_i = 0):
         assert exit_i == 1
         return [(index_i, 0)]
 
@@ -884,7 +884,7 @@ class BV_Fork_Grouping(Grouping):
             input_value += 1
         return input_values
 
-    def get_solutions(self, exit_i, index_i):
+    def get_paths(self, exit_i, index_i = 0):
         assert 1 <= exit_i <= self.number_of_exits
         return [(index_i, self.inputs[exit_i])]
 
@@ -920,14 +920,14 @@ class Internal_Grouping(Grouping):
             indentation + f"b_c: {self.b_connections}\n" +
             indentation + f"b_r: {self.b_return_tuples}")
 
-    def get_solutions(self, exit_i, index_i):
+    def get_paths(self, exit_i, index_i = 0):
         solutions = []
         for b_i in self.b_return_tuples:
             b_rt = self.b_return_tuples[b_i]
             for b_e_i in b_rt:
                 if exit_i == b_rt[b_e_i]:
-                    solutions += [(self.a_connection.get_solutions(b_i, index_i),
-                        self.b_connections[b_i].get_solutions(b_e_i,
+                    solutions += [(self.a_connection.get_paths(b_i, index_i),
+                        self.b_connections[b_i].get_paths(b_e_i,
                             index_i + 2**(self.level - 1)))]
                     break
         return solutions
@@ -1025,43 +1025,54 @@ class CFLOBVDD:
     def number_of_solutions(self):
         return self.grouping.number_of_solutions()
 
-    def get_printed_solutions(solutions, with_dont_care = False):
-        printed_solutions = []
-        for solution in solutions:
-            if isinstance(solution[0], int):
-                assert isinstance(solution[1], int)
-                index_i = solution[0]
-                inputs = solution[1]
+    def get_printed_paths(paths, just_solutions = False):
+        printed_paths = []
+        for path in paths:
+            if isinstance(path[0], int):
+                assert isinstance(path[1], int)
+                index_i = path[0]
+                inputs = path[1]
                 if inputs == 0:
-                    if with_dont_care:
-                        printed_solutions += [f"[dontcare @ {index_i}]"]
+                    if just_solutions:
+                        printed_paths += [f"[dontcare @ {index_i}]"]
                 else:
-                    printed_solutions += ["[" +
+                    printed_paths += ["[" +
                         f"input @ {index_i}: " +
                         "|".join([str(input_value) for input_value in BV_Fork_Grouping.get_input_values(inputs)]) +
                         "]"]
             else:
-                a_solutions = CFLOBVDD.get_printed_solutions(solution[0], with_dont_care)
-                b_solutions = CFLOBVDD.get_printed_solutions(solution[1], with_dont_care)
-                if a_solutions:
-                    if b_solutions:
-                        printed_solutions += ["(" + "&".join(a_solutions + b_solutions) + ")"]
+                a_paths = CFLOBVDD.get_printed_paths(path[0], just_solutions)
+                b_paths = CFLOBVDD.get_printed_paths(path[1], just_solutions)
+                if a_paths:
+                    if b_paths:
+                        printed_paths += ["(" + "&".join(a_paths + b_paths) + ")"]
                     else:
-                        printed_solutions += a_solutions
-                elif b_solutions:
-                    printed_solutions += b_solutions
-        if len(printed_solutions) > 1:
-            return ["[" + "|".join(printed_solutions) + "]"]
+                        printed_paths += a_paths
+                elif b_paths:
+                    printed_paths += b_paths
+        if len(printed_paths) > 1:
+            return ["[" + "|".join(printed_paths) + "]"]
         else:
-            return printed_solutions
+            return printed_paths
 
-    def print_solutions(self):
-        solutions = ""
+    def get_printed_value_paths(self):
+        value_paths = ""
         for exit_i in self.outputs:
-            solutions += (f"{self.outputs[exit_i]} <- " +
-                CFLOBVDD.get_printed_solutions(self.grouping.get_solutions(exit_i, 0))[0] +
+            value_paths += (f"{self.outputs[exit_i]} <- " +
+                CFLOBVDD.get_printed_paths(self.grouping.get_paths(exit_i))[0] +
                 "\n")
-        return solutions
+        return value_paths
+
+    def get_printed_CFLOBVDD(self):
+        return (f"CFLOBVDD:\n" +
+            f"{2**self.grouping.level * self.number_of_input_bits} input bits in total\n" +
+            f"{2**self.grouping.level} input variables\n" +
+            f"{self.number_of_input_bits} input bits per variable\n" +
+            f"{len(self.outputs)} output values\n"
+            f"{self.number_of_output_bits} output bits per value\n"
+            f"{self.number_of_paths()} paths\n" +
+            f"{self.number_of_solutions()} solutions\n" +
+            f"{self.get_printed_value_paths()}")
 
     def is_consistent(self):
         return (self.grouping.is_consistent() and
