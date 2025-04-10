@@ -944,21 +944,36 @@ class BV_Internal_Grouping(Grouping):
         return solutions
 
     def is_consistent(self):
-        return super().is_consistent()
+        assert super().is_consistent()
+        g_a = self.a_connection
+        assert isinstance(g_a, Grouping)
+        assert len(self.a_return_tuple) == g_a.number_of_exits
+        assert len(self.a_return_tuple) == self.number_of_b_connections
+        assert len(self.b_connections) == self.number_of_b_connections
+        assert len(self.b_connections) == len(self.b_return_tuples)
+        for g_a_e_i in self.a_return_tuple:
+            assert 1 <= g_a_e_i <= g_a.number_of_exits
+            assert 1 <= self.a_return_tuple[g_a_e_i] <= self.number_of_b_connections
+        for g_b_i in self.b_connections:
+            g_b = self.b_connections[g_b_i]
+            assert g_b_i in self.b_return_tuples
+            for g_b_e_i in self.b_return_tuples[g_b_i]:
+                assert 1 <= g_b_e_i <= g_b.number_of_exits
+                assert 1 <= self.b_return_tuples[g_b_i][g_b_e_i] <= self.number_of_exits
+        return True
 
     def pre_compute_number_of_paths_and_solutions_per_exit(self):
-        # also serves as consistency check
         self.number_of_paths_per_exit = dict([(i, 0) for i in range(1, self.number_of_exits + 1)])
         self.number_of_solutions_per_exit = dict([(i, 0) for i in range(1, self.number_of_exits + 1)])
         g_a = self.a_connection
-        for b_i in self.b_connections:
-            a_number_of_paths = g_a.number_of_paths_per_exit[b_i]
-            a_number_of_solutions = g_a.number_of_solutions_per_exit[b_i]
-            g_b = self.b_connections[b_i]
-            for b_e_i in range(1, g_b.number_of_exits + 1):
-                e_i = self.b_return_tuples[b_i][b_e_i]
-                b_number_of_paths = g_b.number_of_paths_per_exit[b_e_i]
-                b_number_of_solutions = g_b.number_of_solutions_per_exit[b_e_i]
+        for g_b_i in self.b_connections:
+            a_number_of_paths = g_a.number_of_paths_per_exit[g_b_i]
+            a_number_of_solutions = g_a.number_of_solutions_per_exit[g_b_i]
+            g_b = self.b_connections[g_b_i]
+            for g_b_e_i in self.b_return_tuples[g_b_i]:
+                e_i = self.b_return_tuples[g_b_i][g_b_e_i]
+                b_number_of_paths = g_b.number_of_paths_per_exit[g_b_e_i]
+                b_number_of_solutions = g_b.number_of_solutions_per_exit[g_b_e_i]
                 self.number_of_paths_per_exit[e_i] += a_number_of_paths * b_number_of_paths
                 self.number_of_solutions_per_exit[e_i] += a_number_of_solutions * b_number_of_solutions
 
