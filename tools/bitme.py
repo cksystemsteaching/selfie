@@ -864,6 +864,7 @@ class BV_Fork_Grouping(Grouping):
     def __init__(self, number_of_input_bits):
         assert 0 < number_of_input_bits <= 8
         super().__init__(0, 2**number_of_input_bits)
+        self.number_of_input_bits = number_of_input_bits
         self.inputs = dict([(i + 1, 2**i) for i in range(2**number_of_input_bits)])
         self.number_of_paths_per_exit = dict([(i, 1) for i in range(1, self.number_of_exits + 1)])
         self.number_of_solutions_per_exit = self.number_of_paths_per_exit
@@ -889,7 +890,16 @@ class BV_Fork_Grouping(Grouping):
         return [(index_i, self.inputs[exit_i])]
 
     def is_consistent(self):
-        return super().is_consistent() and len(self.inputs) == self.number_of_exits
+        union = 0
+        for inputs in self.inputs:
+            if self.inputs[inputs] & union != 0:
+                return False
+            else:
+                union |= self.inputs[inputs]
+        if union <= 0 or union >= 2**2**self.number_of_input_bits:
+            return False
+        else:
+            return super().is_consistent() and len(self.inputs) == self.number_of_exits
 
     def representative(number_of_input_bits):
         if number_of_input_bits not in BV_Fork_Grouping.representatives:
