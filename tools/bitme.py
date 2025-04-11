@@ -965,7 +965,7 @@ class BV_Fork_Grouping(BV_Grouping):
             if g_inputs:
                 return BV_Fork_Grouping(g_inputs, g1.number_of_input_bits), g_pair_tuples
             else:
-                return BV_Dont_Care_Grouping.representative().pair_product(BV_Dont_Care_Grouping.representative())
+                return BV_Dont_Care_Grouping.representative(g1.number_of_input_bits).pair_product(BV_Dont_Care_Grouping.representative(g1.number_of_input_bits))
 
 class BV_Internal_Grouping(BV_Grouping):
     representatives = {}
