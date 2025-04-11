@@ -1,3 +1,6 @@
+import lib.exceptions as ex
+
+from abc import ABC, abstractmethod
 from typing import Optional
 from pathlib import Path
 from enum import Enum, auto
@@ -7,42 +10,65 @@ class OutputFormat(Enum):
     """Supported output formats"""
     PLAIN = auto()
     VERBOSE = auto()
+class BasePresenter(ABC):
+    """ Abstract base class for model presenters"""
 
-class SMT2ModelPresenter:
-    """Handles rich presentation of model information for CLI output"""
-    
     def __init__(self, model):
         self.model = model
         self.stats = None
-        self.logger = logging.getLogger("bt.model_presenter")
-    
+        self.logger = logging.getLogger(f"bt.{self.__class__.__name__.lower()}")
+
     def show(self, 
              verbose: bool = True,
-             format: OutputFormat = OutputFormat.PLAIN,
-             output_file: Optional[Path] = None):
+             format: OutputFormat = OutputFormat.PLAIN):
         """
-        Display model information in specified format
-        
-        Args:
-            verbose: Show detailed information
-            format: Output format (PLAIN, VERBOSE)
-            output_file: Optional file to write output to
+        Standardized presentation flow (shared by all presenters)
         """
         self.stats = self.model.parser.parse()
         
         output = self._generate_output(format, verbose)
-        
-        if output_file:
-            self._write_output(output, output_file)
-        else:
-            self.logger.info(output)
+        self.logger.info(output)
+
+    @abstractmethod
+    def _generate_plain(self, verbose: bool) -> str:
+        """Generate plain output (implemented by subclasses)"""
+        pass
     
+    @abstractmethod
+    def _generate_verbose(self) -> str:
+        """Generate verbose output (implemented by subclasses)"""
+        pass
+
     def _generate_output(self, format: OutputFormat, verbose: bool) -> str:
-        """Generate formatted output string"""
+        """Shared output generator (can be overridden if needed)"""
         if format == OutputFormat.VERBOSE:
             return self._generate_verbose()
         elif format == OutputFormat.PLAIN:
             return self._generate_plain(verbose)
+        raise ex.UnreachableError(format, list(OutputFormat))
+        
+    
+    @staticmethod
+    def _section(title: str, items: list[str]) -> str:
+        """Shared section formatter"""
+        lines = [f" {title} ".center(40, "-")]
+        lines.extend(items)
+        return "\n".join(lines)
+    
+    @staticmethod
+    def _write_output(content: str, path: Path):
+        """Shared file writer"""
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with open(path, 'w') as f:
+            f.write(content)
+    
+class BTORModelPresenter(BasePresenter):
+    pass
+class SMT2ModelPresenter(BasePresenter):
+    """Handles rich presentation of model information for CLI output"""
+    
+    def __init__(self, model):
+        super().__init__(model)
     
     def _generate_plain(self, verbose: bool) -> str:
         """Generate plain text output"""
@@ -108,16 +134,3 @@ class SMT2ModelPresenter:
             f"Data Size: {header.data_size} bytes",
             f"Flags: {', '.join(header.flags) if header.flags else 'None'}",
         ]
-    
-    @staticmethod
-    def _section(title: str, items: list[str]) -> str:
-        """Create a bordered section"""
-        lines = [f" {title} ".center(40, "-")]
-        lines.extend(items)
-        return "\n".join(lines)
-    
-    @staticmethod
-    def _write_output(content: str, path: Path):
-        """Write output to file"""
-        with open(path, 'w') as f:
-            f.write(content)
