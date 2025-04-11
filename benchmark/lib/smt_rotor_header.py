@@ -22,23 +22,6 @@ class RotorHeader:
 
     def __post_init__(self):
         self.flags = self.flags or []
-    
-    def log(self):
-        print("----TESTING----")
-        print(f"source_file: {self.source_file}")
-        print(f"k_min: {self.kmin}")
-        print(f"k_max: {self.kmax}")
-        print(f"bytecode_size: {self.bytecode_size}")
-        print(f"data_size: {self.data_size}")
-        print(f"virtual_address_space: {self.virtual_address_space}")
-        print(f"code_word_size: {self.code_word_size}")
-        print(f"memory_word_size: {self.memory_word_size}")
-        print(f"heap_allowance: {self.heap_allowance}")
-        print(f"stack_allowance: {self.stack_allowance}")
-        print(f"cores: {self.cores}")
-        print(f"bytes_to_read: {self.bytestoread}")
-        print(f"flags: {self.flags}")
-        print(f"comments_removed: {self.comments_removed}")
 
 class RotorParser:
     HEADER_PATTERNS = {

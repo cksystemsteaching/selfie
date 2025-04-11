@@ -5,6 +5,8 @@ from queue import Queue
 from typing import List, Dict, Any
 from pathlib import Path
 
+import logging
+logger = logging.getLogger("bt.model_type")
 class ModelType:
     def __init__(self, model_base: str):
         self.model_base = model_base
@@ -143,7 +145,7 @@ def get_all_model_types(path_base: str = "") -> List[str]:
                 # If it's another dict, enqueue it for further exploration
                 queue.put((value, path_keys + [key]))
             
-    print(f"Model types:{model_types}")
+    logger.verbose_info(f"All parsed model types:{model_types}")
     return list(map(lambda model: ModelType(model),model_types))
 
 def is_dict_of_strings(value):

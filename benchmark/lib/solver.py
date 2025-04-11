@@ -4,6 +4,8 @@ from pathlib import Path
 import subprocess
 import time
 
+import logging
+logger = logging.getLogger("bt.solver")
 
 class BaseSolver:
     def __init__(self, model_path: Model, timeout: int):
@@ -44,10 +46,10 @@ class Z3Solver(BaseSolver):
         # 2. solver name, solver settings
         # 3. solver process memory usage
         # 4. solver result
-        print(f"Benchmarking {self.model_path.name} with Z3")
+        logger.info(f"Benchmarking {self.model_path.name} with Z3")
 
         benchmark_data = self.run()
-        print(f"Execution time: {benchmark_data['elapsed_time']}")
+        logger.info(f"Execution time: {benchmark_data['elapsed_time']}")
 
     # Checks if provided model is digestable by the solver
     def check_model(self):

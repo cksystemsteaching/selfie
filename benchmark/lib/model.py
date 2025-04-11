@@ -23,7 +23,6 @@ class SMT2Model(Model):
 
     def show(self):
         presenter = SMT2ModelPresenter(self)
-        print(cfg.verbose)
         presenter.show(format=OutputFormat.VERBOSE if cfg.verbose else OutputFormat.PLAIN)  # Simple text
 
 class BTORModel(Model):

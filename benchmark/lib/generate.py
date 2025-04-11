@@ -115,7 +115,7 @@ class GenericSourceProcessor(BaseSourceProcessor):
 
     def generate_model(self):
         if not self.compile_source():
-            print(f"Warning: Compiler {self.compiler} not available")
+            log.warning(f"Compiler {self.compiler} not available")
             return
 
         returncode, output = execute(
@@ -161,5 +161,4 @@ def generate_all_examples() -> None:
                 continue
             output_dir = Path(cfg.models_dir) / model
             output = output_dir / Path(file.stem + "-" + model_name + "." + model_suffix)
-            print(f"Output: {output}")
             create_models(file, model, output)

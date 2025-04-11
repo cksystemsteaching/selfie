@@ -1,6 +1,9 @@
 import subprocess
 import time
 import psutil
+import logging
+
+logger = logging.getLogger("bt.smt_benchmark")
 
 def run_z3_on_model(model_path):
     start_time = time.time()  # Track start time
@@ -33,7 +36,7 @@ def get_memory_usage():
 
 
 def benchmark_model(model_path, model_type='smt'):
-    print(f"Benchmarking {model_type} model: {model_path}")
+    logger.info(f"Benchmarking {model_type} model: {model_path}")
 
     # Step 1: Run Z3 on the model and capture output
     benchmark_data = run_z3_on_model(model_path)
@@ -42,6 +45,6 @@ def benchmark_model(model_path, model_type='smt'):
     memory_usage = get_memory_usage()
 
     # Step 3: Output benchmark data
-    print(f"Execution time: {benchmark_data['elapsed_time']} seconds")
-    print(f"Memory usage (RSS): {memory_usage['rss']} bytes")
-    print(f"Memory usage (VMS): {memory_usage['vms']} bytes")
+    logger.info(f"Execution time: {benchmark_data['elapsed_time']} seconds")
+    logger.info(f"Memory usage (RSS): {memory_usage['rss']} bytes")
+    logger.info(f"Memory usage (VMS): {memory_usage['vms']} bytes")
