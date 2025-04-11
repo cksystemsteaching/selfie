@@ -1,13 +1,5 @@
 from .config import RED, RESET
 import logging
-
-import logging
-from pathlib import Path
-
-import logging
-from pathlib import Path
-
-import logging
 from pathlib import Path
 
 class BTError(Exception):
@@ -39,30 +31,25 @@ class FileValidationError(BTError):
                 **kwargs
             }
         )
+class ParsingError(BTError):
+    def __init__(self, parsed_string : str, error_part : str, **kwargs):
+        super().__init__(
+            f"Parsing error has occured in {parsed_string}, in the part {error_part}.",
+            {
+                'parsed_string': parsed_string,
+                'error_path': error_part,
+                **kwargs
+            }
+        )
 
-class ToolNotAvailableError(Exception):
-    def __init__(self, tool):
-        Exception.__init__(self, f"{RED}Error: {RESET} {tool} is not available on this machine.")
-
-
-class DirectoryNotFoundError(Exception):
-    def __init__(self, dir):
-        Exception.__init__(self, f"{RED}Error: {RESET} {dir} directory does not exist.")
-
-
-class InternalToolNotAvailableError(Exception):
-    def __init__(self, tool):
-        Exception.__init__(self, f"{RED}Error: {RESET} {tool} is not available inside project's directory.")
-
-
-class TimeoutException(Exception):
+class TimeoutException(BTError):
     def __init__(self, command, timeout, output): # , error_output:
-        Exception.__init__(self, 'The command \"' + command +
-                           '\" has timed out after ' + str(timeout) + 's')
+        super().__init__(
+            f"The command {command} has timed out after {str(timeout)} s.",
+            {
+                'command' : command,
+                'timeout' : timeout,
+                'output': output
+            }            
+        )
         self.output = output
-        # self.error_output = error_output
-
-
-class ParsingError(Exception):
-    def __init__(self, parsed_string, error_part):
-        Exception.__init__(self, f"{RED}Error: {RESET} Parsing error has occured in {parsed_string}, specifically in {error_part}.")

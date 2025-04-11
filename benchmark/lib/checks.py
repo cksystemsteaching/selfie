@@ -1,8 +1,5 @@
 from .exceptions import (
-    ToolNotAvailableError,
     TimeoutException,
-    DirectoryNotFoundError,
-    InternalToolNotAvailableError,
 )
 import lib.config as cfg
 
@@ -14,31 +11,6 @@ import sys
 def is_tool_available(name) -> bool:
     from shutil import which
     return which(name) is not None
-
-
-def check_needed_tools() -> None:
-    check_internal_tools(cfg.rotor_path)
-    check_directory(cfg.examples_dir)
-    # check_tool("riscv64-unknown-elf-gcc")
-
-
-def check_tool(name) -> None:
-    print(f"Checking if {name} is available...")
-    if not is_tool_available(name):
-        raise ToolNotAvailableError(name)
-
-
-def check_internal_tools(tool) -> None:
-    print(f"Checking if {tool} is exists...")
-    if not tool.is_file():
-        raise InternalToolNotAvailableError(tool)
-
-
-def check_directory(dir) -> None:
-    print(f"Checking if {dir} exists...")
-    if not dir.is_dir():
-        raise DirectoryNotFoundError(dir)
-
 
 def execute(command, timeout=200):
     process = Popen(shlex.split(command), stdout=cfg.PIPE, stderr=cfg.STDOUT)
