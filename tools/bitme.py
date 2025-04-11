@@ -865,6 +865,12 @@ class BV_Dont_Care_Grouping(BV_Grouping):
             assert BV_Dont_Care_Grouping.representatives[number_of_input_bits].is_consistent()
         return BV_Dont_Care_Grouping.representatives[number_of_input_bits]
 
+    def pair_product(self, g2, inorder = True):
+        if inorder:
+            return g2, dict([(k, (1, k)) for k in range(1, g2.number_of_exits + 1)])
+        else:
+            return g2, dict([(k, (k, 1)) for k in range(1, g2.number_of_exits + 1)])
+
 class BV_Fork_Grouping(BV_Grouping):
     representatives = {}
 
@@ -930,6 +936,36 @@ class BV_Fork_Grouping(BV_Grouping):
         return BV_Fork_Grouping(dict([(i + 1, 2**i)
             for i in range(2**number_of_input_bits)]),
             number_of_input_bits).representative()
+
+    def pair_product(self, g2):
+        g1 = self
+        if isinstance(g2, BV_Dont_Care_Grouping):
+            return g2.pair_product(g1, False)
+        else:
+            assert isinstance(g2, BV_Fork_Grouping)
+            assert g1.number_of_input_bits == g2.number_of_input_bits
+            exit = 0
+            g_inputs = {}
+            g_pair_tuples = {}
+            exit2 = 1
+            inputs2 = g2.inputs[exit2]
+            for exit1 in g1.inputs:
+                inputs1 = g1.inputs[exit1]
+                while inputs1 > inputs2:
+                    if exit2 < g2.number_of_exits:
+                        exit2 += 1
+                        inputs2 = g2.inputs[exit2]
+                    else:
+                        return BV_Fork_Grouping(g_inputs, g1.number_of_input_bits), g_pair_tuples
+                if inputs1 & inputs2 != 0:
+                    exit += 1
+                    g_inputs[exit] = inputs1 & inputs2
+                    g_pair_tuples[exit] = (exit1, exit2)
+                    inputs2 &= ~inputs1
+            if g_inputs:
+                return BV_Fork_Grouping(g_inputs, g1.number_of_input_bits), g_pair_tuples
+            else:
+                return BV_Dont_Care_Grouping.representative().pair_product(BV_Dont_Care_Grouping.representative())
 
 class BV_Internal_Grouping(BV_Grouping):
     representatives = {}
@@ -1070,6 +1106,13 @@ class BV_Internal_Grouping(BV_Grouping):
 
             return g.representative()
 
+    def pair_product(self, g2):
+        g1 = self
+        if g2.is_no_distinction_proto():
+            return g2.pair_product(g1, False)
+        else:
+            assert isinstance(g2, BV_Internal_Grouping)
+
 class BV_No_Distinction_Proto(BV_Internal_Grouping):
     representatives = {}
 
@@ -1096,6 +1139,9 @@ class BV_No_Distinction_Proto(BV_Internal_Grouping):
             BV_No_Distinction_Proto.representatives[(level, number_of_input_bits)] = g
 
             return g
+
+    def pair_product(self, g2):
+        return BV_Dont_Care_Grouping.pair_product(self, g2)
 
 class CFLOBVDD:
     max_level = 0
