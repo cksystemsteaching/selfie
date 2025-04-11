@@ -1224,6 +1224,20 @@ class CFLOBVDD:
             number_of_input_bits,
             number_of_output_bits)
 
+CFLOBVDD.projection(0, 0, 1, 1)
+CFLOBVDD.projection(1, 0, 1, 1)
+CFLOBVDD.projection(1, 1, 1, 1)
+CFLOBVDD.projection(1, 0, 1, 2)
+CFLOBVDD.projection(2, 0, 1, 1)
+CFLOBVDD.projection(2, 1, 1, 1)
+CFLOBVDD.projection(2, 0, 1, 2)
+CFLOBVDD.projection(2, 1, 1, 2)
+CFLOBVDD.projection(2, 2, 1, 2)
+CFLOBVDD.projection(2, 0, 2, 2)
+CFLOBVDD.projection(2, 1, 2, 2)
+CFLOBVDD.projection(2, 2, 2, 2)
+CFLOBVDD.projection(2, 3, 2, 2)
+
 class Values:
     total_number_of_constants = 0
     current_number_of_inputs = 0
