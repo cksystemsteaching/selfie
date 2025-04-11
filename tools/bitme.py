@@ -833,6 +833,9 @@ class Grouping:
         assert self.number_of_paths() >= self.number_of_solutions() >= self.number_of_exits
         return True
 
+    def is_no_distinction_proto(self):
+        return isinstance(self, Dont_Care_Grouping) or isinstance(self, BV_No_Distinction_Proto)
+
 class Dont_Care_Grouping(Grouping):
     representatives = None
 
@@ -924,7 +927,7 @@ class BV_Internal_Grouping(Grouping):
     def __repr__(self):
         indentation = " " * (CFLOBVDD.max_level - self.level + 1)
         return (indentation + "\n" +
-            indentation + "internal @ " + super().__repr__() + ":\n" +
+            indentation + f"{type(self).__name__} @ " + super().__repr__() + ":\n" +
             indentation + f"a_c: {self.a_connection}\n" +
             indentation + f"a_rt: {self.a_return_tuple}\n" +
             indentation + f"n_of_b: {self.number_of_b_connections}\n" +
@@ -997,20 +1000,6 @@ class BV_Internal_Grouping(Grouping):
             BV_Internal_Grouping.representatives[self] = self
         return BV_Internal_Grouping.representatives[self]
 
-    def no_distinction_proto(level, number_of_input_bits):
-        if level == 0:
-            return Dont_Care_Grouping.representative(number_of_input_bits)
-        else:
-            g = BV_Internal_Grouping(level)
-
-            g.a_connection = BV_Internal_Grouping.no_distinction_proto(level - 1, number_of_input_bits)
-            g.a_return_tuple = {1:1}
-            g.number_of_b_connections = 1
-            g.b_connections = {1:g.a_connection}
-            g.b_return_tuples= {1:{1:1}}
-
-            return g.representative();
-
     def projection_proto(level, input_i, number_of_input_bits, number_of_output_bits):
         # generalizing CFLOBDD projection to bitvectors of size >= 1
         if level == 0:
@@ -1035,7 +1024,7 @@ class BV_Internal_Grouping(Grouping):
             else:
                 a_number_of_output_bits = 0
 
-                g.a_connection = BV_Internal_Grouping.no_distinction_proto(level - 1,
+                g.a_connection = BV_No_Distinction_Proto.no_distinction_proto(level - 1,
                     number_of_input_bits)
                 g.a_return_tuple = {1:1}
 
@@ -1044,7 +1033,7 @@ class BV_Internal_Grouping(Grouping):
             b_number_of_output_bits = number_of_output_bits - a_number_of_output_bits
 
             if b_number_of_output_bits == 0:
-                projection_proto = BV_Internal_Grouping.no_distinction_proto(level - 1,
+                projection_proto = BV_No_Distinction_Proto.no_distinction_proto(level - 1,
                     number_of_input_bits)
             else:
                 projection_proto = BV_Internal_Grouping.projection_proto(level - 1,
@@ -1060,6 +1049,35 @@ class BV_Internal_Grouping(Grouping):
                 for c in range(1, g.number_of_b_connections + 1)])
 
             return g.representative()
+
+class BV_No_Distinction_Proto(BV_Internal_Grouping):
+    # generalizing CFLOBDDs to bitvector variables with up to 8 bits
+    representatives = {}
+
+    def __init__(self, level):
+        super().__init__(level)
+
+    def representative(self):
+        self.pre_compute_number_of_paths_and_solutions_per_exit()
+        if self not in BV_No_Distinction_Proto.representatives:
+            assert self.is_consistent()
+            BV_No_Distinction_Proto.representatives[self] = self
+        return BV_No_Distinction_Proto.representatives[self]
+
+    def no_distinction_proto(level, number_of_input_bits):
+        if level == 0:
+            return Dont_Care_Grouping.representative(number_of_input_bits)
+        else:
+            g = BV_No_Distinction_Proto(level)
+
+            g.a_connection = BV_No_Distinction_Proto.no_distinction_proto(level - 1,
+                number_of_input_bits)
+            g.a_return_tuple = {1:1}
+            g.number_of_b_connections = 1
+            g.b_connections = {1:g.a_connection}
+            g.b_return_tuples= {1:{1:1}}
+
+            return g.representative();
 
 class CFLOBVDD:
     max_level = 0
@@ -1150,7 +1168,7 @@ class CFLOBVDD:
 
     def constant(level, output, number_of_input_bits, number_of_output_bits):
         return CFLOBVDD.representative(
-            BV_Internal_Grouping.no_distinction_proto(level, number_of_input_bits),
+            BV_No_Distinction_Proto.no_distinction_proto(level, number_of_input_bits),
             {1:output},
             number_of_input_bits,
             number_of_output_bits)
