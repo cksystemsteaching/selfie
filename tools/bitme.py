@@ -954,27 +954,6 @@ class BV_Internal_Grouping(BV_Grouping):
             indentation + f"b_c: {self.b_connections}\n" +
             indentation + f"b_rt: {self.b_return_tuples}")
 
-    def __hash__(self):
-        return hash((self.level,
-            self.number_of_exits,
-            self.number_of_input_bits,
-            self.a_connection,
-            tuple(self.a_return_tuple.values()),
-            self.number_of_b_connections,
-            tuple(self.b_connections.values()),
-            tuple([b_i_e_i_e_j.values() for b_i_e_i_e_j in [rt for rt in self.b_return_tuples.values()]])))
-
-    def __eq__(self, g2):
-        return (isinstance(g2, BV_Internal_Grouping) and
-            self.level == g2.level and
-            self.number_of_exits == g2.number_of_exits and
-            self.number_of_input_bits == g2.number_of_input_bits and
-            self.a_connection == g2.a_connection and
-            self.a_return_tuple == g2.a_return_tuple and
-            self.number_of_b_connections == g2.number_of_b_connections and
-            self.b_connections == g2.b_connections and
-            self.b_return_tuples == g2.b_return_tuples)
-
     def get_paths(self, exit_i, index_i = 0):
         solutions = []
         for b_i in self.b_return_tuples:
