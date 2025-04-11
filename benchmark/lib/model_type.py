@@ -1,5 +1,5 @@
 import lib.config as cfg
-from lib.exceptions import ParsingError
+from lib.exceptions import ParsingError, ConfigFormatError
 
 from queue import Queue
 from typing import List, Dict, Any
@@ -55,11 +55,17 @@ class ModelConfigParser:
         required_values = ['command']
         for value in required_values:
             if value not in current_level:
-                raise ValueError(f"{value} not present/or at the wrong place in specified model type")
+                raise ConfigFormatError(
+                    message=f"{value} not present/or at the wrong place in specified model type",
+                    error_format=value
+                )
         
         allowed_formats = cfg.config["allowed_formats"]
         if self.parse_format() not in allowed_formats:
-            raise ValueError(f"{self.parse_format()} is not an allowed format")
+            raise ConfigFormatError(
+                    message=f"{self.parse_format()} is not an allowed format.",
+                    error_format=self.parse_format()
+                )
     
     def parse_format(self):
         return self.model_type_bases[-1]

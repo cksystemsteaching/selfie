@@ -1,6 +1,6 @@
-from .config import RED, RESET
 import logging
 from pathlib import Path
+import lib.config as cfg
 
 class BTError(Exception):
     """Base class for all SMT tool exceptions"""
@@ -49,6 +49,17 @@ class UnreachableError(BTError):
             {
                 'error_option': error_option,
                 'valid_options': valid_options,
+                **kwargs
+            }
+        )
+
+class ConfigFormatError(BTError):
+    def __init__(self,message, error_format, **kwargs):
+        super().__init__(
+            message,
+            {
+                'error_format': error_format,
+                'config_formats': cfg.config['allowed_formats'],
                 **kwargs
             }
         )
