@@ -17,7 +17,7 @@ class SMT2ModelPresenter:
         self.logger = logging.getLogger("bt.model_presenter")
     
     def show(self, 
-             verbose: bool = False,
+             verbose: bool = True,
              format: OutputFormat = OutputFormat.PLAIN,
              output_file: Optional[Path] = None):
         """

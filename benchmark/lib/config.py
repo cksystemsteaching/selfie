@@ -12,6 +12,7 @@ with open(config_file, "r") as file:
 rotor_path = Path(project_root / config["rotor_path"])
 models_dir = Path(project_root / config["models_dir"])
 examples_dir = Path(project_root / config["examples_dir"])
+verbose = False
 
 RED = "\033[91m"
 RESET = "\033[0m"

@@ -1,6 +1,8 @@
 import sys
+import logging
 
+logger = logging.getLogger("bt.exit")
 
 def custom_exit(message, code=0):
-    print(message)
+    logger.log(message)
     sys.exit(code)

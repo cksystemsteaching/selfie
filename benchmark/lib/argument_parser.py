@@ -42,14 +42,12 @@ def init_parser():
         default=cfg.config["default_output"],
         help="Output path for the generated model - if not provided BT will generate one from source path and model type"
     )
-
+    
     parser.add_argument(
-        '-v' , '--verbosity',
-        required=False,
-        type=int,
-        choices=range(0, 5),  # 0-4
-        default=4,
-        help="Logging verbosity: 0=CRITICAL, 1=ERROR, 2=WARNING, 3=INFO, 4=DEBUG"
+        '-v', '--verbose',
+        action='store_true',  # Sets `verbose=True` if flag is present
+        default=False,
+        help="Enable verbose logging."
     )
 
     return parser

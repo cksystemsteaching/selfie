@@ -6,8 +6,8 @@ from lib.solver import Z3Solver
 from lib.paths import SourcePath, OutputPath
 from lib.log import configure_logging
 
-import sys
 import logging
+import sys
 
 if __name__ == "__main__":
     parser = arg_parser.init_parser()
@@ -18,16 +18,17 @@ if __name__ == "__main__":
         exit()
 
     # Initialize logging
-    verbosity = args.verbosity or 4
-    configure_logging(verbosity, OutputPath("bt.log"))
+    configure_logging(args.verbose, OutputPath("bt.log"))
+    cfg.verbose = args.verbose
+    logger = logging.getLogger('bt')
 
     if args.clean:
         clean_examples()
-        custom_exit("Output directories cleaned")
+        logger.info("Output directories cleaned.")
 
     if args.generate_examples:
         generate_all_examples()
-        custom_exit("Generated all examples sucessfuly")
+        logger.info("Generated all examples sucessfuly.")
 
     if args.source:
         models = create_models(SourcePath(args.source), args.model_base, OutputPath(args.output))
@@ -40,4 +41,6 @@ if __name__ == "__main__":
             exit(0)
 
     if not args.source:
-        custom_exit("ERROR: --source-file is required")
+        logger.error("Source file was not provided.")
+        parser.print_help()
+        

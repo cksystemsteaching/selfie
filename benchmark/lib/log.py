@@ -2,15 +2,22 @@ import logging
 from pathlib import Path
 from typing import Union
 
-def get_log_level(verbosity: int) -> str:
-    """Map numeric verbosity (0-4) to logging levels"""
-    return {
-        0: 'CRITICAL',  # Only show critical errors
-        1: 'ERROR',     # Show errors
-        2: 'WARNING',   # Show warnings
-        3: 'INFO',      # Basic info (default)
-        4: 'DEBUG'      # Detailed debugging
-    }.get(verbosity, 'INFO')  # Default to INFO if invalid
+# Custom levels (between WARNING and INFO in severity)
+VERBOSE_INFO_LEVEL = 19  # Higher than INFO (20), lower than WARNING (30)
+
+# Register the levels
+logging.addLevelName(VERBOSE_INFO_LEVEL, "VERBOSE_INFO")
+
+# Optional: Add convenience methods to the logger
+def verbose_info(self, message, *args, **kwargs):
+    if self.isEnabledFor(VERBOSE_INFO_LEVEL):
+        self._log(VERBOSE_INFO_LEVEL, message, args, **kwargs)
+
+logging.Logger.verbose_info = verbose_info
+
+def get_log_level(verbose: bool) -> int:
+    """Returns the threshold level for filtering logs."""
+    return 'VERBOSE_INFO' if verbose else 'INFO'
 
 def configure_logging(
     verbosity: int = 4,          # 0-4 scale (default: 3=INFO)

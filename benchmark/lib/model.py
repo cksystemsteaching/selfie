@@ -23,9 +23,8 @@ class SMT2Model(Model):
 
     def show(self):
         presenter = SMT2ModelPresenter(self)
-        
-        presenter.show(format=OutputFormat.PLAIN)  # Simple text
-        presenter.show(format=OutputFormat.VERBOSE)  # Fancy bordered output
+        print(cfg.verbose)
+        presenter.show(format=OutputFormat.VERBOSE if cfg.verbose else OutputFormat.PLAIN)  # Simple text
 
 class BTORModel(Model):
     def __init__(self, output_path: OutputPath):
