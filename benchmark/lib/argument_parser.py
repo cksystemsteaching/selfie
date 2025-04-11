@@ -50,4 +50,10 @@ def init_parser():
         help="Enable verbose logging."
     )
 
+    parser.add_argument(
+        '-g', '--graph',
+        action='store_true',
+        help="Provide graphs for the models"
+    )
+
     return parser

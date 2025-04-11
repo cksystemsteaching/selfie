@@ -5,7 +5,7 @@ import lib.argument_parser as arg_parser
 from lib.solver import Z3Solver
 from lib.paths import SourcePath, OutputPath
 from lib.log import configure_logging
-
+from lib.model_grapher import GrapherWrapper
 import logging
 import sys
 
@@ -38,7 +38,11 @@ if __name__ == "__main__":
         if args.benchmark:
             for model in models:
                 Z3Solver(model, 10).benchmark()
-            exit(0)
+
+        if args.graph:
+            grapher = GrapherWrapper(OutputPath(args.output), models)
+            grapher.generate_graphs()
+
 
     if not args.source:
         logger.error("Source file was not provided.")

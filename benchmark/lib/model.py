@@ -12,9 +12,8 @@ class Model:
             raise ValueError(f"Can not create model object from {self.output_path}, path does not exists")
         self.parser = parser
 
-    def log(self):
-        self.parser.parse()
-        self.parser.log()
+    def get_format(self):
+        pass
 
 
 class SMT2Model(Model):
@@ -24,6 +23,9 @@ class SMT2Model(Model):
     def show(self):
         presenter = SMT2ModelPresenter(self)
         presenter.show(format=OutputFormat.VERBOSE if cfg.verbose else OutputFormat.PLAIN)  # Simple text
+    
+    def get_format(self):
+        return 'smt2'
 
 class BTORModel(Model):
     def __init__(self, output_path: OutputPath):
@@ -31,6 +33,9 @@ class BTORModel(Model):
     
     def show(self):
         pass
+
+    def get_format(self):
+        return 'btor2'
 
 allowed_models = {
     "smt2": SMT2Model,
