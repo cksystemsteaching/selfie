@@ -919,6 +919,7 @@ class BV_Fork_Grouping(BV_Grouping):
         union = 0
         for exit in self.inputs:
             current_inputs = self.inputs[exit]
+            assert current_inputs < 2**2**self.number_of_input_bits - 1
             assert current_inputs > previous_inputs
             previous_inputs = current_inputs
             assert current_inputs & union == 0
