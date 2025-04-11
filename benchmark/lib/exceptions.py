@@ -42,6 +42,17 @@ class ParsingError(BTError):
             }
         )
 
+class UnreachableError(BTError):
+    def __init__(self, error_option, valid_options, **kwargs):
+        super().__init__(
+            f"Invalid option provided. Received option: {error_option} and valid options were {valid_options}.",
+            {
+                'error_option': error_option,
+                'valid_options': valid_options,
+                **kwargs
+            }
+        )
+
 class TimeoutException(BTError):
     def __init__(self, command, timeout, output): # , error_output:
         super().__init__(
