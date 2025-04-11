@@ -828,9 +828,10 @@ class Grouping:
         return sum(self.number_of_solutions_per_exit.values())
 
     def is_consistent(self):
-        return (len(self.number_of_paths_per_exit) == self.number_of_exits and
-            len(self.number_of_solutions_per_exit) == self.number_of_exits and
-            self.number_of_paths() >= self.number_of_solutions() >= self.number_of_exits)
+        assert len(self.number_of_paths_per_exit) == self.number_of_exits
+        assert len(self.number_of_solutions_per_exit) == self.number_of_exits
+        assert self.number_of_paths() >= self.number_of_solutions() >= self.number_of_exits
+        return True
 
 class Dont_Care_Grouping(Grouping):
     representatives = None
@@ -849,7 +850,8 @@ class Dont_Care_Grouping(Grouping):
         return [(index_i, 0)]
 
     def is_consistent(self):
-        return super().is_consistent()
+        assert super().is_consistent()
+        return True
 
     def representative(number_of_input_bits):
         if Dont_Care_Grouping.representatives is None:
@@ -890,16 +892,14 @@ class BV_Fork_Grouping(Grouping):
         return [(index_i, self.inputs[exit_i])]
 
     def is_consistent(self):
-        if not(super().is_consistent() and len(self.inputs) == self.number_of_exits):
-            assert False
-        else:
-            union = 0
-            for inputs in self.inputs:
-                if self.inputs[inputs] & union != 0:
-                    assert False
-                else:
-                    union |= self.inputs[inputs]
-            return 0 < union < 2**2**self.number_of_input_bits
+        assert super().is_consistent()
+        assert len(self.inputs) == self.number_of_exits
+        union = 0
+        for inputs in self.inputs:
+            assert self.inputs[inputs] & union == 0
+            union |= self.inputs[inputs]
+        assert 0 < union < 2**2**self.number_of_input_bits
+        return True
 
     def representative(number_of_input_bits):
         if number_of_input_bits not in BV_Fork_Grouping.representatives:
@@ -926,10 +926,10 @@ class BV_Internal_Grouping(Grouping):
         return (indentation + "\n" +
             indentation + "internal @ " + super().__repr__() + ":\n" +
             indentation + f"a_c: {self.a_connection}\n" +
-            indentation + f"a_r: {self.a_return_tuple}\n" +
+            indentation + f"a_rt: {self.a_return_tuple}\n" +
             indentation + f"n_of_b: {self.number_of_b_connections}\n" +
             indentation + f"b_c: {self.b_connections}\n" +
-            indentation + f"b_r: {self.b_return_tuples}")
+            indentation + f"b_rt: {self.b_return_tuples}")
 
     def get_paths(self, exit_i, index_i = 0):
         solutions = []
@@ -948,18 +948,30 @@ class BV_Internal_Grouping(Grouping):
         g_a = self.a_connection
         assert isinstance(g_a, Grouping)
         assert len(self.a_return_tuple) == g_a.number_of_exits
-        assert len(self.a_return_tuple) == self.number_of_b_connections
+        assert len(self.a_return_tuple) == len(set(self.a_return_tuple.values()))
+        assert self.number_of_b_connections == len(self.a_return_tuple)
         assert len(self.b_connections) == self.number_of_b_connections
-        assert len(self.b_connections) == len(self.b_return_tuples)
+        assert len(self.b_return_tuples) == len(self.b_connections)
         for g_a_e_i in self.a_return_tuple:
             assert 1 <= g_a_e_i <= g_a.number_of_exits
-            assert 1 <= self.a_return_tuple[g_a_e_i] <= self.number_of_b_connections
+            a_e_i = self.a_return_tuple[g_a_e_i]
+            assert g_a_e_i == a_e_i
+            assert 1 <= a_e_i <= self.number_of_b_connections
+        g_exits = {}
         for g_b_i in self.b_connections:
             g_b = self.b_connections[g_b_i]
             assert g_b_i in self.b_return_tuples
-            for g_b_e_i in self.b_return_tuples[g_b_i]:
-                assert 1 <= g_b_e_i <= g_b.number_of_exits
-                assert 1 <= self.b_return_tuples[g_b_i][g_b_e_i] <= self.number_of_exits
+            g_b_i_rt = self.b_return_tuples[g_b_i]
+            assert len(g_b_i_rt) == len(set(g_b_i_rt.values()))
+            g_b_i_rt_targets = {}
+            for g_b_i_rt_e_j in g_b_i_rt:
+                assert 1 <= g_b_i_rt_e_j <= g_b.number_of_exits
+                g_b_i_rt_e_j_e_t = g_b_i_rt[g_b_i_rt_e_j]
+                assert 1 <= g_b_i_rt_e_j_e_t <= self.number_of_exits
+                assert g_b_i_rt_e_j_e_t not in g_b_i_rt_targets
+                g_b_i_rt_targets[g_b_i_rt_e_j_e_t] = None
+            assert not(g_exits.keys() & g_b_i_rt_targets.keys())
+            g_exits |= g_b_i_rt_targets
         return True
 
     def pre_compute_number_of_paths_and_solutions_per_exit(self):
@@ -970,10 +982,11 @@ class BV_Internal_Grouping(Grouping):
             a_number_of_paths = g_a.number_of_paths_per_exit[g_b_i]
             a_number_of_solutions = g_a.number_of_solutions_per_exit[g_b_i]
             g_b = self.b_connections[g_b_i]
-            for g_b_e_i in self.b_return_tuples[g_b_i]:
-                e_i = self.b_return_tuples[g_b_i][g_b_e_i]
-                b_number_of_paths = g_b.number_of_paths_per_exit[g_b_e_i]
-                b_number_of_solutions = g_b.number_of_solutions_per_exit[g_b_e_i]
+            g_b_i_rt = self.b_return_tuples[g_b_i]
+            for g_b_i_rt_e_j in g_b_i_rt:
+                e_i = g_b_i_rt[g_b_i_rt_e_j]
+                b_number_of_paths = g_b.number_of_paths_per_exit[g_b_i_rt_e_j]
+                b_number_of_solutions = g_b.number_of_solutions_per_exit[g_b_i_rt_e_j]
                 self.number_of_paths_per_exit[e_i] += a_number_of_paths * b_number_of_paths
                 self.number_of_solutions_per_exit[e_i] += a_number_of_solutions * b_number_of_solutions
 
@@ -1122,9 +1135,11 @@ class CFLOBVDD:
             f"{self.get_printed_value_paths()}")
 
     def is_consistent(self):
-        return (self.grouping.is_consistent() and
-            len(self.outputs) == self.grouping.number_of_exits and
-            all([0 <= self.outputs[i] < 2**self.number_of_output_bits for i in self.outputs]))
+        assert self.grouping.is_consistent()
+        assert len(self.outputs) == self.grouping.number_of_exits
+        assert len(self.outputs) == len(set(self.outputs.values()))
+        assert all([0 <= self.outputs[i] < 2**self.number_of_output_bits for i in self.outputs])
+        return True
 
     def representative(grouping, outputs, number_of_input_bits, number_of_output_bits):
         cflobvdd = CFLOBVDD(grouping, outputs, number_of_input_bits, number_of_output_bits)
