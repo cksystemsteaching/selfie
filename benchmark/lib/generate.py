@@ -42,9 +42,9 @@ def create_models(source: SourcePath, model_type_base: str, output: OutputPath) 
             model_config = ModelGenerationConfig(source, model_type, output)
             
             if not model_config.compilation_cmd:
-                model_path = CStarSourceProcessor(model_config).generate_model()
+                CStarSourceProcessor(model_config).generate_model()
             else:
-                model_path = GenericSourceProcessor(model_config).generate_model()
+                GenericSourceProcessor(model_config).generate_model()
 
             log.info(f"Generated model: {model_config.output_path}")
             models.append(model_factory(model_config))

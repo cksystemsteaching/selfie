@@ -30,6 +30,9 @@ class SMT2Model(Model):
 class BTORModel(Model):
     def __init__(self, output_path: OutputPath):
         super().__init__(output_path, BTORModelParser(output_path))
+    
+    def show(self):
+        pass
 
 allowed_models = {
     "smt2": SMT2Model,
