@@ -929,9 +929,12 @@ class BV_Fork_Grouping(BV_Grouping):
     def is_consistent(self):
         assert super().is_consistent()
         assert len(self.inputs) == self.number_of_exits
+        previous_exit = 0
         previous_inputs = 0
         union = 0
         for exit in self.inputs:
+            assert exit == previous_exit + 1
+            previous_exit = exit
             current_inputs = self.inputs[exit]
             assert current_inputs < 2**2**self.number_of_input_bits - 1
             assert current_inputs > previous_inputs
@@ -987,8 +990,21 @@ class BV_Fork_Grouping(BV_Grouping):
         if reduction_length == 1:
             return reduction
         else:
-            # TODO: reduce number_of_input_bits > 1 case
-            return self
+            g_inputs = {}
+            reduced_inputs = {}
+            for exit in self.inputs:
+                reduced_to_exit = reduction_tuple[exit]
+                if reduced_to_exit == exit:
+                    reduced_inputs[reduced_to_exit] = self.inputs[exit]
+                else:
+                    assert reduced_to_exit < exit
+                    assert reduced_inputs[reduced_to_exit] & self.inputs[exit] == 0
+                    reduced_inputs[reduced_to_exit] |= self.inputs[exit]
+            for exit in self.inputs:
+                reduced_to_exit = reduction_tuple[exit]
+                if exit == reduced_exit:
+                    g_inputs[len(g_inputs) + 1] = reduced_inputs[exit]
+            return BV_Fork_Grouping(g_inputs, self.number_of_input_bits)
 
 class BV_Internal_Grouping(BV_Grouping):
     representatives = {}
