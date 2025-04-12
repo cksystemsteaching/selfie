@@ -832,9 +832,7 @@ class BV_Grouping:
         return sum(self.number_of_solutions_per_exit.values())
 
     def is_consistent(self):
-        assert len(self.number_of_paths_per_exit) == self.number_of_exits
-        assert len(self.number_of_solutions_per_exit) == self.number_of_exits
-        assert self.number_of_paths() >= self.number_of_solutions() >= self.number_of_exits
+        assert self.number_of_exits > 0
         return True
 
     def is_no_distinction_proto(self):
@@ -866,6 +864,7 @@ class BV_Dont_Care_Grouping(BV_Grouping):
         return BV_Dont_Care_Grouping.representatives[number_of_input_bits]
 
     def pair_product(self, g2, inorder = True):
+        assert self.number_of_input_bits == g2.number_of_input_bits
         if inorder:
             return g2, dict([(k, (1, k)) for k in range(1, g2.number_of_exits + 1)])
         else:
@@ -940,11 +939,11 @@ class BV_Fork_Grouping(BV_Grouping):
 
     def pair_product(self, g2):
         g1 = self
+        assert g1.number_of_input_bits == g2.number_of_input_bits
         if isinstance(g2, BV_Dont_Care_Grouping):
             return g2.pair_product(g1, False)
         else:
             assert isinstance(g2, BV_Fork_Grouping)
-            assert g1.number_of_input_bits == g2.number_of_input_bits
             exit = 0
             g_inputs = {}
             g_pair_tuples = {}
@@ -964,7 +963,7 @@ class BV_Fork_Grouping(BV_Grouping):
                     g_pair_tuples[exit] = (exit1, exit2)
                     inputs2 &= ~inputs1
             if g_inputs:
-                return BV_Fork_Grouping(g_inputs, g1.number_of_input_bits), g_pair_tuples
+                return BV_Fork_Grouping(g_inputs, g1.number_of_input_bits).representative(), g_pair_tuples
             else:
                 return BV_Dont_Care_Grouping.representative(g1.number_of_input_bits).pair_product(BV_Dont_Care_Grouping.representative(g1.number_of_input_bits))
 
@@ -974,12 +973,12 @@ class BV_Internal_Grouping(BV_Grouping):
     def __init__(self, level, number_of_input_bits, number_of_exits = 1):
         super().__init__(level, number_of_input_bits, number_of_exits)
         self.a_connection = None
-        self.a_return_tuple = None
+        self.a_return_tuple = {}
         self.number_of_b_connections = None
-        self.b_connections = None
-        self.b_return_tuples = None
-        self.number_of_paths_per_exit = None
-        self.number_of_solutions_per_exit = None
+        self.b_connections = {}
+        self.b_return_tuples = {}
+        self.number_of_paths_per_exit = {}
+        self.number_of_solutions_per_exit = {}
 
     def __repr__(self):
         indentation = " " * (CFLOBVDD.max_level - self.level + 1)
@@ -1025,7 +1024,7 @@ class BV_Internal_Grouping(BV_Grouping):
             assert len(g_b_i_rt) == len(set(g_b_i_rt.values()))
             g_b_i_rt_targets = {}
             for g_b_i_rt_e_j in g_b_i_rt:
-                assert 1 <= g_b_i_rt_e_j <= g_b.number_of_exits
+                assert 1 <= g_b_i_rt_e_j <= g_b.number_of_exits, f"1 <= {g_b_i_rt_e_j} <= {g_b.number_of_exits}: {self}"
                 g_b_i_rt_e_j_e_t = g_b_i_rt[g_b_i_rt_e_j]
                 assert 1 <= g_b_i_rt_e_j_e_t <= self.number_of_exits
                 assert g_b_i_rt_e_j_e_t not in g_b_i_rt_targets
@@ -1049,6 +1048,7 @@ class BV_Internal_Grouping(BV_Grouping):
                 b_number_of_solutions = g_b.number_of_solutions_per_exit[g_b_i_rt_e_j]
                 self.number_of_paths_per_exit[e_i] += a_number_of_paths * b_number_of_paths
                 self.number_of_solutions_per_exit[e_i] += a_number_of_solutions * b_number_of_solutions
+        assert self.number_of_paths() >= self.number_of_solutions() >= self.number_of_exits
 
     def representative(self):
         self.pre_compute_number_of_paths_and_solutions_per_exit()
@@ -1109,10 +1109,44 @@ class BV_Internal_Grouping(BV_Grouping):
 
     def pair_product(self, g2):
         g1 = self
+        assert g1.level == g2.level
+        assert g1.number_of_input_bits == g2.number_of_input_bits
         if g2.is_no_distinction_proto():
             return g2.pair_product(g1, False)
         else:
             assert isinstance(g2, BV_Internal_Grouping)
+
+            g_a, pt_a = g1.a_connection.pair_product(g2.a_connection)
+
+            g = BV_Internal_Grouping(g1.level, g1.number_of_input_bits, 0)
+
+            g.a_connection = g_a
+            g.a_return_tuple = dict([(i, i) for i in pt_a])
+
+            g.number_of_b_connections = len(pt_a)
+
+            pt_ans = {}
+            pt_ans_inv = {}
+
+            for j in pt_a:
+                g_b, pt_b = g1.b_connections[pt_a[j][0]].pair_product(g2.b_connections[pt_a[j][1]])
+
+                g.b_connections[j] = g_b
+                g.b_return_tuples[j] = {}
+
+                for i in pt_b:
+                    c1 = g1.b_return_tuples[pt_a[j][0]][pt_b[i][0]]
+                    c2 = g2.b_return_tuples[pt_a[j][1]][pt_b[i][1]]
+
+                    if (c1, c2) in pt_ans_inv:
+                        g.b_return_tuples[j] |= {len(g.b_return_tuples[j]) + 1:pt_ans_inv[(c1, c2)]}
+                    else:
+                        g.number_of_exits += 1
+                        g.b_return_tuples[j] |= {len(g.b_return_tuples[j]) + 1:g.number_of_exits}
+                        pt_ans[len(pt_ans) + 1] = (c1, c2)
+                        pt_ans_inv[(c1, c2)] = len(pt_ans)
+
+            return g.representative(), pt_ans
 
 class BV_No_Distinction_Proto(BV_Internal_Grouping):
     representatives = {}
@@ -1141,8 +1175,10 @@ class BV_No_Distinction_Proto(BV_Internal_Grouping):
 
             return g
 
-    def pair_product(self, g2):
-        return BV_Dont_Care_Grouping.pair_product(self, g2)
+    def pair_product(self, g2, inorder = True):
+        assert self.level == g2.level
+        assert self.number_of_input_bits == g2.number_of_input_bits
+        return BV_Dont_Care_Grouping.pair_product(self, g2, inorder)
 
 class CFLOBVDD:
     max_level = 0
@@ -1271,19 +1307,68 @@ class CFLOBVDD:
             number_of_input_bits,
             number_of_output_bits)
 
+# projection test cases
+
 CFLOBVDD.projection(0, 0, 1, 1)
+
 CFLOBVDD.projection(1, 0, 1, 1)
 CFLOBVDD.projection(1, 1, 1, 1)
+
 CFLOBVDD.projection(1, 0, 1, 2)
+
 CFLOBVDD.projection(2, 0, 1, 1)
 CFLOBVDD.projection(2, 1, 1, 1)
+
 CFLOBVDD.projection(2, 0, 1, 2)
 CFLOBVDD.projection(2, 1, 1, 2)
 CFLOBVDD.projection(2, 2, 1, 2)
+
 CFLOBVDD.projection(2, 0, 2, 2)
 CFLOBVDD.projection(2, 1, 2, 2)
 CFLOBVDD.projection(2, 2, 2, 2)
 CFLOBVDD.projection(2, 3, 2, 2)
+
+# pairing test cases
+
+CFLOBVDD.projection(0, 0, 1, 1).grouping.pair_product(CFLOBVDD.projection(0, 0, 1, 1).grouping)
+
+CFLOBVDD.projection(1, 0, 1, 1).grouping.pair_product(CFLOBVDD.projection(1, 0, 1, 1).grouping)
+CFLOBVDD.projection(1, 0, 1, 1).grouping.pair_product(CFLOBVDD.projection(1, 1, 1, 1).grouping)
+CFLOBVDD.projection(1, 1, 1, 1).grouping.pair_product(CFLOBVDD.projection(1, 0, 1, 1).grouping)
+CFLOBVDD.projection(1, 1, 1, 1).grouping.pair_product(CFLOBVDD.projection(1, 1, 1, 1).grouping)
+
+CFLOBVDD.projection(1, 0, 1, 2).grouping.pair_product(CFLOBVDD.projection(1, 0, 1, 2).grouping)
+
+CFLOBVDD.projection(2, 0, 1, 1).grouping.pair_product(CFLOBVDD.projection(2, 0, 1, 1).grouping)
+CFLOBVDD.projection(2, 0, 1, 1).grouping.pair_product(CFLOBVDD.projection(2, 1, 1, 1).grouping)
+CFLOBVDD.projection(2, 1, 1, 1).grouping.pair_product(CFLOBVDD.projection(2, 1, 1, 1).grouping)
+CFLOBVDD.projection(2, 1, 1, 1).grouping.pair_product(CFLOBVDD.projection(2, 0, 1, 1).grouping)
+
+CFLOBVDD.projection(2, 0, 1, 2).grouping.pair_product(CFLOBVDD.projection(2, 0, 1, 2).grouping)
+CFLOBVDD.projection(2, 0, 1, 2).grouping.pair_product(CFLOBVDD.projection(2, 1, 1, 2).grouping)
+CFLOBVDD.projection(2, 0, 1, 2).grouping.pair_product(CFLOBVDD.projection(2, 2, 1, 2).grouping)
+CFLOBVDD.projection(2, 1, 1, 2).grouping.pair_product(CFLOBVDD.projection(2, 0, 1, 2).grouping)
+CFLOBVDD.projection(2, 1, 1, 2).grouping.pair_product(CFLOBVDD.projection(2, 1, 1, 2).grouping)
+CFLOBVDD.projection(2, 1, 1, 2).grouping.pair_product(CFLOBVDD.projection(2, 2, 1, 2).grouping)
+CFLOBVDD.projection(2, 2, 1, 2).grouping.pair_product(CFLOBVDD.projection(2, 0, 1, 2).grouping)
+CFLOBVDD.projection(2, 2, 1, 2).grouping.pair_product(CFLOBVDD.projection(2, 1, 1, 2).grouping)
+CFLOBVDD.projection(2, 2, 1, 2).grouping.pair_product(CFLOBVDD.projection(2, 2, 1, 2).grouping)
+CFLOBVDD.projection(2, 0, 2, 2).grouping.pair_product(CFLOBVDD.projection(2, 0, 2, 2).grouping)
+CFLOBVDD.projection(2, 0, 2, 2).grouping.pair_product(CFLOBVDD.projection(2, 1, 2, 2).grouping)
+CFLOBVDD.projection(2, 0, 2, 2).grouping.pair_product(CFLOBVDD.projection(2, 2, 2, 2).grouping)
+CFLOBVDD.projection(2, 0, 2, 2).grouping.pair_product(CFLOBVDD.projection(2, 3, 2, 2).grouping)
+CFLOBVDD.projection(2, 1, 2, 2).grouping.pair_product(CFLOBVDD.projection(2, 0, 2, 2).grouping)
+CFLOBVDD.projection(2, 1, 2, 2).grouping.pair_product(CFLOBVDD.projection(2, 1, 2, 2).grouping)
+CFLOBVDD.projection(2, 1, 2, 2).grouping.pair_product(CFLOBVDD.projection(2, 2, 2, 2).grouping)
+CFLOBVDD.projection(2, 1, 2, 2).grouping.pair_product(CFLOBVDD.projection(2, 3, 2, 2).grouping)
+CFLOBVDD.projection(2, 2, 2, 2).grouping.pair_product(CFLOBVDD.projection(2, 0, 2, 2).grouping)
+CFLOBVDD.projection(2, 2, 2, 2).grouping.pair_product(CFLOBVDD.projection(2, 1, 2, 2).grouping)
+CFLOBVDD.projection(2, 2, 2, 2).grouping.pair_product(CFLOBVDD.projection(2, 2, 2, 2).grouping)
+CFLOBVDD.projection(2, 2, 2, 2).grouping.pair_product(CFLOBVDD.projection(2, 3, 2, 2).grouping)
+CFLOBVDD.projection(2, 3, 2, 2).grouping.pair_product(CFLOBVDD.projection(2, 0, 2, 2).grouping)
+CFLOBVDD.projection(2, 3, 2, 2).grouping.pair_product(CFLOBVDD.projection(2, 1, 2, 2).grouping)
+CFLOBVDD.projection(2, 3, 2, 2).grouping.pair_product(CFLOBVDD.projection(2, 2, 2, 2).grouping)
+CFLOBVDD.projection(2, 3, 2, 2).grouping.pair_product(CFLOBVDD.projection(2, 3, 2, 2).grouping)
 
 class Values:
     total_number_of_constants = 0
