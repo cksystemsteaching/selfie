@@ -45,41 +45,49 @@ class GrapherWrapper:
     
     def generate_graphs(self):
         """Generate and save all graphs."""
+
         for fmt, grapher in self.graphers.items():
-            #grapher.show()
             if grapher.models:
-                grapher.save((self.output_path._path / fmt).with_suffix(".png"))
+                output_dir = self.output_path._path / (fmt + "_graphs")
+                output_dir.mkdir(exist_ok=True)
+                grapher.save_figures(output_dir)
 
 class ModelGrapher(ABC):
-    """Abstract base class from model graphers"""
+    """Abstract base class for model graphers with multi-figure support"""
     def __init__(self):
         self.models = []
         self.logger = logging.getLogger(f"bt.{self.__class__.__name__.lower()}")
         self._setup_style()
     
     def _setup_style(self):
-        """Configure matplotlib style"""
+        """Shared style configuration for all figures"""
         plt.style.use('seaborn-v0_8-whitegrid')
         self.colors = {
-            'bars': '#4C72B0',
-            'avg_line': '#E24A33',
-            'text': '#555555'
+            'primary': '#4C72B0',
+            'secondary': '#55A868',
+            'highlight': '#E24A33',
+            'text': '#555555',
+            'bars': '#555555',
+            'avg_line': '#FFFFFF'
         }
+        self.figsize = (10, 6)
+    
+    @abstractmethod
+    def generate_all_figures(self):
+        """Generate all standard figures for this model type"""
+        pass
+    
+    def save_figures(self, output_path):
+        """Save all generated figures"""
+        for fig_name, fig in self.generate_all_figures().items():
+            path = output_path / f"{fig_name}.png"
+            fig.savefig(path, dpi=300, bbox_inches='tight')
+            plt.close(fig)
+            self.logger.info(f"Saved {fig_name} to {path}")
 
     @abstractmethod
     def show(self):
         pass
-
-    @abstractmethod
-    def _create_figure(self):
-        pass
-    
-    def save(self, path):
-        """Save the graph to file"""
-        self._create_figure()
-        plt.savefig(path, dpi=300, bbox_inches='tight')
-        plt.close()
-        self.logger.info(f"Saved graph to {path}")
     
     def add(self, model):
         self.models.append(model)
@@ -90,14 +98,20 @@ class SMT2ModelGrapher(ModelGrapher):
     
     def show(self):
         """Display the graph interactively"""
-        self._create_figure()
+        self.generate_all_figures()
         plt.show()
-
-    def _create_figure(self):
-        """Core graphing logic"""
+    
+    def generate_all_figures(self) -> dict[str, plt.Figure]:
+        """Generate standard battery of SMT2 analysis figures"""
         if not self.models:
-            raise ValueError("No models to graph.")
+            return
+        return {
+            "line_counts": self._create_line_count_figure(),
+            "define_distribution": self._create_define_figure()
+        }
 
+    def _create_line_count_figure(self):
+        """Core graphing logic"""
         # Prepare data
         names = [m.output_path.stem for m in self.models]
         line_counts = [m.parser.stats['total_lines'] for m in self.models]
@@ -124,19 +138,34 @@ class SMT2ModelGrapher(ModelGrapher):
                    f'{height}',
                    ha='center', va='bottom',
                    color=self.colors['text'])
-
-        # Formatting
-        ax.set_title('Model Line Count Analysis', pad=20)
-        ax.set_xlabel('Model Name', labelpad=10)
-        ax.set_ylabel('Total Lines', labelpad=10)
-        ax.legend(frameon=True)
-
-        # Rotate long names
+         # Rotate long names
         if max(len(name) for name in names) > 8:
             plt.xticks(rotation=45, ha='right')
+       
+        self._format_axes(ax, fig, "Model Line Counts", "Model Name", "Total Lines")
+        return fig
+    
+    def _create_define_figure(self) -> plt.Figure:
+        """Figure 3: Define command distribution"""
+        fig, ax = plt.subplots(figsize=self.figsize)
+        
+        defines = [m.parser.stats['define_count'] for m in self.models]
+        ax.scatter([m.parser.stats['code_lines'] for m in self.models], defines,
+                  color=self.colors['secondary'], s=100)
+        
+        # Formatting
+        self._format_axes(ax, fig, "Define Commands vs Code Size", 
+                         "Code Lines", "Define Commands")
+        return fig
 
-        # Adjust layout
-        plt.tight_layout()
+    def _format_axes(self, ax, fig, title, xlabel, ylabel):
+        """Shared formatting helper"""
+        ax.set_title(title, pad=15)
+        ax.set_xlabel(xlabel, labelpad=10)
+        ax.set_ylabel(ylabel, labelpad=10)
+        if len(ax.get_xticklabels()) > 5:
+            plt.setp(ax.get_xticklabels(), rotation=45, ha='right')
+        fig.tight_layout()
 
 class BTOR2ModelGrapher(ModelGrapher):
     def __init__(self):
@@ -145,9 +174,7 @@ class BTOR2ModelGrapher(ModelGrapher):
     def show(self):
         pass
 
-    def _create_figure(self):
+    def generate_all_figures(self):
         """Core graphing logic"""
-        if not self.models:
-            return
-        pass
+        return {}
         
