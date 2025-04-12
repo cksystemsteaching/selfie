@@ -1,6 +1,6 @@
 from lib.model_parser import SMT2ModelParser, BTORModelParser
 from lib.paths import OutputPath
-from lib.model_generation_config import ModelGenerationConfig
+from lib.model_generation_config import ModelBaseConfig
 from lib.model_presenter import SMT2ModelPresenter, OutputFormat
 import lib.config as cfg
 
@@ -45,9 +45,9 @@ allowed_models = {
 # Assert that cfg.config["allowed_languages"] contains exactly the same keys as allowed_models
 assert (set(cfg.config["allowed_formats"]) == set(allowed_models.keys()))
 
-def model_factory(model_config: ModelGenerationConfig):
-    format_name = model_config.model_type.get_format()
+def model_factory(model_config: ModelBaseConfig):
+    format_name = model_config.format
     if format_name not in allowed_models:
-        raise ValueError(f"Unknow model format: {format_name}. Available: {list(allowed_models.keys())}")
-    model_class = allowed_models[model_config.model_type.get_format()]
-    return model_class(model_config.output_path)
+        raise ValueError(f"Unknown model format: {format_name}. Available: {list(allowed_models.keys())}")
+    model_class = allowed_models[model_config.format]
+    return model_class(model_config.get_model_path())

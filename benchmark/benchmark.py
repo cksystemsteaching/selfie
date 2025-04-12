@@ -1,9 +1,9 @@
 import lib.config as cfg
-from lib.generate import generate_all_examples, clean_examples, create_models
+from lib.generate import generate_all_examples, clean_examples, create_models, load_models
 from lib.print import custom_exit
 import lib.argument_parser as arg_parser
 from lib.solver import Z3Solver
-from lib.paths import SourcePath, OutputPath
+from lib.paths import SourcePath, LoadSourcePath, OutputPath
 from lib.log import configure_logging
 from lib.model_grapher import GrapherWrapper
 import logging
@@ -30,21 +30,25 @@ if __name__ == "__main__":
         generate_all_examples()
         logger.info("Generated all examples sucessfuly.")
 
-    if args.source:
-        models = create_models(SourcePath(args.source), args.model_base, OutputPath(args.output))
-        for model in models:
+    models = []
+
+    if args.load:
+        loaded_models = load_models(LoadSourcePath(args.load))
+        models.extend(loaded_models)
+        for model in loaded_models:
             model.show()
-            
-        if args.benchmark:
-            for model in models:
-                Z3Solver(model, 10).benchmark()
 
-        if args.graph:
-            grapher = GrapherWrapper(OutputPath(args.output), models)
-            grapher.generate_graphs()
-
-
-    if not args.source:
-        logger.error("Source file was not provided.")
-        parser.print_help()
+    if args.source:
+        genereated_models = create_models(SourcePath(args.source), args.model_base, OutputPath(args.output))
+        for model in genereated_models:
+            model.show()
         
+        models.extend(genereated_models)
+    
+    if args.benchmark:
+        for model in models:
+            Z3Solver(model, 10).benchmark()
+
+    if args.graph:
+        grapher = GrapherWrapper(OutputPath(args.output), models)
+        grapher.generate_graphs()

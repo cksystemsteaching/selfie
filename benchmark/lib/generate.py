@@ -1,8 +1,8 @@
 from .checks import execute, is_tool_available
 from .print import custom_exit
-from .model_generation_config import ModelGenerationConfig
+from .model_generation_config import ModelGenerationConfig, ModelLoadConfig
 from .model_type import get_all_model_types
-from .paths import SourcePath, OutputPath
+from .paths import SourcePath, OutputPath, LoadSourcePath
 from .model import model_factory
 import logging
 
@@ -12,6 +12,29 @@ from pathlib import Path
 import shutil
 
 log = logging.getLogger("bt.generate")
+
+def load_models(source: LoadSourcePath) -> list:
+    """
+    Loads already generated models, so benchmark is possible. Handles both single files and directories.
+
+    Args:
+        source: Source file or directory containing models
+        output: Output path (file or directory)
+    """
+    if source.is_dir():
+        models = []
+        for file in source.iterdir():
+            if file.suffix.lower() in cfg.config["allowed_formats"]:
+                models.extend(
+                    load_models(SourcePath(file))
+                )
+        return models
+    
+    models = []
+    log.info(f"Loading model: {source}")
+    models.append(model_factory(ModelLoadConfig(source)))
+    
+    return models
 
 def create_models(source: SourcePath, model_type_base: str, output: OutputPath) -> list:
     """

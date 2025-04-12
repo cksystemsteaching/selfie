@@ -48,7 +48,7 @@ class OutputPath:
         return f"OutputPath('{self._path}')"
 
 
-class SourcePath:
+class BaseSoucePath:
     def __init__(self, source: Union[str, Path]):
         self._path = Path(source) if isinstance(source, str) else source
         self._validate_path()
@@ -63,15 +63,6 @@ class SourcePath:
         
         if self._path.is_dir(): 
             return
-        
-        if self._path.suffix.lower() not in cfg.config['allowed_languages']:
-            allowed = ', '.join(cfg.config['allowed_languages'])
-            raise ex.FileValidationError(
-                f"Source extension '{self._path.suffix}' not allowed. Allowed source extensions: {allowed}",
-                self._path,
-                path_suffix=self._path.suffix,
-                allowed_extensions=cfg.config['allowed_languages']
-            )
     
     # Make it behave like a Path object
     def __getattr__(self, attr):
@@ -87,3 +78,36 @@ class SourcePath:
     
     def __repr__(self) -> str:
         return f"SourcePath('{self._path}')"
+
+class LoadSourcePath(BaseSoucePath):
+    def __init__(self, source: Union[str, Path]):
+        super().__init__(source)
+
+    
+    def _validate_path(self) -> None:
+        super()._validate_path()
+
+        if self._path.suffix.lstrip('.').lower() not in cfg.config['allowed_formats']:
+            allowed = ', '.join(cfg.config['allowed_formats'])
+            raise ex.FileValidationError(
+                f"Load source extension '{self._path.suffix}' not allowed. Allowed source extensions: {allowed}",
+                self._path,
+                path_suffix=self._path.suffix,
+                allowed_extensions=cfg.config['allowed_languages']
+            )
+
+class SourcePath(BaseSoucePath):
+    def __init__(self, source: Union[str, Path]):
+        super().__init__(source)
+    
+    def _validate_path(self) -> None:
+        super()._validate_path()
+        
+        if self._path.suffix.lower() not in cfg.config['allowed_languages']:
+            allowed = ', '.join(cfg.config['allowed_languages'])
+            raise ex.FileValidationError(
+                f"Source extension '{self._path.suffix}' not allowed. Allowed source extensions: {allowed}",
+                self._path,
+                path_suffix=self._path.suffix,
+                allowed_extensions=cfg.config['allowed_languages']
+            )

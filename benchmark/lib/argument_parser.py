@@ -28,6 +28,7 @@ def init_parser():
     parser.add_argument(
         "--generate-examples",
         action="store_true",
+        required=False,
         help="Generate example outputs"
     )
 
@@ -54,6 +55,12 @@ def init_parser():
         '-g', '--graph',
         action='store_true',
         help="Provide graphs for the models"
+    )
+
+    parser.add_argument(
+        '-l', '--load',
+        required=False,
+        help="Load models"
     )
 
     return parser
