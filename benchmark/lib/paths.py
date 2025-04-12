@@ -60,9 +60,7 @@ class BaseSoucePath:
     def _validate_path(self) -> None:
         if not self._path.exists():
             raise ex.FileValidationError(f"Source file does not exist.", self._path)
-        
-        if self._path.is_dir(): 
-            return
+
     
     # Make it behave like a Path object
     def __getattr__(self, attr):
@@ -86,7 +84,8 @@ class LoadSourcePath(BaseSoucePath):
     
     def _validate_path(self) -> None:
         super()._validate_path()
-
+        if self._path.is_dir(): 
+            return
         if self._path.suffix.lstrip('.').lower() not in cfg.config['allowed_formats']:
             allowed = ', '.join(cfg.config['allowed_formats'])
             raise ex.FileValidationError(
@@ -102,7 +101,8 @@ class SourcePath(BaseSoucePath):
     
     def _validate_path(self) -> None:
         super()._validate_path()
-        
+        if self._path.is_dir(): 
+            return
         if self._path.suffix.lower() not in cfg.config['allowed_languages']:
             allowed = ', '.join(cfg.config['allowed_languages'])
             raise ex.FileValidationError(

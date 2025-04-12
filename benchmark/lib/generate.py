@@ -24,9 +24,9 @@ def load_models(source: LoadSourcePath) -> list:
     if source.is_dir():
         models = []
         for file in source.iterdir():
-            if file.suffix.lower() in cfg.config["allowed_formats"]:
+            if file.suffix.lstrip('.').lower() in cfg.config["allowed_formats"]:
                 models.extend(
-                    load_models(SourcePath(file))
+                    load_models(LoadSourcePath(file))
                 )
         return models
     
