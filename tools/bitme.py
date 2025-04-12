@@ -839,6 +839,7 @@ class BV_Grouping:
         return isinstance(self, BV_Dont_Care_Grouping) or isinstance(self, BV_No_Distinction_Proto)
 
     def reduce(self, reduction_tuple):
+        assert len(reduction_tuple) == self.number_of_exits
         if reduction_tuple == dict(enumerate(range(1, len(reduction_tuple) + 1), 1)):
             return 1, self
         else:
@@ -881,7 +882,7 @@ class BV_Dont_Care_Grouping(BV_Grouping):
             return g2, dict([(k, (k, 1)) for k in range(1, g2.number_of_exits + 1)])
 
     def reduce(self, reduction_tuple):
-        assert len(set(reduction_tuple.values())) == 1
+        assert reduction_tuple == {1:1}
         return self
 
 class BV_Fork_Grouping(BV_Grouping):
@@ -993,6 +994,7 @@ class BV_Internal_Grouping(BV_Grouping):
     representatives = {}
 
     def __init__(self, level, number_of_input_bits, number_of_exits = 1):
+        assert level > 0
         super().__init__(level, number_of_input_bits, number_of_exits)
         self.a_connection = None
         self.a_return_tuple = {}
@@ -1221,6 +1223,7 @@ class BV_No_Distinction_Proto(BV_Internal_Grouping):
     representatives = {}
 
     def __init__(self, level, number_of_input_bits):
+        assert level > 0
         super().__init__(level, number_of_input_bits)
 
     def representative(level, number_of_input_bits):
@@ -1250,7 +1253,7 @@ class BV_No_Distinction_Proto(BV_Internal_Grouping):
         return BV_Dont_Care_Grouping.pair_product(self, g2, inorder)
 
     def reduce(self, reduction_tuple):
-        assert len(set(reduction_tuple.values())) == 1
+        assert reduction_tuple == {1:1}
         return self
 
 class CFLOBVDD:
