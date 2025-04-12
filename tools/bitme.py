@@ -838,6 +838,16 @@ class BV_Grouping:
     def is_no_distinction_proto(self):
         return isinstance(self, BV_Dont_Care_Grouping) or isinstance(self, BV_No_Distinction_Proto)
 
+    def reduce(self, reduction_tuple):
+        if reduction_tuple == dict(enumerate(range(1, len(reduction_tuple) + 1), 1)):
+            return 1, self
+        else:
+            reduction_length = len(set(reduction_tuple.values()))
+            if reduction_length == 1:
+                return 1, BV_No_Distinction_Proto.representative(self.level,
+                    self.number_of_input_bits)
+            return reduction_length, self
+
 class BV_Dont_Care_Grouping(BV_Grouping):
     representatives = {}
 
@@ -871,6 +881,7 @@ class BV_Dont_Care_Grouping(BV_Grouping):
             return g2, dict([(k, (k, 1)) for k in range(1, g2.number_of_exits + 1)])
 
     def reduce(self, reduction_tuple):
+        assert len(set(reduction_tuple.values())) == 1
         return self
 
 class BV_Fork_Grouping(BV_Grouping):
@@ -971,7 +982,12 @@ class BV_Fork_Grouping(BV_Grouping):
                 return BV_Dont_Care_Grouping.representative(g1.number_of_input_bits).pair_product(BV_Dont_Care_Grouping.representative(g1.number_of_input_bits))
 
     def reduce(self, reduction_tuple):
-        return self
+        reduction_length, reduction = super().reduce(reduction_tuple)
+        if reduction_length == 1:
+            return reduction
+        else:
+            # TODO: reduce number_of_input_bits > 1 case
+            return self
 
 class BV_Internal_Grouping(BV_Grouping):
     representatives = {}
@@ -980,7 +996,7 @@ class BV_Internal_Grouping(BV_Grouping):
         super().__init__(level, number_of_input_bits, number_of_exits)
         self.a_connection = None
         self.a_return_tuple = {}
-        self.number_of_b_connections = None
+        self.number_of_b_connections = 0
         self.b_connections = {}
         self.b_return_tuples = {}
         self.number_of_paths_per_exit = {}
@@ -1029,13 +1045,17 @@ class BV_Internal_Grouping(BV_Grouping):
             g_b_i_rt = self.b_return_tuples[g_b_i]
             assert len(g_b_i_rt) == len(set(g_b_i_rt.values()))
             g_b_i_rt_targets = {}
+            previous_target = 0
             for g_b_i_rt_e_j in g_b_i_rt:
                 assert 1 <= g_b_i_rt_e_j <= g_b.number_of_exits, f"1 <= {g_b_i_rt_e_j} <= {g_b.number_of_exits}: {self}"
                 g_b_i_rt_e_j_e_t = g_b_i_rt[g_b_i_rt_e_j]
                 assert 1 <= g_b_i_rt_e_j_e_t <= self.number_of_exits
                 assert g_b_i_rt_e_j_e_t not in g_b_i_rt_targets
                 g_b_i_rt_targets[g_b_i_rt_e_j_e_t] = None
-            assert not(g_exits.keys() & g_b_i_rt_targets.keys())
+                if g_b_i_rt_e_j_e_t not in g_exits:
+                    if previous_target != 0:
+                        assert g_b_i_rt_e_j_e_t == previous_target + 1
+                    previous_target = g_b_i_rt_e_j_e_t
             g_exits |= g_b_i_rt_targets
         return True
 
@@ -1154,8 +1174,48 @@ class BV_Internal_Grouping(BV_Grouping):
 
             return g.representative(), pt_ans
 
+    def insert_b_connection(self, h, return_tuple):
+        assert isinstance(h, BV_Grouping)
+        for i in self.b_connections:
+            if self.b_connections[i] == h and self.b_return_tuples[i] == return_tuple:
+                return i
+
+        self.number_of_b_connections += 1
+        self.b_connections[self.number_of_b_connections] = h
+        self.b_return_tuples[self.number_of_b_connections] = return_tuple
+
+        return self.number_of_b_connections
+
     def reduce(self, reduction_tuple):
-        return self
+        reduction_length, reduction = super().reduce(reduction_tuple)
+        if reduction_length == 1:
+            return reduction
+        else:
+            g = self
+            g_prime = BV_Internal_Grouping(g.level,
+                g.number_of_input_bits,
+                reduction_length)
+
+            reduction_tuple_a = {}
+
+            for i in g.b_connections:
+                deduced_return_classes = dict(enumerate([reduction_tuple[v]
+                    for v in g.b_return_tuples[i].values()], 1))
+
+                induced_return_tuple, induced_reduction_tuple = CFLOBVDD.collape_classes_leftmost(deduced_return_classes)
+
+                h = g.b_connections[i].reduce(induced_reduction_tuple)
+
+                position = g_prime.insert_b_connection(h, induced_return_tuple)
+
+                reduction_tuple_a[len(reduction_tuple_a) + 1] = position
+
+            induced_return_tuple, induced_reduction_tuple = CFLOBVDD.collape_classes_leftmost(reduction_tuple_a)
+
+            g_prime.a_connection = g.a_connection.reduce(induced_reduction_tuple)
+            g_prime.a_return_tuple = induced_return_tuple
+
+            return g_prime.representative()
 
 class BV_No_Distinction_Proto(BV_Internal_Grouping):
     representatives = {}
@@ -1190,6 +1250,7 @@ class BV_No_Distinction_Proto(BV_Internal_Grouping):
         return BV_Dont_Care_Grouping.pair_product(self, g2, inorder)
 
     def reduce(self, reduction_tuple):
+        assert len(set(reduction_tuple.values())) == 1
         return self
 
 class CFLOBVDD:
@@ -1267,7 +1328,7 @@ class CFLOBVDD:
 
     def is_consistent(self):
         assert self.grouping.is_consistent()
-        assert len(self.outputs) == self.grouping.number_of_exits
+        assert len(self.outputs) == self.grouping.number_of_exits, f"{len(self.outputs)} == {self.grouping.number_of_exits}"
         assert len(self.outputs) == len(set(self.outputs.values()))
         assert all([0 <= self.outputs[i] < 2**self.number_of_output_bits for i in self.outputs])
         return True
@@ -1341,8 +1402,6 @@ class CFLOBVDD:
             for i in pt])
 
         induced_value_tuple, induced_return_tuple = CFLOBVDD.collape_classes_leftmost(deduced_value_tuple)
-
-        return
 
         return CFLOBVDD.representative(g.reduce(induced_return_tuple),
             induced_value_tuple,
