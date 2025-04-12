@@ -870,6 +870,9 @@ class BV_Dont_Care_Grouping(BV_Grouping):
         else:
             return g2, dict([(k, (k, 1)) for k in range(1, g2.number_of_exits + 1)])
 
+    def reduce(self, reduction_tuple):
+        return self
+
 class BV_Fork_Grouping(BV_Grouping):
     representatives = {}
 
@@ -966,6 +969,9 @@ class BV_Fork_Grouping(BV_Grouping):
                 return BV_Fork_Grouping(g_inputs, g1.number_of_input_bits).representative(), g_pair_tuples
             else:
                 return BV_Dont_Care_Grouping.representative(g1.number_of_input_bits).pair_product(BV_Dont_Care_Grouping.representative(g1.number_of_input_bits))
+
+    def reduce(self, reduction_tuple):
+        return self
 
 class BV_Internal_Grouping(BV_Grouping):
     representatives = {}
@@ -1083,7 +1089,7 @@ class BV_Internal_Grouping(BV_Grouping):
 
                 g.a_connection = BV_No_Distinction_Proto.representative(level - 1,
                     number_of_input_bits)
-                g.a_return_tuple = {1:1}
+                g.a_return_tuple[1] = 1
 
             g.number_of_b_connections = 2**a_number_of_output_bits
 
@@ -1139,14 +1145,17 @@ class BV_Internal_Grouping(BV_Grouping):
                     c2 = g2.b_return_tuples[pt_a[j][1]][pt_b[i][1]]
 
                     if (c1, c2) in pt_ans_inv:
-                        g.b_return_tuples[j] |= {len(g.b_return_tuples[j]) + 1:pt_ans_inv[(c1, c2)]}
+                        g.b_return_tuples[j][len(g.b_return_tuples[j]) + 1] = pt_ans_inv[(c1, c2)]
                     else:
                         g.number_of_exits += 1
-                        g.b_return_tuples[j] |= {len(g.b_return_tuples[j]) + 1:g.number_of_exits}
+                        g.b_return_tuples[j][len(g.b_return_tuples[j]) + 1] = g.number_of_exits
                         pt_ans[len(pt_ans) + 1] = (c1, c2)
                         pt_ans_inv[(c1, c2)] = len(pt_ans)
 
             return g.representative(), pt_ans
+
+    def reduce(self, reduction_tuple):
+        return self
 
 class BV_No_Distinction_Proto(BV_Internal_Grouping):
     representatives = {}
@@ -1164,10 +1173,10 @@ class BV_No_Distinction_Proto(BV_Internal_Grouping):
 
             g.a_connection = BV_No_Distinction_Proto.representative(level - 1,
                 number_of_input_bits)
-            g.a_return_tuple = {1:1}
+            g.a_return_tuple[1] = 1
             g.number_of_b_connections = 1
-            g.b_connections = {1:g.a_connection}
-            g.b_return_tuples= {1:{1:1}}
+            g.b_connections[1] = g.a_connection
+            g.b_return_tuples[1] = {1:1}
 
             g.pre_compute_number_of_paths_and_solutions_per_exit()
 
@@ -1179,6 +1188,9 @@ class BV_No_Distinction_Proto(BV_Internal_Grouping):
         assert self.level == g2.level
         assert self.number_of_input_bits == g2.number_of_input_bits
         return BV_Dont_Care_Grouping.pair_product(self, g2, inorder)
+
+    def reduce(self, reduction_tuple):
+        return self
 
 class CFLOBVDD:
     max_level = 0
@@ -1307,6 +1319,36 @@ class CFLOBVDD:
             number_of_input_bits,
             number_of_output_bits)
 
+    def collape_classes_leftmost(equiv_classes):
+        projected_classes = dict(enumerate([equiv_classes[i]
+            for i in equiv_classes if i == min([j for j in equiv_classes
+                if equiv_classes[j] == equiv_classes[i]])], 1))
+
+        order_of_projected_classes = dict([(projected_classes[i], i)
+            for i in projected_classes])
+
+        return projected_classes, dict(enumerate([order_of_projected_classes[v]
+            for v in equiv_classes.values()], 1))
+
+    def binary_apply_and_reduce(self, n2, op, number_of_output_bits):
+        assert isinstance(n2, CFLOBVDD)
+        n1 = self
+        assert n1.number_of_input_bits == n2.number_of_input_bits
+
+        g, pt = n1.grouping.pair_product(n2.grouping)
+
+        deduced_value_tuple = dict([(i, op(n1.outputs[pt[i][0]], n2.outputs[pt[i][1]]))
+            for i in pt])
+
+        induced_value_tuple, induced_return_tuple = CFLOBVDD.collape_classes_leftmost(deduced_value_tuple)
+
+        return
+
+        return CFLOBVDD.representative(g.reduce(induced_return_tuple),
+            induced_value_tuple,
+            n1.number_of_input_bits,
+            number_of_output_bits)
+
 # projection test cases
 
 CFLOBVDD.projection(0, 0, 1, 1)
@@ -1369,6 +1411,12 @@ CFLOBVDD.projection(2, 3, 2, 2).grouping.pair_product(CFLOBVDD.projection(2, 0, 
 CFLOBVDD.projection(2, 3, 2, 2).grouping.pair_product(CFLOBVDD.projection(2, 1, 2, 2).grouping)
 CFLOBVDD.projection(2, 3, 2, 2).grouping.pair_product(CFLOBVDD.projection(2, 2, 2, 2).grouping)
 CFLOBVDD.projection(2, 3, 2, 2).grouping.pair_product(CFLOBVDD.projection(2, 3, 2, 2).grouping)
+
+# binary apply and reduce test cases
+
+CFLOBVDD.projection(0, 0, 1, 1).binary_apply_and_reduce(CFLOBVDD.projection(0, 0, 1, 1), lambda x, y: x == y, 1)
+CFLOBVDD.projection(1, 0, 1, 1).binary_apply_and_reduce(CFLOBVDD.projection(1, 0, 1, 1), lambda x, y: x == y, 1)
+CFLOBVDD.projection(1, 0, 1, 1).binary_apply_and_reduce(CFLOBVDD.projection(1, 1, 1, 1), lambda x, y: x == y, 1)
 
 class Values:
     total_number_of_constants = 0
