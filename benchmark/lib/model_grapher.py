@@ -1,5 +1,7 @@
 import lib.config as cfg
 from lib.exceptions import ConfigFormatError
+from lib.color_map import ColorMap
+
 import logging
 from abc import ABC, abstractmethod
 
@@ -112,22 +114,28 @@ class SMT2ModelGrapher(ModelGrapher):
 
     def _create_line_count_figure(self):
         """Core graphing logic"""
+        colors = {
+            'bars': ColorMap.PRIMARY['blue'],
+            'avg_line': ColorMap.PRIMARY['red'],
+            'text': '#333333',
+            'outliers': ColorMap.PRIMARY['orange']
+        }
         # Prepare data
         names = [m.output_path.stem for m in self.models]
         line_counts = [m.parser.stats['total_lines'] for m in self.models]
         avg_lines = np.mean(line_counts)
 
         # Create figure
-        fig, ax = plt.subplots(figsize=(10, 6))
+        fig, ax = plt.subplots(figsize=self.figsize)
 
         # Bar plot
         bars = ax.bar(names, line_counts, 
-                     color=self.colors['bars'],
+                     color=colors['bars'],
                      width=0.7,
                      edgecolor='white')
 
         # Average line
-        ax.axhline(avg_lines, color=self.colors['avg_line'], 
+        ax.axhline(avg_lines, color=colors['avg_line'], 
                   linestyle='--', linewidth=2,
                   label=f'Average ({avg_lines:.1f} lines)')
 
@@ -137,7 +145,7 @@ class SMT2ModelGrapher(ModelGrapher):
             ax.text(bar.get_x() + bar.get_width()/2., height,
                    f'{height}',
                    ha='center', va='bottom',
-                   color=self.colors['text'])
+                   color=colors['text'])
          # Rotate long names
         if max(len(name) for name in names) > 8:
             plt.xticks(rotation=45, ha='right')
@@ -146,26 +154,178 @@ class SMT2ModelGrapher(ModelGrapher):
         return fig
     
     def _create_define_figure(self) -> plt.Figure:
-        """Figure 3: Define command distribution"""
+        """Figure 3: Define command distribution with regression analysis
+        
+        Creates a scatter plot showing the relationship between code size (lines)
+        and define commands, with:
+        - Automatic trend line
+        - Confidence interval
+        - Annotated statistics
+        - Professional styling
+        """
+        # Data extraction
+        code_lines = [m.parser.stats['code_lines'] for m in self.models]
+        defines = [m.parser.stats['define_count'] for m in self.models]
+        
+        # Create figure with constrained layout
         fig, ax = plt.subplots(figsize=self.figsize)
         
-        defines = [m.parser.stats['define_count'] for m in self.models]
-        ax.scatter([m.parser.stats['code_lines'] for m in self.models], defines,
-                  color=self.colors['secondary'], s=100)
+        # Main scatter plot
+        scatter = ax.scatter(
+            code_lines, defines,
+            color=self.colors['primary'],
+            s=120,                # Slightly larger markers
+            edgecolor='white',     # White border for clarity
+            linewidth=1,
+            alpha=0.8,            # Slight transparency
+            zorder=3              # Ensure points stay on top
+        )
+        
+        # Add regression line and CI
+        self._add_regression(ax, code_lines, defines)
+        
+        # Annotate key stats
+        self._annotate_stats(ax, code_lines, defines)
         
         # Formatting
-        self._format_axes(ax, fig, "Define Commands vs Code Size", 
-                         "Code Lines", "Define Commands")
+        self._format_axes(
+            ax, fig,
+            title="Define Command Density Analysis",
+            xlabel="Code Lines",
+            ylabel="Define Commands",
+            grid=True
+        )
+        
+        # Add supplemental elements
+        ax.spines[['top', 'right']].set_visible(False)
+        ax.set_axisbelow(True)  # Grid behind data
+        
         return fig
 
-    def _format_axes(self, ax, fig, title, xlabel, ylabel):
-        """Shared formatting helper"""
-        ax.set_title(title, pad=15)
-        ax.set_xlabel(xlabel, labelpad=10)
-        ax.set_ylabel(ylabel, labelpad=10)
-        if len(ax.get_xticklabels()) > 5:
-            plt.setp(ax.get_xticklabels(), rotation=45, ha='right')
+    def _add_regression(self, ax, x, y):
+        """Add linear regression with confidence interval"""
+        import seaborn as sns
+        
+        sns.regplot(
+            x=x, y=y,
+            scatter=False,
+            color=self.colors['highlight'],
+            line_kws={'lw': 2.5, 'zorder': 2},
+            ci=95,               # 95% confidence interval
+            ax=ax
+        )
+        
+        # Add R² annotation
+        from scipy import stats
+        slope, intercept, r_value, p_value, std_err = stats.linregress(x, y)
+        ax.text(
+            0.05, 0.95,
+            f'R² = {r_value**2:.2f}',
+            transform=ax.transAxes,
+            ha='left', va='top',
+            bbox=dict(facecolor='white', alpha=0.8, edgecolor='none')
+        )
+
+    def _annotate_stats(self, ax, x, y):
+        """Add key statistical annotations"""
+        avg_ratio = np.mean(np.array(y) / np.array(x))
+        
+        ax.axhline(
+            np.mean(y), 
+            color=self.colors['secondary'],
+            linestyle=':', 
+            label=f'Mean Defines: {np.mean(y):.1f}'
+        )
+        
+        ax.axline(
+            (0, 0), slope=avg_ratio,
+            color=self.colors['text'],
+            linestyle='--',
+            alpha=0.5,
+            label=f'Avg Ratio: {avg_ratio:.2f} defines/line'
+        )
+        
+        ax.legend(
+            frameon=True,
+            framealpha=0.9,
+            loc='upper left'
+        )
+
+    def _format_axes(
+        self,
+        ax: plt.Axes,
+        fig: plt.Figure,
+        title: str,
+        xlabel: str,
+        ylabel: str,
+        grid: bool = True,
+        tick_style: str = 'default'
+    ) -> None:
+        """Professional axes formatting with grid support
+        
+        Args:
+            ax: Matplotlib axes object
+            fig: Matplotlib figure object
+            title: Axis title
+            xlabel: X-axis label
+            ylabel: Y-axis label
+            grid: Whether to show grid (default: True)
+            tick_style: 'default' or 'scientific'
+        """
+        # Title and labels
+        ax.set_title(title, pad=15, fontsize=14, weight='semibold')
+        ax.set_xlabel(xlabel, labelpad=10, fontsize=12)
+        ax.set_ylabel(ylabel, labelpad=10, fontsize=12)
+        
+        # Grid configuration
+        if grid:
+            ax.grid(
+                True,
+                which='major',
+                linestyle='-',
+                linewidth=0.5,
+                color='#E0E0E0',
+                zorder=0
+            )
+            ax.grid(
+                True,
+                which='minor',
+                linestyle=':',
+                linewidth=0.3,
+                color='#F0F0F0',
+                zorder=0
+            )
+        
+        # Tick formatting
+        ax.tick_params(axis='both', which='both', labelsize=10)
+        if tick_style == 'scientific':
+            ax.ticklabel_format(
+                style='sci',
+                axis='both',
+                scilimits=(0,0),
+                useMathText=True
+            )
+            ax.yaxis.offsetText.set_fontsize(10)
+            ax.xaxis.offsetText.set_fontsize(10)
+        
+        # Rotate ticks if crowded
+        if len(ax.get_xticklabels()) > 6:
+            plt.setp(
+                ax.get_xticklabels(),
+                rotation=45,
+                ha='right',
+                rotation_mode='anchor'
+            )
+        
+        # Adjust layout
         fig.tight_layout()
+        fig.set_facecolor('white')
+        ax.set_facecolor('white')
+        
+        # Set axis spines
+        for spine in ax.spines.values():
+            spine.set_edgecolor('#888888')
+            spine.set_linewidth(0.8)
 
 class BTOR2ModelGrapher(ModelGrapher):
     def __init__(self):
