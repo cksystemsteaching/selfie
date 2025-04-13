@@ -67,13 +67,37 @@ install_deps() {
   rm -f "$LOG_FILE"
 }
 
+# Check whether python3 exists, otherwise fall back to python
+if command -v python3 &>/dev/null; then
+    PYTHON_CMD="python3"
+elif command -v python &>/dev/null; then
+    PYTHON_CMD="python"
+else
+    echo "[-] No Python interpreter found! Aborting."
+    exit 1
+fi
+
+REQUIRED_VERSION="3"
+INSTALLED_VERSION=$($PYTHON_CMD -c 'import sys; print(f"{sys.version_info.major}")')
+
+# Compare installed python vs. required:
+if (( $(echo "$INSTALLED_VERSION < $REQUIRED_VERSION" | bc -l) )); then
+    echo "[-] Python $REQUIRED_VERSION is required. You have $INSTALLED_VERSION. Aborting."
+    exit 1
+fi
+
 check_command pip
 
 # 1) Check if script is inside a venv
 if [ -z "$VIRTUAL_ENV" ]; then
-  echo "[-] Not in virtual environment. Creating one in './venv'..."
-  python3 -m venv venv
-  source venv/bin/activate
+  echo "[*] Checking status of virtual environment..."
+  if [ -d "venv" ]; then
+    echo "[*] 'venv' folder already exists. Skipping creation."
+  else
+    echo "[+] Creating virtual environment in 'venv'..."
+    $PYTHON_CMD -m venv venv
+  fi
+    source venv/bin/activate
 else 
   echo "[+] Detected virtual environment: $VIRTUAL_ENV"
 fi
@@ -83,4 +107,5 @@ upgrade_pip
 # 3) Install dependencies
 install_deps
 
-echo "[+] Setup complete."
+echo "[+] Setup complete. You can activate virtual environment with 'source venv/bin/{activate_script}."
+echo "    To deactivate, run: deactivate"
