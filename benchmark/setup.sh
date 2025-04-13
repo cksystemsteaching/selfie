@@ -1,8 +1,5 @@
 #!/usr/bin/env bash
 
-#Exit immediately on error
-set -e
-
 check_command() {
   if ! command -v $1 &> /dev/null; then
     echo "[-] $1 not found. Please install it."
@@ -30,12 +27,11 @@ upgrade_pip() {
 
   pip install --upgrade pip > "$LOG_FILE" 2>&1 &
   local upgrade_pip=$!
-
   spinner "$upgrade_pip" "Upgrading pip..."
 
   wait "$upgrade_pip"
   local exit_code=$?
-
+  
   if [ "$exit_code" -ne 0 ]; then
     echo "[-] Upgrading pip failed (exit code $exit_code). See below for the output."
     cat "$LOG_FILE"
