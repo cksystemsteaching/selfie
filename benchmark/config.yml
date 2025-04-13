@@ -1,6 +1,11 @@
 # paths are relative to the project's root
 
-rotor_path: "rotor"
+# Different model builder than Rotor can be provided
+#   Script can be provided as a build command
+
+model_builder_path: "rotor"
+build_model_builder: "make rotor"
+
 examples_dir: "examples/symbolic"
 models_dir: "models"
 

@@ -1,4 +1,4 @@
-from .checks import execute, is_tool_available
+from .checks import execute, is_tool_available, check_model_builder
 from .print import custom_exit
 from .model_generation_config import ModelGenerationConfig, ModelLoadConfig
 from .model_type import get_all_model_types
@@ -11,7 +11,7 @@ from pathlib import Path
 
 import shutil
 
-log = logging.getLogger("bt.generate")
+logger = logging.getLogger("bt.generate")
 
 def load_models(source: LoadSourcePath) -> list:
     """
@@ -31,7 +31,7 @@ def load_models(source: LoadSourcePath) -> list:
         return models
     
     models = []
-    log.info(f"Loading model: {source}")
+    logger.info(f"Loading model: {source}")
     models.append(model_factory(ModelLoadConfig(source)))
     
     return models
@@ -57,7 +57,7 @@ def create_models(source: SourcePath, model_type_base: str, output: OutputPath) 
                 )
         return models
     else:
-        log.info(f"Generating model from source: {source}")
+        logger.info(f"Generating model from source: {source}")
         model_types = get_all_model_types(model_type_base)
         models = []
         
@@ -69,7 +69,7 @@ def create_models(source: SourcePath, model_type_base: str, output: OutputPath) 
             else:
                 GenericSourceProcessor(model_config).generate_model()
 
-            log.info(f"Generated model: {model_config.output_path}")
+            logger.info(f"Generated model: {model_config.output_path}")
             models.append(model_factory(model_config))
         
         return models
@@ -93,10 +93,11 @@ class CStarSourceProcessor(BaseSourceProcessor):
         Returns:
         Path: path of generated output
         """
+        check_model_builder()
         # Selfie generates binary file as well, but that is not needed
         returncode, output = execute(
             self.model_config.model_generation_cmd.format(
-                rotor=cfg.rotor_path,
+                rotor=cfg.model_builder_path,
                 source_file=self.model_config.source_path,
                 output=self.model_config.output_path
             )
@@ -123,6 +124,7 @@ class GenericSourceProcessor(BaseSourceProcessor):
         Returns:
         Path: path of generated output
         """
+        logger.verbose_info(f"Compiling source {self.model_config.source_path}")
         self.compiled_source = self.model_config.source_path.with_suffix(".out")
 
         if not self.check_compiler():
@@ -134,16 +136,21 @@ class GenericSourceProcessor(BaseSourceProcessor):
                 output_machine_code=self.compiled_source
             )
         )
+        if returncode != 0:
+            logger.error(f"Source not correctly compiled. Compiler provided following output: {output}")
+            return False
+
         return True
 
     def generate_model(self):
         if not self.compile_source():
-            log.warning(f"Compiler {self.compiler} not available")
+            logger.warning(f"Compiler {self.compiler} not available.")
             return
-
+        
+        check_model_builder()
         returncode, output = execute(
             self.model_config.model_generation_command.format(
-                rotor=cfg.rotor_path,
+                rotor=cfg.model_builder_path,
                 source_file=self.compiled_source,
                 output=self.model_config.output_path
             )

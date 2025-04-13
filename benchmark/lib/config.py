@@ -9,7 +9,7 @@ config_file = script_dir / "config.yml"
 with open(config_file, "r") as file:
     config = yaml.safe_load(file)
 
-rotor_path = Path(project_root / config["rotor_path"])
+model_builder_path = Path(project_root / config["model_builder_path"])
 models_dir = Path(project_root / config["models_dir"])
 examples_dir = Path(project_root / config["examples_dir"])
 verbose = False
