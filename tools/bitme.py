@@ -969,19 +969,22 @@ class BV_Fork_Grouping(BV_Grouping):
             inputs2 = g2.inputs[exit2]
             for exit1 in g1.inputs:
                 inputs1 = g1.inputs[exit1]
-                while inputs1 > inputs2:
+                while inputs2 & inputs1 == 0 and inputs2 < inputs1:
+                    # move on to next inputs2
                     if exit2 < g2.number_of_exits:
                         exit2 += 1
                         inputs2 = g2.inputs[exit2]
                     else:
-                        return BV_Fork_Grouping(g_inputs, g1.number_of_input_bits), g_pair_tuples
+                        return BV_Fork_Grouping(g_inputs,
+                            g1.number_of_input_bits).representative(), g_pair_tuples
                 if inputs1 & inputs2 != 0:
                     exit += 1
                     g_inputs[exit] = inputs1 & inputs2
                     g_pair_tuples[exit] = (exit1, exit2)
                     inputs2 &= ~inputs1
             if g_inputs:
-                return BV_Fork_Grouping(g_inputs, g1.number_of_input_bits).representative(), g_pair_tuples
+                return BV_Fork_Grouping(g_inputs,
+                    g1.number_of_input_bits).representative(), g_pair_tuples
             else:
                 return BV_Dont_Care_Grouping.representative(g1.number_of_input_bits).pair_product(BV_Dont_Care_Grouping.representative(g1.number_of_input_bits))
 
@@ -990,21 +993,20 @@ class BV_Fork_Grouping(BV_Grouping):
         if reduction_length == 1:
             return reduction
         else:
+            g_exits = {}
             g_inputs = {}
-            reduced_inputs = {}
             for exit in self.inputs:
                 reduced_to_exit = reduction_tuple[exit]
+                assert reduced_to_exit <= exit
                 if reduced_to_exit == exit:
-                    reduced_inputs[reduced_to_exit] = self.inputs[exit]
+                    new_exit = len(g_inputs) + 1
+                    g_exits[exit] = new_exit
+                    g_inputs[new_exit] = self.inputs[exit]
                 else:
-                    assert reduced_to_exit < exit
-                    assert reduced_inputs[reduced_to_exit] & self.inputs[exit] == 0
-                    reduced_inputs[reduced_to_exit] |= self.inputs[exit]
-            for exit in self.inputs:
-                reduced_to_exit = reduction_tuple[exit]
-                if exit == reduced_exit:
-                    g_inputs[len(g_inputs) + 1] = reduced_inputs[exit]
-            return BV_Fork_Grouping(g_inputs, self.number_of_input_bits)
+                    new_exit = g_exits[reduced_to_exit]
+                    assert g_inputs[new_exit] & self.inputs[exit] == 0
+                    g_inputs[new_exit] |= self.inputs[exit]
+            return BV_Fork_Grouping(g_inputs, self.number_of_input_bits).representative()
 
 class BV_Internal_Grouping(BV_Grouping):
     representatives = {}
