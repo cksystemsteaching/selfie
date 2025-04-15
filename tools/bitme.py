@@ -955,6 +955,12 @@ class BV_Fork_Grouping(BV_Grouping):
             for i in range(2**number_of_input_bits)]),
             number_of_input_bits).representative()
 
+    def fork_if_non_empty(inputs, number_of_input_bits, pair_tuples):
+        if inputs:
+            return BV_Fork_Grouping(inputs, number_of_input_bits).representative(), pair_tuples
+        else:
+            return BV_Dont_Care_Grouping.representative(number_of_input_bits).pair_product(BV_Dont_Care_Grouping.representative(number_of_input_bits))
+
     def pair_product(self, g2):
         g1 = self
         assert g1.number_of_input_bits == g2.number_of_input_bits
@@ -962,31 +968,30 @@ class BV_Fork_Grouping(BV_Grouping):
             return g2.pair_product(g1, False)
         else:
             assert isinstance(g2, BV_Fork_Grouping)
-            exit = 0
+            g_exit = 0
             g_inputs = {}
             g_pair_tuples = {}
-            exit2 = 1
-            inputs2 = g2.inputs[exit2]
-            for exit1 in g1.inputs:
-                inputs1 = g1.inputs[exit1]
-                while inputs2 & inputs1 == 0 and inputs2 < inputs1:
-                    # move on to next inputs2
-                    if exit2 < g2.number_of_exits:
-                        exit2 += 1
-                        inputs2 = g2.inputs[exit2]
+            g2_exit = 1
+            g2_inputs = g2.inputs[g2_exit]
+            for g1_exit in g1.inputs:
+                g1_inputs = g1.inputs[g1_exit]
+                while g2_inputs & g1_inputs == 0 and g2_inputs < g1_inputs:
+                    # move on to next g2_inputs
+                    if g2_exit < g2.number_of_exits:
+                        g2_exit += 1
+                        g2_inputs = g2.inputs[g2_exit]
                     else:
-                        return BV_Fork_Grouping(g_inputs,
-                            g1.number_of_input_bits).representative(), g_pair_tuples
-                if inputs1 & inputs2 != 0:
-                    exit += 1
-                    g_inputs[exit] = inputs1 & inputs2
-                    g_pair_tuples[exit] = (exit1, exit2)
-                    inputs2 &= ~inputs1
-            if g_inputs:
-                return BV_Fork_Grouping(g_inputs,
-                    g1.number_of_input_bits).representative(), g_pair_tuples
-            else:
-                return BV_Dont_Care_Grouping.representative(g1.number_of_input_bits).pair_product(BV_Dont_Care_Grouping.representative(g1.number_of_input_bits))
+                        return BV_Fork_Grouping.fork_if_non_empty(g_inputs,
+                            g1.number_of_input_bits,
+                            g_pair_tuples)
+                if g1_inputs & g2_inputs != 0:
+                    g_exit += 1
+                    g_inputs[g_exit] = g1_inputs & g2_inputs
+                    g_pair_tuples[g_exit] = (g1_exit, g2_exit)
+                    g2_inputs &= ~g1_inputs
+            return BV_Fork_Grouping.fork_if_non_empty(g_inputs,
+                g1.number_of_input_bits,
+                g_pair_tuples)
 
     def reduce(self, reduction_tuple):
         reduction_length, reduction = super().reduce(reduction_tuple)
