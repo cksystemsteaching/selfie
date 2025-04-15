@@ -1070,7 +1070,9 @@ class BV_Internal_Grouping(BV_Grouping):
                 assert 1 <= g_b_i_rt_e_j_e_t <= self.number_of_exits
                 assert g_b_i_rt_e_j_e_t not in g_b_i_rt_targets
                 g_b_i_rt_targets[g_b_i_rt_e_j_e_t] = None
-                if g_b_i_rt_e_j_e_t not in g_exits:
+                if g_b_i_rt_e_j_e_t in g_exits:
+                    assert previous_target == 0
+                else:
                     if previous_target != 0:
                         assert g_b_i_rt_e_j_e_t == previous_target + 1
                     previous_target = g_b_i_rt_e_j_e_t
