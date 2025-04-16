@@ -14,7 +14,7 @@ class BaseSolver:
         self.solver_command = solver_command
         self.check_solver()
 
-    def run(self, model: 'Model', timeout: int = 200, args: list = []):
+    def run(self, model: 'Model', timeout: int, args: list = []):
         """
         Runs the solver command with specified arguments and timeout.
 
@@ -51,6 +51,7 @@ class BaseSolver:
 
         try:
             logger.info(f"Running command: {' '.join(cmd)}")
+            logger.info(f"Timeout is set to {timeout}s.")
             # Use subprocess.run
             result = subprocess.run(
                 cmd,
@@ -146,7 +147,7 @@ class Z3Solver(BaseSolver):
     def __init__(self):
         super().__init__("z3")
 
-    def run(self, model: Model, timeout: int=300, args=[]):
+    def run(self, model: Model, timeout, args=[]):
         arguments = [
         ]
         arguments.extend(args)
@@ -167,7 +168,7 @@ class BitwuzlaSolver(BaseSolver):
     def __init__(self):
         super().__init__("bitwuzla")
     
-    def run(self,  model: Model, timeout: int, args=[]):
+    def run(self,  model: Model, timeout, args=[]):
         arguments = [
             f"--lang", f"{model.get_format()}",
         ]

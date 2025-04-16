@@ -61,7 +61,7 @@ def init_parser():
 
     parser.add_argument(
         '-t', '--timeout',
-        default=300,
+        default=600,
         type=int,
         help="Set timeout for the solver",
     )
