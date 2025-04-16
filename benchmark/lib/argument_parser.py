@@ -1,4 +1,5 @@
 import lib.config as cfg
+from lib.solver import available_solvers
 
 import argparse
 
@@ -33,8 +34,9 @@ def init_parser():
     )
 
     parser.add_argument(
-        '-b', '--benchmark',
+        '-sl', '--solver',
         required=False,
+        help=f"Provide a solver, otherwise no solver will be invoked. Available solvers: {list(available_solvers.keys())}"
     )
 
     parser.add_argument(
@@ -55,6 +57,13 @@ def init_parser():
         '-g', '--graph',
         action='store_true',
         help="Provide graphs for the models"
+    )
+
+    parser.add_argument(
+        '-t', '--timeout',
+        default=300,
+        type=int,
+        help="Set timeout for the solver",
     )
 
     parser.add_argument(
