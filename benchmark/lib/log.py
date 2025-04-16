@@ -30,10 +30,22 @@ def configure_logging(
     
     root_logger = logging.getLogger("bt")
     root_logger.setLevel(logging.DEBUG)  # Lowest level, handlers filter
+
+    cli_logger = logging.getLogger("bt-cli")
+    cli_logger.setLevel(logging.DEBUG)  # Lowest level, handlers filter
+    
+    file_logger = logging.getLogger("bt-file")
+    file_logger.setLevel(logging.DEBUG)  # Lowest level, handlers filter
     
     # Clean up existing handlers to avoid duplicates
     for handler in root_logger.handlers[:]:
         root_logger.removeHandler(handler)
+    
+    for handler in cli_logger.handlers[:]:
+        cli_logger.removeHandler(handler)
+    
+    for handler in file_logger.handlers[:]:
+        file_logger.removeHandler(handler)
     
     # Console handler with simplified format
     console_handler = logging.StreamHandler()
@@ -43,6 +55,7 @@ def configure_logging(
         datefmt='%H:%M'
     ))
     root_logger.addHandler(console_handler)
+    cli_logger.addHandler(console_handler)
     
     # File handler (if enabled)
     if log_file:        
@@ -52,3 +65,4 @@ def configure_logging(
             '%(asctime)s %(name)s %(levelname)s %(message)s'
         ))
         root_logger.addHandler(file_handler)
+        file_logger.addHandler(file_handler)
