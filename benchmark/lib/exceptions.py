@@ -75,3 +75,13 @@ class TimeoutException(BTError):
             }            
         )
         self.output = output
+
+class UnsupportedModelException(BTError):
+    def __init__(self, message, model, **kwargs):
+        super().__init__(
+            message,
+            {
+                'model': model,
+                **kwargs
+            }
+        )
