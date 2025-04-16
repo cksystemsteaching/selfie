@@ -2,7 +2,7 @@ import lib.config as cfg
 from lib.generate import generate_all_examples, clean_examples, create_models, load_models
 from lib.print import custom_exit
 import lib.argument_parser as arg_parser
-from lib.solver import Z3Solver
+from lib.solver import available_solvers
 from lib.paths import SourcePath, LoadSourcePath, OutputPath
 from lib.log import configure_logging
 from lib.model_grapher import GrapherWrapper
@@ -45,9 +45,14 @@ if __name__ == "__main__":
         
         models.extend(genereated_models)
     
-    if args.benchmark:
+    if args.solver:
+        if args.solver not in available_solvers:
+            logger.error(f"Provided solver {args.solver} is not valid. Valid ones: {list(available_solvers.keys())}.")
+            exit()
+        solver = available_solvers[args.solver]()
+
         for model in models:
-            Z3Solver(model, 10).benchmark()
+            solver.run(model, args.timeout, [])
 
     if args.graph:
         grapher = GrapherWrapper(OutputPath(args.output), models)
