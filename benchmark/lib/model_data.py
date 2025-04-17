@@ -43,7 +43,7 @@ class GenerationModelData(DictMixin):
     @staticmethod
     def generate(model_generation_config : 'ModelGenerationConfig'):
         return GenerationModelData(
-            model_generation_config.model_type,
+            model_generation_config.model_type.model_base,
             model_generation_config.compilation_cmd,
             model_generation_config.model_generation_cmd
         ) 
@@ -84,7 +84,7 @@ class ParsedBTOR2ModelData(DictMixin):
 @dataclass
 class SolverRunData(DictMixin):
     solver_used: str
-    solver_command: str
+    solver_cmd: str
     elapsed_time: int
     returncode: int
     stdout: str

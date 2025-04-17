@@ -91,7 +91,7 @@ class SMT2ModelPresenter(BasePresenter):
             
             if self.model['parsed']['is_rotor_generated']:
                 lines.append("\nRotor Configuration:")
-                lines.extend(self._format_rotor_info())
+                lines.extend(self._format_rotor_data())
         
         return "\n".join(lines)
     
@@ -102,36 +102,77 @@ class SMT2ModelPresenter(BasePresenter):
         footer = "=" * width
         
         sections = [
-            self._section("Basic Info", [
+            self._section("Basic Data", [
                 f"File: {self.model.data.basic.name}",
                 f"Path: {self.model.data.basic.output_path}",
                 f"Type: {self.model.__class__.__name__}",
+                f"Format: {self.model.data.basic.format}",
             ]),
             
-            self._section("Statistics", [
+            self._section("Parsed Data", [
                 f"Total lines: {self.model['parsed']['total_lines']}",
                 f"Code lines: {self.model['parsed']['code_lines']}",
                 f"Comments: {self.model['parsed']['comment_lines']}",
                 f"Blank lines: {self.model['parsed']['blank_lines']}",
                 f"Define-fun commands: {self.model['parsed']['define_count']}",
+                f"Transitions: {self.model['parsed']['transitions']}",
+                f"Rotor generated: {self.model['parsed']['is_rotor_generated']}"
             ]),
         ]
         
         if self.model['parsed']['is_rotor_generated']:
             sections.append(
-                self._section("Rotor Configuration", self._format_rotor_info())
+                self._section("Rotor Configuration", self._format_rotor_data())
             )
-        
+
+        if self.model['generation'] != None:
+            sections.append(
+                self._section("Generation data", self._format_generation_data())
+            )
+        idx = 1
+        for solver_run in self.model.data.solver_runs:
+            sections.append(
+                self._section(f"Solver run #{idx}", self._format_solver_run_data(solver_run))
+            )
+            idx+=1
+
+
         return f"\n{header}\n" + "\n\n".join(sections) + f"\n{footer}\n"
     
-    def _format_rotor_info(self) -> list[str]:
-        """Format Rotor-specific information"""
+    def _format_rotor_data(self) -> list[str]:
+        """Format Rotor-specific model data"""
         header = self.model['parsed']['rotor_data']
         return [
             f"Source: {header.source_file}",
             f"kMin: {header.kmin}, kMax: {header.kmax}",
-            f"Virtual Address Space: {header.virtual_address_space}-bit",
-            f"Code Size: {header.bytecode_size} bytes",
+            f"Bytecode size: {header.bytecode_size} bytes",
             f"Data Size: {header.data_size} bytes",
+            f"Virtual Address Space: {header.virtual_address_space}-bit",
+            f"Code Size: {header.code_word_size} bytes",
+            f"Memory word size: {header.memory_word_size}",
+            f"Heap allowance: {header.heap_allowance}",
+            f"Stack allowance: {header.stack_allowance}",
+            f"Cores: {header.cores}",
+            f"Bytes to read: {header.bytestoread}",
+            f"Comments removed: {header.comments_removed}",
             f"Flags: {', '.join(header.flags) if header.flags else 'None'}",
+        ]
+    
+    def _format_generation_data(self) -> list[str]:
+        """Format model generation related data"""
+        data = self.model.data.generation
+        return [
+            f"Model generation command: {data.model_generation_cmd}",
+            f"Model type: {data.model_type}",
+            f"Compilation command: {data.compilation_cmd or 'Compiled by Rotor.'}",
+        ]
+    
+    def _format_solver_run_data(solver_run):
+        return [
+            f"Solver: {solver_run.solver_used}",
+            f"Command: {solver_run.solver_cmd}",
+            f"Elapsed_time: {solver_run.elapsed_time}",
+            f"Return code: {solver_run.return_code}",
+            f"Success: {solver_run.success}",
+            f"Timed_out: {solver_run.timedout}"
         ]
