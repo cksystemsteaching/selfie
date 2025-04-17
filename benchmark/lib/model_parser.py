@@ -1,12 +1,8 @@
-from abc import ABC, abstractmethod
 from lib.paths import OutputPath
-from lib.smt_rotor_header import RotorHeader, RotorParser
+from lib.rotor_parser import RotorParser
 
-from pathlib import Path
-
+from abc import ABC, abstractmethod
 import re
-from collections import defaultdict
-from typing import Tuple, Dict
 
 class ModelParser:
     def __init__(self, path: OutputPath):
@@ -23,7 +19,7 @@ class ModelParser:
 class SMT2ModelParser(ModelParser):
     def __init__(self, output_path: OutputPath):
         super().__init__(output_path)
-        self.rotor_header : RotorHeader = None
+        self.rotor_header : 'RotorModelData' = None
 
     def parse(self):
         """
@@ -43,6 +39,7 @@ class SMT2ModelParser(ModelParser):
             'code_lines': 0,
             'blank_lines': 0,
             'define_count': 0,
+            'transitions': 0,
             'is_rotor_generated': False,
             'rotor_header': None
         }

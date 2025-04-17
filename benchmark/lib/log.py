@@ -1,6 +1,7 @@
-import logging
 from pathlib import Path
 from typing import Union
+import logging
+
 
 # Custom levels (between WARNING and INFO in severity)
 VERBOSE_INFO_LEVEL = 19  # Higher than INFO (20), lower than WARNING (30)

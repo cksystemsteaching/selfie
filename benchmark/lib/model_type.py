@@ -3,10 +3,10 @@ from lib.exceptions import ParsingError, ConfigFormatError
 
 from queue import Queue
 from typing import List, Dict, Any
-from pathlib import Path
 
 import logging
 logger = logging.getLogger("bt.model_type")
+
 class ModelType:
     def __init__(self, model_base: str):
         self.model_base = model_base

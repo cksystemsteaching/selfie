@@ -5,8 +5,7 @@ import lib.config as cfg
 import lib.exceptions as ex
 
 from pathlib import Path
-from typing import Union, Optional
-import os
+from typing import Union
 
 class OutputPath:
     def __init__(self, output: Union[str, Path]):

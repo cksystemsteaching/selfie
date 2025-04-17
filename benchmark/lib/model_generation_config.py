@@ -1,12 +1,5 @@
-from dataclasses import dataclass
-from .exceptions import ParsingError
-from .model_type import ModelType
-from .paths import SourcePath, OutputPath
-import lib.config as cfg
-
-import os
-from pathlib import Path
-
+from lib.model_type import ModelType
+from lib.paths import SourcePath, OutputPath
 
 class ModelBaseConfig:
     def __init__(self, source_path: SourcePath, format: str):

@@ -2,7 +2,6 @@ from .exceptions import (
     TimeoutException,
 )
 import lib.config as cfg
-from pathlib import Path
 
 from subprocess import Popen, TimeoutExpired
 import shlex

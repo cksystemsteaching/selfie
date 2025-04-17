@@ -1,6 +1,7 @@
+import lib.config as cfg
+
 import logging
 from pathlib import Path
-import lib.config as cfg
 
 class BTError(Exception):
     """Base class for all SMT tool exceptions"""

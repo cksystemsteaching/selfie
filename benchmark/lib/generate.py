@@ -1,14 +1,13 @@
-from .checks import execute, is_tool_available, check_model_builder
-from .print import custom_exit
-from .model_generation_config import ModelGenerationConfig, ModelLoadConfig
-from .model_type import get_all_model_types
-from .paths import SourcePath, OutputPath, LoadSourcePath
-from .model import model_factory
-import logging
-
+from lib.checks import execute, is_tool_available, check_model_builder
+from lib.print import custom_exit
+from lib.model_generation_config import ModelGenerationConfig, ModelLoadConfig
+from lib.model_type import get_all_model_types
+from lib.paths import SourcePath, OutputPath, LoadSourcePath
+from lib.model import model_factory
 import lib.config as cfg
-from pathlib import Path
 
+from pathlib import Path
+import logging
 import shutil
 
 logger = logging.getLogger("bt.generate")

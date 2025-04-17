@@ -1,9 +1,5 @@
 from lib.model_data import RotorModelData
-
 import re
-from typing import Dict, List, Optional
-from pathlib import Path
-from dataclasses import dataclass
 
 class RotorParser:
     HEADER_PATTERNS = {

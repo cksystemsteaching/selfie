@@ -2,7 +2,6 @@ from lib.model import Model
 from lib.exceptions import UnsupportedModelException
 from lib.checks import is_tool_available
 
-from pathlib import Path
 import subprocess
 import time
 

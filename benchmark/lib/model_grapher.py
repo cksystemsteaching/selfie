@@ -2,11 +2,10 @@ import lib.config as cfg
 from lib.exceptions import ConfigFormatError
 from lib.color_map import ColorMap
 
-import logging
 from abc import ABC, abstractmethod
-
 import matplotlib.pyplot as plt
 import numpy as np
+import logging
 
 class GrapherWrapper:
     def __init__(self, output_path, models):

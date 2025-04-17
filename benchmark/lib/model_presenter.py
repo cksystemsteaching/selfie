@@ -1,7 +1,6 @@
 import lib.exceptions as ex
 
 from abc import ABC, abstractmethod
-from typing import Optional
 from pathlib import Path
 from enum import Enum, auto
 import logging
