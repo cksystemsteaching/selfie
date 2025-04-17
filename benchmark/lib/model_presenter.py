@@ -167,12 +167,12 @@ class SMT2ModelPresenter(BasePresenter):
             f"Compilation command: {data.compilation_cmd or 'Compiled by Rotor.'}",
         ]
     
-    def _format_solver_run_data(solver_run):
+    def _format_solver_run_data(self,solver_run):
         return [
             f"Solver: {solver_run.solver_used}",
             f"Command: {solver_run.solver_cmd}",
             f"Elapsed_time: {solver_run.elapsed_time}",
-            f"Return code: {solver_run.return_code}",
+            f"Return code: {solver_run.returncode}",
             f"Success: {solver_run.success}",
-            f"Timed_out: {solver_run.timedout}"
+            f"Timed_out: {solver_run.timed_out}"
         ]

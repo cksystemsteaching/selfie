@@ -32,18 +32,25 @@ class BaseSolver:
             'timed_out': Boolean indicating if the command timed out.
             'error_message': String description of the error, if any.
         """
+
+        cmd = [self.solver_command]
+        cmd.extend(args)
+        cmd.append(model.data.basic.output_path.__str__())
+        
+        basic_data = {
+            "solver_used": self.get_solver_name(),
+            "solver_cmd": " ".join(cmd)
+        }
+        
         try:
             self.check_model(model)
         except ValueError as e:
             logger.error(f"Model check failed: {e}")
             return {
+                **basic_data,
                 'elapsed_time': 0.0, 'returncode': None, 'stdout': "", 'stderr': str(e),
                 'success': False, 'timed_out': False, 'error_message': f"Model check failed: {e}"
             }
-
-        cmd = [self.solver_command]
-        cmd.extend(args)
-        cmd.append(model.output_path.__str__())
 
         start_time = time.perf_counter() # Use perf_counter for measuring intervals
         elapsed_time = 0.0 # Initialize elapsed time
@@ -62,6 +69,7 @@ class BaseSolver:
             elapsed_time = time.perf_counter() - start_time
             logger.info(f"Solving completed successfully in {elapsed_time:.2f}s. Return code: {result.returncode}")
             return {
+                **basic_data,
                 'elapsed_time': elapsed_time,
                 'returncode': result.returncode,
                 'stdout': result.stdout,
@@ -76,6 +84,7 @@ class BaseSolver:
             logger.error(f"Command failed with return code {e.returncode} after {elapsed_time:.2f}s.")
             logger.error(f"Stderr:\n{e.stderr.strip()}")
             return {
+                **basic_data,
                 'elapsed_time': elapsed_time,
                 'returncode': e.returncode,
                 'stdout': e.stdout,
@@ -96,8 +105,8 @@ class BaseSolver:
             if stderr_before_timeout: 
                 logging.getLogger("bt-cli").info(f"You can find stderr output before the timeout in log file.")
                 logging.getLogger("bt-file").info(f"Partial stderr before timeout:\n{stderr_before_timeout}")
-
             return {
+                **basic_data,
                 'elapsed_time': timeout,
                 'returncode': None,
                 'stdout': stdout_before_timeout,
@@ -111,6 +120,7 @@ class BaseSolver:
             elapsed_time = time.perf_counter() - start_time
             logger.error(f"Solver command not found: {cmd}. Error: {e}")
             return {
+                **basic_data,
                 'elapsed_time': elapsed_time,
                 'returncode': None,
                 'stdout': "",
@@ -123,6 +133,7 @@ class BaseSolver:
             elapsed_time = time.perf_counter() - start_time
             logger.exception(f"An unexpected error occurred running command {' '.join(cmd)}: {e}") # Use logger.exception to include traceback
             return {
+                **basic_data,
                 'elapsed_time': elapsed_time,
                 'returncode': None,
                 'stdout': "",
@@ -139,7 +150,7 @@ class BaseSolver:
 
     # Checks if provided model is digestable by the solver
     def check_model(self, model):
-        if model.get_format() not in self.get_supported_models():
+        if model.data.basic.format not in self.get_supported_models():
             raise UnsupportedModelException(f"Unsupported model format used in {self.__class__.__name__} ", self.model, solver=self.__class__.__name__)
     
 class Z3Solver(BaseSolver):
@@ -150,7 +161,7 @@ class Z3Solver(BaseSolver):
         arguments = [
         ]
         arguments.extend(args)
-        super().run(model, timeout, arguments)
+        return super().run(model, timeout, arguments)
 
     def benchmark(self):
         logger.info(f"Benchmarking {self.model.name} with Z3")
@@ -162,6 +173,8 @@ class Z3Solver(BaseSolver):
         return {
             'smt2'
         }
+    def get_solver_name(self):
+        return "Z3"
     
 class BitwuzlaSolver(BaseSolver):
     def __init__(self):
@@ -169,16 +182,18 @@ class BitwuzlaSolver(BaseSolver):
     
     def run(self,  model: Model, timeout, args=[]):
         arguments = [
-            f"--lang", f"{model.get_format()}",
+            f"--lang", f"{model.data.basic.format}",
         ]
         arguments.extend(args)
-        super().run(model, timeout, arguments)
+        return super().run(model, timeout, arguments)
     
     def get_supported_models(self):
         return {
             'smt2',
             'btor2'
         }
+    def get_solver_name(self):
+        return "Bitwuzla"
     
 available_solvers = {
     'z3' : Z3Solver,

@@ -25,8 +25,8 @@ class Model:
     def __getitem__(self, key):
         return self.data[key]
 
-    def add_solver_run(self, solver_run: SolverRunData):
-        self._data.solver_runs.append(solver_run)
+    def add_solver_data(self, solver_data):
+        self._data.solver_runs.append(SolverRunData.from_dict(solver_data))
 class SMT2Model(Model):
 
     def __init__(self, model_config: ModelBaseConfig):

@@ -1,6 +1,6 @@
 from lib.dict_mixin import DictMixin
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, fields
 from typing import Optional, List
 
 @dataclass
@@ -92,6 +92,11 @@ class SolverRunData(DictMixin):
     success: bool
     timed_out: bool
     error_message: str
+
+    @classmethod
+    def from_dict(cls, data: dict):
+        valid_fields = {f.name for f in fields(cls)}
+        return cls(**{k: v for k, v in data.items() if k in valid_fields})
 
 @dataclass
 class SMT2ModelData(DictMixin):

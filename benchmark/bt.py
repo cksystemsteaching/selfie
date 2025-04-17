@@ -35,13 +35,11 @@ if __name__ == "__main__":
     if args.load:
         loaded_models = load_models(LoadSourcePath(args.load))
         models.extend(loaded_models)
-        for model in loaded_models:
-            model.show()
+  
 
     if args.source:
         genereated_models = create_models(SourcePath(args.source), args.model_base, OutputPath(args.output))
-        for model in genereated_models:
-            model.show()
+ 
         
         models.extend(genereated_models)
     
@@ -52,7 +50,12 @@ if __name__ == "__main__":
         solver = available_solvers[args.solver]()
 
         for model in models:
-            solver.run(model, args.timeout, [])
+            result = solver.run(model, args.timeout, [])
+            model.add_solver_data(result)
+    
+    #Show models
+    for model in models:
+        model.show()
 
     if args.graph:
         grapher = GrapherWrapper(OutputPath(args.output), models)
