@@ -58,9 +58,13 @@ class BasePresenter(ABC):
         path.parent.mkdir(parents=True, exist_ok=True)
         with open(path, 'w') as f:
             f.write(content)
-    
+
+
+#TODO
 class BTORModelPresenter(BasePresenter):
     pass
+
+
 class SMT2ModelPresenter(BasePresenter):
     """Handles rich presentation of model information for CLI output"""
     

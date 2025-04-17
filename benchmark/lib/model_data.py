@@ -1,4 +1,4 @@
-from lib.dict_mixin import DictMixin, LazyLoadedDictMixin
+from lib.dict_mixin import DictMixin
 
 from dataclasses import dataclass, field
 from typing import Optional, List
@@ -50,8 +50,7 @@ class GenerationModelData(DictMixin):
         
         
 @dataclass
-class ParsedSMT2ModelData(LazyLoadedDictMixin):
-    _parser: 'SMT2ModelParser'
+class ParsedSMT2ModelData(DictMixin):
 
     total_lines: Optional[int] = None
     comment_lines: Optional[int] = None
@@ -62,17 +61,25 @@ class ParsedSMT2ModelData(LazyLoadedDictMixin):
     is_rotor_generated: Optional[bool] = None
     rotor_data: Optional[RotorModelData] = None
     
-    def _initialize(self):
-        """Lazy-load data when first accessed"""
-        vals = self._parser.parse()
-        self.total_lines = vals["total_lines"]
-        self.comment_lines = vals["comment_lines"]
-        self.code_lines = vals["code_lines"]
-        self.blank_lines = vals["blank_lines"]
-        self.define_count = vals["define_count"]
-        self.transitions = vals["transitions"]
-        self.is_rotor_generated = vals["is_rotor_generated"]
-        self.rotor_data = vals.get("rotor_header")
+    @staticmethod
+    def generate(parser: 'SMT2ModelParser'):
+        vals = parser.parse()
+        return ParsedSMT2ModelData(
+            total_lines=vals["total_lines"],
+            comment_lines=vals["comment_lines"],
+            code_lines=vals["code_lines"],
+            blank_lines=vals["blank_lines"],
+            define_count=vals["define_count"],
+            transitions=vals["transitions"],
+            is_rotor_generated=vals["is_rotor_generated"],
+            rotor_data=vals.get("rotor_header"),
+        )
+
+@dataclass
+class ParsedBTOR2ModelData(DictMixin):
+    _parser: 'BTOR2ModelParser'
+
+    #TODO
 
 @dataclass
 class SolverRunData(DictMixin):
@@ -88,9 +95,18 @@ class SolverRunData(DictMixin):
 
 @dataclass
 class SMT2ModelData(DictMixin):
-    basic: BasicModelData = field(default_factory=BasicModelData)
+    basic: BasicModelData
     # Model can also be loaded, thus missing the generation data
-    generation: Optional[GenerationModelData] = field(default_factory=GenerationModelData)
-    parsed: ParsedSMT2ModelData = field(default_factory=ParsedSMT2ModelData)
+    generation: Optional[GenerationModelData]
+    parsed: ParsedSMT2ModelData
     # Model can undergo several solvings from different solvers
-    solver_runs: List[SolverRunData] = field(default_factory=list)
+    solver_runs: List[SolverRunData]
+
+@dataclass
+class BTOR2ModelData(DictMixin):
+    basic: BasicModelData
+    # Model can also be loaded, thus missing the generation data
+    generation: Optional[GenerationModelData]
+    parsed: ParsedBTOR2ModelData
+    # Model can undergo several solvings from different solvers
+    solver_runs: List[SolverRunData]

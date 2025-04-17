@@ -1,7 +1,11 @@
 from lib.model_data import RotorModelData
 import re
 
-class RotorParser:
+#TODO
+class BTOR2RotorParser:
+    pass
+
+class SMT2RotorParser:
     HEADER_PATTERNS = {
         'source_file': re.compile(r'; for RISC-V executable obtained from (.+)'),
         'kmin': re.compile(r'; with -kmin (\d+)'),

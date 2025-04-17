@@ -1,5 +1,5 @@
 from lib.paths import OutputPath
-from lib.rotor_parser import RotorParser
+from lib.rotor_parser import SMT2RotorParser
 
 from abc import ABC, abstractmethod
 import re
@@ -59,7 +59,7 @@ class SMT2ModelParser(ModelParser):
                 # Check for rotor signature first
                 if not self.stats['is_rotor_generated'] and self.rotor_signature.match(line):
                     self.stats['is_rotor_generated'] = True
-                    self.stats['rotor_header'] = RotorParser.parse_header(self.path)
+                    self.stats['rotor_header'] = SMT2RotorParser.parse_header(self.path)
 
                 self.stats['total_lines'] += 1
                 
