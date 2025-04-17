@@ -1,27 +1,9 @@
+from lib.model_data import RotorModelData
+
 import re
 from typing import Dict, List, Optional
 from pathlib import Path
 from dataclasses import dataclass
-
-@dataclass
-class RotorHeader:
-    source_file: Optional[str] = None
-    kmin: Optional[int] = None
-    kmax: Optional[int] = None
-    bytecode_size: Optional[int] = None
-    data_size: Optional[int] = None
-    virtual_address_space: Optional[int] = None
-    code_word_size: Optional[int] = None
-    memory_word_size: Optional[int] = None
-    heap_allowance: Optional[int] = None
-    stack_allowance: Optional[int] = None
-    cores: Optional[int] = None
-    bytestoread: Optional[int] = None
-    flags: List[str] = None
-    comments_removed: bool = False
-
-    def __post_init__(self):
-        self.flags = self.flags or []
 
 class RotorParser:
     HEADER_PATTERNS = {
@@ -41,8 +23,8 @@ class RotorParser:
     }
 
     @classmethod
-    def parse_header(cls, file_path) -> RotorHeader:
-        header = RotorHeader()
+    def parse_header(cls, file_path):
+        header = RotorModelData()
         flags = []
             
         comment_pattern = re.compile(r'^\s*;')

@@ -24,8 +24,6 @@ class BasePresenter(ABC):
         """
         Standardized presentation flow (shared by all presenters)
         """
-        self.stats = self.model.parser.parse()
-        
         output = self._generate_output(format, verbose)
         self.logger.info(output)
 
@@ -73,22 +71,22 @@ class SMT2ModelPresenter(BasePresenter):
     def _generate_plain(self, verbose: bool) -> str:
         """Generate plain text output"""
         lines = [
-            f"Model: {self.model.output_path.name}",
+            f"Model: {self.model.data.output_path}",
             f"Type: {self.model.__class__.__name__}",
-            f"Code lines: {self.stats['code_lines']}",
+            f"Code lines: {self.model.data.parsed['code_lines']}",
         ]
         
         if verbose:
             lines.extend([
                 "",
                 "Detailed Analysis:",
-                f"Total lines: {self.stats['total_lines']}",
-                f"Comments: {self.stats['comment_lines']}",
-                f"Blank lines: {self.stats['blank_lines']}",
-                f"Define-fun commands: {self.stats['define_count']}",
+                f"Total lines: {self.model.data.parsed.total_lines}",
+                f"Comments: {self.model.data.parsed.comment_lines}",
+                f"Blank lines: {self.model.data.parsed.blank_lines}",
+                f"Define-fun commands: {self.model.data.parsed.define_count}",
             ])
             
-            if self.stats['is_rotor_generated']:
+            if self.model['parsed']['is_rotor_generated']:
                 lines.append("\nRotor Configuration:")
                 lines.extend(self._format_rotor_info())
         
@@ -102,21 +100,21 @@ class SMT2ModelPresenter(BasePresenter):
         
         sections = [
             self._section("Basic Info", [
-                f"File: {self.model.output_path.name}",
-                f"Path: {self.model.output_path.resolve()}",
+                f"File: {self.model.data.basic.name}",
+                f"Path: {self.model.data.basic.output_path}",
                 f"Type: {self.model.__class__.__name__}",
             ]),
             
             self._section("Statistics", [
-                f"Total lines: {self.stats['total_lines']}",
-                f"Code lines: {self.stats['code_lines']}",
-                f"Comments: {self.stats['comment_lines']}",
-                f"Blank lines: {self.stats['blank_lines']}",
-                f"Define-fun commands: {self.stats['define_count']}",
+                f"Total lines: {self.model['parsed']['total_lines']}",
+                f"Code lines: {self.model['parsed']['code_lines']}",
+                f"Comments: {self.model['parsed']['comment_lines']}",
+                f"Blank lines: {self.model['parsed']['blank_lines']}",
+                f"Define-fun commands: {self.model['parsed']['define_count']}",
             ]),
         ]
         
-        if self.stats['is_rotor_generated']:
+        if self.model['parsed']['is_rotor_generated']:
             sections.append(
                 self._section("Rotor Configuration", self._format_rotor_info())
             )
@@ -125,7 +123,7 @@ class SMT2ModelPresenter(BasePresenter):
     
     def _format_rotor_info(self) -> list[str]:
         """Format Rotor-specific information"""
-        header = self.stats['rotor_header']
+        header = self.model['parsed']['rotor_data']
         return [
             f"Source: {header.source_file}",
             f"kMin: {header.kmin}, kMax: {header.kmax}",
