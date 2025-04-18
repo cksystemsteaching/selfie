@@ -926,6 +926,14 @@ class BV_Fork_Grouping(BV_Grouping):
         assert 1 <= exit_i <= self.number_of_exits
         return [(index_i, self.inputs[exit_i])]
 
+    def least_input(inputs):
+        assert inputs > 0
+        return inputs & ~(inputs - 1)
+
+    def most_input(inputs):
+        assert inputs > 0
+        return 2**int(math.log2(inputs))
+
     def is_consistent(self):
         assert super().is_consistent()
         assert len(self.inputs) == self.number_of_exits
@@ -936,8 +944,10 @@ class BV_Fork_Grouping(BV_Grouping):
             assert exit == previous_exit + 1
             previous_exit = exit
             current_inputs = self.inputs[exit]
-            assert current_inputs < 2**2**self.number_of_input_bits - 1
-            assert current_inputs > previous_inputs
+            assert 0 < current_inputs < 2**2**self.number_of_input_bits - 1
+            assert (exit == 1 or
+                BV_Fork_Grouping.least_input(current_inputs) >
+                    BV_Fork_Grouping.least_input(previous_inputs))
             previous_inputs = current_inputs
             assert current_inputs & union == 0
             union |= current_inputs
@@ -975,7 +985,7 @@ class BV_Fork_Grouping(BV_Grouping):
             g2_inputs = g2.inputs[g2_exit]
             for g1_exit in g1.inputs:
                 g1_inputs = g1.inputs[g1_exit]
-                while g2_inputs & g1_inputs == 0 and g2_inputs < g1_inputs:
+                while BV_Fork_Grouping.most_input(g2_inputs) < BV_Fork_Grouping.least_input(g1_inputs):
                     # move on to next g2_inputs
                     if g2_exit < g2.number_of_exits:
                         g2_exit += 1
@@ -984,11 +994,19 @@ class BV_Fork_Grouping(BV_Grouping):
                         return BV_Fork_Grouping.fork_if_non_empty(g_inputs,
                             g1.number_of_input_bits,
                             g_pair_tuples)
-                if g1_inputs & g2_inputs != 0:
-                    g_exit += 1
-                    g_inputs[g_exit] = g1_inputs & g2_inputs
-                    g_pair_tuples[g_exit] = (g1_exit, g2_exit)
-                    g2_inputs &= ~g1_inputs
+                next_g2_exit = g2_exit
+                next_g2_inputs = g2_inputs
+                while BV_Fork_Grouping.least_input(next_g2_inputs) <= BV_Fork_Grouping.most_input(g1_inputs):
+                    # intersect with all overlapping next_g2_inputs
+                    if g1_inputs & next_g2_inputs != 0:
+                        g_exit += 1
+                        g_inputs[g_exit] = g1_inputs & next_g2_inputs
+                        g_pair_tuples[g_exit] = (g1_exit, next_g2_exit)
+                    next_g2_exit += 1
+                    if next_g2_exit <= len(g2.inputs):
+                        next_g2_inputs = g2.inputs[next_g2_exit]
+                    else:
+                        break
             return BV_Fork_Grouping.fork_if_non_empty(g_inputs,
                 g1.number_of_input_bits,
                 g_pair_tuples)
@@ -1003,9 +1021,9 @@ class BV_Fork_Grouping(BV_Grouping):
             for exit in self.inputs:
                 reduced_to_exit = reduction_tuple[exit]
                 assert reduced_to_exit <= exit
-                if reduced_to_exit == exit:
+                if reduced_to_exit not in g_exits:
                     new_exit = len(g_inputs) + 1
-                    g_exits[exit] = new_exit
+                    g_exits[reduced_to_exit] = new_exit
                     g_inputs[new_exit] = self.inputs[exit]
                 else:
                     new_exit = g_exits[reduced_to_exit]
@@ -1077,9 +1095,7 @@ class BV_Internal_Grouping(BV_Grouping):
                 assert 1 <= g_b_i_rt_e_j_e_t <= self.number_of_exits
                 assert g_b_i_rt_e_j_e_t not in g_b_i_rt_targets
                 g_b_i_rt_targets[g_b_i_rt_e_j_e_t] = None
-                if g_b_i_rt_e_j_e_t in g_exits:
-                    assert previous_target == 0
-                else:
+                if g_b_i_rt_e_j_e_t not in g_exits:
                     if previous_target != 0:
                         assert g_b_i_rt_e_j_e_t == previous_target + 1
                     previous_target = g_b_i_rt_e_j_e_t
@@ -1502,8 +1518,44 @@ CFLOBVDD.projection(2, 3, 2, 2).grouping.pair_product(CFLOBVDD.projection(2, 3, 
 # binary apply and reduce test cases
 
 CFLOBVDD.projection(0, 0, 1, 1).binary_apply_and_reduce(CFLOBVDD.projection(0, 0, 1, 1), lambda x, y: x == y, 1)
+
 CFLOBVDD.projection(1, 0, 1, 1).binary_apply_and_reduce(CFLOBVDD.projection(1, 0, 1, 1), lambda x, y: x == y, 1)
 CFLOBVDD.projection(1, 0, 1, 1).binary_apply_and_reduce(CFLOBVDD.projection(1, 1, 1, 1), lambda x, y: x == y, 1)
+CFLOBVDD.projection(1, 1, 1, 1).binary_apply_and_reduce(CFLOBVDD.projection(1, 0, 1, 1), lambda x, y: x == y, 1)
+CFLOBVDD.projection(1, 1, 1, 1).binary_apply_and_reduce(CFLOBVDD.projection(1, 1, 1, 1), lambda x, y: x == y, 1)
+
+CFLOBVDD.projection(1, 0, 1, 2).binary_apply_and_reduce(CFLOBVDD.projection(1, 0, 1, 2), lambda x, y: x == y, 1)
+
+CFLOBVDD.projection(2, 0, 1, 1).binary_apply_and_reduce(CFLOBVDD.projection(2, 0, 1, 1), lambda x, y: x == y, 1)
+CFLOBVDD.projection(2, 0, 1, 1).binary_apply_and_reduce(CFLOBVDD.projection(2, 1, 1, 1), lambda x, y: x == y, 1)
+CFLOBVDD.projection(2, 1, 1, 1).binary_apply_and_reduce(CFLOBVDD.projection(2, 1, 1, 1), lambda x, y: x == y, 1)
+CFLOBVDD.projection(2, 1, 1, 1).binary_apply_and_reduce(CFLOBVDD.projection(2, 0, 1, 1), lambda x, y: x == y, 1)
+
+CFLOBVDD.projection(2, 0, 1, 2).binary_apply_and_reduce(CFLOBVDD.projection(2, 0, 1, 2), lambda x, y: x == y, 1)
+CFLOBVDD.projection(2, 0, 1, 2).binary_apply_and_reduce(CFLOBVDD.projection(2, 1, 1, 2), lambda x, y: x == y, 1)
+CFLOBVDD.projection(2, 0, 1, 2).binary_apply_and_reduce(CFLOBVDD.projection(2, 2, 1, 2), lambda x, y: x == y, 1)
+CFLOBVDD.projection(2, 1, 1, 2).binary_apply_and_reduce(CFLOBVDD.projection(2, 0, 1, 2), lambda x, y: x == y, 1)
+CFLOBVDD.projection(2, 1, 1, 2).binary_apply_and_reduce(CFLOBVDD.projection(2, 1, 1, 2), lambda x, y: x == y, 1)
+CFLOBVDD.projection(2, 1, 1, 2).binary_apply_and_reduce(CFLOBVDD.projection(2, 2, 1, 2), lambda x, y: x == y, 1)
+CFLOBVDD.projection(2, 2, 1, 2).binary_apply_and_reduce(CFLOBVDD.projection(2, 0, 1, 2), lambda x, y: x == y, 1)
+CFLOBVDD.projection(2, 2, 1, 2).binary_apply_and_reduce(CFLOBVDD.projection(2, 1, 1, 2), lambda x, y: x == y, 1)
+CFLOBVDD.projection(2, 2, 1, 2).binary_apply_and_reduce(CFLOBVDD.projection(2, 2, 1, 2), lambda x, y: x == y, 1)
+CFLOBVDD.projection(2, 0, 2, 2).binary_apply_and_reduce(CFLOBVDD.projection(2, 0, 2, 2), lambda x, y: x == y, 1)
+CFLOBVDD.projection(2, 0, 2, 2).binary_apply_and_reduce(CFLOBVDD.projection(2, 1, 2, 2), lambda x, y: x == y, 1)
+CFLOBVDD.projection(2, 0, 2, 2).binary_apply_and_reduce(CFLOBVDD.projection(2, 2, 2, 2), lambda x, y: x == y, 1)
+CFLOBVDD.projection(2, 0, 2, 2).binary_apply_and_reduce(CFLOBVDD.projection(2, 3, 2, 2), lambda x, y: x == y, 1)
+CFLOBVDD.projection(2, 1, 2, 2).binary_apply_and_reduce(CFLOBVDD.projection(2, 0, 2, 2), lambda x, y: x == y, 1)
+CFLOBVDD.projection(2, 1, 2, 2).binary_apply_and_reduce(CFLOBVDD.projection(2, 1, 2, 2), lambda x, y: x == y, 1)
+CFLOBVDD.projection(2, 1, 2, 2).binary_apply_and_reduce(CFLOBVDD.projection(2, 2, 2, 2), lambda x, y: x == y, 1)
+CFLOBVDD.projection(2, 1, 2, 2).binary_apply_and_reduce(CFLOBVDD.projection(2, 3, 2, 2), lambda x, y: x == y, 1)
+CFLOBVDD.projection(2, 2, 2, 2).binary_apply_and_reduce(CFLOBVDD.projection(2, 0, 2, 2), lambda x, y: x == y, 1)
+CFLOBVDD.projection(2, 2, 2, 2).binary_apply_and_reduce(CFLOBVDD.projection(2, 1, 2, 2), lambda x, y: x == y, 1)
+CFLOBVDD.projection(2, 2, 2, 2).binary_apply_and_reduce(CFLOBVDD.projection(2, 2, 2, 2), lambda x, y: x == y, 1)
+CFLOBVDD.projection(2, 2, 2, 2).binary_apply_and_reduce(CFLOBVDD.projection(2, 3, 2, 2), lambda x, y: x == y, 1)
+CFLOBVDD.projection(2, 3, 2, 2).binary_apply_and_reduce(CFLOBVDD.projection(2, 0, 2, 2), lambda x, y: x == y, 1)
+CFLOBVDD.projection(2, 3, 2, 2).binary_apply_and_reduce(CFLOBVDD.projection(2, 1, 2, 2), lambda x, y: x == y, 1)
+CFLOBVDD.projection(2, 3, 2, 2).binary_apply_and_reduce(CFLOBVDD.projection(2, 2, 2, 2), lambda x, y: x == y, 1)
+CFLOBVDD.projection(2, 3, 2, 2).binary_apply_and_reduce(CFLOBVDD.projection(2, 3, 2, 2), lambda x, y: x == y, 1)
 
 class Values:
     total_number_of_constants = 0
