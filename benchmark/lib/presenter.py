@@ -25,7 +25,7 @@ class BasePresenter(ABC):
         self.logger.info(output)
 
     @abstractmethod
-    def _generate_plain(self, verbose: bool) -> str:
+    def _generate_plain(self) -> str:
         """Generate plain output (implemented by subclasses)"""
         pass
     
@@ -39,7 +39,7 @@ class BasePresenter(ABC):
         if format == OutputFormat.VERBOSE:
             return self._generate_verbose()
         elif format == OutputFormat.PLAIN:
-            return self._generate_plain(verbose)
+            return self._generate_plain()
         raise ex.UnreachableError(format, list(OutputFormat))
         
     
@@ -65,7 +65,7 @@ class BTRunPresenter(BasePresenter):
         super().__init__()
         self.models = models
 
-    def _generate_plain(self, verbose):
+    def _generate_plain(self):
         # generated = [generated_models for generated_models in self.models if generated_models.data.generation]
         # loaded = [loaded_models for loaded_models in self.models if not loaded_models.data.generation]
         # solved = [solved for solved in self.models if loaded_models.data. ]
@@ -85,7 +85,7 @@ class SolverPresenter(BasePresenter):
         super().__init__()
         self.solver = solver
     
-    def _generate_plain(self, verbose):
+    def _generate_plain(self):
         lines = [
             f"{self.solver.get_solver_name()} Solver Data",
             f"Total runs: {self.solver.data.runs}",
@@ -94,10 +94,9 @@ class SolverPresenter(BasePresenter):
             f"  Error runs: {len(self.solver.data.error)}",
             f"Average solving time: {self.solver.data.avg_solve_time}",
         ]
-        if verbose and len(self.solver.data.solved) > 0:
+        if len(self.solver.data.solved) > 0:
             lines.extend([
-                "",
-                "Runs:",
+                "\nRuns:",
                 f"Longest run: {self.solver.data.longest_run[0]}",
                 f"  Model: {self.solver.data.longest_run[1]['basic']['output_path']}",
                 f"Shortest run: {self.solver.data.shortest_run[0]}",
@@ -144,7 +143,7 @@ class SMT2ModelPresenter(BasePresenter):
         super().__init__()
         self.model = model
     
-    def _generate_plain(self, verbose: bool) -> str:
+    def _generate_plain(self) -> str:
         """Generate plain text output"""
         lines = [
             f"Model: {self.model.data.basic.output_path}",
@@ -152,20 +151,28 @@ class SMT2ModelPresenter(BasePresenter):
             f"Code lines: {self.model.data.parsed['code_lines']}",
         ]
         
-        if verbose:
-            lines.extend([
-                "",
-                "Detailed Analysis:",
-                f"Total lines: {self.model.data.parsed.total_lines}",
-                f"Comments: {self.model.data.parsed.comment_lines}",
-                f"Blank lines: {self.model.data.parsed.blank_lines}",
-                f"Define-fun commands: {self.model.data.parsed.define_count}",
-            ])
-            
-            if self.model['parsed']['is_rotor_generated']:
-                lines.append("\nRotor Configuration:")
-                lines.extend(self._format_rotor_data())
+        lines.extend([
+            "",
+            "Parsed data:",
+            f"Total lines: {self.model['parsed']['total_lines']}",
+            f"Code lines: {self.model['parsed']['code_lines']}",
+            f"Comments: {self.model['parsed']['comment_lines']}",
+            f"Blank lines: {self.model['parsed']['blank_lines']}",
+            f"Define-fun commands: {self.model['parsed']['define_count']}",
+            f"Transitions: {self.model['parsed']['transitions']}",
+            f"Rotor generated: {self.model['parsed']['is_rotor_generated']}"
+        ])
         
+        if self.model['parsed']['is_rotor_generated']:
+            lines.append("\nRotor Configuration:")
+            lines.extend(self._format_rotor_data())
+
+        if self.model['generation'] != None:
+                lines.append("\nGeneration data")
+                lines.extend(self._format_generation_data())
+        
+        #New line at the end
+        lines.append("")
         return "\n".join(lines)
     
     def _generate_verbose(self) -> str:

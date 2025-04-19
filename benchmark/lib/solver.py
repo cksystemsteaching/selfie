@@ -206,7 +206,7 @@ available_solvers = {
 }
 
 def present_solvers():
-    from lib.model_presenter import SolverPresenter , OutputFormat
+    from lib.presenter import SolverPresenter , OutputFormat
     from lib.config import verbose
     for solver in available_solvers.values():
         if solver.data.runs > 0:
