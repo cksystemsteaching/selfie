@@ -38,12 +38,9 @@ if __name__ == "__main__":
     if args.load:
         loaded_models = load_models(LoadSourcePath(args.load))
         models.extend(loaded_models)
-  
 
     if args.source:
         genereated_models = create_models(SourcePath(args.source), args.model_base, OutputPath(args.output))
- 
-        
         models.extend(genereated_models)
     
     if args.solver:

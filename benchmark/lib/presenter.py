@@ -2,24 +2,19 @@ import lib.exceptions as ex
 
 from abc import ABC, abstractmethod
 from pathlib import Path
-from enum import Enum, auto
 import logging
 
-class OutputFormat(Enum):
-    """Supported output formats"""
-    PLAIN = auto()
-    VERBOSE = auto()
 class BasePresenter(ABC):
     """ Abstract base class for model presenters"""
 
     def __init__(self):
         self.logger = logging.getLogger(f"bt.{self.__class__.__name__.lower()}")
 
-    def show(self, format: OutputFormat = OutputFormat.PLAIN):
+    def show(self, verbose: bool):
         """
         Standardized presentation flow (shared by all presenters)
         """
-        output = self._generate_output(format)
+        output = self._generate_output(verbose)
         self.logger.info(output)
 
     @abstractmethod
@@ -32,13 +27,12 @@ class BasePresenter(ABC):
         """Generate verbose output (implemented by subclasses)"""
         pass
 
-    def _generate_output(self, format: OutputFormat) -> str:
+    def _generate_output(self, verbose: bool) -> str:
         """Shared output generator (can be overridden if needed)"""
-        if format == OutputFormat.VERBOSE:
+        if verbose:
             return self._generate_verbose()
-        elif format == OutputFormat.PLAIN:
+        else:
             return self._generate_plain()
-        raise ex.UnreachableError(format, list(OutputFormat))
         
     
     @staticmethod

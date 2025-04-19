@@ -1,6 +1,6 @@
 from lib.model_parser import SMT2ModelParser, BTORModelParser
 from lib.model_generation_config import ModelBaseConfig, ModelGenerationConfig
-from lib.presenter import SMT2ModelPresenter, OutputFormat
+from lib.presenter import SMT2ModelPresenter
 from lib.model_data import SMT2ModelData, BasicModelData, ParsedSMT2ModelData, SolverRunData, GenerationModelData
 import lib.config as cfg
 
@@ -14,7 +14,7 @@ class Model:
         self._presenter = presenter
 
     def show(self):
-        self._presenter.show(format=OutputFormat.VERBOSE if cfg.verbose else OutputFormat.PLAIN)
+        self._presenter.show(cfg.verbose)
 
     @property
     def data(self) -> SMT2ModelData:

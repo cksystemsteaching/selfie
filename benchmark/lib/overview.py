@@ -3,12 +3,11 @@ from lib.presenter import BTRunPresenter
 from typing import List, Dict, Any, Optional
 
 def present_overview(models, solvers):
-    from lib.presenter import OutputFormat
     from lib.config import verbose
 
     overview = BTOverview(models, solvers).get_overview()
     presenter = BTRunPresenter(overview)
-    presenter.show(format=OutputFormat.VERBOSE if verbose else OutputFormat.PLAIN)
+    presenter.show(verbose)
 
 class BTOverview():
     def __init__(self, models, solvers):

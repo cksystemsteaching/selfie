@@ -206,11 +206,11 @@ available_solvers = {
 }
 
 def present_solvers():
-    from lib.presenter import SolverPresenter , OutputFormat
+    from lib.presenter import SolverPresenter
     from lib.config import verbose
     for solver in available_solvers.values():
         if solver.data.runs > 0:
-            SolverPresenter(solver).show(format=OutputFormat.VERBOSE if verbose else OutputFormat.PLAIN)
+            SolverPresenter(solver).show(verbose)
 
 # Parse solvers from the CLI argument
 def parse_solvers(solver_args: str):
