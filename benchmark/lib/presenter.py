@@ -220,7 +220,9 @@ class SMT2ModelPresenter(BasePresenter):
             idx+=1
         
         if self.model.data.best_run and len(self.model.data.solver_runs) > 1:
-            self._section(f"Best solver run", self._format_solver_run_data(self.model.data.best_run))
+            sections.append(
+                self._section(f"Best solver run", self._format_solver_run_data(self.model.data.best_run))
+            )
 
         return f"\n{header}\n" + "\n\n".join(sections) + f"\n{footer}\n"
     

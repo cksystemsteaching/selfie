@@ -218,7 +218,7 @@ def parse_solvers(solver_args: str):
     solvers = []
     for name in solver_names:
         if name not in available_solvers:
-                logger.warning(f"Provided solver {name} is not valid. Valid ones: {list(available_solvers.keys())}.")
+                logger.warning(f"Provided solver '{name}' is not valid. Valid ones: {list(available_solvers.keys())}.")
         else:
             solvers.append(available_solvers[name])
     

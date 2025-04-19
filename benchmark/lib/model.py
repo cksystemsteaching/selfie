@@ -29,11 +29,11 @@ class Model:
         data = SolverRunData.from_dict(solver_run_data)
 
         if data.success:
-                if not self._data.best_run:
+            if not self._data.best_run:
+                self._data.best_run = data
+            else:
+                if solver_run_data.elapsed_time < self._data.best_run.elapsed_time:
                     self._data.best_run = data
-                else:
-                    if solver_run_data.elapsed_time < self._data.best_run.elapsed_time:
-                        self._data.best_run = data
         self._data.solver_runs.append(data)
 
 class SMT2Model(Model):
