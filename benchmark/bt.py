@@ -2,7 +2,7 @@ import lib.config as cfg
 from lib.generate import generate_all_examples, clean_examples, create_models, load_models
 from lib.print import custom_exit
 import lib.argument_parser as arg_parser
-from lib.solver import available_solvers
+import lib.solver as slv
 from lib.paths import SourcePath, LoadSourcePath, OutputPath
 from lib.log import configure_logging
 from lib.model_grapher import GrapherWrapper
@@ -44,10 +44,10 @@ if __name__ == "__main__":
         models.extend(genereated_models)
     
     if args.solver:
-        if args.solver not in available_solvers:
-            logger.error(f"Provided solver {args.solver} is not valid. Valid ones: {list(available_solvers.keys())}.")
-            exit()
-        solver = available_solvers[args.solver]()
+        if args.solver not in slv.available_solvers:
+            logger.error(f"Provided solver {args.solver} is not valid. Valid ones: {list(slv.available_solvers.keys())}.")
+        else:
+            solver = slv.available_solvers[args.solver]
 
         for model in models:
             result = solver.run(model, args.timeout, [])
@@ -56,6 +56,9 @@ if __name__ == "__main__":
     #Show models
     for model in models:
         model.show()
+
+    if args.solver:
+        slv.present_solvers()
 
     if args.graph:
         grapher = GrapherWrapper(OutputPath(args.output), models)

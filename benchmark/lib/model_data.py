@@ -1,7 +1,7 @@
 from lib.dict_mixin import DictMixin
 
-from dataclasses import dataclass, fields
-from typing import Optional, List
+from dataclasses import dataclass, fields, field
+from typing import Optional, List, List, Tuple
 
 @dataclass
 class BasicModelData(DictMixin):
@@ -85,7 +85,7 @@ class ParsedBTOR2ModelData(DictMixin):
 class SolverRunData(DictMixin):
     solver_used: str
     solver_cmd: str
-    elapsed_time: int
+    elapsed_time: float
     returncode: int
     stdout: str
     stderr: str
@@ -98,6 +98,23 @@ class SolverRunData(DictMixin):
         valid_fields = {f.name for f in fields(cls)}
         return cls(**{k: v for k, v in data.items() if k in valid_fields})
 
+@dataclass
+class SolverData(DictMixin):
+    runs: int = 0
+    solved: List['Model'] = field(default_factory=list)
+    timedout: List['Model'] = field(default_factory=list)
+    error: List['Model'] = field(default_factory=list)
+    avg_solve_time: float = float("inf")
+    longest_run: Tuple[float, 'Model'] = (0.0, None)
+    shortest_run: Tuple[float, 'Model'] = (float("inf"), None)
+
+@dataclass
+class BTRunData(DictMixin):
+    models: List['Model']
+    solved_models: List['Model']
+    timedout_models: List['Model']
+    # only for solved models
+    average_model_size: int
 @dataclass
 class SMT2ModelData(DictMixin):
     basic: BasicModelData

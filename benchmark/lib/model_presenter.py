@@ -12,9 +12,7 @@ class OutputFormat(Enum):
 class BasePresenter(ABC):
     """ Abstract base class for model presenters"""
 
-    def __init__(self, model):
-        self.model = model
-        self.stats = None
+    def __init__(self):
         self.logger = logging.getLogger(f"bt.{self.__class__.__name__.lower()}")
 
     def show(self, 
@@ -60,6 +58,80 @@ class BasePresenter(ABC):
             f.write(content)
 
 
+class BTRunPresenter(BasePresenter):
+    """Handles presentation of the whole program run"""
+
+    def __init__(self, models):
+        super().__init__()
+        self.models = models
+
+    def _generate_plain(self, verbose):
+        # generated = [generated_models for generated_models in self.models if generated_models.data.generation]
+        # loaded = [loaded_models for loaded_models in self.models if not loaded_models.data.generation]
+        # solved = [solved for solved in self.models if loaded_models.data. ]
+        # timed_out = 
+        lines = [
+            f"Number of models: {len(self.models)}",
+            # f"Number of generated models: {len(generated)}",
+    
+            # f"Number of loaded models: {len(loaded)}"
+        ]
+        return "\n".join(lines)
+
+class SolverPresenter(BasePresenter):
+    """Handles presentation of a specific solver"""
+
+    def __init__(self, solver):
+        super().__init__()
+        self.solver = solver
+    
+    def _generate_plain(self, verbose):
+        lines = [
+            f"{self.solver.get_solver_name()} Solver Data",
+            f"Total runs: {self.solver.data.runs}",
+            f"  Solved runs: {len(self.solver.data.solved)}",
+            f"  Timed out runs: {len(self.solver.data.timedout)}",
+            f"  Error runs: {len(self.solver.data.error)}",
+            f"Average solving time: {self.solver.data.avg_solve_time}",
+        ]
+        if verbose and len(self.solver.data.solved) > 0:
+            lines.extend([
+                "",
+                "Runs:",
+                f"Longest run: {self.solver.data.longest_run[0]}",
+                f"  Model: {self.solver.data.longest_run[1]['basic']['output_path']}",
+                f"Shortest run: {self.solver.data.shortest_run[0]}",
+                f"  Model: {self.solver.data.shortest_run[1]['basic']['output_path']}",
+            ])
+
+        return "\n".join(lines)
+    
+    def _generate_verbose(self):
+        """Generate rich verbose output with borders"""
+        width = 70
+        header = f" {self.solver.get_solver_name()} SOLVER ".center(width, "=")
+        footer = "=" * width
+        
+        sections = [
+            self._section("Basic Data", [
+                f"Total runs: {self.solver.data.runs}",
+                f"  Solved runs: {len(self.solver.data.solved)}",
+                f"  Timed out runs: {len(self.solver.data.timedout)}",
+                f"  Error runs: {len(self.solver.data.error)}",
+                f"Average solving time: {self.solver.data.avg_solve_time}",
+            ])
+        ]
+        if len(self.solver.data.solved) > 0:
+            sections.append(
+            self._section("Runs", [
+                f"Longest run: {self.solver.data.longest_run[0]:.2f}",
+                f"  Model: {self.solver.data.longest_run[1]['basic']['output_path']}",
+                f"Shortest run: {self.solver.data.shortest_run[0]:.2f}",
+                f"  Model: {self.solver.data.shortest_run[1]['basic']['output_path']}",
+            ]))
+
+        return f"\n{header}\n" + "\n\n".join(sections) + f"\n{footer}\n"
+    
 #TODO
 class BTORModelPresenter(BasePresenter):
     pass
@@ -69,12 +141,13 @@ class SMT2ModelPresenter(BasePresenter):
     """Handles rich presentation of model information for CLI output"""
     
     def __init__(self, model):
-        super().__init__(model)
+        super().__init__()
+        self.model = model
     
     def _generate_plain(self, verbose: bool) -> str:
         """Generate plain text output"""
         lines = [
-            f"Model: {self.model.data.output_path}",
+            f"Model: {self.model.data.basic.output_path}",
             f"Type: {self.model.__class__.__name__}",
             f"Code lines: {self.model.data.parsed['code_lines']}",
         ]

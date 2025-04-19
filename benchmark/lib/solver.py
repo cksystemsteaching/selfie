@@ -1,6 +1,7 @@
 from lib.model import Model
 from lib.exceptions import UnsupportedModelException
 from lib.checks import is_tool_available
+from lib.model_data import SolverData
 
 import subprocess
 import time
@@ -12,6 +13,7 @@ class BaseSolver:
     def __init__(self, solver_command: str):
         self.solver_command = solver_command
         self.check_solver()
+        self.data = SolverData()
 
     def run(self, model: 'Model', timeout: int, args: list = []):
         """
@@ -41,6 +43,7 @@ class BaseSolver:
             "solver_used": self.get_solver_name(),
             "solver_cmd": " ".join(cmd)
         }
+        self.data.runs += 1
         
         try:
             self.check_model(model)
@@ -67,6 +70,15 @@ class BaseSolver:
                 check=True,           # Raise CalledProcessError on non-zero exit codes
             )
             elapsed_time = time.perf_counter() - start_time
+            
+            # Update solver data
+            self.data.avg_solve_time = (self.data.avg_solve_time * len(self.data.solved) + elapsed_time) / (len(self.data.solved) + 1)
+            self.data.solved.append(model)
+            if self.data.shortest_run[0] > elapsed_time:
+                self.data.shortest_run = (elapsed_time, model)
+            if self.data.longest_run[0] < elapsed_time:
+                self.data.longest_run = (elapsed_time, model)
+
             logger.info(f"Solving completed successfully in {elapsed_time:.2f}s. Return code: {result.returncode}")
             return {
                 **basic_data,
@@ -81,6 +93,10 @@ class BaseSolver:
 
         except subprocess.CalledProcessError as e:
             elapsed_time = time.perf_counter() - start_time
+
+            #Update solver data
+            self.data.error.append(model)
+
             logger.error(f"Command failed with return code {e.returncode} after {elapsed_time:.2f}s.")
             logger.error(f"Stderr:\n{e.stderr.strip()}")
             return {
@@ -95,6 +111,9 @@ class BaseSolver:
             }
 
         except subprocess.TimeoutExpired as e:
+            #Update solver data
+            self.data.error.append(model)
+
             logger.warning(f"Command timed out after {timeout}s.")
             # Output captured before timeout is available in the exception object
             stdout_before_timeout = e.stdout.decode("utf8", errors='replace') if e.stdout else ""
@@ -114,20 +133,6 @@ class BaseSolver:
                 'success': False,
                 'timed_out': True,
                 'error_message': f"Command '{' '.join(e.cmd)}' timed out after {e.timeout} seconds.",
-            }
-
-        except FileNotFoundError as e:
-            elapsed_time = time.perf_counter() - start_time
-            logger.error(f"Solver command not found: {cmd}. Error: {e}")
-            return {
-                **basic_data,
-                'elapsed_time': elapsed_time,
-                'returncode': None,
-                'stdout': "",
-                'stderr': str(e),
-                'success': False,
-                'timed_out': False,
-                'error_message': f"Solver command not found: {e}",
             }
         except Exception as e: # Catch other potential errors (e.g., permission issues, unexpected OS errors)
             elapsed_time = time.perf_counter() - start_time
@@ -196,6 +201,13 @@ class BitwuzlaSolver(BaseSolver):
         return "Bitwuzla"
     
 available_solvers = {
-    'z3' : Z3Solver,
-    'bitwuzla': BitwuzlaSolver
+    'z3' : Z3Solver(),
+    'bitwuzla': BitwuzlaSolver()
 }
+
+def present_solvers():
+    from lib.model_presenter import SolverPresenter , OutputFormat
+    from lib.config import verbose
+    for solver in available_solvers.values():
+        if solver.data.runs > 0:
+            SolverPresenter(solver).show(format=OutputFormat.VERBOSE if verbose else OutputFormat.PLAIN)
