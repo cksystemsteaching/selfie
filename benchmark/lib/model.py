@@ -25,8 +25,17 @@ class Model:
     def __getitem__(self, key):
         return self.data[key]
 
-    def add_solver_data(self, solver_data):
-        self._data.solver_runs.append(SolverRunData.from_dict(solver_data))
+    def add_solver_data(self, solver_run_data):
+        data = SolverRunData.from_dict(solver_run_data)
+
+        if data.success:
+                if not self._data.best_run:
+                    self._data.best_run = data
+                else:
+                    if solver_run_data.elapsed_time < self._data.best_run.elapsed_time:
+                        self._data.best_run = data
+        self._data.solver_runs.append(data)
+
 class SMT2Model(Model):
 
     def __init__(self, model_config: ModelBaseConfig):
@@ -34,9 +43,11 @@ class SMT2Model(Model):
             basic=BasicModelData.generate(model_config),
             parsed=ParsedSMT2ModelData.generate(parser=SMT2ModelParser(model_config.get_model_path())),
             generation= GenerationModelData.generate(model_config) if isinstance(model_config, ModelGenerationConfig) else None,
-            solver_runs=[]
+            solver_runs=[],
+            best_run=None
         )
         super().__init__(model_config, data, SMT2ModelPresenter(self))
+
 
 class BTORModel(Model):
     def __init__(self, model_config: ModelBaseConfig):

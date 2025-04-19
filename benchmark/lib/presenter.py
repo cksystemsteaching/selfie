@@ -73,8 +73,11 @@ class BTRunPresenter(BasePresenter):
         lines = [
             f"Number of models: {len(self.models)}",
             # f"Number of generated models: {len(generated)}",
-    
             # f"Number of loaded models: {len(loaded)}"
+
+            # Number of solved models
+            # Average solving time
+            # Best performing solver
         ]
         return "\n".join(lines)
 
@@ -215,7 +218,9 @@ class SMT2ModelPresenter(BasePresenter):
                 self._section(f"Solver run #{idx}", self._format_solver_run_data(solver_run))
             )
             idx+=1
-
+        
+        if self.model.data.best_run and len(self.model.data.solver_runs) > 1:
+            self._section(f"Best solver run", self._format_solver_run_data(self.model.data.best_run))
 
         return f"\n{header}\n" + "\n\n".join(sections) + f"\n{footer}\n"
     

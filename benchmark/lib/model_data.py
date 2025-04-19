@@ -109,13 +109,6 @@ class SolverData(DictMixin):
     shortest_run: Tuple[float, 'Model'] = (float("inf"), None)
 
 @dataclass
-class BTRunData(DictMixin):
-    models: List['Model']
-    solved_models: List['Model']
-    timedout_models: List['Model']
-    # only for solved models
-    average_model_size: int
-@dataclass
 class SMT2ModelData(DictMixin):
     basic: BasicModelData
     # Model can also be loaded, thus missing the generation data
@@ -123,6 +116,8 @@ class SMT2ModelData(DictMixin):
     parsed: ParsedSMT2ModelData
     # Model can undergo several solvings from different solvers
     solver_runs: List[SolverRunData]
+    best_run: SolverRunData
+
 
 @dataclass
 class BTOR2ModelData(DictMixin):
@@ -132,3 +127,4 @@ class BTOR2ModelData(DictMixin):
     parsed: ParsedBTOR2ModelData
     # Model can undergo several solvings from different solvers
     solver_runs: List[SolverRunData]
+    best_run: SolverRunData
