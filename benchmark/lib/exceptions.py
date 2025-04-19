@@ -20,7 +20,16 @@ class BTError(Exception):
             self.context,
             #exc_info=True  # This preserves the traceback
         )
-
+class BTValueError(BTError):
+    """Generic value erorr"""
+    def __init__(self, message: str, value, **kwargs):
+        super().__init__(
+            message,
+            {
+                'value': value,
+                **kwargs,
+            }
+        )
 class FileValidationError(BTError):
     """Automatically logs file validation errors"""
     def __init__(self, message: str, path: Path, **kwargs):

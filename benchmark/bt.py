@@ -44,16 +44,13 @@ if __name__ == "__main__":
         models.extend(genereated_models)
     
     if args.solver:
-        if args.solver not in slv.available_solvers:
-            logger.error(f"Provided solver {args.solver} is not valid. Valid ones: {list(slv.available_solvers.keys())}.")
-        else:
-            solver = slv.available_solvers[args.solver]
+        solvers = slv.parse_solvers(args.solver)
 
         for model in models:
-            result = solver.run(model, args.timeout, [])
-            model.add_solver_data(result)
+            for solver in solvers:
+                result = solver.run(model, args.timeout, [])
+                model.add_solver_data(result)
     
-    #Show models
     for model in models:
         model.show()
 

@@ -1,5 +1,5 @@
 from lib.model import Model
-from lib.exceptions import UnsupportedModelException
+from lib.exceptions import UnsupportedModelException, BTValueError
 from lib.checks import is_tool_available
 from lib.model_data import SolverData
 
@@ -211,3 +211,17 @@ def present_solvers():
     for solver in available_solvers.values():
         if solver.data.runs > 0:
             SolverPresenter(solver).show(format=OutputFormat.VERBOSE if verbose else OutputFormat.PLAIN)
+
+# Parse solvers from the CLI argument
+def parse_solvers(solver_args: str):
+    solver_names = solver_args.split(",")
+    solvers = []
+    for name in solver_names:
+        if name not in available_solvers:
+                logger.warning(f"Provided solver {name} is not valid. Valid ones: {list(available_solvers.keys())}.")
+        else:
+            solvers.append(available_solvers[name])
+    
+    if not solvers:
+        raise BTValueError(f"No valid solvers provided: {solver_args}. Aborting bencharming.", {solver_args})
+    return solvers
