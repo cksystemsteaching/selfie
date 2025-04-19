@@ -1,7 +1,7 @@
 from lib.model_parser import SMT2ModelParser, BTORModelParser
 from lib.model_generation_config import ModelBaseConfig, ModelGenerationConfig
-from lib.presenter import SMT2ModelPresenter
-from lib.model_data import SMT2ModelData, BasicModelData, ParsedSMT2ModelData, SolverRunData, GenerationModelData
+from lib.presenter import SMT2ModelPresenter, BTOR2ModelPresenter
+from lib.model_data import SMT2ModelData, BTOR2ModelData, BasicModelData, ParsedSMT2ModelData, SolverRunData, GenerationModelData
 import lib.config as cfg
 
 class Model:
@@ -51,7 +51,14 @@ class SMT2Model(Model):
 
 class BTORModel(Model):
     def __init__(self, model_config: ModelBaseConfig):
-        super().__init__(model_config)
+        data = BTOR2ModelData(
+            basic=BasicModelData.generate(model_config),
+            parsed=None,
+            generation= GenerationModelData.generate(model_config) if isinstance(model_config, ModelGenerationConfig) else None,
+            solver_runs=[],
+            best_run=None
+        )
+        super().__init__(model_config,data, BTOR2ModelPresenter(self))
 
     #TODO    
 

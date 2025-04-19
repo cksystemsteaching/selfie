@@ -47,8 +47,7 @@ class BaseSolver:
         
         try:
             self.check_model(model)
-        except ValueError as e:
-            logger.error(f"Model check failed: {e}")
+        except UnsupportedModelException as e:
             return {
                 **basic_data,
                 'elapsed_time': 0.0, 'returncode': None, 'stdout': "", 'stderr': str(e),
@@ -156,7 +155,7 @@ class BaseSolver:
     # Checks if provided model is digestable by the solver
     def check_model(self, model):
         if model.data.basic.format not in self.get_supported_models():
-            raise UnsupportedModelException(f"Unsupported model format used in {self.__class__.__name__} ", self.model, solver=self.__class__.__name__)
+            raise UnsupportedModelException(f"Unsupported model format used in {self.__class__.__name__} ", model, solver=self.__class__.__name__)
     
 class Z3Solver(BaseSolver):
     def __init__(self):

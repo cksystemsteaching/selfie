@@ -91,7 +91,7 @@ class UnsupportedModelException(BTError):
         super().__init__(
             message,
             {
-                'model': model,
+                'model': model.data.basic.output_path,
                 **kwargs
             }
         )

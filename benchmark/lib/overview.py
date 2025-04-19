@@ -39,7 +39,7 @@ class BTOverview():
         """Return all successfully solved models across all solvers."""
         solved = set()
         for solver in self.solvers:
-            solved.update(model for model in solver.data.solved_models)
+            solved.update(model for model in solver.data.solved)
         return list(solved)
 
     def _used_solvers(self) -> List[str]:
@@ -78,10 +78,11 @@ class BTOverview():
         }  
 
     def _solve_rates(self) -> float:
-        """Calculate percentage of models solved by at least one solver."""
+        """Get solve rates for every used solver."""
         solve_rates = {}
         for solver in self.solvers:
-            solved_count = len(solver.data.solved)
-            solve_rates.update(solver.get_solver_name(), (solved_count / len(self.models)) * 100)
+            if solver.data.runs > 0:
+                solved_count = len(solver.data.solved)
+                solve_rates[solver.get_solver_name()] = (solved_count / len(self.models)) * 100
 
         return solve_rates

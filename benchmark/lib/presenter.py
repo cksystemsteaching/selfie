@@ -92,24 +92,28 @@ class BTRunPresenter(BasePresenter):
 
     def _solvers_lines(self) -> list[str]:
         """Generate solver-related lines."""        
-        return [
-            f"Used solvers: {self.overview['used_solvers'].join(',')}",
-            *self.format_best_worst_solver(is_best=True, solver=self.overview['best_solver']),
-            *self.format_best_worst_solver(is_best=False, solver=self.overview['worst_solver']),
+        lines = [
+            f"Used solvers: {','.join(self.overview['used_solvers'])}",
             *self._format_solve_rates()
         ]
+        if len(self.overview["used_solvers"]) > 1:
+            lines.extend([
+                *self._format_best_worst_solver(best=True, solver=self.overview['best_solver']),
+                *self._format_best_worst_solver(best=False, solver=self.overview['worst_solver']),
+            ])
+        return lines
     
-    def _format_best_worse_solver(self, best: bool, solver) -> list[str]:
+    def _format_best_worst_solver(self, best: bool, solver) -> list[str]:
         lines = []
         if best:
             lines.append(f"Best solver: {solver['name']}")
         else:
             lines.append(f"Worst solver: {solver['name']}")
         
-        lines.extend(
+        lines.extend([
             f"  Solved: {solver['solved']}",
             f"  Average solving time: {solver['avg_time']}",
-        )
+        ])
         return lines
 
     def _format_solve_rates(self) -> list[str]:
@@ -172,9 +176,37 @@ class SolverPresenter(BasePresenter):
         return f"\n{header}\n" + "\n\n".join(sections) + f"\n{footer}\n"
     
 #TODO
-class BTORModelPresenter(BasePresenter):
-    pass
+class BTOR2ModelPresenter(BasePresenter):
+    def __init__(self, model):
+        super().__init__()
+        self.model = model
+    
+    def _generate_plain(self) -> str:
+        """Generate plain text output"""
+        lines = [
+            f"Model: {self.model.data.basic.output_path}",
+            f"Type: {self.model.__class__.__name__}",
+        ]
+        #New line at the end
+        lines.append("")
+        return "\n".join(lines)
 
+    def _generate_verbose(self):
+        """Generate rich verbose output with borders"""
+        width = 70
+        header = f" MODEL ANALYSIS ".center(width, "=")
+        footer = "=" * width
+        
+        sections = [
+            self._section("Basic Data", [
+                f"File: {self.model.data.basic.name}",
+                f"Path: {self.model.data.basic.output_path}",
+                f"Type: {self.model.__class__.__name__}",
+                f"Format: {self.model.data.basic.format}",
+            ]),
+        ]
+
+        return f"\n{header}\n" + "\n\n".join(sections) + f"\n{footer}\n"
 
 class SMT2ModelPresenter(BasePresenter):
     """Handles rich presentation of model information for CLI output"""
@@ -188,7 +220,6 @@ class SMT2ModelPresenter(BasePresenter):
         lines = [
             f"Model: {self.model.data.basic.output_path}",
             f"Type: {self.model.__class__.__name__}",
-            f"Code lines: {self.model.data.parsed['code_lines']}",
         ]
         
         lines.extend([
