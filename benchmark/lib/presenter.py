@@ -15,13 +15,11 @@ class BasePresenter(ABC):
     def __init__(self):
         self.logger = logging.getLogger(f"bt.{self.__class__.__name__.lower()}")
 
-    def show(self, 
-             verbose: bool = True,
-             format: OutputFormat = OutputFormat.PLAIN):
+    def show(self, format: OutputFormat = OutputFormat.PLAIN):
         """
         Standardized presentation flow (shared by all presenters)
         """
-        output = self._generate_output(format, verbose)
+        output = self._generate_output(format)
         self.logger.info(output)
 
     @abstractmethod
@@ -34,7 +32,7 @@ class BasePresenter(ABC):
         """Generate verbose output (implemented by subclasses)"""
         pass
 
-    def _generate_output(self, format: OutputFormat, verbose: bool) -> str:
+    def _generate_output(self, format: OutputFormat) -> str:
         """Shared output generator (can be overridden if needed)"""
         if format == OutputFormat.VERBOSE:
             return self._generate_verbose()
@@ -61,25 +59,70 @@ class BasePresenter(ABC):
 class BTRunPresenter(BasePresenter):
     """Handles presentation of the whole program run"""
 
-    def __init__(self, models):
+    def __init__(self, overview):
         super().__init__()
-        self.models = models
+        self.overview = overview
 
     def _generate_plain(self):
-        # generated = [generated_models for generated_models in self.models if generated_models.data.generation]
-        # loaded = [loaded_models for loaded_models in self.models if not loaded_models.data.generation]
-        # solved = [solved for solved in self.models if loaded_models.data. ]
-        # timed_out = 
-        lines = [
-            f"Number of models: {len(self.models)}",
-            # f"Number of generated models: {len(generated)}",
-            # f"Number of loaded models: {len(loaded)}"
+        lines = ["Models:", *self._models_lines()]
+        if self.overview["used_solvers"]:
+            lines.extend(["Solvers:", *self._solvers_lines])
 
-            # Number of solved models
-            # Average solving time
-            # Best performing solver
-        ]
         return "\n".join(lines)
+    
+    def _generate_verbose(self) -> str:
+        """Generate rich verbose output with borders and formatted sections."""
+        width = 70
+        header = " BT Overview ".center(width, "=")
+        footer = "=" * width
+
+        sections = [
+            self._section("Models", self._models_lines()),
+        ]
+        if self.overview["used_solvers"]:
+            sections.append(self._section("Solvers", self._solvers_lines()))
+
+        return f"\n{header}\n" + "\n\n".join(sections) + f"\n{footer}\n"
+
+    def _models_lines(self) -> str:
+        """Generate the model-related lines."""
+        lines = [
+            f"Number of models: {len(self.overview['models'])}",
+            f"  Generated models: {len(self.overview['generated_models'])}",
+            f"  Loaded models: {len(self.overview['loaded_models'])}",
+        ]
+        if self.overview['used_solvers']:
+            lines.append(f"Solved models: {len(self.overview['solved_models'])}")
+        
+        return lines
+
+    def _solvers_lines(self) -> list[str]:
+        """Generate solver-related lines."""        
+        return [
+            f"Used solvers: {self.overview['used_solvers'].join(',')}",
+            *self.format_best_worst_solver(is_best=True, solver=self.overview['best_solver']),
+            *self.format_best_worst_solver(is_best=False, solver=self.overview['worst_solver']),
+            *self._format_solve_rates()
+        ]
+    
+    def _format_best_worse_solver(self, best: bool, solver) -> list[str]:
+        lines = []
+        if best:
+            lines.append(f"Best solver: {solver['name']}")
+        else:
+            lines.append(f"Worst solver: {solver['name']}")
+        
+        lines.extend(
+            f"  Solved: {solver['solved']}",
+            f"  Average solving time: {solver['avg_time']}",
+        )
+        return lines
+
+    def _format_solve_rates(self) -> list[str]:
+        lines = ["Solve rates:"]
+        for rate in self.overview['solve_rates'].items():
+            lines.append(f"  {rate[0]}: {rate[1]}")
+        return lines
 
 class SolverPresenter(BasePresenter):
     """Handles presentation of a specific solver"""
@@ -155,8 +198,7 @@ class SMT2ModelPresenter(BasePresenter):
         ]
         
         lines.extend([
-            "",
-            "Parsed data:",
+            "\nParsed data:",
             f"Total lines: {self.model['parsed']['total_lines']}",
             f"Code lines: {self.model['parsed']['code_lines']}",
             f"Comments: {self.model['parsed']['comment_lines']}",

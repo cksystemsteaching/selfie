@@ -214,6 +214,9 @@ def present_solvers():
 
 # Parse solvers from the CLI argument
 def parse_solvers(solver_args: str):
+    if not solver_args:
+        return []
+    
     solver_names = solver_args.split(",")
     solvers = []
     for name in solver_names:

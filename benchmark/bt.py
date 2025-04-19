@@ -2,10 +2,13 @@ import lib.config as cfg
 from lib.generate import generate_all_examples, clean_examples, create_models, load_models
 from lib.print import custom_exit
 import lib.argument_parser as arg_parser
-import lib.solver as slv
 from lib.paths import SourcePath, LoadSourcePath, OutputPath
 from lib.log import configure_logging
 from lib.model_grapher import GrapherWrapper
+
+import lib.solver as slv
+import lib.overview as ov 
+
 import logging
 import sys
 
@@ -56,6 +59,8 @@ if __name__ == "__main__":
 
     if args.solver:
         slv.present_solvers()
+
+    ov.present_overview(models, slv.parse_solvers(args.solver))
 
     if args.graph:
         grapher = GrapherWrapper(OutputPath(args.output), models)
