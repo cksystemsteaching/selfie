@@ -32,7 +32,7 @@ class Model:
             if not self._data.best_run:
                 self._data.best_run = data
             else:
-                if solver_run_data.elapsed_time < self._data.best_run.elapsed_time:
+                if data.elapsed_time < self._data.best_run.elapsed_time:
                     self._data.best_run = data
         self._data.solver_runs.append(data)
 
