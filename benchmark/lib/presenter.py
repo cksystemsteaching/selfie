@@ -225,11 +225,17 @@ class SMT2ModelPresenter(BasePresenter):
         lines.extend([
             "\nParsed data:",
             f"Total lines: {self.model['parsed']['total_lines']}",
-            f"Code lines: {self.model['parsed']['code_lines']}",
-            f"Comments: {self.model['parsed']['comment_lines']}",
-            f"Blank lines: {self.model['parsed']['blank_lines']}",
-            f"Define-fun commands: {self.model['parsed']['define_count']}",
-            f"Transitions: {self.model['parsed']['transitions']}",
+            f"  Code lines: {self.model['parsed']['code_lines']}",
+            f"  Comments lines: {self.model['parsed']['comment_lines']}",
+            f"  Blank lines: {self.model['parsed']['blank_lines']}",
+            f"Commands:",
+            f"  Declarations: {self.model['parsed']['definition']}",
+            f"  Definitions: {self.model['parsed']['declaration']}",
+            f"  Assertions: {self.model['parsed']['assertion']}",
+            f"  Push commands: {self.model['parsed']['push']}",
+            f"  Pop commands: {self.model['parsed']['pop']}",
+            f"  Check-sat commands: {self.model['parsed']['check_sat']}",
+            f"  Other commands: {self.model['parsed']['other_commands']}",
             f"Rotor generated: {self.model['parsed']['is_rotor_generated']}"
         ])
         
@@ -261,11 +267,17 @@ class SMT2ModelPresenter(BasePresenter):
             
             self._section("Parsed Data", [
                 f"Total lines: {self.model['parsed']['total_lines']}",
-                f"Code lines: {self.model['parsed']['code_lines']}",
-                f"Comments: {self.model['parsed']['comment_lines']}",
-                f"Blank lines: {self.model['parsed']['blank_lines']}",
-                f"Define-fun commands: {self.model['parsed']['define_count']}",
-                f"Transitions: {self.model['parsed']['transitions']}",
+                f"  Code lines: {self.model['parsed']['code_lines']}",
+                f"  Comments lines: {self.model['parsed']['comment_lines']}",
+                f"  Blank lines: {self.model['parsed']['blank_lines']}",
+                f"Commands:",
+                f"  Declarations: {self.model['parsed']['definition']}",
+                f"  Definitions: {self.model['parsed']['declaration']}",
+                f"  Assertions: {self.model['parsed']['assertion']}",
+                f"  Push commands: {self.model['parsed']['push']}",
+                f"  Pop commands: {self.model['parsed']['pop']}",
+                f"  Check-sat commands: {self.model['parsed']['check_sat']}",
+                f"  Other commands: {self.model['parsed']['other_commands']}",
                 f"Rotor generated: {self.model['parsed']['is_rotor_generated']}"
             ]),
         ]

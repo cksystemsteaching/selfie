@@ -51,29 +51,24 @@ class GenerationModelData(DictMixin):
         
 @dataclass
 class ParsedSMT2ModelData(DictMixin):
+    #lines
+    total_lines: int = 0
+    comment_lines: int = 0
+    code_lines: int = 0
+    blank_lines: int = 0
 
-    total_lines: Optional[int] = None
-    comment_lines: Optional[int] = None
-    code_lines: Optional[int] = None
-    blank_lines: Optional[int] = None
-    define_count: Optional[int]= None
-    transitions: Optional[int] = None
-    is_rotor_generated: Optional[bool] = None
-    rotor_data: Optional[RotorModelData] = None
+    # commands
+    declaration: int = 0
+    definition: int = 0
+    assertion: int = 0
+    push: int = 0
+    pop: int = 0
+    check_sat: int = 0
+    other_commands: int = 0
     
-    @staticmethod
-    def generate(parser: 'SMT2ModelParser'):
-        vals = parser.parse()
-        return ParsedSMT2ModelData(
-            total_lines=vals["total_lines"],
-            comment_lines=vals["comment_lines"],
-            code_lines=vals["code_lines"],
-            blank_lines=vals["blank_lines"],
-            define_count=vals["define_count"],
-            transitions=vals["transitions"],
-            is_rotor_generated=vals["is_rotor_generated"],
-            rotor_data=vals.get("rotor_header"),
-        )
+    #rotor info
+    is_rotor_generated: bool = False
+    rotor_data: Optional[RotorModelData] = None
 
 @dataclass
 class ParsedBTOR2ModelData(DictMixin):

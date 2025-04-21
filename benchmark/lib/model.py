@@ -41,7 +41,7 @@ class SMT2Model(Model):
     def __init__(self, model_config: ModelBaseConfig):
         data = SMT2ModelData(
             basic=BasicModelData.generate(model_config),
-            parsed=ParsedSMT2ModelData.generate(parser=SMT2ModelParser(model_config.get_model_path())),
+            parsed=SMT2ModelParser(model_config.get_model_path()).parse(),
             generation= GenerationModelData.generate(model_config) if isinstance(model_config, ModelGenerationConfig) else None,
             solver_runs=[],
             best_run=None
