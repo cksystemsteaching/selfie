@@ -108,7 +108,7 @@ class SMT2ModelGrapher(ModelGrapher):
             return
         return {
             "line_counts": self._create_line_count_figure(),
-            "define_distribution": self._create_define_figure()
+            "define_distribution": self._create_define_figure(),
         }
 
     def _create_line_count_figure(self):
@@ -153,7 +153,7 @@ class SMT2ModelGrapher(ModelGrapher):
         return fig
     
     def _create_define_figure(self) -> plt.Figure:
-        """Figure 3: Define command distribution with regression analysis
+        """Figure 2: Define command distribution with regression analysis
         
         Creates a scatter plot showing the relationship between code size (lines)
         and define commands, with:

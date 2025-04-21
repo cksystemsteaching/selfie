@@ -17,14 +17,23 @@ class BTOverview():
     def get_overview(self) -> Dict[str, Any]:
         """Return a comprehensive overview of benchmark results."""
         return {
+            #Model data
             "models" : self.models,
             "generated_models": self._generated_models(),
             "loaded_models": self._loaded_models(),
             "solved_models": self._solved_models(),
+            
+            #Model parsing data
+            "avg_check_sats_per_line": self._avg_check_sat_per_line(),
+            "avg_declarations_per_line": self._avg_declaration_per_line(),
+            "avg_definitions_per_line": self._avg_definition_per_line(),
+            "avg_assertions_per_check_sat": self._avg_assertios_per_check_sat(),
+
+            #Solver data
             "used_solvers": self._used_solvers(),
             "best_solver": self._best_solver(),
             "worst_solver": self._worst_solver(),
-            "solve_rates": self._solve_rates()
+            "solve_rates": self._solve_rates(),
         }
 
     def _generated_models(self) -> List['Model']:
@@ -41,6 +50,18 @@ class BTOverview():
         for solver in self.solvers:
             solved.update(model for model in solver.data.solved)
         return list(solved)
+    
+    def _avg_check_sat_per_line(self):
+        return sum([model.data.parsed.check_sats_per_line() for model in self.models], 0) / max(1,len(self.models))
+    
+    def _avg_declaration_per_line(self):
+        return sum([model.data.parsed.declarations_per_line() for model in self.models], 0) / max(1,len(self.models))
+    
+    def _avg_definition_per_line(self):
+        return sum([model.data.parsed.definitions_per_line() for model in self.models], 0) / max(1,len(self.models))
+    
+    def _avg_assertios_per_check_sat(self):
+        return sum([model.data.parsed.assertions_per_check_sat() for model in self.models], 0) / max(1,len(self.models))
 
     def _used_solvers(self) -> List[str]:
         """Return names of solvers that were actually used."""

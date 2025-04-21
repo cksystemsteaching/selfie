@@ -58,7 +58,10 @@ class BTRunPresenter(BasePresenter):
         self.overview = overview
 
     def _generate_plain(self):
-        lines = ["Models:", *self._models_lines()]
+        lines = [
+            "Models:", *self._models_lines(),
+            "Model parsing data:" *self._model_parsing_lines(),
+            ]
         if self.overview["used_solvers"]:
             lines.extend(["Solvers:", *self._solvers_lines])
 
@@ -72,6 +75,7 @@ class BTRunPresenter(BasePresenter):
 
         sections = [
             self._section("Models", self._models_lines()),
+            self._section("Model parsing data", self._model_parsing_lines())
         ]
         if self.overview["used_solvers"]:
             sections.append(self._section("Solvers", self._solvers_lines()))
@@ -88,6 +92,16 @@ class BTRunPresenter(BasePresenter):
         if self.overview['used_solvers']:
             lines.append(f"Solved models: {len(self.overview['solved_models'])}")
         
+        return lines
+    
+    def _model_parsing_lines(self) -> list[str]:
+        """Generated model parsing related data"""
+        lines = [
+            f"Average check-sats per line: {self.overview['avg_check_sats_per_line']}",
+            f"Average declarations per line: {self.overview['avg_declarations_per_line']}",
+            f"Average definitions per line: {self.overview['avg_definitions_per_line']}",
+            f"Average assertions per check-sat: {self.overview['avg_assertions_per_check_sat']}",
+        ]
         return lines
 
     def _solvers_lines(self) -> list[str]:
