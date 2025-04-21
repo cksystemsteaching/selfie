@@ -37,10 +37,10 @@ class GrapherWrapper:
         """Distribute models to their respective graphers."""
         for model in self.models:
             try:
-                self.graphers[model.get_format()].add(model)
+                self.graphers[model.data.basic.format].add(model)
             except KeyError as e:
                 raise ValueError(
-                    f"Model format {model.get_format()} not in "
+                    f"Model format {model.data.basic.format} not in "
                     f"allowed formats: {list(self.graphers.keys())}"
                 ) from e
     
@@ -109,6 +109,7 @@ class SMT2ModelGrapher(ModelGrapher):
         return {
             "line_counts": self._create_line_count_figure(),
             "define_distribution": self._create_define_figure(),
+            "metrics_per_line": self._create_avg_metrics_per_line_figure()
         }
 
     def _create_line_count_figure(self):
@@ -120,8 +121,8 @@ class SMT2ModelGrapher(ModelGrapher):
             'outliers': ColorMap.PRIMARY['orange']
         }
         # Prepare data
-        names = [m.output_path.stem for m in self.models]
-        line_counts = [m.parser.stats['total_lines'] for m in self.models]
+        names = [m.data.basic.name for m in self.models]
+        line_counts = [m.data.parsed.total_lines for m in self.models]
         avg_lines = np.mean(line_counts)
 
         # Create figure
@@ -163,8 +164,8 @@ class SMT2ModelGrapher(ModelGrapher):
         - Professional styling
         """
         # Data extraction
-        code_lines = [m.parser.stats['code_lines'] for m in self.models]
-        defines = [m.parser.stats['define_count'] for m in self.models]
+        code_lines = [m.data.parsed.code_lines for m in self.models]
+        defines = [m.data.parsed.definition for m in self.models]
         
         # Create figure with constrained layout
         fig, ax = plt.subplots(figsize=self.figsize)
@@ -326,6 +327,77 @@ class SMT2ModelGrapher(ModelGrapher):
             spine.set_edgecolor('#888888')
             spine.set_linewidth(0.8)
 
+    def _create_avg_metrics_per_line_figure(self) -> plt.Figure:
+        """Create a figure showing average metrics per line across all models.
+        
+        Shows average check-sat, declarations, and definitions per line as bars.
+        Y-axis capped at 1 for easy comparison.
+        """
+        # Prepare data - calculate averages
+        metrics = {
+            'check-sat': np.mean([m.data.parsed.check_sats_per_line() for m in self.models]),
+            'declarations': np.mean([m.data.parsed.declarations_per_line() for m in self.models]),
+            'definitions': np.mean([m.data.parsed.definitions_per_line() for m in self.models])
+        }
+        
+        # Color setup
+        colors = {
+            'check-sat': ColorMap.PRIMARY['blue'],
+            'declarations': ColorMap.PRIMARY['green'],
+            'definitions': ColorMap.PRIMARY['orange']
+        }
+        
+        # Create figure
+        fig, ax = plt.subplots(figsize=(8, 6))  # Slightly smaller figure for single chart
+        
+        # Plot each metric
+        x = np.arange(len(metrics))
+        bars = ax.bar(
+            x,
+            metrics.values(),
+            width=0.6,
+            color=[colors[k] for k in metrics.keys()],
+            edgecolor='white'
+        )
+        
+        # Set x-axis labels
+        ax.set_xticks(x)
+        ax.set_xticklabels([k.capitalize() for k in metrics.keys()])
+        
+        # Set y-axis limit
+        ax.set_ylim(0, min(1, max(metrics.values()) * 1.2))  # Auto-adjust if max < 1
+        
+        # Add value labels
+        for bar in bars:
+            height = bar.get_height()
+            ax.text(
+                bar.get_x() + bar.get_width()/2.,
+                height + 0.01,
+                f'{height:.3f}',
+                ha='center',
+                va='bottom',
+                color='#333333'
+            )
+        
+        # Add model count annotation
+        ax.text(
+            0.95, 0.95,
+            f'n = {len(self.models)} models',
+            transform=ax.transAxes,
+            ha='right',
+            va='top',
+            bbox=dict(facecolor='white', alpha=0.8, edgecolor='none')
+        )
+        
+        self._format_axes(
+            ax, fig,
+            title="Average SMT2 Metrics per Code Line",
+            xlabel="Metric Type",
+            ylabel="Average Value (per line)",
+            grid=True
+        )
+        
+        return fig
 class BTOR2ModelGrapher(ModelGrapher):
     def __init__(self):
         super().__init__()
