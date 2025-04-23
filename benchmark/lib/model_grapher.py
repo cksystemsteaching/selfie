@@ -182,7 +182,10 @@ class SMT2ModelGrapher(ModelGrapher):
         )
         
         # Add regression line and CI
-        self._add_regression(ax, code_lines, defines)
+        try:
+            self._add_regression(ax, code_lines, defines)
+        except ValueError as e:
+            self.logger.info("Skipping regression...")
         
         # Annotate key stats
         self._annotate_stats(ax, code_lines, defines)
@@ -201,25 +204,53 @@ class SMT2ModelGrapher(ModelGrapher):
         ax.set_axisbelow(True)  # Grid behind data
         
         return fig
-
-    def _add_regression(self, ax, x, y):
-        """Add linear regression with confidence interval"""
-        import seaborn as sns
+    def _add_regression(self, ax, x, y, color=None, ci=95, text_pos=(0.05, 0.95)):
+        """Add linear regression with confidence interval and R² annotation.
         
+        Args:
+            ax: Matplotlib axis object.
+            x, y: Data for regression (must be same length).
+            color: Color for the regression line.
+            ci: Confidence interval (None to disable).
+            text_pos: (x, y) position for R² text (axes coordinates).
+        
+        Raises:
+            ValueError: If input data is invalid.
+        """
+        import numpy as np
+        import seaborn as sns
+        from scipy import stats
+        
+        # Convert to numpy arrays and remove NaN/Inf
+        x = np.asarray(x, dtype=np.float64)
+        y = np.asarray(y, dtype=np.float64)
+        
+        mask = np.isfinite(x) & np.isfinite(y)
+        x_clean = x[mask]
+        y_clean = y[mask]
+        
+        if len(x_clean) < 2:
+            raise ValueError("Not enough finite data points for regression.")
+        
+        if np.all(x_clean == x_clean[0]):
+            raise ValueError("All x-values are identical (zero variance).")
+        
+        # Proceed only with clean data
+        if not color:
+            color = self.colors.get('highlight', 'tab:blue')
+
         sns.regplot(
-            x=x, y=y,
+            x=x_clean, y=y_clean,
             scatter=False,
-            color=self.colors['highlight'],
+            color=color,
             line_kws={'lw': 2.5, 'zorder': 2},
-            ci=95,               # 95% confidence interval
+            ci=ci,
             ax=ax
         )
-        
-        # Add R² annotation
-        from scipy import stats
-        slope, intercept, r_value, p_value, std_err = stats.linregress(x, y)
+
+        slope, intercept, r_value, _, _ = stats.linregress(x_clean, y_clean)
         ax.text(
-            0.05, 0.95,
+            *text_pos,
             f'R² = {r_value**2:.2f}',
             transform=ax.transAxes,
             ha='left', va='top',

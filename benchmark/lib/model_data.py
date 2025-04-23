@@ -71,16 +71,16 @@ class ParsedSMT2ModelData(DictMixin):
     rotor_data: Optional[RotorModelData] = None
 
     def check_sats_per_line(self):
-        return self.check_sat / self.code_lines
+        return self.check_sat / max(1, self.code_lines)
     
     def declarations_per_line(self):
-        return self.declaration / self.code_lines
+        return self.declaration / max(1,self.code_lines)
 
     def definitions_per_line(self):
-        return self.definition / self.code_lines
+        return self.definition / max(1,self.code_lines)
 
     def assertions_per_check_sat(self):
-        return self.assertion/self.check_sat
+        return self.assertion/ max(1,self.check_sat)
 @dataclass
 class ParsedBTOR2ModelData(DictMixin):
     _parser: 'BTOR2ModelParser'
