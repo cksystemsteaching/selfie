@@ -4,7 +4,9 @@ from lib.solver import available_solvers
 import argparse
 
 
-def init_parser():
+def init_parser() -> argparse.ArgumentParser:
+    """Initialize and configure the command-line argument parser for the SMT model tool."""
+
     parser = argparse.ArgumentParser(
         description="Tool for generating SMT models from RISC-V machine code and benchmarking SMT solvers using these models"
     )

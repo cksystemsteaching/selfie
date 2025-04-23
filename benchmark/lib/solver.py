@@ -22,7 +22,7 @@ class BaseSolver:
     def check_model(self, model):
         if model.data.basic.format not in self.get_supported_models():
             raise UnsupportedModelException(
-                f"Unsupported model format used in {self.__class__.__name__} ",
+                f"Unsupported model format used in {self.__class__.__name__}",
                 model,
                 solver=self.__class__.__name__,
             )
@@ -203,10 +203,11 @@ class BaseCLISolver(BaseSolver):
 
     def check_solver(self):
         if is_tool_available(self.solver_command):
-            return
+            return True
         logger.warning(
             f"{self.__class__.__name__} command '{self.solver_command}' is not available. Skipping it."
         )
+        return False
 
 
 class Z3Solver(BaseCLISolver):
