@@ -1,5 +1,5 @@
 import lib.config as cfg
-from lib.generate import generate_all_examples, clean_examples, create_models, load_models
+from lib.generate import create_models, load_models
 from lib.print import custom_exit
 import lib.argument_parser as arg_parser
 from lib.paths import SourcePath, LoadSourcePath, OutputPath
@@ -24,14 +24,6 @@ if __name__ == "__main__":
     configure_logging(args.verbose, OutputPath("bt.log"))
     cfg.verbose = args.verbose
     logger = logging.getLogger('bt')
-
-    if args.clean:
-        clean_examples()
-        logger.info("Output directories cleaned.")
-
-    if args.generate_examples:
-        generate_all_examples()
-        logger.info("Generated all examples sucessfuly.")
 
     models = []
 

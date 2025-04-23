@@ -63,13 +63,17 @@ def create_models(source: SourcePath, model_type_base: str, output: OutputPath) 
         for model_type in model_types:
             model_config = ModelGenerationConfig(source, model_type, output)
             
+            model_generation_success = False
             if not model_config.compilation_cmd:
-                CStarSourceProcessor(model_config).generate_model()
+                model_generation_success = CStarSourceProcessor(model_config).generate_model()
             else:
-                GenericSourceProcessor(model_config).generate_model()
+                model_generation_success = GenericSourceProcessor(model_config).generate_model()
 
-            logger.info(f"Generated model: {model_config.output_path}")
-            models.append(model_factory(model_config))
+            if model_generation_success:
+                logger.info(f"Generated model: {model_config.output_path}")
+                models.append(model_factory(model_config))
+            else:
+                logger.warning(f"Failed to generate: {model_config.output_path}")
         
         return models
 
@@ -102,9 +106,10 @@ class CStarSourceProcessor(BaseSourceProcessor):
             )
         )
         if returncode != 0:
-            custom_exit(output, cfg.EXIT_MODEL_GENERATION_ERROR)
+            logger.warning(f"Model failed to generate. Model builder povided this output: {output}")
+            return False
 
-        return self.model_config.output_path
+        return True
 
 
 class GenericSourceProcessor(BaseSourceProcessor):
@@ -112,7 +117,7 @@ class GenericSourceProcessor(BaseSourceProcessor):
         super().__init__(model_config)
 
     def check_compiler(self) -> bool:
-        self.compiler = self.model_config.compilation_command.split()[0]
+        self.compiler = self.model_config.compilation_cmd.split()[0]
         return is_tool_available(self.compiler)
 
     def compile_source(self) -> bool:
@@ -136,7 +141,7 @@ class GenericSourceProcessor(BaseSourceProcessor):
             )
         )
         if returncode != 0:
-            logger.error(f"Source not correctly compiled. Compiler provided following output: {output}")
+            logger.error(f"Source {self.model_config.source_path} not correctly compiled. Compiler provided following output: {output}")
             return False
 
         return True
@@ -144,7 +149,7 @@ class GenericSourceProcessor(BaseSourceProcessor):
     def generate_model(self):
         if not self.compile_source():
             logger.warning(f"Compiler {self.compiler} not available.")
-            return
+            return False
         
         check_model_builder()
         returncode, output = execute(
@@ -156,38 +161,7 @@ class GenericSourceProcessor(BaseSourceProcessor):
         )
         self.compiled_source.unlink()
         if returncode != 0:
-            custom_exit(output, cfg.EXIT_MODEL_GENERATION_ERROR)
+            logger.warning(f"Model failed to generate. Model builder povided this output: {output}")
+            return False
 
-        return self.model_config.output_path
-
-
-def clean_examples() -> None:
-    if cfg.models_dir.is_dir():
-        shutil.rmtree(cfg.models_dir)
-
-
-def generate_all_examples() -> None:
-    """
-    Examples directory is defined in config file.
-    Clean previous generated examples, then recursively traverse examples sources (directory of examples defined in config file)
-    and generates models defined in config file for each source inside this example directory. 
-    Output directory is also specified by a config file.
-    """
-    clean_examples()
-    models = get_all_model_types()
-
-    for model in models:
-        parts = model.split("-")
-        # All but the last part
-        model_name = "-".join(parts[:-1])
-
-        # Just the last part
-        model_suffix = parts[-1]
-
-        files = [file for file in cfg.examples_dir.iterdir()]
-        for file in files:
-            if file.suffix != ".c":
-                continue
-            output_dir = Path(cfg.models_dir) / model
-            output = output_dir / Path(file.stem + "-" + model_name + "." + model_suffix)
-            create_models(file, model, output)
+        return True

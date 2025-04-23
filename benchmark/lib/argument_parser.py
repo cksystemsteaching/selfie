@@ -20,20 +20,6 @@ def init_parser():
     )
 
     parser.add_argument(
-        '--clean',
-        action="store_true",
-        required=False,
-        help="Recursively cleans directories that were used to store examples"
-    )
-
-    parser.add_argument(
-        "--generate-examples",
-        action="store_true",
-        required=False,
-        help="Generate example outputs"
-    )
-
-    parser.add_argument(
         '-sl', '--solver',
         required=False,
         help=f"Provide a solver, otherwise no solver will be invoked. Available solvers: {list(available_solvers.keys())}"
