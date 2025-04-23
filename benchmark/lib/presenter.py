@@ -74,9 +74,12 @@ class BTRunPresenter(BasePresenter):
         footer = "=" * width
 
         sections = [
-            self._section("Models", self._models_lines()),
-            self._section("Model parsing data", self._model_parsing_lines())
+            self._section("All Models", self._models_lines()),
         ]
+
+        if self.overview["smt2"]:
+            sections.append(self._section("SMT2 Models", self._model_parsing_lines()))
+
         if self.overview["used_solvers"]:
             sections.append(self._section("Solvers", self._solvers_lines()))
 
@@ -97,10 +100,11 @@ class BTRunPresenter(BasePresenter):
     def _model_parsing_lines(self) -> list[str]:
         """Generated model parsing related data"""
         lines = [
-            f"Average check-sats per line: {self.overview['avg_check_sats_per_line']}",
-            f"Average declarations per line: {self.overview['avg_declarations_per_line']}",
-            f"Average definitions per line: {self.overview['avg_definitions_per_line']}",
-            f"Average assertions per check-sat: {self.overview['avg_assertions_per_check_sat']}",
+            f"Number of models: {len(self.overview['smt2']['models'])}",
+            f"Average check-sats per line: {self.overview['smt2']['avg_check_sats_per_line']}",
+            f"Average declarations per line: {self.overview['smt2']['avg_declarations_per_line']}",
+            f"Average definitions per line: {self.overview['smt2']['avg_definitions_per_line']}",
+            f"Average assertions per check-sat: {self.overview['smt2']['avg_assertions_per_check_sat']}",
         ]
         return lines
 

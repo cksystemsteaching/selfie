@@ -1,4 +1,5 @@
 from lib.presenter import BTRunPresenter
+from lib.exceptions import UnsupportedModelException
 
 from typing import List, Dict, Any, Optional
 
@@ -23,11 +24,8 @@ class BTOverview():
             "loaded_models": self._loaded_models(),
             "solved_models": self._solved_models(),
             
-            #Model parsing data
-            "avg_check_sats_per_line": self._avg_check_sat_per_line(),
-            "avg_declarations_per_line": self._avg_declaration_per_line(),
-            "avg_definitions_per_line": self._avg_definition_per_line(),
-            "avg_assertions_per_check_sat": self._avg_assertios_per_check_sat(),
+            #Model specific data
+            "smt2": SMT2Overview([model for model in self.models if model.data.basic.format == "smt2"]).get_overview(),
 
             #Solver data
             "used_solvers": self._used_solvers(),
@@ -51,18 +49,6 @@ class BTOverview():
             solved.update(model for model in solver.data.solved)
         return list(solved)
     
-    def _avg_check_sat_per_line(self):
-        return sum([model.data.parsed.check_sats_per_line() for model in self.models], 0) / max(1,len(self.models))
-    
-    def _avg_declaration_per_line(self):
-        return sum([model.data.parsed.declarations_per_line() for model in self.models], 0) / max(1,len(self.models))
-    
-    def _avg_definition_per_line(self):
-        return sum([model.data.parsed.definitions_per_line() for model in self.models], 0) / max(1,len(self.models))
-    
-    def _avg_assertios_per_check_sat(self):
-        return sum([model.data.parsed.assertions_per_check_sat() for model in self.models], 0) / max(1,len(self.models))
-
     def _used_solvers(self) -> List[str]:
         """Return names of solvers that were actually used."""
         used_solvers = [s for s in self.solvers if s.data.runs > 0]
@@ -107,3 +93,41 @@ class BTOverview():
                 solve_rates[solver.get_solver_name()] = (solved_count / len(self.models)) * 100
 
         return solve_rates
+    
+class SMT2Overview:
+    def __init__(self, models):
+        self.models = models
+    
+    def check_models(self):
+        for model in self.models:
+            if model.basic.format != "smt2":
+                raise UnsupportedModelException(
+                    "SMT Overview received invalid model type {model.basic.format}",
+                    model)
+    
+    def get_overview(self):
+        if not self.models: return None
+        return {
+            "models" : self.models,
+            "avg_check_sats_per_line": self._avg_check_sat_per_line(),
+            "avg_declarations_per_line": self._avg_declaration_per_line(),
+            "avg_definitions_per_line": self._avg_definition_per_line(),
+            "avg_assertions_per_check_sat": self._avg_assertions_per_check_sat()
+        }
+
+    def _avg_check_sat_per_line(self):
+        return sum([model.data.parsed.check_sats_per_line() for model in self.models], 0) / max(1,len(self.models))
+    
+    def _avg_declaration_per_line(self):
+        return sum([model.data.parsed.declarations_per_line() for model in self.models], 0) / max(1,len(self.models))
+    
+    def _avg_definition_per_line(self):
+        return sum([model.data.parsed.definitions_per_line() for model in self.models], 0) / max(1,len(self.models))
+    
+    def _avg_assertions_per_check_sat(self):
+        return sum([model.data.parsed.assertions_per_check_sat() for model in self.models], 0) / max(1,len(self.models))
+
+#TODO
+class BTOR2Overview():
+    def __init__(self):
+        pass
