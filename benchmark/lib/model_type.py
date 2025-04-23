@@ -50,7 +50,7 @@ class ModelConfigParser:
                 current_level = current_level[level]
             else: 
                 raise ParsingError(self.model_base, level)
-
+        print(self.model_type_bases)
         # Check if type has specified Rotor command in config file
         required_values = ['command']
         for value in required_values:
@@ -121,6 +121,9 @@ def get_all_model_types(path_base: str = "") -> List[str]:
 
     # Only split path_str if it's non-empty; otherwise, remain at the top level.
     path_segments = path_base.split("-") if path_base else []
+    #Special keyword all - takes in all models
+    if path_base == "all":
+        path_segments = []
 
     #Drill down into the nested dictionary according to path_segments.
     current_node: Dict[str, Any] = models_dict
@@ -128,8 +131,9 @@ def get_all_model_types(path_base: str = "") -> List[str]:
         # Try to drill down
         if segment in current_node and isinstance(current_node[segment], dict):
             current_node = current_node[segment]
-        else: 
-            current_node = [None]
+        else:
+            logger.warning("Unable to parse passed model type...")
+            raise ParsingError("model type", path_base, segment)
 
     # Use a queue to traverse the dictionary (BFS) below our current_node.
     queue = Queue()
@@ -140,7 +144,11 @@ def get_all_model_types(path_base: str = "") -> List[str]:
 
         if not isinstance(dict_node,dict) or is_dict_of_strings(dict_node):
             if path_keys:
-                model_type = f"{path_base}-{'-'.join(path_keys)}"
+                if path_base == "all":
+                    model_type = f"{'-'.join(path_keys)}"
+                else:
+                    model_type = f"{path_base}-{'-'.join(path_keys)}"
+
             else:
                 model_type = path_base
 
@@ -149,9 +157,9 @@ def get_all_model_types(path_base: str = "") -> List[str]:
         else:
             for key, value in dict_node.items():
                 # If it's another dict, enqueue it for further exploration
-                queue.put((value, path_keys + [key]))
-            
-    logger.verbose_info(f"All parsed model types:{model_types}")
+                if key != "compilation":
+                    queue.put((value, path_keys + [key]))
+    print(model_types)            
     return list(map(lambda model: ModelType(model),model_types))
 
 def is_dict_of_strings(value):

@@ -42,9 +42,9 @@ class FileValidationError(BTError):
             }
         )
 class ParsingError(BTError):
-    def __init__(self, parsed_string : str, error_part : str, **kwargs):
+    def __init__(self, parsing_place: str, parsed_string : str, error_part : str, **kwargs):
         super().__init__(
-            f"Parsing error has occured in {parsed_string}, in the part {error_part}.",
+            f"While parsing {parsing_place} a parsing error has occured in {parsed_string}, in the part {error_part}.",
             {
                 'parsed_string': parsed_string,
                 'error_path': error_part,
