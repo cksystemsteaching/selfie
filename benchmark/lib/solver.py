@@ -15,6 +15,7 @@ logger = logging.getLogger("bt.solver")
 class BaseSolver:
     def __init__(self):
         self.data = SolverData()
+        self.available = False
 
     def run(self, model: "Model", timeout: int, args: Dict[str, Any] = None):
         pass
@@ -40,7 +41,7 @@ class BaseCLISolver(BaseSolver):
     def __init__(self, solver_command: str):
         super().__init__()
         self.solver_command = solver_command
-        self.check_solver()
+        self.available = self.check_solver()
 
     def run(self, model: "Model", timeout: int, args: Dict[str, Any] = None):
         """
@@ -254,16 +255,14 @@ class BitwuzlaSolver(BaseCLISolver):
 class BitwuzlaSDKSolver(BaseSDKSolver):
     def __init__(self):
         super().__init__()
-        self._bitwuzla_module = None  # Will hold the imported module when needed
+        self.available = self.check_solver()
 
-    @property
-    def bitwuzla(self):
-        """Lazy-load the bitwuzla module when first accessed"""
-        if self._bitwuzla_module is None:
+    def check_solver(self, model):
+        try:
             import bitwuzla
-
-            self._bitwuzla_module = bitwuzla
-        return self._bitwuzla_module
+        except ImportError:
+            return False
+        return True
 
     def run(self, model: "Model", timeout: int, args: Dict[str, Any] = None):
         """
@@ -276,10 +275,11 @@ class BitwuzlaSDKSolver(BaseSDKSolver):
         """
         from lib.bitwuzla_terminator import TimeTerminator
         from lib.utils import suppress_stdout
+        import bitwuzla
 
         options = {
-            self.bitwuzla.Option.VERBOSITY: 0,
-            self.bitwuzla.Option.LOGLEVEL: 0,
+            bitwuzla.Option.VERBOSITY: 0,
+            bitwuzla.Option.LOGLEVEL: 0,
         }
 
         logger.info(
@@ -325,7 +325,7 @@ class BitwuzlaSDKSolver(BaseSDKSolver):
         }
         try:
             # Create Bitwuzla instance with timeout
-            bitwuzla_options = self.bitwuzla.Options()
+            bitwuzla_options = bitwuzla.Options()
 
             # Set options
             for opt, val in options.items():
@@ -335,8 +335,8 @@ class BitwuzlaSDKSolver(BaseSDKSolver):
                 for opt, val in args.items():
                     bitwuzla_options.set(opt, val)
 
-            parser = self.bitwuzla.Parser(
-                self.bitwuzla.TermManager(), bitwuzla_options, model.data.basic.format
+            parser = bitwuzla.Parser(
+                bitwuzla.TermManager(), bitwuzla_options, model.data.basic.format
             )
             terminator = TimeTerminator(timeout)
             parser.configure_terminator(terminator)
@@ -375,7 +375,7 @@ class BitwuzlaSDKSolver(BaseSDKSolver):
                 self.data.timedout.append(model)
                 logger.warning(f"Bitwuzla SDK timed out after {elapsed_time:.2f}s")
 
-        except self.bitwuzla.BitwuzlaException as e:
+        except bitwuzla.BitwuzlaException as e:
             elapsed_time = time.perf_counter() - start_time
             result.update(
                 {

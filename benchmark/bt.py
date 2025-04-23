@@ -49,8 +49,9 @@ def main():
         logger.info(f"Solving {len(models)} models using {solvers}...")
         for model in models:
             for solver in solvers:
-                result = solver.run(model, args.timeout, [])
-                model.add_solver_data(result)
+                if solver.available:
+                    result = solver.run(model, args.timeout, [])
+                    model.add_solver_data(result)
 
     logger.info("Presenting results:")
     for model in models:
