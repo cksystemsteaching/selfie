@@ -1,6 +1,6 @@
 from lib.model import Model
 from lib.exceptions import UnsupportedModelException, BTValueError
-from lib.checks import is_tool_available
+from lib.utils import is_tool_available
 from lib.model_data import SolverData
 
 import subprocess

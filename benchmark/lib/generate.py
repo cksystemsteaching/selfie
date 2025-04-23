@@ -1,4 +1,4 @@
-from lib.checks import execute, is_tool_available, check_model_builder
+from lib.utils import execute, is_tool_available, check_model_builder
 from lib.model_generation_config import ModelGenerationConfig, ModelLoadConfig
 from lib.model_type import get_all_model_types
 from lib.paths import SourcePath, OutputPath, LoadSourcePath
