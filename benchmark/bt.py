@@ -6,39 +6,43 @@ from lib.log import configure_logging
 from lib.model_grapher import GrapherWrapper
 
 import lib.solver as slv
-import lib.overview as ov 
+import lib.overview as ov
 
 import logging
 import sys
 
-if __name__ == "__main__":
+
+def main():
     parser = arg_parser.init_parser()
     args = parser.parse_args()
 
-    if len(sys.argv) <= 1:
+    if not any([args.source, args.load]):
         parser.print_help()
-        exit()
+        return
 
     # Initialize logging
     configure_logging(args.verbose, OutputPath("bt.log"))
     cfg.verbose = args.verbose
-    logger = logging.getLogger('bt')
+    logger = logging.getLogger("bt")
 
     models = []
-
     if args.load:
         logger.info(f"Loading models from source {args.load}")
         loaded_models = load_models(LoadSourcePath(args.load))
         models.extend(loaded_models)
         logger.info(f"Loaded {len(loaded_models)} models")
 
-
     if args.source:
-        logger.info(f"Creating models from {args.source} using {args.model_base} model type base, output to {args.output}...")
-        generated_models = create_models(SourcePath(args.source), args.model_base, OutputPath(args.output))
+        logger.info(
+            f"Creating models from {args.source} using {args.model_base} model type base, output to {args.output}..."
+        )
+        generated_models = create_models(
+            SourcePath(args.source), args.model_base, OutputPath(args.output)
+        )
         models.extend(generated_models)
         logger.info(f"Created {len(generated_models)} models")
-    
+
+    solvers = []
     if args.solver:
         logger.info("Getting provided solvers...")
         solvers = slv.parse_solvers(args.solver)
@@ -47,17 +51,21 @@ if __name__ == "__main__":
             for solver in solvers:
                 result = solver.run(model, args.timeout, [])
                 model.add_solver_data(result)
-    
+
     logger.info("Presenting results:")
     for model in models:
         model.show()
 
-    if args.solver:
+    if solvers:
         slv.present_solvers()
 
-    ov.present_overview(models, slv.parse_solvers(args.solver))
+    ov.present_overview(models, solvers)
 
     if args.graph:
         logger.info("Generating graphs...")
         grapher = GrapherWrapper(OutputPath(args.output), models)
         grapher.generate_graphs()
+
+
+if __name__ == "__main__":
+    sys.exit(main())

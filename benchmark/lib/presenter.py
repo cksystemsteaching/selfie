@@ -59,9 +59,11 @@ class BTRunPresenter(BasePresenter):
 
     def _generate_plain(self):
         lines = [
-            "Models:", *self._models_lines(),
-            "Model parsing data:" *self._model_parsing_lines(),
+            "","Models:", *self._models_lines(),
             ]
+        if self.overview["smt2"]:
+            lines.extend(["SMT2 Models:", *self._smt2_model_lines()])
+
         if self.overview["used_solvers"]:
             lines.extend(["Solvers:", *self._solvers_lines])
 
@@ -78,7 +80,7 @@ class BTRunPresenter(BasePresenter):
         ]
 
         if self.overview["smt2"]:
-            sections.append(self._section("SMT2 Models", self._model_parsing_lines()))
+            sections.append(self._section("SMT2 Models", self._smt2_model_lines()))
 
         if self.overview["used_solvers"]:
             sections.append(self._section("Solvers", self._solvers_lines()))
@@ -97,14 +99,14 @@ class BTRunPresenter(BasePresenter):
         
         return lines
     
-    def _model_parsing_lines(self) -> list[str]:
+    def _smt2_model_lines(self) -> list[str]:
         """Generated model parsing related data"""
         lines = [
             f"Number of models: {len(self.overview['smt2']['models'])}",
-            f"Average check-sats per line: {self.overview['smt2']['avg_check_sats_per_line']}",
-            f"Average declarations per line: {self.overview['smt2']['avg_declarations_per_line']}",
-            f"Average definitions per line: {self.overview['smt2']['avg_definitions_per_line']}",
-            f"Average assertions per check-sat: {self.overview['smt2']['avg_assertions_per_check_sat']}",
+            f"Average check-sats per line: {self.overview['smt2']['avg_check_sats_per_line']:2f}",
+            f"Average declarations per line: {self.overview['smt2']['avg_declarations_per_line']:2f}",
+            f"Average definitions per line: {self.overview['smt2']['avg_definitions_per_line']:2f}",
+            f"Average assertions per check-sat: {self.overview['smt2']['avg_assertions_per_check_sat']:2f}",
         ]
         return lines
 

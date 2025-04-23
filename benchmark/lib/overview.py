@@ -1,14 +1,13 @@
 from lib.presenter import BTRunPresenter
 from lib.exceptions import UnsupportedModelException
+import lib.config as cfg
 
 from typing import List, Dict, Any, Optional
 
 def present_overview(models, solvers):
-    from lib.config import verbose
-
     overview = BTOverview(models, solvers).get_overview()
     presenter = BTRunPresenter(overview)
-    presenter.show(verbose)
+    presenter.show(cfg.verbose)
 
 class BTOverview():
     def __init__(self, models, solvers):

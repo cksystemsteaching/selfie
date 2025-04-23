@@ -10,7 +10,7 @@ def init_parser():
         '-m', '--model-base',
         required=False,
         help="Specify models, you can find available models in config and add new ones",
-        default="starc-32bit-riscv-smt"
+        default="starc-32bit-riscv-smt2"
     )
 
     parser.add_argument(
