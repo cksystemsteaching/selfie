@@ -5,17 +5,19 @@ from queue import Queue
 from typing import List, Dict, Any
 
 import logging
+
 logger = logging.getLogger("bt.model_type")
+
 
 class ModelType:
     def __init__(self, model_base: str):
         self.model_base = model_base
         self.model_type_bases = self.model_base.split("-")
         self.parser = ModelConfigParser(self.model_type_bases)
-    
+
     def get_model_type_bases(self):
         return self.model_type_bases
-    
+
     def get_model_output_spec(self):
         """
         Return a transformed model base that is appropriate to use
@@ -23,18 +25,19 @@ class ModelType:
         This is used if no specific output name is passed as an argument.
         """
         return "_" + self.model_type_bases[:-1].join("_") + "." + self.get_format()
-    
+
     def get_format(self):
         return self.parser.parse_format()
 
     def get_compile_cmd(self):
         return self.parser.parse_compile_cmd()
-    
+
     def get_model_generation_cmd(self):
         return self.parser.parse_model_generation_cmd()
-    
+
     def get_default_output_path(self):
         return self.parser.parse_default_output_path()
+
 
 class ModelConfigParser:
     def __init__(self, model_type_bases: List[str]):
@@ -48,35 +51,35 @@ class ModelConfigParser:
         for level in self.model_type_bases:
             if level in current_level:
                 current_level = current_level[level]
-            else: 
+            else:
                 raise ParsingError(self.model_base, level)
         # Check if type has specified Rotor command in config file
-        required_values = ['command']
+        required_values = ["command"]
         for value in required_values:
             if value not in current_level:
                 raise ConfigFormatError(
                     message=f"{value} not present/or at the wrong place in specified model type",
-                    error_format=value
+                    error_format=value,
                 )
-        
+
         allowed_formats = cfg.config["allowed_formats"]
         if self.parse_format() not in allowed_formats:
             raise ConfigFormatError(
-                    message=f"{self.parse_format()} is not an allowed format.",
-                    error_format=self.parse_format()
-                )
-    
+                message=f"{self.parse_format()} is not an allowed format.",
+                error_format=self.parse_format(),
+            )
+
     def parse_format(self):
         return self.model_type_bases[-1]
-    
+
     def parse_model_generation_cmd(self):
         current_level = self.top_level
 
         for level in self.model_type_bases:
             current_level = current_level[level]
-        
+
         return current_level["command"]
-    
+
     def parse_compile_cmd(self):
         """
         That we can drill down with provided bases does not have to be checked since it was already checked in constructor.
@@ -84,11 +87,11 @@ class ModelConfigParser:
         current_level = self.top_level
 
         for level in self.model_type_bases:
-            if 'compilation' in current_level:
+            if "compilation" in current_level:
                 return current_level["compilation"]
             current_level = current_level[level]
-        
-        return ""      
+
+        return ""
 
 
 def get_all_model_types(path_base: str = "") -> List[str]:
@@ -120,11 +123,11 @@ def get_all_model_types(path_base: str = "") -> List[str]:
 
     # Only split path_str if it's non-empty; otherwise, remain at the top level.
     path_segments = path_base.split("-") if path_base else []
-    #Special keyword all - takes in all models
+    # Special keyword all - takes in all models
     if path_base == "all":
         path_segments = []
 
-    #Drill down into the nested dictionary according to path_segments.
+    # Drill down into the nested dictionary according to path_segments.
     current_node: Dict[str, Any] = models_dict
     for segment in path_segments:
         # Try to drill down
@@ -141,7 +144,7 @@ def get_all_model_types(path_base: str = "") -> List[str]:
     while not queue.empty():
         dict_node, path_keys = queue.get()
 
-        if not isinstance(dict_node,dict) or is_dict_of_strings(dict_node):
+        if not isinstance(dict_node, dict) or is_dict_of_strings(dict_node):
             if path_keys:
                 if path_base == "all":
                     model_type = f"{'-'.join(path_keys)}"
@@ -158,7 +161,8 @@ def get_all_model_types(path_base: str = "") -> List[str]:
                 # If it's another dict, enqueue it for further exploration
                 if key != "compilation":
                     queue.put((value, path_keys + [key]))
-    return list(map(lambda model: ModelType(model),model_types))
+    return list(map(lambda model: ModelType(model), model_types))
+
 
 def is_dict_of_strings(value):
     if not isinstance(value, dict):

@@ -2,6 +2,7 @@ import time
 
 from bitwuzla import *
 
+
 class TimeTerminator:
 
     def __init__(self, time_limit):

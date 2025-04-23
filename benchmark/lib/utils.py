@@ -2,6 +2,7 @@ import os
 import sys
 import contextlib
 
+
 @contextlib.contextmanager
 def suppress_stdout():
     # Save the original stdout file descriptor (1)
@@ -9,7 +10,7 @@ def suppress_stdout():
     saved_stdout_fd = os.dup(original_stdout_fd)
 
     # Redirect stdout to null device
-    with open(os.devnull, 'w') as devnull:
+    with open(os.devnull, "w") as devnull:
         os.dup2(devnull.fileno(), original_stdout_fd)
         try:
             yield

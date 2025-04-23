@@ -7,9 +7,12 @@ from dataclasses import asdict
 import json
 from typing import Dict, Any
 
+
 class DictMixin:
     """Enables dictionary access"""
-    def _ensure_initialized(self): pass
+
+    def _ensure_initialized(self):
+        pass
 
     def __getitem__(self, key):
         return getattr(self, key)

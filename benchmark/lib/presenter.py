@@ -1,5 +1,3 @@
-import lib.exceptions as ex
-
 from abc import ABC, abstractmethod
 from pathlib import Path
 import logging
