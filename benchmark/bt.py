@@ -1,6 +1,5 @@
 import lib.config as cfg
 from lib.generate import create_models, load_models
-from lib.print import custom_exit
 import lib.argument_parser as arg_parser
 from lib.paths import SourcePath, LoadSourcePath, OutputPath
 from lib.log import configure_logging
@@ -28,21 +27,28 @@ if __name__ == "__main__":
     models = []
 
     if args.load:
+        logger.info(f"Loading models from source {args.load}")
         loaded_models = load_models(LoadSourcePath(args.load))
         models.extend(loaded_models)
+        logger.info(f"Loaded {len(loaded_models)} models")
+
 
     if args.source:
-        genereated_models = create_models(SourcePath(args.source), args.model_base, OutputPath(args.output))
-        models.extend(genereated_models)
+        logger.info(f"Creating models from {args.source} using {args.model_base} model type base, output to {args.output}...")
+        generated_models = create_models(SourcePath(args.source), args.model_base, OutputPath(args.output))
+        models.extend(generated_models)
+        logger.info(f"Created {len(generated_models)} models")
     
     if args.solver:
+        logger.info("Getting provided solvers...")
         solvers = slv.parse_solvers(args.solver)
-
+        logger.info(f"Solving {len(models)} models using {solvers}...")
         for model in models:
             for solver in solvers:
                 result = solver.run(model, args.timeout, [])
                 model.add_solver_data(result)
     
+    logger.info("Presenting results:")
     for model in models:
         model.show()
 
@@ -52,5 +58,6 @@ if __name__ == "__main__":
     ov.present_overview(models, slv.parse_solvers(args.solver))
 
     if args.graph:
+        logger.info("Generating graphs...")
         grapher = GrapherWrapper(OutputPath(args.output), models)
         grapher.generate_graphs()

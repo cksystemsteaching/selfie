@@ -50,7 +50,6 @@ class ModelConfigParser:
                 current_level = current_level[level]
             else: 
                 raise ParsingError(self.model_base, level)
-        print(self.model_type_bases)
         # Check if type has specified Rotor command in config file
         required_values = ['command']
         for value in required_values:
@@ -159,7 +158,6 @@ def get_all_model_types(path_base: str = "") -> List[str]:
                 # If it's another dict, enqueue it for further exploration
                 if key != "compilation":
                     queue.put((value, path_keys + [key]))
-    print(model_types)            
     return list(map(lambda model: ModelType(model),model_types))
 
 def is_dict_of_strings(value):
