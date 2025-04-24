@@ -1384,18 +1384,27 @@ class CFLOBVDD:
             CFLOBVDD.representatives[cflobvdd] = cflobvdd
         return CFLOBVDD.representatives[cflobvdd]
 
-    def constant(level, output, number_of_input_bits, number_of_output_bits):
+    def constant(level, output, number_of_input_bits):
         return CFLOBVDD.representative(
             BV_No_Distinction_Proto.representative(level, number_of_input_bits),
             {1:output},
             number_of_input_bits,
-            number_of_output_bits)
+            1)
+
+    def byte_constant(number_of_input_bytes, output, number_of_input_bits):
+        assert number_of_input_bytes > 0
+        assert 0 < number_of_input_bits <= 8
+        assert 8 % number_of_input_bits == 0
+
+        level = math.ceil(math.log2(number_of_input_bytes * (8 // number_of_input_bits)))
+
+        return CFLOBVDD.constant(level, output, number_of_input_bits)
 
     def false(level, number_of_input_bits):
-        return CFLOBVDD.constant(level, 0, number_of_input_bits, 1)
+        return CFLOBVDD.constant(level, 0, number_of_input_bits)
 
     def true(level, number_of_input_bits):
-        return CFLOBVDD.constant(level, 1, number_of_input_bits, 1)
+        return CFLOBVDD.constant(level, 1, number_of_input_bits)
 
     def flip_value_tuple(self):
         assert len(self.outputs) == 2
@@ -1423,6 +1432,17 @@ class CFLOBVDD:
             dict([(output + 1, output) for output in range(2**number_of_output_bits)]),
             number_of_input_bits,
             number_of_output_bits)
+
+    def byte_projection(number_of_input_bytes, byte_i, number_of_input_bits):
+        assert number_of_input_bytes > 0
+        assert 0 <= byte_i < number_of_input_bytes
+        assert 0 < number_of_input_bits <= 8
+        assert 8 % number_of_input_bits == 0
+
+        level = math.ceil(math.log2(number_of_input_bytes * (8 // number_of_input_bits)))
+        input_i = byte_i * (8 // number_of_input_bits)
+
+        return CFLOBVDD.projection(level, input_i, number_of_input_bits, 8)
 
     def collape_classes_leftmost(equiv_classes):
         projected_classes = dict(enumerate([equiv_classes[i]
