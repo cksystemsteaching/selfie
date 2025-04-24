@@ -1,4 +1,5 @@
 from tests.integration.helpers import get_output_path
+import pytest
 
 
 def test_generation_workflow(valid_cstar_file, output_dir, run_cli):
@@ -95,3 +96,69 @@ def test_wrong_input_file_format(tmp_path, run_cli):
     result = run_cli(["--source", str(empty_file)])
     assert result.returncode == 1
     assert f"Source extension '{tmp_path.suffix}' not allowed."
+
+
+def test_z3(fake_z3, run_cli, valid_smt2_file, tmp_path):
+    result = run_cli(["--load", str(valid_smt2_file), "--solver", "z3"])
+
+    expected_lines = [
+        "Z3 Solver Data",
+        "Total runs: 1",
+        "Solved runs: 1",
+        "Timed out runs: 0",
+        "Error runs: 0",
+    ]
+    assert all(line in result.stdout for line in expected_lines)
+
+def test_bitwuzla(fake_bitwuzla, run_cli, valid_smt2_file):
+    fake_path = fake_bitwuzla
+    result = run_cli(["--load", str(valid_smt2_file), "--solver", "bitwuzla"])
+
+    expected_lines = [
+        "Bitwuzla Solver Data",
+        "Total runs: 1",
+        "Solved runs: 1",
+        "Timed out runs: 0",
+        "Error runs: 0",
+    ]
+    assert all(line in result.stdout for line in expected_lines)
+
+def test_invalid_solver(run_cli, valid_smt2_file):
+    result = run_cli(["--load", str(valid_smt2_file), "--solver", "invalid_solver"])
+    
+    assert "Provided solver 'invalid_solver' is not valid." in result.stderr
+    assert "No valid solvers provided" in result.stderr
+    assert result.returncode == 0 # BT should still finish sucessfully (without using solvers)
+
+
+def test_invalid_solver_with_valid_solver(fake_z3,valid_smt2_file, run_cli):
+    result = run_cli(["--load", str(valid_smt2_file), "--solver", "invalid_solver,z3"])
+
+    assert "Provided solver 'invalid_solver' is not valid." in result.stderr
+    assert "No valid solvers provided" not in result.stderr
+    assert result.returncode == 0 # BT should still finish sucessfully (using Z3 solver)
+
+@pytest.mark.parametrize("fake_z3", [{"delay": 2}], indirect=True)
+def test_z3_timeout(fake_z3, run_cli, valid_smt2_file):
+    result = run_cli(["--load", str(valid_smt2_file), "--solver", "z3", "--timeout", "1"])
+    
+    assert "Timeout is set to 1s." in result.stderr
+    assert "Command timed out after 1s." in result.stderr
+    assert "Z3 Solver Data" in result.stdout
+    assert "Error runs: 1" in result.stdout
+    assert result.returncode == 0
+
+@pytest.mark.parametrize("fake_bitwuzla", [{"delay": 2}], indirect=True)
+def test_bitwuzla_timeout(fake_bitwuzla, valid_smt2_file, run_cli):
+    result = run_cli(["--load", str(valid_smt2_file), "--solver", "bitwuzla", "--timeout", "1"])
+    
+    assert "Timeout is set to 1s." in result.stderr
+    assert "Command timed out after 1s." in result.stderr
+    assert "Bitwuzla Solver Data" in result.stdout
+    assert "Error runs: 1" in result.stdout
+
+def test_multiple_solvers(fake_bitwuzla, fake_z3, run_cli, valid_smt2_file):
+    result = run_cli(["--load", str(valid_smt2_file), "--solver", "bitwuzla,z3"])
+
+    assert "Used solvers: Bitwuzla,Z3" in result.stdout
+    assert result.returncode == 0
