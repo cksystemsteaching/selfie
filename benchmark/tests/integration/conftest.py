@@ -20,17 +20,10 @@ def run_cli():
 
 
 @pytest.fixture
-def temp_input_file(tmp_path):
-    """Creates a temporary input file"""
-    input_file = tmp_path / "input.txt"
-    input_file.write_text("sample data")
-
-
-@pytest.fixture
-def smtlib_input_file(tmp_path):
+def valid_smt2_file(tmp_path):
     """Creates a valid SMT-LIBv2 benchmark file"""
-    input_file = tmp_path / "test.smt2"
-    input_file.write_text(
+    file = tmp_path / "test.smt2"
+    file.write_text(
         """
 (set-logic QF_LIA)
 (declare-fun x () Int)
@@ -40,7 +33,20 @@ def smtlib_input_file(tmp_path):
 (exit)
 """
     )
-    return input_file
+    return file
+
+
+@pytest.fixture
+def invalid_smt2_file(tmp_path):
+    """Creates a valid SMT-LIBv2 benchmark file"""
+    file = tmp_path / "test.smt2"
+    file.write_text(
+        """
+invalid_smtlib_file
+(exit)
+"""
+    )
+    return file
 
 
 @pytest.fixture
