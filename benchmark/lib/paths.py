@@ -5,12 +5,36 @@ from pathlib import Path
 from typing import Union
 
 class OutputPath:
+    """A validated filesystem path for output operations that can represent either a file or directory.
+    
+    This class wraps pathlib.Path to add:
+    - Validation of parent directory existence
+    - Safe file path generation in directories
+    - Consistent error handling
+    
+    The class delegates most operations to the underlying Path object while adding
+    output-specific functionality.
+    """
     def __init__(self, output: Union[str, Path]):
+        """Initialize an OutputPath with validation.
+        
+        Args:
+            output: Either a string or Path object representing the output location.
+                    Can be either a file or directory path.
+                    
+        Raises:
+            FileValidationError: If the parent directory doesn't exist or isn't a directory.
+        """
         self._path = Path(output) if isinstance(output, str) else output
         self._validate_path()
     
     @property
     def path(self) -> Path:
+        """Get the underlying Path object.
+        
+        Returns:
+            The wrapped pathlib.Path object.
+        """
         return self._path
     
     def _validate_path(self) -> None:
@@ -25,9 +49,16 @@ class OutputPath:
                 parent=self._path.parent
             )
     
-    def try_build_output_path(self, filename: str, suffix: str) -> Path:
-        path = self._path / Path(filename).with_suffix(f".{suffix.lstrip('.')}")
-        return OutputPath(path)
+    def as_file_for(self, filename: str, suffix: str) -> "OutputPath":
+        """
+        Returns a new OutputPath for a file in this directory.
+        If this is already a file path, returns self.
+        """
+        if self._path.suffix:  # Already a file path
+            return self
+        new_path = self._path / Path(filename).with_suffix(f".{suffix.lstrip('.')}")
+        return OutputPath(new_path)
+        
     # Make it behave like a Path object
     def __getattr__(self, attr):
         """Delegate attribute access to the underlying Path object"""
@@ -44,7 +75,12 @@ class OutputPath:
         return f"OutputPath('{self._path}')"
 
 
-class BaseSoucePath:
+class BaseSourcePath:
+    """Base class for validated source file paths with common filesystem operations.
+    
+    Provides core validation that the path exists and delegates Path-like operations
+    to an underlying pathlib.Path object.
+    """
     def __init__(self, source: Union[str, Path]):
         self._path = Path(source) if isinstance(source, str) else source
         self._validate_path()
@@ -73,7 +109,11 @@ class BaseSoucePath:
     def __repr__(self) -> str:
         return f"SourcePath('{self._path}')"
 
-class LoadSourcePath(BaseSoucePath):
+class LoadSourcePath(BaseSourcePath):
+    """Validated path for source files to be loaded, with format restrictions.
+    
+    Extends BaseSourcePath with validation for allowed file formats.
+    """
     def __init__(self, source: Union[str, Path]):
         super().__init__(source)
 
@@ -91,7 +131,11 @@ class LoadSourcePath(BaseSoucePath):
                 allowed_extensions=cfg.config['allowed_languages']
             )
 
-class SourcePath(BaseSoucePath):
+class SourcePath(BaseSourcePath):
+    """Validated path for general source files with language restrictions.
+    
+    Extends BaseSourcePath with validation for allowed language file extensions.
+    """
     def __init__(self, source: Union[str, Path]):
         super().__init__(source)
     

@@ -19,7 +19,7 @@ class ModelGenerationConfig(ModelBaseConfig):
         super().__init__(source_path, self._determine_format())
         self.compilation_cmd = model_type.get_compile_cmd()
         self.model_generation_cmd = model_type.get_model_generation_cmd()
-        self.output_path = output_path.try_build_output_path(
+        self.output_path = output_path.as_file_for(
             self._generate_output_name(source_path, model_type), model_type.get_format()
         )
 
