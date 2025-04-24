@@ -61,9 +61,9 @@ def test_print_help_insufficient_args(run_cli):
     assert "usage:" in result.stdout
 
 
-def test_all_model_type_keyword(run_cli, valid_cstar_file):
+def test_all_model_type_keyword(run_cli, valid_cstar_file, output_dir):
     """Test 'all' argument for model types"""
-    result = run_cli(["--source", str(valid_cstar_file), "--model-base", "all"])
+    result = run_cli(["--source", str(valid_cstar_file), "--output", str(output_dir), "--model-base", "all"])
 
     assert result.returncode == 0
 
@@ -161,9 +161,9 @@ def test_invalid_solver_with_valid_solver(fake_z3, valid_smt2_file, run_cli):
 
 
 @pytest.mark.parametrize("fake_z3", [{"delay": 2}], indirect=True)
-def test_z3_timeout(fake_z3, run_cli, valid_smt2_file):
+def test_z3_timeout(fake_z3, run_cli, output_dir, valid_smt2_file):
     result = run_cli(
-        ["--load", str(valid_smt2_file), "--solver", "z3", "--timeout", "1"]
+        ["--load", str(valid_smt2_file), "--output", str(output_dir), "--solver", "z3", "--timeout", "1"]
     )
 
     assert "Timeout is set to 1s." in result.stderr
@@ -174,9 +174,9 @@ def test_z3_timeout(fake_z3, run_cli, valid_smt2_file):
 
 
 @pytest.mark.parametrize("fake_bitwuzla", [{"delay": 2}], indirect=True)
-def test_bitwuzla_timeout(fake_bitwuzla, valid_smt2_file, run_cli):
+def test_bitwuzla_timeout(fake_bitwuzla, valid_smt2_file, output_dir, run_cli):
     result = run_cli(
-        ["--load", str(valid_smt2_file), "--solver", "bitwuzla", "--timeout", "1"]
+        ["--load", str(valid_smt2_file), "--output", str(output_dir), "--solver", "bitwuzla", "--timeout", "1"]
     )
 
     assert "Timeout is set to 1s." in result.stderr
@@ -185,8 +185,8 @@ def test_bitwuzla_timeout(fake_bitwuzla, valid_smt2_file, run_cli):
     assert "Error runs: 1" in result.stdout
 
 
-def test_multiple_solvers(fake_bitwuzla, fake_z3, run_cli, valid_smt2_file):
-    result = run_cli(["--load", str(valid_smt2_file), "--solver", "bitwuzla,z3"])
+def test_multiple_solvers(fake_bitwuzla, fake_z3, valid_smt2_file, output_dir, run_cli):
+    result = run_cli(["--load", str(valid_smt2_file), "--output", str(output_dir), "--solver", "bitwuzla,z3"])
 
     assert "Used solvers: Bitwuzla,Z3" in result.stdout
     assert result.returncode == 0
