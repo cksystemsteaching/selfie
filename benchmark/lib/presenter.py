@@ -63,7 +63,7 @@ class BTRunPresenter(BasePresenter):
             lines.extend(["SMT2 Models:", *self._smt2_model_lines()])
 
         if self.overview["used_solvers"]:
-            lines.extend(["Solvers:", *self._solvers_lines])
+            lines.extend(["Solvers:", *self._solvers_lines()])
 
         return "\n".join(lines)
     

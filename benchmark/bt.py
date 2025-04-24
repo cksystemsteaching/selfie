@@ -46,7 +46,7 @@ def main():
     if args.solver:
         logger.info("Getting provided solvers...")
         solvers = slv.parse_solvers(args.solver)
-        logger.info(f"Solving {len(models)} models using {solvers}...")
+        logger.info(f"Solving {len(models)} models using solvers: {[solver.get_solver_name() for solver in solvers]}...")
         for model in models:
             for solver in solvers:
                 if solver.available:
