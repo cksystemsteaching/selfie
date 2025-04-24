@@ -50,8 +50,11 @@ class ParsingError(BTError):
     def __init__(
         self, parsing_place: str, parsed_string: str, error_part: str, **kwargs
     ):
+        message = f"While parsing {parsing_place} a parsing error has occured in '{parsed_string}'"
+        if error_part and error_part != parsed_string:
+            message + f", in the part '{error_part}'."
         super().__init__(
-            f"While parsing {parsing_place} a parsing error has occured in {parsed_string}, in the part {error_part}.",
+            message,
             {"parsed_string": parsed_string, "error_path": error_part, **kwargs},
         )
 

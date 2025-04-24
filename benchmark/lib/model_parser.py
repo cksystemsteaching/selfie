@@ -1,14 +1,15 @@
 from lib.paths import OutputPath
 from lib.rotor_parser import SMT2RotorParser
 from lib.model_data import ParsedSMT2ModelData
+from lib.exceptions import ParsingError
 
 from abc import ABC, abstractmethod
 import re
 
 
 class ModelParser:
-    def __init__(self, path: OutputPath):
-        self.path = path
+    def __init__(self, model_path: OutputPath):
+        self.model_path = model_path
 
     @abstractmethod
     def parse(self):
@@ -20,19 +21,30 @@ class ModelParser:
 
 
 class SMT2ModelParser(ModelParser):
-    def __init__(self, output_path: OutputPath):
-        super().__init__(output_path)
+    def __init__(self, model_path: OutputPath):
+        super().__init__(model_path)
         self.rotor_header: "RotorModelData" = None
         self.parsed_data: ParsedSMT2ModelData = ParsedSMT2ModelData()
 
     def parse(self):
         """
         Analyzes an SMT-LIBv2 file and returns statistics.
+
+        It will raise an error if invalid SMT-LIBv2 has been provided.
+        Invalid SMT-LIBv2 file:
+        A strictly compliant SMT-LIB v2 file cannot have anything other than:
+
+            (commands)
+
+            ;comments
+
+            whitespace (spaces, newlines, etc.)
         """
 
         # Regex patterns
         comment_pattern = re.compile(r"^\s*;")
         blank_pattern = re.compile(r"^\s*$")
+        line_pattern = re.compile(r"^\s*\(.*\)\s*$")
 
         define_pattern = re.compile(r"^\s*\(define", re.IGNORECASE)
         declare_pattern = re.compile(r"^\s*\(declare", re.IGNORECASE)
@@ -47,7 +59,7 @@ class SMT2ModelParser(ModelParser):
         )
         previous_command = None
 
-        with open(self.path, "r") as f:
+        with open(self.model_path, "r") as f:
             for line in f:
                 # Check for rotor signature first
                 if (
@@ -56,7 +68,7 @@ class SMT2ModelParser(ModelParser):
                 ):
                     self.parsed_data.is_rotor_generated = True
                     self.parsed_data.rotor_data = SMT2RotorParser.parse_header(
-                        self.path
+                        self.model_path
                     )
 
                 self.parsed_data.total_lines += 1
@@ -65,7 +77,7 @@ class SMT2ModelParser(ModelParser):
                     self.parsed_data.comment_lines += 1
                 elif blank_pattern.match(line):
                     self.parsed_data.blank_lines += 1
-                else:
+                elif line_pattern.match(line):
                     self.parsed_data.code_lines += 1
 
                     # Check for specific lines
@@ -83,6 +95,8 @@ class SMT2ModelParser(ModelParser):
                         self.parsed_data.check_sat += 1
                     else:
                         self.parsed_data.other_commands += 1
+                else:
+                    raise ParsingError(self.model_path, line, line)
 
         return self.parsed_data
 

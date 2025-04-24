@@ -52,7 +52,7 @@ class ModelConfigParser:
             if level in current_level:
                 current_level = current_level[level]
             else:
-                raise ParsingError(self.model_base, level)
+                raise ParsingError(self.__class__.__name__,self.model_base, level)
         # Check if type has specified Rotor command in config file
         required_values = ["command"]
         for value in required_values:

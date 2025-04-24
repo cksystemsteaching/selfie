@@ -3,6 +3,7 @@ from lib.model_generation_config import ModelGenerationConfig, ModelLoadConfig
 from lib.model_type import get_all_model_types
 from lib.paths import SourcePath, OutputPath, LoadSourcePath
 from lib.model import model_factory
+from lib.exceptions import ParsingError
 import lib.config as cfg
 
 import logging
@@ -27,7 +28,11 @@ def load_models(source: LoadSourcePath) -> list:
 
     models = []
     logger.info(f"Loading model: {source}")
-    models.append(model_factory(ModelLoadConfig(source)))
+    try:
+        model = model_factory(ModelLoadConfig(source))
+        models.append(model)
+    except ParsingError as e:
+        logger.warning(f"Skipping invalid model {source.path}...")
 
     return models
 
