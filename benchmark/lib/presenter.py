@@ -13,7 +13,7 @@ class BasePresenter(ABC):
         Standardized presentation flow (shared by all presenters)
         """
         output = self._generate_output(verbose)
-        self.logger.info(output)
+        print(output)
 
     @abstractmethod
     def _generate_plain(self) -> str:

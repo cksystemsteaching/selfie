@@ -3,8 +3,7 @@ from typing import Union
 import logging
 
 
-# Custom levels (between WARNING and INFO in severity)
-VERBOSE_INFO_LEVEL = 19  # Higher than INFO (20), lower than WARNING (30)
+VERBOSE_INFO_LEVEL = 19  # Lower than INFO (20)
 
 # Register the levels
 logging.addLevelName(VERBOSE_INFO_LEVEL, "VERBOSE_INFO")
