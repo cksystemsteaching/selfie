@@ -417,9 +417,6 @@ def present_solvers():
 
 # Parse solvers from the CLI argument
 def parse_solvers(solver_args: str):
-    if not solver_args:
-        return []
-
     solver_names = solver_args.split(",")
     solvers = []
     for name in solver_names:
@@ -431,8 +428,6 @@ def parse_solvers(solver_args: str):
             solvers.append(available_solvers[name])
 
     if not solvers:
-        raise BTValueError(
-            f"No valid solvers provided: {solver_args}. Aborting bencharming.",
-            {solver_args},
-        )
+        logger.warning(f"No valid solvers provided: {solver_args}.")
+
     return solvers
