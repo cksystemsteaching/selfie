@@ -257,7 +257,7 @@ class BitwuzlaSDKSolver(BaseSDKSolver):
         super().__init__()
         self.available = self.check_solver()
 
-    def check_solver(self, model):
+    def check_solver(self):
         try:
             import bitwuzla
         except ImportError:
