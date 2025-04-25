@@ -11,7 +11,7 @@ def test_generation_workflow(valid_cstar_file, output_dir, run_cli):
             str(valid_cstar_file),
             "--output",
             str(output_dir),
-            "--model-base",
+            "--model-type",
             model_type,
         ]
     )
@@ -55,7 +55,7 @@ def test_print_help(run_cli):
 
 def test_print_help_insufficient_args(run_cli):
     """Test no source provided - help should be printed"""
-    result = run_cli(["--output", "output.smt2", "--model-base", "model-base-test"])
+    result = run_cli(["--output", "output.smt2", "--model-type", "model-type-test"])
 
     assert result.returncode == 0
     assert "usage:" in result.stdout
@@ -63,7 +63,7 @@ def test_print_help_insufficient_args(run_cli):
 
 def test_all_model_type_keyword(run_cli, valid_cstar_file, output_dir):
     """Test 'all' argument for model types"""
-    result = run_cli(["--source", str(valid_cstar_file), "--output", str(output_dir), "--model-base", "all"])
+    result = run_cli(["--source", str(valid_cstar_file), "--output", str(output_dir), "--model-type", "all"])
 
     assert result.returncode == 0
 

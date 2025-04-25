@@ -34,10 +34,10 @@ def main():
 
     if args.source:
         logger.info(
-            f"Creating models from {args.source} using {args.model_base} model type base, output to {args.output}..."
+            f"Creating models from {args.source} using {args.model_type} model type base, output to {args.output}..."
         )
         generated_models = create_models(
-            SourcePath(args.source), args.model_base, OutputPath(args.output)
+            SourcePath(args.source), args.model_type, OutputPath(args.output)
         )
         models.extend(generated_models)
         logger.info(f"Created {len(generated_models)} models")

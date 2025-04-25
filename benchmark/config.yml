@@ -5,12 +5,8 @@
 
 model_builder_path: "rotor"
 build_model_builder: "make rotor"
-
-examples_dir: "examples/symbolic"
-models_dir: "models"
-
-output_dir: "models"
 default_output: ""
+default_model_type: "starc-32bit-riscv-smt2"
 
 allowed_languages: [.c, .cstar]
 allowed_formats: [smt2,btor2]
