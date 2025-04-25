@@ -57,6 +57,21 @@ There are important rules that have to be followed for BT to be able to parse th
 - **Required tools:** `pip`
 - **Dependencies:**: See [requirements.txt](requirements.txt)
 
+### Optional Dependencies (based on usage)
+
+- **[Bitwuzla](https://bitwuzla.github.io/)**  
+- **[Z3](https://github.com/Z3Prover/z3)**  
+- **[gcc-riscv](https://github.com/riscv-collab/riscv-gnu-toolchain)**
+
+All optional dependencies are included in the provided Dockerfile.
+
+To get started quickly, you can build and run the Docker container with:
+
+```bash
+docker build -t your_image_name .
+docker run -it your_image_name
+```
+
 ## Installation
 
 The simplest way to start is to run the `setup.sh` script. Script sets up a local virtual environment and installs all dependencies automatically.
@@ -87,7 +102,7 @@ options:
                         Path to the input source file/directory. Supported formats: ['.c', '.cstar']
   -l LOAD, --load LOAD  Path to the input load file/directory. Supported formats: ['smt2', 'btor2']
   -sl SOLVER, --solver SOLVER
-                        Specify which SMT solver to use for benchmarking. Available solvers: ['z3', 'bitwuzla', 'bitwuzla-sdk']. Note: If not specified, only model generation will be performed.
+                        Specify which SMT solver to use for benchmarking. Available solvers: ['z3', 'bitwuzla', 'bitwuzla-py']. Note: If not specified, only model generation will be performed.
   -t TIMEOUT, --timeout TIMEOUT
                         Maximum time (in seconds) allowed for solver execution. Default: 600 seconds (10 minutes)
   -o OUTPUT, --output OUTPUT
@@ -152,6 +167,8 @@ You can also supply `-m` with a special keyword `all` that will try to generate 
 ---
 ## Solvers
 Two SMT solvers are implemented in BT. [Bitwuzla](https://bitwuzla.github.io/) and [Z3](https://www.microsoft.com/en-us/research/project/z3-3/), both very powerful solvers tested in SMT-COMPs. They were chosen because they implement features that Rotor models use. Array and bit-vector theory and support for incremental solving. Solvers are currently invoked with default arguments. In future development this will be looked into.
+
+>Note: Bitwuzla's Python bindings are also available and can be used as a solver. However, they are still in an experimental phase, as some essential components in Bitwuzla PB have not yet been implemented.
 
 ## Graphs
 When invoked with `-g/--graph`, BT generates analysis graphs for SMT-LIBv2 models in `./graphs/`.  

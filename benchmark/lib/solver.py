@@ -1,5 +1,5 @@
 """
-Solver classes. Currently supported solver running from CLI (Bitwuzla, Z3) and as Python libraries (Bitwuzla-SDK).
+Solver classes. Currently supported solver running from CLI (Bitwuzla, Z3) and as Python libraries (PyBitwuzla).
 """
 
 from lib.model import Model
@@ -390,14 +390,14 @@ class PyBitwuzlaSolver(BasePySolver):
                 }
             )
             self.data.error.append(model)
-            logger.error(f"Bitwuzla SDK failed after {elapsed_time:.2f}s: {e}")
+            logger.error(f"PyBitwuzla failed after {elapsed_time:.2f}s: {e}")
         except TimeoutError as e:
             pass
 
         return result
 
     def get_solver_name(self):
-        return "Bitwuzla-SDK"
+        return "PyBitwuzla"
 
     def get_supported_models(self):
         return {"smt2", "btor2"}
@@ -406,7 +406,7 @@ class PyBitwuzlaSolver(BasePySolver):
 available_solvers = {
     "z3": Z3Solver(),
     "bitwuzla": BitwuzlaSolver(),
-    "bitwuzla-sdk": PyBitwuzlaSolver(),
+    "bitwuzla-py": PyBitwuzlaSolver(),
 }
 
 
