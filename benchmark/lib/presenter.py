@@ -14,6 +14,8 @@ class BasePresenter(ABC):
         """
         output = self._generate_output(verbose)
         print(output)
+        # Also logs into a log file
+        logging.getLogger("bt-file.presenter").log(output)
 
     @abstractmethod
     def _generate_plain(self) -> str:
