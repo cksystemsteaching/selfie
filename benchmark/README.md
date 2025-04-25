@@ -1,13 +1,15 @@
 # BT - A Tool for Benchmarking and Analyzing SMT Models from C/C* Source Files
 
-_This subproject of Selfie serves as a tool for analyzing and benchmarking SMT models generated from C/C* source files (and possibly more). The default model builder is Rotor (another Selfie subproject). BT is designed to be easily modifiable; it provides a framework for defining custom commands for generated models and for incorporating new model builders._
+_This subproject of Selfie serves as a tool for quickly generating, analyzing and benchmarking SMT models generated from RISC-V machine code. The default model builder is Rotor (another Selfie subproject). BT is designed to be easily modifiable; it provides a framework for defining custom commands for generated models and for incorporating new model builders._
+
+_Currently BT is able to accept C and C* source files. It uses `gcc` and `Selfie` respectably to compile into RISC-V, but BT is designed to be easily extensible for other languages able to be compiled into RISC-V._
 
 ## Overview
 
 SMT models generated from programming languages typically have very different characteristics from those created by traditional means (e.g. [SMT-COMP](https://smt-comp.github.io)). BT is built to serve as an analytical tool to find these differences, allowing you to compare typical SMT models with those generated from source code. BT also offers a simpler interface than Rotor for generating multiple models at once. This can mean generating from a single source file using different model types or by processing an entire directory of sources. It gives user the possibillity to generate different model types from a single source file and also generate models from entire directory. See section [bundles](#bundles) for more information.
 
 ## Model types
-Model types are essentially different configurations for the model builders. These configurations can define:
+Model types specify different configurations for the model builders (Rotor by default) and compilators (gcc and Selfie). These configurations can define:
 - The register structure of the model (e.g., 32-bit or 64-bit),
 - The model format language (such as SMT2 or BTOR2), and
 - The machine word architecture (e.g., riscv, riscu, etc.).
@@ -17,8 +19,7 @@ These configurations are described in [config file](config.yml) and can be alter
 For example, a model type like `starc-64bit-riscv-smt2` describes its source language, architecture, and model format. Models are described in a tree-like structure.
 
 ### Creating new model types
-<a id="config-snippet"></a>
-This is what the model type can look like in config file.
+<a id="config-snippet"></a> This is what the model type can look like in config file. 
 ```yaml
 models:
   starc:
@@ -32,7 +33,8 @@ models:
 There are important rules that have to be followed for BT to be able to parse these model types.
 
 1. Every path must end with a valid model format (also defined in config file), in the example it is `btor2` and `smt2`. Based on this key, BT will decide what parsers, presenters and model objects to create.
-2. Every model format must also be followed by command key that tells BT how to invoke a model builder. (In current version BT assumes that every model builder will only need path to it's binary, a source file and optional output parameter.) 
+2. Every model format must also be followed by command key that tells BT how to invoke a model builder. (In current version BT assumes that every model builder will only need path to it's binary, a source file and optional output parameter.)
+3. If source is compiled, anywhere in the tree structure there needs to exists a `compilation` leaf that specifies compilation command.
 
 ---
 
@@ -60,7 +62,9 @@ There are important rules that have to be followed for BT to be able to parse th
 The simplest way to start is to run the `setup.sh` script. Script sets up a local virtual environment and installs all dependencies automatically.
 
 ```bash
-./setup.sh && source venv/bin/activate
+$ git clone git@github.com:cksystemsteaching/selfie.git
+$ cd selfie/benchmark
+$ ./setup.sh && source venv/bin/activate
 ```
 ---
 ## Usage
@@ -71,17 +75,25 @@ Run the tool with `--help` for more details. For quick reference, here is the cu
 
 ```bash
 $ python3 bt.py --help
-Usage: bt.py [OPTIONS]
+usage: bt.py [-h] [-m MODEL_TYPE] [-s SOURCE] [-l LOAD] [-sl SOLVER] [-t TIMEOUT] [-o OUTPUT] [-v] [-g]
 
-  A tool for benchmarking and analyzing SMT models.
+Tool for generating SMT models from RISC-V machine code and benchmarking SMT solvers using these models
 
-Options:
-  --source TEXT        Path to a source file or directory.
-  --model-type TEXT    Specify the model configuration.
-  --output PATH        Output directory for models and graphs.
-  -g, --graph          Generate graphs.
-  -v, --verbose        Increase verbosity.
-  --help               Show this message and exit.
+options:
+  -h, --help            show this help message and exit
+  -m MODEL_TYPE, --model-type MODEL_TYPE
+                        Specifies model builder options and compilation commands. Available types are defined in the config file (e.g., 'starc-32bit-riscv-smt2', 'gcc-rv32im-btor2'). Use 'all' to process all available models.
+  -s SOURCE, --source SOURCE
+                        Path to the input source file/directory. Supported formats: ['.c', '.cstar']
+  -l LOAD, --load LOAD  Path to the input load file/directory. Supported formats: ['smt2', 'btor2']
+  -sl SOLVER, --solver SOLVER
+                        Specify which SMT solver to use for benchmarking. Available solvers: ['z3', 'bitwuzla', 'bitwuzla-sdk']. Note: If not specified, only model generation will be performed.
+  -t TIMEOUT, --timeout TIMEOUT
+                        Maximum time (in seconds) allowed for solver execution. Default: 600 seconds (10 minutes)
+  -o OUTPUT, --output OUTPUT
+                        Output path for the generated model - if not provided BT will generate one from source path and model type. Note: Only provide an output directory when loading/sourcing a directory." Default output path from config:
+  -v, --verbose         Enable verbose logging.
+  -g, --graph           Generate visualization graphs for the analysis. Graphs will be saved in the output directory.
 ```
 ### Basic Command-Line Invocation
 
@@ -96,14 +108,8 @@ For example, to generate two models (one in SMT2 format and one in BTOR2 format)
 python bt.py -s ../examples/symbolic/simple-if-else-1-35.c -m starc-64-bit-riscv -o ./models -g -v
 ```
 
-### Displaying help
-For a complete list of available options, run:
-```bash
-python bt.py -h
-```
-
 ### Loading models
-BT is also able to load models, this can be useful for analyzing models that are not generated (e.g. SMT-COMP benchmark models) or you want to analyze already generated models again.
+BT is also able to load models, this can be useful for analyzing models that are not generated (e.g. SMT-COMP benchmark models) or when user wants to analyze already generated models again.
 ```bash
 python bt.py -l smt_comp_models/ -g
 ```
@@ -141,8 +147,12 @@ To generate models from configuration branch showcased in [_Model types_](#confi
 ```bash
 python bt.py -m starc-64bit -s ../examples/symbolic/division-by-zero-3-35.c
 ```
+
+You can also supply `-m` with a special keyword `all` that will try to generate all model types available in the config file.
 ---
 ## Solvers
-Currently two SMT solvers are implemented in BT. [Bitwuzla](https://bitwuzla.github.io/) and [Z3](https://www.microsoft.com/en-us/research/project/z3-3/), both very powerful solvers tested in SMT-COMPs. They were chosen because they implement features that Rotor models use. Array and bit-vector theory and support for incremental solving. Solvers are currently invoked with default arguments. In future development this will be looked into.
+Two SMT solvers are implemented in BT. [Bitwuzla](https://bitwuzla.github.io/) and [Z3](https://www.microsoft.com/en-us/research/project/z3-3/), both very powerful solvers tested in SMT-COMPs. They were chosen because they implement features that Rotor models use. Array and bit-vector theory and support for incremental solving. Solvers are currently invoked with default arguments. In future development this will be looked into.
+
 ## Graphs
-TODO
+When invoked with `-g/--graph`, BT generates analysis graphs for SMT-LIBv2 models in `./graphs/`.  
+*(Other formats like BTOR2 will be supported in future releases.)*
