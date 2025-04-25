@@ -11,8 +11,3 @@ with open(config_file, "r") as file:
 
 model_builder_path = Path(project_root / config["model_builder_path"])
 verbose = False
-
-PIPE = -1
-STDOUT = -2
-DEVNULL = -3
-

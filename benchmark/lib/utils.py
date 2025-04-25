@@ -3,7 +3,7 @@ from .exceptions import (
 )
 import lib.config as cfg
 
-from subprocess import Popen, TimeoutExpired
+from subprocess import Popen, TimeoutExpired, PIPE, STDOUT
 import shlex
 import sys
 import os
@@ -36,7 +36,7 @@ def check_model_builder() -> bool:
 
 
 def execute(command, timeout=200, cwd="."):
-    process = Popen(shlex.split(command), stdout=cfg.PIPE, stderr=cfg.STDOUT, cwd=cwd)
+    process = Popen(shlex.split(command), stdout=PIPE, stderr=STDOUT, cwd=cwd)
 
     timedout = False
 
