@@ -912,25 +912,37 @@ class BV_Fork_Grouping(BV_Grouping):
             self.number_of_input_bits == g2.number_of_input_bits and
             self.inputs == g2.inputs)
 
-    def get_input_values(inputs):
-        input_value = 0
-        input_values = []
-        while inputs != 0:
-            if inputs % 2 == 1:
-                input_values += [input_value]
-            inputs //= 2
-            input_value += 1
-        return input_values
+    def get_input_values(inputs, input_value = 0):
+        assert inputs >= 0
+        if inputs == 0:
+            return []
+        elif inputs == 1:
+            return [input_value]
+        else:
+            number_of_input_bits = math.ceil(math.log2(int(math.log2(inputs)) + 1))
+            assert 0 < number_of_input_bits <= 8
+
+            mid_input = 2**(number_of_input_bits - 1)
+
+            low_inputs = inputs % 2**mid_input
+            low_values = BV_Fork_Grouping.get_input_values(low_inputs, input_value)
+
+            high_inputs = inputs >> mid_input
+
+            if low_inputs == high_inputs:
+                return [low_value + mid_input for low_value in low_values] + low_values
+            else:
+                return BV_Fork_Grouping.get_input_values(high_inputs, input_value + mid_input) + low_values
 
     def get_paths(self, exit_i, index_i = 0):
         assert 1 <= exit_i <= self.number_of_exits
         return [(index_i, self.inputs[exit_i])]
 
-    def least_input(inputs):
+    def lowest_input(inputs):
         assert inputs > 0
         return inputs & ~(inputs - 1)
 
-    def most_input(inputs):
+    def highest_input(inputs):
         assert inputs > 0
         return 2**int(math.log2(inputs))
 
@@ -946,12 +958,12 @@ class BV_Fork_Grouping(BV_Grouping):
             current_inputs = self.inputs[exit]
             assert 0 < current_inputs < 2**2**self.number_of_input_bits - 1
             assert (exit == 1 or
-                BV_Fork_Grouping.least_input(current_inputs) >
-                    BV_Fork_Grouping.least_input(previous_inputs))
+                BV_Fork_Grouping.lowest_input(current_inputs) >
+                    BV_Fork_Grouping.lowest_input(previous_inputs))
             previous_inputs = current_inputs
             assert current_inputs & union == 0
             union |= current_inputs
-        assert 0 < union < 2**2**self.number_of_input_bits
+        assert union == 2**2**self.number_of_input_bits - 1
         return True
 
     def representative(self):
@@ -985,7 +997,7 @@ class BV_Fork_Grouping(BV_Grouping):
             g2_inputs = g2.inputs[g2_exit]
             for g1_exit in g1.inputs:
                 g1_inputs = g1.inputs[g1_exit]
-                while BV_Fork_Grouping.most_input(g2_inputs) < BV_Fork_Grouping.least_input(g1_inputs):
+                while BV_Fork_Grouping.highest_input(g2_inputs) < BV_Fork_Grouping.lowest_input(g1_inputs):
                     # move on to next g2_inputs
                     if g2_exit < g2.number_of_exits:
                         g2_exit += 1
@@ -996,7 +1008,7 @@ class BV_Fork_Grouping(BV_Grouping):
                             g_pair_tuples)
                 next_g2_exit = g2_exit
                 next_g2_inputs = g2_inputs
-                while BV_Fork_Grouping.least_input(next_g2_inputs) <= BV_Fork_Grouping.most_input(g1_inputs):
+                while BV_Fork_Grouping.lowest_input(next_g2_inputs) <= BV_Fork_Grouping.highest_input(g1_inputs):
                     # intersect with all overlapping next_g2_inputs
                     if g1_inputs & next_g2_inputs != 0:
                         g_exit += 1
