@@ -4,15 +4,12 @@ import pytest
 
 def test_generation_workflow(valid_cstar_file, output_dir, run_cli):
     """Test the model generation path"""
-    model_type = "starc-32bit-riscu-smt2"
     result = run_cli(
         [
             "--source",
             str(valid_cstar_file),
             "--output",
             str(output_dir),
-            "--model-type",
-            model_type,
         ]
     )
 
@@ -21,12 +18,8 @@ def test_generation_workflow(valid_cstar_file, output_dir, run_cli):
     assert "Created 1 models" in result.stderr
     assert result.returncode == 0
 
-    # Check that a model was created
-    model_file = get_output_path(valid_cstar_file, model_type, output_dir)
-    assert model_file.exists()
 
-
-def test_output_name(valid_cstar_file, output_dir, run_cli):
+def test_output_name_provided(valid_cstar_file, output_dir, run_cli):
     """Test the model generation path provided a specific output path (not a directory)"""
     output_path = output_dir / "test.smt2"
     result = run_cli(
@@ -43,6 +36,24 @@ def test_output_name(valid_cstar_file, output_dir, run_cli):
     assert result.returncode == 0
     # Check that a model was created
     assert output_path.exists()
+
+
+def test_output_name_not_provided(valid_cstar_file, output_dir, run_cli):
+    model_type = "starc-32bit-riscu-smt2"
+    result = run_cli(["--source", str(valid_cstar_file), "--output", str(output_dir), "--model-type", model_type])
+
+    # Check that a model was created
+    model_file = get_output_path(valid_cstar_file, model_type, output_dir)
+    assert model_file.exists()
+    assert result.returncode == 0
+
+
+def test_invalid_output_directory(valid_cstar_file, run_cli):
+    result = run_cli(
+        ["--source", str(valid_cstar_file), "--output", "./non_existent_directory"]
+    )
+    assert "Parent directory of provided output does not exist" in result.stderr
+    assert result.returncode == 1
 
 
 def test_print_help(run_cli):
@@ -63,7 +74,16 @@ def test_print_help_insufficient_args(run_cli):
 
 def test_all_model_type_keyword(run_cli, valid_cstar_file, output_dir):
     """Test 'all' argument for model types"""
-    result = run_cli(["--source", str(valid_cstar_file), "--output", str(output_dir), "--model-type", "all"])
+    result = run_cli(
+        [
+            "--source",
+            str(valid_cstar_file),
+            "--output",
+            str(output_dir),
+            "--model-type",
+            "all",
+        ]
+    )
 
     assert result.returncode == 0
 
@@ -163,7 +183,16 @@ def test_invalid_solver_with_valid_solver(fake_z3, valid_smt2_file, run_cli):
 @pytest.mark.parametrize("fake_z3", [{"delay": 2}], indirect=True)
 def test_z3_timeout(fake_z3, run_cli, output_dir, valid_smt2_file):
     result = run_cli(
-        ["--load", str(valid_smt2_file), "--output", str(output_dir), "--solver", "z3", "--timeout", "1"]
+        [
+            "--load",
+            str(valid_smt2_file),
+            "--output",
+            str(output_dir),
+            "--solver",
+            "z3",
+            "--timeout",
+            "1",
+        ]
     )
 
     assert "Timeout is set to 1s." in result.stderr
@@ -176,7 +205,16 @@ def test_z3_timeout(fake_z3, run_cli, output_dir, valid_smt2_file):
 @pytest.mark.parametrize("fake_bitwuzla", [{"delay": 2}], indirect=True)
 def test_bitwuzla_timeout(fake_bitwuzla, valid_smt2_file, output_dir, run_cli):
     result = run_cli(
-        ["--load", str(valid_smt2_file), "--output", str(output_dir), "--solver", "bitwuzla", "--timeout", "1"]
+        [
+            "--load",
+            str(valid_smt2_file),
+            "--output",
+            str(output_dir),
+            "--solver",
+            "bitwuzla",
+            "--timeout",
+            "1",
+        ]
     )
 
     assert "Timeout is set to 1s." in result.stderr
@@ -186,7 +224,16 @@ def test_bitwuzla_timeout(fake_bitwuzla, valid_smt2_file, output_dir, run_cli):
 
 
 def test_multiple_solvers(fake_bitwuzla, fake_z3, valid_smt2_file, output_dir, run_cli):
-    result = run_cli(["--load", str(valid_smt2_file), "--output", str(output_dir), "--solver", "bitwuzla,z3"])
+    result = run_cli(
+        [
+            "--load",
+            str(valid_smt2_file),
+            "--output",
+            str(output_dir),
+            "--solver",
+            "bitwuzla,z3",
+        ]
+    )
 
     assert "Used solvers: Bitwuzla,Z3" in result.stdout
     assert result.returncode == 0
