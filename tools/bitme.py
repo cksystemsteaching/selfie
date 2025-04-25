@@ -815,6 +815,14 @@ class BVDD:
 
 class BV_Grouping:
     # generalizing CFLOBDDs to bitvector input variables with up to 8 bits
+    pair_product_cache = {}
+    pair_product_cache_hits = 0
+    pair_product_cache_misses = 0
+
+    reduction_cache = {}
+    reduction_cache_hits = 0
+    reduction_cache_misses = 0
+
     def __init__(self, level, number_of_input_bits, number_of_exits = 1):
         assert level >= 0
         self.level = level
@@ -835,11 +843,50 @@ class BV_Grouping:
         assert self.number_of_exits > 0
         return True
 
+    def is_pair_product_cached(self, g2, inorder = True):
+        if (self, g2, inorder) in BV_Grouping.pair_product_cache:
+            BV_Grouping.pair_product_cache_hits += 1
+            return True
+        else:
+            BV_Grouping.pair_product_cache_misses += 1
+            return False
+
+    def get_cached_pair_product(self, g2, inorder = True):
+        assert self.is_pair_product_cached(g2, inorder)
+        return BV_Grouping.pair_product_cache[(self, g2, inorder)]
+
+    def cache_pair_product(self, g2, pair_product, pt_ans, inorder = True):
+        if (self, g2, inorder) not in BV_Grouping.pair_product_cache:
+            BV_Grouping.pair_product_cache[(self, g2, inorder)] = (pair_product, pt_ans)
+        return BV_Grouping.pair_product_cache[(self, g2, inorder)]
+
+    def reduction_hash(reduction_tuple):
+        return hash((frozenset(reduction_tuple), tuple(reduction_tuple.values())))
+
+    def is_reduction_cached(self, reduction_tuple):
+        if (self, BV_Grouping.reduction_hash(reduction_tuple)) in BV_Grouping.reduction_cache:
+            BV_Grouping.reduction_cache_hits += 1
+            return True
+        else:
+            BV_Grouping.reduction_cache_misses += 1
+            return False
+
+    def get_cached_reduction(self, reduction_tuple):
+        assert self.is_reduction_cached(reduction_tuple)
+        return BV_Grouping.reduction_cache[(self, BV_Grouping.reduction_hash(reduction_tuple))]
+
+    def cache_reduction(self, reduction_tuple, reduction):
+        reduction_hash = BV_Grouping.reduction_hash(reduction_tuple)
+        if (self, reduction_hash) not in BV_Grouping.reduction_cache:
+            BV_Grouping.reduction_cache[(self, reduction_hash)] = reduction
+        return BV_Grouping.reduction_cache[(self, reduction_hash)]
+
     def is_no_distinction_proto(self):
         return isinstance(self, BV_Dont_Care_Grouping) or isinstance(self, BV_No_Distinction_Proto)
 
     def reduce(self, reduction_tuple):
         assert len(reduction_tuple) == self.number_of_exits
+
         if reduction_tuple == dict(enumerate(range(1, len(reduction_tuple) + 1), 1)):
             return 1, self
         else:
@@ -875,11 +922,18 @@ class BV_Dont_Care_Grouping(BV_Grouping):
         return BV_Dont_Care_Grouping.representatives[number_of_input_bits]
 
     def pair_product(self, g2, inorder = True):
-        assert self.number_of_input_bits == g2.number_of_input_bits
+        g1 = self
+
+        if g1.is_pair_product_cached(g2, inorder):
+            return g1.get_cached_pair_product(g2, inorder)
+
+        assert g1.number_of_input_bits == g2.number_of_input_bits
         if inorder:
-            return g2, dict([(k, (1, k)) for k in range(1, g2.number_of_exits + 1)])
+            return g1.cache_pair_product(g2,
+                g2, dict([(k, (1, k)) for k in range(1, g2.number_of_exits + 1)]), True)
         else:
-            return g2, dict([(k, (k, 1)) for k in range(1, g2.number_of_exits + 1)])
+            return g1.cache_pair_product(g2,
+                g2, dict([(k, (k, 1)) for k in range(1, g2.number_of_exits + 1)]), False)
 
     def reduce(self, reduction_tuple):
         assert reduction_tuple == {1:1}
@@ -887,6 +941,8 @@ class BV_Dont_Care_Grouping(BV_Grouping):
 
 class BV_Fork_Grouping(BV_Grouping):
     representatives = {}
+    representatives_hits = 0
+    representatives_misses = 0
 
     def __init__(self, inputs, number_of_input_bits):
         assert 0 < len(inputs) <= 2**number_of_input_bits
@@ -904,7 +960,8 @@ class BV_Fork_Grouping(BV_Grouping):
     def __hash__(self):
         return hash((self.number_of_exits,
             self.number_of_input_bits,
-            tuple(self.inputs.values())))
+            frozenset(self.inputs),
+            frozenset(self.inputs.values())))
 
     def __eq__(self, g2):
         return (isinstance(g2, BV_Fork_Grouping) and
@@ -919,8 +976,8 @@ class BV_Fork_Grouping(BV_Grouping):
         elif inputs == 1:
             return [input_value]
         else:
-            number_of_input_bits = math.ceil(math.log2(int(math.log2(inputs)) + 1))
-            assert 0 < number_of_input_bits <= 8
+            number_of_input_bits = math.ceil(math.log2(inputs.bit_length()))
+            assert 0 < number_of_input_bits <= 8, f"number_of_input_bits {number_of_input_bits} out of range with {inputs}"
 
             mid_input = 2**(number_of_input_bits - 1)
 
@@ -967,7 +1024,10 @@ class BV_Fork_Grouping(BV_Grouping):
         return True
 
     def representative(self):
-        if self not in BV_Fork_Grouping.representatives:
+        if self in BV_Fork_Grouping.representatives:
+            BV_Fork_Grouping.representatives_hits += 1
+        else:
+            BV_Fork_Grouping.representatives_misses += 1
             assert self.is_consistent()
             BV_Fork_Grouping.representatives[self] = self
         return BV_Fork_Grouping.representatives[self]
@@ -990,11 +1050,16 @@ class BV_Fork_Grouping(BV_Grouping):
             return g2.pair_product(g1, False)
         else:
             assert isinstance(g2, BV_Fork_Grouping)
+
+            if g1.is_pair_product_cached(g2):
+                return g1.get_cached_pair_product(g2)
+
             g_exit = 0
             g_inputs = {}
             g_pair_tuples = {}
             g2_exit = 1
             g2_inputs = g2.inputs[g2_exit]
+
             for g1_exit in g1.inputs:
                 g1_inputs = g1.inputs[g1_exit]
                 while BV_Fork_Grouping.highest_input(g2_inputs) < BV_Fork_Grouping.lowest_input(g1_inputs):
@@ -1003,9 +1068,10 @@ class BV_Fork_Grouping(BV_Grouping):
                         g2_exit += 1
                         g2_inputs = g2.inputs[g2_exit]
                     else:
-                        return BV_Fork_Grouping.fork_if_non_empty(g_inputs,
-                            g1.number_of_input_bits,
-                            g_pair_tuples)
+                        return g1.cache_pair_product(g2,
+                            *BV_Fork_Grouping.fork_if_non_empty(g_inputs,
+                                g1.number_of_input_bits,
+                                g_pair_tuples))
                 next_g2_exit = g2_exit
                 next_g2_inputs = g2_inputs
                 while BV_Fork_Grouping.lowest_input(next_g2_inputs) <= BV_Fork_Grouping.highest_input(g1_inputs):
@@ -1019,17 +1085,23 @@ class BV_Fork_Grouping(BV_Grouping):
                         next_g2_inputs = g2.inputs[next_g2_exit]
                     else:
                         break
-            return BV_Fork_Grouping.fork_if_non_empty(g_inputs,
-                g1.number_of_input_bits,
-                g_pair_tuples)
+
+            return g1.cache_pair_product(g2,
+                *BV_Fork_Grouping.fork_if_non_empty(g_inputs,
+                    g1.number_of_input_bits,
+                    g_pair_tuples))
 
     def reduce(self, reduction_tuple):
         reduction_length, reduction = super().reduce(reduction_tuple)
         if reduction_length == 1:
             return reduction
         else:
+            if self.is_reduction_cached(reduction_tuple):
+                return self.get_cached_reduction(reduction_tuple)
+
             g_exits = {}
             g_inputs = {}
+
             for exit in self.inputs:
                 reduced_to_exit = reduction_tuple[exit]
                 assert reduced_to_exit <= exit
@@ -1041,10 +1113,14 @@ class BV_Fork_Grouping(BV_Grouping):
                     new_exit = g_exits[reduced_to_exit]
                     assert g_inputs[new_exit] & self.inputs[exit] == 0
                     g_inputs[new_exit] |= self.inputs[exit]
-            return BV_Fork_Grouping(g_inputs, self.number_of_input_bits).representative()
+
+            return self.cache_reduction(reduction_tuple,
+                BV_Fork_Grouping(g_inputs, self.number_of_input_bits).representative())
 
 class BV_Internal_Grouping(BV_Grouping):
     representatives = {}
+    representatives_hits = 0
+    representatives_misses = 0
 
     def __init__(self, level, number_of_input_bits, number_of_exits = 1):
         assert level > 0
@@ -1066,6 +1142,30 @@ class BV_Internal_Grouping(BV_Grouping):
             indentation + f"n_of_b: {self.number_of_b_connections}\n" +
             indentation + f"b_c: {self.b_connections}\n" +
             indentation + f"b_rt: {self.b_return_tuples}")
+
+    def __hash__(self):
+        return hash((self.level,
+            self.number_of_input_bits,
+            self.number_of_exits,
+            self.a_connection,
+            frozenset(self.a_return_tuple),
+            frozenset(self.a_return_tuple.values()),
+            self.number_of_b_connections,
+            frozenset(self.b_connections),
+            frozenset(self.b_connections.values()),
+            frozenset(self.b_return_tuples),
+            frozenset([(frozenset(rt), frozenset(rt.values())) for rt in self.b_return_tuples.values()])))
+
+    def __eq__(self, g2):
+        return (isinstance(g2, BV_Internal_Grouping) and
+            self.level == g2.level and
+            self.number_of_input_bits == g2.number_of_input_bits and
+            self.number_of_exits == g2.number_of_exits and
+            self.a_connection == g2.a_connection and
+            self.a_return_tuple == g2.a_return_tuple and
+            self.number_of_b_connections == g2.number_of_b_connections and
+            self.b_connections == g2.b_connections and
+            self.b_return_tuples == g2.b_return_tuples)
 
     def get_paths(self, exit_i, index_i = 0):
         solutions = []
@@ -1133,7 +1233,10 @@ class BV_Internal_Grouping(BV_Grouping):
 
     def representative(self):
         self.pre_compute_number_of_paths_and_solutions_per_exit()
-        if self not in BV_Internal_Grouping.representatives:
+        if self in BV_Internal_Grouping.representatives:
+            BV_Internal_Grouping.representatives_hits += 1
+        else:
+            BV_Internal_Grouping.representatives_misses += 1
             assert self.is_consistent()
             BV_Internal_Grouping.representatives[self] = self
         return BV_Internal_Grouping.representatives[self]
@@ -1197,6 +1300,9 @@ class BV_Internal_Grouping(BV_Grouping):
         else:
             assert isinstance(g2, BV_Internal_Grouping)
 
+            if g1.is_pair_product_cached(g2):
+                return g1.get_cached_pair_product(g2)
+
             g_a, pt_a = g1.a_connection.pair_product(g2.a_connection)
 
             g = BV_Internal_Grouping(g1.level, g1.number_of_input_bits, 0)
@@ -1227,7 +1333,7 @@ class BV_Internal_Grouping(BV_Grouping):
                         pt_ans[len(pt_ans) + 1] = (c1, c2)
                         pt_ans_inv[(c1, c2)] = len(pt_ans)
 
-            return g.representative(), pt_ans
+            return g1.cache_pair_product(g2, g.representative(), pt_ans)
 
     def insert_b_connection(self, h, return_tuple):
         assert isinstance(h, BV_Grouping)
@@ -1247,9 +1353,11 @@ class BV_Internal_Grouping(BV_Grouping):
             return reduction
         else:
             g = self
-            g_prime = BV_Internal_Grouping(g.level,
-                g.number_of_input_bits,
-                reduction_length)
+
+            if g.is_reduction_cached(reduction_tuple):
+                return g.get_cached_reduction(reduction_tuple)
+
+            g_prime = BV_Internal_Grouping(g.level, g.number_of_input_bits, reduction_length)
 
             reduction_tuple_a = {}
 
@@ -1257,7 +1365,7 @@ class BV_Internal_Grouping(BV_Grouping):
                 deduced_return_classes = dict(enumerate([reduction_tuple[v]
                     for v in g.b_return_tuples[i].values()], 1))
 
-                induced_return_tuple, induced_reduction_tuple = CFLOBVDD.collape_classes_leftmost(deduced_return_classes)
+                induced_return_tuple, induced_reduction_tuple = CFLOBVDD.collapse_classes_leftmost(deduced_return_classes)
 
                 h = g.b_connections[i].reduce(induced_reduction_tuple)
 
@@ -1265,15 +1373,17 @@ class BV_Internal_Grouping(BV_Grouping):
 
                 reduction_tuple_a[len(reduction_tuple_a) + 1] = position
 
-            induced_return_tuple, induced_reduction_tuple = CFLOBVDD.collape_classes_leftmost(reduction_tuple_a)
+            induced_return_tuple, induced_reduction_tuple = CFLOBVDD.collapse_classes_leftmost(reduction_tuple_a)
 
             g_prime.a_connection = g.a_connection.reduce(induced_reduction_tuple)
             g_prime.a_return_tuple = induced_return_tuple
 
-            return g_prime.representative()
+            return g.cache_reduction(reduction_tuple, g_prime.representative())
 
 class BV_No_Distinction_Proto(BV_Internal_Grouping):
     representatives = {}
+    representatives_hits = 0
+    representatives_misses = 0
 
     def __init__(self, level, number_of_input_bits):
         assert level > 0
@@ -1283,8 +1393,11 @@ class BV_No_Distinction_Proto(BV_Internal_Grouping):
         if level == 0:
             return BV_Dont_Care_Grouping.representative(number_of_input_bits)
         elif (level, number_of_input_bits) in BV_No_Distinction_Proto.representatives:
+            BV_No_Distinction_Proto.representatives_hits += 1
             return BV_No_Distinction_Proto.representatives[(level, number_of_input_bits)]
         else:
+            BV_No_Distinction_Proto.representatives_misses += 1
+
             g = BV_No_Distinction_Proto(level, number_of_input_bits)
 
             g.a_connection = BV_No_Distinction_Proto.representative(level - 1,
@@ -1301,9 +1414,10 @@ class BV_No_Distinction_Proto(BV_Internal_Grouping):
             return g
 
     def pair_product(self, g2, inorder = True):
-        assert self.level == g2.level
-        assert self.number_of_input_bits == g2.number_of_input_bits
-        return BV_Dont_Care_Grouping.pair_product(self, g2, inorder)
+        g1 = self
+        assert g1.level == g2.level
+        assert g1.number_of_input_bits == g2.number_of_input_bits
+        return BV_Dont_Care_Grouping.pair_product(g1, g2, inorder)
 
     def reduce(self, reduction_tuple):
         assert reduction_tuple == {1:1}
@@ -1313,6 +1427,10 @@ class CFLOBVDD:
     max_level = 0
 
     representatives = {}
+
+    collapsed_equiv_classes_cache = {}
+    collapsed_equiv_classes_cache_hits = 0
+    collapsed_equiv_classes_cache_misses = 0
 
     def __init__(self, grouping, outputs, number_of_input_bits, number_of_output_bits):
         self.grouping = grouping
@@ -1326,6 +1444,26 @@ class CFLOBVDD:
             f"o: {self.outputs}\n" +
             f"n_of_i_b: {self.number_of_input_bits}\n" +
             f"n_of_o_b: {self.number_of_output_bits}")
+
+    def print_profile():
+        print(f"BV_Fork_Grouping.representatives: {len(BV_Fork_Grouping.representatives)}")
+        print(f"BV_Fork_Grouping.representatives_hits: {BV_Fork_Grouping.representatives_hits}")
+        print(f"BV_Fork_Grouping.representatives_misses: {BV_Fork_Grouping.representatives_misses}")
+        print(f"BV_Internal_Grouping.representatives: {len(BV_Internal_Grouping.representatives)}")
+        print(f"BV_Internal_Grouping.representatives_hits: {BV_Internal_Grouping.representatives_hits}")
+        print(f"BV_Internal_Grouping.representatives_misses: {BV_Internal_Grouping.representatives_misses}")
+        print(f"BV_No_Distinction_Proto.representatives: {len(BV_No_Distinction_Proto.representatives)}")
+        print(f"BV_No_Distinction_Proto.representatives_hits: {BV_No_Distinction_Proto.representatives_hits}")
+        print(f"BV_No_Distinction_Proto.representatives_misses: {BV_No_Distinction_Proto.representatives_misses}")
+        print(f"BV_Grouping.pair_product_cache: {len(BV_Grouping.pair_product_cache)}")
+        print(f"BV_Grouping.pair_product_cache_hits: {BV_Grouping.pair_product_cache_hits}")
+        print(f"BV_Grouping.pair_product_cache_misses: {BV_Grouping.pair_product_cache_misses}")
+        print(f"BV_Grouping.reduction_cache: {len(BV_Grouping.reduction_cache)}")
+        print(f"BV_Grouping.reduction_cache_hits: {BV_Grouping.reduction_cache_hits}")
+        print(f"BV_Grouping.reduction_cache_misses: {BV_Grouping.reduction_cache_misses}")
+        print(f"CFLOBVDD.collapsed_equiv_classes_cache: {len(CFLOBVDD.collapsed_equiv_classes_cache)}")
+        print(f"CFLOBVDD.collapsed_equiv_classes_cache_hits: {CFLOBVDD.collapsed_equiv_classes_cache_hits}")
+        print(f"CFLOBVDD.collapsed_equiv_classes_cache_misses: {CFLOBVDD.collapsed_equiv_classes_cache_misses}")
 
     def number_of_paths(self):
         return self.grouping.number_of_paths()
@@ -1456,7 +1594,31 @@ class CFLOBVDD:
 
         return CFLOBVDD.projection(level, input_i, number_of_input_bits, 8)
 
-    def collape_classes_leftmost(equiv_classes):
+    def equiv_classes_hash(equiv_classes):
+        return hash((frozenset(equiv_classes), tuple(equiv_classes.values())))
+
+    def are_collapsed_classes_cached(equiv_classes):
+        if CFLOBVDD.equiv_classes_hash(equiv_classes) in CFLOBVDD.collapsed_equiv_classes_cache:
+            CFLOBVDD.collapsed_equiv_classes_cache_hits += 1
+            return True
+        else:
+            CFLOBVDD.collapsed_equiv_classes_cache_misses += 1
+            return False
+
+    def get_collapsed_classes(equiv_classes):
+        assert CFLOBVDD.are_collapsed_classes_cached(equiv_classes)
+        return CFLOBVDD.collapsed_equiv_classes_cache[CFLOBVDD.equiv_classes_hash(equiv_classes)]
+
+    def cache_collapsed_classes(equiv_classes, projected_classes, renumbered_classes):
+        equiv_classes_hash = CFLOBVDD.equiv_classes_hash(equiv_classes)
+        if equiv_classes_hash not in CFLOBVDD.collapsed_equiv_classes_cache:
+            CFLOBVDD.collapsed_equiv_classes_cache[equiv_classes_hash] = (projected_classes, renumbered_classes)
+        return CFLOBVDD.collapsed_equiv_classes_cache[equiv_classes_hash]
+
+    def collapse_classes_leftmost(equiv_classes):
+        if CFLOBVDD.are_collapsed_classes_cached(equiv_classes):
+            return CFLOBVDD.get_collapsed_classes(equiv_classes)
+
         projected_classes = dict(enumerate([equiv_classes[i]
             for i in equiv_classes if i == min([j for j in equiv_classes
                 if equiv_classes[j] == equiv_classes[i]])], 1))
@@ -1464,8 +1626,9 @@ class CFLOBVDD:
         order_of_projected_classes = dict([(projected_classes[i], i)
             for i in projected_classes])
 
-        return projected_classes, dict(enumerate([order_of_projected_classes[v]
-            for v in equiv_classes.values()], 1))
+        return CFLOBVDD.cache_collapsed_classes(equiv_classes,
+            projected_classes,
+            dict(enumerate([order_of_projected_classes[v] for v in equiv_classes.values()], 1)))
 
     def binary_apply_and_reduce(self, n2, op, number_of_output_bits):
         assert isinstance(n2, CFLOBVDD)
@@ -1477,7 +1640,7 @@ class CFLOBVDD:
         deduced_value_tuple = dict([(i, op(n1.outputs[pt[i][0]], n2.outputs[pt[i][1]]))
             for i in pt])
 
-        induced_value_tuple, induced_return_tuple = CFLOBVDD.collape_classes_leftmost(deduced_value_tuple)
+        induced_value_tuple, induced_return_tuple = CFLOBVDD.collapse_classes_leftmost(deduced_value_tuple)
 
         return CFLOBVDD.representative(g.reduce(induced_return_tuple),
             induced_value_tuple,
