@@ -1,3 +1,11 @@
+"""
+Predefined color palettes for consistent visualization across BT's graphing tools.
+All colors are optimized for readability and colorblind accessibility.
+
+Note: This is an internal utility class used exclusively by the grapher module.
+"""
+
+
 class ColorMap:
     # Primary colors
     PRIMARY = {

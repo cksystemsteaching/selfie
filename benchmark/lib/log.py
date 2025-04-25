@@ -1,3 +1,15 @@
+"""
+Custom logging setup for BT with:
+- Verbose info level (between DEBUG and INFO)
+- Separate loggers for CLI and file output
+- Clean handler management to prevent duplicates
+
+Usage:
+    configure_logging(verbosity=True, log_file="debug.log")
+    logger = logging.getLogger("bt-cli")
+    logger.verbose_info("Detailed diagnostic message")
+"""
+
 from pathlib import Path
 from typing import Union
 import logging

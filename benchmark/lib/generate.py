@@ -1,3 +1,15 @@
+"""
+Core model generation pipeline for BT. Handles:
+- Loading existing models (SMT2/BTOR2)
+- Generating new models from C/C* sources
+- Compilation pipeline for non-C* languages
+
+The workflow:
+1. `load_models()` - For benchmarking existing models
+2. `create_models()` - For generating new models from source files
+3. Processor classes - Handle format-specific generation (C* vs compiled languages)
+"""
+
 from lib.utils import execute, is_tool_available, check_model_builder
 from lib.model_generation_config import ModelGenerationConfig, ModelLoadConfig
 from lib.model_type import get_all_model_types
@@ -91,6 +103,7 @@ class BaseSourceProcessor:
 
 
 class CStarSourceProcessor(BaseSourceProcessor):
+    """Direct RISC-V generation using Selfie/Rotor (no compilation needed)."""
     def __init__(self, model_config: ModelGenerationConfig):
         super().__init__(model_config)
 
@@ -120,6 +133,12 @@ class CStarSourceProcessor(BaseSourceProcessor):
 
 
 class GenericSourceProcessor(BaseSourceProcessor):
+    """Handles compiled languages via GCC -> RISC-V -> Rotor pipeline.
+    
+    Additional steps:
+    1. check_compiler() - Verify toolchain availability
+    2. compile_source() - Compile to RISC-V machine code
+    """
     def __init__(self, model_config: ModelGenerationConfig):
         super().__init__(model_config)
 

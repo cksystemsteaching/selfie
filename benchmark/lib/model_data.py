@@ -1,3 +1,12 @@
+"""
+Structured model metadata containers with dictionary access (via DictMixin).
+
+Hierarchy:
+1. Core Data (Basic/Generation/Rotor)
+2. Format-Specific Analysis (SMT2/BTOR2 parsing stats)
+3. Solver Results (Individual runs and aggregates)
+"""
+
 from lib.dict_mixin import DictMixin
 
 from dataclasses import dataclass, fields, field
@@ -6,6 +15,7 @@ from typing import Optional, List, List, Tuple
 
 @dataclass
 class BasicModelData(DictMixin):
+    """Essential model identifiers (name, path, format)."""
     name: Optional[str] = None
     output_path: Optional[str] = None
     format: Optional[str] = None
@@ -21,6 +31,8 @@ class BasicModelData(DictMixin):
 
 @dataclass
 class RotorModelData(DictMixin):
+    """Rotor-specific parameters (memory layout, flags, etc.).
+    The parameters need to be parsed from a model."""
     source_file: Optional[str] = None
     kmin: Optional[int] = None
     kmax: Optional[int] = None
@@ -39,6 +51,7 @@ class RotorModelData(DictMixin):
 
 @dataclass
 class GenerationModelData(DictMixin):
+    """Build process details (commands used for compilation/model generation)."""
     model_type: str
     compilation_cmd: str
     model_generation_cmd: str
@@ -54,6 +67,12 @@ class GenerationModelData(DictMixin):
 
 @dataclass
 class ParsedSMT2ModelData(DictMixin):
+    """
+    SMT2 file analysis results with:
+    - Line statistics (code/comments/blanks)
+    - Command counts (assertions/checks/declarations)
+    - Derived metrics (e.g., assertions_per_check_sat)
+    """
     # lines
     total_lines: int = 0
     comment_lines: int = 0
@@ -95,6 +114,8 @@ class ParsedBTOR2ModelData(DictMixin):
 
 @dataclass
 class SolverRunData(DictMixin):
+    """Single solver execution results (timing, output, success state).
+    - is owned by a Model"""
     solver_used: str
     solver_cmd: str
     elapsed_time: float
@@ -113,6 +134,8 @@ class SolverRunData(DictMixin):
 
 @dataclass
 class SolverData(DictMixin):
+    """Aggregated solver performance across multiple runs.
+    - is owned by a Solver"""
     runs: int = 0
     solved: List["Model"] = field(default_factory=list)
     timedout: List["Model"] = field(default_factory=list)
@@ -124,6 +147,14 @@ class SolverData(DictMixin):
 
 @dataclass
 class SMT2ModelData(DictMixin):
+    """
+    Complete SMT2 model representation:
+    - basic: Core identifiers
+    - generation: Build metadata (optional)
+    - parsed: Structural analysis  
+    - solver_runs: Benchmark history
+    - best_run: Top-performing result
+    """
     basic: BasicModelData
     # Model can also be loaded, thus missing the generation data
     generation: Optional[GenerationModelData]

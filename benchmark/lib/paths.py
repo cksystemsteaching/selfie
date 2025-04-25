@@ -1,3 +1,7 @@
+"""
+Wrappers around pathlib.Path class that provide additional validation.
+"""
+
 import lib.config as cfg
 import lib.exceptions as ex
 

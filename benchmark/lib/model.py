@@ -1,3 +1,12 @@
+"""
+Model class hierarchy and factory for handling SMT2/BTOR2 models.
+
+Key Components:
+1. Model: Base class with common functionality
+2. SMT2Model/BTORModel: Format-specific implementations
+3. model_factory: Creation interface that validates formats
+"""
+
 from lib.model_parser import SMT2ModelParser
 from lib.model_generation_config import ModelBaseConfig, ModelGenerationConfig
 from lib.presenter import SMT2ModelPresenter, BTOR2ModelPresenter
@@ -12,6 +21,8 @@ import lib.config as cfg
 
 
 class Model:
+    """Base model class providing common functionality."""
+
     def __init__(self, model_config: ModelBaseConfig, data, presenter):
         # At this point output must be generated already
         if not model_config.get_model_path().exists():
@@ -47,6 +58,7 @@ class Model:
 
 
 class SMT2Model(Model):
+    """SMT-LIBv2 model with parsing and visualization support."""
 
     def __init__(self, model_config: ModelBaseConfig):
         data = SMT2ModelData(
@@ -63,7 +75,9 @@ class SMT2Model(Model):
         super().__init__(model_config, data, SMT2ModelPresenter(self))
 
 
-class BTORModel(Model):
+class BTOR2Model(Model):
+    """BTOR2 model placeholder (future implementation)."""
+
     def __init__(self, model_config: ModelBaseConfig):
         data = BTOR2ModelData(
             basic=BasicModelData.generate(model_config),
@@ -81,13 +95,25 @@ class BTORModel(Model):
     # TODO
 
 
-allowed_models = {"smt2": SMT2Model, "btor2": BTORModel}
+allowed_models = {"smt2": SMT2Model, "btor2": BTOR2Model}
 
 # Assert that cfg.config["allowed_languages"] contains exactly the same keys as allowed_models
 assert set(cfg.config["allowed_formats"]) == set(allowed_models.keys())
 
 
 def model_factory(model_config: ModelBaseConfig):
+    """
+    Creates the appropriate Model subclass based on format.
+    
+    Args:
+        model_config: Configuration specifying model type and location
+        
+    Returns:
+        Initialized Model instance
+        
+    Raises:
+        ValueError: For unsupported model formats
+    """
     format_name = model_config.format
     if format_name not in allowed_models:
         raise ValueError(

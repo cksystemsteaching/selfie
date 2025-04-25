@@ -1,3 +1,16 @@
+"""
+Model visualization system with:
+- Format-specific graphing (SMT2/BTOR2)
+- Professional styling and layouts
+- Statistical analysis integration
+
+Hierarchy:
+1. GrapherWrapper - Distributes models and coordinates output
+2. ModelGrapher (ABC) - Base class with shared utilities
+3. SMT2ModelGrapher - Implements SMT2-specific visualizations
+4. BTOR2ModelGrapher - Placeholder for future BTOR2 support
+"""
+
 import lib.config as cfg
 from lib.exceptions import ConfigFormatError
 from lib.color_map import ColorMap
@@ -9,6 +22,13 @@ import logging
 
 
 class GrapherWrapper:
+    """Orchestrates model distribution and graph generation.
+    
+    Key Features:
+    - Validates model formats against config
+    - Creates format-specific output directories
+    - Delegates to specialized graphers
+    """
     def __init__(self, output_path, models):
         self.output_path = output_path if output_path.is_dir() else output_path.parent()
         self.models = models  # Store models as instance variable
@@ -53,7 +73,11 @@ class GrapherWrapper:
 
 
 class ModelGrapher(ABC):
-    """Abstract base class for model graphers with multi-figure support"""
+    """Abstract base class providing:
+    - Consistent styling (colors, fonts, grids)
+    - Multi-figure generation pipeline
+    - Standardized saving/display methods
+    """
 
     def __init__(self):
         self.models = []
@@ -446,6 +470,7 @@ class SMT2ModelGrapher(ModelGrapher):
 
 
 class BTOR2ModelGrapher(ModelGrapher):
+    """Placeholder for future BTOR2 visualization support."""
     def __init__(self):
         super().__init__()
 

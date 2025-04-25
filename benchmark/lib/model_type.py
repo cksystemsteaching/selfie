@@ -1,3 +1,15 @@
+"""
+Model type configuration system that handles:
+- Model type definitions from config.yml
+- Command template resolution
+- Format validation
+
+Key Classes:
+1. ModelType: User-facing interface for model specifications
+2. ModelConfigParser: Validates and extracts values from config file - specified my model type
+3. get_all_model_types(): Discovers available model types
+"""
+
 import lib.config as cfg
 from lib.exceptions import ParsingError, ConfigFormatError
 
@@ -10,6 +22,7 @@ logger = logging.getLogger("bt.model_type")
 
 
 class ModelType:
+    """Represents a configured model type with its generation commands."""
     def __init__(self, model_base: str):
         self.model_base = model_base
         self.model_type_bases = self.model_base.split("-")
@@ -17,14 +30,6 @@ class ModelType:
 
     def get_model_type_bases(self):
         return self.model_type_bases
-
-    def get_model_output_spec(self):
-        """
-        Return a transformed model base that is appropriate to use
-        as a part of output file name to further specify it.
-        This is used if no specific output name is passed as an argument.
-        """
-        return "_" + self.model_type_bases[:-1].join("_") + "." + self.get_format()
 
     def get_format(self):
         return self.parser.parse_format()
@@ -40,6 +45,7 @@ class ModelType:
 
 
 class ModelConfigParser:
+    """Validates and extracts values from model type configurations."""
     def __init__(self, model_type_bases: List[str]):
         self.top_level = cfg.config["models"]
         self.model_type_bases = model_type_bases

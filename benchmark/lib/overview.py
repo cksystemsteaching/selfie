@@ -1,3 +1,11 @@
+"""
+Overview classes from the run pipeline of the whole BT run. 
+
+Key Components:
+1. BTOverview: Hold the most important and non-specific info from the run
+2. SMT2Overview: Holds and provides SMT-LIBv2 model specific info from the run
+"""
+
 from lib.presenter import BTRunPresenter
 from lib.exceptions import UnsupportedModelException
 import lib.config as cfg

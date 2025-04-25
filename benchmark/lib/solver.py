@@ -1,3 +1,7 @@
+"""
+Solver classes. Currently supported solver running from CLI (Bitwuzla, Z3) and as Python libraries (Bitwuzla-SDK).
+"""
+
 from lib.model import Model
 from lib.exceptions import UnsupportedModelException, BTValueError
 from lib.utils import is_tool_available
@@ -32,7 +36,7 @@ class BaseSolver:
         pass
 
 
-class BaseSDKSolver(BaseSolver):
+class BasePySolver(BaseSolver):
     def __init__(self):
         super().__init__()
 
@@ -252,7 +256,7 @@ class BitwuzlaSolver(BaseCLISolver):
         return "Bitwuzla"
 
 
-class BitwuzlaSDKSolver(BaseSDKSolver):
+class PyBitwuzlaSolver(BasePySolver):
     def __init__(self):
         super().__init__()
         self.available = self.check_solver()
@@ -402,7 +406,7 @@ class BitwuzlaSDKSolver(BaseSDKSolver):
 available_solvers = {
     "z3": Z3Solver(),
     "bitwuzla": BitwuzlaSolver(),
-    "bitwuzla-sdk": BitwuzlaSDKSolver(),
+    "bitwuzla-sdk": PyBitwuzlaSolver(),
 }
 
 

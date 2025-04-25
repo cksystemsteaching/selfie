@@ -1,11 +1,28 @@
+"""
+Custom exception hierarchy for BT with automatic logging and rich context.
+
+All exceptions:
+1. Automatically log with context (via BTError._auto_log)
+2. Preserve structured problem details (in .context)
+3. Inherit from BTError for consistent error handling
+
+Example:
+    raise FileValidationError("Invalid SMT format", path=model_file)
+"""
+
 import lib.config as cfg
 
-import logging
 from pathlib import Path
+import logging
 
 
 class BTError(Exception):
-    """Base class for all SMT tool exceptions"""
+    """Root exception that all BT errors inherit from.
+
+    Args:
+        message: Human-readable error description
+        context: Additional debugging details (automatically logged)
+    """
 
     def __init__(self, message: str, context: dict = None):
         super().__init__(message)
@@ -38,8 +55,6 @@ class BTValueError(BTError):
 
 
 class FileValidationError(BTError):
-    """Automatically logs file validation errors"""
-
     def __init__(self, message: str, path: Path, **kwargs):
         super().__init__(
             message, {"path": str(path), "resolved_path": str(path.resolve()), **kwargs}

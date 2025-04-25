@@ -2,14 +2,21 @@ from dataclasses import asdict
 from typing import Any, Dict
 import json
 
-import threading
-from dataclasses import asdict
-import json
-from typing import Dict, Any
-
 
 class DictMixin:
-    """Enables dictionary access"""
+    """
+    Mixin class that provides dictionary-like access to dataclass attributes.
+    Enables conversion to dict and pretty-printing while maintaining type safety.
+
+    Typical usage:
+        @dataclass
+        class MyData(DictMixin):
+            field: str
+
+        data = MyData("value")
+        data["field"]  # Dictionary access
+        data.to_dict()  # Convert to plain dict
+    """
 
     def _ensure_initialized(self):
         pass

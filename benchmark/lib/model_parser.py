@@ -1,3 +1,12 @@
+"""
+SMT2/BTOR model parsers that extract structural metrics and validate basic syntax - the validation is really primitive and fragile.
+
+Key Features:
+- SMT2ModelParser: Analyzes command distribution, line types, and Rotor metadata
+- BTORModelParser: Placeholder for future BTOR format support
+- Strict validation against SMT-LIBv2 specifications
+"""
+
 from lib.paths import OutputPath
 from lib.rotor_parser import SMT2RotorParser
 from lib.model_data import ParsedSMT2ModelData
@@ -8,6 +17,7 @@ import re
 
 
 class ModelParser:
+    """Abstract base class for model format parsers."""
     def __init__(self, model_path: OutputPath):
         self.model_path = model_path
 
@@ -21,6 +31,7 @@ class ModelParser:
 
 
 class SMT2ModelParser(ModelParser):
+    """Parses SMT-LIBv2 files (with Rotor-specific extensions for Rotor generated models)"""
     def __init__(self, model_path: OutputPath):
         super().__init__(model_path)
         self.rotor_header: "RotorModelData" = None
@@ -102,6 +113,7 @@ class SMT2ModelParser(ModelParser):
 
 
 class BTORModelParser(ModelParser):
+    """Placeholder for future BTOR format parsing."""
     def __init__(self, output_path: OutputPath):
         super().__init__(output_path)
 

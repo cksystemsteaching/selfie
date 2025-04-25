@@ -1,3 +1,7 @@
+"""
+Presenting information stored in data classes throughout the run to the user.
+"""
+
 from abc import ABC, abstractmethod
 from pathlib import Path
 import logging
@@ -15,7 +19,7 @@ class BasePresenter(ABC):
         output = self._generate_output(verbose)
         print(output)
         # Also logs into a log file
-        logging.getLogger("bt-file.presenter").log(output)
+        logging.getLogger("bt-file.presenter").info(output)
 
     @abstractmethod
     def _generate_plain(self) -> str:

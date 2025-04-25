@@ -1,3 +1,15 @@
+"""
+Model configuration containers that handle:
+- Path resolution for generated/loaded models
+- Format-specific command generation
+- Output naming conventions
+
+Key Classes:
+1. ModelBaseConfig: Core path/format handling
+2. ModelGenerationConfig: Build process setup
+3. ModelLoadConfig: Existing model loader
+"""
+
 from lib.model_type import ModelType
 from lib.paths import SourcePath, OutputPath
 
@@ -12,6 +24,17 @@ class ModelBaseConfig:
 
 
 class ModelGenerationConfig(ModelBaseConfig):
+    """Complete model generation specification.
+    
+    Args:
+        source_path: Source file to process
+        model_type: ModelType defining build commands
+        output_path: Base output directory
+        
+    Automatically:
+    - Determines output filename (stem + model_type segments)
+    - Resolves full output path with proper extension
+    """
     def __init__(
         self, source_path: SourcePath, model_type: ModelType, output_path: OutputPath
     ):
@@ -38,6 +61,10 @@ class ModelGenerationConfig(ModelBaseConfig):
 
 
 class ModelLoadConfig(ModelBaseConfig):
+    """Simplified config for loading existing models.
+    
+    Derives format directly from file extension.
+    """
     def __init__(self, source_path: SourcePath):
         super().__init__(source_path, source_path._path.suffix[1:])
 
