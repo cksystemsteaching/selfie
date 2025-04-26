@@ -1070,8 +1070,11 @@ class BV_Fork_Grouping(BV_Grouping):
         return inputs & ~(inputs - 1)
 
     def highest_input(inputs):
-        assert inputs > 0
-        return 2**int(math.log2(inputs))
+        assert inputs >= 0
+        if inputs == 0:
+            return 0
+        else:
+            return 2**int(math.log2(inputs))
 
     def is_consistent(self):
         assert super().is_consistent()
