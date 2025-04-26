@@ -1762,6 +1762,11 @@ class CFLOBVDD:
         else:
             return self.flip_value_tuple()
 
+    def unary_apply_and_reduce(self, op, number_of_output_bits):
+        return self.binary_apply_and_reduce(CFLOBVDD.constant(self.grouping.level,
+                0, self.number_of_input_bits, number_of_output_bits),
+            lambda x, y: op(x), number_of_output_bits)
+
     def projection(level, input_i, number_of_input_bits, number_of_output_bits):
         assert 0 <= input_i < 2**level
         assert number_of_output_bits % number_of_input_bits == 0
@@ -2134,6 +2139,10 @@ class Values:
 
     def apply_unary(self, sid_line, op):
         new_values, new_exits, new_bvdd = self.bvdd.compute_unary(sid_line, op, self.exits)
+
+        if self.cflobvdd:
+            new_cflobvdd = self.cflobvdd.unary_apply_and_reduce(op, sid_line.size)
+
         return Values(sid_line).set_values(sid_line, new_values, new_exits, new_bvdd)
 
     def SignExt(self, sid_line):
