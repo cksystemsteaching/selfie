@@ -1725,27 +1725,27 @@ class CFLOBVDD:
             CFLOBVDD.representatives[cflobvdd] = cflobvdd
         return CFLOBVDD.representatives[cflobvdd]
 
-    def constant(level, output, number_of_input_bits):
+    def constant(level, output, number_of_input_bits, number_of_output_bits):
         return CFLOBVDD.representative(
             BV_No_Distinction_Proto.representative(level, number_of_input_bits),
             {1:output},
             number_of_input_bits,
-            1)
+            number_of_output_bits)
 
-    def byte_constant(number_of_input_bytes, output, number_of_input_bits):
+    def byte_constant(number_of_input_bytes, output, number_of_input_bits, number_of_output_bits):
         assert number_of_input_bytes > 0
         assert 0 < number_of_input_bits <= 8
         assert 8 % number_of_input_bits == 0
 
         level = math.ceil(math.log2(number_of_input_bytes * (8 // number_of_input_bits)))
 
-        return CFLOBVDD.constant(level, output, number_of_input_bits)
+        return CFLOBVDD.constant(level, output, number_of_input_bits, number_of_output_bits)
 
     def false(level, number_of_input_bits):
-        return CFLOBVDD.constant(level, 0, number_of_input_bits)
+        return CFLOBVDD.constant(level, 0, number_of_input_bits, 1)
 
     def true(level, number_of_input_bits):
-        return CFLOBVDD.constant(level, 1, number_of_input_bits)
+        return CFLOBVDD.constant(level, 1, number_of_input_bits, 1)
 
     def flip_value_tuple(self):
         assert len(self.outputs) == 2
@@ -1993,6 +1993,21 @@ CFLOBVDD.projection(2, 0, 4, 4).ternary_apply_and_reduce(CFLOBVDD.projection(2, 
 CFLOBVDD.projection(2, 0, 4, 4).ternary_apply_and_reduce(CFLOBVDD.projection(2, 2, 4, 4),
     CFLOBVDD.projection(2, 3, 4, 4), lambda x, y, z: y if x else z, 4)
 
+class Bitme_CFLOBVDD(CFLOBVDD):
+    def get_path_expression(paths):
+        pass
+
+    def get_expression(self):
+        exp_line = Zero(next_nid(), self.sid_line, "unreachable-value", "unreachable value", 0)
+        for exit_i in self.outputs:
+            exp_line = Ite(next_nid(), self.sid_line,
+                Bitme_CFLOBVDD.get_path_expression(self.grouping.get_paths(exit_i))[0],
+                Constd(next_nid(), self.sid_line, int(self.outputs[exit_i]),
+                    "domain-propagated value", 0),
+                exp_line,
+                self.sid_line.comment, self.sid_line.line_no)
+        return exp_line
+
 class Values:
     total_number_of_constants = 0
     current_number_of_inputs = 0
@@ -2007,6 +2022,7 @@ class Values:
         self.values = None
         self.exits = None
         self.bvdd = Constant.false
+        self.cflobvdd = None
 
     def __str__(self):
         return f"{self.sid_line}: {self.values} {self.exits} {self.bvdd}"
@@ -2045,6 +2061,10 @@ class Values:
             self.bvdd = Exit.new(0)
             self.values = {values_or_var_line:self.bvdd}
             self.exits = {self.bvdd:values_or_var_line}
+
+            self.cflobvdd = Bitme_CFLOBVDD.byte_constant(len(Variable.cflobvdd_input),
+                values_or_var_line, 8, self.sid_line.size)
+
             Values.total_number_of_constants += 1
         elif isinstance(values_or_var_line, Variable):
             self.bvdd = BVDD(values_or_var_line)
@@ -2063,6 +2083,10 @@ class Values:
                     self.values |= {value:value_exit}
                     self.exits |= {value_exit:value}
                     self.bvdd.set_input(2**value, value_exit)
+
+            self.cflobvdd = Bitme_CFLOBVDD.byte_projection(len(Variable.cflobvdd_input),
+                Variable.cflobvdd_index[values_or_var_line], self.sid_line.size)
+
             Values.total_number_of_constants += 2**values_or_var_line.sid_line.size
         else:
             assert isinstance(values_or_var_line, dict) and isinstance(exits, dict) and (isinstance(bvdd, Exit) or isinstance(bvdd, BVDD))
@@ -2573,6 +2597,9 @@ class Variable(Expression):
 
     inputs = {}
 
+    cflobvdd_input = {}
+    cflobvdd_index = {}
+
     def __init__(self, nid, sid_line, domain, symbol, comment, line_no, index):
         super().__init__(nid, sid_line, domain, 0, comment, line_no)
         self.symbol = symbol
@@ -2600,6 +2627,10 @@ class Variable(Expression):
         if index is not None or not self.sid_line.is_mapped_array():
             assert self.nid not in Variable.inputs, f"variable nid {self.nid} already defined @ {self.line_no}"
             Variable.inputs[self.nid] = self
+
+            if self.sid_line.size == 8:
+                Variable.cflobvdd_input[len(Variable.cflobvdd_input)] = self
+                Variable.cflobvdd_index[self] = len(Variable.cflobvdd_index)
 
     def get_mapped_array_expression_for(self, index):
         if index is not None:
