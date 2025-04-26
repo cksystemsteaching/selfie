@@ -2059,7 +2059,7 @@ class Values:
                     return False
             return True
 
-    def set_values(self, sid_line, values_or_var_line, exits = None, bvdd = None):
+    def set_values(self, sid_line, values_or_var_line, exits = None, bvdd = None, cflobvdd = None):
         assert self.sid_line.match_sorts(sid_line)
         if isinstance(values_or_var_line, bool) or isinstance(values_or_var_line, int):
             assert sid_line.is_unsigned_value(values_or_var_line)
@@ -2094,10 +2094,14 @@ class Values:
 
             Values.total_number_of_constants += 2**values_or_var_line.sid_line.size
         else:
-            assert isinstance(values_or_var_line, dict) and isinstance(exits, dict) and (isinstance(bvdd, Exit) or isinstance(bvdd, BVDD))
+            assert (isinstance(values_or_var_line, dict) and
+                isinstance(exits, dict) and
+                (isinstance(bvdd, Exit) or isinstance(bvdd, BVDD)))
             self.values = values_or_var_line
             self.exits = exits
             self.bvdd = bvdd
+
+            self.cflobvdd = cflobvdd
         # assert self.bvdd is canonical
         Values.current_number_of_inputs = max(Values.current_number_of_inputs, self.number_of_inputs())
         Values.max_number_of_values = max(Values.max_number_of_values, len(self.values))
@@ -2142,8 +2146,10 @@ class Values:
 
         if self.cflobvdd:
             new_cflobvdd = self.cflobvdd.unary_apply_and_reduce(op, sid_line.size)
+        else:
+            new_cflobvdd = None
 
-        return Values(sid_line).set_values(sid_line, new_values, new_exits, new_bvdd)
+        return Values(sid_line).set_values(sid_line, new_values, new_exits, new_bvdd, new_cflobvdd)
 
     def SignExt(self, sid_line):
         assert isinstance(self.sid_line, Bitvec)
