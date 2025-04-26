@@ -1058,31 +1058,34 @@ class BV_Fork_Grouping(BV_Grouping):
             g_inputs = {}
             g_pair_tuples = {}
             g2_exit = 1
-            g2_inputs = g2.inputs[g2_exit]
+            g2_inputs = {}
+            g2_inputs[g2_exit] = g2.inputs[g2_exit]
 
             for g1_exit in g1.inputs:
                 g1_inputs = g1.inputs[g1_exit]
-                while BV_Fork_Grouping.highest_input(g2_inputs) < BV_Fork_Grouping.lowest_input(g1_inputs):
-                    # move on to next g2_inputs
+                while BV_Fork_Grouping.highest_input(g2_inputs[g2_exit]) < BV_Fork_Grouping.lowest_input(g1_inputs):
+                    # move on to next g2 inputs
                     if g2_exit < g2.number_of_exits:
                         g2_exit += 1
-                        g2_inputs = g2.inputs[g2_exit]
+                        if g2_exit not in g2_inputs:
+                            g2_inputs[g2_exit] = g2.inputs[g2_exit]
                     else:
                         return g1.cache_pair_product(g2,
                             *BV_Fork_Grouping.fork_if_non_empty(g_inputs,
                                 g1.number_of_input_bits,
                                 g_pair_tuples))
                 next_g2_exit = g2_exit
-                next_g2_inputs = g2_inputs
-                while BV_Fork_Grouping.lowest_input(next_g2_inputs) <= BV_Fork_Grouping.highest_input(g1_inputs):
-                    # intersect with all overlapping next_g2_inputs
-                    if g1_inputs & next_g2_inputs != 0:
+                while BV_Fork_Grouping.lowest_input(g2_inputs[next_g2_exit]) <= BV_Fork_Grouping.highest_input(g1_inputs):
+                    # intersect with all overlapping next g2 inputs
+                    if g1_inputs & g2_inputs[next_g2_exit] != 0:
                         g_exit += 1
-                        g_inputs[g_exit] = g1_inputs & next_g2_inputs
+                        g_inputs[g_exit] = g1_inputs & g2_inputs[next_g2_exit]
                         g_pair_tuples[g_exit] = (g1_exit, next_g2_exit)
+                        g2_inputs[next_g2_exit] &= ~g1_inputs
                     next_g2_exit += 1
                     if next_g2_exit <= len(g2.inputs):
-                        next_g2_inputs = g2.inputs[next_g2_exit]
+                        if next_g2_exit not in g2_inputs:
+                            g2_inputs[next_g2_exit] = g2.inputs[next_g2_exit]
                     else:
                         break
 
