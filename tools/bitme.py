@@ -2372,7 +2372,7 @@ class Values:
 
     # ternary operators
 
-    def constrain(self, constraint):
+    def constrain(self, constraint, cflobvdd = None):
         assert not BVDD.is_always_false(constraint)
         new_bvdd = self.bvdd.intersection(constraint)
         if new_bvdd is Constant.false:
@@ -2380,10 +2380,19 @@ class Values:
             return Values(self.sid_line)
         new_values, new_exits, new_bvdd = BVDD.compute_binary(new_bvdd,
             self.sid_line, None, self.exits, None)
-        return Values(self.sid_line).set_values(self.sid_line,
-            new_values, new_exits, new_bvdd)
 
-    def merge(self, values):
+        # TODO: turn on
+        new_cflobvdd = None
+        #if cflobvdd:
+        #    new_cflobvdd = self.cflobvdd.binary_apply_and_reduce(cflobvdd,
+        #        lambda x, y: x, self.sid_line.size)
+        #else:
+        #    new_cflobvdd = self.cflobvdd
+
+        return Values(self.sid_line).set_values(self.sid_line,
+            new_values, new_exits, new_bvdd, new_cflobvdd)
+
+    def merge(self, values, cflobvdd):
         assert isinstance(values, Values)
         assert self.match_sorts(values)
         assert isinstance(self.bvdd, BVDD) and isinstance(values.bvdd, BVDD)
@@ -2391,22 +2400,28 @@ class Values:
         assert new_bvdd is not Constant.false
         new_values, new_exits, new_bvdd = BVDD.compute_binary(new_bvdd,
             self.sid_line, None, self.exits, values.exits)
+
+        # TODO: turn on
+        new_cflobvdd = None
+        #new_cflobvdd = cflobvdd.ternary_apply_and_reduce(self.cflobvdd, values.cflobvdd,
+        #    lambda x, y, z: y if x else z, self.sid_line.size)
+
         return Values(self.sid_line).set_values(self.sid_line,
-            new_values, new_exits, new_bvdd)
+            new_values, new_exits, new_bvdd, new_cflobvdd)
 
     def If(self, values2, values3):
         false_constraint, true_constraint = self.get_boolean_constraints()
         if BVDD.is_always_false(false_constraint):
             assert values2 is not None
-            return values2.constrain(true_constraint)
+            return values2.constrain(true_constraint, self.cflobvdd)
         elif BVDD.is_always_false(true_constraint):
             assert values3 is not None
-            return values3.constrain(false_constraint)
+            return values3.constrain(false_constraint, self.cflobvdd)
         else:
             # lazy evaluation of true and false case
             values2 = values2.constrain(true_constraint)
             values3 = values3.constrain(false_constraint)
-            return values2.merge(values3)
+            return values2.merge(values3, self.cflobvdd)
 
     # bitme solver
 
@@ -2418,8 +2433,9 @@ class Values:
             assert new_bvdd is not Constant.false
             new_values, new_exits, new_bvdd = BVDD.compute_binary(new_bvdd,
                 self.sid_line, None, self.exits, None)
+            # TODO: exclude in CFLOBVDD
             return Values(self.sid_line).set_values(self.sid_line,
-                new_values, new_exits, new_bvdd)
+                new_values, new_exits, new_bvdd, self.cflobvdd)
 
 class Expression(Line):
     total_number_of_generated_expressions = 0
