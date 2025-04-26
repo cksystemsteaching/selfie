@@ -2102,6 +2102,7 @@ class Values:
             self.bvdd = bvdd
 
             self.cflobvdd = cflobvdd
+
         # assert self.bvdd is canonical
         Values.current_number_of_inputs = max(Values.current_number_of_inputs, self.number_of_inputs())
         Values.max_number_of_values = max(Values.max_number_of_values, len(self.values))
@@ -2193,7 +2194,13 @@ class Values:
             return Values(sid_line)
         new_values, new_exits, new_bvdd = BVDD.compute_binary(new_bvdd,
             sid_line, op, self.exits, values.exits)
-        return Values(sid_line).set_values(sid_line, new_values, new_exits, new_bvdd)
+
+        if self.cflobvdd and values.cflobvdd:
+            new_cflobvdd = self.cflobvdd.binary_apply_and_reduce(values.cflobvdd, op, sid_line.size)
+        else:
+            new_cflobvdd = None
+
+        return Values(sid_line).set_values(sid_line, new_values, new_exits, new_bvdd, new_cflobvdd)
 
     def FALSE():
         if Values.false is None:
