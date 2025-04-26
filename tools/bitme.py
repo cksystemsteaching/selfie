@@ -2666,7 +2666,7 @@ class Variable(Expression):
             assert self.nid not in Variable.inputs, f"variable nid {self.nid} already defined @ {self.line_no}"
             Variable.inputs[self.nid] = self
 
-            if self.sid_line.size == 8:
+            if isinstance(self.sid_line, Bitvector) and self.sid_line.size == 8:
                 Variable.cflobvdd_input[len(Variable.cflobvdd_input)] = self
                 Variable.cflobvdd_index[self] = len(Variable.cflobvdd_index)
 
