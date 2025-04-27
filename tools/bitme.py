@@ -1070,11 +1070,8 @@ class BV_Fork_Grouping(BV_Grouping):
         return inputs & ~(inputs - 1)
 
     def highest_input(inputs):
-        assert inputs >= 0
-        if inputs == 0:
-            return 0
-        else:
-            return 2**int(math.log2(inputs))
+        assert inputs > 0
+        return 2**int(math.log2(inputs))
 
     def is_consistent(self):
         assert super().is_consistent()
@@ -1089,11 +1086,11 @@ class BV_Fork_Grouping(BV_Grouping):
             assert 0 < current_inputs < 2**2**self.number_of_input_bits - 1
             assert (exit == 1 or
                 BV_Fork_Grouping.lowest_input(current_inputs) >
-                    BV_Fork_Grouping.lowest_input(previous_inputs))
+                    BV_Fork_Grouping.lowest_input(previous_inputs)), f"{exit} == 1 or {BV_Fork_Grouping.lowest_input(current_inputs)} > {BV_Fork_Grouping.lowest_input(previous_inputs)}"
             previous_inputs = current_inputs
             assert current_inputs & union == 0
             union |= current_inputs
-        assert union == 2**2**self.number_of_input_bits - 1
+        assert union == 2**2**self.number_of_input_bits - 1, f"{union} == {2**2**self.number_of_input_bits - 1}"
         return True
 
     def representative(self):
@@ -1142,7 +1139,10 @@ class BV_Fork_Grouping(BV_Grouping):
             for g1_exit in g1.inputs:
                 g1_inputs = g1.inputs[g1_exit]
 
-                while BV_Fork_Grouping.highest_input(g2_inputs[g2_exit]) < BV_Fork_Grouping.lowest_input(g1_inputs):
+                # exploit lexicographic ordering of g1 and g2 inputs by lowest input
+
+                while (BV_Fork_Grouping.highest_input(g2_inputs[g2_exit]) <
+                    BV_Fork_Grouping.lowest_input(g1_inputs)):
                     # move on to next g2 inputs
                     if g2_exit < g2.number_of_exits:
                         g2_exit += 1
@@ -1156,13 +1156,30 @@ class BV_Fork_Grouping(BV_Grouping):
 
                 next_g2_exit = g2_exit
 
-                while BV_Fork_Grouping.lowest_input(g2_inputs[next_g2_exit]) <= BV_Fork_Grouping.highest_input(g1_inputs):
+                while (g1_inputs > 0 and
+                    BV_Fork_Grouping.lowest_input(g2_inputs[next_g2_exit]) <=
+                        BV_Fork_Grouping.highest_input(g1_inputs)):
                     # intersect with all overlapping next g2 inputs
-                    if g1_inputs & g2_inputs[next_g2_exit] != 0:
+                    intersection = g1_inputs & g2_inputs[next_g2_exit]
+
+                    if intersection != 0:
                         g_exit += 1
-                        g_inputs[g_exit] = g1_inputs & g2_inputs[next_g2_exit]
-                        g_pair_tuples[g_exit] = (g1_exit, next_g2_exit)
-                        g2_inputs[next_g2_exit] &= ~g1_inputs
+
+                        # insert intersection sorted by lowest input
+                        # to establish lexicographical ordering of g inputs
+                        exit_i = g_exit
+                        while (exit_i > 1 and
+                            BV_Fork_Grouping.lowest_input(intersection) <
+                                BV_Fork_Grouping.lowest_input(g_inputs[exit_i - 1])):
+                            g_inputs[exit_i] = g_inputs[exit_i - 1]
+                            g_pair_tuples[exit_i] = g_pair_tuples[exit_i - 1]
+                            exit_i -= 1
+                        g_inputs[exit_i] = intersection
+                        g_pair_tuples[exit_i] = (g1_exit, next_g2_exit)
+
+                        g1_inputs &= ~intersection
+                        # do not remove intersection from next g2 inputs
+                        # to maintain lexicographical ordering of g2 inputs
 
                     next_g2_exit += 1
 
@@ -1998,20 +2015,6 @@ CFLOBVDD.projection(2, 0, 4, 4).ternary_apply_and_reduce(CFLOBVDD.projection(2, 
 CFLOBVDD.projection(2, 0, 4, 4).ternary_apply_and_reduce(CFLOBVDD.projection(2, 2, 4, 4),
     CFLOBVDD.projection(2, 3, 4, 4), lambda x, y, z: y if x else z, 4)
 
-class Bitme_CFLOBVDD(CFLOBVDD):
-    def get_path_expression(paths):
-        pass
-
-    def get_expression(self):
-        exp_line = Zero(next_nid(), self.sid_line, "unreachable-value", "unreachable value", 0)
-        for exit_i in self.outputs:
-            exp_line = Ite(next_nid(), self.sid_line,
-                Bitme_CFLOBVDD.get_path_expression(self.grouping.get_paths(exit_i))[0],
-                Constd(next_nid(), self.sid_line, int(self.outputs[exit_i]),
-                    "domain-propagated value", 0),
-                exp_line,
-                self.sid_line.comment, self.sid_line.line_no)
-        return exp_line
 
 class Values:
     total_number_of_constants = 0
@@ -2059,6 +2062,95 @@ class Values:
                     return False
             return True
 
+    # CFLOBVDD adapter
+
+    def get_input_expression(index_i, inputs):
+        if inputs == 0:
+            return []
+        else:
+            assert inputs > 0
+
+            var_line = Variable.cflobvdd_input[index_i]
+
+            inputs_sid_line = Bitvec(next_nid(), 2**var_line.sid_line.size,
+                var_line.comment, var_line.line_no)
+            inputs_zero_line = Constd(next_nid(), inputs_sid_line, 0,
+                var_line.comment, var_line.line_no)
+            inputs_one_line = Constd(next_nid(), inputs_sid_line, 1,
+                var_line.comment, var_line.line_no)
+
+            if inputs.bit_count() == 1:
+                comparison_line = Comparison(next_nid(), OP_EQ, Bool.boolean,
+                    Constd(next_nid(), var_line.sid_line,
+                        int(math.log2(inputs)),
+                        var_line.comment, var_line.line_no),
+                    var_line,
+                    var_line.comment, var_line.line_no)
+            else:
+                comparison_line = Comparison(next_nid(), OP_NEQ, Bool.boolean,
+                    Logical(next_nid(), OP_AND, inputs_sid_line,
+                        Constd(next_nid(), inputs_sid_line,
+                            inputs,
+                            var_line.comment, var_line.line_no),
+                        Computation(next_nid(), OP_SLL, inputs_sid_line,
+                            inputs_one_line,
+                            Ext(next_nid(), OP_UEXT, inputs_sid_line, var_line,
+                                2**var_line.sid_line.size - var_line.sid_line.size,
+                                var_line.comment, var_line.line_no),
+                            var_line.comment, var_line.line_no),
+                        var_line.comment, var_line.line_no),
+                    inputs_zero_line,
+                    var_line.comment, var_line.line_no)
+            return [comparison_line]
+
+    def get_logical_expression(op, paths):
+        if not paths:
+            return []
+        else:
+            logical_line = None
+            for path_line in paths:
+                if logical_line is None:
+                    logical_line = path_line
+                else:
+                    logical_line = Logical(next_nid(), op,
+                        logical_line,
+                        path_line,
+                        path_line.comment, path_line.line_no)
+            return [logical_line]
+
+    def get_path_expression(paths):
+        path_expression = []
+        for path in paths:
+            if isinstance(path[0], int):
+                assert isinstance(path[1], int)
+                index_i = path[0]
+                inputs = path[1]
+                path_expression += Values.get_input_expression(index_i, inputs)
+            else:
+                a_paths = Values.get_path_expression(path[0])
+                b_paths = Values.get_path_expression(path[1])
+                path_expression += Values.get_logical_expression(OP_AND, a_paths + b_paths)
+        return Values.get_logical_expression(OP_OR, path_expression)
+
+    def get_cflobvdd_expression(self):
+        cflobvdd = self.cflobvdd
+        exp_line = None
+        for exit_i in cflobvdd.outputs:
+            input_line = Values.get_path_expression(cflobvdd.grouping.get_paths(exit_i))
+            output_line = Constd(next_nid(), self.sid_line, int(cflobvdd.outputs[exit_i]),
+                "domain-propagated value", 0)
+            if input_line:
+                exp_line = Ite(next_nid(), self.sid_line,
+                    input_line[0],
+                    output_line,
+                    Zero(next_nid(), self.sid_line,
+                        "unreachable-value", "unreachable value", 0)
+                            if exp_line is None else exp_line,
+                    self.sid_line.comment, self.sid_line.line_no)
+            else:
+                exp_line = output_line
+        return exp_line
+
     def set_values(self, sid_line, values_or_var_line, exits = None, bvdd = None, cflobvdd = None):
         assert self.sid_line.match_sorts(sid_line)
         if isinstance(values_or_var_line, bool) or isinstance(values_or_var_line, int):
@@ -2067,7 +2159,7 @@ class Values:
             self.values = {values_or_var_line:self.bvdd}
             self.exits = {self.bvdd:values_or_var_line}
 
-            self.cflobvdd = Bitme_CFLOBVDD.byte_constant(len(Variable.cflobvdd_input),
+            self.cflobvdd = CFLOBVDD.byte_constant(len(Variable.cflobvdd_input),
                 values_or_var_line, 8, self.sid_line.size)
 
             Values.total_number_of_constants += 1
@@ -2089,7 +2181,7 @@ class Values:
                     self.exits |= {value_exit:value}
                     self.bvdd.set_input(2**value, value_exit)
 
-            self.cflobvdd = Bitme_CFLOBVDD.byte_projection(len(Variable.cflobvdd_input),
+            self.cflobvdd = CFLOBVDD.byte_projection(len(Variable.cflobvdd_input),
                 Variable.cflobvdd_index[values_or_var_line], self.sid_line.size)
 
             Values.total_number_of_constants += 2**values_or_var_line.sid_line.size
