@@ -450,10 +450,9 @@ class Exit:
     def exclusion(self, bvdd):
         return self.exclude(bvdd)
 
-    def get_expression(self, values):
-        assert self in values.exits, f"exit {self} not in values {values}"
-        return Constd(next_nid(), values.sid_line, int(values.exits[self]),
-            "domain-propagated value", 0)
+    def get_expression(self, sid_line, exits):
+        assert self in exits, f"exit {self} not in {exits}"
+        return Constd(next_nid(), sid_line, int(exits[self]), "domain-propagated value", 0)
 
 class BVDD:
     # a bitvector decision diagram (BVDD) is
@@ -533,7 +532,7 @@ class BVDD:
         if bvdd is Constant.false:
             return True
         else:
-            assert isinstance(bvdd, Exit) or isinstance(bvdd, BVDD)
+            assert isinstance(bvdd, Exit) or isinstance(bvdd, BVDD), f"{bvdd} is not a BVDD"
             return False
 
     def is_always_true(bvdd):
@@ -774,14 +773,14 @@ class BVDD:
             BVDD.exclusion_bvdds[(self, bvdd)] = exclude_bvdd
             return exclude_bvdd
 
-    def get_expression(self, values):
+    def get_expression(self, sid_line, exits):
         inputs_sid_line = Bitvec(next_nid(), 2**self.var_line.sid_line.size,
             self.var_line.comment, self.var_line.line_no)
         inputs_zero_line = Constd(next_nid(), inputs_sid_line, 0,
             self.var_line.comment, self.var_line.line_no)
         inputs_one_line = Constd(next_nid(), inputs_sid_line, 1,
             self.var_line.comment, self.var_line.line_no)
-        exp_line = Zero(next_nid(), values.sid_line, "unreachable-value", "unreachable value", 0)
+        exp_line = Zero(next_nid(), sid_line, "unreachable-value", "unreachable value", 0)
         # assert self.outputs are sorted by inputs
         for output in self.outputs:
             if self.outputs[output].bit_count() == 1:
@@ -806,12 +805,118 @@ class BVDD:
                         self.var_line.comment, self.var_line.line_no),
                     inputs_zero_line,
                     self.var_line.comment, self.var_line.line_no)
-            exp_line = Ite(next_nid(), values.sid_line,
+            exp_line = Ite(next_nid(), sid_line,
                 comparison_line,
-                output.get_expression(values),
+                output.get_expression(sid_line, exits),
                 exp_line,
                 self.var_line.comment, self.var_line.line_no)
         return exp_line
+
+class ROABVDD:
+    def __init__(self, values, exits, bvdd):
+        assert isinstance(values, dict)
+        assert isinstance(exits, dict)
+        assert isinstance(bvdd, Exit) or isinstance(bvdd, BVDD)
+        self.values = values
+        self.exits = exits
+        self.bvdd = bvdd
+
+    def __str__(self):
+        return f"{self.values} {self.exits} {self.bvdd}"
+
+    def number_of_inputs(self):
+        return self.bvdd.number_of_inputs()
+
+    def number_of_values(self):
+        return len(self.values)
+
+    def is_consistent(self):
+        assert len(self.values) == len(self.exits)
+        assert len(self.values) == self.bvdd.number_of_exits()[1]
+        for value in self.values:
+            assert self.values[value] in self.exits
+            assert self.exits[self.values[value]] == value
+            assert self.bvdd.has_exit(self.values[value])
+        return True
+
+    def constant(value):
+        assert isinstance(value, bool) or isinstance(value, int)
+        exit = Exit.new(0)
+        return ROABVDD({value:exit}, {exit:value}, exit)
+
+    def projection(variable):
+        assert isinstance(variable, Variable)
+        bvdd = BVDD(variable)
+        if isinstance(variable.sid_line, Bool):
+            false_exit = Exit.new(0)
+            true_exit = Exit.new(1)
+            values = {False:false_exit, True:true_exit}
+            exits = {false_exit:False, true_exit:True}
+            bvdd.set_input(2**0, false_exit)
+            bvdd.set_input(2**1, true_exit)
+        else:
+            values = {}
+            exits = {}
+            for value in range(2**variable.sid_line.size):
+                value_exit = Exit.new(value)
+                values |= {value:value_exit}
+                exits |= {value_exit:value}
+                bvdd.set_input(2**value, value_exit)
+        return ROABVDD(values, exits, bvdd)
+
+    def compute_unary(self, sid_line, op):
+        return ROABVDD(*self.bvdd.compute_unary(sid_line, op, self.exits))
+
+    def compute_binary(self, sid_line, op, roabvdd):
+        assert isinstance(roabvdd, ROABVDD)
+        new_bvdd = self.bvdd.intersection(roabvdd.bvdd)
+        if new_bvdd is Constant.false:
+            # TODO: check whether reachable
+            return Constant.false
+        return ROABVDD(*BVDD.compute_binary(new_bvdd, sid_line, op, self.exits, roabvdd.exits))
+
+    def constrain(self, sid_line, constraint):
+        assert isinstance(constraint, Exit) or isinstance(constraint, BVDD)
+        new_bvdd = self.bvdd.intersection(constraint)
+        if new_bvdd is Constant.false:
+            # TODO: check whether reachable
+            return Constant.false
+        return ROABVDD(*BVDD.compute_binary(new_bvdd, sid_line, None, self.exits, None))
+
+    def merge(self, sid_line, roabvdd):
+        assert isinstance(self.bvdd, BVDD) and isinstance(roabvdd.bvdd, BVDD)
+        new_bvdd = self.bvdd.union(roabvdd.bvdd)
+        assert new_bvdd is not Constant.false
+        return ROABVDD(*BVDD.compute_binary(new_bvdd, sid_line, None, self.exits, roabvdd.exits))
+
+    def exclude(self, sid_line, constraint):
+        if BVDD.is_always_false(constraint):
+            return self
+        else:
+            new_bvdd = self.bvdd.exclusion(constraint)
+            assert new_bvdd is not Constant.false
+            return ROABVDD(*BVDD.compute_binary(new_bvdd, sid_line, None, self.exits, None))
+
+    def get_false_constraint(self):
+        if False in self.values:
+            if True in self.values:
+                return self.bvdd.extract(self.values[False])
+            else:
+                return self.bvdd
+        else:
+            return Constant.false
+
+    def get_true_constraint(self):
+        if True in self.values:
+            if False in self.values:
+                return self.bvdd.extract(self.values[True])
+            else:
+                return self.bvdd
+        else:
+            return Constant.false
+
+    def get_expression(self, sid_line):
+        return self.bvdd.get_expression(sid_line, self.exits)
 
 class BV_Grouping:
     # generalizing CFLOBDDs to bitvector input variables with up to 8 bits
@@ -840,8 +945,8 @@ class BV_Grouping:
     def number_of_paths(self):
         return sum(self.number_of_paths_per_exit.values())
 
-    def number_of_solutions(self):
-        return sum(self.number_of_solutions_per_exit.values())
+    def number_of_inputs(self):
+        return sum(self.number_of_inputs_per_exit.values())
 
     def is_consistent(self):
         assert self.number_of_exits > 0
@@ -923,7 +1028,7 @@ class BV_Dont_Care_Grouping(BV_Grouping):
     def __init__(self, number_of_input_bits):
         super().__init__(0, number_of_input_bits)
         self.number_of_paths_per_exit = {1:2**number_of_input_bits}
-        self.number_of_solutions_per_exit = {1:1}
+        self.number_of_inputs_per_exit = {1:1}
 
     def __repr__(self):
         return "dontcare @ " + super().__repr__()
@@ -1019,7 +1124,7 @@ class BV_Fork_Grouping(BV_Grouping):
         super().__init__(0, number_of_input_bits, len(inputs))
         self.inputs = inputs
         self.number_of_paths_per_exit = dict([(i, inputs[i].bit_count()) for i in inputs])
-        self.number_of_solutions_per_exit = self.number_of_paths_per_exit
+        self.number_of_inputs_per_exit = self.number_of_paths_per_exit
 
     def __repr__(self):
         indentation = " " * (CFLOBVDD.max_level - self.level + 1)
@@ -1264,7 +1369,7 @@ class BV_Internal_Grouping(BV_Grouping):
         self.b_connections = {}
         self.b_return_tuples = {}
         self.number_of_paths_per_exit = {}
-        self.number_of_solutions_per_exit = {}
+        self.number_of_inputs_per_exit = {}
 
     def __repr__(self):
         indentation = " " * (CFLOBVDD.max_level - self.level + 1)
@@ -1301,16 +1406,16 @@ class BV_Internal_Grouping(BV_Grouping):
             self.b_return_tuples == g2.b_return_tuples)
 
     def get_paths(self, exit_i, index_i = 0):
-        solutions = []
+        inputs = []
         for b_i in self.b_return_tuples:
             b_rt = self.b_return_tuples[b_i]
             for b_e_i in b_rt:
                 if exit_i == b_rt[b_e_i]:
-                    solutions += [(self.a_connection.get_paths(b_i, index_i),
+                    inputs += [(self.a_connection.get_paths(b_i, index_i),
                         self.b_connections[b_i].get_paths(b_e_i,
                             index_i + 2**(self.level - 1)))]
                     break
-        return solutions
+        return inputs
 
     def is_consistent(self):
         assert super().is_consistent()
@@ -1347,25 +1452,25 @@ class BV_Internal_Grouping(BV_Grouping):
             g_exits |= g_b_i_rt_targets
         return True
 
-    def pre_compute_number_of_paths_and_solutions_per_exit(self):
+    def pre_compute_number_of_paths_and_inputs_per_exit(self):
         self.number_of_paths_per_exit = dict([(i, 0) for i in range(1, self.number_of_exits + 1)])
-        self.number_of_solutions_per_exit = dict([(i, 0) for i in range(1, self.number_of_exits + 1)])
+        self.number_of_inputs_per_exit = dict([(i, 0) for i in range(1, self.number_of_exits + 1)])
         g_a = self.a_connection
         for g_b_i in self.b_connections:
             a_number_of_paths = g_a.number_of_paths_per_exit[g_b_i]
-            a_number_of_solutions = g_a.number_of_solutions_per_exit[g_b_i]
+            a_number_of_inputs = g_a.number_of_inputs_per_exit[g_b_i]
             g_b = self.b_connections[g_b_i]
             g_b_i_rt = self.b_return_tuples[g_b_i]
             for g_b_i_rt_e_j in g_b_i_rt:
                 e_i = g_b_i_rt[g_b_i_rt_e_j]
                 b_number_of_paths = g_b.number_of_paths_per_exit[g_b_i_rt_e_j]
-                b_number_of_solutions = g_b.number_of_solutions_per_exit[g_b_i_rt_e_j]
+                b_number_of_inputs = g_b.number_of_inputs_per_exit[g_b_i_rt_e_j]
                 self.number_of_paths_per_exit[e_i] += a_number_of_paths * b_number_of_paths
-                self.number_of_solutions_per_exit[e_i] += a_number_of_solutions * b_number_of_solutions
-        assert self.number_of_paths() >= self.number_of_solutions() >= self.number_of_exits
+                self.number_of_inputs_per_exit[e_i] += a_number_of_inputs * b_number_of_inputs
+        assert self.number_of_paths() >= self.number_of_inputs() >= self.number_of_exits
 
     def representative(self):
-        self.pre_compute_number_of_paths_and_solutions_per_exit()
+        self.pre_compute_number_of_paths_and_inputs_per_exit()
         if self in BV_Internal_Grouping.representatives:
             BV_Internal_Grouping.representatives_hits += 1
         else:
@@ -1598,7 +1703,7 @@ class BV_No_Distinction_Proto(BV_Internal_Grouping):
             g.b_connections[1] = g.a_connection
             g.b_return_tuples[1] = {1:1}
 
-            g.pre_compute_number_of_paths_and_solutions_per_exit()
+            g.pre_compute_number_of_paths_and_inputs_per_exit()
 
             BV_No_Distinction_Proto.representatives[(level, number_of_input_bits)] = g
 
@@ -1676,8 +1781,11 @@ class CFLOBVDD:
     def number_of_paths(self):
         return self.grouping.number_of_paths()
 
-    def number_of_solutions(self):
-        return self.grouping.number_of_solutions()
+    def number_of_inputs(self):
+        return self.grouping.number_of_inputs()
+
+    def number_of_values(self):
+        return len(self.outputs)
 
     def get_printed_paths(paths, full_paths = True):
         printed_paths = []
@@ -1722,16 +1830,16 @@ class CFLOBVDD:
             f"{2**self.grouping.level * self.number_of_input_bits} input bits in total\n" +
             f"{2**self.grouping.level} input variables\n" +
             f"{self.number_of_input_bits} input bits per variable\n" +
-            f"{len(self.outputs)} output values\n"
+            f"{self.number_of_values()} output values\n"
             f"{self.number_of_output_bits} output bits per value\n"
             f"{self.number_of_paths()} paths\n" +
-            f"{self.number_of_solutions()} solutions\n" +
+            f"{self.number_of_inputs()} inputs\n" +
             f"{self.get_printed_value_paths()}")
 
     def is_consistent(self):
         assert self.grouping.is_consistent()
-        assert len(self.outputs) == self.grouping.number_of_exits, f"{len(self.outputs)} == {self.grouping.number_of_exits}"
-        assert len(self.outputs) == len(set(self.outputs.values()))
+        assert self.number_of_values() == self.grouping.number_of_exits, f"{self.number_of_values()} == {self.grouping.number_of_exits}"
+        assert self.number_of_values() == len(set(self.outputs.values()))
         assert all([0 <= self.outputs[i] < 2**self.number_of_output_bits for i in self.outputs])
         return True
 
@@ -1765,7 +1873,7 @@ class CFLOBVDD:
         return CFLOBVDD.constant(level, 1, number_of_input_bits, 1)
 
     def flip_value_tuple(self):
-        assert len(self.outputs) == 2
+        assert self.number_of_values() == 2
         return CFLOBVDD.representative(self.grouping,
             {1:self.outputs[2], 2:self.outputs[1]},
             self.number_of_input_bits,
@@ -2017,6 +2125,8 @@ CFLOBVDD.projection(2, 0, 4, 4).ternary_apply_and_reduce(CFLOBVDD.projection(2, 
 
 
 class Values:
+    ROABVDD = True
+
     total_number_of_constants = 0
     current_number_of_inputs = 0
     max_number_of_values = 0
@@ -2024,16 +2134,38 @@ class Values:
     false = None
     true = None
 
-    def __init__(self, sid_line):
+    def __init__(self, sid_line, value_or_var_line_or_bvdd = None):
         assert isinstance(sid_line, Bitvector)
         self.sid_line = sid_line
-        self.values = None
-        self.exits = None
-        self.bvdd = Constant.false
-        self.cflobvdd = None
+        if (isinstance(value_or_var_line_or_bvdd, bool) or
+            isinstance(value_or_var_line_or_bvdd, int)):
+            assert sid_line.is_unsigned_value(value_or_var_line_or_bvdd)
+
+            if Values.ROABVDD:
+                self.bvdd = ROABVDD.constant(value_or_var_line_or_bvdd)
+            else:
+                self.bvdd = CFLOBVDD.byte_constant(len(Variable.cflobvdd_input),
+                    value_or_var_line_or_bvdd, 8, self.sid_line.size)
+
+            Values.total_number_of_constants += 1
+        elif isinstance(value_or_var_line_or_bvdd, Variable):
+            if Values.ROABVDD:
+                self.bvdd = ROABVDD.projection(value_or_var_line_or_bvdd)
+            else:
+                self.bvdd = CFLOBVDD.byte_projection(len(Variable.cflobvdd_input),
+                    Variable.cflobvdd_index[value_or_var_line_or_bvdd], self.sid_line.size)
+
+            Values.total_number_of_constants += 2**value_or_var_line_or_bvdd.sid_line.size
+        elif value_or_var_line_or_bvdd:
+            self.bvdd = value_or_var_line_or_bvdd
+            # assert self.bvdd is canonical
+
+        Values.current_number_of_inputs = max(Values.current_number_of_inputs, self.bvdd.number_of_inputs())
+        Values.max_number_of_values = max(Values.max_number_of_values, self.bvdd.number_of_values())
+        # for debugging assert self.is_consistent()
 
     def __str__(self):
-        return f"{self.sid_line}: {self.values} {self.exits} {self.bvdd}"
+        return f"{self.sid_line}: {self.bvdd}"
 
     def match_sorts(self, values):
         return self.sid_line.match_sorts(values.sid_line)
@@ -2041,26 +2173,11 @@ class Values:
     def is_equal(self, values):
         return (type(self) is type(values) and
             self.match_sorts(values) and
-            self.values == values.values and
+            (not Values.ROABVDD or self.values == values.values) and
             self.bvdd == values.bvdd)
 
-    def number_of_inputs(self):
-        return self.bvdd.number_of_inputs()
-
     def is_consistent(self):
-        if len(self.values) != len(self.exits):
-            return False
-        elif len(self.values) != self.bvdd.number_of_exits()[1]:
-            return False
-        else:
-            for value in self.values:
-                if self.values[value] not in self.exits:
-                    return False
-                elif self.exits[self.values[value]] != value:
-                    return False
-                elif not self.bvdd.has_exit(self.values[value]):
-                    return False
-            return True
+        return self.bvdd.is_consistent()
 
     # CFLOBVDD adapter
 
@@ -2151,75 +2268,13 @@ class Values:
                 exp_line = output_line
         return exp_line
 
-    def set_values(self, sid_line, values_or_var_line, exits = None, bvdd = None, cflobvdd = None):
-        assert self.sid_line.match_sorts(sid_line)
-        if isinstance(values_or_var_line, bool) or isinstance(values_or_var_line, int):
-            assert sid_line.is_unsigned_value(values_or_var_line)
-            self.bvdd = Exit.new(0)
-            self.values = {values_or_var_line:self.bvdd}
-            self.exits = {self.bvdd:values_or_var_line}
-
-            self.cflobvdd = CFLOBVDD.byte_constant(len(Variable.cflobvdd_input),
-                values_or_var_line, 8, self.sid_line.size)
-
-            Values.total_number_of_constants += 1
-        elif isinstance(values_or_var_line, Variable):
-            self.bvdd = BVDD(values_or_var_line)
-            if isinstance(values_or_var_line.sid_line, Bool):
-                false_exit = Exit.new(0)
-                true_exit = Exit.new(1)
-                self.values = {False:false_exit, True:true_exit}
-                self.exits = {false_exit:False, true_exit:True}
-                self.bvdd.set_input(2**0, false_exit)
-                self.bvdd.set_input(2**1, true_exit)
-            else:
-                self.values = {}
-                self.exits = {}
-                for value in range(2**values_or_var_line.sid_line.size):
-                    value_exit = Exit.new(value)
-                    self.values |= {value:value_exit}
-                    self.exits |= {value_exit:value}
-                    self.bvdd.set_input(2**value, value_exit)
-
-            self.cflobvdd = CFLOBVDD.byte_projection(len(Variable.cflobvdd_input),
-                Variable.cflobvdd_index[values_or_var_line], self.sid_line.size)
-
-            Values.total_number_of_constants += 2**values_or_var_line.sid_line.size
-        else:
-            assert (isinstance(values_or_var_line, dict) and
-                isinstance(exits, dict) and
-                (isinstance(bvdd, Exit) or isinstance(bvdd, BVDD)))
-            self.values = values_or_var_line
-            self.exits = exits
-            self.bvdd = bvdd
-
-            self.cflobvdd = cflobvdd
-
-        # assert self.bvdd is canonical
-        Values.current_number_of_inputs = max(Values.current_number_of_inputs, self.number_of_inputs())
-        Values.max_number_of_values = max(Values.max_number_of_values, len(self.values))
-        # for debugging assert self.is_consistent():
-        return self
-
     def get_false_constraint(self):
         assert isinstance(self.sid_line, Bool)
-        if False in self.values:
-            if True in self.values:
-                return self.bvdd.extract(self.values[False])
-            else:
-                return self.bvdd
-        else:
-            return Constant.false
+        return self.bvdd.get_false_constraint()
 
     def get_true_constraint(self):
         assert isinstance(self.sid_line, Bool)
-        if True in self.values:
-            if False in self.values:
-                return self.bvdd.extract(self.values[True])
-            else:
-                return self.bvdd
-        else:
-            return Constant.false
+        return self.bvdd.get_true_constraint()
 
     def get_boolean_constraints(self):
         assert isinstance(self.sid_line, Bool)
@@ -2228,21 +2283,17 @@ class Values:
     def get_expression(self):
         # naive transition from domain propagation to bit blasting
         assert isinstance(self.sid_line, Bitvector)
-        return self.bvdd.get_expression(self)
+        return self.bvdd.get_expression(self.sid_line)
 
     # per-value semantics of value sets
 
     # unary operators
 
     def apply_unary(self, sid_line, op):
-        new_values, new_exits, new_bvdd = self.bvdd.compute_unary(sid_line, op, self.exits)
-
-        if self.cflobvdd:
-            new_cflobvdd = self.cflobvdd.unary_apply_and_reduce(op, sid_line.size)
+        if Values.ROABVDD:
+            return Values(sid_line, self.bvdd.compute_unary(sid_line, op))
         else:
-            new_cflobvdd = None
-
-        return Values(sid_line).set_values(sid_line, new_values, new_exits, new_bvdd, new_cflobvdd)
+            return Values(sid_line, self.bvdd.unary_apply_and_reduce(op, sid_line.size))
 
     def SignExt(self, sid_line):
         assert isinstance(self.sid_line, Bitvec)
@@ -2280,28 +2331,19 @@ class Values:
 
     def apply_binary(self, sid_line, values, op):
         assert isinstance(values, Values)
-        new_bvdd = self.bvdd.intersection(values.bvdd)
-        if new_bvdd is Constant.false:
-            # TODO: check whether reachable
-            return Values(sid_line)
-        new_values, new_exits, new_bvdd = BVDD.compute_binary(new_bvdd,
-            sid_line, op, self.exits, values.exits)
-
-        if self.cflobvdd and values.cflobvdd:
-            new_cflobvdd = self.cflobvdd.binary_apply_and_reduce(values.cflobvdd, op, sid_line.size)
+        if ROABVDD:
+            return Values(sid_line, self.bvdd.compute_binary(sid_line, op, values.bvdd))
         else:
-            new_cflobvdd = None
-
-        return Values(sid_line).set_values(sid_line, new_values, new_exits, new_bvdd, new_cflobvdd)
+            return Values(sid_line, self.bvdd.binary_apply_and_reduce(values.bvdd, op, sid_line.size))
 
     def FALSE():
         if Values.false is None:
-            Values.false = Values(Bool.boolean).set_values(Bool.boolean, False)
+            Values.false = Values(Bool.boolean, False)
         return Values.false
 
     def TRUE():
         if Values.true is None:
-            Values.true = Values(Bool.boolean).set_values(Bool.boolean, True)
+            Values.true = Values(Bool.boolean, True)
         return Values.true
 
     def Implies(self, values):
@@ -2464,70 +2506,48 @@ class Values:
 
     # ternary operators
 
-    def constrain(self, constraint, cflobvdd = None):
-        assert not BVDD.is_always_false(constraint)
-        new_bvdd = self.bvdd.intersection(constraint)
-        if new_bvdd is Constant.false:
-            # TODO: check whether reachable
-            return Values(self.sid_line)
-        new_values, new_exits, new_bvdd = BVDD.compute_binary(new_bvdd,
-            self.sid_line, None, self.exits, None)
+    def constrain(self, constraint, condition = None):
+        if Values.ROABVDD:
+            assert not BVDD.is_always_false(constraint)
+            return Values(self.sid_line, self.bvdd.constrain(self.sid_line, constraint))
+        else:
+            assert isinstance(condition, CFLOBVDD)
+            return Values(self.sid_line, self.bvdd.binary_apply_and_reduce(condition,
+               lambda x, y: x, self.sid_line.size))
 
-        # TODO: turn on
-        new_cflobvdd = None
-        #if cflobvdd:
-        #    new_cflobvdd = self.cflobvdd.binary_apply_and_reduce(cflobvdd,
-        #        lambda x, y: x, self.sid_line.size)
-        #else:
-        #    new_cflobvdd = self.cflobvdd
-
-        return Values(self.sid_line).set_values(self.sid_line,
-            new_values, new_exits, new_bvdd, new_cflobvdd)
-
-    def merge(self, values, cflobvdd):
+    def merge(self, values, condition):
         assert isinstance(values, Values)
         assert self.match_sorts(values)
-        assert isinstance(self.bvdd, BVDD) and isinstance(values.bvdd, BVDD)
-        new_bvdd = self.bvdd.union(values.bvdd)
-        assert new_bvdd is not Constant.false
-        new_values, new_exits, new_bvdd = BVDD.compute_binary(new_bvdd,
-            self.sid_line, None, self.exits, values.exits)
-
-        # TODO: turn on
-        new_cflobvdd = None
-        #new_cflobvdd = cflobvdd.ternary_apply_and_reduce(self.cflobvdd, values.cflobvdd,
-        #    lambda x, y, z: y if x else z, self.sid_line.size)
-
-        return Values(self.sid_line).set_values(self.sid_line,
-            new_values, new_exits, new_bvdd, new_cflobvdd)
+        if Values.ROABVDD:
+            return Values(self.sid_line, self.bvdd.merge(self.sid_line, values.bvdd))
+        else:
+            assert isinstance(condition, CFLOBVDD)
+            return Values(self.sid_line,
+                condition.ternary_apply_and_reduce(self.bvdd, values.bvdd,
+                    lambda x, y, z: y if x else z, self.sid_line.size))
 
     def If(self, values2, values3):
         false_constraint, true_constraint = self.get_boolean_constraints()
         if BVDD.is_always_false(false_constraint):
             assert values2 is not None
-            return values2.constrain(true_constraint, self.cflobvdd)
+            return values2.constrain(true_constraint, self.bvdd)
         elif BVDD.is_always_false(true_constraint):
             assert values3 is not None
-            return values3.constrain(false_constraint, self.cflobvdd)
+            return values3.constrain(false_constraint, self.bvdd)
         else:
             # lazy evaluation of true and false case
             values2 = values2.constrain(true_constraint)
             values3 = values3.constrain(false_constraint)
-            return values2.merge(values3, self.cflobvdd)
+            return values2.merge(values3, self.bvdd)
 
     # bitme solver
 
     def exclude(self, constraint):
-        if BVDD.is_always_false(constraint):
-            return self
+        if Values.ROABVDD:
+            return Values(self.sid_line, self.bvdd.exclude(self.sid_line, constraint))
         else:
-            new_bvdd = self.bvdd.exclusion(constraint)
-            assert new_bvdd is not Constant.false
-            new_values, new_exits, new_bvdd = BVDD.compute_binary(new_bvdd,
-                self.sid_line, None, self.exits, None)
             # TODO: exclude in CFLOBVDD
-            return Values(self.sid_line).set_values(self.sid_line,
-                new_values, new_exits, new_bvdd, self.cflobvdd)
+            return self.bvdd
 
 class Expression(Line):
     total_number_of_generated_expressions = 0
@@ -2616,7 +2636,7 @@ class Constant(Expression):
                 return Values.TRUE() if bool(self.value) else Values.FALSE()
             else:
                 assert isinstance(self.sid_line, Bitvec)
-                return Values(self.sid_line).set_values(self.sid_line, self.value)
+                return Values(self.sid_line, self.value)
         else:
             return self
 
@@ -2773,7 +2793,7 @@ class Variable(Expression):
     def compute_values(self, step):
         assert step == 0
         if isinstance(self.sid_line, Bitvector) and self.sid_line.size <= Instance.PROPAGATE:
-            return Values(self.sid_line).set_values(self.sid_line, self)
+            return Values(self.sid_line, self)
         else:
             return self
 
