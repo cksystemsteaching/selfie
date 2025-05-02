@@ -450,13 +450,9 @@ class Exit:
     def exclusion(self, bvdd):
         return self.exclude(bvdd)
 
-    def get_expression(self, sid_line, exits):
-        assert self in exits, f"exit {self} not in {exits}"
-        return Constd(next_nid(), sid_line, int(exits[self]), "domain-propagated value", 0)
-
 class BVDD:
     # a bitvector decision diagram (BVDD) is
-    # a reduced ordered algebraic decision diagram (ROADD)
+    # a reduced ordered binary decision diagram (ROBDD)
     # over bitvectors rather than bits
 
     # given an n-bit bitvector, we use 2**n-bit unsigned integers
@@ -773,51 +769,6 @@ class BVDD:
             BVDD.exclusion_bvdds[(self, bvdd)] = exclude_bvdd
             return exclude_bvdd
 
-    def get_input_expression(var_line, inputs):
-        assert inputs > 0
-
-        inputs_sid_line = Bitvec(next_nid(), 2**var_line.sid_line.size,
-            var_line.comment, var_line.line_no)
-        inputs_zero_line = Constd(next_nid(), inputs_sid_line, 0,
-            var_line.comment, var_line.line_no)
-        inputs_one_line = Constd(next_nid(), inputs_sid_line, 1,
-            var_line.comment, var_line.line_no)
-
-        if inputs.bit_count() == 1:
-            comparison_line = Comparison(next_nid(), OP_EQ, Bool.boolean,
-                Constd(next_nid(), var_line.sid_line,
-                    int(math.log2(inputs)),
-                    var_line.comment, var_line.line_no),
-                var_line,
-                var_line.comment, var_line.line_no)
-        else:
-            comparison_line = Comparison(next_nid(), OP_NEQ, Bool.boolean,
-                Logical(next_nid(), OP_AND, inputs_sid_line,
-                    Constd(next_nid(), inputs_sid_line,
-                        inputs,
-                        var_line.comment, var_line.line_no),
-                    Computation(next_nid(), OP_SLL, inputs_sid_line,
-                        inputs_one_line,
-                        Ext(next_nid(), OP_UEXT, inputs_sid_line, var_line,
-                            2**var_line.sid_line.size - var_line.sid_line.size,
-                            var_line.comment, var_line.line_no),
-                        var_line.comment, var_line.line_no),
-                    var_line.comment, var_line.line_no),
-                inputs_zero_line,
-                var_line.comment, var_line.line_no)
-        return comparison_line
-
-    def get_expression(self, sid_line, exits):
-        exp_line = Zero(next_nid(), sid_line, "unreachable-value", "unreachable value", 0)
-        # assert self.outputs are sorted by inputs
-        for output in self.outputs:
-            exp_line = Ite(next_nid(), sid_line,
-                BVDD.get_input_expression(self.var_line, self.outputs[output]),
-                output.get_expression(sid_line, exits),
-                exp_line,
-                self.var_line.comment, self.var_line.line_no)
-        return exp_line
-
 class ROABVDD:
     def __init__(self, values, exits, bvdd):
         assert isinstance(values, dict)
@@ -920,9 +871,6 @@ class ROABVDD:
                 return self.bvdd
         else:
             return Constant.false
-
-    def get_expression(self, sid_line):
-        return self.bvdd.get_expression(sid_line, self.exits)
 
 class BV_Grouping:
     # generalizing CFLOBDDs to bitvector input variables with up to 8 bits
@@ -2185,14 +2133,68 @@ class Values:
     def is_consistent(self):
         return self.bvdd.is_consistent()
 
-    # CFLOBVDD adapter
+    # BVDD adapter
 
     def get_input_expression(var_line, inputs):
         if inputs == 0:
             return []
         else:
             assert inputs > 0
-            return [BVDD.get_input_expression(var_line, inputs)]
+
+            inputs_sid_line = Bitvec(next_nid(), 2**var_line.sid_line.size,
+                var_line.comment, var_line.line_no)
+            inputs_zero_line = Constd(next_nid(), inputs_sid_line, 0,
+                var_line.comment, var_line.line_no)
+            inputs_one_line = Constd(next_nid(), inputs_sid_line, 1,
+                var_line.comment, var_line.line_no)
+
+            if inputs.bit_count() == 1:
+                comparison_line = Comparison(next_nid(), OP_EQ, Bool.boolean,
+                    Constd(next_nid(), var_line.sid_line,
+                        int(math.log2(inputs)),
+                        var_line.comment, var_line.line_no),
+                    var_line,
+                    var_line.comment, var_line.line_no)
+            else:
+                comparison_line = Comparison(next_nid(), OP_NEQ, Bool.boolean,
+                    Logical(next_nid(), OP_AND, inputs_sid_line,
+                        Constd(next_nid(), inputs_sid_line,
+                            inputs,
+                            var_line.comment, var_line.line_no),
+                        Computation(next_nid(), OP_SLL, inputs_sid_line,
+                            inputs_one_line,
+                            Ext(next_nid(), OP_UEXT, inputs_sid_line, var_line,
+                                2**var_line.sid_line.size - var_line.sid_line.size,
+                                var_line.comment, var_line.line_no),
+                            var_line.comment, var_line.line_no),
+                        var_line.comment, var_line.line_no),
+                    inputs_zero_line,
+                    var_line.comment, var_line.line_no)
+            return [comparison_line]
+
+    # ROABVDD adapter
+
+    def get_bvdd_expression(sid_line, bvdd, exits):
+        if isinstance(bvdd, Exit):
+            assert bvdd in exits, f"exit {bvdd} not in {exits}"
+            return Constd(next_nid(), sid_line, int(exits[bvdd]),
+                "domain-propagated value", 0)
+        else:
+            assert isinstance(bvdd, BVDD)
+            exp_line = Zero(next_nid(), sid_line, "unreachable-value", "unreachable value", 0)
+            # assert bvdd.outputs are sorted by inputs
+            for output in bvdd.outputs:
+                exp_line = Ite(next_nid(), sid_line,
+                    Values.get_input_expression(bvdd.var_line, bvdd.outputs[output])[0],
+                    Values.get_bvdd_expression(sid_line, output, exits),
+                    exp_line,
+                    bvdd.var_line.comment, bvdd.var_line.line_no)
+            return exp_line
+
+    def get_roabvdd_expression(self):
+        return Values.get_bvdd_expression(self.sid_line, self.bvdd.bvdd, self.bvdd.exits)
+
+    # CFLOBVDD adapter
 
     def get_logical_expression(op, paths):
         if not paths:
@@ -2216,7 +2218,7 @@ class Values:
                 assert isinstance(path[1], int)
                 index_i = path[0]
                 inputs = path[1]
-                path_expression += Values.get_input_expression(index_i, inputs)
+                path_expression += Values.get_input_expression(Variable.inputs[index_i], inputs)
             else:
                 a_paths = Values.get_path_expression(path[0])
                 b_paths = Values.get_path_expression(path[1])
@@ -2242,6 +2244,8 @@ class Values:
                 exp_line = output_line
         return exp_line
 
+    # constraints and expressions
+
     def get_false_constraint(self):
         assert isinstance(self.sid_line, Bool)
         return self.bvdd.get_false_constraint()
@@ -2258,7 +2262,7 @@ class Values:
         # naive transition from domain propagation to bit blasting
         assert isinstance(self.sid_line, Bitvector)
         if Values.ROABVDD:
-            return self.bvdd.get_expression(self.sid_line)
+            return self.get_roabvdd_expression()
         else:
             return self.get_cflobvdd_expression()
 
