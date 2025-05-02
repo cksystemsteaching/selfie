@@ -144,32 +144,31 @@ class SolverData(DictMixin):
     longest_run: Tuple[float, "Model"] = (0.0, None)
     shortest_run: Tuple[float, "Model"] = (float("inf"), None)
 
-
 @dataclass
-class SMT2ModelData(DictMixin):
+class ModelData(DictMixin):
     """
-    Complete SMT2 model representation:
+    Essential data for every model not depending on format
     - basic: Core identifiers
     - generation: Build metadata (optional)
-    - parsed: Structural analysis  
     - solver_runs: Benchmark history
     - best_run: Top-performing result
     """
     basic: BasicModelData
-    # Model can also be loaded, thus missing the generation data
+    # Model can be loaded, thus missing the generation data
     generation: Optional[GenerationModelData]
-    parsed: ParsedSMT2ModelData
     # Model can undergo several solvings from different solvers
     solver_runs: List[SolverRunData]
     best_run: SolverRunData
+
+@dataclass
+class SMT2ModelData(ModelData):
+    """
+    SMT2 model representation:
+    - parsed: Structural analysis  
+    """
+    parsed: ParsedSMT2ModelData
 
 
 @dataclass
-class BTOR2ModelData(DictMixin):
-    basic: BasicModelData
-    # Model can also be loaded, thus missing the generation data
-    generation: Optional[GenerationModelData]
+class BTOR2ModelData(ModelData):
     parsed: ParsedBTOR2ModelData
-    # Model can undergo several solvings from different solvers
-    solver_runs: List[SolverRunData]
-    best_run: SolverRunData

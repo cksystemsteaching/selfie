@@ -11,19 +11,22 @@ from lib.model_parser import SMT2ModelParser
 from lib.model_generation_config import ModelBaseConfig, ModelGenerationConfig
 from lib.presenter import SMT2ModelPresenter, BTOR2ModelPresenter
 from lib.model_data import (
+    ModelData,
     SMT2ModelData,
     BTOR2ModelData,
     BasicModelData,
     SolverRunData,
     GenerationModelData,
 )
+from lib.presenter import BasePresenter
+
 import lib.config as cfg
 
 
 class Model:
     """Base model class providing common functionality."""
 
-    def __init__(self, model_config: ModelBaseConfig, data, presenter):
+    def __init__(self, model_config: ModelBaseConfig, data: ModelData, presenter: BasePresenter):
         # At this point output must be generated already
         if not model_config.get_model_path().exists():
             raise ValueError(
@@ -37,7 +40,7 @@ class Model:
         self._presenter.show(cfg.verbose)
 
     @property
-    def data(self) -> SMT2ModelData:
+    def data(self) -> ModelData:
         """Main data access point."""
         return self._data
 
