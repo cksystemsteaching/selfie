@@ -1,4 +1,4 @@
-# BT - A Tool for Benchmarking and Analyzing SMT Models from C/C* Source Files
+# BT - A Tool for Benchmarking and Analyzing SMT Models from RISC-V machine code
 
 _This subproject of Selfie serves as a tool for quickly generating, analyzing and benchmarking SMT models generated from RISC-V machine code. The default model builder is Rotor (another Selfie subproject). BT is designed to be easily modifiable; it provides a framework for defining custom commands for generated models and for incorporating new model builders._
 
@@ -6,7 +6,7 @@ _Currently BT is able to accept C and C* source files. It uses `gcc` and `Selfie
 
 ## Overview
 
-SMT models generated from programming languages typically have very different characteristics from those created by traditional means (e.g. [SMT-COMP](https://smt-comp.github.io)). BT is built to serve as an analytical tool to find these differences, allowing you to compare typical SMT models with those generated from source code. BT also offers a simpler interface than Rotor for generating multiple models at once. This can mean generating from a single source file using different model types or by processing an entire directory of sources. It gives user the possibillity to generate different model types from a single source file and also generate models from entire directory. See section [bundles](#bundles) for more information.
+SMT models generated from programming languages typically have very different characteristics from those created by conventional models (e.g. [SMT-COMP](https://smt-comp.github.io)). BT is built to serve as an analytical tool to find these differences, allowing you to compare typical SMT models with those generated from source code. BT also offers a simpler interface than Rotor for generating multiple models at once. This can mean generating from a single source file using different model types or by processing an entire directory of sources. It gives user the possibillity to generate different model types from a single source file and also generate models from entire directory. See section [bundles](#bundles) for more information.
 
 ## Model types
 Model types specify different configurations for the model builders (Rotor by default) and compilators (gcc and Selfie). These configurations can define:
