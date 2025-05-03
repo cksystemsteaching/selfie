@@ -47,7 +47,7 @@ class ModelType:
 class ModelConfigParser:
     """Validates and extracts values from model type configurations."""
     def __init__(self, model_type_bases: List[str]):
-        self.top_level = cfg.config["models"]
+        self.top_level = cfg.config["model_types"]
         self.model_type_bases = model_type_bases
         self.check()
 
@@ -107,13 +107,13 @@ def get_all_model_types(path_base: str = "") -> List[str]:
     all model types for which a 'command' key is found.
 
     For example, if path_str is "starc-64bit", we go to:
-        cfg.config["models"]["starc"]["64bit"]
+        cfg.config["model_types"]["starc"]["64bit"]
     and then search every sub-dictionary below it for 'command'.
 
     Args:
         path_str (str): A dash-delimited path specifying a nested location
-                        in cfg.config["models"]. If empty, we stay at the
-                        top level (i.e., "models").
+                        in cfg.config["model_types"]. If empty, we stay at the
+                        top level (i.e., "model_types").
 
     Returns:
         List[str]: A list of model types. Each entry is a dash-delimited path
@@ -125,7 +125,7 @@ def get_all_model_types(path_base: str = "") -> List[str]:
 
     # Start at the top-level "models" dictionary. Use .get() to avoid KeyError
     # if "models" is missing; default to an empty dict in that case.
-    models_dict: Dict[str, Any] = cfg.config.get("models", {})
+    models_dict: Dict[str, Any] = cfg.config.get("model_types", {})
 
     # Only split path_str if it's non-empty; otherwise, remain at the top level.
     path_segments = path_base.split("-") if path_base else []

@@ -11,7 +11,7 @@ default_model_type: "starc-32bit-riscv-smt2"
 allowed_languages: [.c, .cstar]
 allowed_formats: [smt2,btor2]
 
-models:
+model_types:
   starc:
     64bit:
       riscv: 
