@@ -1,7 +1,6 @@
 """
 Presenting information stored in data classes throughout the run to the user.
 """
-
 from abc import ABC, abstractmethod
 from pathlib import Path
 import logging
@@ -57,7 +56,7 @@ class BasePresenter(ABC):
 class BTRunPresenter(BasePresenter):
     """Handles presentation of the whole program run"""
 
-    def __init__(self, overview):
+    def __init__(self, overview: 'BTOverview'):
         super().__init__()
         self.overview = overview
 
@@ -149,7 +148,7 @@ class BTRunPresenter(BasePresenter):
 class SolverPresenter(BasePresenter):
     """Handles presentation of a specific solver"""
 
-    def __init__(self, solver):
+    def __init__(self, solver: 'BaseSolver'):
         super().__init__()
         self.solver = solver
     
@@ -201,7 +200,7 @@ class SolverPresenter(BasePresenter):
     
 #TODO
 class BTOR2ModelPresenter(BasePresenter):
-    def __init__(self, model):
+    def __init__(self, model: 'BTOR2Model'):
         super().__init__()
         self.model = model
     
@@ -235,7 +234,7 @@ class BTOR2ModelPresenter(BasePresenter):
 class SMT2ModelPresenter(BasePresenter):
     """Handles rich presentation of model information for CLI output"""
     
-    def __init__(self, model):
+    def __init__(self, model: 'SMT2Model'):
         super().__init__()
         self.model = model
     
