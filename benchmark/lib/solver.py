@@ -111,6 +111,7 @@ class BaseCLISolver(BaseSolver):
             self.data.avg_solve_time = (
                 self.data.avg_solve_time * len(self.data.solved) + elapsed_time
             ) / (len(self.data.solved) + 1)
+
             self.data.solved.append(model)
             if self.data.shortest_run[0] > elapsed_time:
                 self.data.shortest_run = (elapsed_time, model)
@@ -223,12 +224,6 @@ class Z3Solver(BaseCLISolver):
         arguments = []
         arguments.extend(args)
         return super().run(model, timeout, arguments)
-
-    def benchmark(self):
-        logger.info(f"Benchmarking {self.model.name} with Z3")
-
-        benchmark_data = self.run()
-        logger.info(f"Execution time: {benchmark_data['elapsed_time']}")
 
     def get_supported_models(self):
         return {"smt2"}

@@ -140,7 +140,7 @@ class SolverData(DictMixin):
     solved: List["Model"] = field(default_factory=list)
     timedout: List["Model"] = field(default_factory=list)
     error: List["Model"] = field(default_factory=list)
-    avg_solve_time: float = float("inf")
+    avg_solve_time: float = 0.0
     longest_run: Tuple[float, "Model"] = (0.0, None)
     shortest_run: Tuple[float, "Model"] = (float("inf"), None)
 
