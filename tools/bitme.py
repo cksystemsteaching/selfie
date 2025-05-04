@@ -399,7 +399,7 @@ class Exit:
         if self.has_exit(exit):
             return exit
         else:
-            return Constant.false
+            return None
 
     def reduce(self):
         return self
@@ -525,7 +525,7 @@ class BVDD:
         return self.number_of_my_exits + self.number_of_other_exits
 
     def is_always_false(bvdd):
-        if bvdd is Constant.false:
+        if bvdd is None:
             return True
         else:
             assert isinstance(bvdd, Exit) or isinstance(bvdd, BVDD), f"{bvdd} is not a BVDD"
@@ -535,13 +535,13 @@ class BVDD:
         if isinstance(bvdd, Exit):
             return True
         else:
-            assert bvdd is Constant.false or isinstance(bvdd, BVDD)
+            assert bvdd is None or isinstance(bvdd, BVDD)
             return False
 
     def set_input(self, inputs, output):
         assert 0 < inputs < 2**2**self.var_line.sid_line.size
         assert not (inputs & self.inputs)
-        if output is not Constant.false:
+        if output is not None:
             self.inputs |= inputs
             if output not in self.outputs:
                 self.outputs[output] = inputs
@@ -568,7 +568,7 @@ class BVDD:
 
     def reduce(self, sort = True):
         if not self.inputs:
-            return Constant.false
+            return None
         elif len(self.outputs) == 1:
             # outputs are all isomorphic
             if next(iter(self.outputs.values())) == 2**2**self.var_line.sid_line.size - 1:
@@ -726,7 +726,7 @@ class BVDD:
 
     def exclude(self, bvdd):
         if isinstance(bvdd, Exit):
-            return Constant.false
+            return None
         else:
             if bvdd is None:
                 exclude_bvdd = BVDD(self.var_line)
@@ -827,23 +827,23 @@ class ROABVDD:
     def compute_binary(self, sid_line, op, roabvdd):
         assert isinstance(roabvdd, ROABVDD)
         new_bvdd = self.bvdd.intersection(roabvdd.bvdd)
-        if new_bvdd is Constant.false:
+        if new_bvdd is None:
             # TODO: check whether reachable
-            return Constant.false
+            return None
         return ROABVDD(*BVDD.compute_binary(new_bvdd, sid_line, op, self.exits, roabvdd.exits))
 
     def constrain(self, sid_line, constraint):
         assert isinstance(constraint, Exit) or isinstance(constraint, BVDD)
         new_bvdd = self.bvdd.intersection(constraint)
-        if new_bvdd is Constant.false:
+        if new_bvdd is None:
             # TODO: check whether reachable
-            return Constant.false
+            return None
         return ROABVDD(*BVDD.compute_binary(new_bvdd, sid_line, None, self.exits, None))
 
     def merge(self, sid_line, roabvdd):
         assert isinstance(self.bvdd, BVDD) and isinstance(roabvdd.bvdd, BVDD)
         new_bvdd = self.bvdd.union(roabvdd.bvdd)
-        assert new_bvdd is not Constant.false
+        assert new_bvdd is not None
         return ROABVDD(*BVDD.compute_binary(new_bvdd, sid_line, None, self.exits, roabvdd.exits))
 
     def exclude(self, sid_line, constraint):
@@ -851,7 +851,7 @@ class ROABVDD:
             return self
         else:
             new_bvdd = self.bvdd.exclusion(constraint)
-            assert new_bvdd is not Constant.false
+            assert new_bvdd is not None
             return ROABVDD(*BVDD.compute_binary(new_bvdd, sid_line, None, self.exits, None))
 
     def get_false_constraint(self):
@@ -861,7 +861,7 @@ class ROABVDD:
             else:
                 return self.bvdd
         else:
-            return Constant.false
+            return None
 
     def get_true_constraint(self):
         if True in self.values:
@@ -870,7 +870,7 @@ class ROABVDD:
             else:
                 return self.bvdd
         else:
-            return Constant.false
+            return None
 
 class BV_Grouping:
     # generalizing CFLOBDDs to bitvector input variables with up to 8 bits
@@ -2584,9 +2584,6 @@ class Expression(Line):
         return self.bitwuzla_lambda
 
 class Constant(Expression):
-    false = None
-    true = None
-
     def __init__(self, nid, sid_line, value, comment, line_no):
         super().__init__(nid, sid_line, {}, 0, comment, line_no)
         if not sid_line.is_value(value):
@@ -2594,15 +2591,6 @@ class Constant(Expression):
         self.print_value = value
         self.signed_value = sid_line.get_signed_value(value)
         self.value = sid_line.get_unsigned_value(value)
-        if sid_line is Bool.boolean:
-            assert 0 <= self.value <= 1
-            if self.value == 0:
-                if Constant.false is None:
-                    Constant.false = self
-            else:
-                assert self.value == 1
-                if Constant.true is None:
-                    Constant.true = self
 
     def print_deep(self):
         print(self)
