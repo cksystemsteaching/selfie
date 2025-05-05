@@ -30,7 +30,7 @@ class Model:
         # At this point output must be generated already
         if not model_config.get_model_path().exists():
             raise ValueError(
-                f"Can not create model object from {self.output_path}, path does not exists"
+                f"Can not create model object from {model_config.get_model_path()}, path does not exists"
             )
 
         self._data = data
