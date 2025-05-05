@@ -1,28 +1,29 @@
 """
-Model type configuration system that handles:
+User-facing interface for model specifications
 - Model type definitions from config.yml
-- Command template resolution
-- Format validation
+- Model type resolution
 
-Key Classes:
+Key Components:
 1. ModelType: User-facing interface for model specifications
-2. ModelConfigParser: Validates and extracts values from config file - specified my model type
-3. get_all_model_types(): Discovers available model types
+2. get_all_model_types(): Discovers available model types
 """
 
-import lib.config as cfg
+from lib.model_config_parser import ModelConfigParser
 from lib.exceptions import ParsingError, ConfigFormatError
+import lib.config as cfg
 
 from queue import Queue
 from typing import List, Dict, Any
 
 import logging
 
+
 logger = logging.getLogger("bt.model_type")
 
 
 class ModelType:
     """Represents a configured model type with its generation commands."""
+
     def __init__(self, model_base: str):
         self.model_base = model_base
         self.model_type_bases = self.model_base.split("-")
@@ -44,63 +45,10 @@ class ModelType:
         return self.parser.parse_default_output_path()
 
 
-class ModelConfigParser:
-    """Validates and extracts values from model type configurations."""
-    def __init__(self, model_type_bases: List[str]):
-        self.top_level = cfg.config["model_types"]
-        self.model_type_bases = model_type_bases
-        self.check()
-
-    def check(self):
-        current_level = self.top_level
-
-        for level in self.model_type_bases:
-            if level in current_level:
-                current_level = current_level[level]
-            else:
-                raise ParsingError(self.__class__.__name__,self.model_base, level)
-        # Check if type has specified Rotor command in config file
-        required_values = ["command"]
-        for value in required_values:
-            if value not in current_level:
-                raise ConfigFormatError(
-                    message=f"{value} not present/or at the wrong place in specified model type",
-                    error_format=value,
-                )
-
-        allowed_formats = cfg.config["allowed_formats"]
-        if self.parse_format() not in allowed_formats:
-            raise ConfigFormatError(
-                message=f"{self.parse_format()} is not an allowed format.",
-                error_format=self.parse_format(),
-            )
-
-    def parse_format(self):
-        return self.model_type_bases[-1]
-
-    def parse_model_generation_cmd(self):
-        current_level = self.top_level
-
-        for level in self.model_type_bases:
-            current_level = current_level[level]
-
-        return current_level["command"]
-
-    def parse_compile_cmd(self):
-        """
-        That we can drill down with provided bases does not have to be checked since it was already checked in constructor.
-        """
-        current_level = self.top_level
-
-        for level in self.model_type_bases:
-            if "compilation" in current_level:
-                return current_level["compilation"]
-            current_level = current_level[level]
-
-        return ""
+from lib.model_type import ModelType
 
 
-def get_all_model_types(path_base: str = "") -> List[str]:
+def get_all_model_types(path_base: str = "") -> List[ModelType]:
     """
     Traverse the nested 'models' dictionary under cfg.config, drilling down
     according to a dash-delimited path (e.g., "starc-64bit-riscv"). Collect

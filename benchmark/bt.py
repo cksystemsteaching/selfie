@@ -4,6 +4,7 @@ import lib.argument_parser as arg_parser
 from lib.paths import SourcePath, LoadSourcePath, OutputPath
 from lib.log import configure_logging
 from lib.model_grapher import GrapherWrapper
+from lib.model_type import get_all_model_types
 
 import lib.solver as slv
 import lib.overview as ov
@@ -36,8 +37,13 @@ def main():
         logger.info(
             f"Creating models from {args.source} using {args.model_type} model type base, output to {args.output}..."
         )
+
+        logger.info("Parsing provided model types...")
+        model_types = get_all_model_types(args.model_type)
+        logger.info(f"Parsed following model types: {list(model.model_base for model in model_types)}")
+
         generated_models = create_models(
-            SourcePath(args.source), args.model_type, OutputPath(args.output)
+            SourcePath(args.source), model_types, OutputPath(args.output)
         )
         models.extend(generated_models)
         logger.info(f"Created {len(generated_models)} models")

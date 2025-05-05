@@ -12,12 +12,13 @@ The workflow:
 
 from lib.utils import execute, is_tool_available, check_model_builder
 from lib.model_generation_config import ModelGenerationConfig, ModelLoadConfig
-from lib.model_type import get_all_model_types
+from lib.model_type import ModelType
 from lib.paths import SourcePath, OutputPath, LoadSourcePath
 from lib.model import model_factory
 from lib.exceptions import ParsingError
 import lib.config as cfg
 
+from typing import List
 import logging
 
 logger = logging.getLogger("bt.generate")
@@ -49,7 +50,7 @@ def load_models(source: LoadSourcePath) -> list:
     return models
 
 
-def create_models(source: SourcePath, model_type_base: str, output: OutputPath) -> list:
+def create_models(source: SourcePath, model_types: List[ModelType], output: OutputPath) -> list:
     """
     Generates models from source files. Handles both single files and directories.
 
@@ -65,11 +66,10 @@ def create_models(source: SourcePath, model_type_base: str, output: OutputPath) 
         models = []
         for file in source.iterdir():
             if file.suffix.lower() in cfg.config["allowed_languages"]:
-                models.extend(create_models(SourcePath(file), model_type_base, output))
+                models.extend(create_models(SourcePath(file), model_types, output))
         return models
     else:
         logger.info(f"Generating model from source: {source}")
-        model_types = get_all_model_types(model_type_base)
         models = []
 
         for model_type in model_types:
