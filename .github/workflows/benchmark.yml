@@ -23,10 +23,16 @@ jobs:
         run: |
           cd benchmark && ./setup.sh
 
-      - name: Run solver tests
+      - name: Run integration tests
         run: |
           cd benchmark
           source venv/bin/activate
           pip install -r requirements-tests.txt
-          ./run_tests.py
+          ./run_tests.py -i
           
+      - name: Run unit tests
+        run: |
+          cd benchmark
+          source venv/bin/activate
+          pip install -r requirements-tests.txt
+          ./run_tests.py -u
