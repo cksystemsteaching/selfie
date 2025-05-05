@@ -132,7 +132,7 @@ class LoadSourcePath(BaseSourcePath):
                 f"Load source extension '{self._path.suffix}' not allowed. Allowed source extensions: {allowed}",
                 self._path,
                 path_suffix=self._path.suffix,
-                allowed_extensions=cfg.config['allowed_languages']
+                allowed_extensions=cfg.config['allowed_formats']
             )
 
 class SourcePath(BaseSourcePath):
