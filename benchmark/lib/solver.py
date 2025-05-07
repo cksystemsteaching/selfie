@@ -5,8 +5,9 @@ Solver classes. Currently supported solver running from CLI (Bitwuzla, Z3) and a
 from lib.model import Model
 from lib.exceptions import UnsupportedModelException, BTValueError
 from lib.utils import is_tool_available
-from lib.model_data import SolverData
+from lib.model_data import SolverData, SolverRunData
 
+import psutil
 import subprocess
 import time
 from typing import Dict, Any
@@ -66,146 +67,125 @@ class BaseCLISolver(BaseSolver):
             'timed_out': Boolean indicating if the command timed out.
             'error_message': String description of the error, if any.
         """
+        cmd = self._build_command(model, args)
 
-        cmd = [self.solver_command]
-        cmd.extend(args)
-        cmd.append(model.data.basic.output_path.__str__())
-
-        basic_data = {
-            "solver_used": self.get_solver_name(),
-            "solver_cmd": " ".join(cmd),
-        }
-        self.data.runs += 1
+        run_data = SolverRunData()
+        run_data.solver_used = self.get_solver_name()
+        run_data.solver_cmd = " ".join(cmd)
 
         try:
             self.check_model(model)
-        except UnsupportedModelException as e:
-            return {
-                **basic_data,
-                "elapsed_time": 0.0,
-                "returncode": None,
-                "stdout": "",
-                "stderr": str(e),
-                "success": False,
-                "timed_out": False,
-                "error_message": f"Model check failed: {e}",
-            }
-
-        start_time = time.perf_counter()  # Use perf_counter for measuring intervals
-        elapsed_time = 0.0  # Initialize elapsed time
-
-        try:
-            logger.info(f"Running command: {' '.join(cmd)}")
-            logger.info(f"Timeout is set to {timeout}s.")
-            # Use subprocess.run
-            result = subprocess.run(
+            start_time = time.perf_counter()
+            
+            with subprocess.Popen(
                 cmd,
-                capture_output=True,  # Capture stdout and stderr
-                text=True,  # Decode stdout/stderr as text (UTF-8 default)
-                timeout=timeout,  # Apply timeout
-                check=True,  # Raise CalledProcessError on non-zero exit codes
-            )
-            elapsed_time = time.perf_counter() - start_time
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True
+            ) as process:
+                self._monitor_process(run_data, process, timeout, start_time)
 
-            # Update solver data
-            self.data.avg_solve_time = (
-                self.data.avg_solve_time * len(self.data.solved) + elapsed_time
-            ) / (len(self.data.solved) + 1)
+        except UnsupportedModelException as e:
+            run_data.error_message = f"Model check failed: {e}"
+            return run_data
 
-            self.data.solved.append(model)
-            if self.data.shortest_run[0] > elapsed_time:
-                self.data.shortest_run = (elapsed_time, model)
-            if self.data.longest_run[0] < elapsed_time:
-                self.data.longest_run = (elapsed_time, model)
-
-            logger.info(
-                f"Solving completed successfully in {elapsed_time:.2f}s. Return code: {result.returncode}"
-            )
-            return {
-                **basic_data,
-                "elapsed_time": elapsed_time,
-                "returncode": result.returncode,
-                "stdout": result.stdout,
-                "stderr": result.stderr,
-                "success": True,
-                "timed_out": False,
-                "error_message": None,
-            }
-
-        except subprocess.CalledProcessError as e:
-            elapsed_time = time.perf_counter() - start_time
-
-            # Update solver data
-            self.data.error.append(model)
-
-            logger.error(
-                f"Command failed with return code {e.returncode} after {elapsed_time:.2f}s."
-            )
-            logger.error(f"Stderr:\n{e.stderr.strip()}")
-            return {
-                **basic_data,
-                "elapsed_time": elapsed_time,
-                "returncode": e.returncode,
-                "stdout": e.stdout,
-                "stderr": e.stderr,
-                "success": False,
-                "timed_out": False,
-                "error_message": f"Command '{' '.join(e.cmd)}' returned non-zero exit status {e.returncode}.",
-            }
-
-        except subprocess.TimeoutExpired as e:
-            # Update solver data
-            self.data.error.append(model)
-
-            logger.warning(f"Command timed out after {timeout}s.")
-            # Output captured before timeout is available in the exception object
-            stdout_before_timeout = (
-                e.stdout.decode("utf8", errors="replace") if e.stdout else ""
-            )
-            stderr_before_timeout = (
-                e.stderr.decode("utf8", errors="replace") if e.stderr else ""
-            )
-            if stdout_before_timeout:
-                logging.getLogger("bt-cli").info(
-                    f"You can find the stdout output before the timeout in log file."
-                )
-                logging.getLogger("bt-file").info(
-                    f"Parial stdout before timeout:\n{stdout_before_timeout}"
-                )
-            if stderr_before_timeout:
-                logging.getLogger("bt-cli").info(
-                    f"You can find stderr output before the timeout in log file."
-                )
-                logging.getLogger("bt-file").info(
-                    f"Partial stderr before timeout:\n{stderr_before_timeout}"
-                )
-            return {
-                **basic_data,
-                "elapsed_time": timeout,
-                "returncode": None,
-                "stdout": stdout_before_timeout,
-                "stderr": stderr_before_timeout,
-                "success": False,
-                "timed_out": True,
-                "error_message": f"Command '{' '.join(e.cmd)}' timed out after {e.timeout} seconds.",
-            }
-        except (
-            Exception
-        ) as e:  # Catch other potential errors (e.g., permission issues, unexpected OS errors)
-            elapsed_time = time.perf_counter() - start_time
+        except Exception as e:
             logger.exception(
                 f"An unexpected error occurred running command {' '.join(cmd)}: {e}"
             )
-            return {
-                **basic_data,
-                "elapsed_time": elapsed_time,
-                "returncode": None,
-                "stdout": "",
-                "stderr": str(e),
-                "success": False,
-                "timed_out": False,
-                "error_message": f"An unexpected error occurred: {e}",
-            }
+            run_data.error_message = f"An unexpected error occurred: {e}"
+            return run_data
+
+        self._handle_completion(run_data, process, start_time, model)
+        return run_data
+
+    def _build_command(self, model: Model, args):
+        cmd = [self.solver_command]
+        cmd.extend(args)
+        cmd.append(model.data.basic.output_path.__str__())
+        return cmd
+
+    def _monitor_process(self, run_data: SolverRunData, process, timeout, start_time):
+        ps_process = None
+        last_log = 0
+        
+        try:
+            ps_process = psutil.Process(process.pid)
+        except psutil.NoSuchProcess:
+            return
+
+        while True:
+            try:
+                mem_info = ps_process.memory_info()
+                io_counters = ps_process.io_counters()
+                
+                run_data.max_rss = max(run_data.max_rss, mem_info.rss)
+                run_data.max_cpu_percent = max(
+                    run_data.max_cpu_percent,
+                    ps_process.cpu_percent(interval=0.1)
+                )
+                run_data.read_bytes = io_counters.read_bytes
+                run_data.write_bytes = io_counters.write_bytes
+                
+            except (psutil.NoSuchProcess, psutil.AccessDenied):
+                break
+                
+            elapsed = time.perf_counter() - start_time
+            if elapsed > timeout:
+                process.kill()
+                run_data.timed_out = True
+                run_data.elapsed_time = elapsed
+                break
+                
+            if process.poll() is not None:
+                break
+                
+            time.sleep(0.05)
+
+            if elapsed > (last_log + 10):
+                logger.info(f"Solving for {elapsed:.1f} s")
+                last_log = elapsed
+
+
+    def _handle_completion(self, run_data: SolverRunData, process, start_time, model: Model):
+        run_data.stdout, run_data.stderr = process.communicate()
+        run_data.returncode = process.returncode
+        run_data.elapsed_time = time.perf_counter() - start_time
+        run_data.max_rss_mb = run_data.max_rss / (1024 ** 2)  # Convert to MB
+
+        
+        if run_data.timed_out:
+            logger.warning(f"Timeout after {run_data.elapsed_time:.2f}s")
+            
+        elif run_data.returncode != 0:
+            logger.error(f"Failed with code {run_data.returncode}")
+        else:
+            run_data.success = True
+            logger.info(
+            f"Solved in {run_data.elapsed_time:.2f}s | "
+            f"Max RAM: {run_data.max_rss_mb:.1f}MB | "
+            f"CPU Peak: {run_data.max_cpu_percent}%"
+        )
+
+        self._update_solver_stats(run_data, model)
+
+    def _update_solver_stats(self, run_data: SolverRunData, model: Model):
+        self.data.runs += 1
+        if run_data.timed_out:
+            self.data.timedout.append(model)
+        
+        elif run_data.returncode != 0:
+            self.data.error.append(model)
+        
+        else:
+            self.data.avg_solve_time = (self.data.avg_solve_time * len(self.data.solved) + run_data.elapsed_time) / (len(self.data.solved) + 1)
+            self.data.solved.append(model)
+            
+            if run_data.elapsed_time < self.data.shortest_run[0]:
+                self.data.shortest_run = (run_data.elapsed_time, model)
+                
+            if run_data.elapsed_time > self.data.longest_run[0]:
+                self.data.longest_run = (run_data.elapsed_time, model)
 
     def check_solver(self):
         if is_tool_available(self.solver_command):

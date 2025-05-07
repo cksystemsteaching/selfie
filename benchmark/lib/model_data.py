@@ -116,15 +116,20 @@ class ParsedBTOR2ModelData(DictMixin):
 class SolverRunData(DictMixin):
     """Single solver execution results (timing, output, success state).
     - is owned by a Model"""
-    solver_used: str
-    solver_cmd: str
-    elapsed_time: float
-    returncode: int
-    stdout: str
-    stderr: str
-    success: bool
-    timed_out: bool
-    error_message: str
+    solver_used: str = ""
+    solver_cmd: str = ""
+    elapsed_time: float = 0
+    returncode: int = 0
+    stdout: str = ""
+    stderr: str = ""
+    success: bool = False
+    timed_out: bool = False
+    error_message: str = ""
+    
+    max_rss: int = 0#resident set size in bytes
+    max_cpu_percent: int = 0
+    read_bytes: int = 0
+    write_bytes: int = 0
 
     @classmethod
     def from_dict(cls, data: dict):

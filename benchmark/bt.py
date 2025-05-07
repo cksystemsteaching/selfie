@@ -59,8 +59,8 @@ def main():
             for model in models:
                 for solver in solvers:
                     if solver.available:
-                        result = solver.run(model, args.timeout, [])
-                        model.add_solver_data(result)
+                        run_data = solver.run(model, args.timeout, [])
+                        model.add_solver_data(run_data)
 
     logger.info("Presenting results:")
     for model in models:

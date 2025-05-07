@@ -48,9 +48,7 @@ class Model:
     def __getitem__(self, key):
         return self.data[key]
 
-    def add_solver_data(self, solver_run_data):
-        data = SolverRunData.from_dict(solver_run_data)
-
+    def add_solver_data(self, data: SolverRunData):
         if data.success:
             if not self._data.best_run:
                 self._data.best_run = data

@@ -360,7 +360,7 @@ class SMT2ModelPresenter(BasePresenter):
         lines = [
             f"Solver: {solver_run.solver_used}",
             f"Command: {solver_run.solver_cmd}",
-            f"Elapsed time: {solver_run.elapsed_time}",
+            f"Elapsed time: {solver_run.elapsed_time:.02f}",
             f"Return code: {solver_run.returncode}",
             f"Success: {solver_run.success}",
             f"Timed out: {solver_run.timed_out}"
