@@ -27,6 +27,9 @@ class ModelType:
         self.name = model_type
         self.parser = ModelConfigParser(self.name)
 
+    def get_bases(self):
+        return self.parser.get_bases()
+    
     def get_format(self):
         return self.parser.parse_format()
 

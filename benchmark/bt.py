@@ -35,7 +35,7 @@ def main():
 
     if args.source:
         logger.info(
-            f"Creating models from {args.source} using {args.model_type} model type base, output to {args.output}..."
+            f"Creating models from {args.source} using {args.model_type} model type base, output to '{args.output}'"
         )
 
         logger.info("Parsing provided model types...")

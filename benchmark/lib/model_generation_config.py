@@ -55,7 +55,7 @@ class ModelGenerationConfig(ModelBaseConfig):
     @staticmethod
     def _generate_output_name(source_path: SourcePath, model_type: ModelType):
         filename = (
-            f"{source_path.path.stem}_{'_'.join(model_type.get_format())}"
+            f"{source_path.path.stem}_{'_'.join(model_type.get_bases()[:-1])}"
         )
         return filename
 

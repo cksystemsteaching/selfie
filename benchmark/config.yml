@@ -5,7 +5,7 @@
 
 model_builder_path: "rotor"
 build_model_builder: "make rotor"
-default_output: ""
+default_output: "."
 default_model_type: "starc-32bit-riscv-smt2"
 
 allowed_languages: [.c, .cstar]
