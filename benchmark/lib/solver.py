@@ -76,12 +76,9 @@ class BaseCLISolver(BaseSolver):
         try:
             self.check_model(model)
             start_time = time.perf_counter()
-            
+
             with subprocess.Popen(
-                cmd,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True
+                cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
             ) as process:
                 self._monitor_process(run_data, process, timeout, start_time)
 
@@ -108,7 +105,7 @@ class BaseCLISolver(BaseSolver):
     def _monitor_process(self, run_data: SolverRunData, process, timeout, start_time):
         ps_process = None
         last_log = 0
-        
+
         try:
             ps_process = psutil.Process(process.pid)
         except psutil.NoSuchProcess:
@@ -118,32 +115,31 @@ class BaseCLISolver(BaseSolver):
             try:
                 mem_info = ps_process.memory_info()
                 io_counters = ps_process.io_counters()
-                
+
                 run_data.max_rss = max(run_data.max_rss, mem_info.rss)
                 run_data.max_cpu_percent = max(
-                    run_data.max_cpu_percent,
-                    ps_process.cpu_percent(interval=0.1)
+                    run_data.max_cpu_percent, ps_process.cpu_percent(interval=0.1)
                 )
                 run_data.read_bytes = io_counters.read_bytes
                 run_data.write_bytes = io_counters.write_bytes
-                
+
             except (psutil.NoSuchProcess, psutil.AccessDenied):
                 break
-                
+
             elapsed = time.perf_counter() - start_time
             if elapsed > timeout:
                 process.kill()
                 run_data.timed_out = True
                 run_data.elapsed_time = elapsed
                 break
-                
+
             if process.poll() is not None:
                 break
-                
+
             time.sleep(0.05)
 
             if elapsed > (last_log + 10):
-                logger.info(f"Solving for {elapsed:.1f} s")
+                logger.info(f"Solving for {elapsed:.1f}s")
                 last_log = elapsed
 
 
@@ -151,21 +147,20 @@ class BaseCLISolver(BaseSolver):
         run_data.stdout, run_data.stderr = process.communicate()
         run_data.returncode = process.returncode
         run_data.elapsed_time = time.perf_counter() - start_time
-        run_data.max_rss_mb = run_data.max_rss / (1024 ** 2)  # Convert to MB
+        run_data.max_rss_mb = run_data.max_rss / (1024**2)  # Convert to MB
 
-        
         if run_data.timed_out:
             logger.warning(f"Timeout after {run_data.elapsed_time:.2f}s")
-            
+
         elif run_data.returncode != 0:
             logger.error(f"Failed with code {run_data.returncode}")
         else:
             run_data.success = True
             logger.info(
-            f"Solved in {run_data.elapsed_time:.2f}s | "
-            f"Max RAM: {run_data.max_rss_mb:.1f}MB | "
-            f"CPU Peak: {run_data.max_cpu_percent}%"
-        )
+                f"Solved in {run_data.elapsed_time:.2f}s | "
+                f"Max RAM: {run_data.max_rss_mb:.1f}MB | "
+                f"CPU Peak: {run_data.max_cpu_percent}%"
+            )
 
         self._update_solver_stats(run_data, model)
 
@@ -173,17 +168,19 @@ class BaseCLISolver(BaseSolver):
         self.data.runs += 1
         if run_data.timed_out:
             self.data.timedout.append(model)
-        
+
         elif run_data.returncode != 0:
             self.data.error.append(model)
-        
+
         else:
-            self.data.avg_solve_time = (self.data.avg_solve_time * len(self.data.solved) + run_data.elapsed_time) / (len(self.data.solved) + 1)
+            self.data.avg_solve_time = (
+                self.data.avg_solve_time * len(self.data.solved) + run_data.elapsed_time
+            ) / (len(self.data.solved) + 1)
             self.data.solved.append(model)
-            
+
             if run_data.elapsed_time < self.data.shortest_run[0]:
                 self.data.shortest_run = (run_data.elapsed_time, model)
-                
+
             if run_data.elapsed_time > self.data.longest_run[0]:
                 self.data.longest_run = (run_data.elapsed_time, model)
 
