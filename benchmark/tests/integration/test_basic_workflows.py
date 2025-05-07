@@ -195,10 +195,10 @@ def test_z3_timeout(fake_z3, run_cli, output_dir, valid_smt2_file):
         ]
     )
 
-    assert "Timeout is set to 1s." in result.stderr
-    assert "Command timed out after 1s." in result.stderr
+    assert "Timeout is set to 1s" in result.stderr
+    assert "Timeout after" in result.stderr
     assert "Z3 Solver Data" in result.stdout
-    assert "Error runs: 1" in result.stdout
+    assert "Timed out runs: 1" in result.stdout
     assert result.returncode == 0
 
 
@@ -217,10 +217,10 @@ def test_bitwuzla_timeout(fake_bitwuzla, valid_smt2_file, output_dir, run_cli):
         ]
     )
 
-    assert "Timeout is set to 1s." in result.stderr
-    assert "Command timed out after 1s." in result.stderr
+    assert "Timeout is set to 1s" in result.stderr
+    assert "Timeout after" in result.stderr
     assert "Bitwuzla Solver Data" in result.stdout
-    assert "Error runs: 1" in result.stdout
+    assert "Timed out runs: 1" in result.stdout
 
 
 def test_multiple_solvers(fake_bitwuzla, fake_z3, valid_smt2_file, output_dir, run_cli):

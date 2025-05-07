@@ -56,6 +56,7 @@ def main():
             logger.info(
                 f"Solving {len(models)} models using solvers: {[solver.get_solver_name() for solver in solvers]}..."
             )
+            logger.info(f"Timeout is set to {args.timeout}s")
             for model in models:
                 for solver in solvers:
                     if solver.available:
