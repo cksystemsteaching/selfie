@@ -23,14 +23,9 @@ logger = logging.getLogger("bt.model_type")
 
 class ModelType:
     """Represents a configured model type with its generation commands."""
-
-    def __init__(self, model_base: str):
-        self.model_base = model_base
-        self.model_type_bases = self.model_base.split("-")
-        self.parser = ModelConfigParser(self.model_type_bases)
-
-    def get_model_type_bases(self):
-        return self.model_type_bases
+    def __init__(self, model_type: str):
+        self.name = model_type
+        self.parser = ModelConfigParser(self.name)
 
     def get_format(self):
         return self.parser.parse_format()

@@ -40,7 +40,7 @@ def main():
 
         logger.info("Parsing provided model types...")
         model_types = get_all_model_types(args.model_type)
-        logger.info(f"Parsed following model types: {list(model.model_base for model in model_types)}")
+        logger.info(f"Parsed following model types: {list(model_type.name for model_type in model_types)}")
 
         generated_models = create_models(
             SourcePath(args.source), model_types, OutputPath(args.output)

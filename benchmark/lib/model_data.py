@@ -59,7 +59,7 @@ class GenerationModelData(DictMixin):
     @staticmethod
     def generate(model_generation_config: "ModelGenerationConfig"):
         return GenerationModelData(
-            model_generation_config.model_type.model_base,
+            model_generation_config.model_type.name,
             model_generation_config.compilation_cmd,
             model_generation_config.model_generation_cmd,
         )
