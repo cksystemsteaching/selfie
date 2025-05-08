@@ -17,8 +17,8 @@ class SMT2RotorParser:
         "source_file": re.compile(r"; for RISC-V executable obtained from (.+)"),
         "kmin": re.compile(r"; with -kmin (\d+)"),
         "kmax": re.compile(r"; with .* -kmax (\d+)"),
-        "bytecode": re.compile(r"; with (\d+) bytes of code"),
-        "data": re.compile(r"; and (\d+) bytes of data"),
+        "source_code_size": re.compile(r"; with (\d+) bytes of code"),
+        "data": re.compile(r";.*and (\d+) bytes of data"),
         "virtual_address": re.compile(r"; with -virtualaddressspace (\d+)"),
         "code_word": re.compile(r"; with -codewordsize (\d+)"),
         "memory_word": re.compile(r"; with -memorywordsize (\d+)"),
@@ -59,8 +59,8 @@ class SMT2RotorParser:
             header.kmin = int(value)
         elif field == "kmax":
             header.kmax = int(value)
-        elif field == "bytecode":
-            header.bytecode_size = int(value)
+        elif field == "source_code_size":
+            header.source_code_size = int(value)
         elif field == "data":
             header.data_size = int(value)
         elif field == "virtual_address":

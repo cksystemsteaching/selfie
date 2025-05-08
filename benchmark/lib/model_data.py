@@ -10,12 +10,13 @@ Hierarchy:
 from lib.dict_mixin import DictMixin
 
 from dataclasses import dataclass, fields, field
-from typing import Optional, List, List, Tuple
+from typing import Optional, List, List, Tuple, Dict
 
 
 @dataclass
 class BasicModelData(DictMixin):
     """Essential model identifiers (name, path, format)."""
+
     name: Optional[str] = None
     output_path: Optional[str] = None
     format: Optional[str] = None
@@ -33,10 +34,11 @@ class BasicModelData(DictMixin):
 class RotorModelData(DictMixin):
     """Rotor-specific parameters (memory layout, flags, etc.).
     The parameters need to be parsed from a model."""
+
     source_file: Optional[str] = None
     kmin: Optional[int] = None
     kmax: Optional[int] = None
-    bytecode_size: Optional[int] = None
+    source_code_bytes: Optional[int] = None
     data_size: Optional[int] = None
     virtual_address_space: Optional[int] = None
     code_word_size: Optional[int] = None
@@ -52,6 +54,7 @@ class RotorModelData(DictMixin):
 @dataclass
 class GenerationModelData(DictMixin):
     """Build process details (commands used for compilation/model generation)."""
+
     model_type: str
     compilation_cmd: str
     model_generation_cmd: str
@@ -73,6 +76,7 @@ class ParsedSMT2ModelData(DictMixin):
     - Command counts (assertions/checks/declarations)
     - Derived metrics (e.g., assertions_per_check_sat)
     """
+
     # lines
     total_lines: int = 0
     comment_lines: int = 0
@@ -116,6 +120,7 @@ class ParsedBTOR2ModelData(DictMixin):
 class SolverRunData(DictMixin):
     """Single solver execution results (timing, output, success state).
     - is owned by a Model"""
+
     solver_used: str = ""
     solver_cmd: str = ""
     elapsed_time: float = 0
@@ -125,8 +130,8 @@ class SolverRunData(DictMixin):
     success: bool = False
     timed_out: bool = False
     error_message: str = ""
-    
-    max_rss: int = 0 # resident set size in bytes (used RAM)
+
+    max_rss: int = 0  # resident set size in bytes (used RAM)
     max_cpu_percent: int = 0
     read_bytes: int = 0
     write_bytes: int = 0
@@ -141,6 +146,7 @@ class SolverRunData(DictMixin):
 class SolverData(DictMixin):
     """Aggregated solver performance across multiple runs.
     - is owned by a Solver"""
+
     runs: int = 0
     solved: List["Model"] = field(default_factory=list)
     timedout: List["Model"] = field(default_factory=list)
@@ -148,6 +154,11 @@ class SolverData(DictMixin):
     avg_solve_time: float = 0.0
     longest_run: Tuple[float, "Model"] = (0.0, None)
     shortest_run: Tuple[float, "Model"] = (float("inf"), None)
+
+    rss_per_model: Dict["Model", List[int]] = field(default_factory=dict)
+    read_bytes_per_model: Dict["Model", List[int]] = field(default_factory=dict)
+    write_bytes_per_model: Dict["Model", List[int]] = field(default_factory=dict)
+
 
 @dataclass
 class ModelData(DictMixin):
@@ -158,6 +169,7 @@ class ModelData(DictMixin):
     - solver_runs: Benchmark history
     - best_run: Top-performing result
     """
+
     basic: BasicModelData
     # Model can be loaded, thus missing the generation data
     generation: Optional[GenerationModelData]
@@ -165,12 +177,14 @@ class ModelData(DictMixin):
     solver_runs: List[SolverRunData]
     best_run: SolverRunData
 
+
 @dataclass
 class SMT2ModelData(ModelData):
     """
     SMT2 model representation:
-    - parsed: Structural analysis  
+    - parsed: Structural analysis
     """
+
     parsed: ParsedSMT2ModelData
 
 

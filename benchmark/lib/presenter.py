@@ -334,10 +334,10 @@ class SMT2ModelPresenter(BasePresenter):
         return [
             f"Source: {header.source_file}",
             f"kMin: {header.kmin}, kMax: {header.kmax}",
-            f"Bytecode size: {header.bytecode_size} bytes",
-            f"Data Size: {header.data_size} bytes",
+            f"Source Code size: {header.source_code_size} bytes",
+            f"Source Data Size: {header.data_size} bytes",
             f"Virtual Address Space: {header.virtual_address_space}-bit",
-            f"Code Size: {header.code_word_size} bytes",
+            f"Code Word Size: {header.code_word_size} bytes",
             f"Memory word size: {header.memory_word_size}",
             f"Heap allowance: {header.heap_allowance}",
             f"Stack allowance: {header.stack_allowance}",
