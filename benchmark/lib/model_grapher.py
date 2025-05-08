@@ -190,18 +190,127 @@ class SMT2ModelGrapher(ModelGrapher):
             "define_distribution": self._create_define_figure(),
             "metrics_per_line": self._create_avg_metrics_per_line_figure(),
             "check_sat_per_line_to_solve_time": self._create_check_sat_per_line_to_solve_time_figure(),
-            # Rotor generated only
+            "source_code_size_to_solve_time": self._create_source_code_size_to_solve_time_figure()
         }
-        rotor_generated_models = [model for model in self.models if model.data.parsed.is_rotor_generated]
-        if rotor_generated_models:
-            self.figures.extend({
-                "kminmax_to_solve_time": self_create_kminmax_to_solve_time_figure(),
-                "vaddress_space_to_solve_time": self_create_vadress_space_to_solve_time_figure(),
-            })
+
+        # Remove None values in case any figure failed
+        self.figures = {k: v for k, v in self.figures.items() if v is not None}
+    
+    def _create_source_code_size_to_solve_time_figure(self) -> plt.Figure:
+        """Scatter plot with model names annotated for outlier points."""
+        # Filter valid models
+        valid_models = [
+            m for m in self.models 
+            if (m.data.parsed.is_rotor_generated and  
+                m.data.best_run and
+                m.data.best_run.success )
+        ]
+        
+        if not valid_models:
+            self.logger.debug("No valid models for source code size analysis")
+            return None
+
+        # Prepare data with names
+        data = []
+        for model in valid_models:
+            try:
+                code_size = float(model.data.parsed.rotor_data.source_code_size)
+                time = model.data.best_run.elapsed_time
+                if code_size > 0 and time > 0:
+                    data.append({
+                        "code_size": code_size,
+                        "time": time,
+                        "solver": model.data.best_run.solver_used,
+                        "name": model.data.basic.name
+                    })
+            except (TypeError, ValueError) as e:
+                self.logger.debug(f"Invalid data in {model.data.basic.name}: {e}")
+                continue
+
+        if len(data) < 3:
+            return None
+
+        # Create figure
+        fig, ax = plt.subplots(figsize=(12, 8))
+        
+        # Color by solver
+        solver_colors = {
+            d["solver"]: ColorMap.SOLVER[d["solver"].lower()]
+            for d in data
+        }
+        
+        # Plot points
+        for solver, color in solver_colors.items():
+            subset = [d for d in data if d["solver"] == solver]
+            ax.scatter(
+                x=[d["code_size"] for d in subset],
+                y=[d["time"] for d in subset],
+                c=color,
+                s=40,
+                edgecolor='white',
+                label=solver.upper(),
+                alpha=0.8
+            )
+
+        # Calculate median thresholds
+        code_sizes = [d["code_size"] for d in data]
+        times = [d["time"] for d in data]
+        median_code_size = np.median(code_sizes)
+        median_time = np.median(times)
+
+        # Annotate interesting points
+        for d in data:
+            # Label if in top 25% of either dimension
+            if d["code_size"] > np.percentile(code_sizes, 75) or d["time"] > np.percentile(times, 75):
+                ax.annotate(
+                    d["name"],
+                    (d["code_size"], d["time"]),
+                    textcoords="offset points",
+                    xytext=(5, -5),  # Offset downward
+                    ha='left',
+                    va='top',
+                    fontsize=8,
+                    color=self.colors["text"],
+                    arrowprops=dict(
+                        arrowstyle="-",
+                        color="#888888",
+                        linewidth=0.5
+                    )
+                )
+
+        # Formatting
+        self._format_axes(
+            ax, fig,
+            title="Source Code Size vs Solve Time",
+            xlabel="Source Code Size",
+            ylabel="Solve Time [s]"
+        )
+        
+        # Add legend and info box
+        ax.legend(title="Solver", frameon=True)
+        info_text = f"""Models: {len(data)}
+        ▲ Upper right: Source Code Size > {median_code_size:.1e}
+        ► Right half: Time > {median_time:.1f}s"""
+        ax.text(
+            0.95, 0.15,
+            info_text,
+            transform=ax.transAxes,
+            ha='right',
+            va='bottom',
+            fontsize=9,
+            bbox=dict(facecolor='white', alpha=0.8)
+        )
+
+        return fig
+
     
     def _create_check_sat_per_line_to_solve_time_figure(self):
         #Prepare data
-        solved_models = [model for model in self.models if model.data.best_run.success]
+        solved_models = [model for model in self.models if model.data.best_run and model.data.best_run.success]
+
+        if not solved_models:
+            self.logger.debug("No valid models for (check_sat) analysis")
+            return None
 
         x, y, solvers = [], [], []
         for model in solved_models:
@@ -613,5 +722,5 @@ class BTOR2ModelGrapher(ModelGrapher):
         if not self.models:
             return
 
-        self.logger(f"Creating figures for BTOR2 models")
+        self.logger.info(f"Creating figures for BTOR2 models")
         self.figures = {}
