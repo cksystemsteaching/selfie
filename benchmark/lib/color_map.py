@@ -46,3 +46,8 @@ class ColorMap:
         "#ABD9E9",
         "#2C7BB6",  # Positive
     ]
+
+    SOLVER = {
+        "z3": "#F06292",        # Pink
+        "bitwuzla": "#5FB7D4",  # Cyan
+    }

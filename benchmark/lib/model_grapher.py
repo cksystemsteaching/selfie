@@ -189,11 +189,86 @@ class SMT2ModelGrapher(ModelGrapher):
             "line_counts": self._create_line_count_figure(),
             "define_distribution": self._create_define_figure(),
             "metrics_per_line": self._create_avg_metrics_per_line_figure(),
-            # "check_sat_per_line_to_solve_time": self._create_push_per_line_to_solve_time_figure(),
+            "check_sat_per_line_to_solve_time": self._create_check_sat_per_line_to_solve_time_figure(),
             # Rotor generated only
-            # "kminmax_to_solve_time": self_create_kminmax_to_solve_time_figure(),
-            # "vaddress_space_to_solve_time": self_create_vadress_space_to_solve_time_figure(),
         }
+        rotor_generated_models = [model for model in self.models if model.data.parsed.is_rotor_generated]
+        if rotor_generated_models:
+            self.figures.extend({
+                "kminmax_to_solve_time": self_create_kminmax_to_solve_time_figure(),
+                "vaddress_space_to_solve_time": self_create_vadress_space_to_solve_time_figure(),
+            })
+    
+    def _create_check_sat_per_line_to_solve_time_figure(self):
+        #Prepare data
+        solved_models = [model for model in self.models if model.data.best_run.success]
+
+        x, y, solvers = [], [], []
+        for model in solved_models:
+            x_val = model.data.parsed.check_sats_per_line()
+            if x_val <= 0:  # Skip models with no check-sat
+                continue
+        
+            x.append(x_val)
+            y.append(model.data.best_run.elapsed_time)
+            solvers.append(model.data.best_run.solver_used)
+    
+        # Create figure
+        fig, ax = plt.subplots(figsize=self.figsize)
+    
+        # Color by solver using project colormap
+        solver_colors = {
+            solver: ColorMap.SOLVER[solver.lower()]
+            for solver in set(solvers)
+        }
+        
+        # Plot each point with solver-specific color
+        for solver, color in solver_colors.items():
+            mask = [s == solver for s in solvers]
+            ax.scatter(
+                x=np.array(x)[mask],
+                y=np.array(y)[mask],
+                c=color,
+                s=80,
+                edgecolor="white",
+                label=solver.upper(),
+                zorder=3
+            )
+
+        # Formatting
+        ax.set_yscale('log')
+        self._format_axes(
+            ax, fig,
+            title="Check-sat Density vs Solve Time",
+            xlabel="Check-sat Commands per Line",
+            ylabel="Solve Time (seconds, log scale)"
+        )
+        
+        # Add legend and annotations
+        ax.legend(title="Solver", frameon=True, framealpha=0.9)
+        ax.annotate(
+            f"n = {len(x)} models",
+            xy=(0.95, 0.9), xycoords='axes fraction',
+            ha='right', va='top',
+            bbox=dict(boxstyle="round,pad=0.3", fc="white", ec="none")
+        )
+
+        # Highlight outliers
+        if len(y) > 10:  # Only annotate if sufficient data
+            q75, q25 = np.percentile(y, [75, 25])
+            iqr = q75 - q25
+            for xi, yi, name in zip(x, y, [m.data.basic.name for m in solved_models]):
+                if yi > q75 + 1.5*iqr:
+                    ax.annotate(
+                        name, (xi, yi),
+                        textcoords="offset points",
+                        xytext=(0,5), ha='center',
+                        fontsize=8, color=self.colors["highlight"]
+                    )
+
+        return fig
+        
+
 
     def _create_line_count_figure(self):
         """Core graphing logic"""

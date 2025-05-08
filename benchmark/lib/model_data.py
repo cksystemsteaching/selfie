@@ -126,7 +126,7 @@ class SolverRunData(DictMixin):
     timed_out: bool = False
     error_message: str = ""
     
-    max_rss: int = 0#resident set size in bytes
+    max_rss: int = 0 # resident set size in bytes (used RAM)
     max_cpu_percent: int = 0
     read_bytes: int = 0
     write_bytes: int = 0
