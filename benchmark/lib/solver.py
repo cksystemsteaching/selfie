@@ -68,6 +68,7 @@ class BaseCLISolver(BaseSolver):
             'error_message': String description of the error, if any.
         """
         cmd = self._build_command(model, args)
+        logger.info(f"Solving {model.data.basic.name} with {self.get_solver_name()}...")
 
         run_data = SolverRunData()
         run_data.solver_used = self.get_solver_name()
@@ -163,6 +164,9 @@ class BaseCLISolver(BaseSolver):
             )
 
         self._update_solver_stats(run_data, model)
+    
+    def get_solver_name():
+        pass
 
     def _update_solver_stats(self, run_data: SolverRunData, model: Model):
         self.data.runs += 1
