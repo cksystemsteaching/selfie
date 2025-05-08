@@ -120,6 +120,76 @@ class BaseGrapher(ABC):
         }
         self.figsize = (10, 6)
 
+    def _format_axes(
+        self,
+        ax: plt.Axes,
+        fig: plt.Figure,
+        title: str,
+        xlabel: str,
+        ylabel: str,
+        grid: bool = True,
+        tick_style: str = "default",
+    ) -> None:
+        """Professional axes formatting with grid support
+
+        Args:
+            ax: Matplotlib axes object
+            fig: Matplotlib figure object
+            title: Axis title
+            xlabel: X-axis label
+            ylabel: Y-axis label
+            grid: Whether to show grid (default: True)
+            tick_style: 'default' or 'scientific'
+        """
+        # Title and labels
+        ax.set_title(title, pad=15, fontsize=14, weight="semibold")
+        ax.set_xlabel(xlabel, labelpad=10, fontsize=12)
+        ax.set_ylabel(ylabel, labelpad=10, fontsize=12)
+
+        # Grid configuration
+        if grid:
+            ax.grid(
+                True,
+                which="major",
+                linestyle="-",
+                linewidth=0.5,
+                color="#E0E0E0",
+                zorder=0,
+            )
+            ax.grid(
+                True,
+                which="minor",
+                linestyle=":",
+                linewidth=0.3,
+                color="#F0F0F0",
+                zorder=0,
+            )
+
+        # Tick formatting
+        ax.tick_params(axis="both", which="both", labelsize=10)
+        if tick_style == "scientific":
+            ax.ticklabel_format(
+                style="sci", axis="both", scilimits=(0, 0), useMathText=True
+            )
+            ax.yaxis.offsetText.set_fontsize(10)
+            ax.xaxis.offsetText.set_fontsize(10)
+
+        # Rotate ticks if crowded
+        if len(ax.get_xticklabels()) > 6:
+            plt.setp(
+                ax.get_xticklabels(), rotation=45, ha="right", rotation_mode="anchor"
+            )
+
+        # Adjust layout
+        fig.tight_layout()
+        fig.set_facecolor("white")
+        ax.set_facecolor("white")
+
+        # Set axis spines
+        for spine in ax.spines.values():
+            spine.set_edgecolor("#888888")
+            spine.set_linewidth(0.8)
+
     @abstractmethod
     def generate_all_figures(self):
         """Generate all standard figures for this model type"""
@@ -169,7 +239,135 @@ class SolverGrapher(BaseGrapher):
         
         self.logger.info(f"Generating figures for {self.solver.get_solver_name()} solver")
         self.figures = {
+            "cpu_usage_figure": self._create_cpu_usage_figure(),
+            # "memory_usage": self._create_memory_usage_figure(),
         }
+
+        # Remove None values in case any figure failed
+        self.figures = {k: v for k, v in self.figures.items() if v is not None}
+    
+    def _create_cpu_usage_figure(self) -> plt.Figure:
+        """Line plot with automatic CPU range scaling and status coloring."""
+        samples = self.solver.data.profile.samples
+        
+        if not samples:
+            self.logger.debug("No CPU usage data available")
+            return None
+
+        fig, ax = plt.subplots(figsize=self.figsize)
+        
+        # Color configuration
+        success_color = ColorMap.PRIMARY['green']
+        failure_color = ColorMap.PRIMARY['red']
+        
+        # Track legend entries to avoid duplicates
+        legend_handles = {
+            'Solved': None,
+            'Unsolved': None
+        }
+
+        # Collect all CPU values for scaling
+        all_cpus = []
+        plot_data = []
+
+        for model, measurements in samples.items():
+            if len(measurements) < 2:
+                continue
+
+            # Get solve status
+            solved = model in self.solver.data.solved
+            
+            # Extract timeline relative to first measurement
+            base_time = measurements[0].timestamp
+            times = [m.timestamp - base_time for m in measurements]
+            cpus = [m.cpu_percent for m in measurements]
+            all_cpus.extend(cpus)
+            
+            plot_data.append((model, times, cpus, solved))
+
+        # Calculate smart axis limits
+        if all_cpus:
+            cpu_min = max(0, min(all_cpus) - 5)  # Pad bottom by 5%
+            cpu_max = min(120, max(all_cpus) + 5)  # Cap at 120% with padding
+            if cpu_max < 50:  # Handle unusually low CPU cases
+                cpu_max = 100
+        else:
+            cpu_min, cpu_max = 0, 100
+
+        # Plot all models with calculated scaling
+        for model, times, cpus, solved in plot_data:
+            line = ax.plot(
+                times,
+                cpus,
+                label=self._truncate_name(model.data.basic.name, 15),
+                color=success_color if solved else failure_color,
+                alpha=0.7,
+                linewidth=1.5,
+                marker='o' if len(times) < 20 else None,
+                markersize=4
+            )[0]
+            
+            # Store legend handles
+            if solved and not legend_handles['Solved']:
+                legend_handles['Solved'] = line
+            elif not solved and not legend_handles['Unsolved']:
+                legend_handles['Unsolved'] = line
+
+        # Formatting with dynamic scaling
+        self._format_axes(
+            ax, fig,
+            title="CPU Usage Timeline (Solved vs Unsolved Models)",
+            xlabel="Time (seconds)",
+            ylabel="CPU Utilization (%)",
+            grid=True
+        )
+        
+        # Set dynamic Y-axis limits
+        ax.set_ylim(cpu_min, cpu_max)
+        ax.axhline(100, color='#888888', linestyle=':', linewidth=0.5)  # 100% marker
+        
+        # Create combined legend
+        final_handles = []
+        if legend_handles['Solved']:
+            final_handles.append(legend_handles['Solved'])
+        if legend_handles['Unsolved']:
+            final_handles.append(legend_handles['Unsolved'])
+            
+        ax.legend(
+            final_handles,
+            [h for h in legend_handles.keys() if legend_handles[h]],
+            title="Model Status",
+            bbox_to_anchor=(1.05, 1),
+            loc='upper left',
+            borderaxespad=0.
+        )
+
+        # Secondary legend for model names
+        model_legend = ax.legend(
+            title="Model Names",
+            bbox_to_anchor=(1.05, 0),
+            loc='lower left',
+            borderaxespad=0.
+        )
+        ax.add_artist(model_legend)
+
+        ax.set_xlim(left=0)
+        ax.xaxis.set_major_locator(plt.MultipleLocator(10))
+        
+        # Add CPU range annotation if needed
+        if cpu_max > 105:
+            ax.text(0.98, 0.95, 
+                f"CPU Range: {min(all_cpus):.0f}-{max(all_cpus):.0f}%",
+                transform=ax.transAxes,
+                ha='right', va='top',
+                bbox=dict(facecolor='white', alpha=0.7))
+        
+        return fig
+
+    def _truncate_name(self, name: str, max_length: int) -> str:
+        """Helper to shorten long model names for legends"""
+        return (name[:max_length] + '..') if len(name) > max_length else name
+
     
     def add(self, solver):
         self.solver = solver
@@ -557,76 +755,6 @@ class SMT2ModelGrapher(ModelGrapher):
         )
 
         ax.legend(frameon=True, framealpha=0.9, loc="upper left")
-
-    def _format_axes(
-        self,
-        ax: plt.Axes,
-        fig: plt.Figure,
-        title: str,
-        xlabel: str,
-        ylabel: str,
-        grid: bool = True,
-        tick_style: str = "default",
-    ) -> None:
-        """Professional axes formatting with grid support
-
-        Args:
-            ax: Matplotlib axes object
-            fig: Matplotlib figure object
-            title: Axis title
-            xlabel: X-axis label
-            ylabel: Y-axis label
-            grid: Whether to show grid (default: True)
-            tick_style: 'default' or 'scientific'
-        """
-        # Title and labels
-        ax.set_title(title, pad=15, fontsize=14, weight="semibold")
-        ax.set_xlabel(xlabel, labelpad=10, fontsize=12)
-        ax.set_ylabel(ylabel, labelpad=10, fontsize=12)
-
-        # Grid configuration
-        if grid:
-            ax.grid(
-                True,
-                which="major",
-                linestyle="-",
-                linewidth=0.5,
-                color="#E0E0E0",
-                zorder=0,
-            )
-            ax.grid(
-                True,
-                which="minor",
-                linestyle=":",
-                linewidth=0.3,
-                color="#F0F0F0",
-                zorder=0,
-            )
-
-        # Tick formatting
-        ax.tick_params(axis="both", which="both", labelsize=10)
-        if tick_style == "scientific":
-            ax.ticklabel_format(
-                style="sci", axis="both", scilimits=(0, 0), useMathText=True
-            )
-            ax.yaxis.offsetText.set_fontsize(10)
-            ax.xaxis.offsetText.set_fontsize(10)
-
-        # Rotate ticks if crowded
-        if len(ax.get_xticklabels()) > 6:
-            plt.setp(
-                ax.get_xticklabels(), rotation=45, ha="right", rotation_mode="anchor"
-            )
-
-        # Adjust layout
-        fig.tight_layout()
-        fig.set_facecolor("white")
-        ax.set_facecolor("white")
-
-        # Set axis spines
-        for spine in ax.spines.values():
-            spine.set_edgecolor("#888888")
-            spine.set_linewidth(0.8)
 
     def _create_avg_metrics_per_line_figure(self) -> plt.Figure:
         """Create a figure showing average metrics per line across all models.
