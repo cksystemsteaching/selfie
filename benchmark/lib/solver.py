@@ -81,7 +81,7 @@ class BaseCLISolver(BaseSolver):
             with subprocess.Popen(
                 cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
             ) as process:
-                self._monitor_process(run_data, process, timeout, start_time)
+                self._monitor_process(run_data, process, timeout, start_time, model)
 
         except UnsupportedModelException as e:
             run_data.error_message = f"Model check failed: {e}"
@@ -94,7 +94,7 @@ class BaseCLISolver(BaseSolver):
             run_data.error_message = f"An unexpected error occurred: {e}"
             return run_data
 
-        self._handle_completion(run_data, process, start_time, model)
+        self._handle_completion(run_data, process, model)
         return run_data
 
     def _build_command(self, model: Model, args):
@@ -103,7 +103,7 @@ class BaseCLISolver(BaseSolver):
         cmd.append(model.data.basic.output_path.__str__())
         return cmd
 
-    def _monitor_process(self, run_data: SolverRunData, process, timeout, start_time):
+    def _monitor_process(self, run_data: SolverRunData, process, timeout, start_time, model):
         ps_process = None
         last_log = 0
 
@@ -114,24 +114,27 @@ class BaseCLISolver(BaseSolver):
 
         while True:
             try:
-                mem_info = ps_process.memory_info()
-                io_counters = ps_process.io_counters()
+                rss = ps_process.memory_info().rss
+                cpu_percent = ps_process.cpu_percent(interval=0.1)
 
-                run_data.max_rss = max(run_data.max_rss, mem_info.rss)
-                run_data.max_cpu_percent = max(
-                    run_data.max_cpu_percent, ps_process.cpu_percent(interval=0.1)
-                )
-                run_data.read_bytes = io_counters.read_bytes
-                run_data.write_bytes = io_counters.write_bytes
+                run_data.max_rss = max(run_data.max_rss, rss)
+                run_data.max_cpu_percent = max(run_data.max_cpu_percent, cpu_percent)
+
+                if run_data.elapsed_time > (last_log + 10):
+                    rss_in_mb = rss / (1024**2)
+                    logger.info(f"Solving for {run_data.elapsed_time:.1f}s: "
+                                f"RAM: {rss_in_mb:.1f}MB | "
+                                f"CPU: {cpu_percent}%")
+                    self.data.profile.record_sample(model, run_data.elapsed_time, rss_in_mb, cpu_percent)
+                    last_log = run_data.elapsed_time
 
             except (psutil.NoSuchProcess, psutil.AccessDenied):
                 break
 
-            elapsed = time.perf_counter() - start_time
-            if elapsed > timeout:
+            run_data.elapsed_time = time.perf_counter() - start_time
+            if run_data.elapsed_time > timeout:
                 process.kill()
                 run_data.timed_out = True
-                run_data.elapsed_time = elapsed
                 break
 
             if process.poll() is not None:
@@ -139,15 +142,10 @@ class BaseCLISolver(BaseSolver):
 
             time.sleep(0.05)
 
-            if elapsed > (last_log + 10):
-                logger.info(f"Solving for {elapsed:.1f}s")
-                last_log = elapsed
 
-
-    def _handle_completion(self, run_data: SolverRunData, process, start_time, model: Model):
+    def _handle_completion(self, run_data: SolverRunData, process, model: Model):
         run_data.stdout, run_data.stderr = process.communicate()
         run_data.returncode = process.returncode
-        run_data.elapsed_time = time.perf_counter() - start_time
         run_data.max_rss_mb = run_data.max_rss / (1024**2)  # Convert to MB
 
         if run_data.timed_out:

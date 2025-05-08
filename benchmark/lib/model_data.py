@@ -133,15 +133,13 @@ class SolverRunData(DictMixin):
 
     max_rss: int = 0  # resident set size in bytes (used RAM)
     max_cpu_percent: int = 0
-    read_bytes: int = 0
-    write_bytes: int = 0
 
     @classmethod
     def from_dict(cls, data: dict):
         valid_fields = {f.name for f in fields(cls)}
         return cls(**{k: v for k, v in data.items() if k in valid_fields})
 
-
+from lib.solver_profile import SolverProfiler
 @dataclass
 class SolverData(DictMixin):
     """Aggregated solver performance across multiple runs.
@@ -155,11 +153,7 @@ class SolverData(DictMixin):
     longest_run: Tuple[float, "Model"] = (0.0, None)
     shortest_run: Tuple[float, "Model"] = (float("inf"), None)
 
-    rss_per_model: Dict["Model", List[int]] = field(default_factory=dict)
-    read_bytes_per_model: Dict["Model", List[int]] = field(default_factory=dict)
-    write_bytes_per_model: Dict["Model", List[int]] = field(default_factory=dict)
-
-
+    profile: SolverProfiler = field(default_factory=SolverProfiler)
 @dataclass
 class ModelData(DictMixin):
     """
