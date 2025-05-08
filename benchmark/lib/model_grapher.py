@@ -240,7 +240,7 @@ class SolverGrapher(BaseGrapher):
         self.logger.info(f"Generating figures for {self.solver.get_solver_name()} solver")
         self.figures = {
             "cpu_usage_figure": self._create_cpu_usage_figure(),
-            # "memory_usage": self._create_memory_usage_figure(),
+            "memory_usage": self._create_memory_usage_figure(),
         }
 
         # Remove None values in case any figure failed
@@ -362,6 +362,112 @@ class SolverGrapher(BaseGrapher):
                 ha='right', va='top',
                 bbox=dict(facecolor='white', alpha=0.7))
         
+        return fig
+
+    def _create_memory_usage_figure(self) -> plt.Figure:
+        """Line plot with automatic CPU range scaling and status coloring."""
+        samples = self.solver.data.profile.samples
+        
+        if not samples:
+            self.logger.debug("No memory usage data available")
+            return None
+
+        fig, ax = plt.subplots(figsize=self.figsize)
+        
+        # Color configuration
+        success_color = ColorMap.PRIMARY['green']
+        failure_color = ColorMap.PRIMARY['red']
+        
+        # Track legend entries to avoid duplicates
+        legend_handles = {
+            'Solved': None,
+            'Unsolved': None
+        }
+
+        # Collect all CPU values for scaling
+        all_memory_usage = []
+        plot_data = []
+
+        for model, measurements in samples.items():
+            if len(measurements) < 2:
+                continue
+
+            # Get solve status
+            solved = model in self.solver.data.solved
+            
+            # Extract timeline relative to first measurement
+            base_time = measurements[0].timestamp
+            times = [m.timestamp - base_time for m in measurements]
+            memory_usage = [m.rss for m in measurements]
+            all_memory_usage.extend(memory_usage)
+            
+            plot_data.append((model, times, memory_usage, solved))
+
+        # Calculate smart axis limits
+        if all_memory_usage:
+            rss_min = min(all_memory_usage)
+            rss_max = max(all_memory_usage) 
+
+        # Plot all models with calculated scaling
+        for model, times, cpus, solved in plot_data:
+            line = ax.plot(
+                times,
+                cpus,
+                label=self._truncate_name(model.data.basic.name, 15),
+                color=success_color if solved else failure_color,
+                alpha=0.7,
+                linewidth=1.5,
+                marker='o' if len(times) < 20 else None,
+                markersize=4
+            )[0]
+            
+            # Store legend handles
+            if solved and not legend_handles['Solved']:
+                legend_handles['Solved'] = line
+            elif not solved and not legend_handles['Unsolved']:
+                legend_handles['Unsolved'] = line
+
+        # Formatting with dynamic scaling
+        self._format_axes(
+            ax, fig,
+            title="RSS Timeline (Solved vs Unsolved Models)",
+            xlabel="Time (seconds)",
+            ylabel="RSS (MB)",
+            grid=True
+        )
+        
+        # Set dynamic Y-axis limits
+        ax.set_ylim(rss_min, rss_max)
+        ax.axhline(100, color='#888888', linestyle=':', linewidth=0.5)  # 100% marker
+        
+        # Create combined legend
+        final_handles = []
+        if legend_handles['Solved']:
+            final_handles.append(legend_handles['Solved'])
+        if legend_handles['Unsolved']:
+            final_handles.append(legend_handles['Unsolved'])
+            
+        ax.legend(
+            final_handles,
+            [h for h in legend_handles.keys() if legend_handles[h]],
+            title="Model Status",
+            bbox_to_anchor=(1.05, 1),
+            loc='upper left',
+            borderaxespad=0.
+        )
+
+        # Secondary legend for model names
+        model_legend = ax.legend(
+            title="Model Names",
+            bbox_to_anchor=(1.05, 0),
+            loc='lower left',
+            borderaxespad=0.
+        )
+        ax.add_artist(model_legend)
+
+        ax.set_xlim(left=0)
+        ax.xaxis.set_major_locator(plt.MultipleLocator(10))
+         
         return fig
 
     def _truncate_name(self, name: str, max_length: int) -> str:

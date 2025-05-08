@@ -152,7 +152,7 @@ class BaseCLISolver(BaseSolver):
             logger.warning(f"Timeout after {run_data.elapsed_time:.2f}s")
 
         elif run_data.returncode != 0:
-            logger.error(f"Failed with code {run_data.returncode}")
+            logger.warning(f"Failed with code {run_data.returncode}")
         else:
             run_data.success = True
             logger.info(
