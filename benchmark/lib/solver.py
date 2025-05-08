@@ -105,7 +105,7 @@ class BaseCLISolver(BaseSolver):
 
     def _monitor_process(self, run_data: SolverRunData, process, timeout, start_time, model):
         ps_process = None
-        last_log = 0
+        next_log_time = -1
 
         try:
             ps_process = psutil.Process(process.pid)
@@ -120,13 +120,13 @@ class BaseCLISolver(BaseSolver):
                 run_data.max_rss = max(run_data.max_rss, rss)
                 run_data.max_cpu_percent = max(run_data.max_cpu_percent, cpu_percent)
 
-                if run_data.elapsed_time > (last_log + 10):
+                if run_data.elapsed_time > next_log_time:
                     rss_in_mb = rss / (1024**2)
-                    logger.info(f"Solving for {run_data.elapsed_time:.1f}s: "
+                    logger.info(f"Solving for {run_data.elapsed_time:.1f}s | "
                                 f"RAM: {rss_in_mb:.1f}MB | "
                                 f"CPU: {cpu_percent}%")
                     self.data.profile.record_sample(model, run_data.elapsed_time, rss_in_mb, cpu_percent)
-                    last_log = run_data.elapsed_time
+                    next_log_time = run_data.elapsed_time + 10
 
             except (psutil.NoSuchProcess, psutil.AccessDenied):
                 break
@@ -146,7 +146,7 @@ class BaseCLISolver(BaseSolver):
     def _handle_completion(self, run_data: SolverRunData, process, model: Model):
         run_data.stdout, run_data.stderr = process.communicate()
         run_data.returncode = process.returncode
-        run_data.max_rss_mb = run_data.max_rss / (1024**2)  # Convert to MB
+        run_data.max_rss = run_data.max_rss / (1024**2)  # Convert to MB
 
         if run_data.timed_out:
             logger.warning(f"Timeout after {run_data.elapsed_time:.2f}s")
@@ -157,7 +157,7 @@ class BaseCLISolver(BaseSolver):
             run_data.success = True
             logger.info(
                 f"Solved in {run_data.elapsed_time:.2f}s | "
-                f"Max RAM: {run_data.max_rss_mb:.1f}MB | "
+                f"Max RAM: {run_data.max_rss:.1f}MB | "
                 f"CPU Peak: {run_data.max_cpu_percent}%"
             )
 

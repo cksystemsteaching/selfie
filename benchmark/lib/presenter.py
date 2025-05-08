@@ -146,57 +146,56 @@ class BTRunPresenter(BasePresenter):
         return lines
 
 class SolverPresenter(BasePresenter):
-    """Handles presentation of a specific solver"""
-
+    """Handles presentation of solver results with consistent formatting."""
+    
     def __init__(self, solver: 'BaseSolver'):
         super().__init__()
         self.solver = solver
-    
-    def _generate_plain(self):
+
+    def _generate_plain(self) -> str:
+        """Generate simple text output."""
         lines = [
             f"{self.solver.get_solver_name()} Solver Data",
+            *self._format_basic(),
+            *self._format_important_runs()
+        ]
+        return "\n".join(filter(None, lines))  # Skip empty lines
+    
+    def _generate_verbose(self) -> str:
+        """Generate rich formatted output with borders."""
+        width = 70
+        header = f" {self.solver.get_solver_name()} Solver ".center(width, "=")
+        footer = "=" * width
+        
+        sections = [
+            self._section("Basic Data", self._format_basic()),
+            self._section("Runs", self._format_important_runs())
+        ]
+        
+        return f"\n{header}\n" + "\n\n".join(filter(None, sections)) + f"\n{footer}\n"
+    
+    def _format_basic(self) -> list[str]:
+        """Generate lines for basic statistics section."""
+        return [
             f"Total runs: {self.solver.data.runs}",
             f"  Solved runs: {len(self.solver.data.solved)}",
             f"  Timed out runs: {len(self.solver.data.timedout)}",
             f"  Error runs: {len(self.solver.data.error)}",
-            f"Average solving time: {self.solver.data.avg_solve_time}",
+            f"Average solving time: {self.solver.data.avg_solve_time:.4f}",
         ]
-        if len(self.solver.data.solved) > 0:
-            lines.extend([
-                "\nRuns:",
-                f"Longest run: {self.solver.data.longest_run[0]}",
-                f"  Model: {self.solver.data.longest_run[1]['basic']['output_path']}",
-                f"Shortest run: {self.solver.data.shortest_run[0]}",
-                f"  Model: {self.solver.data.shortest_run[1]['basic']['output_path']}",
-            ])
 
-        return "\n".join(lines)
-    
-    def _generate_verbose(self):
-        """Generate rich verbose output with borders"""
-        width = 70
-        header = f" {self.solver.get_solver_name()} SOLVER ".center(width, "=")
-        footer = "=" * width
-        
-        sections = [
-            self._section("Basic Data", [
-                f"Total runs: {self.solver.data.runs}",
-                f"  Solved runs: {len(self.solver.data.solved)}",
-                f"  Timed out runs: {len(self.solver.data.timedout)}",
-                f"  Error runs: {len(self.solver.data.error)}",
-                f"Average solving time: {self.solver.data.avg_solve_time}",
-            ])
+    def _format_important_runs(self) -> list[str]:
+        """Generate lines for run statistics section."""
+        if not len(self.solver.data.solved) > 0:
+            return []
+            
+        return [
+            "\nRuns:",
+            f"Longest run: {self.solver.data.longest_run[0]:.2f}",
+            f"  Model: {self.solver.data.longest_run[1].data.basic.output_path}",
+            f"Shortest run: {self.solver.data.shortest_run[0]:.2f}",
+            f"  Model: {self.solver.data.shortest_run[1].data.basic.output_path}",
         ]
-        if len(self.solver.data.solved) > 0:
-            sections.append(
-            self._section("Runs", [
-                f"Longest run: {self.solver.data.longest_run[0]:.2f}",
-                f"  Model: {self.solver.data.longest_run[1]['basic']['output_path']}",
-                f"Shortest run: {self.solver.data.shortest_run[0]:.2f}",
-                f"  Model: {self.solver.data.shortest_run[1]['basic']['output_path']}",
-            ]))
-
-        return f"\n{header}\n" + "\n\n".join(sections) + f"\n{footer}\n"
     
 #TODO
 class BTOR2ModelPresenter(BasePresenter):
@@ -237,30 +236,12 @@ class SMT2ModelPresenter(BasePresenter):
     def __init__(self, model: 'SMT2Model'):
         super().__init__()
         self.model = model
-    
+
     def _generate_plain(self) -> str:
         """Generate plain text output"""
-        lines = [
-            f"Model: {self.model.data.basic.output_path}",
-            f"Type: {self.model.__class__.__name__}",
-        ]
+        lines = self._format_basic_data()
         
-        lines.extend([
-            "\nParsed data:",
-            f"Total lines: {self.model['parsed']['total_lines']}",
-            f"  Code lines: {self.model['parsed']['code_lines']}",
-            f"  Comments lines: {self.model['parsed']['comment_lines']}",
-            f"  Blank lines: {self.model['parsed']['blank_lines']}",
-            f"Commands:",
-            f"  Declarations: {self.model['parsed']['definition']}",
-            f"  Definitions: {self.model['parsed']['declaration']}",
-            f"  Assertions: {self.model['parsed']['assertion']}",
-            f"  Push commands: {self.model['parsed']['push']}",
-            f"  Pop commands: {self.model['parsed']['pop']}",
-            f"  Check-sat commands: {self.model['parsed']['check_sat']}",
-            f"  Other commands: {self.model['parsed']['other_commands']}",
-            f"Rotor generated: {self.model['parsed']['is_rotor_generated']}"
-        ])
+        lines.extend(self._format_parsed_data())
         
         if self.model['parsed']['is_rotor_generated']:
             lines.append("\nRotor Configuration:")
@@ -281,28 +262,9 @@ class SMT2ModelPresenter(BasePresenter):
         footer = "=" * width
         
         sections = [
-            self._section("Basic Data", [
-                f"File: {self.model.data.basic.name}",
-                f"Path: {self.model.data.basic.output_path}",
-                f"Type: {self.model.__class__.__name__}",
-                f"Format: {self.model.data.basic.format}",
-            ]),
+            self._section("Basic Data", self._format_basic_data()),
             
-            self._section("Parsed Data", [
-                f"Total lines: {self.model['parsed']['total_lines']}",
-                f"  Code lines: {self.model['parsed']['code_lines']}",
-                f"  Comments lines: {self.model['parsed']['comment_lines']}",
-                f"  Blank lines: {self.model['parsed']['blank_lines']}",
-                f"Commands:",
-                f"  Declarations: {self.model['parsed']['definition']}",
-                f"  Definitions: {self.model['parsed']['declaration']}",
-                f"  Assertions: {self.model['parsed']['assertion']}",
-                f"  Push commands: {self.model['parsed']['push']}",
-                f"  Pop commands: {self.model['parsed']['pop']}",
-                f"  Check-sat commands: {self.model['parsed']['check_sat']}",
-                f"  Other commands: {self.model['parsed']['other_commands']}",
-                f"Rotor generated: {self.model['parsed']['is_rotor_generated']}"
-            ]),
+            self._section("Parsed Data", self._format_parsed_data()),
         ]
         
         if self.model['parsed']['is_rotor_generated']:
@@ -327,7 +289,32 @@ class SMT2ModelPresenter(BasePresenter):
             )
 
         return f"\n{header}\n" + "\n\n".join(sections) + f"\n{footer}\n"
+
+    def _format_basic_data(self):
+        return [
+                f"File: {self.model.data.basic.name}",
+                f"Path: {self.model.data.basic.output_path}",
+                f"Type: {self.model.__class__.__name__}",
+                f"Format: {self.model.data.basic.format}",
+            ]
     
+    def _format_parsed_data(self):
+         return [
+            "\nParsed data:",
+            f"Total lines: {self.model['parsed']['total_lines']}",
+            f"  Code lines: {self.model['parsed']['code_lines']}",
+            f"  Comments lines: {self.model['parsed']['comment_lines']}",
+            f"  Blank lines: {self.model['parsed']['blank_lines']}",
+            f"Commands:",
+            f"  Declarations: {self.model['parsed']['definition']}",
+            f"  Definitions: {self.model['parsed']['declaration']}",
+            f"  Assertions: {self.model['parsed']['assertion']}",
+            f"  Push commands: {self.model['parsed']['push']}",
+            f"  Pop commands: {self.model['parsed']['pop']}",
+            f"  Check-sat commands: {self.model['parsed']['check_sat']}",
+            f"  Other commands: {self.model['parsed']['other_commands']}",
+            f"Rotor generated: {self.model['parsed']['is_rotor_generated']}"
+        ]
     def _format_rotor_data(self) -> list[str]:
         """Format Rotor-specific model data"""
         header = self.model['parsed']['rotor_data']
@@ -363,7 +350,10 @@ class SMT2ModelPresenter(BasePresenter):
             f"Elapsed time: {solver_run.elapsed_time:.02f}",
             f"Return code: {solver_run.returncode}",
             f"Success: {solver_run.success}",
-            f"Timed out: {solver_run.timed_out}"
+            f"Timed out: {solver_run.timed_out}",
+            f"Max RSS: {solver_run.max_rss} MB",
+            f"Max CPU usage: {solver_run.max_cpu_percent}%",
+
         ]
         if solver_run.error_message:
             lines.append(
