@@ -206,7 +206,7 @@ class Z3Solver(BaseCLISolver):
         return {"smt2"}
 
     def get_solver_name(self):
-        return "Z3"
+        return "z3"
 
 
 class BitwuzlaSolver(BaseCLISolver):
@@ -225,7 +225,7 @@ class BitwuzlaSolver(BaseCLISolver):
         return {"smt2", "btor2"}
 
     def get_solver_name(self):
-        return "Bitwuzla"
+        return "bitwuzla"
 
 
 class PyBitwuzlaSolver(BasePySolver):
@@ -369,7 +369,7 @@ class PyBitwuzlaSolver(BasePySolver):
         return result
 
     def get_solver_name(self):
-        return "PyBitwuzla"
+        return "bitwuzla-py"
 
     def get_supported_models(self):
         return {"smt2", "btor2"}

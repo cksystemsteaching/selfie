@@ -137,7 +137,7 @@ def test_z3(fake_z3, run_cli, valid_smt2_file, tmp_path):
     result = run_cli(["--load", str(valid_smt2_file), "--solver", "z3"])
 
     expected_lines = [
-        "Z3 Solver Data",
+        "z3 Solver Data",
         "Total runs: 1",
         "Solved runs: 1",
         "Timed out runs: 0",
@@ -151,7 +151,7 @@ def test_bitwuzla(fake_bitwuzla, run_cli, valid_smt2_file):
     result = run_cli(["--load", str(valid_smt2_file), "--solver", "bitwuzla"])
 
     expected_lines = [
-        "Bitwuzla Solver Data",
+        "bitwuzla Solver Data",
         "Total runs: 1",
         "Solved runs: 1",
         "Timed out runs: 0",
@@ -197,7 +197,7 @@ def test_z3_timeout(fake_z3, run_cli, output_dir, valid_smt2_file):
 
     assert "Timeout is set to 1s" in result.stderr
     assert "Timeout after" in result.stderr
-    assert "Z3 Solver Data" in result.stdout
+    assert "z3 Solver Data" in result.stdout
     assert "Timed out runs: 1" in result.stdout
     assert result.returncode == 0
 
@@ -219,7 +219,7 @@ def test_bitwuzla_timeout(fake_bitwuzla, valid_smt2_file, output_dir, run_cli):
 
     assert "Timeout is set to 1s" in result.stderr
     assert "Timeout after" in result.stderr
-    assert "Bitwuzla Solver Data" in result.stdout
+    assert "bitwuzla Solver Data" in result.stdout
     assert "Timed out runs: 1" in result.stdout
 
 
@@ -235,5 +235,5 @@ def test_multiple_solvers(fake_bitwuzla, fake_z3, valid_smt2_file, output_dir, r
         ]
     )
 
-    assert "Used solvers: Bitwuzla,Z3" in result.stdout
+    assert "Used solvers: bitwuzla,z3" in result.stdout
     assert result.returncode == 0

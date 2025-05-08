@@ -14,6 +14,7 @@ Hierarchy:
 import lib.config as cfg
 from lib.exceptions import ConfigFormatError
 from lib.color_map import ColorMap
+from lib.solver import available_solvers
 
 from abc import ABC, abstractmethod
 import matplotlib.pyplot as plt
@@ -23,66 +24,88 @@ import logging
 
 class GrapherWrapper:
     """Orchestrates model distribution and graph generation.
-    
+
     Key Features:
     - Validates model formats against config
     - Creates format-specific output directories
     - Delegates to specialized graphers
     """
-    def __init__(self, output_path, models):
+
+    def __init__(self, output_path, models, solvers):
         self.output_path = output_path if output_path.is_dir() else output_path.parent()
-        self.models = models  # Store models as instance variable
+        self.models = models
+        self.solvers = solvers
         self.graphers = self._initialize_graphers()  # Initialize and validate
-        self._distribute_models()
+        self._distribute_data()
 
     def _initialize_graphers(self):
         """Initialize and validate format-specific graphers."""
-        graphers = {"smt2": SMT2ModelGrapher(), "btor2": BTOR2ModelGrapher()}
+        model_graphers = {"smt2": SMT2ModelGrapher(), "btor2": BTOR2ModelGrapher()}
+        solver_graphers = {
+            "z3": SolverGrapher(),
+            "bitwuzla": SolverGrapher(),
+            "bitwuzla-py": SolverGrapher(),
+        }
 
         # Validate all required formats exist
         for fmt in cfg.config["allowed_formats"]:
-            if fmt not in graphers:
+            if fmt not in model_graphers:
                 raise ConfigFormatError(
-                    message=f"Format '{fmt}' is not implemented",
+                    message=f"Grapher for model formats:'{fmt}' is not implemented",
                     error_format=fmt,
-                    provided_formats=list(graphers.keys()),
+                    provided_formats=list(model_graphers.keys()),
                     class_name=self.__class__.__name__,
                     method="_initialize_graphers",
                 )
-        return graphers
+        for slv in available_solvers:
+            if slv not in solver_graphers:
+                raise ConfigFormatError(
+                    message=f"Grapher for solver {slv} is not implemented",
+                    error_format=slv,
+                    provided_solvers=list(available_solvers),
+                    class_name=self.__class__.__name__,
+                    method="_initialize_graphers",
+                )
+        return dict(model_graphers, **solver_graphers)
 
-    def _distribute_models(self):
+    def _distribute_data(self):
         """Distribute models to their respective graphers."""
         for model in self.models:
             try:
                 self.graphers[model.data.basic.format].add(model)
             except KeyError as e:
                 raise ValueError(
-                    f"Model format {model.data.basic.format} not in "
-                    f"allowed formats: {list(self.graphers.keys())}"
+                    f"Model format {model.data.basic.format} not in graphers dictionary."
+                    f"Allowed formats: {list(self.graphers.keys())}"
+                ) from e
+
+        for solver in self.solvers:
+            try:
+                self.graphers[solver.get_solver_name()].add(solver)
+            except KeyError as e:
+                raise ValueError(
+                    f"Model format {solver.get_solver_name()} not in graphers dictionary."
+                    f"Allowed formats: {list(self.graphers.keys())}"
                 ) from e
 
     def generate_graphs(self):
         """Generate and save all graphs."""
-
+        graph_dir = self.output_path._path / "graphs"
+        graph_dir.mkdir(exist_ok=True)
         for fmt, grapher in self.graphers.items():
-            if grapher.models:
-                output_dir = self.output_path._path / (fmt + "_graphs")
+            grapher.generate_all_figures()
+            if grapher.figures:
+                output_dir = graph_dir / (fmt + "_graphs")
                 output_dir.mkdir(exist_ok=True)
                 grapher.save_figures(output_dir)
 
 
-class ModelGrapher(ABC):
-    """Abstract base class providing:
-    - Consistent styling (colors, fonts, grids)
-    - Multi-figure generation pipeline
-    - Standardized saving/display methods
-    """
-
+class BaseGrapher(ABC):
     def __init__(self):
-        self.models = []
         self.logger = logging.getLogger(f"bt.{self.__class__.__name__.lower()}")
+        self.figures = {}
         self._setup_style()
+        self.worked = False
 
     def _setup_style(self):
         """Shared style configuration for all figures"""
@@ -104,37 +127,72 @@ class ModelGrapher(ABC):
 
     def save_figures(self, output_path):
         """Save all generated figures"""
-        for fig_name, fig in self.generate_all_figures().items():
+        for fig_name, fig in self.figures.items():
             path = output_path / f"{fig_name}.png"
             fig.savefig(path, dpi=300, bbox_inches="tight")
             plt.close(fig)
             self.logger.info(f"Saved {fig_name} to {path}")
-
-    @abstractmethod
-    def show(self):
-        pass
-
-    def add(self, model):
-        self.models.append(model)
-
-
-class SMT2ModelGrapher(ModelGrapher):
-    def __init__(self):
-        super().__init__()
 
     def show(self):
         """Display the graph interactively"""
         self.generate_all_figures()
         plt.show()
 
+
+class ModelGrapher(BaseGrapher):
+    """Abstract base class providing:
+    - Consistent styling (colors, fonts, grids)
+    - Multi-figure generation pipeline
+    - Standardized saving/display methods
+    """
+
+    def __init__(self):
+        super().__init__()
+        self.models = []
+
+    @abstractmethod
+    def generate_all_figures(self) -> dict[str, plt.Figure]:
+        pass
+
+    def add(self, model):
+        self.models.append(model)
+
+
+class SolverGrapher(BaseGrapher):
+    def __init__(self):
+        super().__init__()
+        self.solver = None
+
+    def generate_all_figures(self) -> dict[str, plt.Figure]:
+        if not self.solver:
+            return
+        
+        self.logger.info(f"Generating figures for {self.solver.get_solver_name()} solver")
+        self.figures = {
+        }
+    
+    def add(self, solver):
+        self.solver = solver
+
+class SMT2ModelGrapher(ModelGrapher):
+    def __init__(self):
+        super().__init__()
+
+
     def generate_all_figures(self) -> dict[str, plt.Figure]:
         """Generate standard battery of SMT2 analysis figures"""
         if not self.models:
             return
-        return {
+        
+        self.logger.info(f"Creating figures for SMT2 models")
+        self.figures = {
             "line_counts": self._create_line_count_figure(),
             "define_distribution": self._create_define_figure(),
             "metrics_per_line": self._create_avg_metrics_per_line_figure(),
+            # "check_sat_per_line_to_solve_time": self._create_push_per_line_to_solve_time_figure(),
+            # Rotor generated only
+            # "kminmax_to_solve_time": self_create_kminmax_to_solve_time_figure(),
+            # "vaddress_space_to_solve_time": self_create_vadress_space_to_solve_time_figure(),
         }
 
     def _create_line_count_figure(self):
@@ -471,12 +529,14 @@ class SMT2ModelGrapher(ModelGrapher):
 
 class BTOR2ModelGrapher(ModelGrapher):
     """Placeholder for future BTOR2 visualization support."""
+
     def __init__(self):
         super().__init__()
 
-    def show(self):
-        pass
-
     def generate_all_figures(self):
         """Core graphing logic"""
-        return {}
+        if not self.models:
+            return
+
+        self.logger(f"Creating figures for BTOR2 models")
+        self.figures = {}

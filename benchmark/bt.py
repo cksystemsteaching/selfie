@@ -74,7 +74,7 @@ def main():
 
     if args.graph:
         logger.info("Generating graphs...")
-        grapher = GrapherWrapper(OutputPath(args.output), models)
+        grapher = GrapherWrapper(OutputPath(args.output), models, solvers)
         grapher.generate_graphs()
 
 
