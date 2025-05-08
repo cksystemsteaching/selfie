@@ -147,7 +147,7 @@ class TestCLISolvers(unittest.TestCase):
 
         solver = Z3Solver()
         run_data = SolverRunData()
-        solver._monitor_process(run_data, mock_process, timeout=10, start_time=0.0)
+        solver._monitor_process(run_data, mock_process, timeout=10, start_time=0.0, model=self.model)
 
         assert run_data.timed_out
         assert run_data.elapsed_time == 15.0
@@ -176,7 +176,7 @@ class TestCLISolvers(unittest.TestCase):
 
         solver = Z3Solver()
         run_data = SolverRunData()
-        solver._monitor_process(run_data, mock_process, timeout=10, start_time=0.0)
+        solver._monitor_process(run_data, mock_process, timeout=10, start_time=0.0, model=self.model)
 
         assert run_data.max_rss == 2000000
         assert run_data.max_cpu_percent == 50.0
