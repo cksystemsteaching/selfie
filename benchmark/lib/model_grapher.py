@@ -689,7 +689,6 @@ class SMT2ModelGrapher(ModelGrapher):
             "bars": ColorMap.PRIMARY["blue"],
             "avg_line": ColorMap.PRIMARY["red"],
             "text": "#333333",
-            "outliers": ColorMap.PRIMARY["orange"],
         }
         # Prepare data
         names = [m.data.basic.name for m in self.models]
@@ -712,23 +711,30 @@ class SMT2ModelGrapher(ModelGrapher):
             linewidth=2,
             label=f"Average ({avg_lines:.1f} lines)",
         )
+        #Add legend
+        ax.legend()
 
         # Value labels
-        for bar in bars:
-            height = bar.get_height()
-            ax.text(
-                bar.get_x() + bar.get_width() / 2.0,
-                height,
-                f"{height}",
-                ha="center",
-                va="bottom",
-                color=colors["text"],
-            )
+        if len(names) < 20:
+            for bar in bars:
+                height = bar.get_height()
+                ax.text(
+                    bar.get_x() + bar.get_width() / 2.0,
+                    height,
+                    f"{height}",
+                    ha="center",
+                    va="bottom",
+                    color=colors["text"],
+                )
         # Rotate long names
         if max(len(name) for name in names) > 8:
             plt.xticks(rotation=45, ha="right")
+        
+        if len(names) > 20:
+            ax.set_xticks([])
+            ax.set_xticklabels([])
 
-        self._format_axes(ax, fig, "Model Line Counts", "Model Name", "Total Lines")
+        self._format_axes(ax, fig, "Model Line Counts", "Models", "Total Lines")
         return fig
 
     def _create_define_figure(self) -> plt.Figure:
