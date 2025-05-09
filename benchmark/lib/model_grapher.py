@@ -241,6 +241,7 @@ class SolverGrapher(BaseGrapher):
         self.figures = {
             "cpu_usage_figure": self._create_cpu_usage_figure(),
             "memory_usage": self._create_memory_usage_figure(),
+            "average_memory_usage": self._create_average_memory_usage_figure()
         }
 
         # Remove None values in case any figure failed
@@ -363,7 +364,7 @@ class SolverGrapher(BaseGrapher):
                 bbox=dict(facecolor='white', alpha=0.7))
         
         return fig
-
+    
     def _create_memory_usage_figure(self) -> plt.Figure:
         """Line plot with automatic CPU range scaling and status coloring."""
         samples = self.solver.data.profile.samples
@@ -467,7 +468,99 @@ class SolverGrapher(BaseGrapher):
 
         ax.set_xlim(left=0)
         ax.xaxis.set_major_locator(plt.MultipleLocator(10))
-         
+        
+        return fig
+
+    def _create_average_memory_usage_figure(self) -> plt.Figure:
+        """Creates memory usage plot with time in seconds (sample index × 10)."""
+        if not self.solver.data.profile.samples:
+            self.logger.debug("No memory usage data available")
+            return None
+
+        fig, ax = plt.subplots(figsize=self.figsize)
+        
+        # Configuration
+        line_styles = {
+            'Solved': {
+                'color': ColorMap.PRIMARY['green'],
+                'label': 'Solved models',
+                'data': []
+            },
+            'Unsolved': {
+                'color': ColorMap.PRIMARY['red'],
+                'label': 'Unsolved models',
+                'data': []
+            }
+        }
+
+        # Group data by solve status
+        for model, measurements in self.solver.data.profile.samples.items():
+            if len(measurements) < 2:
+                continue
+                
+            status = 'Solved' if model in self.solver.data.solved else 'Unsolved'
+            line_styles[status]['data'].append([m.rss for m in measurements])
+
+        # Plot average lines
+        plotted_lines = []
+        for status, style in line_styles.items():
+            if not style['data']:
+                continue
+                
+            # Calculate average at each time point
+            max_len = max(len(m) for m in style['data'])
+            avg_line = [
+                np.mean([m[i] for m in style['data'] if i < len(m)])
+                for i in range(max_len)
+            ]
+            
+            # Convert sample index to seconds (×10)
+            time_points = [i * 10 for i in range(len(avg_line))]
+            
+            line = ax.plot(
+                time_points,  # Use seconds instead of sample index
+                avg_line,
+                color=style['color'],
+                linewidth=2,
+                label=f"{style['label']} (n={len(style['data'])})"
+            )[0]
+            plotted_lines.append(line)
+
+        # Only proceed if we have data to plot
+        if not plotted_lines:
+            plt.close(fig)
+            return None
+
+        # Formatting
+        self._format_axes(
+            ax, fig,
+            title=f"{self.solver.get_solver_name()} Memory Usage",
+            xlabel="Time (seconds)",
+            ylabel="RSS (MB)",
+            grid=True
+        )
+        
+        # Set Y-axis limits with buffer
+        all_values = [y for line in plotted_lines for y in line.get_ydata()]
+        y_min, y_max = min(all_values), max(all_values)
+        buffer = 0.1 * (y_max - y_min)
+        ax.set_ylim(y_min - buffer, y_max + buffer)
+
+        # Add legend only if we have lines to show
+        if plotted_lines:
+            ax.legend(
+                title="Color Coding:",
+                bbox_to_anchor=(1.05, 1),
+                loc='upper left',
+                borderaxespad=0.,
+                framealpha=1,
+                edgecolor='black'
+            )
+
+        # Add reference line
+        ax.axhline(100, color='#888888', linestyle=':', linewidth=0.5)
+        
+        plt.tight_layout()
         return fig
 
     def _truncate_name(self, name: str, max_length: int) -> str:
