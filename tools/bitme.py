@@ -524,20 +524,6 @@ class BVDD:
     def get_number_of_exits(self):
         return self.number_of_my_exits + self.number_of_other_exits
 
-    def is_always_false(bvdd):
-        if bvdd is None:
-            return True
-        else:
-            assert isinstance(bvdd, Exit) or isinstance(bvdd, BVDD), f"{bvdd} is not a BVDD"
-            return False
-
-    def is_always_true(bvdd):
-        if isinstance(bvdd, Exit):
-            return True
-        else:
-            assert bvdd is None or isinstance(bvdd, BVDD)
-            return False
-
     def set_input(self, inputs, output):
         assert 0 < inputs < 2**2**self.var_line.sid_line.size
         assert not (inputs & self.inputs)
@@ -788,13 +774,19 @@ class ROABVDD:
         return len(self.values)
 
     def is_consistent(self):
-        assert len(self.values) == len(self.exits)
-        assert len(self.values) == self.bvdd.number_of_exits()[1]
+        assert self.number_of_values() == len(self.exits)
+        assert self.number_of_values() == self.bvdd.number_of_exits()[1]
         for value in self.values:
             assert self.values[value] in self.exits
             assert self.exits[self.values[value]] == value
             assert self.bvdd.has_exit(self.values[value])
         return True
+
+    def is_never_false(self):
+        return self.number_of_values() == 1 and True in self.values
+
+    def is_never_true(self):
+        return self.number_of_values() == 1 and False in self.values
 
     def constant(value):
         assert isinstance(value, bool) or isinstance(value, int)
@@ -833,8 +825,8 @@ class ROABVDD:
         return ROABVDD(*BVDD.compute_binary(new_bvdd, sid_line, op, self.exits, roabvdd.exits))
 
     def constrain(self, sid_line, constraint):
-        assert isinstance(constraint, Exit) or isinstance(constraint, BVDD)
-        new_bvdd = self.bvdd.intersection(constraint)
+        assert isinstance(constraint.bvdd, Exit) or isinstance(constraint.bvdd, BVDD)
+        new_bvdd = self.bvdd.intersection(constraint.bvdd)
         if new_bvdd is None:
             # TODO: check whether reachable
             return None
@@ -847,28 +839,30 @@ class ROABVDD:
         return ROABVDD(*BVDD.compute_binary(new_bvdd, sid_line, None, self.exits, roabvdd.exits))
 
     def exclude(self, sid_line, constraint):
-        if BVDD.is_always_false(constraint):
+        if BVDD.is_never_false(constraint):
             return self
         else:
-            new_bvdd = self.bvdd.exclusion(constraint)
+            new_bvdd = self.bvdd.exclusion(constraint.bvdd)
             assert new_bvdd is not None
             return ROABVDD(*BVDD.compute_binary(new_bvdd, sid_line, None, self.exits, None))
 
     def get_false_constraint(self):
         if False in self.values:
             if True in self.values:
-                return self.bvdd.extract(self.values[False])
+                new_bvdd = self.bvdd.extract(self.values[False])
+                return ROABVDD({False:self.values[False]}, {self.values[False]:False}, new_bvdd)
             else:
-                return self.bvdd
+                return self
         else:
             return None
 
     def get_true_constraint(self):
         if True in self.values:
             if False in self.values:
-                return self.bvdd.extract(self.values[True])
+                new_bvdd = self.bvdd.extract(self.values[True])
+                return ROABVDD({True:self.values[True]}, {self.values[True]:True}, new_bvdd)
             else:
-                return self.bvdd
+                return self
         else:
             return None
 
@@ -1804,6 +1798,12 @@ class CFLOBVDD:
             CFLOBVDD.representatives[cflobvdd] = cflobvdd
         return CFLOBVDD.representatives[cflobvdd]
 
+    def is_never_false(self):
+        return len(self.outputs) == 1 and self.outputs[1] is True
+
+    def is_never_true(self):
+        return len(self.outputs) == 1 and self.outputs[1] is False
+
     def constant(level, output, number_of_input_bits, number_of_output_bits):
         return CFLOBVDD.representative(
             BV_No_Distinction_Proto.representative(level, number_of_input_bits),
@@ -1821,10 +1821,10 @@ class CFLOBVDD:
         return CFLOBVDD.constant(level, output, number_of_input_bits, number_of_output_bits)
 
     def false(level, number_of_input_bits):
-        return CFLOBVDD.constant(level, 0, number_of_input_bits, 1)
+        return CFLOBVDD.constant(level, False, number_of_input_bits, 1)
 
     def true(level, number_of_input_bits):
-        return CFLOBVDD.constant(level, 1, number_of_input_bits, 1)
+        return CFLOBVDD.constant(level, True, number_of_input_bits, 1)
 
     def flip_value_tuple(self):
         assert self.number_of_values() == 2
@@ -2127,7 +2127,6 @@ class Values:
     def is_equal(self, values):
         return (type(self) is type(values) and
             self.match_sorts(values) and
-            (not Values.ROABVDD or self.values == values.values) and
             self.bvdd == values.bvdd)
 
     def is_consistent(self):
@@ -2246,17 +2245,39 @@ class Values:
 
     # constraints and expressions
 
+    def FALSE():
+        if Values.false is None:
+            Values.false = Values(Bool.boolean, False)
+        return Values.false
+
+    def TRUE():
+        if Values.true is None:
+            Values.true = Values(Bool.boolean, True)
+        return Values.true
+
+    def is_always_false(self):
+        assert isinstance(self.sid_line, Bool)
+        return self.is_equal(Values.FALSE())
+
+    def is_always_true(self):
+        assert isinstance(self.sid_line, Bool)
+        return self.is_equal(Values.TRUE())
+
+    def is_never_false(self):
+        assert isinstance(self.sid_line, Bool)
+        return self.bvdd.is_never_false()
+
+    def is_never_true(self):
+        assert isinstance(self.sid_line, Bool)
+        return self.bvdd.is_never_true()
+
     def get_false_constraint(self):
         assert isinstance(self.sid_line, Bool)
-        return self.bvdd.get_false_constraint()
+        return Values(self.sid_line, self.bvdd.get_false_constraint())
 
     def get_true_constraint(self):
         assert isinstance(self.sid_line, Bool)
-        return self.bvdd.get_true_constraint()
-
-    def get_boolean_constraints(self):
-        assert isinstance(self.sid_line, Bool)
-        return self.get_false_constraint(), self.get_true_constraint()
+        return Values(self.sid_line, self.bvdd.get_true_constraint())
 
     def get_expression(self):
         # naive transition from domain propagation to bit blasting
@@ -2317,20 +2338,9 @@ class Values:
         else:
             return Values(sid_line, self.bvdd.binary_apply_and_reduce(values.bvdd, op, sid_line.size))
 
-    def FALSE():
-        if Values.false is None:
-            Values.false = Values(Bool.boolean, False)
-        return Values.false
-
-    def TRUE():
-        if Values.true is None:
-            Values.true = Values(Bool.boolean, True)
-        return Values.true
-
     def Implies(self, values):
         assert isinstance(self.sid_line, Bool)
-        false_constraint = self.get_false_constraint()
-        if BVDD.is_always_true(false_constraint):
+        if self.is_always_false():
             return Values.TRUE()
         else:
             # lazy evaluation of implied values
@@ -2383,8 +2393,7 @@ class Values:
 
     def And(self, values):
         assert isinstance(self.sid_line, Bool)
-        false_constraint = self.get_false_constraint()
-        if BVDD.is_always_true(false_constraint):
+        if self.is_always_false():
             return Values.FALSE()
         else:
             # lazy evaluation of second operand
@@ -2393,8 +2402,7 @@ class Values:
 
     def Or(self, values):
         assert isinstance(self.sid_line, Bool)
-        true_constraint = self.get_true_constraint()
-        if BVDD.is_always_true(true_constraint):
+        if self.is_always_true():
             return Values.TRUE()
         else:
             # lazy evaluation of second operand
@@ -2487,48 +2495,50 @@ class Values:
 
     # ternary operators
 
-    def constrain(self, constraint, condition = None):
+    def constrain(self, constraint):
+        assert isinstance(constraint.sid_line, Bool)
         if Values.ROABVDD:
-            assert not BVDD.is_always_false(constraint)
-            return Values(self.sid_line, self.bvdd.constrain(self.sid_line, constraint))
+            assert not constraint.is_always_false() or not constraint.is_always_true()
+            return Values(self.sid_line, self.bvdd.constrain(self.sid_line, constraint.bvdd))
         else:
-            assert isinstance(condition, CFLOBVDD)
-            return Values(self.sid_line, self.bvdd.binary_apply_and_reduce(condition,
+            return Values(self.sid_line, self.bvdd.binary_apply_and_reduce(constraint.bvdd,
                lambda x, y: x, self.sid_line.size))
 
-    def merge(self, values, condition):
-        assert isinstance(values, Values)
-        assert self.match_sorts(values)
+    def merge(self, values2, values3):
+        assert isinstance(self.sid_line, Bool)
+        assert isinstance(values2, Values) and isinstance(values3, Values)
+        assert values2.match_sorts(values3)
         if Values.ROABVDD:
-            return Values(self.sid_line, self.bvdd.merge(self.sid_line, values.bvdd))
+            values2 = values2.constrain(self.get_true_constraint())
+            values3 = values3.constrain(self.get_false_constraint())
+            return Values(values2.sid_line, values2.bvdd.merge(values2.sid_line, values3.bvdd))
         else:
-            assert isinstance(condition, CFLOBVDD)
-            return Values(self.sid_line,
-                condition.ternary_apply_and_reduce(self.bvdd, values.bvdd,
-                    lambda x, y, z: y if x else z, self.sid_line.size))
+            return Values(values2.sid_line,
+                self.ternary_apply_and_reduce(values2.bvdd, values3.bvdd,
+                    lambda x, y, z: y if x else z, values2.sid_line.size))
 
     def If(self, values2, values3):
-        false_constraint, true_constraint = self.get_boolean_constraints()
-        if BVDD.is_always_false(false_constraint):
+        assert isinstance(self.sid_line, Bool)
+        if self.is_never_false():
             assert values2 is not None
-            return values2.constrain(true_constraint, self.bvdd)
-        elif BVDD.is_always_false(true_constraint):
+            return values2.constrain(self)
+        elif self.is_never_true():
             assert values3 is not None
-            return values3.constrain(false_constraint, self.bvdd)
+            return values3.constrain(self)
         else:
             # lazy evaluation of true and false case
-            values2 = values2.constrain(true_constraint)
-            values3 = values3.constrain(false_constraint)
-            return values2.merge(values3, self.bvdd)
+            return self.merge(values2, values3)
 
     # bitme solver
 
     def exclude(self, constraint):
+        assert isinstance(constraint.sid_line, Bool)
         if Values.ROABVDD:
-            return Values(self.sid_line, self.bvdd.exclude(self.sid_line, constraint))
+            values = self.constrain(constraint.get_true_constraint())
+            return Values(values.sid_line, values.bvdd.exclude(values.sid_line, constraint.get_false_constraint()))
         else:
             # TODO: exclude in CFLOBVDD
-            return self.bvdd
+            return self
 
 class Expression(Line):
     total_number_of_generated_expressions = 0
@@ -3252,8 +3262,7 @@ class Implies(Binary):
     def compute_values(self, step):
         arg1_value = self.arg1_line.get_values(step)
         if Instance.PROPAGATE_BINARY and isinstance(arg1_value, Values):
-            false_constraint = arg1_value.get_false_constraint()
-            if BVDD.is_always_true(false_constraint):
+            if arg1_value.is_always_false():
                 return arg1_value.Implies(None)
             else:
                 # lazy evaluation of implied values
@@ -3384,9 +3393,8 @@ class Logical(Binary):
             if isinstance(self.sid_line, Bool):
                 arg1_value = self.arg1_line.get_values(step)
                 if isinstance(arg1_value, Values):
-                    false_constraint, true_constraint = arg1_value.get_boolean_constraints()
                     if self.op == OP_AND:
-                        if BVDD.is_always_true(false_constraint):
+                        if arg1_value.is_always_false():
                             return arg1_value.And(None)
                         else:
                             # lazy evaluation of second operand
@@ -3394,7 +3402,7 @@ class Logical(Binary):
                             if isinstance(arg2_value, Values):
                                 return arg1_value.And(arg2_value)
                     elif self.op == OP_OR:
-                        if BVDD.is_always_true(true_constraint):
+                        if arg1_value.is_always_true():
                             return arg1_value.Or(None)
                         else:
                             # lazy evaluation of second operand
@@ -3740,22 +3748,21 @@ class Ite(Ternary):
     def compute_values(self, step):
         arg1_value = self.arg1_line.get_values(step)
         if Instance.PROPAGATE_ITE and isinstance(arg1_value, Values):
-            false_constraint, true_constraint = arg1_value.get_boolean_constraints()
-            if BVDD.is_always_false(false_constraint):
+            if arg1_value.is_never_false():
                 arg2_value = self.arg2_line.get_values(step)
                 if isinstance(arg2_value, Values):
                     return arg1_value.If(arg2_value, None)
-                elif BVDD.is_always_true(true_constraint):
+                elif arg1_value.is_always_true():
                     # true case holds unconditionally
                     return arg2_value.get_expression()
                 else:
                     # lazy evaluation of false case into expression
                     arg3_value = self.arg3_line.get_values(step)
-            elif BVDD.is_always_false(true_constraint):
+            elif arg1_value.is_never_true():
                 arg3_value = self.arg3_line.get_values(step)
                 if isinstance(arg3_value, Values):
                     return arg1_value.If(None, arg3_value)
-                elif BVDD.is_always_true(false_constraint):
+                elif arg1_value.is_always_false():
                     # false case holds unconditionally
                     return arg3_value.get_expression()
                 else:
@@ -7467,21 +7474,19 @@ class Bitme_Solver(Solver):
                          assert isinstance(assertion.sid_line, Bool)
                          assert self.unproven[step][assertion] is True
                          self.constraint = assertion.And(self.constraint)
-                false_constraint, true_constraint = self.constraint.get_boolean_constraints()
-                if not BVDD.is_always_true(false_constraint) and not BVDD.is_always_false(true_constraint):
+                if not self.constraint.is_never_false() and not self.constraint.is_never_true():
                     for assertion in self.unproven[step]:
                         if isinstance(assertion, Transitional):
                             values = assertion.get_step(step)
                             if isinstance(values, Values):
-                                values = values.constrain(true_constraint).exclude(false_constraint)
+                                values = values.exclude(self.constraint)
                                 # constraining cached instances requires versioning cached values
                                 assertion.set_cached_instance(values, step)
                             else:
                                 return self.solve()
             self.proven |= self.unproven
             self.unproven = {}
-            false_constraint, true_constraint = self.constraint.get_boolean_constraints()
-            return not BVDD.is_always_true(false_constraint) and not BVDD.is_always_false(true_constraint)
+            return not self.constraint.is_never_false() and not self.constraint.is_never_true()
 
     def is_SAT(self, result):
         return result
