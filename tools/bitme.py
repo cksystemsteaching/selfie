@@ -7527,8 +7527,10 @@ class Bitme_Solver(Solver):
                 self.z3_solver.print_inputs(inputs, step, level)
             if self.bitwuzla_solver:
                 self.bitwuzla_solver.print_inputs(inputs, step, level)
-        else:
+        elif Values.ROABVDD:
             print(self.constraint.get_true_constraint())
+        else:
+            print(self.constraint.bvdd.get_printed_CFLOBVDD())
 
 # bitme bounded model checker
 
@@ -7745,6 +7747,7 @@ def main():
 
     parser.add_argument('--use-Z3', action='store_true')
     parser.add_argument('--use-bitwuzla', action='store_true')
+    parser.add_argument('--use-CFLOBVDD', action='store_true')
 
     parser.add_argument('-propagate', nargs=1, type=int)
     parser.add_argument('--substitute', action='store_true')
@@ -7787,6 +7790,9 @@ def main():
             z3_solver = Z3_Solver()
         if is_bitwuzla_present:
             bitwuzla_solver = Bitwuzla_Solver()
+
+        if args.use_CFLOBVDD:
+            Values.ROABVDD = False
 
         bitme_solver = Bitme_Solver(z3_solver, bitwuzla_solver)
 
