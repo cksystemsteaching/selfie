@@ -719,7 +719,7 @@ class BVDD:
                 for output in self.outputs:
                     exclude_bvdd.set_input(self.outputs[output], output.exclusion(None))
             else:
-                assert isinstance(bvdd, BVDD)
+                assert isinstance(bvdd, BVDD), f"expected BVDD, got {type(bvdd)}"
                 if self.var_line > bvdd.var_line:
                     exclude_bvdd = BVDD(bvdd.var_line)
                     for output in bvdd.outputs:
@@ -839,7 +839,7 @@ class ROABVDD:
         return ROABVDD(*BVDD.compute_binary(new_bvdd, sid_line, None, self.exits, roabvdd.exits))
 
     def exclude(self, sid_line, constraint):
-        if BVDD.is_never_false(constraint):
+        if constraint.is_never_false():
             return self
         else:
             new_bvdd = self.bvdd.exclusion(constraint.bvdd)
@@ -2077,7 +2077,6 @@ CFLOBVDD.projection(2, 0, 4, 4).ternary_apply_and_reduce(CFLOBVDD.projection(2, 
 CFLOBVDD.projection(2, 0, 4, 4).ternary_apply_and_reduce(CFLOBVDD.projection(2, 2, 4, 4),
     CFLOBVDD.projection(2, 3, 4, 4), lambda x, y, z: y if x else z, 4)
 
-
 class Values:
     ROABVDD = True
 
@@ -2498,7 +2497,6 @@ class Values:
     def constrain(self, constraint):
         assert isinstance(constraint.sid_line, Bool)
         if Values.ROABVDD:
-            assert not constraint.is_always_false() or not constraint.is_always_true()
             return Values(self.sid_line, self.bvdd.constrain(self.sid_line, constraint.bvdd))
         else:
             return Values(self.sid_line, self.bvdd.binary_apply_and_reduce(constraint.bvdd,
@@ -2520,10 +2518,8 @@ class Values:
     def If(self, values2, values3):
         assert isinstance(self.sid_line, Bool)
         if self.is_never_false():
-            assert values2 is not None
             return values2.constrain(self)
         elif self.is_never_true():
-            assert values3 is not None
             return values3.constrain(self)
         else:
             # lazy evaluation of true and false case
@@ -2535,7 +2531,8 @@ class Values:
         assert isinstance(constraint.sid_line, Bool)
         if Values.ROABVDD:
             values = self.constrain(constraint.get_true_constraint())
-            return Values(values.sid_line, values.bvdd.exclude(values.sid_line, constraint.get_false_constraint()))
+            return Values(values.sid_line,
+                values.bvdd.exclude(values.sid_line, constraint.get_false_constraint().bvdd))
         else:
             # TODO: exclude in CFLOBVDD
             return self
