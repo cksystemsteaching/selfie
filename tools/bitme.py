@@ -2216,7 +2216,7 @@ class Values:
                 assert isinstance(path[1], int)
                 index_i = path[0]
                 inputs = path[1]
-                path_expression += Values.get_input_expression(Variable.inputs[index_i], inputs)
+                path_expression += Values.get_input_expression(Variable.cflobvdd_input[index_i], inputs)
             else:
                 a_paths = Values.get_path_expression(path[0])
                 b_paths = Values.get_path_expression(path[1])
@@ -2332,7 +2332,7 @@ class Values:
 
     def apply_binary(self, sid_line, values, op):
         assert isinstance(values, Values)
-        if ROABVDD:
+        if Values.ROABVDD:
             return Values(sid_line, self.bvdd.compute_binary(sid_line, op, values.bvdd))
         else:
             return Values(sid_line, self.bvdd.binary_apply_and_reduce(values.bvdd, op, sid_line.size))
@@ -2450,7 +2450,7 @@ class Values:
         assert isinstance(self.sid_line, Bitvec) and self.sid_line.match_sorts(values.sid_line)
         return self.apply_binary(self.sid_line, values, lambda x, y: (x * y) % 2**self.sid_line.size)
 
-    def __div__(self, values):
+    def __truediv__(self, values):
         # using the integer portion of division, not floor division with the // operator,
         # because int(x / y) != x // y in Python if x < 0 or y < 0 since
         # the integer portion of division truncates towards 0 whereas
@@ -2512,7 +2512,7 @@ class Values:
             return Values(values2.sid_line, values2.bvdd.merge(values2.sid_line, values3.bvdd))
         else:
             return Values(values2.sid_line,
-                self.ternary_apply_and_reduce(values2.bvdd, values3.bvdd,
+                self.bvdd.ternary_apply_and_reduce(values2.bvdd, values3.bvdd,
                     lambda x, y, z: y if x else z, values2.sid_line.size))
 
     def If(self, values2, values3):
