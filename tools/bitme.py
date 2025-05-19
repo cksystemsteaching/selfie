@@ -1870,7 +1870,7 @@ class CFLOBVDD:
         return CFLOBVDD.projection(level, input_i, number_of_input_bits, 8)
 
     def equiv_classes_hash(equiv_classes):
-        return hash((frozenset(equiv_classes), tuple(equiv_classes.values())))
+        return hash((frozenset(equiv_classes), tuple(equiv_classes.values()), isinstance(equiv_classes[1], bool)))
 
     def are_collapsed_classes_cached(equiv_classes):
         if CFLOBVDD.equiv_classes_hash(equiv_classes) in CFLOBVDD.collapsed_equiv_classes_cache:
