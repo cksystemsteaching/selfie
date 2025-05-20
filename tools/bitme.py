@@ -1607,8 +1607,8 @@ class BV_Internal_Grouping(BV_Grouping):
 
             for i in g.b_connections:
                 induced_return_tuple, induced_reduction_tuple = \
-                    CFLOBVDD.linear_collapse_classes_leftmost(g.b_return_tuples[i],
-                        lambda v: reduction_tuple[g.b_return_tuples[i][v]])
+                    CFLOBVDD.linear_collapse_classes_leftmost(dict(enumerate([reduction_tuple[v]
+                        for v in g.b_return_tuples[i].values()], 1)))
 
                 h = g.b_connections[i].reduce(induced_reduction_tuple)
 
@@ -1617,8 +1617,7 @@ class BV_Internal_Grouping(BV_Grouping):
                 reduction_tuple_a[len(reduction_tuple_a) + 1] = position
 
             induced_return_tuple, induced_reduction_tuple = \
-                CFLOBVDD.linear_collapse_classes_leftmost(reduction_tuple_a,
-                    lambda i: reduction_tuple_a[i])
+                CFLOBVDD.linear_collapse_classes_leftmost(reduction_tuple_a)
 
             g_prime.a_connection = g.a_connection.reduce(induced_reduction_tuple)
             g_prime.a_return_tuple = induced_return_tuple
@@ -1892,9 +1891,11 @@ class CFLOBVDD:
         return CFLOBVDD.collapsed_equiv_classes_cache[equiv_classes_hash]
 
     def collapse_classes_leftmost(equiv_classes):
+        # legacy code
         if CFLOBVDD.are_collapsed_classes_cached(equiv_classes):
             return CFLOBVDD.get_collapsed_classes(equiv_classes)
 
+        # square-time iteration over equivalence classes
         projected_classes = dict(enumerate([equiv_classes[i]
             for i in equiv_classes if i == min([j for j in equiv_classes
                 if equiv_classes[j] == equiv_classes[i]])], 1))
@@ -1906,25 +1907,29 @@ class CFLOBVDD:
             projected_classes,
             dict(enumerate([order_of_projected_classes[v] for v in equiv_classes.values()], 1)))
 
-    def linear_collapse_classes_leftmost(indexes, values):
-        leftmost_equivalence_class = {}
+    def linear_collapse_classes_leftmost(equiv_classes):
+        if CFLOBVDD.are_collapsed_classes_cached(equiv_classes):
+            return CFLOBVDD.get_collapsed_classes(equiv_classes)
 
-        leftmost_values = {}
-        leftmost_indexes = {}
+        leftmost_equiv_class_index = {}
+
+        projected_classes = {}
+        renumbered_classes = {}
 
         # linear-time iteration over equivalence classes
-        for index in indexes:
-            value = values(index)
+        for index in equiv_classes:
+            value = equiv_classes[index]
 
-            # only construct leftmost equivalence class
-            if value not in leftmost_equivalence_class:
-                leftmost_equivalence_class[value] = len(leftmost_equivalence_class) + 1
+            if value not in leftmost_equiv_class_index:
+                # remember leftmost equivalence class index
+                leftmost_equiv_class_index[value] = len(leftmost_equiv_class_index) + 1
 
-                leftmost_values[len(leftmost_equivalence_class)] = value
+                projected_classes[len(leftmost_equiv_class_index)] = value
 
-            leftmost_indexes[index] = leftmost_equivalence_class[value]
+            renumbered_classes[index] = leftmost_equiv_class_index[value]
 
-        return leftmost_values, leftmost_indexes
+        return CFLOBVDD.cache_collapsed_classes(equiv_classes,
+            projected_classes, renumbered_classes)
 
     def binary_apply_and_reduce(self, n2, op, number_of_output_bits):
         assert isinstance(n2, CFLOBVDD)
@@ -1936,8 +1941,8 @@ class CFLOBVDD:
         g, pt = n1.grouping.pair_product(n2.grouping)
 
         induced_value_tuple, induced_return_tuple = \
-            CFLOBVDD.linear_collapse_classes_leftmost(pt,
-                lambda i: op(n1.outputs[pt[i][0]], n2.outputs[pt[i][1]]))
+            CFLOBVDD.linear_collapse_classes_leftmost(dict([(i,
+                op(n1.outputs[pt[i][0]], n2.outputs[pt[i][1]])) for i in pt]))
 
         return CFLOBVDD.representative(g.reduce(induced_return_tuple),
             induced_value_tuple,
@@ -1954,8 +1959,8 @@ class CFLOBVDD:
         g, tt = n1.grouping.triple_product(n2.grouping, n3.grouping)
 
         induced_value_tuple, induced_return_tuple = \
-            CFLOBVDD.linear_collapse_classes_leftmost(tt,
-                lambda i: op(n1.outputs[tt[i][0]], n2.outputs[tt[i][1]], n3.outputs[tt[i][2]]))
+            CFLOBVDD.linear_collapse_classes_leftmost(dict([(i,
+                op(n1.outputs[tt[i][0]], n2.outputs[tt[i][1]], n3.outputs[tt[i][2]])) for i in tt]))
 
         return CFLOBVDD.representative(g.reduce(induced_return_tuple),
             induced_value_tuple,
