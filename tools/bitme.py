@@ -1907,9 +1907,7 @@ class CFLOBVDD:
             dict(enumerate([order_of_projected_classes[v] for v in equiv_classes.values()], 1)))
 
     def optimized_collapse_classes_leftmost(indexes, op):
-        induced_collapsed_indexes = {}
-
-        induced_index = 1
+        leftmost_indexes = {}
 
         induced_collapsed_tuple = {}
         induced_uncollapsed_tuple = {}
@@ -1917,15 +1915,13 @@ class CFLOBVDD:
         for index in indexes:
             value = op(index)
 
-            if value not in induced_collapsed_indexes:
-                induced_collapsed_indexes[value] = induced_index
+            # only construct leftmost equivalence class
+            if value not in leftmost_indexes:
+                leftmost_indexes[value] = len(leftmost_indexes) + 1
 
-                induced_collapsed_tuple[induced_index] = value
-                induced_uncollapsed_tuple[index] = induced_index
+                induced_collapsed_tuple[len(leftmost_indexes)] = value
 
-                induced_index += 1
-            else:
-                induced_uncollapsed_tuple[index] = induced_collapsed_indexes[value]
+            induced_uncollapsed_tuple[index] = leftmost_indexes[value]
 
         return induced_collapsed_tuple, induced_uncollapsed_tuple
 
