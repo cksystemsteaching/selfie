@@ -1606,10 +1606,9 @@ class BV_Internal_Grouping(BV_Grouping):
             reduction_tuple_a = {}
 
             for i in g.b_connections:
-                deduced_return_classes = dict(enumerate([reduction_tuple[v]
-                    for v in g.b_return_tuples[i].values()], 1))
-
-                induced_return_tuple, induced_reduction_tuple = CFLOBVDD.collapse_classes_leftmost(deduced_return_classes)
+                induced_return_tuple, induced_reduction_tuple = \
+                    CFLOBVDD.optimized_collapse_classes_leftmost(g.b_return_tuples[i],
+                        lambda v: reduction_tuple[g.b_return_tuples[i][v]])
 
                 h = g.b_connections[i].reduce(induced_reduction_tuple)
 
@@ -1617,7 +1616,9 @@ class BV_Internal_Grouping(BV_Grouping):
 
                 reduction_tuple_a[len(reduction_tuple_a) + 1] = position
 
-            induced_return_tuple, induced_reduction_tuple = CFLOBVDD.collapse_classes_leftmost(reduction_tuple_a)
+            induced_return_tuple, induced_reduction_tuple = \
+                CFLOBVDD.optimized_collapse_classes_leftmost(reduction_tuple_a,
+                    lambda i: reduction_tuple_a[i])
 
             g_prime.a_connection = g.a_connection.reduce(induced_reduction_tuple)
             g_prime.a_return_tuple = induced_return_tuple
@@ -1905,6 +1906,29 @@ class CFLOBVDD:
             projected_classes,
             dict(enumerate([order_of_projected_classes[v] for v in equiv_classes.values()], 1)))
 
+    def optimized_collapse_classes_leftmost(indexes, op):
+        induced_collapsed_indexes = {}
+
+        induced_index = 1
+
+        induced_collapsed_tuple = {}
+        induced_uncollapsed_tuple = {}
+
+        for index in indexes:
+            value = op(index)
+
+            if value not in induced_collapsed_indexes:
+                induced_collapsed_indexes[value] = induced_index
+
+                induced_collapsed_tuple[induced_index] = value
+                induced_uncollapsed_tuple[index] = induced_index
+
+                induced_index += 1
+            else:
+                induced_uncollapsed_tuple[index] = induced_collapsed_indexes[value]
+
+        return induced_collapsed_tuple, induced_uncollapsed_tuple
+
     def binary_apply_and_reduce(self, n2, op, number_of_output_bits):
         assert isinstance(n2, CFLOBVDD)
 
@@ -1914,10 +1938,9 @@ class CFLOBVDD:
 
         g, pt = n1.grouping.pair_product(n2.grouping)
 
-        deduced_value_tuple = dict([(i, op(n1.outputs[pt[i][0]], n2.outputs[pt[i][1]]))
-            for i in pt])
-
-        induced_value_tuple, induced_return_tuple = CFLOBVDD.collapse_classes_leftmost(deduced_value_tuple)
+        induced_value_tuple, induced_return_tuple = \
+            CFLOBVDD.optimized_collapse_classes_leftmost(pt,
+                lambda i: op(n1.outputs[pt[i][0]], n2.outputs[pt[i][1]]))
 
         return CFLOBVDD.representative(g.reduce(induced_return_tuple),
             induced_value_tuple,
@@ -1933,10 +1956,9 @@ class CFLOBVDD:
 
         g, tt = n1.grouping.triple_product(n2.grouping, n3.grouping)
 
-        deduced_value_tuple = dict([(i,
-            op(n1.outputs[tt[i][0]], n2.outputs[tt[i][1]], n3.outputs[tt[i][2]])) for i in tt])
-
-        induced_value_tuple, induced_return_tuple = CFLOBVDD.collapse_classes_leftmost(deduced_value_tuple)
+        induced_value_tuple, induced_return_tuple = \
+            CFLOBVDD.optimized_collapse_classes_leftmost(tt,
+                lambda i: op(n1.outputs[tt[i][0]], n2.outputs[tt[i][1]], n3.outputs[tt[i][2]]))
 
         return CFLOBVDD.representative(g.reduce(induced_return_tuple),
             induced_value_tuple,
