@@ -870,15 +870,12 @@ class BV_Grouping:
     # generalizing CFLOBDDs to bitvector input variables with up to 8 bits
     pair_product_cache = {}
     pair_product_cache_hits = 0
-    pair_product_cache_misses = 0
 
     triple_product_cache = {}
     triple_product_cache_hits = 0
-    triple_product_cache_misses = 0
 
     reduction_cache = {}
     reduction_cache_hits = 0
-    reduction_cache_misses = 0
 
     def __init__(self, level, number_of_input_bits, number_of_exits = 1):
         assert level >= 0
@@ -905,7 +902,6 @@ class BV_Grouping:
             BV_Grouping.pair_product_cache_hits += 1
             return True
         else:
-            BV_Grouping.pair_product_cache_misses += 1
             return False
 
     def get_cached_pair_product(self, g2):
@@ -922,7 +918,6 @@ class BV_Grouping:
             BV_Grouping.triple_product_cache_hits += 1
             return True
         else:
-            BV_Grouping.triple_product_cache_misses += 1
             return False
 
     def get_cached_triple_product(self, g2, g3):
@@ -942,7 +937,6 @@ class BV_Grouping:
             BV_Grouping.reduction_cache_hits += 1
             return True
         else:
-            BV_Grouping.reduction_cache_misses += 1
             return False
 
     def get_cached_reduction(self, reduction_tuple):
@@ -1065,7 +1059,6 @@ class BV_Dont_Care_Grouping(BV_Grouping):
 class BV_Fork_Grouping(BV_Grouping):
     representatives = {}
     representatives_hits = 0
-    representatives_misses = 0
 
     def __init__(self, inputs, number_of_input_bits):
         assert 0 < len(inputs) <= 2**number_of_input_bits
@@ -1150,7 +1143,6 @@ class BV_Fork_Grouping(BV_Grouping):
         if self in BV_Fork_Grouping.representatives:
             BV_Fork_Grouping.representatives_hits += 1
         else:
-            BV_Fork_Grouping.representatives_misses += 1
             assert self.is_consistent()
             BV_Fork_Grouping.representatives[self] = self
         return BV_Fork_Grouping.representatives[self]
@@ -1306,7 +1298,6 @@ class BV_Fork_Grouping(BV_Grouping):
 class BV_Internal_Grouping(BV_Grouping):
     representatives = {}
     representatives_hits = 0
-    representatives_misses = 0
 
     def __init__(self, level, number_of_input_bits, number_of_exits = 1):
         assert level > 0
@@ -1422,7 +1413,6 @@ class BV_Internal_Grouping(BV_Grouping):
         if self in BV_Internal_Grouping.representatives:
             BV_Internal_Grouping.representatives_hits += 1
         else:
-            BV_Internal_Grouping.representatives_misses += 1
             assert self.is_consistent()
             BV_Internal_Grouping.representatives[self] = self
         return BV_Internal_Grouping.representatives[self]
@@ -1627,7 +1617,6 @@ class BV_Internal_Grouping(BV_Grouping):
 class BV_No_Distinction_Proto(BV_Internal_Grouping):
     representatives = {}
     representatives_hits = 0
-    representatives_misses = 0
 
     def __init__(self, level, number_of_input_bits):
         assert level > 0
@@ -1640,8 +1629,6 @@ class BV_No_Distinction_Proto(BV_Internal_Grouping):
             BV_No_Distinction_Proto.representatives_hits += 1
             return BV_No_Distinction_Proto.representatives[(level, number_of_input_bits)]
         else:
-            BV_No_Distinction_Proto.representatives_misses += 1
-
             g = BV_No_Distinction_Proto(level, number_of_input_bits)
 
             g.a_connection = BV_No_Distinction_Proto.representative(level - 1,
@@ -1688,7 +1675,6 @@ class CFLOBVDD:
 
     collapsed_equiv_classes_cache = {}
     collapsed_equiv_classes_cache_hits = 0
-    collapsed_equiv_classes_cache_misses = 0
 
     def __init__(self, grouping, outputs, number_of_input_bits, number_of_output_bits):
         self.grouping = grouping
@@ -1703,28 +1689,20 @@ class CFLOBVDD:
             f"n_of_i_b: {self.number_of_input_bits}\n" +
             f"n_of_o_b: {self.number_of_output_bits}")
 
+    def utilization(hits, misses):
+        if hits + misses == 0:
+            return "0%"
+        else:
+            return f"{round(hits / (hits + misses) * 100, 2)}% ({hits} hits, {misses} misses)"
+
     def print_profile():
-        print(f"BV_Fork_Grouping.representatives: {len(BV_Fork_Grouping.representatives)}")
-        print(f"BV_Fork_Grouping.representatives_hits: {BV_Fork_Grouping.representatives_hits}")
-        print(f"BV_Fork_Grouping.representatives_misses: {BV_Fork_Grouping.representatives_misses}")
-        print(f"BV_Internal_Grouping.representatives: {len(BV_Internal_Grouping.representatives)}")
-        print(f"BV_Internal_Grouping.representatives_hits: {BV_Internal_Grouping.representatives_hits}")
-        print(f"BV_Internal_Grouping.representatives_misses: {BV_Internal_Grouping.representatives_misses}")
-        print(f"BV_No_Distinction_Proto.representatives: {len(BV_No_Distinction_Proto.representatives)}")
-        print(f"BV_No_Distinction_Proto.representatives_hits: {BV_No_Distinction_Proto.representatives_hits}")
-        print(f"BV_No_Distinction_Proto.representatives_misses: {BV_No_Distinction_Proto.representatives_misses}")
-        print(f"BV_Grouping.pair_product_cache: {len(BV_Grouping.pair_product_cache)}")
-        print(f"BV_Grouping.pair_product_cache_hits: {BV_Grouping.pair_product_cache_hits}")
-        print(f"BV_Grouping.pair_product_cache_misses: {BV_Grouping.pair_product_cache_misses}")
-        print(f"BV_Grouping.triple_product_cache: {len(BV_Grouping.triple_product_cache)}")
-        print(f"BV_Grouping.triple_product_cache_hits: {BV_Grouping.triple_product_cache_hits}")
-        print(f"BV_Grouping.triple_product_cache_misses: {BV_Grouping.triple_product_cache_misses}")
-        print(f"BV_Grouping.reduction_cache: {len(BV_Grouping.reduction_cache)}")
-        print(f"BV_Grouping.reduction_cache_hits: {BV_Grouping.reduction_cache_hits}")
-        print(f"BV_Grouping.reduction_cache_misses: {BV_Grouping.reduction_cache_misses}")
-        print(f"CFLOBVDD.collapsed_equiv_classes_cache: {len(CFLOBVDD.collapsed_equiv_classes_cache)}")
-        print(f"CFLOBVDD.collapsed_equiv_classes_cache_hits: {CFLOBVDD.collapsed_equiv_classes_cache_hits}")
-        print(f"CFLOBVDD.collapsed_equiv_classes_cache_misses: {CFLOBVDD.collapsed_equiv_classes_cache_misses}")
+        print(f"BV_Fork_Grouping cache utilization: {CFLOBVDD.utilization(BV_Fork_Grouping.representatives_hits, len(BV_Fork_Grouping.representatives))}")
+        print(f"BV_Internal_Grouping cache utilization: {CFLOBVDD.utilization(BV_Internal_Grouping.representatives_hits, len(BV_Internal_Grouping.representatives))}")
+        print(f"BV_No_Distinction_Proto cache utilization: {CFLOBVDD.utilization(BV_No_Distinction_Proto.representatives_hits, len(BV_No_Distinction_Proto.representatives))}")
+        print(f"BV_Grouping pair-product cache utilization: {CFLOBVDD.utilization(BV_Grouping.pair_product_cache_hits, len(BV_Grouping.pair_product_cache))}")
+        print(f"BV_Grouping triple-product cache utilization: {CFLOBVDD.utilization(BV_Grouping.triple_product_cache_hits, len(BV_Grouping.triple_product_cache))}")
+        print(f"BV_Grouping reduction cache utilization: {CFLOBVDD.utilization(BV_Grouping.reduction_cache_hits, len(BV_Grouping.reduction_cache))}")
+        print(f"CFLOBVDD collapsed-equivalence-classes cache utilization: {CFLOBVDD.utilization(CFLOBVDD.collapsed_equiv_classes_cache_hits, len(CFLOBVDD.collapsed_equiv_classes_cache))}")
 
     def number_of_paths(self):
         return self.grouping.number_of_paths()
@@ -1877,7 +1855,6 @@ class CFLOBVDD:
             CFLOBVDD.collapsed_equiv_classes_cache_hits += 1
             return True
         else:
-            CFLOBVDD.collapsed_equiv_classes_cache_misses += 1
             return False
 
     def get_collapsed_classes(equiv_classes):
@@ -6914,9 +6891,12 @@ def print_message(message, step = None, level = None):
 
 def print_message_with_propagation_profile(message, step = None, level = None):
     if Instance.PROPAGATE is not None:
-        string = f"({Values.total_number_of_constants}, {Values.current_number_of_inputs}, "
-        string += f"{Values.max_number_of_values}, {len(Exit.exits)}, {len(BVDD.bvdds)}, "
-        string += f"{Expression.total_number_of_generated_expressions}) {message}"
+        string = f"({Values.total_number_of_constants} constants, "
+        string += f"{Values.current_number_of_inputs} inputs, "
+        string += f"{Values.max_number_of_values} values, "
+        if Values.ROABVDD:
+            string += f"{len(Exit.exits)} exits, {len(BVDD.bvdds)} bvdds, "
+        string += f"{Expression.total_number_of_generated_expressions} expressions) {message}"
         print_message(string, step, level)
         Values.current_number_of_inputs = 0
     else:
@@ -7827,6 +7807,10 @@ def main():
                 bmc(z3_solver, kmin, kmax, args)
             if args.use_bitwuzla and is_bitwuzla_present:
                 bmc(bitwuzla_solver, kmin, kmax, args)
+
+    if not Values.ROABVDD:
+        print_separator('-')
+        CFLOBVDD.print_profile()
 
     print_separator('#')
 
