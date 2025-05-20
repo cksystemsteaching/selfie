@@ -368,12 +368,14 @@ class Array(Sort):
 
 class Exit:
     exits = {}
+    exit_hits = 0
 
     def new(ID, offset = 0):
         if ID + offset not in Exit.exits:
             exit = Exit(ID, offset)
             Exit.exits[ID + offset] = exit
         else:
+            Exit.exit_hits += 1
             exit = Exit.exits[ID + offset]
         return exit
 
@@ -464,8 +466,13 @@ class BVDD:
     bvdds = {}
 
     intersection_bvdds = {}
+    intersection_hits = 0
+
     union_bvdds = {}
+    union_hits = 0
+
     exclusion_bvdds = {}
+    exclusion_hits = 0
 
     def __init__(self, var_line):
         self.var_line = var_line
@@ -640,8 +647,10 @@ class BVDD:
 
     def intersection(self, bvdd, inorder = True):
         if inorder and (self, bvdd) in BVDD.intersection_bvdds:
+            BVDD.intersection_hits += 1
             return BVDD.intersection_bvdds[(self, bvdd)]
         elif not inorder and (bvdd, self) in BVDD.intersection_bvdds:
+            BVDD.intersection_hits += 1
             return BVDD.intersection_bvdds[(bvdd, self)]
         else:
             binary_bvdd = self.apply_binary(bvdd, inorder)
@@ -697,8 +706,10 @@ class BVDD:
 
     def union(self, bvdd, inorder = True):
         if inorder and (self, bvdd) in BVDD.union_bvdds:
+            BVDD.union_hits += 1
             return BVDD.union_bvdds[(self, bvdd)]
         elif not inorder and (bvdd, self) in BVDD.union_bvdds:
+            BVDD.union_hits += 1
             return BVDD.union_bvdds[(bvdd, self)]
         else:
             merge_bvdd = self.merge(bvdd, inorder)
@@ -748,6 +759,7 @@ class BVDD:
 
     def exclusion(self, bvdd):
         if (self, bvdd) in BVDD.exclusion_bvdds:
+            BVDD.exclusion_hits += 1
             return BVDD.exclusion_bvdds[(self, bvdd)]
         else:
             exclude_bvdd = self.exclude(bvdd)
@@ -766,6 +778,18 @@ class ROABVDD:
 
     def __str__(self):
         return f"{self.values} {self.exits} {self.bvdd}"
+
+    def utilization(hits, misses):
+        if hits + misses == 0:
+            return "0.0%"
+        else:
+            return f"{round(hits / (hits + misses) * 100, 2)}% ({hits} hits, {misses} misses)"
+
+    def print_profile():
+        print(f"Exit cache utilization: {ROABVDD.utilization(Exit.exit_hits, len(Exit.exits))}")
+        print(f"BVDD intersection cache utilization: {ROABVDD.utilization(BVDD.intersection_hits, len(BVDD.intersection_bvdds))}")
+        print(f"BVDD union cache utilization: {ROABVDD.utilization(BVDD.union_hits, len(BVDD.union_bvdds))}")
+        print(f"BVDD exclusion cache utilization: {ROABVDD.utilization(BVDD.exclusion_hits, len(BVDD.exclusion_bvdds))}")
 
     def number_of_inputs(self):
         return self.bvdd.number_of_inputs()
@@ -1689,20 +1713,14 @@ class CFLOBVDD:
             f"n_of_i_b: {self.number_of_input_bits}\n" +
             f"n_of_o_b: {self.number_of_output_bits}")
 
-    def utilization(hits, misses):
-        if hits + misses == 0:
-            return "0%"
-        else:
-            return f"{round(hits / (hits + misses) * 100, 2)}% ({hits} hits, {misses} misses)"
-
     def print_profile():
-        print(f"BV_Fork_Grouping cache utilization: {CFLOBVDD.utilization(BV_Fork_Grouping.representatives_hits, len(BV_Fork_Grouping.representatives))}")
-        print(f"BV_Internal_Grouping cache utilization: {CFLOBVDD.utilization(BV_Internal_Grouping.representatives_hits, len(BV_Internal_Grouping.representatives))}")
-        print(f"BV_No_Distinction_Proto cache utilization: {CFLOBVDD.utilization(BV_No_Distinction_Proto.representatives_hits, len(BV_No_Distinction_Proto.representatives))}")
-        print(f"BV_Grouping pair-product cache utilization: {CFLOBVDD.utilization(BV_Grouping.pair_product_cache_hits, len(BV_Grouping.pair_product_cache))}")
-        print(f"BV_Grouping triple-product cache utilization: {CFLOBVDD.utilization(BV_Grouping.triple_product_cache_hits, len(BV_Grouping.triple_product_cache))}")
-        print(f"BV_Grouping reduction cache utilization: {CFLOBVDD.utilization(BV_Grouping.reduction_cache_hits, len(BV_Grouping.reduction_cache))}")
-        print(f"CFLOBVDD collapsed-equivalence-classes cache utilization: {CFLOBVDD.utilization(CFLOBVDD.collapsed_equiv_classes_cache_hits, len(CFLOBVDD.collapsed_equiv_classes_cache))}")
+        print(f"BV_Fork_Grouping cache utilization: {ROABVDD.utilization(BV_Fork_Grouping.representatives_hits, len(BV_Fork_Grouping.representatives))}")
+        print(f"BV_Internal_Grouping cache utilization: {ROABVDD.utilization(BV_Internal_Grouping.representatives_hits, len(BV_Internal_Grouping.representatives))}")
+        print(f"BV_No_Distinction_Proto cache utilization: {ROABVDD.utilization(BV_No_Distinction_Proto.representatives_hits, len(BV_No_Distinction_Proto.representatives))}")
+        print(f"BV_Grouping pair-product cache utilization: {ROABVDD.utilization(BV_Grouping.pair_product_cache_hits, len(BV_Grouping.pair_product_cache))}")
+        print(f"BV_Grouping triple-product cache utilization: {ROABVDD.utilization(BV_Grouping.triple_product_cache_hits, len(BV_Grouping.triple_product_cache))}")
+        print(f"BV_Grouping reduction cache utilization: {ROABVDD.utilization(BV_Grouping.reduction_cache_hits, len(BV_Grouping.reduction_cache))}")
+        print(f"CFLOBVDD collapsed-equivalence-classes cache utilization: {ROABVDD.utilization(CFLOBVDD.collapsed_equiv_classes_cache_hits, len(CFLOBVDD.collapsed_equiv_classes_cache))}")
 
     def number_of_paths(self):
         return self.grouping.number_of_paths()
@@ -7802,15 +7820,17 @@ def main():
 
         if not args.use_Z3 and not args.use_bitwuzla:
             bmc(bitme_solver, kmin, kmax, args)
+
+            print_separator('-')
+            if Values.ROABVDD:
+                ROABVDD.print_profile()
+            else:
+                CFLOBVDD.print_profile()
         else:
             if args.use_Z3 and is_Z3_present:
                 bmc(z3_solver, kmin, kmax, args)
             if args.use_bitwuzla and is_bitwuzla_present:
                 bmc(bitwuzla_solver, kmin, kmax, args)
-
-    if not Values.ROABVDD:
-        print_separator('-')
-        CFLOBVDD.print_profile()
 
     print_separator('#')
 
