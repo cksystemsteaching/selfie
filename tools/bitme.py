@@ -1962,139 +1962,140 @@ class CFLOBVDD:
             n1.number_of_input_bits,
             number_of_output_bits)
 
-# projection test cases
+class CFLOBVDD_Test:
+    # projection test cases
 
-CFLOBVDD.projection(0, 0, 1, 1)
+    CFLOBVDD.projection(0, 0, 1, 1)
 
-CFLOBVDD.projection(1, 0, 1, 1)
-CFLOBVDD.projection(1, 1, 1, 1)
+    CFLOBVDD.projection(1, 0, 1, 1)
+    CFLOBVDD.projection(1, 1, 1, 1)
 
-CFLOBVDD.projection(1, 0, 1, 2)
+    CFLOBVDD.projection(1, 0, 1, 2)
 
-CFLOBVDD.projection(2, 0, 1, 1)
-CFLOBVDD.projection(2, 1, 1, 1)
+    CFLOBVDD.projection(2, 0, 1, 1)
+    CFLOBVDD.projection(2, 1, 1, 1)
 
-CFLOBVDD.projection(2, 0, 1, 2)
-CFLOBVDD.projection(2, 1, 1, 2)
-CFLOBVDD.projection(2, 2, 1, 2)
+    CFLOBVDD.projection(2, 0, 1, 2)
+    CFLOBVDD.projection(2, 1, 1, 2)
+    CFLOBVDD.projection(2, 2, 1, 2)
 
-CFLOBVDD.projection(2, 0, 2, 2)
-CFLOBVDD.projection(2, 1, 2, 2)
-CFLOBVDD.projection(2, 2, 2, 2)
-CFLOBVDD.projection(2, 3, 2, 2)
+    CFLOBVDD.projection(2, 0, 2, 2)
+    CFLOBVDD.projection(2, 1, 2, 2)
+    CFLOBVDD.projection(2, 2, 2, 2)
+    CFLOBVDD.projection(2, 3, 2, 2)
 
-# pairing test cases
+    # pairing test cases
 
-CFLOBVDD.projection(0, 0, 1, 1).grouping.pair_product(CFLOBVDD.projection(0, 0, 1, 1).grouping)
+    CFLOBVDD.projection(0, 0, 1, 1).grouping.pair_product(CFLOBVDD.projection(0, 0, 1, 1).grouping)
 
-CFLOBVDD.projection(1, 0, 1, 1).grouping.pair_product(CFLOBVDD.projection(1, 0, 1, 1).grouping)
-CFLOBVDD.projection(1, 0, 1, 1).grouping.pair_product(CFLOBVDD.projection(1, 1, 1, 1).grouping)
-CFLOBVDD.projection(1, 1, 1, 1).grouping.pair_product(CFLOBVDD.projection(1, 0, 1, 1).grouping)
-CFLOBVDD.projection(1, 1, 1, 1).grouping.pair_product(CFLOBVDD.projection(1, 1, 1, 1).grouping)
+    CFLOBVDD.projection(1, 0, 1, 1).grouping.pair_product(CFLOBVDD.projection(1, 0, 1, 1).grouping)
+    CFLOBVDD.projection(1, 0, 1, 1).grouping.pair_product(CFLOBVDD.projection(1, 1, 1, 1).grouping)
+    CFLOBVDD.projection(1, 1, 1, 1).grouping.pair_product(CFLOBVDD.projection(1, 0, 1, 1).grouping)
+    CFLOBVDD.projection(1, 1, 1, 1).grouping.pair_product(CFLOBVDD.projection(1, 1, 1, 1).grouping)
 
-CFLOBVDD.projection(1, 0, 1, 2).grouping.pair_product(CFLOBVDD.projection(1, 0, 1, 2).grouping)
+    CFLOBVDD.projection(1, 0, 1, 2).grouping.pair_product(CFLOBVDD.projection(1, 0, 1, 2).grouping)
 
-CFLOBVDD.projection(2, 0, 1, 1).grouping.pair_product(CFLOBVDD.projection(2, 0, 1, 1).grouping)
-CFLOBVDD.projection(2, 0, 1, 1).grouping.pair_product(CFLOBVDD.projection(2, 1, 1, 1).grouping)
-CFLOBVDD.projection(2, 1, 1, 1).grouping.pair_product(CFLOBVDD.projection(2, 1, 1, 1).grouping)
-CFLOBVDD.projection(2, 1, 1, 1).grouping.pair_product(CFLOBVDD.projection(2, 0, 1, 1).grouping)
+    CFLOBVDD.projection(2, 0, 1, 1).grouping.pair_product(CFLOBVDD.projection(2, 0, 1, 1).grouping)
+    CFLOBVDD.projection(2, 0, 1, 1).grouping.pair_product(CFLOBVDD.projection(2, 1, 1, 1).grouping)
+    CFLOBVDD.projection(2, 1, 1, 1).grouping.pair_product(CFLOBVDD.projection(2, 1, 1, 1).grouping)
+    CFLOBVDD.projection(2, 1, 1, 1).grouping.pair_product(CFLOBVDD.projection(2, 0, 1, 1).grouping)
 
-CFLOBVDD.projection(2, 0, 1, 2).grouping.pair_product(CFLOBVDD.projection(2, 0, 1, 2).grouping)
-CFLOBVDD.projection(2, 0, 1, 2).grouping.pair_product(CFLOBVDD.projection(2, 1, 1, 2).grouping)
-CFLOBVDD.projection(2, 0, 1, 2).grouping.pair_product(CFLOBVDD.projection(2, 2, 1, 2).grouping)
-CFLOBVDD.projection(2, 1, 1, 2).grouping.pair_product(CFLOBVDD.projection(2, 0, 1, 2).grouping)
-CFLOBVDD.projection(2, 1, 1, 2).grouping.pair_product(CFLOBVDD.projection(2, 1, 1, 2).grouping)
-CFLOBVDD.projection(2, 1, 1, 2).grouping.pair_product(CFLOBVDD.projection(2, 2, 1, 2).grouping)
-CFLOBVDD.projection(2, 2, 1, 2).grouping.pair_product(CFLOBVDD.projection(2, 0, 1, 2).grouping)
-CFLOBVDD.projection(2, 2, 1, 2).grouping.pair_product(CFLOBVDD.projection(2, 1, 1, 2).grouping)
-CFLOBVDD.projection(2, 2, 1, 2).grouping.pair_product(CFLOBVDD.projection(2, 2, 1, 2).grouping)
-CFLOBVDD.projection(2, 0, 2, 2).grouping.pair_product(CFLOBVDD.projection(2, 0, 2, 2).grouping)
-CFLOBVDD.projection(2, 0, 2, 2).grouping.pair_product(CFLOBVDD.projection(2, 1, 2, 2).grouping)
-CFLOBVDD.projection(2, 0, 2, 2).grouping.pair_product(CFLOBVDD.projection(2, 2, 2, 2).grouping)
-CFLOBVDD.projection(2, 0, 2, 2).grouping.pair_product(CFLOBVDD.projection(2, 3, 2, 2).grouping)
-CFLOBVDD.projection(2, 1, 2, 2).grouping.pair_product(CFLOBVDD.projection(2, 0, 2, 2).grouping)
-CFLOBVDD.projection(2, 1, 2, 2).grouping.pair_product(CFLOBVDD.projection(2, 1, 2, 2).grouping)
-CFLOBVDD.projection(2, 1, 2, 2).grouping.pair_product(CFLOBVDD.projection(2, 2, 2, 2).grouping)
-CFLOBVDD.projection(2, 1, 2, 2).grouping.pair_product(CFLOBVDD.projection(2, 3, 2, 2).grouping)
-CFLOBVDD.projection(2, 2, 2, 2).grouping.pair_product(CFLOBVDD.projection(2, 0, 2, 2).grouping)
-CFLOBVDD.projection(2, 2, 2, 2).grouping.pair_product(CFLOBVDD.projection(2, 1, 2, 2).grouping)
-CFLOBVDD.projection(2, 2, 2, 2).grouping.pair_product(CFLOBVDD.projection(2, 2, 2, 2).grouping)
-CFLOBVDD.projection(2, 2, 2, 2).grouping.pair_product(CFLOBVDD.projection(2, 3, 2, 2).grouping)
-CFLOBVDD.projection(2, 3, 2, 2).grouping.pair_product(CFLOBVDD.projection(2, 0, 2, 2).grouping)
-CFLOBVDD.projection(2, 3, 2, 2).grouping.pair_product(CFLOBVDD.projection(2, 1, 2, 2).grouping)
-CFLOBVDD.projection(2, 3, 2, 2).grouping.pair_product(CFLOBVDD.projection(2, 2, 2, 2).grouping)
-CFLOBVDD.projection(2, 3, 2, 2).grouping.pair_product(CFLOBVDD.projection(2, 3, 2, 2).grouping)
+    CFLOBVDD.projection(2, 0, 1, 2).grouping.pair_product(CFLOBVDD.projection(2, 0, 1, 2).grouping)
+    CFLOBVDD.projection(2, 0, 1, 2).grouping.pair_product(CFLOBVDD.projection(2, 1, 1, 2).grouping)
+    CFLOBVDD.projection(2, 0, 1, 2).grouping.pair_product(CFLOBVDD.projection(2, 2, 1, 2).grouping)
+    CFLOBVDD.projection(2, 1, 1, 2).grouping.pair_product(CFLOBVDD.projection(2, 0, 1, 2).grouping)
+    CFLOBVDD.projection(2, 1, 1, 2).grouping.pair_product(CFLOBVDD.projection(2, 1, 1, 2).grouping)
+    CFLOBVDD.projection(2, 1, 1, 2).grouping.pair_product(CFLOBVDD.projection(2, 2, 1, 2).grouping)
+    CFLOBVDD.projection(2, 2, 1, 2).grouping.pair_product(CFLOBVDD.projection(2, 0, 1, 2).grouping)
+    CFLOBVDD.projection(2, 2, 1, 2).grouping.pair_product(CFLOBVDD.projection(2, 1, 1, 2).grouping)
+    CFLOBVDD.projection(2, 2, 1, 2).grouping.pair_product(CFLOBVDD.projection(2, 2, 1, 2).grouping)
+    CFLOBVDD.projection(2, 0, 2, 2).grouping.pair_product(CFLOBVDD.projection(2, 0, 2, 2).grouping)
+    CFLOBVDD.projection(2, 0, 2, 2).grouping.pair_product(CFLOBVDD.projection(2, 1, 2, 2).grouping)
+    CFLOBVDD.projection(2, 0, 2, 2).grouping.pair_product(CFLOBVDD.projection(2, 2, 2, 2).grouping)
+    CFLOBVDD.projection(2, 0, 2, 2).grouping.pair_product(CFLOBVDD.projection(2, 3, 2, 2).grouping)
+    CFLOBVDD.projection(2, 1, 2, 2).grouping.pair_product(CFLOBVDD.projection(2, 0, 2, 2).grouping)
+    CFLOBVDD.projection(2, 1, 2, 2).grouping.pair_product(CFLOBVDD.projection(2, 1, 2, 2).grouping)
+    CFLOBVDD.projection(2, 1, 2, 2).grouping.pair_product(CFLOBVDD.projection(2, 2, 2, 2).grouping)
+    CFLOBVDD.projection(2, 1, 2, 2).grouping.pair_product(CFLOBVDD.projection(2, 3, 2, 2).grouping)
+    CFLOBVDD.projection(2, 2, 2, 2).grouping.pair_product(CFLOBVDD.projection(2, 0, 2, 2).grouping)
+    CFLOBVDD.projection(2, 2, 2, 2).grouping.pair_product(CFLOBVDD.projection(2, 1, 2, 2).grouping)
+    CFLOBVDD.projection(2, 2, 2, 2).grouping.pair_product(CFLOBVDD.projection(2, 2, 2, 2).grouping)
+    CFLOBVDD.projection(2, 2, 2, 2).grouping.pair_product(CFLOBVDD.projection(2, 3, 2, 2).grouping)
+    CFLOBVDD.projection(2, 3, 2, 2).grouping.pair_product(CFLOBVDD.projection(2, 0, 2, 2).grouping)
+    CFLOBVDD.projection(2, 3, 2, 2).grouping.pair_product(CFLOBVDD.projection(2, 1, 2, 2).grouping)
+    CFLOBVDD.projection(2, 3, 2, 2).grouping.pair_product(CFLOBVDD.projection(2, 2, 2, 2).grouping)
+    CFLOBVDD.projection(2, 3, 2, 2).grouping.pair_product(CFLOBVDD.projection(2, 3, 2, 2).grouping)
 
-# binary apply and reduce test cases
+    # binary apply and reduce test cases
 
-CFLOBVDD.projection(0, 0, 1, 1).binary_apply_and_reduce(CFLOBVDD.projection(0, 0, 1, 1), lambda x, y: x == y, 1)
+    CFLOBVDD.projection(0, 0, 1, 1).binary_apply_and_reduce(CFLOBVDD.projection(0, 0, 1, 1), lambda x, y: x == y, 1)
 
-CFLOBVDD.projection(1, 0, 1, 1).binary_apply_and_reduce(CFLOBVDD.projection(1, 0, 1, 1), lambda x, y: x == y, 1)
-CFLOBVDD.projection(1, 0, 1, 1).binary_apply_and_reduce(CFLOBVDD.projection(1, 1, 1, 1), lambda x, y: x == y, 1)
-CFLOBVDD.projection(1, 1, 1, 1).binary_apply_and_reduce(CFLOBVDD.projection(1, 0, 1, 1), lambda x, y: x == y, 1)
-CFLOBVDD.projection(1, 1, 1, 1).binary_apply_and_reduce(CFLOBVDD.projection(1, 1, 1, 1), lambda x, y: x == y, 1)
+    CFLOBVDD.projection(1, 0, 1, 1).binary_apply_and_reduce(CFLOBVDD.projection(1, 0, 1, 1), lambda x, y: x == y, 1)
+    CFLOBVDD.projection(1, 0, 1, 1).binary_apply_and_reduce(CFLOBVDD.projection(1, 1, 1, 1), lambda x, y: x == y, 1)
+    CFLOBVDD.projection(1, 1, 1, 1).binary_apply_and_reduce(CFLOBVDD.projection(1, 0, 1, 1), lambda x, y: x == y, 1)
+    CFLOBVDD.projection(1, 1, 1, 1).binary_apply_and_reduce(CFLOBVDD.projection(1, 1, 1, 1), lambda x, y: x == y, 1)
 
-CFLOBVDD.projection(1, 0, 1, 2).binary_apply_and_reduce(CFLOBVDD.projection(1, 0, 1, 2), lambda x, y: x == y, 1)
+    CFLOBVDD.projection(1, 0, 1, 2).binary_apply_and_reduce(CFLOBVDD.projection(1, 0, 1, 2), lambda x, y: x == y, 1)
 
-CFLOBVDD.projection(2, 0, 1, 1).binary_apply_and_reduce(CFLOBVDD.projection(2, 0, 1, 1), lambda x, y: x == y, 1)
-CFLOBVDD.projection(2, 0, 1, 1).binary_apply_and_reduce(CFLOBVDD.projection(2, 1, 1, 1), lambda x, y: x == y, 1)
-CFLOBVDD.projection(2, 1, 1, 1).binary_apply_and_reduce(CFLOBVDD.projection(2, 1, 1, 1), lambda x, y: x == y, 1)
-CFLOBVDD.projection(2, 1, 1, 1).binary_apply_and_reduce(CFLOBVDD.projection(2, 0, 1, 1), lambda x, y: x == y, 1)
+    CFLOBVDD.projection(2, 0, 1, 1).binary_apply_and_reduce(CFLOBVDD.projection(2, 0, 1, 1), lambda x, y: x == y, 1)
+    CFLOBVDD.projection(2, 0, 1, 1).binary_apply_and_reduce(CFLOBVDD.projection(2, 1, 1, 1), lambda x, y: x == y, 1)
+    CFLOBVDD.projection(2, 1, 1, 1).binary_apply_and_reduce(CFLOBVDD.projection(2, 1, 1, 1), lambda x, y: x == y, 1)
+    CFLOBVDD.projection(2, 1, 1, 1).binary_apply_and_reduce(CFLOBVDD.projection(2, 0, 1, 1), lambda x, y: x == y, 1)
 
-CFLOBVDD.projection(2, 0, 1, 2).binary_apply_and_reduce(CFLOBVDD.projection(2, 0, 1, 2), lambda x, y: x == y, 1)
-CFLOBVDD.projection(2, 0, 1, 2).binary_apply_and_reduce(CFLOBVDD.projection(2, 1, 1, 2), lambda x, y: x == y, 1)
-CFLOBVDD.projection(2, 0, 1, 2).binary_apply_and_reduce(CFLOBVDD.projection(2, 2, 1, 2), lambda x, y: x == y, 1)
-CFLOBVDD.projection(2, 1, 1, 2).binary_apply_and_reduce(CFLOBVDD.projection(2, 0, 1, 2), lambda x, y: x == y, 1)
-CFLOBVDD.projection(2, 1, 1, 2).binary_apply_and_reduce(CFLOBVDD.projection(2, 1, 1, 2), lambda x, y: x == y, 1)
-CFLOBVDD.projection(2, 1, 1, 2).binary_apply_and_reduce(CFLOBVDD.projection(2, 2, 1, 2), lambda x, y: x == y, 1)
-CFLOBVDD.projection(2, 2, 1, 2).binary_apply_and_reduce(CFLOBVDD.projection(2, 0, 1, 2), lambda x, y: x == y, 1)
-CFLOBVDD.projection(2, 2, 1, 2).binary_apply_and_reduce(CFLOBVDD.projection(2, 1, 1, 2), lambda x, y: x == y, 1)
-CFLOBVDD.projection(2, 2, 1, 2).binary_apply_and_reduce(CFLOBVDD.projection(2, 2, 1, 2), lambda x, y: x == y, 1)
-CFLOBVDD.projection(2, 0, 2, 2).binary_apply_and_reduce(CFLOBVDD.projection(2, 0, 2, 2), lambda x, y: x == y, 1)
-CFLOBVDD.projection(2, 0, 2, 2).binary_apply_and_reduce(CFLOBVDD.projection(2, 1, 2, 2), lambda x, y: x == y, 1)
-CFLOBVDD.projection(2, 0, 2, 2).binary_apply_and_reduce(CFLOBVDD.projection(2, 2, 2, 2), lambda x, y: x == y, 1)
-CFLOBVDD.projection(2, 0, 2, 2).binary_apply_and_reduce(CFLOBVDD.projection(2, 3, 2, 2), lambda x, y: x == y, 1)
-CFLOBVDD.projection(2, 1, 2, 2).binary_apply_and_reduce(CFLOBVDD.projection(2, 0, 2, 2), lambda x, y: x == y, 1)
-CFLOBVDD.projection(2, 1, 2, 2).binary_apply_and_reduce(CFLOBVDD.projection(2, 1, 2, 2), lambda x, y: x == y, 1)
-CFLOBVDD.projection(2, 1, 2, 2).binary_apply_and_reduce(CFLOBVDD.projection(2, 2, 2, 2), lambda x, y: x == y, 1)
-CFLOBVDD.projection(2, 1, 2, 2).binary_apply_and_reduce(CFLOBVDD.projection(2, 3, 2, 2), lambda x, y: x == y, 1)
-CFLOBVDD.projection(2, 2, 2, 2).binary_apply_and_reduce(CFLOBVDD.projection(2, 0, 2, 2), lambda x, y: x == y, 1)
-CFLOBVDD.projection(2, 2, 2, 2).binary_apply_and_reduce(CFLOBVDD.projection(2, 1, 2, 2), lambda x, y: x == y, 1)
-CFLOBVDD.projection(2, 2, 2, 2).binary_apply_and_reduce(CFLOBVDD.projection(2, 2, 2, 2), lambda x, y: x == y, 1)
-CFLOBVDD.projection(2, 2, 2, 2).binary_apply_and_reduce(CFLOBVDD.projection(2, 3, 2, 2), lambda x, y: x == y, 1)
-CFLOBVDD.projection(2, 3, 2, 2).binary_apply_and_reduce(CFLOBVDD.projection(2, 0, 2, 2), lambda x, y: x == y, 1)
-CFLOBVDD.projection(2, 3, 2, 2).binary_apply_and_reduce(CFLOBVDD.projection(2, 1, 2, 2), lambda x, y: x == y, 1)
-CFLOBVDD.projection(2, 3, 2, 2).binary_apply_and_reduce(CFLOBVDD.projection(2, 2, 2, 2), lambda x, y: x == y, 1)
-CFLOBVDD.projection(2, 3, 2, 2).binary_apply_and_reduce(CFLOBVDD.projection(2, 3, 2, 2), lambda x, y: x == y, 1)
+    CFLOBVDD.projection(2, 0, 1, 2).binary_apply_and_reduce(CFLOBVDD.projection(2, 0, 1, 2), lambda x, y: x == y, 1)
+    CFLOBVDD.projection(2, 0, 1, 2).binary_apply_and_reduce(CFLOBVDD.projection(2, 1, 1, 2), lambda x, y: x == y, 1)
+    CFLOBVDD.projection(2, 0, 1, 2).binary_apply_and_reduce(CFLOBVDD.projection(2, 2, 1, 2), lambda x, y: x == y, 1)
+    CFLOBVDD.projection(2, 1, 1, 2).binary_apply_and_reduce(CFLOBVDD.projection(2, 0, 1, 2), lambda x, y: x == y, 1)
+    CFLOBVDD.projection(2, 1, 1, 2).binary_apply_and_reduce(CFLOBVDD.projection(2, 1, 1, 2), lambda x, y: x == y, 1)
+    CFLOBVDD.projection(2, 1, 1, 2).binary_apply_and_reduce(CFLOBVDD.projection(2, 2, 1, 2), lambda x, y: x == y, 1)
+    CFLOBVDD.projection(2, 2, 1, 2).binary_apply_and_reduce(CFLOBVDD.projection(2, 0, 1, 2), lambda x, y: x == y, 1)
+    CFLOBVDD.projection(2, 2, 1, 2).binary_apply_and_reduce(CFLOBVDD.projection(2, 1, 1, 2), lambda x, y: x == y, 1)
+    CFLOBVDD.projection(2, 2, 1, 2).binary_apply_and_reduce(CFLOBVDD.projection(2, 2, 1, 2), lambda x, y: x == y, 1)
+    CFLOBVDD.projection(2, 0, 2, 2).binary_apply_and_reduce(CFLOBVDD.projection(2, 0, 2, 2), lambda x, y: x == y, 1)
+    CFLOBVDD.projection(2, 0, 2, 2).binary_apply_and_reduce(CFLOBVDD.projection(2, 1, 2, 2), lambda x, y: x == y, 1)
+    CFLOBVDD.projection(2, 0, 2, 2).binary_apply_and_reduce(CFLOBVDD.projection(2, 2, 2, 2), lambda x, y: x == y, 1)
+    CFLOBVDD.projection(2, 0, 2, 2).binary_apply_and_reduce(CFLOBVDD.projection(2, 3, 2, 2), lambda x, y: x == y, 1)
+    CFLOBVDD.projection(2, 1, 2, 2).binary_apply_and_reduce(CFLOBVDD.projection(2, 0, 2, 2), lambda x, y: x == y, 1)
+    CFLOBVDD.projection(2, 1, 2, 2).binary_apply_and_reduce(CFLOBVDD.projection(2, 1, 2, 2), lambda x, y: x == y, 1)
+    CFLOBVDD.projection(2, 1, 2, 2).binary_apply_and_reduce(CFLOBVDD.projection(2, 2, 2, 2), lambda x, y: x == y, 1)
+    CFLOBVDD.projection(2, 1, 2, 2).binary_apply_and_reduce(CFLOBVDD.projection(2, 3, 2, 2), lambda x, y: x == y, 1)
+    CFLOBVDD.projection(2, 2, 2, 2).binary_apply_and_reduce(CFLOBVDD.projection(2, 0, 2, 2), lambda x, y: x == y, 1)
+    CFLOBVDD.projection(2, 2, 2, 2).binary_apply_and_reduce(CFLOBVDD.projection(2, 1, 2, 2), lambda x, y: x == y, 1)
+    CFLOBVDD.projection(2, 2, 2, 2).binary_apply_and_reduce(CFLOBVDD.projection(2, 2, 2, 2), lambda x, y: x == y, 1)
+    CFLOBVDD.projection(2, 2, 2, 2).binary_apply_and_reduce(CFLOBVDD.projection(2, 3, 2, 2), lambda x, y: x == y, 1)
+    CFLOBVDD.projection(2, 3, 2, 2).binary_apply_and_reduce(CFLOBVDD.projection(2, 0, 2, 2), lambda x, y: x == y, 1)
+    CFLOBVDD.projection(2, 3, 2, 2).binary_apply_and_reduce(CFLOBVDD.projection(2, 1, 2, 2), lambda x, y: x == y, 1)
+    CFLOBVDD.projection(2, 3, 2, 2).binary_apply_and_reduce(CFLOBVDD.projection(2, 2, 2, 2), lambda x, y: x == y, 1)
+    CFLOBVDD.projection(2, 3, 2, 2).binary_apply_and_reduce(CFLOBVDD.projection(2, 3, 2, 2), lambda x, y: x == y, 1)
 
-# ternary apply and reduce test cases
+    # ternary apply and reduce test cases
 
-CFLOBVDD.projection(2, 0, 1, 1).ternary_apply_and_reduce(CFLOBVDD.projection(2, 1, 1, 1),
-    CFLOBVDD.projection(2, 2, 1, 1), lambda x, y, z: y if x else z, 1)
-CFLOBVDD.projection(2, 1, 1, 1).ternary_apply_and_reduce(CFLOBVDD.projection(2, 2, 1, 1),
-    CFLOBVDD.projection(2, 3, 1, 1), lambda x, y, z: y if x else z, 1)
-CFLOBVDD.projection(2, 0, 1, 1).ternary_apply_and_reduce(CFLOBVDD.projection(2, 2, 1, 1),
-    CFLOBVDD.projection(2, 3, 1, 1), lambda x, y, z: y if x else z, 1)
-CFLOBVDD.projection(2, 0, 1, 1).ternary_apply_and_reduce(CFLOBVDD.projection(2, 2, 1, 1),
-    CFLOBVDD.projection(2, 3, 1, 1), lambda x, y, z: y if x else z, 1)
+    CFLOBVDD.projection(2, 0, 1, 1).ternary_apply_and_reduce(CFLOBVDD.projection(2, 1, 1, 1),
+        CFLOBVDD.projection(2, 2, 1, 1), lambda x, y, z: y if x else z, 1)
+    CFLOBVDD.projection(2, 1, 1, 1).ternary_apply_and_reduce(CFLOBVDD.projection(2, 2, 1, 1),
+        CFLOBVDD.projection(2, 3, 1, 1), lambda x, y, z: y if x else z, 1)
+    CFLOBVDD.projection(2, 0, 1, 1).ternary_apply_and_reduce(CFLOBVDD.projection(2, 2, 1, 1),
+        CFLOBVDD.projection(2, 3, 1, 1), lambda x, y, z: y if x else z, 1)
+    CFLOBVDD.projection(2, 0, 1, 1).ternary_apply_and_reduce(CFLOBVDD.projection(2, 2, 1, 1),
+        CFLOBVDD.projection(2, 3, 1, 1), lambda x, y, z: y if x else z, 1)
 
-CFLOBVDD.projection(2, 0, 2, 2).ternary_apply_and_reduce(CFLOBVDD.projection(2, 1, 2, 2),
-    CFLOBVDD.projection(2, 2, 2, 2), lambda x, y, z: y if x else z, 2)
-CFLOBVDD.projection(2, 1, 2, 2).ternary_apply_and_reduce(CFLOBVDD.projection(2, 2, 2, 2),
-    CFLOBVDD.projection(2, 3, 2, 2), lambda x, y, z: y if x else z, 2)
-CFLOBVDD.projection(2, 0, 2, 2).ternary_apply_and_reduce(CFLOBVDD.projection(2, 2, 2, 2),
-    CFLOBVDD.projection(2, 3, 2, 2), lambda x, y, z: y if x else z, 2)
-CFLOBVDD.projection(2, 0, 2, 2).ternary_apply_and_reduce(CFLOBVDD.projection(2, 2, 2, 2),
-    CFLOBVDD.projection(2, 3, 2, 2), lambda x, y, z: y if x else z, 2)
+    CFLOBVDD.projection(2, 0, 2, 2).ternary_apply_and_reduce(CFLOBVDD.projection(2, 1, 2, 2),
+        CFLOBVDD.projection(2, 2, 2, 2), lambda x, y, z: y if x else z, 2)
+    CFLOBVDD.projection(2, 1, 2, 2).ternary_apply_and_reduce(CFLOBVDD.projection(2, 2, 2, 2),
+        CFLOBVDD.projection(2, 3, 2, 2), lambda x, y, z: y if x else z, 2)
+    CFLOBVDD.projection(2, 0, 2, 2).ternary_apply_and_reduce(CFLOBVDD.projection(2, 2, 2, 2),
+        CFLOBVDD.projection(2, 3, 2, 2), lambda x, y, z: y if x else z, 2)
+    CFLOBVDD.projection(2, 0, 2, 2).ternary_apply_and_reduce(CFLOBVDD.projection(2, 2, 2, 2),
+        CFLOBVDD.projection(2, 3, 2, 2), lambda x, y, z: y if x else z, 2)
 
-CFLOBVDD.projection(2, 0, 4, 4).ternary_apply_and_reduce(CFLOBVDD.projection(2, 1, 4, 4),
-    CFLOBVDD.projection(2, 2, 4, 4), lambda x, y, z: y if x else z, 4)
-CFLOBVDD.projection(2, 1, 4, 4).ternary_apply_and_reduce(CFLOBVDD.projection(2, 2, 4, 4),
-    CFLOBVDD.projection(2, 3, 4, 4), lambda x, y, z: y if x else z, 4)
-CFLOBVDD.projection(2, 0, 4, 4).ternary_apply_and_reduce(CFLOBVDD.projection(2, 2, 4, 4),
-    CFLOBVDD.projection(2, 3, 4, 4), lambda x, y, z: y if x else z, 4)
-CFLOBVDD.projection(2, 0, 4, 4).ternary_apply_and_reduce(CFLOBVDD.projection(2, 2, 4, 4),
-    CFLOBVDD.projection(2, 3, 4, 4), lambda x, y, z: y if x else z, 4)
+    CFLOBVDD.projection(2, 0, 4, 4).ternary_apply_and_reduce(CFLOBVDD.projection(2, 1, 4, 4),
+        CFLOBVDD.projection(2, 2, 4, 4), lambda x, y, z: y if x else z, 4)
+    CFLOBVDD.projection(2, 1, 4, 4).ternary_apply_and_reduce(CFLOBVDD.projection(2, 2, 4, 4),
+        CFLOBVDD.projection(2, 3, 4, 4), lambda x, y, z: y if x else z, 4)
+    CFLOBVDD.projection(2, 0, 4, 4).ternary_apply_and_reduce(CFLOBVDD.projection(2, 2, 4, 4),
+        CFLOBVDD.projection(2, 3, 4, 4), lambda x, y, z: y if x else z, 4)
+    CFLOBVDD.projection(2, 0, 4, 4).ternary_apply_and_reduce(CFLOBVDD.projection(2, 2, 4, 4),
+        CFLOBVDD.projection(2, 3, 4, 4), lambda x, y, z: y if x else z, 4)
 
 class Values:
     ROABVDD = True
