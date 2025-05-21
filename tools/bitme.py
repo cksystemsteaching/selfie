@@ -961,7 +961,7 @@ class BV_Grouping:
         return BV_Grouping.triple_product_cache[(self, g2, g3)]
 
     def reduction_hash(reduction_tuple):
-        return hash((frozenset(reduction_tuple), tuple(reduction_tuple.values())))
+        return hash(tuple(reduction_tuple.values()))
 
     def is_reduction_cached(self, reduction_tuple):
         if (self, BV_Grouping.reduction_hash(reduction_tuple)) in BV_Grouping.reduction_cache:
@@ -1107,8 +1107,7 @@ class BV_Fork_Grouping(BV_Grouping):
     def __hash__(self):
         return hash((self.number_of_exits,
             self.number_of_input_bits,
-            frozenset(self.inputs),
-            frozenset(self.inputs.values())))
+            tuple(self.inputs.values())))
 
     def __eq__(self, g2):
         return (isinstance(g2, BV_Fork_Grouping) and
@@ -1356,13 +1355,10 @@ class BV_Internal_Grouping(BV_Grouping):
             self.number_of_input_bits,
             self.number_of_exits,
             self.a_connection,
-            frozenset(self.a_return_tuple),
-            frozenset(self.a_return_tuple.values()),
+            tuple(self.a_return_tuple.values()),
             self.number_of_b_connections,
-            frozenset(self.b_connections),
-            frozenset(self.b_connections.values()),
-            frozenset(self.b_return_tuples),
-            frozenset([(frozenset(rt), frozenset(rt.values())) for rt in self.b_return_tuples.values()])))
+            tuple(self.b_connections.values()),
+            tuple([(tuple(rt), tuple(rt.values())) for rt in self.b_return_tuples.values()])))
 
     def __eq__(self, g2):
         return (isinstance(g2, BV_Internal_Grouping) and
@@ -1703,6 +1699,7 @@ class CFLOBVDD:
     max_level = 0
 
     representatives = {}
+    representatives_hits = 0
 
     collapsed_equiv_classes_cache = {}
     collapsed_equiv_classes_cache_hits = 0
@@ -1720,6 +1717,19 @@ class CFLOBVDD:
             f"n_of_i_b: {self.number_of_input_bits}\n" +
             f"n_of_o_b: {self.number_of_output_bits}")
 
+    def __hash__(self):
+        return hash((self.grouping,
+            tuple(self.outputs.values()),
+            self.number_of_input_bits,
+            self.number_of_output_bits))
+
+    def __eq__(self, n2):
+        return (isinstance(n2, CFLOBVDD) and
+            self.grouping == n2.grouping and
+            self.outputs == n2.outputs and
+            self.number_of_input_bits == n2.number_of_input_bits and
+            self.number_of_output_bits == n2.number_of_output_bits)
+
     def print_profile():
         print(f"BV_Fork_Grouping cache utilization: {ROABVDD.utilization(BV_Fork_Grouping.representatives_hits, len(BV_Fork_Grouping.representatives))}")
         print(f"BV_Internal_Grouping cache utilization: {ROABVDD.utilization(BV_Internal_Grouping.representatives_hits, len(BV_Internal_Grouping.representatives))}")
@@ -1728,6 +1738,7 @@ class CFLOBVDD:
         print(f"BV_Grouping triple-product cache utilization: {ROABVDD.utilization(BV_Grouping.triple_product_cache_hits, len(BV_Grouping.triple_product_cache))}")
         print(f"BV_Grouping reduction cache utilization: {ROABVDD.utilization(BV_Grouping.reduction_cache_hits, len(BV_Grouping.reduction_cache))}")
         print(f"CFLOBVDD collapsed-equivalence-classes cache utilization: {ROABVDD.utilization(CFLOBVDD.collapsed_equiv_classes_cache_hits, len(CFLOBVDD.collapsed_equiv_classes_cache))}")
+        print(f"CFLOBVDD cache utilization: {ROABVDD.utilization(CFLOBVDD.representatives_hits, len(CFLOBVDD.representatives))}")
 
     def number_of_paths(self):
         return self.grouping.number_of_paths()
@@ -1796,7 +1807,9 @@ class CFLOBVDD:
 
     def representative(grouping, outputs, number_of_input_bits, number_of_output_bits):
         cflobvdd = CFLOBVDD(grouping, outputs, number_of_input_bits, number_of_output_bits)
-        if cflobvdd not in CFLOBVDD.representatives:
+        if cflobvdd in CFLOBVDD.representatives:
+            CFLOBVDD.representatives_hits += 1
+        else:
             assert cflobvdd.is_consistent()
             CFLOBVDD.representatives[cflobvdd] = cflobvdd
         return CFLOBVDD.representatives[cflobvdd]
@@ -1873,7 +1886,7 @@ class CFLOBVDD:
         return CFLOBVDD.projection(level, input_i, number_of_input_bits, 8)
 
     def equiv_classes_hash(equiv_classes):
-        return hash((frozenset(equiv_classes), tuple(equiv_classes.values()), isinstance(equiv_classes[1], bool)))
+        return hash((tuple(equiv_classes.values()), isinstance(equiv_classes[1], bool)))
 
     def are_collapsed_classes_cached(equiv_classes):
         if CFLOBVDD.equiv_classes_hash(equiv_classes) in CFLOBVDD.collapsed_equiv_classes_cache:
