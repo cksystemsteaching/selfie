@@ -506,13 +506,20 @@ class BVDD:
         return f"{{{string}}}"
 
     def __hash__(self):
-        return hash((self.var_line, self.inputs, tuple(self.outputs)))
+        return hash((self.var_line,
+            self.inputs,
+            tuple(self.outputs),
+            tuple(self.outputs.values()),
+            self.number_of_my_exits,
+            self.number_of_other_exits))
 
     def __eq__(self, bvdd):
         return (isinstance(bvdd, BVDD) and
             self.var_line is bvdd.var_line and
             self.inputs == bvdd.inputs and
-            self.outputs == bvdd.outputs)
+            self.outputs == bvdd.outputs and
+            self.number_of_my_exits == bvdd.number_of_my_exits and
+            self.number_of_other_exits == bvdd.number_of_other_exits)
 
     def number_of_inputs(self):
         n = 0
