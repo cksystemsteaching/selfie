@@ -370,20 +370,20 @@ class Exit:
     exits = {}
     exit_hits = 0
 
-    def new(ID, offset = 0):
-        if ID + offset not in Exit.exits:
-            exit = Exit(ID, offset)
-            Exit.exits[ID + offset] = exit
+    def new(ID):
+        if ID not in Exit.exits:
+            exit = Exit(ID)
+            Exit.exits[ID] = exit
         else:
             Exit.exit_hits += 1
-            exit = Exit.exits[ID + offset]
+            exit = Exit.exits[ID]
         return exit
 
-    def __init__(self, ID, offset):
-        self.bump = ID + offset
+    def __init__(self, ID):
+        self.ID = ID
 
     def __repr__(self):
-        return f"Exit({self.bump})"
+        return f"Exit({self.ID})"
 
     def number_of_inputs(self):
         return 0
@@ -413,7 +413,7 @@ class Exit:
             new_exit = new_values[new_value]
             assert new_exit in new_exits
         else:
-            new_exit = Exit.new(ID, offset)
+            new_exit = Exit.new(ID + offset)
             assert new_exit not in new_exits
             new_values |= {new_value:new_exit}
             new_exits |= {new_exit:new_value}
