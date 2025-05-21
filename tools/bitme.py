@@ -1779,15 +1779,20 @@ class CFLOBVDD:
         else:
             return printed_paths
 
-    def get_printed_value_paths(self):
+    def get_printed_value_paths(self, value = None):
         value_paths = ""
         for exit_i in self.outputs:
-            value_paths += (f"{self.outputs[exit_i]} <- " +
-                CFLOBVDD.get_printed_paths(self.grouping.get_paths(exit_i))[0] +
-                "\n")
+            if value is None or self.outputs[exit_i] == value:
+                if value_paths:
+                    value_paths += "\n"
+                value_paths += (f"{self.outputs[exit_i]} <- " +
+                    CFLOBVDD.get_printed_paths(self.grouping.get_paths(exit_i))[0])
+                if value is not None:
+                    # only print specified value
+                    break
         return value_paths
 
-    def get_printed_CFLOBVDD(self):
+    def get_printed_CFLOBVDD(self, value = None):
         return (f"CFLOBVDD:\n" +
             f"{2**self.grouping.level * self.number_of_input_bits} input bits in total\n" +
             f"{2**self.grouping.level} input variables\n" +
@@ -1796,7 +1801,7 @@ class CFLOBVDD:
             f"{self.number_of_output_bits} output bits per value\n"
             f"{self.number_of_paths()} paths\n" +
             f"{self.number_of_inputs()} inputs\n" +
-            f"{self.get_printed_value_paths()}")
+            f"{self.get_printed_value_paths(value)}")
 
     def is_consistent(self):
         assert self.grouping.is_consistent()
@@ -7573,7 +7578,7 @@ class Bitme_Solver(Solver):
         elif Values.ROABVDD:
             print(self.constraint.get_true_constraint())
         else:
-            print(self.constraint.bvdd.get_printed_CFLOBVDD())
+            print(self.constraint.bvdd.get_printed_CFLOBVDD(True))
 
 # bitme bounded model checker
 
