@@ -1879,7 +1879,7 @@ class CFLOBVDD:
             number_of_input_bits,
             number_of_output_bits)
 
-    def byte_projection(number_of_input_bytes, byte_i, number_of_input_bits):
+    def byte_projection(number_of_input_bytes, byte_i, number_of_input_bits, number_of_output_bits):
         assert number_of_input_bytes > 0
         assert 0 <= byte_i < number_of_input_bytes
         assert 0 < number_of_input_bits <= 8
@@ -1888,7 +1888,7 @@ class CFLOBVDD:
         level = math.ceil(math.log2(number_of_input_bytes * (8 // number_of_input_bits)))
         input_i = byte_i * (8 // number_of_input_bits)
 
-        return CFLOBVDD.projection(level, input_i, number_of_input_bits, 8)
+        return CFLOBVDD.projection(level, input_i, number_of_input_bits, number_of_output_bits)
 
     def equiv_classes_hash(equiv_classes):
         return hash((tuple(equiv_classes.values()), isinstance(equiv_classes[1], bool)))
@@ -2125,6 +2125,8 @@ class CFLOBVDD_Test:
 class Values:
     ROABVDD = True
 
+    number_of_input_bits = 8
+
     total_number_of_constants = 0
     current_number_of_inputs = 0
     max_number_of_values = 0
@@ -2132,7 +2134,7 @@ class Values:
     false = None
     true = None
 
-    def __init__(self, sid_line, value_or_var_line_or_bvdd = None):
+    def __init__(self, sid_line, value_or_var_line_or_bvdd):
         assert isinstance(sid_line, Bitvector)
         self.sid_line = sid_line
         if (isinstance(value_or_var_line_or_bvdd, bool) or
@@ -2143,7 +2145,7 @@ class Values:
                 self.bvdd = ROABVDD.constant(value_or_var_line_or_bvdd)
             else:
                 self.bvdd = CFLOBVDD.byte_constant(len(Variable.cflobvdd_input),
-                    value_or_var_line_or_bvdd, 8, self.sid_line.size)
+                    value_or_var_line_or_bvdd, Values.number_of_input_bits, self.sid_line.size)
 
             Values.total_number_of_constants += 1
         elif isinstance(value_or_var_line_or_bvdd, Variable):
@@ -2151,7 +2153,8 @@ class Values:
                 self.bvdd = ROABVDD.projection(value_or_var_line_or_bvdd)
             else:
                 self.bvdd = CFLOBVDD.byte_projection(len(Variable.cflobvdd_input),
-                    Variable.cflobvdd_index[value_or_var_line_or_bvdd], self.sid_line.size)
+                    Variable.cflobvdd_index[value_or_var_line_or_bvdd],
+                    Values.number_of_input_bits, self.sid_line.size)
 
             Values.total_number_of_constants += 2**value_or_var_line_or_bvdd.sid_line.size
         elif value_or_var_line_or_bvdd:
@@ -7795,7 +7798,7 @@ def main():
 
     parser.add_argument('--use-Z3', action='store_true')
     parser.add_argument('--use-bitwuzla', action='store_true')
-    parser.add_argument('--use-CFLOBVDD', action='store_true')
+    parser.add_argument('--use-CFLOBVDD', nargs='?', default=None, const=8, type=int)
 
     parser.add_argument('-propagate', nargs=1, type=int)
     parser.add_argument('--substitute', action='store_true')
@@ -7841,6 +7844,7 @@ def main():
 
         if args.use_CFLOBVDD:
             Values.ROABVDD = False
+            Values.number_of_input_bits = args.use_CFLOBVDD
 
         bitme_solver = Bitme_Solver(z3_solver, bitwuzla_solver)
 
