@@ -2582,7 +2582,7 @@ class Values:
             return Values(values.sid_line,
                 values.bvdd.exclude(values.sid_line, constraint.get_false_constraint().bvdd))
         else:
-            # TODO: exclude in CFLOBVDD
+            # no exclusion with CFLOBVDD
             return self
 
 class Expression(Line):
@@ -7390,7 +7390,7 @@ class Bitme_Solver(Solver):
     version = 0
     bump = 1
 
-    def __init__(self, z3_solver, bitwuzla_solver):
+    def __init__(self, z3_solver, bitwuzla_solver, exclude):
         self.z3_solver = z3_solver
         self.bitwuzla_solver = bitwuzla_solver
         self.fallback = False
@@ -7398,6 +7398,7 @@ class Bitme_Solver(Solver):
         self.constraint = Values.TRUE()
         self.proven = {}
         self.unproven = {}
+        self.exclude = exclude
 
     def push(self):
         if self.fallback:
@@ -7522,16 +7523,17 @@ class Bitme_Solver(Solver):
                          assert isinstance(assertion.sid_line, Bool)
                          assert self.unproven[step][assertion] is True
                          self.constraint = assertion.And(self.constraint)
-                if not self.constraint.is_never_false() and not self.constraint.is_never_true():
-                    for assertion in self.unproven[step]:
-                        if isinstance(assertion, Transitional):
-                            values = assertion.get_step(step)
-                            if isinstance(values, Values):
-                                values = values.exclude(self.constraint)
-                                # constraining cached instances requires versioning cached values
-                                assertion.set_cached_instance(values, step)
-                            else:
-                                return self.solve()
+                if self.exclude:
+                    if not self.constraint.is_never_false() and not self.constraint.is_never_true():
+                        for assertion in self.unproven[step]:
+                            if isinstance(assertion, Transitional):
+                                values = assertion.get_step(step)
+                                if isinstance(values, Values):
+                                    values = values.exclude(self.constraint)
+                                    # constraining cached instances requires versioning cached values
+                                    assertion.set_cached_instance(values, step)
+                                else:
+                                    return self.solve()
             self.proven |= self.unproven
             self.unproven = {}
             return not self.constraint.is_never_false() and not self.constraint.is_never_true()
@@ -7815,6 +7817,8 @@ def main():
     parser.add_argument('--print-transition', action='store_true')
     parser.add_argument('--branching', action='store_true') # only for rotor models
 
+    parser.add_argument('--exclude', action='store_true') # only for ROABVDDs
+
     args = parser.parse_args()
 
     Instance.PROPAGATE = args.propagate[0] if args.propagate and args.propagate[0] >= 0 else None
@@ -7846,7 +7850,7 @@ def main():
             Values.ROABVDD = False
             Values.number_of_input_bits = args.use_CFLOBVDD
 
-        bitme_solver = Bitme_Solver(z3_solver, bitwuzla_solver)
+        bitme_solver = Bitme_Solver(z3_solver, bitwuzla_solver, args.exclude)
 
         if not args.use_Z3 and not args.use_bitwuzla:
             bmc(bitme_solver, kmin, kmax, args)
