@@ -1,8 +1,14 @@
 # BT - A Tool for Benchmarking and Analyzing SMT Models from RISC-V machine code
 
-_This subproject of Selfie serves as a tool for quickly generating, analyzing and benchmarking SMT models generated from RISC-V machine code. The default model builder is Rotor (another Selfie subproject). BT is designed to be easily modifiable; it provides a framework for defining custom commands for generated models and for incorporating new model builders._
+This subproject of Selfie serves as a tool for quickly generating, analyzing and benchmarking SMT models generated from RISC-V machine code. The default model builder is Rotor (another Selfie subproject). BT is designed to be easily modifiable; it provides a framework for defining custom commands for generated models and for incorporating new model builders.
 
-_Currently BT is able to accept C and C* source files. It uses `gcc` and `Selfie` respectably to compile into RISC-V, but BT is designed to be easily extensible for other languages able to be compiled into RISC-V._
+Currently BT is able to accept C and C* source files. It uses `gcc` and `Selfie` respectably to compile into RISC-V, but BT is designed to be easily extensible for other languages able to be compiled into RISC-V.
+
+_This software was developed with the support of the Faculty of Information Technology, Czech Technical University in Prague, fit.cvut.cz_
+
+<p align="right">
+  <img src="assets/logo-fit.svg" width="250" />
+</p>
 
 ## Overview
 
