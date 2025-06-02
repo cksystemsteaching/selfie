@@ -17,31 +17,24 @@ model_types:
       riscv: 
         btor2:
           command: "{rotor} -c {source_file} - 1 -o {output}"
-
         smt2: 
           command: "{rotor} -c {source_file}  - 1 -k -smt -nocomments -o {output}"
-      
       riscu:
         btor2:
           command: "{rotor} -c {source_file} - 1 -riscuonly -o {output}"
-
         smt2: 
           command: "{rotor} -c {source_file} - 1 -riscuonly -k -smt -nocomments -o {output}"
-
     32bit:
       riscv:
         btor2: 
           command: "{rotor} -m32 -c {source_file} - 1 -o {output}"
-
         smt2: 
           command: "{rotor} -m32 -c {source_file} - 1 -k -smt -nocomments -o {output}"
-      
       riscu:
         btor2: 
           command: "{rotor} -m32 -c {source_file} - 1 -riscuonly -o {output}"
-
         smt2: 
-          command: "{rotor} -m32 -c {source_file} - 1 -k -smt -nocomments -o {output}"
+          command: "{rotor} -m32 -c {source_file} - 1 -riscuonly -k -smt -nocomments -o {output}"
   gcc:
 
     rv64imac:
