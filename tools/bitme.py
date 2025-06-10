@@ -452,6 +452,9 @@ class Exit:
     def exclusion(self, bvdd):
         return self.exclude(bvdd)
 
+    def sample_input_values(self):
+        return dict()
+
 class BVDD:
     # a bitvector decision diagram (BVDD) is
     # a reduced ordered binary decision diagram (ROBDD)
@@ -773,6 +776,14 @@ class BVDD:
             assert (self, bvdd) not in BVDD.exclusion_bvdds
             BVDD.exclusion_bvdds[(self, bvdd)] = exclude_bvdd
             return exclude_bvdd
+
+    def sample_input_values(self):
+        # Grab an arbitrary branch to walk down to
+        outp, inp = next(self.outputs.items())
+
+        vals = outp.sample_input_values()
+        vals[self.var_line] = next(BVDD.get_input_values(inp))
+        return vals
 
 class ROABVDD:
     def __init__(self, values, exits, bvdd):
@@ -2795,7 +2806,7 @@ class Variable(Expression):
             self.array = {}
             for index in range(2**self.sid_line.array_size_line.size):
                 self.array[index] = type(self)(self.nid + index + 1, self.sid_line.element_size_line,
-                    self.symbol, f"{self.comment} @ index {index}", self.line_no, index)
+                    f"{self.symbol}-{index}", f"{self.comment} @ index {index}", self.line_no, index)
 
     def new_input(self, index):
         if index is not None or not self.sid_line.is_mapped_array():
@@ -7335,6 +7346,21 @@ class Z3_Solver(Solver):
             print_message("%s = %s\n" % (input_variable.get_z3_name(step),
                 model.evaluate(input_variable.get_z3_instance(step - 1))), step, level)
 
+    def eval_inputs(self, inputs, step):
+        model = self.solver.model()
+
+        input_values = dict()
+        for input_variable in inputs.values():
+            z3_inst = input_variable.get_z3_instance(step - 1)
+            if isinstance(input_variable.sid_line, Array):
+                # Mimic the output of the BVDD naming scheme for consistency
+                for index in range(2**input_variable.sid_line.array_size_line.size):
+                    input_values[f"{input_variable.symbol}-{index}"] = model.evaluate(z3_inst[index], model_completion=True).as_long()
+            else:
+                input_values[input_variable.symbol] = model.evaluate(z3_inst, model_completion=True).as_long()
+
+        return input_values
+
 class Bitwuzla_Solver(Solver):
     def __init__(self):
         self.tm = bitwuzla.TermManager()
@@ -7382,6 +7408,19 @@ class Bitwuzla_Solver(Solver):
             print_message("%s = %s\n" % (input_variable.get_bitwuzla_name(step, self.tm),
                 self.solver.get_value(input_variable.get_bitwuzla_instance(step - 1, self.tm))),
                 step, level)
+
+    def eval_inputs(self, inputs, step):
+        input_values = dict()
+        for input_variable in inputs.values():
+            bwz_inst = input_variable.get_bitwuzla_instance(step - 1, self.tm)
+            if isinstance(input_variable.sid_line, Array):
+                # Mimic the output of the BVDD naming scheme for consistency
+                for index in range(2**input_variable.sid_line.array_size_line.size):
+                    input_values[f"{input_variable.symbol}-{index}"] = self.solver.get_value(bwz_inst[index])
+            else:
+                input_values[input_variable.symbol] = self.solver.get_value(bwz_inst)
+
+        return input_values
 
 # bitme solver
 
@@ -7585,11 +7624,37 @@ class Bitme_Solver(Solver):
         else:
             print(self.constraint.bvdd.get_printed_CFLOBVDD(True))
 
+    def eval_inputs(self, inputs, step):
+        if self.fallback:
+            if self.z3_solver:
+                return self.z3_solver.eval_inputs(inputs, step)
+            if self.bitwuzla_solver:
+                return self.bitwuzla_solver.eval_inputs(inputs, step)
+        elif Values.ROABVDD:
+            sample = self.constraint.get_true_constraint().bvdd.sample_input_values()
+
+            input_values = dict()
+            for input_variable in inputs.values():
+                if input_variable in sample:
+                    input_values[input_variable.symbol] = sample[input_variable]
+                    del sample[input_variable]
+                else:
+                    # The variable doesn't appear in our sample of the BVDD - this means any value will do
+                    input_values[input_variable.symbol] = 0x42 # ord("A"), but also a nice magic value
+
+            assert len(sample) == 0, "sanity check: all branches of the BVDD must be on input values"
+
+            return input_values
+        else:
+            # TODO
+            pass
+
 # bitme bounded model checker
 
 def branching_bmc(solver, kmin, kmax, args, step, level):
-    while step <= kmax:
+    while step <= kmax or args.analyzor:
         # check model up to kmax steps
+        # in analyzor mode we keep going until we find a bad input
 
         if args.print_pc and State.pc:
             # print current program counter value of single-core rotor model
@@ -7622,6 +7687,18 @@ def branching_bmc(solver, kmin, kmax, args, step, level):
                     if Instance.PROPAGATE is not None:
                         print_message_with_propagation_profile("propagation profile\n", step, level)
                     print_separator('^', step, level)
+
+                    if args.analyzor:
+                        print("Found bad input; exiting from analyzor mode...")
+                        print(f"analyzor#step={step}")
+                        print(f"analyzor#bad={bad.symbol}")
+
+                        input_vals = solver.eval_inputs(Variable.inputs, step)
+                        for (name, val) in input_vals.items():
+                            print(f"analyzor#input:{name}={val}")
+
+                        return
+
                 solver.pop()
 
         if not args.unconstraining_bad:
@@ -7798,6 +7875,7 @@ def main():
     parser.add_argument('modelfile', type=argparse.FileType('r'))
     parser.add_argument('outputfile', nargs='?', type=argparse.FileType('w', encoding='UTF-8'))
 
+    parser.add_argument('-analyzor', action='store_true')
     parser.add_argument('--use-Z3', action='store_true')
     parser.add_argument('--use-bitwuzla', action='store_true')
     parser.add_argument('--use-CFLOBVDD', nargs='?', default=None, const=8, type=int)
@@ -7829,7 +7907,7 @@ def main():
 
     are_there_state_transitions = parse_btor2(args.modelfile, args.outputfile)
 
-    if args.kmin or args.kmax:
+    if args.kmin or args.kmax or args.analyzor:
         kmin = args.kmin[0] if args.kmin else 0
         kmax = args.kmax[0] if args.kmax else 0
 
