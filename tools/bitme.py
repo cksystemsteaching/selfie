@@ -457,7 +457,7 @@ class Exit:
 
 class BVDD:
     # a bitvector decision diagram (BVDD) is
-    # a reduced ordered binary decision diagram (ROBDD)
+    # an algebraic decision diagram (ADD)
     # over bitvectors rather than bits
 
     # given an n-bit bitvector, we use 2**n-bit unsigned integers
@@ -784,6 +784,49 @@ class BVDD:
         vals = outp.sample_input_values()
         vals[self.var_line] = next(BVDD.get_input_values(inp))
         return vals
+
+class DD:
+    def __init__(self, i2v):
+        self.i2v = i2v
+
+    def __str__(self):
+        return f"{self.i2v}"
+
+    def number_of_inputs(self):
+        return len(self.i2v)
+
+    def number_of_values(self):
+        return len(set(self.i2v.values()))
+
+    def is_never_false(self):
+        return self.number_of_values() == 1 and True in self.i2v.values()
+
+    def is_never_true(self):
+        return self.number_of_values() == 1 and False in self.i2v.values()
+
+    def constant(output_value):
+        assert isinstance(output_value, bool) or isinstance(output_value, int)
+        return DD(dict([(input_value, output_value) for input_value in range(256)]))
+
+    def projection():
+        return DD(dict([(input_value, input_value) for input_value in range(256)]))
+
+    def compute_unary(self, op):
+        return DD(dict([(input_value, op(self.i2v[input_value])) for input_value in self.i2v]))
+
+    def compute_binary(self, op, dd2):
+        assert isinstance(dd2, DD)
+        dd1 = self
+        return DD(dict([(input_value, op(dd1.i2v[input_value], dd2.i2v[input_value])) for input_value in dd1.i2v.keys() & dd2.i2v.keys()]))
+
+    def compute_ite(self, dd2, dd3):
+        assert isinstance(dd2, DD) and isinstance(dd3, DD)
+        dd1 = self
+        return DD(dict([(input_value, dd2.i2v[input_value] if dd1.i2v[input_value] else dd3.i2v[input_value])
+            for input_value in dd1.i2v.keys() & (dd2.i2v.keys() | dd3.i2v.keys())]))
+
+    def get_printed_BVDD(self, value):
+        return [input_value for input_value in self.i2v if self.i2v[input_value] == value]
 
 class ROABVDD:
     def __init__(self, values, exits, bvdd):
@@ -2134,7 +2177,9 @@ class CFLOBVDD_Test:
         CFLOBVDD.projection(2, 3, 4, 4), lambda x, y, z: y if x else z, 4)
 
 class Values:
-    ROABVDD = True
+    BVDD = False
+    ROABVDD = False
+    CFLOBVDD = False
 
     number_of_input_bits = 8
 
@@ -2145,39 +2190,51 @@ class Values:
     false = None
     true = None
 
-    def __init__(self, sid_line, value_or_var_line_or_bvdd):
+    def __init__(self, sid_line, value, var_line = None, bvdd = None, roabvdd = None, cflobvdd = None):
         assert isinstance(sid_line, Bitvector)
         self.sid_line = sid_line
-        if (isinstance(value_or_var_line_or_bvdd, bool) or
-            isinstance(value_or_var_line_or_bvdd, int)):
-            assert sid_line.is_unsigned_value(value_or_var_line_or_bvdd)
+        self.bvdd = bvdd
+        self.roabvdd = roabvdd
+        self.cflobvdd = cflobvdd
 
+        if isinstance(value, bool) or isinstance(value, int):
+            assert sid_line.is_unsigned_value(value)
+
+            if Values.BVDD:
+                self.bvdd = DD.constant(value)
             if Values.ROABVDD:
-                self.bvdd = ROABVDD.constant(value_or_var_line_or_bvdd)
-            else:
-                self.bvdd = CFLOBVDD.byte_constant(len(Variable.cflobvdd_input),
-                    value_or_var_line_or_bvdd, Values.number_of_input_bits, self.sid_line.size)
+                self.roabvdd = ROABVDD.constant(value)
+            if Values.CFLOBVDD:
+                self.cflobvdd = CFLOBVDD.byte_constant(len(Variable.cflobvdd_input),
+                    value, Values.number_of_input_bits, self.sid_line.size)
 
             Values.total_number_of_constants += 1
-        elif isinstance(value_or_var_line_or_bvdd, Variable):
+        elif isinstance(var_line, Variable):
+            if Values.BVDD:
+                self.bvdd = DD.projection()
             if Values.ROABVDD:
-                self.bvdd = ROABVDD.projection(value_or_var_line_or_bvdd)
-            else:
-                self.bvdd = CFLOBVDD.byte_projection(len(Variable.cflobvdd_input),
-                    Variable.cflobvdd_index[value_or_var_line_or_bvdd],
+                self.roabvdd = ROABVDD.projection(var_line)
+            if Values.CFLOBVDD:
+                self.cflobvdd = CFLOBVDD.byte_projection(len(Variable.cflobvdd_input),
+                    Variable.cflobvdd_index[var_line],
                     Values.number_of_input_bits, self.sid_line.size)
 
-            Values.total_number_of_constants += 2**value_or_var_line_or_bvdd.sid_line.size
-        elif value_or_var_line_or_bvdd:
-            self.bvdd = value_or_var_line_or_bvdd
-            # assert self.bvdd is canonical
+            Values.total_number_of_constants += 2**var_line.sid_line.size
 
-        Values.current_number_of_inputs = max(Values.current_number_of_inputs, self.bvdd.number_of_inputs())
-        Values.max_number_of_values = max(Values.max_number_of_values, self.bvdd.number_of_values())
+        if Values.BVDD:
+            dd = self.bvdd
+        elif Values.ROABVDD:
+            dd = self.roabvdd
+        else:
+            assert Values.CFLOBVDD
+            dd = self.cflobvdd
+
+        Values.current_number_of_inputs = max(Values.current_number_of_inputs, dd.number_of_inputs())
+        Values.max_number_of_values = max(Values.max_number_of_values, dd.number_of_values())
         # for debugging assert self.is_consistent()
 
     def __str__(self):
-        return f"{self.sid_line}: {self.bvdd}"
+        return f"{self.sid_line}: {self.bvdd} {self.roabvdd} {self.cflobvdd}"
 
     def match_sorts(self, values):
         return self.sid_line.match_sorts(values.sid_line)
@@ -2185,7 +2242,9 @@ class Values:
     def is_equal(self, values):
         return (type(self) is type(values) and
             self.match_sorts(values) and
-            self.bvdd == values.bvdd)
+            self.bvdd == values.bvdd and
+            self.roabvdd == values.roabvdd and
+            self.cflobvdd == values.cflobvdd)
 
     def is_consistent(self):
         return self.bvdd.is_consistent()
@@ -2229,6 +2288,19 @@ class Values:
                     var_line.comment, var_line.line_no)
             return [comparison_line]
 
+    def get_base_bvdd_expression(self):
+        var_line = Variable.cflobvdd_input[0]
+        exp_line = Zero(next_nid(), self.sid_line, "unreachable-value", "unreachable value", 0)
+        # assert self.bvdd.i2v are sorted by inputs
+        for input_value in self.bvdd.i2v:
+            exp_line = Ite(next_nid(), self.sid_line,
+            Values.get_input_expression(var_line, 2**input_value)[0],
+            Constd(next_nid(), self.sid_line, int(self.bvdd.i2v[input_value]),
+                "domain-propagated value", 0),
+            exp_line,
+            var_line.comment, var_line.line_no)
+        return exp_line
+
     # ROABVDD adapter
 
     def get_bvdd_expression(sid_line, bvdd, exits):
@@ -2249,7 +2321,7 @@ class Values:
             return exp_line
 
     def get_roabvdd_expression(self):
-        return Values.get_bvdd_expression(self.sid_line, self.bvdd.bvdd, self.bvdd.exits)
+        return Values.get_bvdd_expression(self.sid_line, self.roabvdd.bvdd, self.roabvdd.exits)
 
     # CFLOBVDD adapter
 
@@ -2283,7 +2355,7 @@ class Values:
         return Values.get_logical_expression(OP_OR, path_expression)
 
     def get_cflobvdd_expression(self):
-        cflobvdd = self.bvdd
+        cflobvdd = self.cflobvdd
         exp_line = None
         for exit_i in cflobvdd.outputs:
             input_line = Values.get_path_expression(cflobvdd.grouping.get_paths(exit_i))
@@ -2323,26 +2395,45 @@ class Values:
 
     def is_never_false(self):
         assert isinstance(self.sid_line, Bool)
-        return self.bvdd.is_never_false()
+        if Values.BVDD:
+            return self.bvdd.is_never_false()
+        if Values.ROABVDD:
+            return self.roabvdd.is_never_false()
+        if Values.CFLOBVDD:
+            return self.cflobvdd.is_never_false()
 
     def is_never_true(self):
         assert isinstance(self.sid_line, Bool)
-        return self.bvdd.is_never_true()
+        if Values.BVDD:
+            return self.bvdd.is_never_true()
+        if Values.ROABVDD:
+            return self.roabvdd.is_never_true()
+        if Values.CFLOBVDD:
+            return self.cflobvdd.is_never_true()
 
     def get_false_constraint(self):
         assert isinstance(self.sid_line, Bool)
-        return Values(self.sid_line, self.bvdd.get_false_constraint())
+        roabvdd = None
+        if Values.ROABVDD:
+            roabvdd = self.roabvdd.get_false_constraint()
+        return Values(self.sid_line, None, None, self.bvdd, roabvdd, self.cflobvdd)
 
     def get_true_constraint(self):
         assert isinstance(self.sid_line, Bool)
-        return Values(self.sid_line, self.bvdd.get_true_constraint())
+        roabvdd = None
+        if Values.ROABVDD:
+            roabvdd = self.roabvdd.get_true_constraint()
+        return Values(self.sid_line, None, None, self.bvdd, roabvdd, self.cflobvdd)
 
     def get_expression(self):
         # naive transition from domain propagation to bit blasting
         assert isinstance(self.sid_line, Bitvector)
-        if Values.ROABVDD:
+        if Values.BVDD:
+            return self.get_base_bvdd_expression()
+        elif Values.ROABVDD:
             return self.get_roabvdd_expression()
         else:
+            assert Values.CFLOBVDD
             return self.get_cflobvdd_expression()
 
     # per-value semantics of value sets
@@ -2350,10 +2441,14 @@ class Values:
     # unary operators
 
     def apply_unary(self, sid_line, op):
+        bvdd = roabvdd = cflobvdd = None
+        if Values.BVDD:
+            bvdd = self.bvdd.compute_unary(op)
         if Values.ROABVDD:
-            return Values(sid_line, self.bvdd.compute_unary(sid_line, op))
-        else:
-            return Values(sid_line, self.bvdd.unary_apply_and_reduce(op, sid_line.size))
+            roabvdd = self.roabvdd.compute_unary(sid_line, op)
+        if Values.CFLOBVDD:
+            cflobvdd = self.cflobvdd.unary_apply_and_reduce(op, sid_line.size)
+        return Values(sid_line, None, None, bvdd, roabvdd, cflobvdd)
 
     def SignExt(self, sid_line):
         assert isinstance(self.sid_line, Bitvec)
@@ -2391,10 +2486,14 @@ class Values:
 
     def apply_binary(self, sid_line, values, op):
         assert isinstance(values, Values)
+        bvdd = roabvdd = cflobvdd = None
+        if Values.BVDD:
+            bvdd = self.bvdd.compute_binary(op, values.bvdd)
         if Values.ROABVDD:
-            return Values(sid_line, self.bvdd.compute_binary(sid_line, op, values.bvdd))
-        else:
-            return Values(sid_line, self.bvdd.binary_apply_and_reduce(values.bvdd, op, sid_line.size))
+            roabvdd = self.roabvdd.compute_binary(sid_line, op, values.roabvdd)
+        if Values.CFLOBVDD:
+            cflobvdd = self.cflobvdd.binary_apply_and_reduce(values.cflobvdd, op, sid_line.size)
+        return Values(sid_line, None, None, bvdd, roabvdd, cflobvdd)
 
     def Implies(self, values):
         assert isinstance(self.sid_line, Bool)
@@ -2555,24 +2654,31 @@ class Values:
 
     def constrain(self, constraint):
         assert isinstance(constraint.sid_line, Bool)
+        bvdd = roabvdd = cflobvdd = None
+        if Values.BVDD:
+            bvdd = self.bvdd.compute_binary(lambda x, y: x, constraint.bvdd)
         if Values.ROABVDD:
-            return Values(self.sid_line, self.bvdd.constrain(self.sid_line, constraint.bvdd))
-        else:
-            return Values(self.sid_line, self.bvdd.binary_apply_and_reduce(constraint.bvdd,
-               lambda x, y: x, self.sid_line.size))
+            roabvdd = self.roabvdd.constrain(self.sid_line, constraint.roabvdd)
+        if Values.CFLOBVDD:
+            cflobvdd = self.cflobvdd.binary_apply_and_reduce(constraint.cflobvdd,
+                lambda x, y: x, self.sid_line.size)
+        return Values(self.sid_line, None, None, bvdd, roabvdd, cflobvdd)
 
     def merge(self, values2, values3):
         assert isinstance(self.sid_line, Bool)
         assert isinstance(values2, Values) and isinstance(values3, Values)
         assert values2.match_sorts(values3)
+        bvdd = roabvdd = cflobvdd = None
+        if Values.BVDD:
+            bvdd = self.bvdd.compute_ite(values2.bvdd, values3.bvdd)
         if Values.ROABVDD:
             values2 = values2.constrain(self.get_true_constraint())
             values3 = values3.constrain(self.get_false_constraint())
-            return Values(values2.sid_line, values2.bvdd.merge(values2.sid_line, values3.bvdd))
-        else:
-            return Values(values2.sid_line,
-                self.bvdd.ternary_apply_and_reduce(values2.bvdd, values3.bvdd,
-                    lambda x, y, z: y if x else z, values2.sid_line.size))
+            roabvdd = values2.roabvdd.merge(values2.sid_line, values3.roabvdd)
+        if Values.CFLOBVDD:
+            cflobvdd = self.cflobvdd.ternary_apply_and_reduce(values2.cflobvdd, values3.cflobvdd,
+                lambda x, y, z: y if x else z, values2.sid_line.size)
+        return Values(values2.sid_line, None, None, bvdd, roabvdd, cflobvdd)
 
     def If(self, values2, values3):
         assert isinstance(self.sid_line, Bool)
@@ -2588,13 +2694,11 @@ class Values:
 
     def exclude(self, constraint):
         assert isinstance(constraint.sid_line, Bool)
+        roabvdd = None
         if Values.ROABVDD:
             values = self.constrain(constraint.get_true_constraint())
-            return Values(values.sid_line,
-                values.bvdd.exclude(values.sid_line, constraint.get_false_constraint().bvdd))
-        else:
-            # no exclusion with CFLOBVDD
-            return self
+            roabvdd = values.roabvdd.exclude(self.sid_line, constraint.get_false_constraint().roabvdd)
+        return Values(self.sid_line, None, None, self.bvdd, roabvdd, self.cflobvdd)
 
 class Expression(Line):
     total_number_of_generated_expressions = 0
@@ -2828,7 +2932,7 @@ class Variable(Expression):
     def compute_values(self, step):
         assert step == 0
         if isinstance(self.sid_line, Bitvector) and self.sid_line.size <= Instance.PROPAGATE:
-            return Values(self.sid_line, self)
+            return Values(self.sid_line, None, self)
         else:
             return self
 
@@ -7619,10 +7723,13 @@ class Bitme_Solver(Solver):
                 self.z3_solver.print_inputs(inputs, step, level)
             if self.bitwuzla_solver:
                 self.bitwuzla_solver.print_inputs(inputs, step, level)
+        elif Values.BVDD:
+            print(self.constraint.bvdd.get_printed_BVDD(True))
         elif Values.ROABVDD:
             print(self.constraint.get_true_constraint())
         else:
-            print(self.constraint.bvdd.get_printed_CFLOBVDD(True))
+            assert Values.CFLOBVDD
+            print(self.constraint.cflobvdd.get_printed_CFLOBVDD(True))
 
     def eval_inputs(self, inputs, step):
         if self.fallback:
@@ -7878,6 +7985,8 @@ def main():
     parser.add_argument('-analyzor', action='store_true')
     parser.add_argument('--use-Z3', action='store_true')
     parser.add_argument('--use-bitwuzla', action='store_true')
+    parser.add_argument('--use-BVDD', action='store_true')
+    parser.add_argument('--use-ROABVDD', action='store_true')
     parser.add_argument('--use-CFLOBVDD', nargs='?', default=None, const=8, type=int)
 
     parser.add_argument('-propagate', nargs=1, type=int)
@@ -7924,9 +8033,16 @@ def main():
         if is_bitwuzla_present:
             bitwuzla_solver = Bitwuzla_Solver()
 
+        if args.use_BVDD:
+            Values.BVDD = True
+        if args.use_ROABVDD:
+            Values.ROABVDD = True
         if args.use_CFLOBVDD:
-            Values.ROABVDD = False
+            Values.CFLOBVDD = True
             Values.number_of_input_bits = args.use_CFLOBVDD
+
+        if not args.use_BVDD and not args.use_ROABVDD and not args.use_CFLOBVDD:
+            Values.ROABVDD = True
 
         bitme_solver = Bitme_Solver(z3_solver, bitwuzla_solver, args.exclude)
 
