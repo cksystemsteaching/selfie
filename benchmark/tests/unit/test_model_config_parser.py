@@ -99,7 +99,7 @@ class TestModelConfigParser(unittest.TestCase):
       ModelConfigParser("starc-btor2")
 
   @patch.dict(cfg.config, yaml.safe_load(invalid_format_cfg), clear=True)
-  def test_invalid_command_placement(self):
+  def test_invalid_format_config(self):
     with self.assertRaises(ex.ConfigFormatError) as cm:
       ModelConfigParser("starc-invalid_format")
     
