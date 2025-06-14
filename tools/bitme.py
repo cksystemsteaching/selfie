@@ -367,37 +367,11 @@ class Array(Sort):
             self.element_size_line.get_bitwuzla(tm))
 
 class BVDD:
-    unary_cache = {}
-    unary_cache_hits = 0
-
-    binary_cache = {}
-    binary_cache_hits = 0
-
-    ternary_cache = {}
-    ternary_cache_hits = 0
-
     def __init__(self, i2v):
         self.i2v = i2v
 
     def __str__(self):
         return f"{self.i2v}"
-
-    def __hash__(self):
-        return hash(tuple(self.i2v.items()))
-
-    def __eq__(self, bvdd2):
-        return isinstance(bvdd2, BVDD) and self.i2v == bvdd2.i2v
-
-    def utilization(hits, misses):
-        if hits + misses == 0:
-            return "0.0%"
-        else:
-            return f"{round(hits / (hits + misses) * 100, 2)}% ({hits} hits, {misses} misses)"
-
-    def print_profile():
-        print(f"Unary cache utilization: {BVDD.utilization(BVDD.unary_cache_hits, len(BVDD.unary_cache))}")
-        print(f"Binary cache utilization: {BVDD.utilization(BVDD.binary_cache_hits, len(BVDD.binary_cache))}")
-        print(f"Ternary cache utilization: {BVDD.utilization(BVDD.ternary_cache_hits, len(BVDD.ternary_cache))}")
 
     def number_of_inputs(self):
         return len(self.i2v)
@@ -419,34 +393,18 @@ class BVDD:
         return BVDD(dict([(input_value, input_value) for input_value in range(256)]))
 
     def compute_unary(self, op):
-        if (self, op) in BVDD.unary_cache:
-            BVDD.unary_cache_hits += 1
-        else:
-            BVDD.unary_cache[(self, op)] = BVDD(dict([(input_value, op(self.i2v[input_value]))
-                for input_value in self.i2v]))
-        return BVDD.unary_cache[(self, op)]
+        return BVDD(dict([(input_value, op(self.i2v[input_value])) for input_value in self.i2v]))
 
     def compute_binary(self, op, bvdd2):
         assert isinstance(bvdd2, BVDD)
         bvdd1 = self
-        if (bvdd1, bvdd2, op) in BVDD.binary_cache:
-            BVDD.binary_cache_hits += 1
-        else:
-            BVDD.binary_cache[(bvdd1, bvdd2, op)] = BVDD(dict([(input_value,
-                op(bvdd1.i2v[input_value], bvdd2.i2v[input_value]))
-                    for input_value in bvdd1.i2v.keys() & bvdd2.i2v.keys()]))
-        return BVDD.binary_cache[(bvdd1, bvdd2, op)]
+        return BVDD(dict([(input_value, op(bvdd1.i2v[input_value], bvdd2.i2v[input_value])) for input_value in bvdd1.i2v.keys() & bvdd2.i2v.keys()]))
 
     def compute_ite(self, bvdd2, bvdd3):
         assert isinstance(bvdd2, BVDD) and isinstance(bvdd3, BVDD)
         bvdd1 = self
-        if (bvdd1, bvdd2, bvdd3) in BVDD.ternary_cache:
-            BVDD.ternary_cache_hits += 1
-        else:
-            BVDD.ternary_cache[(bvdd1, bvdd2, bvdd3)] = BVDD(dict([(input_value, bvdd2.i2v[input_value]
-                if bvdd1.i2v[input_value] else bvdd3.i2v[input_value])
-                    for input_value in bvdd1.i2v.keys() & (bvdd2.i2v.keys() | bvdd3.i2v.keys())]))
-        return BVDD.ternary_cache[(bvdd1, bvdd2, bvdd3)]
+        return BVDD(dict([(input_value, bvdd2.i2v[input_value] if bvdd1.i2v[input_value] else bvdd3.i2v[input_value])
+            for input_value in bvdd1.i2v.keys() & (bvdd2.i2v.keys() | bvdd3.i2v.keys())]))
 
     def get_printed_BVDD(self, value):
         return [input_value for input_value in self.i2v if self.i2v[input_value] == value]
@@ -881,11 +839,17 @@ class ROABVDD:
     def __str__(self):
         return f"{self.values} {self.exits} {self.bvdd}"
 
+    def utilization(hits, misses):
+        if hits + misses == 0:
+            return "0.0%"
+        else:
+            return f"{round(hits / (hits + misses) * 100, 2)}% ({hits} hits, {misses} misses)"
+
     def print_profile():
-        print(f"Exit cache utilization: {BVDD.utilization(ROABVDD_Exit.exit_hits, len(ROABVDD_Exit.exits))}")
-        print(f"Node intersection cache utilization: {BVDD.utilization(ROABVDD_Node.intersection_hits, len(ROABVDD_Node.intersection_bvdds))}")
-        print(f"Node union cache utilization: {BVDD.utilization(ROABVDD_Node.union_hits, len(ROABVDD_Node.union_bvdds))}")
-        print(f"Node exclusion cache utilization: {BVDD.utilization(ROABVDD_Node.exclusion_hits, len(ROABVDD_Node.exclusion_bvdds))}")
+        print(f"Exit cache utilization: {ROABVDD.utilization(ROABVDD_Exit.exit_hits, len(ROABVDD_Exit.exits))}")
+        print(f"Node intersection cache utilization: {ROABVDD.utilization(ROABVDD_Node.intersection_hits, len(ROABVDD_Node.intersection_bvdds))}")
+        print(f"Node union cache utilization: {ROABVDD.utilization(ROABVDD_Node.union_hits, len(ROABVDD_Node.union_bvdds))}")
+        print(f"Node exclusion cache utilization: {ROABVDD.utilization(ROABVDD_Node.exclusion_hits, len(ROABVDD_Node.exclusion_bvdds))}")
 
     def number_of_inputs(self):
         return self.bvdd.number_of_inputs()
@@ -1846,14 +1810,14 @@ class CFLOBVDD:
             self.number_of_output_bits == n2.number_of_output_bits)
 
     def print_profile():
-        print(f"BV_Fork_Grouping cache utilization: {BVDD.utilization(BV_Fork_Grouping.representatives_hits, len(BV_Fork_Grouping.representatives))}")
-        print(f"BV_Internal_Grouping cache utilization: {BVDD.utilization(BV_Internal_Grouping.representatives_hits, len(BV_Internal_Grouping.representatives))}")
-        print(f"BV_No_Distinction_Proto cache utilization: {BVDD.utilization(BV_No_Distinction_Proto.representatives_hits, len(BV_No_Distinction_Proto.representatives))}")
-        print(f"BV_Grouping pair-product cache utilization: {BVDD.utilization(BV_Grouping.pair_product_cache_hits, len(BV_Grouping.pair_product_cache))}")
-        print(f"BV_Grouping triple-product cache utilization: {BVDD.utilization(BV_Grouping.triple_product_cache_hits, len(BV_Grouping.triple_product_cache))}")
-        print(f"BV_Grouping reduction cache utilization: {BVDD.utilization(BV_Grouping.reduction_cache_hits, len(BV_Grouping.reduction_cache))}")
-        print(f"CFLOBVDD collapsed-equivalence-classes cache utilization: {BVDD.utilization(Collapsed_Classes.cache_hits, len(Collapsed_Classes.cache))}")
-        print(f"CFLOBVDD cache utilization: {BVDD.utilization(CFLOBVDD.representatives_hits, len(CFLOBVDD.representatives))}")
+        print(f"BV_Fork_Grouping cache utilization: {ROABVDD.utilization(BV_Fork_Grouping.representatives_hits, len(BV_Fork_Grouping.representatives))}")
+        print(f"BV_Internal_Grouping cache utilization: {ROABVDD.utilization(BV_Internal_Grouping.representatives_hits, len(BV_Internal_Grouping.representatives))}")
+        print(f"BV_No_Distinction_Proto cache utilization: {ROABVDD.utilization(BV_No_Distinction_Proto.representatives_hits, len(BV_No_Distinction_Proto.representatives))}")
+        print(f"BV_Grouping pair-product cache utilization: {ROABVDD.utilization(BV_Grouping.pair_product_cache_hits, len(BV_Grouping.pair_product_cache))}")
+        print(f"BV_Grouping triple-product cache utilization: {ROABVDD.utilization(BV_Grouping.triple_product_cache_hits, len(BV_Grouping.triple_product_cache))}")
+        print(f"BV_Grouping reduction cache utilization: {ROABVDD.utilization(BV_Grouping.reduction_cache_hits, len(BV_Grouping.reduction_cache))}")
+        print(f"CFLOBVDD collapsed-equivalence-classes cache utilization: {ROABVDD.utilization(Collapsed_Classes.cache_hits, len(Collapsed_Classes.cache))}")
+        print(f"CFLOBVDD cache utilization: {ROABVDD.utilization(CFLOBVDD.representatives_hits, len(CFLOBVDD.representatives))}")
 
     def number_of_paths(self):
         return self.grouping.number_of_paths()
@@ -8091,8 +8055,6 @@ def main():
             bmc(bitme_solver, kmin, kmax, args)
 
             print_separator('-')
-            if Values.BVDD:
-                BVDD.print_profile()
             if Values.ROABVDD:
                 ROABVDD.print_profile()
             if Values.CFLOBVDD:
