@@ -366,17 +366,60 @@ class Array(Sort):
         return tm.mk_array_sort(self.array_size_line.get_bitwuzla(tm),
             self.element_size_line.get_bitwuzla(tm))
 
-class Exit:
+class BVDD:
+    def __init__(self, i2v):
+        self.i2v = i2v
+
+    def __str__(self):
+        return f"{self.i2v}"
+
+    def number_of_inputs(self):
+        return len(self.i2v)
+
+    def number_of_values(self):
+        return len(set(self.i2v.values()))
+
+    def is_never_false(self):
+        return self.number_of_values() == 1 and True in self.i2v.values()
+
+    def is_never_true(self):
+        return self.number_of_values() == 1 and False in self.i2v.values()
+
+    def constant(output_value):
+        assert isinstance(output_value, bool) or isinstance(output_value, int)
+        return BVDD(dict([(input_value, output_value) for input_value in range(256)]))
+
+    def projection():
+        return BVDD(dict([(input_value, input_value) for input_value in range(256)]))
+
+    def compute_unary(self, op):
+        return BVDD(dict([(input_value, op(self.i2v[input_value])) for input_value in self.i2v]))
+
+    def compute_binary(self, op, bvdd2):
+        assert isinstance(bvdd2, BVDD)
+        bvdd1 = self
+        return BVDD(dict([(input_value, op(bvdd1.i2v[input_value], bvdd2.i2v[input_value])) for input_value in bvdd1.i2v.keys() & bvdd2.i2v.keys()]))
+
+    def compute_ite(self, bvdd2, bvdd3):
+        assert isinstance(bvdd2, BVDD) and isinstance(bvdd3, BVDD)
+        bvdd1 = self
+        return BVDD(dict([(input_value, bvdd2.i2v[input_value] if bvdd1.i2v[input_value] else bvdd3.i2v[input_value])
+            for input_value in bvdd1.i2v.keys() & (bvdd2.i2v.keys() | bvdd3.i2v.keys())]))
+
+    def get_printed_BVDD(self, value):
+        return [input_value for input_value in self.i2v if self.i2v[input_value] == value]
+
+class ROABVDD_Exit:
     exits = {}
     exit_hits = 0
 
     def new(ID):
-        if ID not in Exit.exits:
-            exit = Exit(ID)
-            Exit.exits[ID] = exit
+        if ID not in ROABVDD_Exit.exits:
+            exit = ROABVDD_Exit(ID)
+            ROABVDD_Exit.exits[ID] = exit
         else:
-            Exit.exit_hits += 1
-            exit = Exit.exits[ID]
+            ROABVDD_Exit.exit_hits += 1
+            exit = ROABVDD_Exit.exits[ID]
         return exit
 
     def __init__(self, ID):
@@ -413,7 +456,7 @@ class Exit:
             new_exit = new_values[new_value]
             assert new_exit in new_exits
         else:
-            new_exit = Exit.new(ID + offset)
+            new_exit = ROABVDD_Exit.new(ID + offset)
             assert new_exit not in new_exits
             new_values |= {new_value:new_exit}
             new_exits |= {new_exit:new_value}
@@ -422,7 +465,7 @@ class Exit:
     def compute_unary(self, sid_line, op, old_exits, new_values = None, new_exits = None, ID = 0, offset = 0):
         new_value = op(old_exits[self])
         assert sid_line.is_unsigned_value(new_value)
-        return Exit.dealias(new_value, new_values, new_exits, ID, offset)
+        return ROABVDD_Exit.dealias(new_value, new_values, new_exits, ID, offset)
 
     def get_binary_exit(self, bvdd, inorder = True):
         if inorder:
@@ -431,7 +474,7 @@ class Exit:
             return bvdd, self
 
     def apply_binary(self, bvdd, inorder = True):
-        if isinstance(bvdd, Exit):
+        if isinstance(bvdd, ROABVDD_Exit):
             return self.get_binary_exit(bvdd, inorder)
         else:
             return bvdd.intersection(self, not inorder)
@@ -455,17 +498,7 @@ class Exit:
     def sample_input_values(self):
         return dict()
 
-class BVDD:
-    # a bitvector decision diagram (BVDD) is
-    # an algebraic decision diagram (ADD)
-    # over bitvectors rather than bits
-
-    # given an n-bit bitvector, we use 2**n-bit unsigned integers
-    # to represent sets of n-bit bitvector constants that in turn
-    # represent branches in BVDDs:
-    # Theta(2**n)-time set intersection and union with
-    # O(2**n/n) and Omega(n*(2**n-1)/2**n) spatial overhead
-
+class ROABVDD_Node:
     bvdds = {}
 
     intersection_bvdds = {}
@@ -497,14 +530,14 @@ class BVDD:
     def __str__(self):
         string = ""
         for output in self.outputs:
-            for input_value in BVDD.get_input_values(self.outputs[output]):
+            for input_value in ROABVDD_Node.get_input_values(self.outputs[output]):
                 if string:
                     string += ",\n"
                 string += f"{input_value}"
-                if isinstance(output, Exit):
+                if isinstance(output, ROABVDD_Exit):
                     string += f" -> {output}"
                 else:
-                    assert isinstance(output, BVDD)
+                    assert isinstance(output, ROABVDD_Node)
                     string += f" & {output}"
         return f"{{{string}}}"
 
@@ -517,7 +550,7 @@ class BVDD:
             self.number_of_other_exits))
 
     def __eq__(self, bvdd):
-        return (isinstance(bvdd, BVDD) and
+        return (isinstance(bvdd, ROABVDD_Node) and
             self.var_line is bvdd.var_line and
             self.inputs == bvdd.inputs and
             self.outputs == bvdd.outputs and
@@ -548,7 +581,7 @@ class BVDD:
             self.inputs |= inputs
             if output not in self.outputs:
                 self.outputs[output] = inputs
-                if isinstance(output, tuple) or isinstance(output, Exit):
+                if isinstance(output, tuple) or isinstance(output, ROABVDD_Exit):
                     self.number_of_my_exits += 1
                 else:
                     self.number_of_other_exits += output.get_number_of_exits()
@@ -564,7 +597,7 @@ class BVDD:
         return False
 
     def extract(self, exit):
-        bvdd = BVDD(self.var_line)
+        bvdd = ROABVDD_Node(self.var_line)
         for output in self.outputs:
             bvdd.set_input(self.outputs[output], output.extract(exit))
         return bvdd.reduce()
@@ -575,18 +608,18 @@ class BVDD:
         elif len(self.outputs) == 1:
             # outputs are all isomorphic
             if next(iter(self.outputs.values())) == 2**2**self.var_line.sid_line.size - 1:
-                # remove BVDDs that have all outputs and all outputs are isomorphic
+                # remove nodes that have all outputs and all outputs are isomorphic
                 return next(iter(self.outputs.keys()))
         elif sort:
-            # sort outputs by inputs to obtain canonical BVDDs
+            # sort outputs by inputs to obtain canonical ROABVDDs
             self.outputs = dict(sorted(self.outputs.items(), key=lambda x: x[1]))
         # assert: outputs are all isomorphic due to hashing equivalent objects to the same hash
-        if self not in BVDD.bvdds:
-            BVDD.bvdds[self] = self
-        return BVDD.bvdds[self]
+        if self not in ROABVDD_Node.bvdds:
+            ROABVDD_Node.bvdds[self] = self
+        return ROABVDD_Node.bvdds[self]
 
     def compute_unary(self, sid_line, op, old_exits, new_values = None, new_exits = None, ID = 0, offset = 0):
-        unary_bvdd = BVDD(self.var_line)
+        unary_bvdd = ROABVDD_Node(self.var_line)
         for output in self.outputs:
             new_values, new_exits, new_bvdd = output.compute_unary(sid_line, op,
                 old_exits, new_values, new_exits,
@@ -609,12 +642,12 @@ class BVDD:
             else:
                 new_value = op(left_exits[bvdd[0]], right_exits[bvdd[1]])
                 assert sid_line.is_unsigned_value(new_value)
-            return Exit.dealias(new_value, new_values, new_exits, ID, offset)
+            return ROABVDD_Exit.dealias(new_value, new_values, new_exits, ID, offset)
         else:
-            assert isinstance(bvdd, BVDD)
-            binary_bvdd = BVDD(bvdd.var_line)
+            assert isinstance(bvdd, ROABVDD_Node)
+            binary_bvdd = ROABVDD_Node(bvdd.var_line)
             for output in bvdd.outputs:
-                new_values, new_exits, new_bvdd = BVDD.compute_binary(output,
+                new_values, new_exits, new_bvdd = ROABVDD_Node.compute_binary(output,
                     sid_line, op,
                     left_exits, right_exits, new_values, new_exits,
                     binary_bvdd.number_of_my_exits,
@@ -624,20 +657,20 @@ class BVDD:
             return new_values, new_exits, binary_bvdd.reduce(False)
 
     def apply_binary(self, bvdd, inorder = True):
-        if isinstance(bvdd, Exit):
-            binary_bvdd = BVDD(self.var_line)
+        if isinstance(bvdd, ROABVDD_Exit):
+            binary_bvdd = ROABVDD_Node(self.var_line)
             for output in self.outputs:
                 binary_bvdd.set_input(self.outputs[output],
                     output.intersection(bvdd, inorder))
         else:
-            assert isinstance(bvdd, BVDD)
+            assert isinstance(bvdd, ROABVDD_Node)
             if self.var_line > bvdd.var_line:
-                binary_bvdd = BVDD(bvdd.var_line)
+                binary_bvdd = ROABVDD_Node(bvdd.var_line)
                 for output in bvdd.outputs:
                     binary_bvdd.set_input(bvdd.outputs[output],
                         self.intersection(output))
             else:
-                binary_bvdd = BVDD(self.var_line)
+                binary_bvdd = ROABVDD_Node(self.var_line)
                 if self.var_line < bvdd.var_line:
                     for output in self.outputs:
                         binary_bvdd.set_input(self.outputs[output],
@@ -656,37 +689,37 @@ class BVDD:
         return binary_bvdd.reduce()
 
     def intersection(self, bvdd, inorder = True):
-        if inorder and (self, bvdd) in BVDD.intersection_bvdds:
-            BVDD.intersection_hits += 1
-            return BVDD.intersection_bvdds[(self, bvdd)]
-        elif not inorder and (bvdd, self) in BVDD.intersection_bvdds:
-            BVDD.intersection_hits += 1
-            return BVDD.intersection_bvdds[(bvdd, self)]
+        if inorder and (self, bvdd) in ROABVDD_Node.intersection_bvdds:
+            ROABVDD_Node.intersection_hits += 1
+            return ROABVDD_Node.intersection_bvdds[(self, bvdd)]
+        elif not inorder and (bvdd, self) in ROABVDD_Node.intersection_bvdds:
+            ROABVDD_Node.intersection_hits += 1
+            return ROABVDD_Node.intersection_bvdds[(bvdd, self)]
         else:
             binary_bvdd = self.apply_binary(bvdd, inorder)
             if inorder:
-                assert (self, bvdd) not in BVDD.intersection_bvdds
-                BVDD.intersection_bvdds[(self, bvdd)] = binary_bvdd
+                assert (self, bvdd) not in ROABVDD_Node.intersection_bvdds
+                ROABVDD_Node.intersection_bvdds[(self, bvdd)] = binary_bvdd
             else:
-                assert (bvdd, self) not in BVDD.intersection_bvdds
-                BVDD.intersection_bvdds[(bvdd, self)] = binary_bvdd
+                assert (bvdd, self) not in ROABVDD_Node.intersection_bvdds
+                ROABVDD_Node.intersection_bvdds[(bvdd, self)] = binary_bvdd
             return binary_bvdd
 
     def merge(self, bvdd, inorder = True):
         if bvdd is None:
-            merge_bvdd = BVDD(self.var_line)
+            merge_bvdd = ROABVDD_Node(self.var_line)
             for output in self.outputs:
                 merge_bvdd.set_input(self.outputs[output], output.union(None, inorder))
         else:
-            assert isinstance(bvdd, BVDD)
+            assert isinstance(bvdd, ROABVDD_Node)
             if self.var_line > bvdd.var_line:
                 return bvdd.union(self, not inorder)
             else:
-                merge_bvdd = BVDD(self.var_line)
+                merge_bvdd = ROABVDD_Node(self.var_line)
                 if self.var_line < bvdd.var_line:
                     for output in self.outputs:
                         # assert: intersection of self and bvdd is empty
-                        assert isinstance(output, BVDD)
+                        assert isinstance(output, ROABVDD_Node)
                         merge_bvdd.set_input(self.outputs[output],
                             output.union(bvdd, inorder))
                     if self.inputs < 2**2**self.var_line.sid_line.size - 1:
@@ -701,8 +734,8 @@ class BVDD:
                                 inputs2 = inputs1 & bvdd.outputs[output2]
                                 if inputs2:
                                     # assert: intersection of self and bvdd is empty
-                                    assert isinstance(output1, BVDD)
-                                    assert isinstance(output2, BVDD)
+                                    assert isinstance(output1, ROABVDD_Node)
+                                    assert isinstance(output2, ROABVDD_Node)
                                     merge_bvdd.set_input(inputs2,
                                         output1.union(output2, inorder))
                                     inputs1 &= ~bvdd.outputs[output2]
@@ -715,39 +748,39 @@ class BVDD:
         return merge_bvdd.reduce()
 
     def union(self, bvdd, inorder = True):
-        if inorder and (self, bvdd) in BVDD.union_bvdds:
-            BVDD.union_hits += 1
-            return BVDD.union_bvdds[(self, bvdd)]
-        elif not inorder and (bvdd, self) in BVDD.union_bvdds:
-            BVDD.union_hits += 1
-            return BVDD.union_bvdds[(bvdd, self)]
+        if inorder and (self, bvdd) in ROABVDD_Node.union_bvdds:
+            ROABVDD_Node.union_hits += 1
+            return ROABVDD_Node.union_bvdds[(self, bvdd)]
+        elif not inorder and (bvdd, self) in ROABVDD_Node.union_bvdds:
+            ROABVDD_Node.union_hits += 1
+            return ROABVDD_Node.union_bvdds[(bvdd, self)]
         else:
             merge_bvdd = self.merge(bvdd, inorder)
             if inorder:
-                assert (self, bvdd) not in BVDD.union_bvdds
-                BVDD.union_bvdds[(self, bvdd)] = merge_bvdd
+                assert (self, bvdd) not in ROABVDD_Node.union_bvdds
+                ROABVDD_Node.union_bvdds[(self, bvdd)] = merge_bvdd
             else:
-                assert (bvdd, self) not in BVDD.union_bvdds
-                BVDD.union_bvdds[(bvdd, self)] = merge_bvdd
+                assert (bvdd, self) not in ROABVDD_Node.union_bvdds
+                ROABVDD_Node.union_bvdds[(bvdd, self)] = merge_bvdd
             return merge_bvdd
 
     def exclude(self, bvdd):
-        if isinstance(bvdd, Exit):
+        if isinstance(bvdd, ROABVDD_Exit):
             return None
         else:
             if bvdd is None:
-                exclude_bvdd = BVDD(self.var_line)
+                exclude_bvdd = ROABVDD_Node(self.var_line)
                 for output in self.outputs:
                     exclude_bvdd.set_input(self.outputs[output], output.exclusion(None))
             else:
-                assert isinstance(bvdd, BVDD), f"expected BVDD, got {type(bvdd)}"
+                assert isinstance(bvdd, ROABVDD_Node), f"expected ROABVDD_Node, got {type(bvdd)}"
                 if self.var_line > bvdd.var_line:
-                    exclude_bvdd = BVDD(bvdd.var_line)
+                    exclude_bvdd = ROABVDD_Node(bvdd.var_line)
                     for output in bvdd.outputs:
                         exclude_bvdd.set_input(bvdd.outputs[output],
                             self.exclusion(output))
                 else:
-                    exclude_bvdd = BVDD(self.var_line)
+                    exclude_bvdd = ROABVDD_Node(self.var_line)
                     if self.var_line < bvdd.var_line:
                         for output in self.outputs:
                             exclude_bvdd.set_input(self.outputs[output],
@@ -768,13 +801,13 @@ class BVDD:
             return exclude_bvdd.reduce()
 
     def exclusion(self, bvdd):
-        if (self, bvdd) in BVDD.exclusion_bvdds:
-            BVDD.exclusion_hits += 1
-            return BVDD.exclusion_bvdds[(self, bvdd)]
+        if (self, bvdd) in ROABVDD_Node.exclusion_bvdds:
+            ROABVDD_Node.exclusion_hits += 1
+            return ROABVDD_Node.exclusion_bvdds[(self, bvdd)]
         else:
             exclude_bvdd = self.exclude(bvdd)
-            assert (self, bvdd) not in BVDD.exclusion_bvdds
-            BVDD.exclusion_bvdds[(self, bvdd)] = exclude_bvdd
+            assert (self, bvdd) not in ROABVDD_Node.exclusion_bvdds
+            ROABVDD_Node.exclusion_bvdds[(self, bvdd)] = exclude_bvdd
             return exclude_bvdd
 
     def sample_input_values(self):
@@ -782,57 +815,23 @@ class BVDD:
         outp, inp = next(self.outputs.items())
 
         vals = outp.sample_input_values()
-        vals[self.var_line] = next(BVDD.get_input_values(inp))
+        vals[self.var_line] = next(ROABVDD_Node.get_input_values(inp))
         return vals
 
-class DD:
-    def __init__(self, i2v):
-        self.i2v = i2v
-
-    def __str__(self):
-        return f"{self.i2v}"
-
-    def number_of_inputs(self):
-        return len(self.i2v)
-
-    def number_of_values(self):
-        return len(set(self.i2v.values()))
-
-    def is_never_false(self):
-        return self.number_of_values() == 1 and True in self.i2v.values()
-
-    def is_never_true(self):
-        return self.number_of_values() == 1 and False in self.i2v.values()
-
-    def constant(output_value):
-        assert isinstance(output_value, bool) or isinstance(output_value, int)
-        return DD(dict([(input_value, output_value) for input_value in range(256)]))
-
-    def projection():
-        return DD(dict([(input_value, input_value) for input_value in range(256)]))
-
-    def compute_unary(self, op):
-        return DD(dict([(input_value, op(self.i2v[input_value])) for input_value in self.i2v]))
-
-    def compute_binary(self, op, dd2):
-        assert isinstance(dd2, DD)
-        dd1 = self
-        return DD(dict([(input_value, op(dd1.i2v[input_value], dd2.i2v[input_value])) for input_value in dd1.i2v.keys() & dd2.i2v.keys()]))
-
-    def compute_ite(self, dd2, dd3):
-        assert isinstance(dd2, DD) and isinstance(dd3, DD)
-        dd1 = self
-        return DD(dict([(input_value, dd2.i2v[input_value] if dd1.i2v[input_value] else dd3.i2v[input_value])
-            for input_value in dd1.i2v.keys() & (dd2.i2v.keys() | dd3.i2v.keys())]))
-
-    def get_printed_BVDD(self, value):
-        return [input_value for input_value in self.i2v if self.i2v[input_value] == value]
-
 class ROABVDD:
+    # a reduced ordered algebraic bitvector decision diagram (ROABVDD) is
+    # an algebraic decision diagram (ADD) over bitvectors rather than bits
+
+    # given an n-bit bitvector, we use 2**n-bit unsigned integers
+    # to represent sets of n-bit bitvector constants that in turn
+    # represent branches in ROABVDDs:
+    # Theta(2**n)-time set intersection and union with
+    # O(2**n/n) and Omega(n*(2**n-1)/2**n) spatial overhead
+
     def __init__(self, values, exits, bvdd):
         assert isinstance(values, dict)
         assert isinstance(exits, dict)
-        assert isinstance(bvdd, Exit) or isinstance(bvdd, BVDD)
+        assert isinstance(bvdd, ROABVDD_Exit) or isinstance(bvdd, ROABVDD_Node)
         self.values = values
         self.exits = exits
         self.bvdd = bvdd
@@ -847,10 +846,10 @@ class ROABVDD:
             return f"{round(hits / (hits + misses) * 100, 2)}% ({hits} hits, {misses} misses)"
 
     def print_profile():
-        print(f"Exit cache utilization: {ROABVDD.utilization(Exit.exit_hits, len(Exit.exits))}")
-        print(f"BVDD intersection cache utilization: {ROABVDD.utilization(BVDD.intersection_hits, len(BVDD.intersection_bvdds))}")
-        print(f"BVDD union cache utilization: {ROABVDD.utilization(BVDD.union_hits, len(BVDD.union_bvdds))}")
-        print(f"BVDD exclusion cache utilization: {ROABVDD.utilization(BVDD.exclusion_hits, len(BVDD.exclusion_bvdds))}")
+        print(f"Exit cache utilization: {ROABVDD.utilization(ROABVDD_Exit.exit_hits, len(ROABVDD_Exit.exits))}")
+        print(f"Node intersection cache utilization: {ROABVDD.utilization(ROABVDD_Node.intersection_hits, len(ROABVDD_Node.intersection_bvdds))}")
+        print(f"Node union cache utilization: {ROABVDD.utilization(ROABVDD_Node.union_hits, len(ROABVDD_Node.union_bvdds))}")
+        print(f"Node exclusion cache utilization: {ROABVDD.utilization(ROABVDD_Node.exclusion_hits, len(ROABVDD_Node.exclusion_bvdds))}")
 
     def number_of_inputs(self):
         return self.bvdd.number_of_inputs()
@@ -875,15 +874,15 @@ class ROABVDD:
 
     def constant(value):
         assert isinstance(value, bool) or isinstance(value, int)
-        exit = Exit.new(0)
+        exit = ROABVDD_Exit.new(0)
         return ROABVDD({value:exit}, {exit:value}, exit)
 
     def projection(variable):
         assert isinstance(variable, Variable)
-        bvdd = BVDD(variable)
+        bvdd = ROABVDD_Node(variable)
         if isinstance(variable.sid_line, Bool):
-            false_exit = Exit.new(0)
-            true_exit = Exit.new(1)
+            false_exit = ROABVDD_Exit.new(0)
+            true_exit = ROABVDD_Exit.new(1)
             values = {False:false_exit, True:true_exit}
             exits = {false_exit:False, true_exit:True}
             bvdd.set_input(2**0, false_exit)
@@ -892,7 +891,7 @@ class ROABVDD:
             values = {}
             exits = {}
             for value in range(2**variable.sid_line.size):
-                value_exit = Exit.new(value)
+                value_exit = ROABVDD_Exit.new(value)
                 values |= {value:value_exit}
                 exits |= {value_exit:value}
                 bvdd.set_input(2**value, value_exit)
@@ -907,21 +906,21 @@ class ROABVDD:
         if new_bvdd is None:
             # TODO: check whether reachable
             return None
-        return ROABVDD(*BVDD.compute_binary(new_bvdd, sid_line, op, self.exits, roabvdd.exits))
+        return ROABVDD(*ROABVDD_Node.compute_binary(new_bvdd, sid_line, op, self.exits, roabvdd.exits))
 
     def constrain(self, sid_line, constraint):
-        assert isinstance(constraint.bvdd, Exit) or isinstance(constraint.bvdd, BVDD)
+        assert isinstance(constraint.bvdd, ROABVDD_Exit) or isinstance(constraint.bvdd, ROABVDD_Node)
         new_bvdd = self.bvdd.intersection(constraint.bvdd)
         if new_bvdd is None:
             # TODO: check whether reachable
             return None
-        return ROABVDD(*BVDD.compute_binary(new_bvdd, sid_line, None, self.exits, None))
+        return ROABVDD(*ROABVDD_Node.compute_binary(new_bvdd, sid_line, None, self.exits, None))
 
     def merge(self, sid_line, roabvdd):
-        assert isinstance(self.bvdd, BVDD) and isinstance(roabvdd.bvdd, BVDD)
+        assert isinstance(self.bvdd, ROABVDD_Node) and isinstance(roabvdd.bvdd, ROABVDD_Node)
         new_bvdd = self.bvdd.union(roabvdd.bvdd)
         assert new_bvdd is not None
-        return ROABVDD(*BVDD.compute_binary(new_bvdd, sid_line, None, self.exits, roabvdd.exits))
+        return ROABVDD(*ROABVDD_Node.compute_binary(new_bvdd, sid_line, None, self.exits, roabvdd.exits))
 
     def exclude(self, sid_line, constraint):
         if constraint.is_never_false():
@@ -929,7 +928,7 @@ class ROABVDD:
         else:
             new_bvdd = self.bvdd.exclusion(constraint.bvdd)
             assert new_bvdd is not None
-            return ROABVDD(*BVDD.compute_binary(new_bvdd, sid_line, None, self.exits, None))
+            return ROABVDD(*ROABVDD_Node.compute_binary(new_bvdd, sid_line, None, self.exits, None))
 
     def get_false_constraint(self):
         if False in self.values:
@@ -2207,7 +2206,7 @@ class Values:
             assert sid_line.is_unsigned_value(value)
 
             if Values.BVDD:
-                self.bvdd = DD.constant(value)
+                self.bvdd = BVDD.constant(value)
             if Values.ROABVDD:
                 self.roabvdd = ROABVDD.constant(value)
             if Values.CFLOBVDD:
@@ -2217,7 +2216,7 @@ class Values:
             Values.total_number_of_constants += 1
         elif isinstance(var_line, Variable):
             if Values.BVDD:
-                self.bvdd = DD.projection()
+                self.bvdd = BVDD.projection()
             if Values.ROABVDD:
                 self.roabvdd = ROABVDD.projection(var_line)
             if Values.CFLOBVDD:
@@ -2310,7 +2309,7 @@ class Values:
     # ROABVDD adapter
 
     def get_bvdd_expression(sid_line, bvdd, exits):
-        if isinstance(bvdd, Exit):
+        if isinstance(bvdd, ROABVDD_Exit):
             assert bvdd in exits, f"exit {bvdd} not in {exits}"
             return Constd(next_nid(), sid_line, int(exits[bvdd]),
                 "domain-propagated value", 0)
@@ -7063,7 +7062,7 @@ def print_message_with_propagation_profile(message, step = None, level = None):
         string += f"{Values.current_number_of_inputs} inputs, "
         string += f"{Values.max_number_of_values} values, "
         if Values.ROABVDD:
-            string += f"{len(Exit.exits)} exits, {len(BVDD.bvdds)} bvdds, "
+            string += f"{len(ROABVDD_Exit.exits)} exits, {len(ROABVDD_Node.bvdds)} nodes, "
         string += f"{Expression.total_number_of_generated_expressions} expressions) {message}"
         print_message(string, step, level)
         Values.current_number_of_inputs = 0
