@@ -2293,7 +2293,7 @@ class Values:
                     var_line.comment, var_line.line_no)
             return [comparison_line]
 
-    def get_base_bvdd_expression(self):
+    def get_bvdd_expression(self):
         var_line = Variable.cflobvdd_input[0]
         exp_line = Zero(next_nid(), self.sid_line, "unreachable-value", "unreachable value", 0)
         # assert self.bvdd.i2v are sorted by inputs
@@ -2308,25 +2308,25 @@ class Values:
 
     # ROABVDD adapter
 
-    def get_bvdd_expression(sid_line, bvdd, exits):
+    def get_exit_node_expression(sid_line, bvdd, exits):
         if isinstance(bvdd, ROABVDD_Exit):
             assert bvdd in exits, f"exit {bvdd} not in {exits}"
             return Constd(next_nid(), sid_line, int(exits[bvdd]),
                 "domain-propagated value", 0)
         else:
-            assert isinstance(bvdd, BVDD)
+            assert isinstance(bvdd, ROABVDD_Node)
             exp_line = Zero(next_nid(), sid_line, "unreachable-value", "unreachable value", 0)
             # assert bvdd.outputs are sorted by inputs
             for output in bvdd.outputs:
                 exp_line = Ite(next_nid(), sid_line,
                     Values.get_input_expression(bvdd.var_line, bvdd.outputs[output])[0],
-                    Values.get_bvdd_expression(sid_line, output, exits),
+                    Values.get_exit_node_expression(sid_line, output, exits),
                     exp_line,
                     bvdd.var_line.comment, bvdd.var_line.line_no)
             return exp_line
 
     def get_roabvdd_expression(self):
-        return Values.get_bvdd_expression(self.sid_line, self.roabvdd.bvdd, self.roabvdd.exits)
+        return Values.get_exit_node_expression(self.sid_line, self.roabvdd.bvdd, self.roabvdd.exits)
 
     # CFLOBVDD adapter
 
@@ -2434,7 +2434,7 @@ class Values:
         # naive transition from domain propagation to bit blasting
         assert isinstance(self.sid_line, Bitvector)
         if Values.BVDD:
-            return self.get_base_bvdd_expression()
+            return self.get_bvdd_expression()
         elif Values.ROABVDD:
             return self.get_roabvdd_expression()
         else:
