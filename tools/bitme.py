@@ -1749,14 +1749,40 @@ class BV_No_Distinction_Proto(BV_Internal_Grouping):
         assert reduction_tuple == {1:1}
         return self
 
+class Collapsed_Classes:
+    cache = {}
+    cache_hits = 0
+
+    def __init__(self, classes):
+        self.classes = classes
+
+    def __hash__(self):
+        return hash((tuple(self.classes.values()), isinstance(self.classes[1], bool)))
+
+    def __eq__(self, c2):
+        return isinstance(c2, Collapsed_Classes) and self.classes == c2.classes
+
+    def are_collapsed_classes_cached(equiv_classes):
+        if Collapsed_Classes(equiv_classes) in Collapsed_Classes.cache:
+            Collapsed_Classes.cache_hits += 1
+            return True
+        else:
+            return False
+
+    def get_collapsed_classes(equiv_classes):
+        return Collapsed_Classes.cache[Collapsed_Classes(equiv_classes)]
+
+    def cache_collapsed_classes(equiv_classes, projected_classes, renumbered_classes):
+        collapsed_classes = Collapsed_Classes(equiv_classes)
+        if collapsed_classes not in Collapsed_Classes.cache:
+            Collapsed_Classes.cache[collapsed_classes] = (projected_classes, renumbered_classes)
+        return Collapsed_Classes.cache[collapsed_classes]
+
 class CFLOBVDD:
     max_level = 0
 
     representatives = {}
     representatives_hits = 0
-
-    collapsed_equiv_classes_cache = {}
-    collapsed_equiv_classes_cache_hits = 0
 
     def __init__(self, grouping, outputs, number_of_input_bits, number_of_output_bits):
         self.grouping = grouping
@@ -1791,7 +1817,7 @@ class CFLOBVDD:
         print(f"BV_Grouping pair-product cache utilization: {ROABVDD.utilization(BV_Grouping.pair_product_cache_hits, len(BV_Grouping.pair_product_cache))}")
         print(f"BV_Grouping triple-product cache utilization: {ROABVDD.utilization(BV_Grouping.triple_product_cache_hits, len(BV_Grouping.triple_product_cache))}")
         print(f"BV_Grouping reduction cache utilization: {ROABVDD.utilization(BV_Grouping.reduction_cache_hits, len(BV_Grouping.reduction_cache))}")
-        print(f"CFLOBVDD collapsed-equivalence-classes cache utilization: {ROABVDD.utilization(CFLOBVDD.collapsed_equiv_classes_cache_hits, len(CFLOBVDD.collapsed_equiv_classes_cache))}")
+        print(f"CFLOBVDD collapsed-equivalence-classes cache utilization: {ROABVDD.utilization(Collapsed_Classes.cache_hits, len(Collapsed_Classes.cache))}")
         print(f"CFLOBVDD cache utilization: {ROABVDD.utilization(CFLOBVDD.representatives_hits, len(CFLOBVDD.representatives))}")
 
     def number_of_paths(self):
@@ -1944,30 +1970,10 @@ class CFLOBVDD:
 
         return CFLOBVDD.projection(level, input_i, number_of_input_bits, number_of_output_bits)
 
-    def equiv_classes_hash(equiv_classes):
-        return hash((tuple(equiv_classes.values()), isinstance(equiv_classes[1], bool)))
-
-    def are_collapsed_classes_cached(equiv_classes):
-        if CFLOBVDD.equiv_classes_hash(equiv_classes) in CFLOBVDD.collapsed_equiv_classes_cache:
-            CFLOBVDD.collapsed_equiv_classes_cache_hits += 1
-            return True
-        else:
-            return False
-
-    def get_collapsed_classes(equiv_classes):
-        assert CFLOBVDD.are_collapsed_classes_cached(equiv_classes)
-        return CFLOBVDD.collapsed_equiv_classes_cache[CFLOBVDD.equiv_classes_hash(equiv_classes)]
-
-    def cache_collapsed_classes(equiv_classes, projected_classes, renumbered_classes):
-        equiv_classes_hash = CFLOBVDD.equiv_classes_hash(equiv_classes)
-        if equiv_classes_hash not in CFLOBVDD.collapsed_equiv_classes_cache:
-            CFLOBVDD.collapsed_equiv_classes_cache[equiv_classes_hash] = (projected_classes, renumbered_classes)
-        return CFLOBVDD.collapsed_equiv_classes_cache[equiv_classes_hash]
-
     def collapse_classes_leftmost(equiv_classes):
         # legacy code
-        if CFLOBVDD.are_collapsed_classes_cached(equiv_classes):
-            return CFLOBVDD.get_collapsed_classes(equiv_classes)
+        if Collapsed_Classes.are_collapsed_classes_cached(equiv_classes):
+            return Collapsed_Classes.get_collapsed_classes(equiv_classes)
 
         # square-time iteration over equivalence classes
         projected_classes = dict(enumerate([equiv_classes[i]
@@ -1977,13 +1983,13 @@ class CFLOBVDD:
         order_of_projected_classes = dict([(projected_classes[i], i)
             for i in projected_classes])
 
-        return CFLOBVDD.cache_collapsed_classes(equiv_classes,
+        return Collapsed_Classes.cache_collapsed_classes(equiv_classes,
             projected_classes,
             dict(enumerate([order_of_projected_classes[v] for v in equiv_classes.values()], 1)))
 
     def linear_collapse_classes_leftmost(equiv_classes):
-        if CFLOBVDD.are_collapsed_classes_cached(equiv_classes):
-            return CFLOBVDD.get_collapsed_classes(equiv_classes)
+        if Collapsed_Classes.are_collapsed_classes_cached(equiv_classes):
+            return Collapsed_Classes.get_collapsed_classes(equiv_classes)
 
         leftmost_equiv_class_index = {}
 
@@ -2002,7 +2008,7 @@ class CFLOBVDD:
 
             renumbered_classes[index] = leftmost_equiv_class_index[value]
 
-        return CFLOBVDD.cache_collapsed_classes(equiv_classes,
+        return Collapsed_Classes.cache_collapsed_classes(equiv_classes,
             projected_classes, renumbered_classes)
 
     def binary_apply_and_reduce(self, n2, op, number_of_output_bits):
@@ -8052,7 +8058,7 @@ def main():
             print_separator('-')
             if Values.ROABVDD:
                 ROABVDD.print_profile()
-            else:
+            if Values.CFLOBVDD:
                 CFLOBVDD.print_profile()
         else:
             if args.use_Z3 and is_Z3_present:
