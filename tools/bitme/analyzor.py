@@ -83,9 +83,9 @@ class BitmeConfig:
 
 
 class BitmeBVDDMode(enum.StrEnum):
+    BVDD = enum.auto()
     ROABVDD = enum.auto()
     CFLOBVDD = enum.auto()
-    Z3 = enum.auto()
 
     def __repr__(self) -> str:
         return repr(self.name)
@@ -114,7 +114,8 @@ class BitmeResult:
 
 def run_bitme(config: BitmeConfig, model: Path) -> BitmeResult:
     BVDD_FLAGS = {
-        BitmeBVDDMode.ROABVDD: "",  # - default mode
+        BitmeBVDDMode.BVDD: "--use-BVDD",
+        BitmeBVDDMode.ROABVDD: "--use-ROABVDD",
         BitmeBVDDMode.CFLOBVDD: "--use-CFLOBVDD",
     }
     SATSOLVER_FLAGS = {
