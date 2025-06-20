@@ -8052,13 +8052,17 @@ def main():
         bitme_solver = Bitme_Solver(z3_solver, bitwuzla_solver, args.exclude)
 
         if not args.use_Z3 and not args.use_bitwuzla:
-            bmc(bitme_solver, kmin, kmax, args)
+            if Variable.cflobvdd_input:
+                bmc(bitme_solver, kmin, kmax, args)
 
-            print_separator('-')
-            if Values.ROABVDD:
-                ROABVDD.print_profile()
-            if Values.CFLOBVDD:
-                CFLOBVDD.print_profile()
+                print_separator('-')
+                if Values.ROABVDD:
+                    ROABVDD.print_profile()
+                if Values.CFLOBVDD:
+                    CFLOBVDD.print_profile()
+            else:
+                print_separator('-')
+                print("model input is unmapped, consider increasing -array")
         else:
             if args.use_Z3 and is_Z3_present:
                 bmc(z3_solver, kmin, kmax, args)
