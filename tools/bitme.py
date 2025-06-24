@@ -2339,7 +2339,7 @@ class Values:
                 if logical_line is None:
                     logical_line = path_line
                 else:
-                    logical_line = Logical(next_nid(), op,
+                    logical_line = Logical(next_nid(), op, Bool.boolean,
                         logical_line,
                         path_line,
                         path_line.comment, path_line.line_no)
