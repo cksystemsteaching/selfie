@@ -410,16 +410,20 @@ class BVDD:
         return [input_value for input_value in self.i2v if self.i2v[input_value] == value]
 
 class ROABVDD_Exit:
+    bump = 0
+
     exits = {}
     exit_hits = 0
 
-    def new(ID):
+    def new():
+        ID = ROABVDD_Exit.bump
         if ID not in ROABVDD_Exit.exits:
             exit = ROABVDD_Exit(ID)
             ROABVDD_Exit.exits[ID] = exit
         else:
             ROABVDD_Exit.exit_hits += 1
             exit = ROABVDD_Exit.exits[ID]
+        ROABVDD_Exit.bump += 1
         return exit
 
     def __init__(self, ID):
@@ -449,23 +453,23 @@ class ROABVDD_Exit:
     def reduce(self):
         return self
 
-    def dealias(new_value, new_values, new_exits, ID, offset):
+    def dealias(new_value, new_values, new_exits):
         new_values = {} if new_values is None else new_values
         new_exits = {} if new_exits is None else new_exits
         if new_value in new_values:
             new_exit = new_values[new_value]
             assert new_exit in new_exits
         else:
-            new_exit = ROABVDD_Exit.new(ID + offset)
-            assert new_exit not in new_exits
+            new_exit = ROABVDD_Exit.new()
+            assert new_exit not in new_exits, f"exit {new_exit} for value {new_value} already defined in {new_exits}"
             new_values |= {new_value:new_exit}
             new_exits |= {new_exit:new_value}
         return new_values, new_exits, new_exit
 
-    def compute_unary(self, sid_line, op, old_exits, new_values = None, new_exits = None, ID = 0, offset = 0):
+    def compute_unary(self, sid_line, op, old_exits, new_values = None, new_exits = None):
         new_value = op(old_exits[self])
         assert sid_line.is_unsigned_value(new_value)
-        return ROABVDD_Exit.dealias(new_value, new_values, new_exits, ID, offset)
+        return ROABVDD_Exit.dealias(new_value, new_values, new_exits)
 
     def get_binary_exit(self, bvdd, inorder = True):
         if inorder:
@@ -514,8 +518,6 @@ class ROABVDD_Node:
         self.var_line = var_line
         self.inputs = 0
         self.outputs = {}
-        self.number_of_my_exits = 0
-        self.number_of_other_exits = 0
 
     def get_input_values(inputs):
         input_value = 0
@@ -542,20 +544,13 @@ class ROABVDD_Node:
         return f"{{{string}}}"
 
     def __hash__(self):
-        return hash((self.var_line,
-            self.inputs,
-            tuple(self.outputs),
-            tuple(self.outputs.values()),
-            self.number_of_my_exits,
-            self.number_of_other_exits))
+        return hash((self.var_line, self.inputs, tuple(self.outputs), tuple(self.outputs.values())))
 
     def __eq__(self, bvdd):
         return (isinstance(bvdd, ROABVDD_Node) and
             self.var_line is bvdd.var_line and
             self.inputs == bvdd.inputs and
-            self.outputs == bvdd.outputs and
-            self.number_of_my_exits == bvdd.number_of_my_exits and
-            self.number_of_other_exits == bvdd.number_of_other_exits)
+            self.outputs == bvdd.outputs)
 
     def number_of_inputs(self):
         n = 0
@@ -571,9 +566,6 @@ class ROABVDD_Node:
             n += m
         return exits, n
 
-    def get_number_of_exits(self):
-        return self.number_of_my_exits + self.number_of_other_exits
-
     def set_input(self, inputs, output):
         assert 0 < inputs < 2**2**self.var_line.sid_line.size
         assert not (inputs & self.inputs)
@@ -581,10 +573,6 @@ class ROABVDD_Node:
             self.inputs |= inputs
             if output not in self.outputs:
                 self.outputs[output] = inputs
-                if isinstance(output, tuple) or isinstance(output, ROABVDD_Exit):
-                    self.number_of_my_exits += 1
-                else:
-                    self.number_of_other_exits += output.get_number_of_exits()
             else:
                 assert not (inputs & self.outputs[output])
                 self.outputs[output] |= inputs
@@ -618,18 +606,16 @@ class ROABVDD_Node:
             ROABVDD_Node.bvdds[self] = self
         return ROABVDD_Node.bvdds[self]
 
-    def compute_unary(self, sid_line, op, old_exits, new_values = None, new_exits = None, ID = 0, offset = 0):
+    def compute_unary(self, sid_line, op, old_exits, new_values = None, new_exits = None):
         unary_bvdd = ROABVDD_Node(self.var_line)
         for output in self.outputs:
             new_values, new_exits, new_bvdd = output.compute_unary(sid_line, op,
-                old_exits, new_values, new_exits,
-                unary_bvdd.number_of_my_exits,
-                unary_bvdd.number_of_other_exits + offset)
+                old_exits, new_values, new_exits)
             unary_bvdd.set_input(self.outputs[output], new_bvdd)
         # assert outputs of unary_bvdd are sorted
         return new_values, new_exits, unary_bvdd.reduce(False)
 
-    def compute_binary(bvdd, sid_line, op, left_exits, right_exits, new_values = None, new_exits = None, ID = 0, offset = 0):
+    def compute_binary(bvdd, sid_line, op, left_exits, right_exits, new_values = None, new_exits = None):
         if isinstance(bvdd, tuple):
             if op is None:
                 if bvdd[1] is None or right_exits is None:
@@ -642,16 +628,13 @@ class ROABVDD_Node:
             else:
                 new_value = op(left_exits[bvdd[0]], right_exits[bvdd[1]])
                 assert sid_line.is_unsigned_value(new_value)
-            return ROABVDD_Exit.dealias(new_value, new_values, new_exits, ID, offset)
+            return ROABVDD_Exit.dealias(new_value, new_values, new_exits)
         else:
             assert isinstance(bvdd, ROABVDD_Node)
             binary_bvdd = ROABVDD_Node(bvdd.var_line)
             for output in bvdd.outputs:
-                new_values, new_exits, new_bvdd = ROABVDD_Node.compute_binary(output,
-                    sid_line, op,
-                    left_exits, right_exits, new_values, new_exits,
-                    binary_bvdd.number_of_my_exits,
-                    binary_bvdd.number_of_other_exits + offset)
+                new_values, new_exits, new_bvdd = ROABVDD_Node.compute_binary(output, sid_line, op,
+                    left_exits, right_exits, new_values, new_exits)
                 binary_bvdd.set_input(bvdd.outputs[output], new_bvdd)
             # assert outputs of binary_bvdd are sorted
             return new_values, new_exits, binary_bvdd.reduce(False)
@@ -835,6 +818,7 @@ class ROABVDD:
         self.values = values
         self.exits = exits
         self.bvdd = bvdd
+        ROABVDD_Exit.bump = 0 # exits only need to be unique within ROABVDDs
 
     def __str__(self):
         return f"{self.values} {self.exits} {self.bvdd}"
@@ -874,15 +858,15 @@ class ROABVDD:
 
     def constant(value):
         assert isinstance(value, bool) or isinstance(value, int)
-        exit = ROABVDD_Exit.new(0)
+        exit = ROABVDD_Exit.new()
         return ROABVDD({value:exit}, {exit:value}, exit)
 
     def projection(variable):
         assert isinstance(variable, Variable)
         bvdd = ROABVDD_Node(variable)
         if isinstance(variable.sid_line, Bool):
-            false_exit = ROABVDD_Exit.new(0)
-            true_exit = ROABVDD_Exit.new(1)
+            false_exit = ROABVDD_Exit.new()
+            true_exit = ROABVDD_Exit.new()
             values = {False:false_exit, True:true_exit}
             exits = {false_exit:False, true_exit:True}
             bvdd.set_input(2**0, false_exit)
@@ -891,7 +875,7 @@ class ROABVDD:
             values = {}
             exits = {}
             for value in range(2**variable.sid_line.size):
-                value_exit = ROABVDD_Exit.new(value)
+                value_exit = ROABVDD_Exit.new()
                 values |= {value:value_exit}
                 exits |= {value_exit:value}
                 bvdd.set_input(2**value, value_exit)
