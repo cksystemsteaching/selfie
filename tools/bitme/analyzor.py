@@ -296,7 +296,7 @@ for sample in args.samples:
     if sample.is_file():
         samples.append(sample)
     elif sample.is_dir():
-        samples.extend(sample.glob("*.c"))
+        samples.extend(map(SAMPLES_DIR.joinpath, sample.glob("*.c")))
     else:
         print(f"Sample file '{sample}' doesn't exist!")
         exit(1)
@@ -326,7 +326,7 @@ def run_sample(sample: Path) -> BenchmarkResult | FailedBenchmarkResult:
         for run_num in range(1, args.average_of + 1):
             print(f"[W:{os.getpid()}] Running sample '{sample.name}' run {run_num}...")
 
-            model = compile_rotor(ROTOR_CONFIG, SAMPLES_DIR.joinpath(sample))
+            model = compile_rotor(ROTOR_CONFIG, sample)
             result = run_bitme(bitme_config, model)
             runs.append(result)
 
