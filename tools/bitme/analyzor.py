@@ -6,6 +6,7 @@ import dataclasses
 import enum
 import multiprocessing
 import os
+import re
 import statistics
 import subprocess
 import threading
@@ -36,10 +37,16 @@ class RotorConfig:
 
 # rotor configuration used for sample collection
 # TODO: allow each sample to specify its own options
-ROTOR_CONFIG = RotorConfig(1, 4, 128, 2048)
+ROTOR_CONFIG = RotorConfig(1, 1, 128, 2048)
 
 
 def compile_rotor(config: RotorConfig, sample: Path):
+    # Check if the sample specifies its own number of input bytes
+    with sample.open("r") as f:
+        m = re.match("analyzor-input-bytes: ([0-9]+)", f.read())
+        if m:
+            config = dataclasses.replace(config, bytes_to_read=int(m.group(1)))
+
     model = sample.with_name(f"{sample.stem}-rotorized.btor2")
     model.unlink(missing_ok=True)
 
@@ -222,7 +229,9 @@ class Arguments:
     bvdd_modes: list[BitmeBVDDMode]
     satsolvers: list[BitmeSatSolver]
     max_propagate_bits: list[int]
-    max_array_flatten_bits: list[int] | None # None means inherit value of max_propagate_bits
+    max_array_flatten_bits: (
+        list[int] | None
+    )  # None means inherit value of max_propagate_bits
     timeout: float
 
 
@@ -282,7 +291,7 @@ ap.add_argument(
     "-t",
     "--timeout",
     dest="timeout",
-    default=1800,
+    default=900,
     type=float,
 )
 

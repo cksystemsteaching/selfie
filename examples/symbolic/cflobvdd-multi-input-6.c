@@ -1,4 +1,4 @@
-// analyzor-input-bytes: 3
+// analyzor-input-bytes: 6
 uint64_t main() {
   uint64_t  a;
   uint64_t  b;
@@ -11,7 +11,7 @@ uint64_t main() {
   a = 0;
   b = 0;
 
-  while (a < 3) {
+  while (a < 6) {
     read(0, x, 1);
 
     if (*x == 48)
@@ -20,7 +20,7 @@ uint64_t main() {
     a = a + 1;
   }
 
-  if (b == 3)
+  if (b == 6)
     return 1;
   else
     return 0;

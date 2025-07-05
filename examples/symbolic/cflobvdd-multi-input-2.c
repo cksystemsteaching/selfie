@@ -1,3 +1,4 @@
+// analyzor-input-bytes: 2
 uint64_t main() {
   uint64_t  a;
   uint64_t  b;
