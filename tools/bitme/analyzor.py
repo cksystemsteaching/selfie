@@ -33,11 +33,13 @@ class RotorConfig:
     bytes_to_read: int
     heap_allowance: int
     stack_allowance: int
+    machine_32bit: bool
+    machine_riscuonly: bool
 
 
 # rotor configuration used for sample collection
 # TODO: allow each sample to specify its own options
-ROTOR_CONFIG = RotorConfig(1, 1, 128, 2048)
+ROTOR_CONFIG = RotorConfig(1, 1, 128, 2048, False, True)
 
 
 def compile_rotor(config: RotorConfig, sample: Path):
@@ -62,8 +64,12 @@ def compile_rotor(config: RotorConfig, sample: Path):
         str(config.heap_allowance),
         "-stackallowance",
         str(config.stack_allowance),
-        "-riscuonly",
     ]
+
+    if config.machine_32bit:
+        args.insert(1, "-m32")
+    if config.machine_riscuonly:
+        args.append("-riscuonly")
 
     proc = subprocess.run(args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     if proc.returncode != 0:
@@ -232,6 +238,8 @@ class Arguments:
     max_array_flatten_bits: (
         list[int] | None
     )  # None means inherit value of max_propagate_bits
+    machine_32bit: bool
+    machine_fullriscv: bool
     timeout: float
 
 
@@ -288,6 +296,18 @@ ap.add_argument(
     type=int,
 )
 ap.add_argument(
+    "-3",
+    "--32-bit",
+    action="store_true",
+    dest="machine_32bit",
+)
+ap.add_argument(
+    "-f",
+    "--full-riscv",
+    action="store_true",
+    dest="machine_fullriscv",
+)
+ap.add_argument(
     "-t",
     "--timeout",
     dest="timeout",
@@ -296,6 +316,9 @@ ap.add_argument(
 )
 
 args: Arguments = typing.cast(Arguments, ap.parse_args())
+
+ROTOR_CONFIG.machine_32bit = args.machine_32bit
+ROTOR_CONFIG.machine_riscuonly = not args.machine_fullriscv
 
 if len(args.samples) == 0:
     args.samples = [SAMPLES_DIR]
