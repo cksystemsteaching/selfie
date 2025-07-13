@@ -1,0 +1,93 @@
+# paths are relative to the project's root
+
+# Different model builder than Rotor can be provided
+#   Script can be provided as a build command
+
+model_builder_path: "rotor"
+build_model_builder: "make rotor"
+default_output: "."
+default_model_type: "starc-32bit-riscv-smt2"
+
+allowed_languages: [.c, .cstar]
+allowed_formats: [smt2,btor2]
+
+model_types:
+  starc:
+    64bit:
+      riscv: 
+        btor2:
+          command: "{rotor} -c {source_file} - 1 -o {output}"
+        smt2: 
+          command: "{rotor} -c {source_file}  - 1 -k -smt -nocomments -o {output}"
+      riscu:
+        btor2:
+          command: "{rotor} -c {source_file} - 1 -riscuonly -o {output}"
+        smt2: 
+          command: "{rotor} -c {source_file} - 1 -riscuonly -k -smt -nocomments -o {output}"
+    32bit:
+      riscv:
+        btor2: 
+          command: "{rotor} -m32 -c {source_file} - 1 -o {output}"
+        smt2: 
+          command: "{rotor} -m32 -c {source_file} - 1 -k -smt -nocomments -o {output}"
+      riscu:
+        btor2: 
+          command: "{rotor} -m32 -c {source_file} - 1 -riscuonly -o {output}"
+        smt2: 
+          command: "{rotor} -m32 -c {source_file} - 1 -riscuonly -k -smt -nocomments -o {output}"
+  gcc:
+
+    rv64imac:
+      compilation: "riscv64-unknown-elf-gcc -mabi=lp64 -march=rv64imac -Wall -Wextra -D'uint64_t=unsigned long' {source_file} -o {output_machine_code}"
+      
+      btor2: 
+        command: "{rotor} -l {source_file} - 1 -o {output}"
+
+      smt2:
+        command: "{rotor} -l {source_file} - 1 -k -smt -nocomments -o {output}"
+
+    rv32imac:
+      compilation: "riscv64-unknown-elf-gcc -mabi=ilp32 -march=rv32imac -Wall -Wextra -D'uint64_t=unsigned long' {source_file} -o {output_machine_code}" 
+
+      btor2: 
+        command: "{rotor} -l {source_file} - 1 -o {output}"
+
+      smt2:
+        command: "{rotor} -l {source_file} - 1 -k -smt -nocomments -o {output}"
+
+    rv32im:
+      compilation: "riscv64-unknown-elf-gcc -mabi=ilp32 -march=rv32im -Wall -Wextra -D'uint64_t=unsigned long' {source_file} -o {output_machine_code}"
+      
+      fullriscv:
+        btor2: 
+          command: "{rotor} -l {source_file} - 1 -o {output}"
+
+        smt2: 
+          command: "{rotor} -l {source_file} - 1 -k -smt -nocomments -o {output}"
+
+      nocompressed:
+        btor2: 
+          command: "{rotor} -l {source_file} - 1 -noRVC -o {output}"
+
+        smt2: 
+          command: "{rotor} -l {source_file} - 1 -noRVC -k -smt -nocomments -o {output}"
+    
+    rv32i:
+      compilation: "riscv64-unknown-elf-gcc -mabi=ilp32 -march=rv32i -Wall -Wextra -D'uint64_t=unsigned long' {source_file} -o {output_machine_code}"
+      
+      fullriscv:
+
+        btor2:
+          command: "{rotor} -l {source_file} - 1 -o {output}"
+
+        smt2: 
+          command: "{rotor} -l {source_file} - 1 -k -smt -nocomments -o {output}"
+
+      nocompressed:
+      
+        btor2: 
+          command: "{rotor} -l {source_file} - 1 -noRVC -noRVM -o {output}"
+
+        smt2: 
+          command: "{rotor} -l {source_file} - 1 -noRVC -noRVM -k -smt -nocomments -o {output}"
+

@@ -1,8 +1,10 @@
 *__pycache__*
 *.m
 *.s
-*.smt
+*.smt2
 *.btor2
+/benchmark/bt.log
+venv
 selfie
 selfie-32
 selfie.h

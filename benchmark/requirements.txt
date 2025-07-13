@@ -1,0 +1,6 @@
+  PyYAML>=6.0.2
+  scipy>=1.11.0
+  seaborn>=0.13.2
+  packaging>=24.2
+  psutil>=6.1.0
+  pyparsing>=3.2.3
