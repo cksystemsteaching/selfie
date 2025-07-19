@@ -186,16 +186,6 @@ def init_btor2_keywords_operators():
 
 init_btor2_keywords_operators()
 
-current_nid = 0
-
-def next_nid(nid = None):
-    if nid is None:
-        global current_nid
-        current_nid += 1
-        return current_nid
-    else:
-        return nid
-
 class model_error(Exception):
     def __init__(self, expected, line_no):
         super().__init__(f"model error in line {line_no}: {expected} expected")
@@ -2246,29 +2236,29 @@ class Values:
         else:
             assert inputs > 0
 
-            inputs_sid_line = Bitvec(next_nid(), 2**var_line.sid_line.size,
+            inputs_sid_line = Bitvec(Parser.next_nid(), 2**var_line.sid_line.size,
                 var_line.comment, var_line.line_no)
-            inputs_zero_line = Constd(next_nid(), inputs_sid_line, 0,
+            inputs_zero_line = Constd(Parser.next_nid(), inputs_sid_line, 0,
                 var_line.comment, var_line.line_no)
-            inputs_one_line = Constd(next_nid(), inputs_sid_line, 1,
+            inputs_one_line = Constd(Parser.next_nid(), inputs_sid_line, 1,
                 var_line.comment, var_line.line_no)
 
             if inputs.bit_count() == 1:
-                comparison_line = Comparison(next_nid(), OP_EQ, Bool.boolean,
-                    Constd(next_nid(), var_line.sid_line,
+                comparison_line = Comparison(Parser.next_nid(), OP_EQ, Bool.boolean,
+                    Constd(Parser.next_nid(), var_line.sid_line,
                         int(math.log2(inputs)),
                         var_line.comment, var_line.line_no),
                     var_line,
                     var_line.comment, var_line.line_no)
             else:
-                comparison_line = Comparison(next_nid(), OP_NEQ, Bool.boolean,
-                    Logical(next_nid(), OP_AND, inputs_sid_line,
-                        Constd(next_nid(), inputs_sid_line,
+                comparison_line = Comparison(Parser.next_nid(), OP_NEQ, Bool.boolean,
+                    Logical(Parser.next_nid(), OP_AND, inputs_sid_line,
+                        Constd(Parser.next_nid(), inputs_sid_line,
                             inputs,
                             var_line.comment, var_line.line_no),
-                        Computation(next_nid(), OP_SLL, inputs_sid_line,
+                        Computation(Parser.next_nid(), OP_SLL, inputs_sid_line,
                             inputs_one_line,
-                            Ext(next_nid(), OP_UEXT, inputs_sid_line, var_line,
+                            Ext(Parser.next_nid(), OP_UEXT, inputs_sid_line, var_line,
                                 2**var_line.sid_line.size - var_line.sid_line.size,
                                 var_line.comment, var_line.line_no),
                             var_line.comment, var_line.line_no),
@@ -2279,12 +2269,12 @@ class Values:
 
     def get_bvdd_expression(self):
         var_line = Variable.cflobvdd_input[0]
-        exp_line = Zero(next_nid(), self.sid_line, "unreachable-value", "unreachable value", 0)
+        exp_line = Zero(Parser.next_nid(), self.sid_line, "unreachable-value", "unreachable value", 0)
         # assert self.bvdd.i2v are sorted by inputs
         for input_value in self.bvdd.i2v:
-            exp_line = Ite(next_nid(), self.sid_line,
+            exp_line = Ite(Parser.next_nid(), self.sid_line,
             Values.get_input_expression(var_line, 2**input_value)[0],
-            Constd(next_nid(), self.sid_line, int(self.bvdd.i2v[input_value]),
+            Constd(Parser.next_nid(), self.sid_line, int(self.bvdd.i2v[input_value]),
                 "domain-propagated value", 0),
             exp_line,
             var_line.comment, var_line.line_no)
@@ -2295,14 +2285,14 @@ class Values:
     def get_exit_node_expression(sid_line, bvdd, exits):
         if isinstance(bvdd, ROABVDD_Exit):
             assert bvdd in exits, f"exit {bvdd} not in {exits}"
-            return Constd(next_nid(), sid_line, int(exits[bvdd]),
+            return Constd(Parser.next_nid(), sid_line, int(exits[bvdd]),
                 "domain-propagated value", 0)
         else:
             assert isinstance(bvdd, ROABVDD_Node)
-            exp_line = Zero(next_nid(), sid_line, "unreachable-value", "unreachable value", 0)
+            exp_line = Zero(Parser.next_nid(), sid_line, "unreachable-value", "unreachable value", 0)
             # assert bvdd.outputs are sorted by inputs
             for output in bvdd.outputs:
-                exp_line = Ite(next_nid(), sid_line,
+                exp_line = Ite(Parser.next_nid(), sid_line,
                     Values.get_input_expression(bvdd.var_line, bvdd.outputs[output])[0],
                     Values.get_exit_node_expression(sid_line, output, exits),
                     exp_line,
@@ -2323,7 +2313,7 @@ class Values:
                 if logical_line is None:
                     logical_line = path_line
                 else:
-                    logical_line = Logical(next_nid(), op, Bool.boolean,
+                    logical_line = Logical(Parser.next_nid(), op, Bool.boolean,
                         logical_line,
                         path_line,
                         path_line.comment, path_line.line_no)
@@ -2348,13 +2338,13 @@ class Values:
         exp_line = None
         for exit_i in cflobvdd.outputs:
             input_line = Values.get_path_expression(cflobvdd.grouping.get_paths(exit_i))
-            output_line = Constd(next_nid(), self.sid_line, int(cflobvdd.outputs[exit_i]),
+            output_line = Constd(Parser.next_nid(), self.sid_line, int(cflobvdd.outputs[exit_i]),
                 "domain-propagated value", 0)
             if input_line:
-                exp_line = Ite(next_nid(), self.sid_line,
+                exp_line = Ite(Parser.next_nid(), self.sid_line,
                     input_line[0],
                     output_line,
-                    Zero(next_nid(), self.sid_line,
+                    Zero(Parser.next_nid(), self.sid_line,
                         "unreachable-value", "unreachable value", 0)
                             if exp_line is None else exp_line,
                     self.sid_line.comment, self.sid_line.line_no)
@@ -3205,7 +3195,7 @@ class Ext(Indexed):
     def copy(self, arg1_line):
         if self.arg1_line is not arg1_line:
             Expression.total_number_of_generated_expressions += 1
-            return Ext(next_nid(), self.op, self.sid_line, arg1_line, self.w, self.comment, self.line_no)
+            return Ext(Parser.next_nid(), self.op, self.sid_line, arg1_line, self.w, self.comment, self.line_no)
         else:
             return self
 
@@ -3256,7 +3246,7 @@ class Slice(Indexed):
     def copy(self, arg1_line):
         if self.arg1_line is not arg1_line:
             Expression.total_number_of_generated_expressions += 1
-            return Slice(next_nid(), self.sid_line, arg1_line, self.u, self.l, self.comment, self.line_no)
+            return Slice(Parser.next_nid(), self.sid_line, arg1_line, self.u, self.l, self.comment, self.line_no)
         else:
             return self
 
@@ -3301,7 +3291,7 @@ class Unary(Expression):
     def copy(self, arg1_line):
         if self.arg1_line is not arg1_line:
             Expression.total_number_of_generated_expressions += 1
-            return type(self)(next_nid(), self.op, self.sid_line, arg1_line, self.comment, self.line_no)
+            return type(self)(Parser.next_nid(), self.op, self.sid_line, arg1_line, self.comment, self.line_no)
         else:
             return self
 
@@ -3385,7 +3375,7 @@ class Binary(Expression):
     def copy(self, arg1_line, arg2_line):
         if self.arg1_line is not arg1_line or self.arg2_line is not arg2_line:
             Expression.total_number_of_generated_expressions += 1
-            return type(self)(next_nid(), self.op, self.sid_line, arg1_line, arg2_line, self.comment, self.line_no)
+            return type(self)(Parser.next_nid(), self.op, self.sid_line, arg1_line, arg2_line, self.comment, self.line_no)
         else:
             return self
 
@@ -3768,10 +3758,10 @@ class Read(Binary):
             if index == 0:
                 read_line = array_line.get_mapped_array_expression_for(0)
             else:
-                read_line = Ite(next_nid(), self.sid_line,
-                    Comparison(next_nid(), OP_EQ, Bool.boolean,
+                read_line = Ite(Parser.next_nid(), self.sid_line,
+                    Comparison(Parser.next_nid(), OP_EQ, Bool.boolean,
                         index_line,
-                        Constd(next_nid(), index_line.sid_line,
+                        Constd(Parser.next_nid(), index_line.sid_line,
                             index, f"index {index}", self.line_no),
                         f"is address equal to index {index}?", self.line_no),
                     array_line.get_mapped_array_expression_for(index),
@@ -3790,9 +3780,9 @@ class Read(Binary):
             odd_line = self.read_array_recursive(array_line, index_line,
                 index_array[len(index_array)//2:len(index_array)], zero_line)
         address_bit = int(math.log2(len(index_array))) - 1
-        return Ite(next_nid(), self.sid_line,
-            Comparison(next_nid(), OP_EQ, Bool.boolean,
-                Slice(next_nid(), zero_line.sid_line, index_line,
+        return Ite(Parser.next_nid(), self.sid_line,
+            Comparison(Parser.next_nid(), OP_EQ, Bool.boolean,
+                Slice(Parser.next_nid(), zero_line.sid_line, index_line,
                     address_bit, address_bit,
                     f"extract {address_bit}-th address bit", self.line_no),
                 zero_line,
@@ -3811,8 +3801,8 @@ class Read(Binary):
                 else:
                     return self.read_array_recursive(array_line, index_line,
                         list(range(2**array_line.sid_line.array_size_line.size)),
-                        Zero(next_nid(),
-                            Bitvec(next_nid(), 1, "1-bit bitvector for testing bits", self.line_no),
+                        Zero(Parser.next_nid(),
+                            Bitvec(Parser.next_nid(), 1, "1-bit bitvector for testing bits", self.line_no),
                             "", "zero value for testing bits", self.line_no))
         else:
             return self.copy(array_line.get_mapped_array_expression_for(None), index_line)
@@ -3882,7 +3872,7 @@ class Ite(Ternary):
     def copy(self, arg1_line, arg2_line, arg3_line):
         if self.arg1_line is not arg1_line or self.arg2_line is not arg2_line or self.arg3_line is not arg3_line:
             Expression.total_number_of_generated_expressions += 1
-            return Ite(next_nid(), arg2_line.sid_line, arg1_line, arg2_line, arg3_line, self.comment, self.line_no)
+            return Ite(Parser.next_nid(), arg2_line.sid_line, arg1_line, arg2_line, arg3_line, self.comment, self.line_no)
         else:
             return self
 
@@ -3975,7 +3965,7 @@ class Write(Ternary):
     def copy(self, arg1_line, arg2_line, arg3_line):
         if self.arg1_line is not arg1_line or self.arg2_line is not arg2_line or self.arg3_line is not arg3_line:
             Expression.total_number_of_generated_expressions += 1
-            return Write(next_nid(), arg1_line.sid_line, arg1_line, arg2_line, arg3_line, self.comment, self.line_no)
+            return Write(Parser.next_nid(), arg1_line.sid_line, arg1_line, arg2_line, arg3_line, self.comment, self.line_no)
         else:
             return self
 
@@ -3988,10 +3978,10 @@ class Write(Ternary):
                 else:
                     return array_line
             else:
-                return Ite(next_nid(), value_line.sid_line,
-                    Comparison(next_nid(), OP_EQ, Bool.boolean,
+                return Ite(Parser.next_nid(), value_line.sid_line,
+                    Comparison(Parser.next_nid(), OP_EQ, Bool.boolean,
                         index_line,
-                        Constd(next_nid(), index_line.sid_line,
+                        Constd(Parser.next_nid(), index_line.sid_line,
                             index, f"index {index}", self.line_no),
                         f"is address equal to index {index}?", self.line_no),
                     value_line,
@@ -4305,117 +4295,446 @@ class Bad(Property):
         assert self.nid not in Bad.bads, f"bad nid {self.nid} already defined @ {self.line_no}"
         Bad.bads[self.nid] = self
 
-def get_class(keyword):
-    if keyword == Zero.keyword:
-        return Zero
-    elif keyword == One.keyword:
-        return One
-    elif keyword == Constd.keyword:
-        return Constd
-    elif keyword == Const.keyword:
-        return Const
-    elif keyword == Consth.keyword:
-        return Consth
-    elif keyword == Input.keyword:
-        return Input
-    elif keyword == State.keyword:
-        return State
-    elif keyword in Ext.keywords:
-        return Ext
-    elif keyword == Slice.keyword:
-        return Slice
-    elif keyword in Unary.keywords:
-        return Unary
-    elif keyword == Implies.keyword:
-        return Implies
-    elif keyword in Comparison.keywords:
-        return Comparison
-    elif keyword in Logical.keywords:
-        return Logical
-    elif keyword in Computation.keywords:
-        return Computation
-    elif keyword == Concat.keyword:
-        return Concat
-    elif keyword == Read.keyword:
-        return Read
-    elif keyword == Ite.keyword:
-        return Ite
-    elif keyword == Write.keyword:
-        return Write
-    elif keyword == Init.keyword:
-        return Init
-    elif keyword == Next.keyword:
-        return Next
-    elif keyword == Constraint.keyword:
-        return Constraint
-    elif keyword == Bad.keyword:
-        return Bad
+# BTOR2 parser
 
-def new_boolean(nid = None, line_no = None):
-    return Bool(next_nid(nid), "Boolean", line_no)
+class syntax_error(Exception):
+    def __init__(self, expected, line_no):
+        super().__init__(f"syntax error in line {line_no}: {expected} expected")
 
-def new_bitvec(size_in_bits, comment, nid = None, line_no = None):
-    return Bitvec(next_nid(nid), size_in_bits, comment, line_no)
+import re
 
-def new_array(address_sid, element_sid, comment, nid = None, line_no = None):
-    return Array(next_nid(nid), address_sid, element_sid, comment, line_no)
+class Parser:
+    current_nid = 0
 
-def new_zero_one(op, sid, symbol, comment, nid = None, line_no = None):
-    assert op in {OP_ZERO, OP_ONE}
-    return get_class(op)(next_nid(nid), sid, symbol, comment, line_no)
+    def next_nid(nid = None):
+        if nid is None:
+            Parser.current_nid += 1
+            return Parser.current_nid
+        else:
+            return nid
 
-def new_constant(op, sid, constant, comment, nid = None, line_no = None):
-    assert op in {OP_CONSTD, OP_CONST, OP_CONSTH}
-    if op == OP_CONSTD:
-        if constant == 0:
-            return Zero(next_nid(nid), sid, "", comment, line_no)
-        elif constant == 1:
-            return One(next_nid(nid), sid, "", comment, line_no)
-    return get_class(op)(next_nid(nid), sid, constant, comment, line_no)
+    def tokenize_btor2(line):
+        # comment, non-comment no-space printable string,
+        # signed integer, binary number, hexadecimal number
+        btor2_token_pattern = r"(;.*|[^; \n\r]+|-?\d+|[0-1]|[0-9a-fA-F]+)"
+        tokens = re.findall(btor2_token_pattern, line)
+        return tokens
 
-def new_input(op, sid, symbol, comment, nid = None, line_no = None):
-    assert op in Variable.keywords
-    return get_class(op)(next_nid(nid), sid, symbol, comment, line_no)
+    def get_token(tokens, expected, line_no):
+        try:
+            return tokens.pop(0)
+        except:
+            raise syntax_error(expected, line_no)
 
-def new_ext(op, sid, value_nid, w, comment, nid = None, line_no = None):
-    assert op in Ext.keywords
-    return get_class(op)(next_nid(nid), op, sid, value_nid, w, comment, line_no)
+    def get_decimal(tokens, expected, line_no):
+        token = Parser.get_token(tokens, expected, line_no)
+        if token.isdecimal():
+            return int(token)
+        else:
+            raise syntax_error(expected, line_no)
 
-def new_slice(sid, value_nid, u, l, comment, nid = None, line_no = None):
-    return Slice(next_nid(nid), sid, value_nid, u, l, comment, line_no)
+    def get_nid(tokens, expected, line_no):
+        return Array.accommodate_array_indexes(Parser.get_decimal(tokens, expected, line_no))
 
-def new_unary(op, sid, value_nid, comment, nid = None, line_no = None):
-    assert op in Unary.keywords
-    return get_class(op)(next_nid(nid), op, sid, value_nid, comment, line_no)
+    def get_nid_line(tokens, clss, expected, line_no):
+        nid = Parser.get_nid(tokens, expected, line_no)
+        if Line.is_defined(nid):
+            line = Line.get(nid)
+            if isinstance(line, clss):
+                return line
+            else:
+                raise syntax_error(expected, line_no)
+        else:
+            raise syntax_error(f"defined {expected}", line_no)
 
-def new_unary_boolean(op, value_nid, comment, nid = None, line_no = None):
-    assert op == OP_NOT
-    return get_class(op)(next_nid(nid), op, SID_BOOLEAN, value_nid, comment, line_no)
+    def get_bool_or_bitvec_sid_line(tokens, line_no):
+        return Parser.get_nid_line(tokens, Bitvector, "Boolean or bitvector sort nid", line_no)
 
-def new_binary(op, sid, left_nid, right_nid, comment, nid = None, line_no = None):
-    assert op in Binary.keywords
-    return get_class(op)(next_nid(nid), op, sid, left_nid, right_nid, comment, line_no)
+    def get_bitvec_sid_line(tokens, line_no):
+        return Parser.get_nid_line(tokens, Bitvec, "bitvector sort nid", line_no)
 
-def new_binary_boolean(op, left_nid, right_nid, comment, nid = None, line_no = None):
-    assert op in Implies.keyword + Comparison.keywords + Logical.keywords
-    return get_class(op)(next_nid(nid), op, SID_BOOLEAN, left_nid, right_nid, comment, line_no)
+    def get_sid_line(tokens, line_no):
+        return Parser.get_nid_line(tokens, Sort, "sort nid", line_no)
 
-def new_ternary(op, sid, first_nid, second_nid, third_nid, comment, nid = None, line_no = None):
-    assert op in Ternary.keywords
-    return get_class(op)(next_nid(nid), sid, first_nid, second_nid, third_nid, comment, line_no)
+    def get_state_line(tokens, line_no):
+        return Parser.get_nid_line(tokens, State, "state nid", line_no)
 
-def new_init(sid, state_nid, value_nid, comment, nid = None, line_no = None):
-    return Init(next_nid(nid), sid, state_nid, value_nid, comment, line_no)
+    def get_exp_line(tokens, line_no):
+        return Parser.get_nid_line(tokens, Expression, "expression nid", line_no)
 
-def new_next(sid, state_nid, value_nid, comment, nid = None, line_no = None):
-    return Next(next_nid(nid), sid, state_nid, value_nid, comment, line_no)
+    def get_number(tokens, base, expected, line_no):
+        token = Parser.get_token(tokens, expected, line_no)
+        try:
+            if (base == 10):
+                return int(token)
+            else:
+                return int(token, base)
+        except ValueError:
+            raise syntax_error(expected, line_no)
 
-def new_init_next(op, sid, state_nid, value_nid, symbol, comment, nid = None, line_no = None):
-    return get_class(op)(next_nid(nid), sid, state_nid, value_nid, symbol, comment, line_no)
+    def get_symbol(tokens):
+        try:
+            return Parser.get_token(tokens, None, None)
+        except:
+            return ""
 
-def new_property(op, condition_nid, symbol, comment, nid = None, line_no = None):
-    assert op in Property.keywords
-    return get_class(op)(next_nid(nid), condition_nid, symbol, comment, line_no)
+    def get_comment(tokens, line_no):
+        comment = Parser.get_symbol(tokens)
+        if comment:
+            if comment[0] != ';':
+                raise syntax_error("comment", line_no)
+        return comment
+
+    def get_class(self, keyword):
+        if keyword == Zero.keyword:
+            return Zero
+        elif keyword == One.keyword:
+            return One
+        elif keyword == Constd.keyword:
+            return Constd
+        elif keyword == Const.keyword:
+            return Const
+        elif keyword == Consth.keyword:
+            return Consth
+        elif keyword == Input.keyword:
+            return Input
+        elif keyword == State.keyword:
+            return State
+        elif keyword in Ext.keywords:
+            return Ext
+        elif keyword == Slice.keyword:
+            return Slice
+        elif keyword in Unary.keywords:
+            return Unary
+        elif keyword == Implies.keyword:
+            return Implies
+        elif keyword in Comparison.keywords:
+            return Comparison
+        elif keyword in Logical.keywords:
+            return Logical
+        elif keyword in Computation.keywords:
+            return Computation
+        elif keyword == Concat.keyword:
+            return Concat
+        elif keyword == Read.keyword:
+            return Read
+        elif keyword == Ite.keyword:
+            return Ite
+        elif keyword == Write.keyword:
+            return Write
+        elif keyword == Init.keyword:
+            return Init
+        elif keyword == Next.keyword:
+            return Next
+        elif keyword == Constraint.keyword:
+            return Constraint
+        elif keyword == Bad.keyword:
+            return Bad
+
+    def new_boolean(self, nid = None, line_no = None):
+        return Bool(Parser.next_nid(nid), "Boolean", line_no)
+
+    def new_bitvec(self, size_in_bits, comment, nid = None, line_no = None):
+        return Bitvec(Parser.next_nid(nid), size_in_bits, comment, line_no)
+
+    def new_array(self, address_sid, element_sid, comment, nid = None, line_no = None):
+        return Array(Parser.next_nid(nid), address_sid, element_sid, comment, line_no)
+
+    def new_zero_one(self, op, sid, symbol, comment, nid = None, line_no = None):
+        assert op in {OP_ZERO, OP_ONE}
+        return self.get_class(op)(Parser.next_nid(nid), sid, symbol, comment, line_no)
+
+    def new_constant(self, op, sid, constant, comment, nid = None, line_no = None):
+        assert op in {OP_CONSTD, OP_CONST, OP_CONSTH}
+        if op == OP_CONSTD:
+            if constant == 0:
+                return Zero(Parser.next_nid(nid), sid, "", comment, line_no)
+            elif constant == 1:
+                return One(Parser.next_nid(nid), sid, "", comment, line_no)
+        return self.get_class(op)(Parser.next_nid(nid), sid, constant, comment, line_no)
+
+    def new_input(self, op, sid, symbol, comment, nid = None, line_no = None):
+        assert op in Variable.keywords
+        return self.get_class(op)(Parser.next_nid(nid), sid, symbol, comment, line_no)
+
+    def new_ext(self, op, sid, value_nid, w, comment, nid = None, line_no = None):
+        assert op in Ext.keywords
+        return self.get_class(op)(Parser.next_nid(nid), op, sid, value_nid, w, comment, line_no)
+
+    def new_slice(self, sid, value_nid, u, l, comment, nid = None, line_no = None):
+        return self.get_class(Slice.keyword)(Parser.next_nid(nid), sid, value_nid, u, l, comment, line_no)
+
+    def new_unary(self, op, sid, value_nid, comment, nid = None, line_no = None):
+        assert op in Unary.keywords
+        return self.get_class(op)(Parser.next_nid(nid), op, sid, value_nid, comment, line_no)
+
+    def new_unary_boolean(self, op, value_nid, comment, nid = None, line_no = None):
+        assert op == OP_NOT
+        return self.get_class(op)(Parser.next_nid(nid), op, SID_BOOLEAN, value_nid, comment, line_no)
+
+    def new_binary(self, op, sid, left_nid, right_nid, comment, nid = None, line_no = None):
+        assert op in Binary.keywords
+        return self.get_class(op)(Parser.next_nid(nid), op, sid, left_nid, right_nid, comment, line_no)
+
+    def new_binary_boolean(self, op, left_nid, right_nid, comment, nid = None, line_no = None):
+        assert op in Implies.keyword + Comparison.keywords + Logical.keywords
+        return self.get_class(op)(Parser.next_nid(nid), op, SID_BOOLEAN, left_nid, right_nid, comment, line_no)
+
+    def new_ternary(self, op, sid, first_nid, second_nid, third_nid, comment, nid = None, line_no = None):
+        assert op in Ternary.keywords
+        return self.get_class(op)(Parser.next_nid(nid), sid, first_nid, second_nid, third_nid, comment, line_no)
+
+    def new_init(self, sid, state_nid, value_nid, comment, nid = None, line_no = None):
+        return self.get_class(Init.keyword)(Parser.next_nid(nid), sid, state_nid, value_nid, comment, line_no)
+
+    def new_next(self, sid, state_nid, value_nid, comment, nid = None, line_no = None):
+        return self.get_class(Next.keyword)(Parser.next_nid(nid), sid, state_nid, value_nid, comment, line_no)
+
+    def new_init_next(self, op, sid, state_nid, value_nid, symbol, comment, nid = None, line_no = None):
+        return self.get_class(op)(Parser.next_nid(nid), sid, state_nid, value_nid, symbol, comment, line_no)
+
+    def new_property(self, op, condition_nid, symbol, comment, nid = None, line_no = None):
+        assert op in Property.keywords
+        return self.get_class(op)(Parser.next_nid(nid), condition_nid, symbol, comment, line_no)
+
+    def parse_sort_line(self, tokens, nid, line_no):
+        token = Parser.get_token(tokens, "bitvector or array", line_no)
+        if token == Bitvec.keyword:
+            size = Parser.get_decimal(tokens, "bitvector size", line_no)
+            comment = Parser.get_comment(tokens, line_no)
+            # beator- and rotor-dependent Boolean declaration
+            if comment == "; Boolean" and size == 1:
+                return self.new_boolean(nid, line_no)
+            else:
+                return self.new_bitvec(size, comment, nid, line_no)
+        elif token == Array.keyword:
+            array_size_line = Parser.get_bitvec_sid_line(tokens, line_no)
+            element_size_line = Parser.get_bitvec_sid_line(tokens, line_no)
+            comment = Parser.get_comment(tokens, line_no)
+            return self.new_array(array_size_line, element_size_line, comment, nid, line_no)
+        else:
+            raise syntax_error("bitvector or array", line_no)
+
+    def parse_symbol_comment(self, tokens, line_no):
+        symbol = Parser.get_symbol(tokens)
+        comment = Parser.get_comment(tokens, line_no)
+        if symbol:
+            if symbol[0] == ';':
+                return "", symbol
+        return symbol, comment
+
+    def parse_zero_one_line(self, tokens, nid, op, line_no):
+        sid_line = Parser.get_bool_or_bitvec_sid_line(tokens, line_no)
+        symbol, comment = self.parse_symbol_comment(tokens, line_no)
+        return self.new_zero_one(op, sid_line, symbol, comment, nid, line_no)
+
+    def parse_constant_line(self, tokens, nid, op, line_no):
+        sid_line = Parser.get_bool_or_bitvec_sid_line(tokens, line_no)
+        if op == Constd.keyword:
+            value = Parser.get_number(tokens, 10, "signed integer", line_no)
+        elif op == Const.keyword:
+            value = Parser.get_number(tokens, 2, "binary number", line_no)
+        elif op == Consth.keyword:
+            value = Parser.get_number(tokens, 16, "hexadecimal number", line_no)
+        comment = Parser.get_comment(tokens, line_no)
+        return self.new_constant(op, sid_line, value, comment, nid, line_no)
+
+    def parse_variable_line(self, tokens, nid, op, line_no):
+        sid_line = Parser.get_sid_line(tokens, line_no)
+        symbol, comment = self.parse_symbol_comment(tokens, line_no)
+        return self.new_input(op, sid_line, symbol, comment, nid, line_no)
+
+    def parse_ext_line(self, tokens, nid, op, line_no):
+        sid_line = Parser.get_sid_line(tokens, line_no)
+        arg1_line = Parser.get_exp_line(tokens, line_no)
+        w = Parser.get_decimal(tokens, "bit width", line_no)
+        comment = Parser.get_comment(tokens, line_no)
+        return self.new_ext(op, sid_line, arg1_line, w, comment, nid, line_no)
+
+    def parse_slice_line(self, tokens, nid, line_no):
+        sid_line = Parser.get_sid_line(tokens, line_no)
+        arg1_line = Parser.get_exp_line(tokens, line_no)
+        u = Parser.get_decimal(tokens, "upper bit", line_no)
+        l = Parser.get_decimal(tokens, "lower bit", line_no)
+        comment = Parser.get_comment(tokens, line_no)
+        return self.new_slice(sid_line, arg1_line, u, l, comment, nid, line_no)
+
+    def parse_unary_line(self, tokens, nid, op, line_no):
+        sid_line = Parser.get_sid_line(tokens, line_no)
+        arg1_line = Parser.get_exp_line(tokens, line_no)
+        comment = Parser.get_comment(tokens, line_no)
+        return self.new_unary(op, sid_line, arg1_line, comment, nid, line_no)
+
+    def parse_binary_line(self, tokens, nid, op, line_no):
+        sid_line = Parser.get_sid_line(tokens, line_no)
+        arg1_line = Parser.get_exp_line(tokens, line_no)
+        arg2_line = Parser.get_exp_line(tokens, line_no)
+        comment = Parser.get_comment(tokens, line_no)
+        return self.new_binary(op, sid_line, arg1_line, arg2_line, comment, nid, line_no)
+
+    def parse_ternary_line(self, tokens, nid, op, line_no):
+        sid_line = Parser.get_sid_line(tokens, line_no)
+        arg1_line = Parser.get_exp_line(tokens, line_no)
+        arg2_line = Parser.get_exp_line(tokens, line_no)
+        arg3_line = Parser.get_exp_line(tokens, line_no)
+        comment = Parser.get_comment(tokens, line_no)
+        return self.new_ternary(op, sid_line, arg1_line, arg2_line, arg3_line, comment, nid, line_no)
+
+    def parse_init_next_line(self, tokens, nid, op, line_no):
+        sid_line = Parser.get_sid_line(tokens, line_no)
+        state_line = Parser.get_state_line(tokens, line_no)
+        exp_line = Parser.get_exp_line(tokens, line_no)
+        symbol, comment = self.parse_symbol_comment(tokens, line_no)
+        return self.new_init_next(op, sid_line, state_line, exp_line, symbol, comment, nid, line_no)
+
+    def parse_property_line(self, tokens, nid, op, line_no):
+        property_line = Parser.get_exp_line(tokens, line_no)
+        symbol, comment = self.parse_symbol_comment(tokens, line_no)
+        return self.new_property(op, property_line, symbol, comment, nid, line_no)
+
+    def parse_btor2_line(self, line, line_no):
+        if line.strip():
+            tokens = Parser.tokenize_btor2(line)
+            token = Parser.get_token(tokens, None, None)
+            if token[0] != ';':
+                if token.isdecimal():
+                    nid = Array.accommodate_array_indexes(int(token))
+                    if nid > Parser.current_nid:
+                        Parser.current_nid = nid
+                        token = Parser.get_token(tokens, "keyword", line_no)
+                        if token == Sort.keyword:
+                            return self.parse_sort_line(tokens, nid, line_no)
+                        elif token in {Zero.keyword, One.keyword}:
+                            return self.parse_zero_one_line(tokens, nid, token, line_no)
+                        elif token in {Constd.keyword, Const.keyword, Consth.keyword}:
+                            return self.parse_constant_line(tokens, nid, token, line_no)
+                        elif token in Variable.keywords:
+                            return self.parse_variable_line(tokens, nid, token, line_no)
+                        elif token in Ext.keywords:
+                            return self.parse_ext_line(tokens, nid, token, line_no)
+                        elif token == Slice.keyword:
+                            return self.parse_slice_line(tokens, nid, line_no)
+                        elif token in Unary.keywords:
+                            return self.parse_unary_line(tokens, nid, token, line_no)
+                        elif token in Binary.keywords:
+                            return self.parse_binary_line(tokens, nid, token, line_no)
+                        elif token in Ternary.keywords:
+                            return self.parse_ternary_line(tokens, nid, token, line_no)
+                        elif token in {Init.keyword, Next.keyword}:
+                            return self.parse_init_next_line(tokens, nid, token, line_no)
+                        elif token in Property.keywords:
+                            return self.parse_property_line(tokens, nid, token, line_no)
+                        else:
+                            raise syntax_error(f"unknown operator {token}", line_no)
+                    raise syntax_error("increasing nid", line_no)
+                raise syntax_error("nid", line_no)
+        return line.strip()
+
+    def parse_btor2(self, modelfile, outputfile):
+        print(f"model file: {modelfile.name}")
+
+        lines = {}
+        line_no = 1
+        for line in modelfile:
+            try:
+                lines[line_no] = self.parse_btor2_line(line, line_no)
+                line_no += 1
+            except (model_error, syntax_error) as message:
+                print(f"parsing exception: {message}")
+                exit(1)
+
+        # start: mapping arrays to bitvectors
+
+        if Array.ARRAY_SIZE_BOUND > 0:
+            for init in Init.inits.values():
+                init.set_mapped_array_expression()
+            for constraint in Constraint.constraints.values():
+                constraint.set_mapped_array_expression()
+            for bad in Bad.bads.values():
+                bad.set_mapped_array_expression()
+            for next_line in Next.nexts.values():
+                next_line.set_mapped_array_expression()
+
+            for state in list(State.states.values()):
+                if isinstance(state.sid_line, Bitvector):
+                    if state.init_line is not None and state.next_line is not None:
+                        if state.init_line.exp_line is state.next_line.exp_line or state.next_line.exp_line is state:
+                            # remove initialized read-only bitvector states
+                            state.remove_state()
+                            Transitional.remove_transition(state, Init.inits)
+                            Transitional.remove_transition(state, Next.nexts)
+
+            if Ite.branching_conditions and Ite.non_branching_conditions:
+                Ite.branching_conditions = Ite.branching_conditions.get_mapped_array_expression_for(None)
+                Ite.non_branching_conditions = Ite.non_branching_conditions.get_mapped_array_expression_for(None)
+
+        # end: mapping arrays to bitvectors
+
+        for state in State.states.values():
+            if state.init_line is None:
+                # state has no init
+                state.new_input(state.index)
+
+        are_there_uninitialized_states = False
+        are_there_untransitioned_states = False
+        are_there_state_transitions = False
+
+        for state in State.states.values():
+            if state.init_line is None:
+                are_there_uninitialized_states = True
+            if state.next_line is None:
+                are_there_untransitioned_states = True
+            else:
+                are_there_state_transitions = True
+
+        if are_there_state_transitions:
+            print("sequential problem:")
+        else:
+            print("combinational problem:")
+
+        for input_line in Input.inputs.values():
+            if isinstance(input_line, Input):
+                print(input_line)
+        for state in State.states.values():
+            print(state)
+
+        if are_there_uninitialized_states:
+            print("uninitialized states:")
+            for state in State.states.values():
+                if state.init_line is None:
+                    print(state)
+        if are_there_untransitioned_states:
+            print("untransitioned states:")
+            for state in State.states.values():
+                if state.next_line is None:
+                    print(state)
+
+        if Ite.branching_conditions and Ite.non_branching_conditions:
+            print("branching conditions:")
+            print(Ite.branching_conditions)
+            print(Ite.non_branching_conditions)
+
+        print("model profile:")
+        print(f"{len(Line.lines)} lines in total")
+        print(f"{Input.count} input, {State.count} state, {Init.count} init, {Next.count} next, {Constraint.count} constraint, {Bad.count} bad")
+        print(f"{Bool.count} bool, {Bitvec.count} bitvec, {Array.count} array")
+        print(f"{Zero.count} zero, {One.count} one, {Constd.count} constd, {Const.count} const, {Consth.count} consth")
+        print(f"{Ext.count} ext, {Slice.count} slice, {Unary.count} unary")
+        print(f"{Implies.count} implies, {Comparison.count} comparison, {Logical.count} logical, {Computation.count} computation")
+        print(f"{Concat.count} concat, {Ite.count} ite, {Read.count} read, {Write.count} write")
+
+        if Array.ARRAY_SIZE_BOUND > 0:
+            print("array mapping profile:")
+            print(f"out of {Array.number_of_variable_arrays} arrays {Array.number_of_mapped_arrays} mapped")
+            print(f"{Expression.total_number_of_generated_expressions} generated expressions")
+            Expression.total_number_of_generated_expressions = 0
+
+        if outputfile:
+            print(f"output file: {outputfile.name}")
+            for line in lines.values():
+                print(line, file=outputfile)
+
+        return are_there_state_transitions
 
 # console output
 
@@ -4437,6 +4756,9 @@ def print_message(message, step = None, level = None):
     print(message, end='', flush=True)
     last_message_length = len(message) if message[-1:] != '\n' else 0
 
+def print_separator(separator, step = None, level = None):
+    print_message(f"{separator * (80 - len(get_step(step, level)))}\n", step, level)
+
 def print_message_with_propagation_profile(message, step = None, level = None):
     if Instance.PROPAGATE is not None:
         string = f"({Values.total_number_of_constants} constants, "
@@ -4449,334 +4771,6 @@ def print_message_with_propagation_profile(message, step = None, level = None):
         Values.current_number_of_inputs = 0
     else:
         print_message(message, step, level)
-
-def print_separator(separator, step = None, level = None):
-    print_message(f"{separator * (80 - len(get_step(step, level)))}\n", step, level)
-
-# BTOR2 parser
-
-import re
-
-class syntax_error(Exception):
-    def __init__(self, expected, line_no):
-        super().__init__(f"syntax error in line {line_no}: {expected} expected")
-
-def tokenize_btor2(line):
-    # comment, non-comment no-space printable string,
-    # signed integer, binary number, hexadecimal number
-    btor2_token_pattern = r"(;.*|[^; \n\r]+|-?\d+|[0-1]|[0-9a-fA-F]+)"
-    tokens = re.findall(btor2_token_pattern, line)
-    return tokens
-
-def get_token(tokens, expected, line_no):
-    try:
-        return tokens.pop(0)
-    except:
-        raise syntax_error(expected, line_no)
-
-def get_decimal(tokens, expected, line_no):
-    token = get_token(tokens, expected, line_no)
-    if token.isdecimal():
-        return int(token)
-    else:
-        raise syntax_error(expected, line_no)
-
-def get_nid(tokens, expected, line_no):
-    return Array.accommodate_array_indexes(get_decimal(tokens, expected, line_no))
-
-def get_nid_line(tokens, clss, expected, line_no):
-    nid = get_nid(tokens, expected, line_no)
-    if Line.is_defined(nid):
-        line = Line.get(nid)
-        if isinstance(line, clss):
-            return line
-        else:
-            raise syntax_error(expected, line_no)
-    else:
-        raise syntax_error(f"defined {expected}", line_no)
-
-def get_bool_or_bitvec_sid_line(tokens, line_no):
-    return get_nid_line(tokens, Bitvector, "Boolean or bitvector sort nid", line_no)
-
-def get_bitvec_sid_line(tokens, line_no):
-    return get_nid_line(tokens, Bitvec, "bitvector sort nid", line_no)
-
-def get_sid_line(tokens, line_no):
-    return get_nid_line(tokens, Sort, "sort nid", line_no)
-
-def get_state_line(tokens, line_no):
-    return get_nid_line(tokens, State, "state nid", line_no)
-
-def get_exp_line(tokens, line_no):
-    return get_nid_line(tokens, Expression, "expression nid", line_no)
-
-def get_number(tokens, base, expected, line_no):
-    token = get_token(tokens, expected, line_no)
-    try:
-        if (base == 10):
-            return int(token)
-        else:
-            return int(token, base)
-    except ValueError:
-        raise syntax_error(expected, line_no)
-
-def get_symbol(tokens):
-    try:
-        return get_token(tokens, None, None)
-    except:
-        return ""
-
-def get_comment(tokens, line_no):
-    comment = get_symbol(tokens)
-    if comment:
-        if comment[0] != ';':
-            raise syntax_error("comment", line_no)
-    return comment
-
-def parse_sort_line(tokens, nid, line_no):
-    token = get_token(tokens, "bitvector or array", line_no)
-    if token == Bitvec.keyword:
-        size = get_decimal(tokens, "bitvector size", line_no)
-        comment = get_comment(tokens, line_no)
-        # beator- and rotor-dependent Boolean declaration
-        if comment == "; Boolean" and size == 1:
-            return new_boolean(nid, line_no)
-        else:
-            return new_bitvec(size, comment, nid, line_no)
-    elif token == Array.keyword:
-        array_size_line = get_bitvec_sid_line(tokens, line_no)
-        element_size_line = get_bitvec_sid_line(tokens, line_no)
-        comment = get_comment(tokens, line_no)
-        return new_array(array_size_line, element_size_line, comment, nid, line_no)
-    else:
-        raise syntax_error("bitvector or array", line_no)
-
-def parse_zero_one_line(tokens, nid, op, line_no):
-    sid_line = get_bool_or_bitvec_sid_line(tokens, line_no)
-    symbol, comment = parse_symbol_comment(tokens, line_no)
-    return new_zero_one(op, sid_line, symbol, comment, nid, line_no)
-
-def parse_constant_line(tokens, nid, op, line_no):
-    sid_line = get_bool_or_bitvec_sid_line(tokens, line_no)
-    if op == Constd.keyword:
-        value = get_number(tokens, 10, "signed integer", line_no)
-    elif op == Const.keyword:
-        value = get_number(tokens, 2, "binary number", line_no)
-    elif op == Consth.keyword:
-        value = get_number(tokens, 16, "hexadecimal number", line_no)
-    comment = get_comment(tokens, line_no)
-    return new_constant(op, sid_line, value, comment, nid, line_no)
-
-def parse_symbol_comment(tokens, line_no):
-    symbol = get_symbol(tokens)
-    comment = get_comment(tokens, line_no)
-    if symbol:
-        if symbol[0] == ';':
-            return "", symbol
-    return symbol, comment
-
-def parse_variable_line(tokens, nid, op, line_no):
-    sid_line = get_sid_line(tokens, line_no)
-    symbol, comment = parse_symbol_comment(tokens, line_no)
-    return new_input(op, sid_line, symbol, comment, nid, line_no)
-
-def parse_ext_line(tokens, nid, op, line_no):
-    sid_line = get_sid_line(tokens, line_no)
-    arg1_line = get_exp_line(tokens, line_no)
-    w = get_decimal(tokens, "bit width", line_no)
-    comment = get_comment(tokens, line_no)
-    return new_ext(op, sid_line, arg1_line, w, comment, nid, line_no)
-
-def parse_slice_line(tokens, nid, line_no):
-    sid_line = get_sid_line(tokens, line_no)
-    arg1_line = get_exp_line(tokens, line_no)
-    u = get_decimal(tokens, "upper bit", line_no)
-    l = get_decimal(tokens, "lower bit", line_no)
-    comment = get_comment(tokens, line_no)
-    return new_slice(sid_line, arg1_line, u, l, comment, nid, line_no)
-
-def parse_unary_line(tokens, nid, op, line_no):
-    sid_line = get_sid_line(tokens, line_no)
-    arg1_line = get_exp_line(tokens, line_no)
-    comment = get_comment(tokens, line_no)
-    return new_unary(op, sid_line, arg1_line, comment, nid, line_no)
-
-def parse_binary_line(tokens, nid, op, line_no):
-    sid_line = get_sid_line(tokens, line_no)
-    arg1_line = get_exp_line(tokens, line_no)
-    arg2_line = get_exp_line(tokens, line_no)
-    comment = get_comment(tokens, line_no)
-    return new_binary(op, sid_line, arg1_line, arg2_line, comment, nid, line_no)
-
-def parse_ternary_line(tokens, nid, op, line_no):
-    sid_line = get_sid_line(tokens, line_no)
-    arg1_line = get_exp_line(tokens, line_no)
-    arg2_line = get_exp_line(tokens, line_no)
-    arg3_line = get_exp_line(tokens, line_no)
-    comment = get_comment(tokens, line_no)
-    return new_ternary(op, sid_line, arg1_line, arg2_line, arg3_line, comment, nid, line_no)
-
-def parse_init_next_line(tokens, nid, op, line_no):
-    sid_line = get_sid_line(tokens, line_no)
-    state_line = get_state_line(tokens, line_no)
-    exp_line = get_exp_line(tokens, line_no)
-    symbol, comment = parse_symbol_comment(tokens, line_no)
-    return new_init_next(op, sid_line, state_line, exp_line, symbol, comment, nid, line_no)
-
-def parse_property_line(tokens, nid, op, line_no):
-    property_line = get_exp_line(tokens, line_no)
-    symbol, comment = parse_symbol_comment(tokens, line_no)
-    return new_property(op, property_line, symbol, comment, nid, line_no)
-
-def parse_btor2_line(line, line_no):
-    global current_nid # only necessary for mapping arrays
-
-    if line.strip():
-        tokens = tokenize_btor2(line)
-        token = get_token(tokens, None, None)
-        if token[0] != ';':
-            if token.isdecimal():
-                nid = Array.accommodate_array_indexes(int(token))
-                if nid > current_nid:
-                    current_nid = nid
-                    token = get_token(tokens, "keyword", line_no)
-                    if token == Sort.keyword:
-                        return parse_sort_line(tokens, nid, line_no)
-                    elif token in {Zero.keyword, One.keyword}:
-                        return parse_zero_one_line(tokens, nid, token, line_no)
-                    elif token in {Constd.keyword, Const.keyword, Consth.keyword}:
-                        return parse_constant_line(tokens, nid, token, line_no)
-                    elif token in Variable.keywords:
-                        return parse_variable_line(tokens, nid, token, line_no)
-                    elif token in Ext.keywords:
-                        return parse_ext_line(tokens, nid, token, line_no)
-                    elif token == Slice.keyword:
-                        return parse_slice_line(tokens, nid, line_no)
-                    elif token in Unary.keywords:
-                        return parse_unary_line(tokens, nid, token, line_no)
-                    elif token in Binary.keywords:
-                        return parse_binary_line(tokens, nid, token, line_no)
-                    elif token in Ternary.keywords:
-                        return parse_ternary_line(tokens, nid, token, line_no)
-                    elif token in {Init.keyword, Next.keyword}:
-                        return parse_init_next_line(tokens, nid, token, line_no)
-                    elif token in Property.keywords:
-                        return parse_property_line(tokens, nid, token, line_no)
-                    else:
-                        raise syntax_error(f"unknown operator {token}", line_no)
-                raise syntax_error("increasing nid", line_no)
-            raise syntax_error("nid", line_no)
-    return line.strip()
-
-def parse_btor2(modelfile, outputfile):
-    print_separator('#')
-    print(f"model file: {modelfile.name}")
-
-    lines = {}
-    line_no = 1
-    for line in modelfile:
-        try:
-            lines[line_no] = parse_btor2_line(line, line_no)
-            line_no += 1
-        except (model_error, syntax_error) as message:
-            print(f"parsing exception: {message}")
-            exit(1)
-
-    # start: mapping arrays to bitvectors
-
-    if Array.ARRAY_SIZE_BOUND > 0:
-        for init in Init.inits.values():
-            init.set_mapped_array_expression()
-        for constraint in Constraint.constraints.values():
-            constraint.set_mapped_array_expression()
-        for bad in Bad.bads.values():
-            bad.set_mapped_array_expression()
-        for next_line in Next.nexts.values():
-            next_line.set_mapped_array_expression()
-
-        for state in list(State.states.values()):
-            if isinstance(state.sid_line, Bitvector):
-                if state.init_line is not None and state.next_line is not None:
-                    if state.init_line.exp_line is state.next_line.exp_line or state.next_line.exp_line is state:
-                        # remove initialized read-only bitvector states
-                        state.remove_state()
-                        Transitional.remove_transition(state, Init.inits)
-                        Transitional.remove_transition(state, Next.nexts)
-
-        if Ite.branching_conditions and Ite.non_branching_conditions:
-            Ite.branching_conditions = Ite.branching_conditions.get_mapped_array_expression_for(None)
-            Ite.non_branching_conditions = Ite.non_branching_conditions.get_mapped_array_expression_for(None)
-
-    # end: mapping arrays to bitvectors
-
-    for state in State.states.values():
-        if state.init_line is None:
-            # state has no init
-            state.new_input(state.index)
-
-    are_there_uninitialized_states = False
-    are_there_untransitioned_states = False
-    are_there_state_transitions = False
-
-    for state in State.states.values():
-        if state.init_line is None:
-            are_there_uninitialized_states = True
-        if state.next_line is None:
-            are_there_untransitioned_states = True
-        else:
-            are_there_state_transitions = True
-
-    print_separator('-')
-
-    if are_there_state_transitions:
-        print("sequential problem:")
-    else:
-        print("combinational problem:")
-
-    for input_line in Input.inputs.values():
-        if isinstance(input_line, Input):
-            print(input_line)
-    for state in State.states.values():
-        print(state)
-
-    if are_there_uninitialized_states:
-        print("uninitialized states:")
-        for state in State.states.values():
-            if state.init_line is None:
-                print(state)
-    if are_there_untransitioned_states:
-        print("untransitioned states:")
-        for state in State.states.values():
-            if state.next_line is None:
-                print(state)
-
-    if Ite.branching_conditions and Ite.non_branching_conditions:
-        print("branching conditions:")
-        print(Ite.branching_conditions)
-        print(Ite.non_branching_conditions)
-
-    print("model profile:")
-    print(f"{len(Line.lines)} lines in total")
-    print(f"{Input.count} input, {State.count} state, {Init.count} init, {Next.count} next, {Constraint.count} constraint, {Bad.count} bad")
-    print(f"{Bool.count} bool, {Bitvec.count} bitvec, {Array.count} array")
-    print(f"{Zero.count} zero, {One.count} one, {Constd.count} constd, {Const.count} const, {Consth.count} consth")
-    print(f"{Ext.count} ext, {Slice.count} slice, {Unary.count} unary")
-    print(f"{Implies.count} implies, {Comparison.count} comparison, {Logical.count} logical, {Computation.count} computation")
-    print(f"{Concat.count} concat, {Ite.count} ite, {Read.count} read, {Write.count} write")
-
-    if Array.ARRAY_SIZE_BOUND > 0:
-        print("array mapping profile:")
-        print(f"out of {Array.number_of_variable_arrays} arrays {Array.number_of_mapped_arrays} mapped")
-        print(f"{Expression.total_number_of_generated_expressions} generated expressions")
-        Expression.total_number_of_generated_expressions = 0
-
-    if outputfile:
-        print_separator('-')
-        print(f"output file: {outputfile.name}")
-        for line in lines.values():
-            print(line, file=outputfile)
-
-    return are_there_state_transitions
 
 # Z3 and bitwuzla solver interface
 
@@ -5336,7 +5330,9 @@ def main():
     Array.ARRAY_SIZE_BOUND = args.array[0] if args.array else 0
     Read.READ_ARRAY_ITERATIVELY = not args.recursive_array
 
-    are_there_state_transitions = parse_btor2(args.modelfile, args.outputfile)
+    print_separator('#')
+
+    are_there_state_transitions = Parser().parse_btor2(args.modelfile, args.outputfile)
 
     if args.kmin or args.kmax or args.analyzor:
         kmin = args.kmin[0] if args.kmin else 0
