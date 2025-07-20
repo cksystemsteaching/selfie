@@ -21,6 +21,8 @@
 
 # for debugging segfaults: import faulthandler; faulthandler.enable()
 
+import btor2
+
 import ctypes
 
 try:
@@ -51,310 +53,7 @@ except ImportError:
     print("bitwuzla is not available")
     is_bitwuzla_present = False
 
-# BTOR2, Z3, and bitwuzla models
-
 import math
-
-# supported BTOR2 keywords and operators
-
-def init_btor2_keywords_operators():
-    global BITVEC
-    global ARRAY
-
-    global OP_SORT
-
-    global OP_ZERO
-    global OP_ONE
-
-    global OP_CONST
-    global OP_CONSTD
-    global OP_CONSTH
-    global OP_INPUT
-    global OP_STATE
-
-    global OP_INIT
-    global OP_NEXT
-
-    global OP_SEXT
-    global OP_UEXT
-    global OP_SLICE
-
-    global OP_NOT
-    global OP_INC
-    global OP_DEC
-    global OP_NEG
-
-    global OP_IMPLIES
-    global OP_EQ
-    global OP_NEQ
-    global OP_SGT
-    global OP_UGT
-    global OP_SGTE
-    global OP_UGTE
-    global OP_SLT
-    global OP_ULT
-    global OP_SLTE
-    global OP_ULTE
-
-    global OP_AND
-    global OP_OR
-    global OP_XOR
-
-    global OP_SLL
-    global OP_SRL
-    global OP_SRA
-
-    global OP_ADD
-    global OP_SUB
-    global OP_MUL
-    global OP_SDIV
-    global OP_UDIV
-    global OP_SREM
-    global OP_UREM
-
-    global OP_CONCAT
-    global OP_READ
-
-    global OP_ITE
-    global OP_WRITE
-
-    global OP_BAD
-    global OP_CONSTRAINT
-
-    BITVEC = 'bitvec'
-    ARRAY  = 'array'
-
-    OP_SORT = 'sort'
-
-    OP_ZERO = 'zero'
-    OP_ONE  = 'one'
-
-    OP_CONST  = 'const'
-    OP_CONSTD = 'constd'
-    OP_CONSTH = 'consth'
-    OP_INPUT  = 'input'
-    OP_STATE  = 'state'
-
-    OP_INIT  = 'init'
-    OP_NEXT  = 'next'
-
-    OP_SEXT  = 'sext'
-    OP_UEXT  = 'uext'
-    OP_SLICE = 'slice'
-
-    OP_NOT = 'not'
-    OP_INC = 'inc'
-    OP_DEC = 'dec'
-    OP_NEG = 'neg'
-
-    OP_IMPLIES = 'implies'
-    OP_EQ      = 'eq'
-    OP_NEQ     = 'neq'
-    OP_SGT     = 'sgt'
-    OP_UGT     = 'ugt'
-    OP_SGTE    = 'sgte'
-    OP_UGTE    = 'ugte'
-    OP_SLT     = 'slt'
-    OP_ULT     = 'ult'
-    OP_SLTE    = 'slte'
-    OP_ULTE    = 'ulte'
-
-    OP_AND = 'and'
-    OP_OR  = 'or'
-    OP_XOR = 'xor'
-
-    OP_SLL = 'sll'
-    OP_SRL = 'srl'
-    OP_SRA = 'sra'
-
-    OP_ADD  = 'add'
-    OP_SUB  = 'sub'
-    OP_MUL  = 'mul'
-    OP_SDIV = 'sdiv'
-    OP_UDIV = 'udiv'
-    OP_SREM = 'srem'
-    OP_UREM = 'urem'
-
-    OP_CONCAT = 'concat'
-    OP_READ   = 'read'
-
-    OP_ITE   = 'ite'
-    OP_WRITE = 'write'
-
-    OP_BAD        = 'bad'
-    OP_CONSTRAINT = 'constraint'
-
-init_btor2_keywords_operators()
-
-class model_error(Exception):
-    def __init__(self, expected, line_no):
-        super().__init__(f"model error in line {line_no}: {expected} expected")
-
-class Z3:
-    def __init__(self):
-        self.z3 = None
-
-    def get_z3(self):
-        if self.z3 is None:
-            self.z3 = self.model_z3()
-        return self.z3
-
-class Bitwuzla:
-    def __init__(self):
-        self.bitwuzla = None
-
-    def get_bitwuzla(self, tm):
-        if self.bitwuzla is None:
-            self.bitwuzla = self.model_bitwuzla(tm)
-        return self.bitwuzla
-
-class Line(Z3, Bitwuzla):
-    lines = {}
-
-    count = 0
-
-    def __init__(self, nid, comment, line_no):
-        Z3.__init__(self)
-        Bitwuzla.__init__(self)
-        self.nid = nid
-        self.comment = "; " + comment if comment and comment[0] != ';' else comment
-        self.line_no = line_no
-        self.new_line()
-
-    def __repr__(self):
-        return self.__str__()
-
-    def new_line(self):
-        if self.nid is not None:
-            assert self.nid not in Line.lines, f"nid {self.nid} already defined @ {self.line_no}"
-            Line.lines[self.nid] = self
-        type(self).count += 1
-
-    def is_defined(nid):
-        return nid in Line.lines
-
-    def get(nid):
-        assert Line.is_defined(nid), f"undefined nid {self.nid} @ {self.line_no}"
-        return Line.lines[nid]
-
-class Sort(Line):
-    keyword = OP_SORT
-
-    def __init__(self, nid, comment, line_no):
-        super().__init__(nid, comment, line_no)
-
-    def match_sorts(self, sort):
-        return type(self) is type(sort)
-
-class Bitvector(Sort):
-    keyword = BITVEC
-
-    def __init__(self, nid, size, comment, line_no):
-        assert size > 0
-        super().__init__(nid, comment, line_no)
-        self.size = size
-
-    def __str__(self):
-        return f"{self.nid} {Sort.keyword} {Bitvec.keyword} {self.size} {self.comment}"
-
-    def match_init_sorts(self, sort):
-        return self.match_sorts(sort)
-
-    def is_mapped_array(self):
-        return False
-
-    def is_unsigned_value(self, value):
-        return 0 <= value < 2**self.size
-
-    def is_signed_value(self, value):
-        return -2**(self.size - 1) <= value < 2**(self.size - 1)
-
-    def is_value(self, value):
-        return self.is_unsigned_value(value) or self.is_signed_value(value)
-
-    def get_unsigned_value(self, value):
-        assert self.is_value(value)
-        return 2**self.size + value if value < 0 else value
-
-    def get_signed_value(self, value):
-        assert self.is_value(value)
-        return value - 2**self.size if value >= 2**(self.size - 1) else value
-
-class Bool(Bitvector):
-    boolean = None
-
-    def __init__(self, nid, comment, line_no):
-        super().__init__(nid, 1, comment, line_no)
-        assert Bool.boolean is None
-        Bool.boolean = self
-
-    def model_z3(self):
-        return z3.BoolSort()
-
-    def model_bitwuzla(self, tm):
-        return tm.mk_bool_sort()
-
-class Bitvec(Bitvector):
-    def __init__(self, nid, size, comment, line_no):
-        super().__init__(nid, size, comment, line_no)
-
-    def match_sorts(self, sort):
-        return super().match_sorts(sort) and self.size == sort.size
-
-    def model_z3(self):
-        return z3.BitVecSort(self.size)
-
-    def model_bitwuzla(self, tm):
-        return tm.mk_bv_sort(self.size)
-
-class Array(Sort):
-    keyword = ARRAY
-
-    # map arrays up to size bound to bitvectors
-
-    ARRAY_SIZE_BOUND = 0 # array size in bits
-
-    number_of_variable_arrays = 0
-    number_of_mapped_arrays = 0
-
-    def __init__(self, nid, array_size_line, element_size_line, comment, line_no):
-        super().__init__(nid, comment, line_no)
-        self.array_size_line = array_size_line
-        self.element_size_line = element_size_line
-        if not isinstance(array_size_line, Bitvec):
-            raise model_error("array size bitvector", line_no)
-        if not isinstance(element_size_line, Bitvec):
-            raise model_error("element size bitvector", line_no)
-
-    def __str__(self):
-        return f"{self.nid} {Sort.keyword} {Array.keyword} {self.array_size_line.nid} {self.element_size_line.nid} {self.comment}"
-
-    def match_sorts(self, sort):
-        return (super().match_sorts(sort)
-            and self.array_size_line.match_sorts(sort.array_size_line)
-            and self.element_size_line.match_sorts(sort.element_size_line))
-
-    def match_init_sorts(self, sort):
-        # allow constant arrays: array init with bitvector
-        return (self.match_sorts(sort)
-            or (isinstance(sort, Bitvec) and self.element_size_line.match_sorts(sort)))
-
-    def is_mapped_array(self):
-        return self.array_size_line.size <= Array.ARRAY_SIZE_BOUND
-
-    def accommodate_array_indexes(nid):
-        if Array.ARRAY_SIZE_BOUND == 0:
-            return nid
-        else:
-            # shift left by log10(2**n + 1) decimal digits where n is the array index space
-            return nid * 10**(math.floor(math.log10(2**Array.ARRAY_SIZE_BOUND + 1)) + 1)
-
-    def model_z3(self):
-        return z3.ArraySort(self.array_size_line.get_z3(), self.element_size_line.get_z3())
-
-    def model_bitwuzla(self, tm):
-        return tm.mk_array_sort(self.array_size_line.get_bitwuzla(tm),
-            self.element_size_line.get_bitwuzla(tm))
 
 class BVDD:
     def __init__(self, i2v):
@@ -2236,29 +1935,29 @@ class Values:
         else:
             assert inputs > 0
 
-            inputs_sid_line = Bitvec(Parser.next_nid(), 2**var_line.sid_line.size,
+            inputs_sid_line = Bitvec(btor2.Parser.next_nid(), 2**var_line.sid_line.size,
                 var_line.comment, var_line.line_no)
-            inputs_zero_line = Constd(Parser.next_nid(), inputs_sid_line, 0,
+            inputs_zero_line = Constd(btor2.Parser.next_nid(), inputs_sid_line, 0,
                 var_line.comment, var_line.line_no)
-            inputs_one_line = Constd(Parser.next_nid(), inputs_sid_line, 1,
+            inputs_one_line = Constd(btor2.Parser.next_nid(), inputs_sid_line, 1,
                 var_line.comment, var_line.line_no)
 
             if inputs.bit_count() == 1:
-                comparison_line = Comparison(Parser.next_nid(), OP_EQ, Bool.boolean,
-                    Constd(Parser.next_nid(), var_line.sid_line,
+                comparison_line = Comparison(btor2.Parser.next_nid(), btor2.OP_EQ, Bool.boolean,
+                    Constd(btor2.Parser.next_nid(), var_line.sid_line,
                         int(math.log2(inputs)),
                         var_line.comment, var_line.line_no),
                     var_line,
                     var_line.comment, var_line.line_no)
             else:
-                comparison_line = Comparison(Parser.next_nid(), OP_NEQ, Bool.boolean,
-                    Logical(Parser.next_nid(), OP_AND, inputs_sid_line,
-                        Constd(Parser.next_nid(), inputs_sid_line,
+                comparison_line = Comparison(btor2.Parser.next_nid(), btor2.OP_NEQ, Bool.boolean,
+                    Logical(btor2.Parser.next_nid(), btor2.OP_AND, inputs_sid_line,
+                        Constd(btor2.Parser.next_nid(), inputs_sid_line,
                             inputs,
                             var_line.comment, var_line.line_no),
-                        Computation(Parser.next_nid(), OP_SLL, inputs_sid_line,
+                        Computation(btor2.Parser.next_nid(), btor2.OP_SLL, inputs_sid_line,
                             inputs_one_line,
-                            Ext(Parser.next_nid(), OP_UEXT, inputs_sid_line, var_line,
+                            Ext(btor2.Parser.next_nid(), btor2.OP_UEXT, inputs_sid_line, var_line,
                                 2**var_line.sid_line.size - var_line.sid_line.size,
                                 var_line.comment, var_line.line_no),
                             var_line.comment, var_line.line_no),
@@ -2269,12 +1968,12 @@ class Values:
 
     def get_bvdd_expression(self):
         var_line = Variable.cflobvdd_input[0]
-        exp_line = Zero(Parser.next_nid(), self.sid_line, "unreachable-value", "unreachable value", 0)
+        exp_line = Zero(btor2.Parser.next_nid(), self.sid_line, "unreachable-value", "unreachable value", 0)
         # assert self.bvdd.i2v are sorted by inputs
         for input_value in self.bvdd.i2v:
-            exp_line = Ite(Parser.next_nid(), self.sid_line,
+            exp_line = Ite(btor2.Parser.next_nid(), self.sid_line,
             Values.get_input_expression(var_line, 2**input_value)[0],
-            Constd(Parser.next_nid(), self.sid_line, int(self.bvdd.i2v[input_value]),
+            Constd(btor2.Parser.next_nid(), self.sid_line, int(self.bvdd.i2v[input_value]),
                 "domain-propagated value", 0),
             exp_line,
             var_line.comment, var_line.line_no)
@@ -2285,14 +1984,14 @@ class Values:
     def get_exit_node_expression(sid_line, bvdd, exits):
         if isinstance(bvdd, ROABVDD_Exit):
             assert bvdd in exits, f"exit {bvdd} not in {exits}"
-            return Constd(Parser.next_nid(), sid_line, int(exits[bvdd]),
+            return Constd(btor2.Parser.next_nid(), sid_line, int(exits[bvdd]),
                 "domain-propagated value", 0)
         else:
             assert isinstance(bvdd, ROABVDD_Node)
-            exp_line = Zero(Parser.next_nid(), sid_line, "unreachable-value", "unreachable value", 0)
+            exp_line = Zero(btor2.Parser.next_nid(), sid_line, "unreachable-value", "unreachable value", 0)
             # assert bvdd.outputs are sorted by inputs
             for output in bvdd.outputs:
-                exp_line = Ite(Parser.next_nid(), sid_line,
+                exp_line = Ite(btor2.Parser.next_nid(), sid_line,
                     Values.get_input_expression(bvdd.var_line, bvdd.outputs[output])[0],
                     Values.get_exit_node_expression(sid_line, output, exits),
                     exp_line,
@@ -2313,7 +2012,7 @@ class Values:
                 if logical_line is None:
                     logical_line = path_line
                 else:
-                    logical_line = Logical(Parser.next_nid(), op, Bool.boolean,
+                    logical_line = Logical(btor2.Parser.next_nid(), op, Bool.boolean,
                         logical_line,
                         path_line,
                         path_line.comment, path_line.line_no)
@@ -2330,21 +2029,21 @@ class Values:
             else:
                 a_paths = Values.get_path_expression(path[0])
                 b_paths = Values.get_path_expression(path[1])
-                path_expression += Values.get_logical_expression(OP_AND, a_paths + b_paths)
-        return Values.get_logical_expression(OP_OR, path_expression)
+                path_expression += Values.get_logical_expression(btor2.OP_AND, a_paths + b_paths)
+        return Values.get_logical_expression(btor2.OP_OR, path_expression)
 
     def get_cflobvdd_expression(self):
         cflobvdd = self.cflobvdd
         exp_line = None
         for exit_i in cflobvdd.outputs:
             input_line = Values.get_path_expression(cflobvdd.grouping.get_paths(exit_i))
-            output_line = Constd(Parser.next_nid(), self.sid_line, int(cflobvdd.outputs[exit_i]),
+            output_line = Constd(btor2.Parser.next_nid(), self.sid_line, int(cflobvdd.outputs[exit_i]),
                 "domain-propagated value", 0)
             if input_line:
-                exp_line = Ite(Parser.next_nid(), self.sid_line,
+                exp_line = Ite(btor2.Parser.next_nid(), self.sid_line,
                     input_line[0],
                     output_line,
-                    Zero(Parser.next_nid(), self.sid_line,
+                    Zero(btor2.Parser.next_nid(), self.sid_line,
                         "unreachable-value", "unreachable value", 0)
                             if exp_line is None else exp_line,
                     self.sid_line.comment, self.sid_line.line_no)
@@ -2679,277 +2378,6 @@ class Values:
             roabvdd = values.roabvdd.exclude(self.sid_line, constraint.get_false_constraint().roabvdd)
         return Values(self.sid_line, None, None, self.bvdd, roabvdd, self.cflobvdd)
 
-class Expression(Line):
-    total_number_of_generated_expressions = 0
-
-    def __init__(self, nid, sid_line, domain, depth, comment, line_no):
-        super().__init__(nid, comment, line_no)
-        self.sid_line = sid_line
-        self.domain = domain
-        self.depth = depth
-        self.cache_values = {}
-        self.z3_lambda = None
-        self.bitwuzla_lambda = None
-        if not isinstance(sid_line, Sort):
-            raise model_error("sort", line_no)
-
-    def print_deep(self):
-        print(self)
-
-    def get_domain(self):
-        # filter out uninitialized states
-        return [state for state in self.domain if state.init_line is not None]
-
-    def is_equal(self, exp_line):
-        # checking semantical equivalence is delegated to solvers
-        return False
-
-    def get_values(self, step):
-        # versioning needed for support of branching in bitme solver
-        if step not in self.cache_values or self.cache_values[step][1] not in Bitme_Solver.versions:
-            self.cache_values[step] = (self.compute_values(step), Bitme_Solver.version)
-        return self.cache_values[step][0]
-
-    def get_expression(self):
-        return self
-
-    def get_z3_lambda(self):
-        if self.z3_lambda is None:
-            domain = self.get_domain()
-            if domain:
-                self.z3_lambda = z3.Lambda([state.get_z3() for state in domain], self.get_z3())
-            else:
-                self.z3_lambda = self.get_z3()
-        return self.z3_lambda
-
-    def get_bitwuzla_lambda(self, tm):
-        if self.bitwuzla_lambda is None:
-            domain = self.get_domain()
-            if domain:
-                self.bitwuzla_lambda = tm.mk_term(bitwuzla.Kind.LAMBDA,
-                    [*[state.get_bitwuzla(tm) for state in domain], self.get_bitwuzla(tm)])
-            else:
-                self.bitwuzla_lambda = self.get_bitwuzla(tm)
-        return self.bitwuzla_lambda
-
-class Constant(Expression):
-    def __init__(self, nid, sid_line, value, comment, line_no):
-        super().__init__(nid, sid_line, {}, 0, comment, line_no)
-        if not sid_line.is_value(value):
-            raise model_error(f"{value} in range of {sid_line.size}-bit bitvector", line_no)
-        self.print_value = value
-        self.signed_value = sid_line.get_signed_value(value)
-        self.value = sid_line.get_unsigned_value(value)
-
-    def print_deep(self):
-        print(self)
-
-    def get_mapped_array_expression_for(self, index):
-        return self
-
-    def compute_values(self, step):
-        assert step == 0
-        if Instance.PROPAGATE > 0:
-            if isinstance(self.sid_line, Bool):
-                return Values.TRUE() if bool(self.value) else Values.FALSE()
-            else:
-                assert isinstance(self.sid_line, Bitvec)
-                return Values(self.sid_line, self.value)
-        else:
-            return self
-
-    def get_values(self, step):
-        return super().get_values(0)
-
-    def model_z3(self):
-        if isinstance(self.sid_line, Bool):
-            return z3.BoolVal(bool(self.value))
-        else:
-            return z3.BitVecVal(self.value, self.sid_line.size)
-
-    def model_bitwuzla(self, tm):
-        if isinstance(self.sid_line, Bool):
-            return tm.mk_true() if bool(self.value) else tm.mk_false()
-        else:
-            return tm.mk_bv_value(self.sid_line.get_bitwuzla(tm), self.value)
-
-class Zero(Constant):
-    keyword = OP_ZERO
-
-    def __init__(self, nid, sid_line, symbol, comment, line_no):
-        super().__init__(nid, sid_line, 0, comment, line_no)
-        self.symbol = symbol
-
-    def __str__(self):
-        if self.symbol:
-            return f"{self.nid} {Zero.keyword} {self.sid_line.nid} {self.symbol} {self.comment}"
-        else:
-            return f"{self.nid} {Zero.keyword} {self.sid_line.nid} {self.comment}"
-
-class One(Constant):
-    keyword = OP_ONE
-
-    def __init__(self, nid, sid_line, symbol, comment, line_no):
-        super().__init__(nid, sid_line, 1, comment, line_no)
-        self.symbol = symbol
-
-    def __str__(self):
-        if self.symbol:
-            return f"{self.nid} {One.keyword} {self.sid_line.nid} {self.symbol} {self.comment}"
-        else:
-            return f"{self.nid} {One.keyword} {self.sid_line.nid} {self.comment}"
-
-class Constd(Constant):
-    keyword = OP_CONSTD
-
-    def __init__(self, nid, sid_line, value, comment, line_no):
-        super().__init__(nid, sid_line, value, comment, line_no)
-
-    def __str__(self):
-        return f"{self.nid} {Constd.keyword} {self.sid_line.nid} {self.print_value} {self.comment}"
-
-class Const(Constant):
-    keyword = OP_CONST
-
-    def __init__(self, nid, sid_line, value, comment, line_no):
-        super().__init__(nid, sid_line, value, comment, line_no)
-
-    def __str__(self):
-        size = self.sid_line.size
-        return f"{self.nid} {Const.keyword} {self.sid_line.nid} {self.value:0{size}b} {self.comment}"
-
-class Consth(Constant):
-    keyword = OP_CONSTH
-
-    def __init__(self, nid, sid_line, value, comment, line_no):
-        super().__init__(nid, sid_line, value, comment, line_no)
-
-    def __str__(self):
-        size = math.ceil(self.sid_line.size / 4)
-        return f"{self.nid} {Consth.keyword} {self.sid_line.nid} {self.value:0{size}X} {self.comment}"
-
-class Constant_Array(Expression):
-    def __init__(self, sid_line, constant_line):
-        super().__init__(None, sid_line, {}, 0, constant_line.comment, constant_line.line_no)
-        self.nid = constant_line.nid # reuse nid of constant_line
-        self.constant_line = constant_line
-        if not isinstance(sid_line, Array):
-            raise model_error("array sort", line_no)
-        if not isinstance(constant_line, Constant):
-            raise model_error("bitvector constant", line_no)
-        if not sid_line.element_size_line.match_sorts(constant_line.sid_line):
-            raise model_error("compatible sorts", line_no)
-
-    def __str__(self):
-        return f"{self.nid} {"consta"} {self.sid_line.nid} {self.constant_line.nid} {self.comment}"
-
-    def get_mapped_array_expression_for(self, index):
-        if index is not None:
-            assert self.sid_line.is_mapped_array()
-            return self.constant_line
-        else:
-            assert not self.sid_line.is_mapped_array()
-            return self
-
-    def get_values(self, step):
-        return self
-
-    def model_z3(self):
-        return z3.K(self.sid_line.array_size_line.get_z3(), self.constant_line.get_z3())
-
-    def model_bitwuzla(self, tm):
-        return tm.mk_const_array(self.sid_line.get_bitwuzla(tm), self.constant_line.get_bitwuzla(tm))
-
-class Variable(Expression):
-    keywords = {OP_INPUT, OP_STATE}
-
-    inputs = {}
-
-    cflobvdd_input = {}
-    cflobvdd_index = {}
-
-    def __init__(self, nid, sid_line, domain, symbol, comment, line_no, index):
-        super().__init__(nid, sid_line, domain, 0, comment, line_no)
-        self.symbol = symbol
-        if isinstance(sid_line, Array):
-            Array.number_of_variable_arrays += 1
-        self.new_mapped_array(index)
-
-    def __lt__(self, variable):
-        # ordering variables for constructing model input
-        return self.nid < variable.nid
-
-    def new_mapped_array(self, index):
-        self.index = index
-        if index is not None:
-            if not isinstance(self.sid_line, Bitvector):
-                raise model_error("bitvector", self.line_no)
-        elif self.sid_line.is_mapped_array():
-            Array.number_of_mapped_arrays += 1
-            self.array = {}
-            for index in range(2**self.sid_line.array_size_line.size):
-                self.array[index] = type(self)(self.nid + index + 1, self.sid_line.element_size_line,
-                    f"{self.symbol}-{index}", f"{self.comment} @ index {index}", self.line_no, index)
-
-    def new_input(self, index):
-        if index is not None or not self.sid_line.is_mapped_array():
-            assert self.nid not in Variable.inputs, f"variable nid {self.nid} already defined @ {self.line_no}"
-            Variable.inputs[self.nid] = self
-
-            if isinstance(self.sid_line, Bitvector) and self.sid_line.size == 8:
-                Variable.cflobvdd_input[len(Variable.cflobvdd_input)] = self
-                Variable.cflobvdd_index[self] = len(Variable.cflobvdd_index)
-
-    def get_mapped_array_expression_for(self, index):
-        if index is not None:
-            assert self.sid_line.is_mapped_array()
-            return self.array[index]
-        else:
-            assert not self.sid_line.is_mapped_array()
-            return self
-
-    def compute_values(self, step):
-        assert step == 0
-        if isinstance(self.sid_line, Bitvector) and self.sid_line.size <= Instance.PROPAGATE:
-            return Values(self.sid_line, None, self)
-        else:
-            return self
-
-    def get_values(self, step):
-        return super().get_values(0)
-
-    def model_z3(self):
-        return z3.Const(self.name, self.sid_line.get_z3())
-
-class Input(Variable):
-    keyword = OP_INPUT
-
-    def __init__(self, nid, sid_line, symbol, comment, line_no, index = None):
-        super().__init__(nid, sid_line, {}, symbol, comment, line_no, index)
-        self.name = f"input{self.nid}"
-        self.new_input(index)
-
-    def __str__(self):
-        return f"{self.nid} {Input.keyword} {self.sid_line.nid} {self.symbol} {self.comment}"
-
-    def get_step_name(self, step):
-        return self.name
-
-    def get_z3_name(self, step):
-        return self.get_z3()
-
-    def get_z3_instance(self, step):
-        return self.get_z3()
-
-    def model_bitwuzla(self, tm):
-        return tm.mk_const(self.sid_line.get_bitwuzla(tm), self.name)
-
-    def get_bitwuzla_name(self, step, tm):
-        return self.get_bitwuzla(tm)
-
-    def get_bitwuzla_instance(self, step, tm):
-        return self.get_bitwuzla(tm)
-
 class Instance:
     PROPAGATE = None
     PROPAGATE_UNARY = True
@@ -3055,48 +2483,227 @@ class Instance:
         else:
             return self.get_bitwuzla_substitute(step, tm)
 
-class State(Variable):
-    keyword = OP_STATE
+class Z3:
+    def __init__(self):
+        self.z3 = None
 
-    states = {}
+    def get_z3(self):
+        if self.z3 is None:
+            self.z3 = self.model_z3()
+        return self.z3
 
-    pc = None
+class Bitwuzla:
+    def __init__(self):
+        self.bitwuzla = None
 
+    def get_bitwuzla(self, tm):
+        if self.bitwuzla is None:
+            self.bitwuzla = self.model_bitwuzla(tm)
+        return self.bitwuzla
+
+class Line(Z3, Bitwuzla, btor2.Line):
+    def __init__(self):
+        Z3.__init__(self)
+        Bitwuzla.__init__(self)
+
+class Sort(Line, btor2.Sort):
+    def __init__(self):
+        Line.__init__(self)
+
+class Bitvector(Sort, btor2.Bitvector):
+    def __init__(self):
+        Sort.__init__(self)
+
+class Bool(Bitvector, btor2.Bool):
+    def __init__(self, nid, comment, line_no):
+        Bitvector.__init__(self)
+        btor2.Bool.__init__(self, nid, comment, line_no)
+
+    def model_z3(self):
+        return z3.BoolSort()
+
+    def model_bitwuzla(self, tm):
+        return tm.mk_bool_sort()
+
+class Bitvec(Bitvector, btor2.Bitvec):
+    def __init__(self, nid, size, comment, line_no):
+        Bitvector.__init__(self)
+        btor2.Bitvec.__init__(self, nid, size, comment, line_no)
+
+    def model_z3(self):
+        return z3.BitVecSort(self.size)
+
+    def model_bitwuzla(self, tm):
+        return tm.mk_bv_sort(self.size)
+
+class Array(Sort, btor2.Array):
+    def __init__(self, nid, array_size_line, element_size_line, comment, line_no):
+        Sort.__init__(self)
+        btor2.Array.__init__(self, nid, array_size_line, element_size_line, comment, line_no)
+
+    def model_z3(self):
+        return z3.ArraySort(self.array_size_line.get_z3(), self.element_size_line.get_z3())
+
+    def model_bitwuzla(self, tm):
+        return tm.mk_array_sort(self.array_size_line.get_bitwuzla(tm),
+            self.element_size_line.get_bitwuzla(tm))
+
+class Expression(Line, btor2.Expression):
+    def __init__(self):
+        Line.__init__(self)
+        self.cache_values = {}
+        self.z3_lambda = None
+        self.bitwuzla_lambda = None
+
+    def is_equal(self, exp_line):
+        # checking semantical equivalence is delegated to solvers
+        return False
+
+    def get_expression(self):
+        return self
+
+    def get_values(self, step):
+        # versioning needed for support of branching in bitme solver
+        if step not in self.cache_values or self.cache_values[step][1] not in Bitme_Solver.versions:
+            self.cache_values[step] = (self.compute_values(step), Bitme_Solver.version)
+        return self.cache_values[step][0]
+
+    def get_z3_lambda(self):
+        if self.z3_lambda is None:
+            domain = self.get_domain()
+            if domain:
+                self.z3_lambda = z3.Lambda([state.get_z3() for state in domain], self.get_z3())
+            else:
+                self.z3_lambda = self.get_z3()
+        return self.z3_lambda
+
+    def get_bitwuzla_lambda(self, tm):
+        if self.bitwuzla_lambda is None:
+            domain = self.get_domain()
+            if domain:
+                self.bitwuzla_lambda = tm.mk_term(bitwuzla.Kind.LAMBDA,
+                    [*[state.get_bitwuzla(tm) for state in domain], self.get_bitwuzla(tm)])
+            else:
+                self.bitwuzla_lambda = self.get_bitwuzla(tm)
+        return self.bitwuzla_lambda
+
+class Constant(Expression, btor2.Constant):
+    def __init__(self):
+        Expression.__init__(self)
+
+    def compute_values(self, step):
+        assert step == 0
+        if Instance.PROPAGATE > 0:
+            if isinstance(self.sid_line, Bool):
+                return Values.TRUE() if bool(self.value) else Values.FALSE()
+            else:
+                assert isinstance(self.sid_line, Bitvec)
+                return Values(self.sid_line, self.value)
+        else:
+            return self
+
+    def get_values(self, step):
+        return super().get_values(0)
+
+    def model_z3(self):
+        if isinstance(self.sid_line, Bool):
+            return z3.BoolVal(bool(self.value))
+        else:
+            return z3.BitVecVal(self.value, self.sid_line.size)
+
+    def model_bitwuzla(self, tm):
+        if isinstance(self.sid_line, Bool):
+            return tm.mk_true() if bool(self.value) else tm.mk_false()
+        else:
+            return tm.mk_bv_value(self.sid_line.get_bitwuzla(tm), self.value)
+
+class Zero(Constant, btor2.Zero):
+    def __init__(self, nid, sid_line, symbol, comment, line_no):
+        Constant.__init__(self)
+        btor2.Zero.__init__(self, nid, sid_line, symbol, comment, line_no)
+
+class One(Constant, btor2.One):
+    def __init__(self, nid, sid_line, symbol, comment, line_no):
+        Constant.__init__(self)
+        btor2.One.__init__(self, nid, sid_line, symbol, comment, line_no)
+
+class Constd(Constant, btor2.Constd):
+    def __init__(self, nid, sid_line, value, comment, line_no):
+        Constant.__init__(self)
+        btor2.Constd.__init__(self, nid, sid_line, value, comment, line_no)
+
+class Const(Constant, btor2.Const):
+    def __init__(self, nid, sid_line, value, comment, line_no):
+        Constant.__init__(self)
+        btor2.Const.__init__(self, nid, sid_line, value, comment, line_no)
+
+class Consth(Constant, btor2.Consth):
+    def __init__(self, nid, sid_line, value, comment, line_no):
+        Constant.__init__(self)
+        btor2.Consth.__init__(self, nid, sid_line, value, comment, line_no)
+
+class Constant_Array(Expression, btor2.Constant_Array):
+    def __init__(self, sid_line, constant_line):
+        Expression.__init__(self)
+        btor2.Constant_Array.__init__(self, sid_line, constant_line)
+
+    def get_values(self, step):
+        return self
+
+    def model_z3(self):
+        return z3.K(self.sid_line.array_size_line.get_z3(), self.constant_line.get_z3())
+
+    def model_bitwuzla(self, tm):
+        return tm.mk_const_array(self.sid_line.get_bitwuzla(tm), self.constant_line.get_bitwuzla(tm))
+
+class Variable(Expression, btor2.Variable):
+    def __init__(self):
+        Expression.__init__(self)
+
+    def compute_values(self, step):
+        assert step == 0
+        if isinstance(self.sid_line, Bitvector) and self.sid_line.size <= Instance.PROPAGATE:
+            return Values(self.sid_line, None, self)
+        else:
+            return self
+
+    def get_values(self, step):
+        return super().get_values(0)
+
+    def model_z3(self):
+        return z3.Const(self.name, self.sid_line.get_z3())
+
+class Input(Variable, btor2.Input):
     def __init__(self, nid, sid_line, symbol, comment, line_no, index = None):
-        # domain is ordered set by using dictionary with None values
-        super().__init__(nid, sid_line, {self:None}, symbol, comment, line_no, index)
-        self.name = f"state{self.nid}"
-        self.init_line = None
-        self.next_line = None
+        Variable.__init__(self)
+        btor2.Input.__init__(self, nid, sid_line, symbol, comment, line_no, index)
+
+    def get_step_name(self, step):
+        return self.name
+
+    def get_z3_name(self, step):
+        return self.get_z3()
+
+    def get_z3_instance(self, step):
+        return self.get_z3()
+
+    def model_bitwuzla(self, tm):
+        return tm.mk_const(self.sid_line.get_bitwuzla(tm), self.name)
+
+    def get_bitwuzla_name(self, step, tm):
+        return self.get_bitwuzla(tm)
+
+    def get_bitwuzla_instance(self, step, tm):
+        return self.get_bitwuzla(tm)
+
+class State(Variable, btor2.State):
+    def __init__(self, nid, sid_line, symbol, comment, line_no, index = None):
+        Variable.__init__(self)
+        btor2.State.__init__(self, nid, sid_line, symbol, comment, line_no, index)
         self.cache_z3_name = {}
         self.cache_bitwuzla_name = {}
         self.instance = Instance(self)
         self.instance.init_instance(self) # initialize with itself upon creation of state
-        self.new_state(index)
-        # rotor-dependent program counter declaration
-        if comment == "; program counter":
-            State.pc = self
-
-    def __str__(self):
-        return f"{self.nid} {State.keyword} {self.sid_line.nid} {self.symbol} {self.comment}"
-
-    def new_state(self, index):
-        if index is not None or not self.sid_line.is_mapped_array():
-            assert self.nid not in State.states, f"state nid {self.nid} already defined @ {self.line_no}"
-            State.states[self.nid] = self
-
-    def remove_state(self):
-        for key in State.states.keys():
-            if State.states[key] is self:
-                del State.states[key]
-                return
-
-    def get_mapped_array_expression_for(self, index):
-        if isinstance(self.sid_line, Bitvector) or self.sid_line.is_mapped_array():
-            if self.init_line is not None and self.next_line is not None and self.next_line.exp_line is self:
-                # propagate initial value of initialized read-only bitvector states
-                return self.init_line.exp_line.get_mapped_array_expression_for(index)
-        return super().get_mapped_array_expression_for(index)
 
     def has_instance(self, step):
         return self.instance.has_instance(step)
@@ -3162,93 +2769,46 @@ class State(Variable):
         else:
             return self.instance.get_bitwuzla_instance(step, tm)
 
-class Indexed(Expression):
-    def __init__(self, nid, sid_line, arg1_line, comment, line_no):
-        super().__init__(nid, sid_line, arg1_line.domain, arg1_line.depth + 1, comment, line_no)
-        self.arg1_line = arg1_line
-        if not isinstance(arg1_line, Expression):
-            raise model_error("expression operand", line_no)
-        if not isinstance(sid_line, Bitvec):
-            raise model_error("bitvector result", line_no)
-        if not isinstance(arg1_line.sid_line, Bitvec):
-            raise model_error("bitvector operand", line_no)
+class Indexed(Expression, btor2.Indexed):
+    def __init__(self):
+        Expression.__init__(self)
 
-    def get_mapped_array_expression_for(self, index):
-        assert index is None
-        arg1_line = self.arg1_line.get_mapped_array_expression_for(None)
-        return self.copy(arg1_line)
-
-class Ext(Indexed):
-    keywords = {OP_SEXT, OP_UEXT}
-
+class Ext(Indexed, btor2.Ext):
     def __init__(self, nid, op, sid_line, arg1_line, w, comment, line_no):
-        super().__init__(nid, sid_line, arg1_line, comment, line_no)
-        assert op in Ext.keywords
-        self.op = op
-        self.w = w
-        if sid_line.size != arg1_line.sid_line.size + w:
-            raise model_error("compatible bitvector sorts", line_no)
-
-    def __str__(self):
-        return f"{self.nid} {self.op} {self.sid_line.nid} {self.arg1_line.nid} {self.w} {self.comment}"
-
-    def copy(self, arg1_line):
-        if self.arg1_line is not arg1_line:
-            Expression.total_number_of_generated_expressions += 1
-            return Ext(Parser.next_nid(), self.op, self.sid_line, arg1_line, self.w, self.comment, self.line_no)
-        else:
-            return self
+        Indexed.__init__(self)
+        btor2.Ext.__init__(self, nid, op, sid_line, arg1_line, w, comment, line_no)
 
     def compute_values(self, step):
         arg1_value = self.arg1_line.get_values(step)
         if Instance.PROPAGATE_UNARY and isinstance(arg1_value, Values):
-            if self.op == OP_SEXT:
+            if self.op == btor2.OP_SEXT:
                 return arg1_value.SignExt(self.sid_line)
             else:
-                assert self.op == OP_UEXT
+                assert self.op == btor2.OP_UEXT
                 return arg1_value.ZeroExt(self.sid_line)
         else:
             arg1_value = arg1_value.get_expression()
             return self.copy(arg1_value)
 
     def model_z3(self):
-        if self.op == OP_SEXT:
+        if self.op == btor2.OP_SEXT:
             return z3.SignExt(self.w, self.arg1_line.get_z3())
         else:
-            assert self.op == OP_UEXT
+            assert self.op == btor2.OP_UEXT
             return z3.ZeroExt(self.w, self.arg1_line.get_z3())
 
     def model_bitwuzla(self, tm):
-        if self.op == OP_SEXT:
+        if self.op == btor2.OP_SEXT:
             bitwuzla_op = bitwuzla.Kind.BV_SIGN_EXTEND
         else:
-            assert self.op == OP_UEXT
+            assert self.op == btor2.OP_UEXT
             bitwuzla_op = bitwuzla.Kind.BV_ZERO_EXTEND
         return tm.mk_term(bitwuzla_op, [self.arg1_line.get_bitwuzla(tm)], [self.w])
 
-class Slice(Indexed):
-    keyword = OP_SLICE
-
+class Slice(Indexed, btor2.Slice):
     def __init__(self, nid, sid_line, arg1_line, u, l, comment, line_no):
-        super().__init__(nid, sid_line, arg1_line, comment, line_no)
-        self.u = u
-        self.l = l
-        if u >= arg1_line.sid_line.size:
-            raise model_error("upper bit in range", line_no)
-        if u < l:
-            raise model_error("upper bit >= lower bit", line_no)
-        if sid_line.size != u - l + 1:
-            raise model_error("compatible bitvector sorts", line_no)
-
-    def __str__(self):
-        return f"{self.nid} {Slice.keyword} {self.sid_line.nid} {self.arg1_line.nid} {self.u} {self.l} {self.comment}"
-
-    def copy(self, arg1_line):
-        if self.arg1_line is not arg1_line:
-            Expression.total_number_of_generated_expressions += 1
-            return Slice(Parser.next_nid(), self.sid_line, arg1_line, self.u, self.l, self.comment, self.line_no)
-        else:
-            return self
+        Indexed.__init__(self)
+        btor2.Slice.__init__(self, nid, sid_line, arg1_line, u, l, comment, line_no)
 
     def compute_values(self, step):
         arg1_value = self.arg1_line.get_values(step)
@@ -3264,56 +2824,25 @@ class Slice(Indexed):
     def model_bitwuzla(self, tm):
         return tm.mk_term(bitwuzla.Kind.BV_EXTRACT, [self.arg1_line.get_bitwuzla(tm)], [self.u, self.l])
 
-class Unary(Expression):
-    keywords = {OP_NOT, OP_INC, OP_DEC, OP_NEG}
-
+class Unary(Expression, btor2.Unary):
     def __init__(self, nid, op, sid_line, arg1_line, comment, line_no):
-        super().__init__(nid, sid_line, arg1_line.domain, arg1_line.depth + 1, comment, line_no)
-        assert op in Unary.keywords
-        self.op = op
-        self.arg1_line = arg1_line
-        if not isinstance(arg1_line, Expression):
-            raise model_error("expression operand", line_no)
-        if op == 'not' and not isinstance(sid_line, Bitvector):
-            raise model_error("Boolean or bitvector result", line_no)
-        if op != 'not' and not isinstance(sid_line, Bitvec):
-            raise model_error("bitvector result", line_no)
-        if not sid_line.match_sorts(arg1_line.sid_line):
-            raise model_error("compatible sorts", line_no)
-
-    def __str__(self):
-        return f"{self.nid} {self.op} {self.sid_line.nid} {self.arg1_line.nid} {self.comment}"
-
-    def print_deep(self):
-        self.arg1_line.print_deep()
-        print(self)
-
-    def copy(self, arg1_line):
-        if self.arg1_line is not arg1_line:
-            Expression.total_number_of_generated_expressions += 1
-            return type(self)(Parser.next_nid(), self.op, self.sid_line, arg1_line, self.comment, self.line_no)
-        else:
-            return self
-
-    def get_mapped_array_expression_for(self, index):
-        assert index is None
-        arg1_line = self.arg1_line.get_mapped_array_expression_for(None)
-        return self.copy(arg1_line)
+        Expression.__init__(self)
+        btor2.Unary.__init__(self, nid, op, sid_line, arg1_line, comment, line_no)
 
     def compute_values(self, step):
         arg1_value = self.arg1_line.get_values(step)
         if Instance.PROPAGATE_UNARY and isinstance(arg1_value, Values):
-            if self.op == OP_NOT:
+            if self.op == btor2.OP_NOT:
                 if isinstance(self.sid_line, Bool):
                     return arg1_value.Not()
                 else:
                     return ~arg1_value
-            elif self.op == OP_INC:
+            elif self.op == btor2.OP_INC:
                 return arg1_value.Inc()
-            elif self.op == OP_DEC:
+            elif self.op == btor2.OP_DEC:
                 return arg1_value.Dec()
             else:
-                assert self.op == OP_NEG
+                assert self.op == btor2.OP_NEG
                 return -arg1_value
         else:
             arg1_value = arg1_value.get_expression()
@@ -3321,82 +2850,42 @@ class Unary(Expression):
 
     def model_z3(self):
         z3_arg1 = self.arg1_line.get_z3()
-        if self.op == OP_NOT:
+        if self.op == btor2.OP_NOT:
             if isinstance(self.sid_line, Bool):
                 return z3.Not(z3_arg1)
             else:
                 return ~z3_arg1
-        elif self.op == OP_INC:
+        elif self.op == btor2.OP_INC:
             return z3_arg1 + 1
-        elif self.op == OP_DEC:
+        elif self.op == btor2.OP_DEC:
             return z3_arg1 - 1
         else:
-            assert self.op == OP_NEG
+            assert self.op == btor2.OP_NEG
             return -z3_arg1
 
     def model_bitwuzla(self, tm):
-        if self.op == OP_NOT:
+        if self.op == btor2.OP_NOT:
             if isinstance(self.sid_line, Bool):
                 bitwuzla_op = bitwuzla.Kind.NOT
             else:
                 bitwuzla_op = bitwuzla.Kind.BV_NOT
-        elif self.op == OP_INC:
+        elif self.op == btor2.OP_INC:
             bitwuzla_op = bitwuzla.Kind.BV_INC
-        elif self.op == OP_DEC:
+        elif self.op == btor2.OP_DEC:
             bitwuzla_op = bitwuzla.Kind.BV_DEC
         else:
-            assert self.op == OP_NEG
+            assert self.op == btor2.OP_NEG
             bitwuzla_op = bitwuzla.Kind.BV_NEG
         return tm.mk_term(bitwuzla_op, [self.arg1_line.get_bitwuzla(tm)])
 
-class Binary(Expression):
-    keywords = {OP_IMPLIES, OP_EQ, OP_NEQ, OP_SGT, OP_UGT, OP_SGTE, OP_UGTE, OP_SLT, OP_ULT, OP_SLTE, OP_ULTE, OP_AND, OP_OR, OP_XOR, OP_SLL, OP_SRL, OP_SRA, OP_ADD, OP_SUB, OP_MUL, OP_SDIV, OP_UDIV, OP_SREM, OP_UREM, OP_CONCAT, OP_READ}
+class Binary(Expression, btor2.Binary):
+    def __init__(self):
+        Expression.__init__(self)
 
+class Implies(Binary, btor2.Implies):
     def __init__(self, nid, op, sid_line, arg1_line, arg2_line, comment, line_no):
-        super().__init__(nid, sid_line, arg1_line.domain | arg2_line.domain,
-            max(arg1_line.depth, arg2_line.depth) + 1, comment, line_no)
-        assert op in Binary.keywords
-        self.op = op
-        self.arg1_line = arg1_line
-        self.arg2_line = arg2_line
-        if not isinstance(arg1_line, Expression):
-            raise model_error("expression left operand", line_no)
-        if not isinstance(arg2_line, Expression):
-            raise model_error("expression right operand", line_no)
-
-    def __str__(self):
-        return f"{self.nid} {self.op} {self.sid_line.nid} {self.arg1_line.nid} {self.arg2_line.nid} {self.comment}"
-
-    def print_deep(self):
-        self.arg1_line.print_deep()
-        self.arg2_line.print_deep()
-        print(self)
-
-    def copy(self, arg1_line, arg2_line):
-        if self.arg1_line is not arg1_line or self.arg2_line is not arg2_line:
-            Expression.total_number_of_generated_expressions += 1
-            return type(self)(Parser.next_nid(), self.op, self.sid_line, arg1_line, arg2_line, self.comment, self.line_no)
-        else:
-            return self
-
-    def get_mapped_array_expression_for(self, index):
-        assert index is None
-        arg1_line = self.arg1_line.get_mapped_array_expression_for(None)
-        arg2_line = self.arg2_line.get_mapped_array_expression_for(None)
-        return self.copy(arg1_line, arg2_line)
-
-class Implies(Binary):
-    keyword = OP_IMPLIES
-
-    def __init__(self, nid, op, sid_line, arg1_line, arg2_line, comment, line_no):
-        assert op == Implies.keyword
-        super().__init__(nid, Implies.keyword, sid_line, arg1_line, arg2_line, comment, line_no)
-        if not isinstance(sid_line, Bool):
-            raise model_error("Boolean result", line_no)
-        if not sid_line.match_sorts(arg1_line.sid_line):
-            raise model_error("compatible result and first operand sorts", line_no)
-        if not arg1_line.sid_line.match_sorts(arg2_line.sid_line):
-            raise model_error("compatible first and second operand sorts", line_no)
+        Binary.__init__(self)
+        btor2.Implies.__init__(self, nid, op, sid_line, arg1_line, arg2_line, comment, line_no)
 
     def compute_values(self, step):
         arg1_value = self.arg1_line.get_values(step)
@@ -3421,44 +2910,36 @@ class Implies(Binary):
         return tm.mk_term(bitwuzla.Kind.IMPLIES,
             [self.arg1_line.get_bitwuzla(tm), self.arg2_line.get_bitwuzla(tm)])
 
-class Comparison(Binary):
-    keywords = {OP_EQ, OP_NEQ, OP_SGT, OP_UGT, OP_SGTE, OP_UGTE, OP_SLT, OP_ULT, OP_SLTE, OP_ULTE}
-
+class Comparison(Binary, btor2.Comparison):
     def __init__(self, nid, op, sid_line, arg1_line, arg2_line, comment, line_no):
-        assert op in Comparison.keywords
-        super().__init__(nid, op, sid_line, arg1_line, arg2_line, comment, line_no)
-        if not isinstance(sid_line, Bool):
-            raise model_error("Boolean result", line_no)
-        if not isinstance(arg1_line.sid_line, Bitvec):
-            raise model_error("bitvector first operand", line_no)
-        if not arg1_line.sid_line.match_sorts(arg2_line.sid_line):
-            raise model_error("compatible first and second operand sorts", line_no)
+        Binary.__init__(self)
+        btor2.Comparison.__init__(self, nid, op, sid_line, arg1_line, arg2_line, comment, line_no)
 
     def compute_values(self, step):
         arg1_value = self.arg1_line.get_values(step)
         arg2_value = self.arg2_line.get_values(step)
         if Instance.PROPAGATE_BINARY:
             if isinstance(arg1_value, Values) and isinstance(arg2_value, Values):
-                if self.op == OP_EQ:
+                if self.op == btor2.OP_EQ:
                     return arg1_value == arg2_value
-                elif self.op == OP_NEQ:
+                elif self.op == btor2.OP_NEQ:
                     return arg1_value != arg2_value
-                elif self.op == OP_SGT:
+                elif self.op == btor2.OP_SGT:
                     return arg1_value > arg2_value
-                elif self.op == OP_UGT:
+                elif self.op == btor2.OP_UGT:
                     return arg1_value.UGT(arg2_value)
-                elif self.op == OP_SGTE:
+                elif self.op == btor2.OP_SGTE:
                     return arg1_value >= arg2_value
-                elif self.op == OP_UGTE:
+                elif self.op == btor2.OP_UGTE:
                     return arg1_value.UGE(arg2_value)
-                elif self.op == OP_SLT:
+                elif self.op == btor2.OP_SLT:
                     return arg1_value < arg2_value
-                elif self.op == OP_ULT:
+                elif self.op == btor2.OP_ULT:
                     return arg1_value.ULT(arg2_value)
-                elif self.op == OP_SLTE:
+                elif self.op == btor2.OP_SLTE:
                     return arg1_value <= arg2_value
                 else:
-                    assert self.op == OP_ULTE
+                    assert self.op == btor2.OP_ULTE
                     return arg1_value.ULE(arg2_value)
         arg1_value = arg1_value.get_expression()
         arg2_value = arg2_value.get_expression()
@@ -3467,72 +2948,64 @@ class Comparison(Binary):
     def model_z3(self):
         z3_arg1 = self.arg1_line.get_z3()
         z3_arg2 = self.arg2_line.get_z3()
-        if self.op == OP_EQ:
+        if self.op == btor2.OP_EQ:
             return z3_arg1 == z3_arg2
-        elif self.op == OP_NEQ:
+        elif self.op == btor2.OP_NEQ:
             return z3_arg1 != z3_arg2
-        elif self.op == OP_SGT:
+        elif self.op == btor2.OP_SGT:
             return z3_arg1 > z3_arg2
-        elif self.op == OP_UGT:
+        elif self.op == btor2.OP_UGT:
             return z3.UGT(z3_arg1, z3_arg2)
-        elif self.op == OP_SGTE:
+        elif self.op == btor2.OP_SGTE:
             return z3_arg1 >= z3_arg2
-        elif self.op == OP_UGTE:
+        elif self.op == btor2.OP_UGTE:
             return z3.UGE(z3_arg1, z3_arg2)
-        elif self.op == OP_SLT:
+        elif self.op == btor2.OP_SLT:
             return z3_arg1 < z3_arg2
-        elif self.op == OP_ULT:
+        elif self.op == btor2.OP_ULT:
             return z3.ULT(z3_arg1, z3_arg2)
-        elif self.op == OP_SLTE:
+        elif self.op == btor2.OP_SLTE:
             return z3_arg1 <= z3_arg2
         else:
-            assert self.op == OP_ULTE
+            assert self.op == btor2.OP_ULTE
             return z3.ULE(z3_arg1, z3_arg2)
 
     def model_bitwuzla(self, tm):
-        if self.op == OP_EQ:
+        if self.op == btor2.OP_EQ:
             bitwuzla_op = bitwuzla.Kind.EQUAL
-        elif self.op == OP_NEQ:
+        elif self.op == btor2.OP_NEQ:
             bitwuzla_op = bitwuzla.Kind.DISTINCT
-        elif self.op == OP_SGT:
+        elif self.op == btor2.OP_SGT:
             bitwuzla_op = bitwuzla.Kind.BV_SGT
-        elif self.op == OP_UGT:
+        elif self.op == btor2.OP_UGT:
             bitwuzla_op = bitwuzla.Kind.BV_UGT
-        elif self.op == OP_SGTE:
+        elif self.op == btor2.OP_SGTE:
             bitwuzla_op = bitwuzla.Kind.BV_SGE
-        elif self.op == OP_UGTE:
+        elif self.op == btor2.OP_UGTE:
             bitwuzla_op = bitwuzla.Kind.BV_UGE
-        elif self.op == OP_SLT:
+        elif self.op == btor2.OP_SLT:
             bitwuzla_op = bitwuzla.Kind.BV_SLT
-        elif self.op == OP_ULT:
+        elif self.op == btor2.OP_ULT:
             bitwuzla_op = bitwuzla.Kind.BV_ULT
-        elif self.op == OP_SLTE:
+        elif self.op == btor2.OP_SLTE:
             bitwuzla_op = bitwuzla.Kind.BV_SLE
         else:
-            assert self.op == OP_ULTE
+            assert self.op == btor2.OP_ULTE
             bitwuzla_op = bitwuzla.Kind.BV_ULE
         return tm.mk_term(bitwuzla_op,
             [self.arg1_line.get_bitwuzla(tm), self.arg2_line.get_bitwuzla(tm)])
 
-class Logical(Binary):
-    keywords = {OP_AND, OP_OR, OP_XOR}
-
+class Logical(Binary, btor2.Logical):
     def __init__(self, nid, op, sid_line, arg1_line, arg2_line, comment, line_no):
-        assert op in Logical.keywords
-        super().__init__(nid, op, sid_line, arg1_line, arg2_line, comment, line_no)
-        if not isinstance(sid_line, Bitvector):
-            raise model_error("Boolean or bitvector result", line_no)
-        if not sid_line.match_sorts(arg1_line.sid_line):
-            raise model_error("compatible result and first operand sorts", line_no)
-        if not arg1_line.sid_line.match_sorts(arg2_line.sid_line):
-            raise model_error("compatible first and second operand sorts", line_no)
+        Binary.__init__(self)
+        btor2.Logical.__init__(self, nid, op, sid_line, arg1_line, arg2_line, comment, line_no)
 
     def compute_values(self, step):
         if Instance.PROPAGATE_BINARY:
             if isinstance(self.sid_line, Bool):
                 arg1_value = self.arg1_line.get_values(step)
                 if isinstance(arg1_value, Values):
-                    if self.op == OP_AND:
+                    if self.op == btor2.OP_AND:
                         if arg1_value.is_always_false():
                             return arg1_value.And(None)
                         else:
@@ -3540,7 +3013,7 @@ class Logical(Binary):
                             arg2_value = self.arg2_line.get_values(step)
                             if isinstance(arg2_value, Values):
                                 return arg1_value.And(arg2_value)
-                    elif self.op == OP_OR:
+                    elif self.op == btor2.OP_OR:
                         if arg1_value.is_always_true():
                             return arg1_value.Or(None)
                         else:
@@ -3549,7 +3022,7 @@ class Logical(Binary):
                             if isinstance(arg2_value, Values):
                                 return arg1_value.Or(arg2_value)
                     else:
-                        assert self.op == OP_XOR
+                        assert self.op == btor2.OP_XOR
                         arg2_value = self.arg2_line.get_values(step)
                         if isinstance(arg2_value, Values):
                             return arg1_value.Xor(arg2_value)
@@ -3558,12 +3031,12 @@ class Logical(Binary):
                 arg1_value = self.arg1_line.get_values(step)
                 arg2_value = self.arg2_line.get_values(step)
                 if isinstance(arg1_value, Values) and isinstance(arg2_value, Values):
-                    if self.op == OP_AND:
+                    if self.op == btor2.OP_AND:
                         return arg1_value & arg2_value
-                    elif self.op == OP_OR:
+                    elif self.op == btor2.OP_OR:
                         return arg1_value | arg2_value
                     else:
-                        assert self.op == OP_XOR
+                        assert self.op == btor2.OP_XOR
                         return arg1_value ^ arg2_value
         else:
             arg1_value = self.arg1_line.get_values(step)
@@ -3576,80 +3049,72 @@ class Logical(Binary):
         z3_arg1 = self.arg1_line.get_z3()
         z3_arg2 = self.arg2_line.get_z3()
         if isinstance(self.sid_line, Bool):
-            if self.op == OP_AND:
+            if self.op == btor2.OP_AND:
                 return z3.And(z3_arg1, z3_arg2)
-            elif self.op == OP_OR:
+            elif self.op == btor2.OP_OR:
                 return z3.Or(z3_arg1, z3_arg2)
             else:
-                assert self.op == OP_XOR
+                assert self.op == btor2.OP_XOR
                 return z3.Xor(z3_arg1, z3_arg2)
         else:
-            if self.op == OP_AND:
+            if self.op == btor2.OP_AND:
                 return z3_arg1 & z3_arg2
-            elif self.op == OP_OR:
+            elif self.op == btor2.OP_OR:
                 return z3_arg1 | z3_arg2
             else:
-                assert self.op == OP_XOR
+                assert self.op == btor2.OP_XOR
                 return z3_arg1 ^ z3_arg2
 
     def model_bitwuzla(self, tm):
         if isinstance(self.sid_line, Bool):
-            if self.op == OP_AND:
+            if self.op == btor2.OP_AND:
                 bitwuzla_op = bitwuzla.Kind.AND
-            elif self.op == OP_OR:
+            elif self.op == btor2.OP_OR:
                 bitwuzla_op = bitwuzla.Kind.OR
             else:
-                assert self.op == OP_XOR
+                assert self.op == btor2.OP_XOR
                 bitwuzla_op = bitwuzla.Kind.XOR
         else:
-            if self.op == OP_AND:
+            if self.op == btor2.OP_AND:
                 bitwuzla_op = bitwuzla.Kind.BV_AND
-            elif self.op == OP_OR:
+            elif self.op == btor2.OP_OR:
                 bitwuzla_op = bitwuzla.Kind.BV_OR
             else:
-                assert self.op == OP_XOR
+                assert self.op == btor2.OP_XOR
                 bitwuzla_op = bitwuzla.Kind.BV_XOR
         return tm.mk_term(bitwuzla_op,
             [self.arg1_line.get_bitwuzla(tm), self.arg2_line.get_bitwuzla(tm)])
 
-class Computation(Binary):
-    keywords = {OP_SLL, OP_SRL, OP_SRA, OP_ADD, OP_SUB, OP_MUL, OP_SDIV, OP_UDIV, OP_SREM, OP_UREM}
-
+class Computation(Binary, btor2.Computation):
     def __init__(self, nid, op, sid_line, arg1_line, arg2_line, comment, line_no):
-        assert op in Computation.keywords
-        super().__init__(nid, op, sid_line, arg1_line, arg2_line, comment, line_no)
-        if not isinstance(sid_line, Bitvec):
-            raise model_error("bitvector result", line_no)
-        if not sid_line.match_sorts(arg1_line.sid_line):
-            raise model_error("compatible result and first operand sorts", line_no)
-        if not arg1_line.sid_line.match_sorts(arg2_line.sid_line):
-            raise model_error("compatible first and second operand sorts", line_no)
+        Binary.__init__(self)
+        btor2.Computation.__init__(self, nid, op, sid_line, arg1_line, arg2_line, comment, line_no)
 
     def compute_values(self, step):
         arg1_value = self.arg1_line.get_values(step)
         arg2_value = self.arg2_line.get_values(step)
         if Instance.PROPAGATE_BINARY:
             if isinstance(arg1_value, Values) and isinstance(arg2_value, Values):
-                if self.op == OP_SLL:
+                if self.op == btor2.OP_SLL:
                     return arg1_value << arg2_value
-                elif self.op == OP_SRL:
+                elif self.op == btor2.OP_SRL:
                     return arg1_value.LShR(arg2_value)
-                elif self.op == OP_SRA:
+                elif self.op == btor2.OP_SRA:
                     return arg1_value >> arg2_value
-                elif self.op == OP_ADD:
+                elif self.op == btor2.OP_ADD:
                     return arg1_value + arg2_value
-                elif self.op == OP_SUB:
+                elif self.op == btor2.OP_SUB:
                     return arg1_value - arg2_value
-                elif self.op == OP_MUL:
+                elif self.op == btor2.OP_MUL:
                     return arg1_value * arg2_value
-                elif self.op == OP_SDIV:
+                elif self.op == btor2.OP_SDIV:
                     return arg1_value / arg2_value
-                elif self.op == OP_UDIV:
+                elif self.op == btor2.OP_UDIV:
                     return arg1_value.UDiv(arg2_value)
-                elif self.op == OP_SREM:
+                elif self.op == btor2.OP_SREM:
                     return arg1_value.SRem(arg2_value)
                 else:
-                    assert self.op == OP_UREM
+                    assert self.op == btor2.OP_UREM
                     return arg1_value.URem(arg2_value)
         arg1_value = arg1_value.get_expression()
         arg2_value = arg2_value.get_expression()
@@ -3658,67 +3123,57 @@ class Computation(Binary):
     def model_z3(self):
         z3_arg1 = self.arg1_line.get_z3()
         z3_arg2 = self.arg2_line.get_z3()
-        if self.op == OP_SLL:
+        if self.op == btor2.OP_SLL:
             return z3_arg1 << z3_arg2
-        elif self.op == OP_SRL:
+        elif self.op == btor2.OP_SRL:
             return z3.LShR(z3_arg1, z3_arg2)
-        elif self.op == OP_SRA:
+        elif self.op == btor2.OP_SRA:
             return z3_arg1 >> z3_arg2
-        elif self.op == OP_ADD:
+        elif self.op == btor2.OP_ADD:
             return z3_arg1 + z3_arg2
-        elif self.op == OP_SUB:
+        elif self.op == btor2.OP_SUB:
             return z3_arg1 - z3_arg2
-        elif self.op == OP_MUL:
+        elif self.op == btor2.OP_MUL:
             return z3_arg1 * z3_arg2
-        elif self.op == OP_SDIV:
+        elif self.op == btor2.OP_SDIV:
             return z3_arg1 / z3_arg2
-        elif self.op == OP_UDIV:
+        elif self.op == btor2.OP_UDIV:
             return z3.UDiv(z3_arg1, z3_arg2)
-        elif self.op == OP_SREM:
+        elif self.op == btor2.OP_SREM:
             return z3.SRem(z3_arg1, z3_arg2)
         else:
-            assert self.op == OP_UREM
+            assert self.op == btor2.OP_UREM
             return z3.URem(z3_arg1, z3_arg2)
 
     def model_bitwuzla(self, tm):
-        if self.op == OP_SLL:
+        if self.op == btor2.OP_SLL:
             bitwuzla_op = bitwuzla.Kind.BV_SHL
-        elif self.op == OP_SRL:
+        elif self.op == btor2.OP_SRL:
             bitwuzla_op = bitwuzla.Kind.BV_SHR
-        elif self.op == OP_SRA:
+        elif self.op == btor2.OP_SRA:
             bitwuzla_op = bitwuzla.Kind.BV_ASHR
-        elif self.op == OP_ADD:
+        elif self.op == btor2.OP_ADD:
             bitwuzla_op = bitwuzla.Kind.BV_ADD
-        elif self.op == OP_SUB:
+        elif self.op == btor2.OP_SUB:
             bitwuzla_op = bitwuzla.Kind.BV_SUB
-        elif self.op == OP_MUL:
+        elif self.op == btor2.OP_MUL:
             bitwuzla_op = bitwuzla.Kind.BV_MUL
-        elif self.op == OP_SDIV:
+        elif self.op == btor2.OP_SDIV:
             bitwuzla_op = bitwuzla.Kind.BV_SDIV
-        elif self.op == OP_UDIV:
+        elif self.op == btor2.OP_UDIV:
             bitwuzla_op = bitwuzla.Kind.BV_UDIV
-        elif self.op == OP_SREM:
+        elif self.op == btor2.OP_SREM:
             bitwuzla_op = bitwuzla.Kind.BV_SREM
         else:
-            assert self.op == OP_UREM
+            assert self.op == btor2.OP_UREM
             bitwuzla_op = bitwuzla.Kind.BV_UREM
         return tm.mk_term(bitwuzla_op,
             [self.arg1_line.get_bitwuzla(tm), self.arg2_line.get_bitwuzla(tm)])
 
-class Concat(Binary):
-    keyword = OP_CONCAT
-
+class Concat(Binary, btor2.Concat):
     def __init__(self, nid, op, sid_line, arg1_line, arg2_line, comment, line_no):
-        assert op == Concat.keyword
-        super().__init__(nid, Concat.keyword, sid_line, arg1_line, arg2_line, comment, line_no)
-        if not isinstance(sid_line, Bitvec):
-            raise model_error("bitvector result", line_no)
-        if not isinstance(arg1_line.sid_line, Bitvec):
-            raise model_error("bitvector first operand", line_no)
-        if not isinstance(arg2_line.sid_line, Bitvec):
-            raise model_error("bitvector second operand", line_no)
-        if sid_line.size != arg1_line.sid_line.size + arg2_line.sid_line.size:
-            raise model_error("compatible bitvector result", line_no)
+        Binary.__init__(self)
+        btor2.Concat.__init__(self, nid, op, sid_line, arg1_line, arg2_line, comment, line_no)
 
     def compute_values(self, step):
         arg1_value = self.arg1_line.get_values(step)
@@ -3737,83 +3192,10 @@ class Concat(Binary):
         return tm.mk_term(bitwuzla.Kind.BV_CONCAT,
             [self.arg1_line.get_bitwuzla(tm), self.arg2_line.get_bitwuzla(tm)])
 
-class Read(Binary):
-    keyword = OP_READ
-
-    READ_ARRAY_ITERATIVELY = True
-
+class Read(Binary, btor2.Read):
     def __init__(self, nid, op, sid_line, arg1_line, arg2_line, comment, line_no):
-        assert op == Read.keyword
-        super().__init__(nid, Read.keyword, sid_line, arg1_line, arg2_line, comment, line_no)
-        if not isinstance(arg1_line.sid_line, Array):
-            raise model_error("array first operand", line_no)
-        if not arg1_line.sid_line.array_size_line.match_sorts(arg2_line.sid_line):
-            raise model_error("compatible first operand array size and second operand sorts", line_no)
-        if not sid_line.match_sorts(arg1_line.sid_line.element_size_line):
-            raise model_error("compatible result and first operand element size sorts", line_no)
-        self.read_cache = None
-
-    def read_array_iterative(self, array_line, index_line):
-        for index in range(2**array_line.sid_line.array_size_line.size):
-            if index == 0:
-                read_line = array_line.get_mapped_array_expression_for(0)
-            else:
-                read_line = Ite(Parser.next_nid(), self.sid_line,
-                    Comparison(Parser.next_nid(), OP_EQ, Bool.boolean,
-                        index_line,
-                        Constd(Parser.next_nid(), index_line.sid_line,
-                            index, f"index {index}", self.line_no),
-                        f"is address equal to index {index}?", self.line_no),
-                    array_line.get_mapped_array_expression_for(index),
-                    read_line,
-                    f"read value from {array_line.comment[2:]} @ address if equal to index {index}", self.line_no)
-        return read_line
-
-    def read_array_recursive(self, array_line, index_line, index_array, zero_line):
-        assert 2 <= len(index_array) == 2**math.log2(len(index_array))
-        if len(index_array) == 2:
-            even_line = array_line.get_mapped_array_expression_for(index_array[0])
-            odd_line = array_line.get_mapped_array_expression_for(index_array[1])
-        else:
-            even_line = self.read_array_recursive(array_line, index_line,
-                index_array[0:len(index_array)//2], zero_line)
-            odd_line = self.read_array_recursive(array_line, index_line,
-                index_array[len(index_array)//2:len(index_array)], zero_line)
-        address_bit = int(math.log2(len(index_array))) - 1
-        return Ite(Parser.next_nid(), self.sid_line,
-            Comparison(Parser.next_nid(), OP_EQ, Bool.boolean,
-                Slice(Parser.next_nid(), zero_line.sid_line, index_line,
-                    address_bit, address_bit,
-                    f"extract {address_bit}-th address bit", self.line_no),
-                zero_line,
-                f"is {address_bit}-th address bit set?", self.line_no),
-            even_line,
-            odd_line,
-            f"read value from {array_line.comment[2:]} @ reset or set {address_bit}-th address bit", self.line_no)
-
-    def read_array(self, array_line, index_line):
-        if array_line.sid_line.is_mapped_array():
-            if isinstance(index_line, Constant):
-                return array_line.get_mapped_array_expression_for(index_line.value)
-            else:
-                if Read.READ_ARRAY_ITERATIVELY:
-                    return self.read_array_iterative(array_line, index_line)
-                else:
-                    return self.read_array_recursive(array_line, index_line,
-                        list(range(2**array_line.sid_line.array_size_line.size)),
-                        Zero(Parser.next_nid(),
-                            Bitvec(Parser.next_nid(), 1, "1-bit bitvector for testing bits", self.line_no),
-                            "", "zero value for testing bits", self.line_no))
-        else:
-            return self.copy(array_line.get_mapped_array_expression_for(None), index_line)
-
-    def get_mapped_array_expression_for(self, index):
-        assert index is None
-        if self.read_cache is None: # avoids quadratic blowup in mapped array size
-            arg1_line = self.arg1_line # map later when index is known
-            arg2_line = self.arg2_line.get_mapped_array_expression_for(None)
-            self.read_cache = self.read_array(arg1_line, arg2_line)
-        return self.read_cache
+        Binary.__init__(self)
+        btor2.Read.__init__(self, nid, op, sid_line, arg1_line, arg2_line, comment, line_no)
 
     def compute_values(self, step):
         arg1_value = self.arg1_line.get_values(step).get_expression()
@@ -3827,62 +3209,15 @@ class Read(Binary):
         return tm.mk_term(bitwuzla.Kind.ARRAY_SELECT,
             [self.arg1_line.get_bitwuzla(tm), self.arg2_line.get_bitwuzla(tm)])
 
-class Ternary(Expression):
-    keywords = {OP_ITE, OP_WRITE}
+class Ternary(Expression, btor2.Ternary):
+    def __init__(self):
+        Expression.__init__(self)
 
-    def __init__(self, nid, op, sid_line, arg1_line, arg2_line, arg3_line, comment, line_no):
-        super().__init__(nid, sid_line, arg1_line.domain | arg2_line.domain | arg3_line.domain,
-            max(arg1_line.depth, arg2_line.depth, arg3_line.depth) + 1, comment, line_no)
-        assert op in Ternary.keywords
-        self.op = op
-        self.arg1_line = arg1_line
-        self.arg2_line = arg2_line
-        self.arg3_line = arg3_line
-        if not isinstance(arg1_line, Expression):
-            raise model_error("expression first operand", line_no)
-        if not isinstance(arg2_line, Expression):
-            raise model_error("expression second operand", line_no)
-        if not isinstance(arg3_line, Expression):
-            raise model_error("expression third operand", line_no)
-
-    def __str__(self):
-        return f"{self.nid} {self.op} {self.sid_line.nid} {self.arg1_line.nid} {self.arg2_line.nid} {self.arg3_line.nid} {self.comment}"
-
-class Ite(Ternary):
-    keyword = OP_ITE
-
-    branching_conditions = None
-    non_branching_conditions = None
-
+class Ite(Ternary, btor2.Ite):
     def __init__(self, nid, sid_line, arg1_line, arg2_line, arg3_line, comment, line_no):
-        super().__init__(nid, Ite.keyword, sid_line, arg1_line, arg2_line, arg3_line, comment, line_no)
-        if not isinstance(arg1_line.sid_line, Bool):
-            raise model_error("Boolean first operand", line_no)
-        if not sid_line.match_sorts(arg2_line.sid_line):
-            raise model_error("compatible result and second operand sorts", line_no)
-        if not arg2_line.sid_line.match_sorts(arg3_line.sid_line):
-            raise model_error("compatible second and third operand sorts", line_no)
-        self.ite_cache = {}
+        Ternary.__init__(self)
+        btor2.Ite.__init__(self, nid, sid_line, arg1_line, arg2_line, arg3_line, comment, line_no)
         self.instance = Instance(self)
-        if Ite.branching_conditions is None and comment == "; branch true condition":
-            Ite.branching_conditions = self
-        elif Ite.non_branching_conditions is None and comment == "; branch false condition":
-            Ite.non_branching_conditions = self
-
-    def copy(self, arg1_line, arg2_line, arg3_line):
-        if self.arg1_line is not arg1_line or self.arg2_line is not arg2_line or self.arg3_line is not arg3_line:
-            Expression.total_number_of_generated_expressions += 1
-            return Ite(Parser.next_nid(), arg2_line.sid_line, arg1_line, arg2_line, arg3_line, self.comment, self.line_no)
-        else:
-            return self
-
-    def get_mapped_array_expression_for(self, index):
-        if index not in self.ite_cache:
-            arg1_line = self.arg1_line.get_mapped_array_expression_for(None)
-            arg2_line = self.arg2_line.get_mapped_array_expression_for(index)
-            arg3_line = self.arg3_line.get_mapped_array_expression_for(index)
-            self.ite_cache[index] = self.copy(arg1_line, arg2_line, arg3_line)
-        return self.ite_cache[index]
 
     def compute_values(self, step):
         arg1_value = self.arg1_line.get_values(step)
@@ -3947,57 +3282,10 @@ class Ite(Ternary):
         self.set_step(step)
         return self.get_instance().get_bitwuzla_instance(step, tm)
 
-class Write(Ternary):
-    keyword = OP_WRITE
-
+class Write(Ternary, btor2.Write):
     def __init__(self, nid, sid_line, arg1_line, arg2_line, arg3_line, comment, line_no):
-        super().__init__(nid, Write.keyword, sid_line, arg1_line, arg2_line, arg3_line, comment, line_no)
-        if not isinstance(sid_line, Array):
-            raise model_error("array result", line_no)
-        if not sid_line.match_sorts(arg1_line.sid_line):
-            raise model_error("compatible result and first operand sorts", line_no)
-        if not arg1_line.sid_line.array_size_line.match_sorts(arg2_line.sid_line):
-            raise model_error("compatible first operand array size and second operand sorts", line_no)
-        if not arg1_line.sid_line.element_size_line.match_sorts(arg3_line.sid_line):
-            raise model_error("compatible first operand element size and third operand sorts", line_no)
-        self.write_cache = {}
-
-    def copy(self, arg1_line, arg2_line, arg3_line):
-        if self.arg1_line is not arg1_line or self.arg2_line is not arg2_line or self.arg3_line is not arg3_line:
-            Expression.total_number_of_generated_expressions += 1
-            return Write(Parser.next_nid(), arg1_line.sid_line, arg1_line, arg2_line, arg3_line, self.comment, self.line_no)
-        else:
-            return self
-
-    def write_array(self, array_line, index_line, value_line, index):
-        if self.sid_line.is_mapped_array():
-            assert index is not None
-            if isinstance(index_line, Constant):
-                if index_line.value == index:
-                    return value_line
-                else:
-                    return array_line
-            else:
-                return Ite(Parser.next_nid(), value_line.sid_line,
-                    Comparison(Parser.next_nid(), OP_EQ, Bool.boolean,
-                        index_line,
-                        Constd(Parser.next_nid(), index_line.sid_line,
-                            index, f"index {index}", self.line_no),
-                        f"is address equal to index {index}?", self.line_no),
-                    value_line,
-                    array_line,
-                    f"write value to {array_line.comment[2:]} @ address if equal to index {index}", self.line_no)
-        else:
-            assert index is None
-            return self.copy(array_line, index_line, value_line)
-
-    def get_mapped_array_expression_for(self, index):
-        if index not in self.write_cache:
-            arg1_line = self.arg1_line.get_mapped_array_expression_for(index)
-            arg2_line = self.arg2_line.get_mapped_array_expression_for(None)
-            arg3_line = self.arg3_line.get_mapped_array_expression_for(None)
-            self.write_cache[index] = self.write_array(arg1_line, arg2_line, arg3_line, index)
-        return self.write_cache[index]
+        Ternary.__init__(self)
+        btor2.Write.__init__(self, nid, sid_line, arg1_line, arg2_line, arg3_line, comment, line_no)
 
     def compute_values(self, step):
         arg1_value = self.arg1_line.get_values(step).get_expression()
@@ -4014,79 +3302,14 @@ class Write(Ternary):
             self.arg2_line.get_bitwuzla(tm),
             self.arg3_line.get_bitwuzla(tm)])
 
-class Transitional(Line):
-    def __init__(self, nid, sid_line, state_line, exp_line, symbol, comment, line_no, array_line, index):
-        super().__init__(nid, comment, line_no)
-        self.sid_line = sid_line
-        self.state_line = state_line
-        self.exp_line = exp_line
-        self.symbol = symbol
-        if not isinstance(sid_line, Sort):
-            raise model_error("sort", line_no)
-        if not isinstance(state_line, State):
-            raise model_error("state operand", line_no)
-        if not isinstance(exp_line, Expression):
-            raise model_error("expression operand", line_no)
-        if not self.sid_line.match_sorts(state_line.sid_line):
-            raise model_error("compatible line and state sorts", line_no)
-        if not state_line.sid_line.match_init_sorts(exp_line.sid_line):
-            raise model_error("compatible state and expression sorts", line_no)
-        self.new_mapped_array(array_line, index)
+class Transitional(Line, btor2.Transitional):
+    def __init__(self):
+        Line.__init__(self)
 
-    def new_mapped_array(self, array_line, index):
-        self.array_line = array_line
-        self.index = index
-        if index is not None:
-            if not isinstance(self.sid_line, Bitvector):
-                raise model_error("bitvector", self.line_no)
-        elif self.sid_line.is_mapped_array():
-            self.array = {}
-            for index in self.state_line.array.keys():
-                self.array[index] = type(self)(self.nid + index + 1, self.sid_line.element_size_line,
-                    self.state_line.array[index], self.state_line.array[index], self.symbol,
-                    f"{self.comment} @ index {index}", self.line_no, self, index)
-
-    def set_mapped_array_expression(self):
-        if self.index is None:
-            self.exp_line = self.exp_line.get_mapped_array_expression_for(None)
-        else:
-            self.exp_line = self.array_line.exp_line.get_mapped_array_expression_for(self.index)
-
-    def remove_transition(state_line, transitions):
-        for key in transitions.keys():
-            if transitions[key].state_line is state_line:
-                del transitions[key]
-                return
-
-    def new_transition(self, transitions, index):
-        if index is not None or not self.sid_line.is_mapped_array():
-            assert self.nid not in transitions, f"transition nid {self.nid} already defined @ {self.line_no}"
-            transitions[self.nid] = self
-
-class Init(Transitional):
-    keyword = OP_INIT
-
-    inits = {}
-
+class Init(Transitional, btor2.Init):
     def __init__(self, nid, sid_line, state_line, exp_line, symbol, comment, line_no, array_line = None, index = None):
-        if isinstance(state_line.sid_line, Array) and isinstance(exp_line, Constant):
-            exp_line = Constant_Array(state_line.sid_line, exp_line)
-        super().__init__(nid, sid_line, state_line, exp_line, symbol, comment, line_no, array_line, index)
-        if state_line.nid < exp_line.nid:
-            raise model_error("state after expression", line_no)
-        if isinstance(state_line, Input):
-            raise model_error("state, not input", line_no)
-        if self.state_line.init_line is None:
-            self.state_line.init_line = self
-        else:
-            raise model_error("uninitialized state", line_no)
-        self.new_transition(Init.inits, index)
-
-    def __str__(self):
-        if self.symbol:
-            return f"{self.nid} {Init.keyword} {self.sid_line.nid} {self.state_line.nid} {self.exp_line.nid} {self.symbol} {self.comment}"
-        else:
-            return f"{self.nid} {Init.keyword} {self.sid_line.nid} {self.state_line.nid} {self.exp_line.nid} {self.comment}"
+        Transitional.__init__(self)
+        btor2.Init.__init__(self, nid, sid_line, state_line, exp_line, symbol, comment, line_no, array_line, index)
 
     def get_instance(self):
         return self.state_line.instance
@@ -4121,30 +3344,16 @@ class Init(Transitional):
                 [self.state_line.get_bitwuzla_name(0, tm),
                 self.state_line.get_bitwuzla_instance(-1, tm)])
 
-class Next(Transitional):
-    keyword = OP_NEXT
-
-    nexts = {}
-
+class Next(Transitional, btor2.Next):
     def __init__(self, nid, sid_line, state_line, exp_line, symbol, comment, line_no, array_line = None, index = None):
-        super().__init__(nid, sid_line, state_line, exp_line, symbol, comment, line_no, array_line, index)
+        Transitional.__init__(self)
+        btor2.Next.__init__(self, nid, sid_line, state_line, exp_line, symbol, comment, line_no, array_line, index)
         self.cache_z3_next_state = {}
         self.cache_z3_is_state_changing = {}
         self.cache_z3_state_is_not_changing = {}
         self.cache_bitwuzla_next_state = {}
         self.cache_bitwuzla_is_state_changing = {}
         self.cache_bitwuzla_state_is_not_changing = {}
-        if self.state_line.next_line is None:
-            self.state_line.next_line = self
-        else:
-            raise model_error("untransitioned state", line_no)
-        self.new_transition(Next.nexts, index)
-
-    def __str__(self):
-        if self.symbol:
-            return f"{self.nid} {Next.keyword} {self.sid_line.nid} {self.state_line.nid} {self.exp_line.nid} {self.symbol} {self.comment}"
-        else:
-            return f"{self.nid} {Next.keyword} {self.sid_line.nid} {self.state_line.nid} {self.exp_line.nid} {self.comment}"
 
     def get_instance(self):
         return self.state_line.instance
@@ -4230,21 +3439,10 @@ class Next(Transitional):
                     self.state_line.get_bitwuzla_name(step, tm)])
         return self.cache_bitwuzla_state_is_not_changing[step]
 
-class Property(Line):
-    keywords = {OP_CONSTRAINT, OP_BAD}
-
-    def __init__(self, nid, property_line, symbol, comment, line_no):
-        super().__init__(nid, comment, line_no)
-        self.property_line = property_line
-        self.symbol = symbol
+class Property(Line, btor2.Property):
+    def __init__(self):
+        Line.__init__(self)
         self.instance = Instance(self)
-        if not isinstance(property_line, Expression):
-            raise model_error("expression operand", line_no)
-        if not isinstance(property_line.sid_line, Bool):
-            raise model_error("Boolean operand", line_no)
-
-    def set_mapped_array_expression(self):
-        self.property_line = self.property_line.get_mapped_array_expression_for(None)
 
     def get_instance(self):
         return self.instance
@@ -4263,478 +3461,72 @@ class Property(Line):
         self.set_step(step)
         return self.get_instance().get_bitwuzla_instance(step, tm)
 
-class Constraint(Property):
-    keyword = OP_CONSTRAINT
-
-    constraints = {}
-
+class Constraint(Property, btor2.Constraint):
     def __init__(self, nid, property_line, symbol, comment, line_no):
-        super().__init__(nid, property_line, symbol, comment, line_no)
-        self.new_constraint()
+        Property.__init__(self)
+        btor2.Constraint.__init__(self, nid, property_line, symbol, comment, line_no)
 
-    def __str__(self):
-        return f"{self.nid} {Constraint.keyword} {self.property_line.nid} {self.symbol} {self.comment}"
-
-    def new_constraint(self):
-        assert self not in Constraint.constraints, f"constraint nid {self.nid} already defined @ {self.line_no}"
-        Constraint.constraints[self.nid] = self
-
-class Bad(Property):
-    keyword = OP_BAD
-
-    bads = {}
-
+class Bad(Property, btor2.Bad):
     def __init__(self, nid, property_line, symbol, comment, line_no):
-        super().__init__(nid, property_line, symbol, comment, line_no)
-        self.new_bad()
+        Property.__init__(self)
+        btor2.Bad.__init__(self, nid, property_line, symbol, comment, line_no)
 
-    def __str__(self):
-        return f"{self.nid} {Bad.keyword} {self.property_line.nid} {self.symbol} {self.comment}"
+# parser interface
 
-    def new_bad(self):
-        assert self.nid not in Bad.bads, f"bad nid {self.nid} already defined @ {self.line_no}"
-        Bad.bads[self.nid] = self
-
-# BTOR2 parser
-
-class syntax_error(Exception):
-    def __init__(self, expected, line_no):
-        super().__init__(f"syntax error in line {line_no}: {expected} expected")
-
-import re
-
-class Parser:
-    current_nid = 0
-
-    def next_nid(nid = None):
-        if nid is None:
-            Parser.current_nid += 1
-            return Parser.current_nid
-        else:
-            return nid
-
-    def tokenize_btor2(line):
-        # comment, non-comment no-space printable string,
-        # signed integer, binary number, hexadecimal number
-        btor2_token_pattern = r"(;.*|[^; \n\r]+|-?\d+|[0-1]|[0-9a-fA-F]+)"
-        tokens = re.findall(btor2_token_pattern, line)
-        return tokens
-
-    def get_token(tokens, expected, line_no):
-        try:
-            return tokens.pop(0)
-        except:
-            raise syntax_error(expected, line_no)
-
-    def get_decimal(tokens, expected, line_no):
-        token = Parser.get_token(tokens, expected, line_no)
-        if token.isdecimal():
-            return int(token)
-        else:
-            raise syntax_error(expected, line_no)
-
-    def get_nid(tokens, expected, line_no):
-        return Array.accommodate_array_indexes(Parser.get_decimal(tokens, expected, line_no))
-
-    def get_nid_line(tokens, clss, expected, line_no):
-        nid = Parser.get_nid(tokens, expected, line_no)
-        if Line.is_defined(nid):
-            line = Line.get(nid)
-            if isinstance(line, clss):
-                return line
-            else:
-                raise syntax_error(expected, line_no)
-        else:
-            raise syntax_error(f"defined {expected}", line_no)
-
-    def get_bool_or_bitvec_sid_line(tokens, line_no):
-        return Parser.get_nid_line(tokens, Bitvector, "Boolean or bitvector sort nid", line_no)
-
-    def get_bitvec_sid_line(tokens, line_no):
-        return Parser.get_nid_line(tokens, Bitvec, "bitvector sort nid", line_no)
-
-    def get_sid_line(tokens, line_no):
-        return Parser.get_nid_line(tokens, Sort, "sort nid", line_no)
-
-    def get_state_line(tokens, line_no):
-        return Parser.get_nid_line(tokens, State, "state nid", line_no)
-
-    def get_exp_line(tokens, line_no):
-        return Parser.get_nid_line(tokens, Expression, "expression nid", line_no)
-
-    def get_number(tokens, base, expected, line_no):
-        token = Parser.get_token(tokens, expected, line_no)
-        try:
-            if (base == 10):
-                return int(token)
-            else:
-                return int(token, base)
-        except ValueError:
-            raise syntax_error(expected, line_no)
-
-    def get_symbol(tokens):
-        try:
-            return Parser.get_token(tokens, None, None)
-        except:
-            return ""
-
-    def get_comment(tokens, line_no):
-        comment = Parser.get_symbol(tokens)
-        if comment:
-            if comment[0] != ';':
-                raise syntax_error("comment", line_no)
-        return comment
-
-    def get_class(self, keyword):
-        if keyword == Zero.keyword:
+class ValuesParser(btor2.Parser):
+    def get_class(self, clss_or_keyword):
+        if clss_or_keyword is btor2.Bool:
+            return Bool
+        elif clss_or_keyword is btor2.Bitvec:
+            return Bitvec
+        elif clss_or_keyword is btor2.Array:
+            return Array
+        elif clss_or_keyword is btor2.Constant_Array:
+            return Constant_Array
+        elif clss_or_keyword is btor2.Zero or clss_or_keyword == btor2.Zero.keyword:
             return Zero
-        elif keyword == One.keyword:
+        elif clss_or_keyword is btor2.One or clss_or_keyword == btor2.One.keyword:
             return One
-        elif keyword == Constd.keyword:
+        elif clss_or_keyword is btor2.Constd or clss_or_keyword == btor2.Constd.keyword:
             return Constd
-        elif keyword == Const.keyword:
+        elif clss_or_keyword is btor2.Const or clss_or_keyword == btor2.Const.keyword:
             return Const
-        elif keyword == Consth.keyword:
+        elif clss_or_keyword is btor2.Consth or clss_or_keyword == btor2.Consth.keyword:
             return Consth
-        elif keyword == Input.keyword:
+        elif clss_or_keyword is btor2.Input or clss_or_keyword == btor2.Input.keyword:
             return Input
-        elif keyword == State.keyword:
+        elif clss_or_keyword is btor2.State or clss_or_keyword == btor2.State.keyword:
             return State
-        elif keyword in Ext.keywords:
+        elif clss_or_keyword is btor2.Ext or clss_or_keyword in btor2.Ext.keywords:
             return Ext
-        elif keyword == Slice.keyword:
+        elif clss_or_keyword is btor2.Slice or clss_or_keyword == btor2.Slice.keyword:
             return Slice
-        elif keyword in Unary.keywords:
+        elif clss_or_keyword is btor2.Unary or clss_or_keyword in btor2.Unary.keywords:
             return Unary
-        elif keyword == Implies.keyword:
+        elif clss_or_keyword is btor2.Implies or clss_or_keyword == btor2.Implies.keyword:
             return Implies
-        elif keyword in Comparison.keywords:
+        elif clss_or_keyword is btor2.Comparison or clss_or_keyword in btor2.Comparison.keywords:
             return Comparison
-        elif keyword in Logical.keywords:
+        elif clss_or_keyword is btor2.Logical or clss_or_keyword in btor2.Logical.keywords:
             return Logical
-        elif keyword in Computation.keywords:
+        elif clss_or_keyword is btor2.Computation or clss_or_keyword in btor2.Computation.keywords:
             return Computation
-        elif keyword == Concat.keyword:
+        elif clss_or_keyword is btor2.Concat or clss_or_keyword == btor2.Concat.keyword:
             return Concat
-        elif keyword == Read.keyword:
+        elif clss_or_keyword is btor2.Read or clss_or_keyword == btor2.Read.keyword:
             return Read
-        elif keyword == Ite.keyword:
+        elif clss_or_keyword is btor2.Ite or clss_or_keyword == btor2.Ite.keyword:
             return Ite
-        elif keyword == Write.keyword:
+        elif clss_or_keyword is btor2.Write or clss_or_keyword == btor2.Write.keyword:
             return Write
-        elif keyword == Init.keyword:
+        elif clss_or_keyword is btor2.Init or clss_or_keyword == btor2.Init.keyword:
             return Init
-        elif keyword == Next.keyword:
+        elif clss_or_keyword is btor2.Next or clss_or_keyword == btor2.Next.keyword:
             return Next
-        elif keyword == Constraint.keyword:
+        elif clss_or_keyword is btor2.Constraint or clss_or_keyword == btor2.Constraint.keyword:
             return Constraint
-        elif keyword == Bad.keyword:
+        elif clss_or_keyword is btor2.Bad or clss_or_keyword == btor2.Bad.keyword:
             return Bad
-
-    def new_boolean(self, nid = None, line_no = None):
-        return Bool(Parser.next_nid(nid), "Boolean", line_no)
-
-    def new_bitvec(self, size_in_bits, comment, nid = None, line_no = None):
-        return Bitvec(Parser.next_nid(nid), size_in_bits, comment, line_no)
-
-    def new_array(self, address_sid, element_sid, comment, nid = None, line_no = None):
-        return Array(Parser.next_nid(nid), address_sid, element_sid, comment, line_no)
-
-    def new_zero_one(self, op, sid, symbol, comment, nid = None, line_no = None):
-        assert op in {OP_ZERO, OP_ONE}
-        return self.get_class(op)(Parser.next_nid(nid), sid, symbol, comment, line_no)
-
-    def new_constant(self, op, sid, constant, comment, nid = None, line_no = None):
-        assert op in {OP_CONSTD, OP_CONST, OP_CONSTH}
-        if op == OP_CONSTD:
-            if constant == 0:
-                return Zero(Parser.next_nid(nid), sid, "", comment, line_no)
-            elif constant == 1:
-                return One(Parser.next_nid(nid), sid, "", comment, line_no)
-        return self.get_class(op)(Parser.next_nid(nid), sid, constant, comment, line_no)
-
-    def new_input(self, op, sid, symbol, comment, nid = None, line_no = None):
-        assert op in Variable.keywords
-        return self.get_class(op)(Parser.next_nid(nid), sid, symbol, comment, line_no)
-
-    def new_ext(self, op, sid, value_nid, w, comment, nid = None, line_no = None):
-        assert op in Ext.keywords
-        return self.get_class(op)(Parser.next_nid(nid), op, sid, value_nid, w, comment, line_no)
-
-    def new_slice(self, sid, value_nid, u, l, comment, nid = None, line_no = None):
-        return self.get_class(Slice.keyword)(Parser.next_nid(nid), sid, value_nid, u, l, comment, line_no)
-
-    def new_unary(self, op, sid, value_nid, comment, nid = None, line_no = None):
-        assert op in Unary.keywords
-        return self.get_class(op)(Parser.next_nid(nid), op, sid, value_nid, comment, line_no)
-
-    def new_unary_boolean(self, op, value_nid, comment, nid = None, line_no = None):
-        assert op == OP_NOT
-        return self.get_class(op)(Parser.next_nid(nid), op, SID_BOOLEAN, value_nid, comment, line_no)
-
-    def new_binary(self, op, sid, left_nid, right_nid, comment, nid = None, line_no = None):
-        assert op in Binary.keywords
-        return self.get_class(op)(Parser.next_nid(nid), op, sid, left_nid, right_nid, comment, line_no)
-
-    def new_binary_boolean(self, op, left_nid, right_nid, comment, nid = None, line_no = None):
-        assert op in Implies.keyword + Comparison.keywords + Logical.keywords
-        return self.get_class(op)(Parser.next_nid(nid), op, SID_BOOLEAN, left_nid, right_nid, comment, line_no)
-
-    def new_ternary(self, op, sid, first_nid, second_nid, third_nid, comment, nid = None, line_no = None):
-        assert op in Ternary.keywords
-        return self.get_class(op)(Parser.next_nid(nid), sid, first_nid, second_nid, third_nid, comment, line_no)
-
-    def new_init(self, sid, state_nid, value_nid, comment, nid = None, line_no = None):
-        return self.get_class(Init.keyword)(Parser.next_nid(nid), sid, state_nid, value_nid, comment, line_no)
-
-    def new_next(self, sid, state_nid, value_nid, comment, nid = None, line_no = None):
-        return self.get_class(Next.keyword)(Parser.next_nid(nid), sid, state_nid, value_nid, comment, line_no)
-
-    def new_init_next(self, op, sid, state_nid, value_nid, symbol, comment, nid = None, line_no = None):
-        return self.get_class(op)(Parser.next_nid(nid), sid, state_nid, value_nid, symbol, comment, line_no)
-
-    def new_property(self, op, condition_nid, symbol, comment, nid = None, line_no = None):
-        assert op in Property.keywords
-        return self.get_class(op)(Parser.next_nid(nid), condition_nid, symbol, comment, line_no)
-
-    def parse_sort_line(self, tokens, nid, line_no):
-        token = Parser.get_token(tokens, "bitvector or array", line_no)
-        if token == Bitvec.keyword:
-            size = Parser.get_decimal(tokens, "bitvector size", line_no)
-            comment = Parser.get_comment(tokens, line_no)
-            # beator- and rotor-dependent Boolean declaration
-            if comment == "; Boolean" and size == 1:
-                return self.new_boolean(nid, line_no)
-            else:
-                return self.new_bitvec(size, comment, nid, line_no)
-        elif token == Array.keyword:
-            array_size_line = Parser.get_bitvec_sid_line(tokens, line_no)
-            element_size_line = Parser.get_bitvec_sid_line(tokens, line_no)
-            comment = Parser.get_comment(tokens, line_no)
-            return self.new_array(array_size_line, element_size_line, comment, nid, line_no)
-        else:
-            raise syntax_error("bitvector or array", line_no)
-
-    def parse_symbol_comment(self, tokens, line_no):
-        symbol = Parser.get_symbol(tokens)
-        comment = Parser.get_comment(tokens, line_no)
-        if symbol:
-            if symbol[0] == ';':
-                return "", symbol
-        return symbol, comment
-
-    def parse_zero_one_line(self, tokens, nid, op, line_no):
-        sid_line = Parser.get_bool_or_bitvec_sid_line(tokens, line_no)
-        symbol, comment = self.parse_symbol_comment(tokens, line_no)
-        return self.new_zero_one(op, sid_line, symbol, comment, nid, line_no)
-
-    def parse_constant_line(self, tokens, nid, op, line_no):
-        sid_line = Parser.get_bool_or_bitvec_sid_line(tokens, line_no)
-        if op == Constd.keyword:
-            value = Parser.get_number(tokens, 10, "signed integer", line_no)
-        elif op == Const.keyword:
-            value = Parser.get_number(tokens, 2, "binary number", line_no)
-        elif op == Consth.keyword:
-            value = Parser.get_number(tokens, 16, "hexadecimal number", line_no)
-        comment = Parser.get_comment(tokens, line_no)
-        return self.new_constant(op, sid_line, value, comment, nid, line_no)
-
-    def parse_variable_line(self, tokens, nid, op, line_no):
-        sid_line = Parser.get_sid_line(tokens, line_no)
-        symbol, comment = self.parse_symbol_comment(tokens, line_no)
-        return self.new_input(op, sid_line, symbol, comment, nid, line_no)
-
-    def parse_ext_line(self, tokens, nid, op, line_no):
-        sid_line = Parser.get_sid_line(tokens, line_no)
-        arg1_line = Parser.get_exp_line(tokens, line_no)
-        w = Parser.get_decimal(tokens, "bit width", line_no)
-        comment = Parser.get_comment(tokens, line_no)
-        return self.new_ext(op, sid_line, arg1_line, w, comment, nid, line_no)
-
-    def parse_slice_line(self, tokens, nid, line_no):
-        sid_line = Parser.get_sid_line(tokens, line_no)
-        arg1_line = Parser.get_exp_line(tokens, line_no)
-        u = Parser.get_decimal(tokens, "upper bit", line_no)
-        l = Parser.get_decimal(tokens, "lower bit", line_no)
-        comment = Parser.get_comment(tokens, line_no)
-        return self.new_slice(sid_line, arg1_line, u, l, comment, nid, line_no)
-
-    def parse_unary_line(self, tokens, nid, op, line_no):
-        sid_line = Parser.get_sid_line(tokens, line_no)
-        arg1_line = Parser.get_exp_line(tokens, line_no)
-        comment = Parser.get_comment(tokens, line_no)
-        return self.new_unary(op, sid_line, arg1_line, comment, nid, line_no)
-
-    def parse_binary_line(self, tokens, nid, op, line_no):
-        sid_line = Parser.get_sid_line(tokens, line_no)
-        arg1_line = Parser.get_exp_line(tokens, line_no)
-        arg2_line = Parser.get_exp_line(tokens, line_no)
-        comment = Parser.get_comment(tokens, line_no)
-        return self.new_binary(op, sid_line, arg1_line, arg2_line, comment, nid, line_no)
-
-    def parse_ternary_line(self, tokens, nid, op, line_no):
-        sid_line = Parser.get_sid_line(tokens, line_no)
-        arg1_line = Parser.get_exp_line(tokens, line_no)
-        arg2_line = Parser.get_exp_line(tokens, line_no)
-        arg3_line = Parser.get_exp_line(tokens, line_no)
-        comment = Parser.get_comment(tokens, line_no)
-        return self.new_ternary(op, sid_line, arg1_line, arg2_line, arg3_line, comment, nid, line_no)
-
-    def parse_init_next_line(self, tokens, nid, op, line_no):
-        sid_line = Parser.get_sid_line(tokens, line_no)
-        state_line = Parser.get_state_line(tokens, line_no)
-        exp_line = Parser.get_exp_line(tokens, line_no)
-        symbol, comment = self.parse_symbol_comment(tokens, line_no)
-        return self.new_init_next(op, sid_line, state_line, exp_line, symbol, comment, nid, line_no)
-
-    def parse_property_line(self, tokens, nid, op, line_no):
-        property_line = Parser.get_exp_line(tokens, line_no)
-        symbol, comment = self.parse_symbol_comment(tokens, line_no)
-        return self.new_property(op, property_line, symbol, comment, nid, line_no)
-
-    def parse_btor2_line(self, line, line_no):
-        if line.strip():
-            tokens = Parser.tokenize_btor2(line)
-            token = Parser.get_token(tokens, None, None)
-            if token[0] != ';':
-                if token.isdecimal():
-                    nid = Array.accommodate_array_indexes(int(token))
-                    if nid > Parser.current_nid:
-                        Parser.current_nid = nid
-                        token = Parser.get_token(tokens, "keyword", line_no)
-                        if token == Sort.keyword:
-                            return self.parse_sort_line(tokens, nid, line_no)
-                        elif token in {Zero.keyword, One.keyword}:
-                            return self.parse_zero_one_line(tokens, nid, token, line_no)
-                        elif token in {Constd.keyword, Const.keyword, Consth.keyword}:
-                            return self.parse_constant_line(tokens, nid, token, line_no)
-                        elif token in Variable.keywords:
-                            return self.parse_variable_line(tokens, nid, token, line_no)
-                        elif token in Ext.keywords:
-                            return self.parse_ext_line(tokens, nid, token, line_no)
-                        elif token == Slice.keyword:
-                            return self.parse_slice_line(tokens, nid, line_no)
-                        elif token in Unary.keywords:
-                            return self.parse_unary_line(tokens, nid, token, line_no)
-                        elif token in Binary.keywords:
-                            return self.parse_binary_line(tokens, nid, token, line_no)
-                        elif token in Ternary.keywords:
-                            return self.parse_ternary_line(tokens, nid, token, line_no)
-                        elif token in {Init.keyword, Next.keyword}:
-                            return self.parse_init_next_line(tokens, nid, token, line_no)
-                        elif token in Property.keywords:
-                            return self.parse_property_line(tokens, nid, token, line_no)
-                        else:
-                            raise syntax_error(f"unknown operator {token}", line_no)
-                    raise syntax_error("increasing nid", line_no)
-                raise syntax_error("nid", line_no)
-        return line.strip()
-
-    def parse_btor2(self, modelfile, outputfile):
-        print(f"model file: {modelfile.name}")
-
-        lines = {}
-        line_no = 1
-        for line in modelfile:
-            try:
-                lines[line_no] = self.parse_btor2_line(line, line_no)
-                line_no += 1
-            except (model_error, syntax_error) as message:
-                print(f"parsing exception: {message}")
-                exit(1)
-
-        # start: mapping arrays to bitvectors
-
-        if Array.ARRAY_SIZE_BOUND > 0:
-            for init in Init.inits.values():
-                init.set_mapped_array_expression()
-            for constraint in Constraint.constraints.values():
-                constraint.set_mapped_array_expression()
-            for bad in Bad.bads.values():
-                bad.set_mapped_array_expression()
-            for next_line in Next.nexts.values():
-                next_line.set_mapped_array_expression()
-
-            for state in list(State.states.values()):
-                if isinstance(state.sid_line, Bitvector):
-                    if state.init_line is not None and state.next_line is not None:
-                        if state.init_line.exp_line is state.next_line.exp_line or state.next_line.exp_line is state:
-                            # remove initialized read-only bitvector states
-                            state.remove_state()
-                            Transitional.remove_transition(state, Init.inits)
-                            Transitional.remove_transition(state, Next.nexts)
-
-            if Ite.branching_conditions and Ite.non_branching_conditions:
-                Ite.branching_conditions = Ite.branching_conditions.get_mapped_array_expression_for(None)
-                Ite.non_branching_conditions = Ite.non_branching_conditions.get_mapped_array_expression_for(None)
-
-        # end: mapping arrays to bitvectors
-
-        for state in State.states.values():
-            if state.init_line is None:
-                # state has no init
-                state.new_input(state.index)
-
-        are_there_uninitialized_states = False
-        are_there_untransitioned_states = False
-        are_there_state_transitions = False
-
-        for state in State.states.values():
-            if state.init_line is None:
-                are_there_uninitialized_states = True
-            if state.next_line is None:
-                are_there_untransitioned_states = True
-            else:
-                are_there_state_transitions = True
-
-        if are_there_state_transitions:
-            print("sequential problem:")
-        else:
-            print("combinational problem:")
-
-        for input_line in Input.inputs.values():
-            if isinstance(input_line, Input):
-                print(input_line)
-        for state in State.states.values():
-            print(state)
-
-        if are_there_uninitialized_states:
-            print("uninitialized states:")
-            for state in State.states.values():
-                if state.init_line is None:
-                    print(state)
-        if are_there_untransitioned_states:
-            print("untransitioned states:")
-            for state in State.states.values():
-                if state.next_line is None:
-                    print(state)
-
-        if Ite.branching_conditions and Ite.non_branching_conditions:
-            print("branching conditions:")
-            print(Ite.branching_conditions)
-            print(Ite.non_branching_conditions)
-
-        print("model profile:")
-        print(f"{len(Line.lines)} lines in total")
-        print(f"{Input.count} input, {State.count} state, {Init.count} init, {Next.count} next, {Constraint.count} constraint, {Bad.count} bad")
-        print(f"{Bool.count} bool, {Bitvec.count} bitvec, {Array.count} array")
-        print(f"{Zero.count} zero, {One.count} one, {Constd.count} constd, {Const.count} const, {Consth.count} consth")
-        print(f"{Ext.count} ext, {Slice.count} slice, {Unary.count} unary")
-        print(f"{Implies.count} implies, {Comparison.count} comparison, {Logical.count} logical, {Computation.count} computation")
-        print(f"{Concat.count} concat, {Ite.count} ite, {Read.count} read, {Write.count} write")
-
-        if Array.ARRAY_SIZE_BOUND > 0:
-            print("array mapping profile:")
-            print(f"out of {Array.number_of_variable_arrays} arrays {Array.number_of_mapped_arrays} mapped")
-            print(f"{Expression.total_number_of_generated_expressions} generated expressions")
-            Expression.total_number_of_generated_expressions = 0
-
-        if outputfile:
-            print(f"output file: {outputfile.name}")
-            for line in lines.values():
-                print(line, file=outputfile)
-
-        return are_there_state_transitions
 
 # console output
 
@@ -5327,12 +4119,12 @@ def main():
     Instance.PROPAGATE = args.propagate[0] if args.propagate and args.propagate[0] >= 0 else None
     Instance.LAMBDAS = not args.substitute
 
-    Array.ARRAY_SIZE_BOUND = args.array[0] if args.array else 0
-    Read.READ_ARRAY_ITERATIVELY = not args.recursive_array
+    btor2.Array.ARRAY_SIZE_BOUND = args.array[0] if args.array else 0
+    btor2.Read.READ_ARRAY_ITERATIVELY = not args.recursive_array
 
     print_separator('#')
 
-    are_there_state_transitions = Parser().parse_btor2(args.modelfile, args.outputfile)
+    are_there_state_transitions = ValuesParser().parse_btor2(args.modelfile, args.outputfile)
 
     if args.kmin or args.kmax or args.analyzor:
         kmin = args.kmin[0] if args.kmin else 0
