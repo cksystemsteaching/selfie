@@ -23,6 +23,7 @@
 
 import btor2
 import z3interface
+import bitwuzlainterface
 
 import ctypes
 
@@ -32,17 +33,6 @@ try:
 except OSError:
     print("rotor is not available")
     is_rotor_present = False
-
-# requires bitwuzla and the bitwuzla Python API:
-# cd bitwuzla
-# pip install .
-
-try:
-    import bitwuzla
-    is_bitwuzla_present = True
-except ImportError:
-    print("bitwuzla is not available")
-    is_bitwuzla_present = False
 
 import math
 
@@ -2369,7 +2359,7 @@ class Values:
             roabvdd = values.roabvdd.exclude(self.sid_line, constraint.get_false_constraint().roabvdd)
         return Values(self.sid_line, None, None, self.bvdd, roabvdd, self.cflobvdd)
 
-class Instance(z3interface.Instance):
+class Instance(z3interface.Instance, bitwuzlainterface.Instance):
     PROPAGATE = None
     PROPAGATE_UNARY = True
     PROPAGATE_BINARY = True
@@ -2380,7 +2370,7 @@ class Instance(z3interface.Instance):
         self.instance_of = instance_of
         self.cache_instance = {}
         z3interface.Instance.__init__(self)
-        self.cache_bitwuzla_instance = {}
+        bitwuzlainterface.Instance.__init__(self)
 
     def __str__(self):
         string = ""
@@ -2409,52 +2399,10 @@ class Instance(z3interface.Instance):
         if Instance.PROPAGATE is not None:
             self.set_cached_instance(self.get_instance(step).get_values(step), step)
 
-    def get_bitwuzla_select(self, step, tm):
-        if step not in self.cache_bitwuzla_instance:
-            instance = self.get_instance(step).get_expression()
-            assert step not in self.cache_bitwuzla_instance
-            domain = instance.get_domain()
-            if domain:
-                self.cache_bitwuzla_instance[step] = tm.mk_term(bitwuzla.Kind.APPLY,
-                    [instance.get_bitwuzla_lambda(tm),
-                    *[state.get_bitwuzla_name(step, tm) for state in domain]])
-            else:
-                self.cache_bitwuzla_instance[step] = instance.get_bitwuzla_lambda(tm)
-        return self.cache_bitwuzla_instance[step]
-
-    def get_bitwuzla_substitute(self, step, tm):
-        if step not in self.cache_bitwuzla_instance:
-            instance = self.get_instance(step).get_expression()
-            assert step not in self.cache_bitwuzla_instance
-            self.cache_bitwuzla_instance[step] = instance.get_bitwuzla(tm)
-            domain = instance.get_domain()
-            if domain:
-                current_states = [state.get_bitwuzla(tm) for state in domain]
-                next_states = [state.get_bitwuzla_name(step, tm) for state in domain]
-                renaming = dict(zip(current_states, next_states))
-
-                self.cache_bitwuzla_instance[step] = tm.substitute_term(self.cache_bitwuzla_instance[step], renaming)
-        return self.cache_bitwuzla_instance[step]
-
-    def get_bitwuzla_instance(self, step, tm):
-        if Instance.LAMBDAS:
-            return self.get_bitwuzla_select(step, tm)
-        else:
-            return self.get_bitwuzla_substitute(step, tm)
-
-class Bitwuzla:
-    def __init__(self):
-        self.bitwuzla = None
-
-    def get_bitwuzla(self, tm):
-        if self.bitwuzla is None:
-            self.bitwuzla = self.model_bitwuzla(tm)
-        return self.bitwuzla
-
-class Line(Bitwuzla, btor2.Line, z3interface.Z3):
+class Line(btor2.Line, z3interface.Z3, bitwuzlainterface.Bitwuzla):
     def __init__(self):
         z3interface.Z3.__init__(self)
-        Bitwuzla.__init__(self)
+        bitwuzlainterface.Bitwuzla.__init__(self)
 
 class Sort(Line, btor2.Sort):
     def __init__(self):
@@ -2464,37 +2412,27 @@ class Bitvector(Sort, btor2.Bitvector):
     def __init__(self):
         Sort.__init__(self)
 
-class Bool(Bitvector, btor2.Bool, z3interface.Bool):
+class Bool(Bitvector, btor2.Bool, z3interface.Bool, bitwuzlainterface.Bool):
     def __init__(self, nid, comment, line_no):
         Bitvector.__init__(self)
         btor2.Bool.__init__(self, nid, comment, line_no)
 
-    def model_bitwuzla(self, tm):
-        return tm.mk_bool_sort()
-
-class Bitvec(Bitvector, btor2.Bitvec, z3interface.Bitvec):
+class Bitvec(Bitvector, btor2.Bitvec, z3interface.Bitvec, bitwuzlainterface.Bitvec):
     def __init__(self, nid, size, comment, line_no):
         Bitvector.__init__(self)
         btor2.Bitvec.__init__(self, nid, size, comment, line_no)
 
-    def model_bitwuzla(self, tm):
-        return tm.mk_bv_sort(self.size)
-
-class Array(Sort, btor2.Array, z3interface.Array):
+class Array(Sort, btor2.Array, z3interface.Array, bitwuzlainterface.Array):
     def __init__(self, nid, array_size_line, element_size_line, comment, line_no):
         Sort.__init__(self)
         btor2.Array.__init__(self, nid, array_size_line, element_size_line, comment, line_no)
 
-    def model_bitwuzla(self, tm):
-        return tm.mk_array_sort(self.array_size_line.get_bitwuzla(tm),
-            self.element_size_line.get_bitwuzla(tm))
-
-class Expression(Line, btor2.Expression, z3interface.Expression):
+class Expression(Line, btor2.Expression, z3interface.Expression, bitwuzlainterface.Expression):
     def __init__(self):
         Line.__init__(self)
         self.cache_values = {}
         z3interface.Expression.__init__(self)
-        self.bitwuzla_lambda = None
+        bitwuzlainterface.Expression.__init__(self)
 
     def is_equal(self, exp_line):
         # checking semantical equivalence is delegated to solvers
@@ -2509,17 +2447,7 @@ class Expression(Line, btor2.Expression, z3interface.Expression):
             self.cache_values[step] = (self.compute_values(step), Bitme_Solver.version)
         return self.cache_values[step][0]
 
-    def get_bitwuzla_lambda(self, tm):
-        if self.bitwuzla_lambda is None:
-            domain = self.get_domain()
-            if domain:
-                self.bitwuzla_lambda = tm.mk_term(bitwuzla.Kind.LAMBDA,
-                    [*[state.get_bitwuzla(tm) for state in domain], self.get_bitwuzla(tm)])
-            else:
-                self.bitwuzla_lambda = self.get_bitwuzla(tm)
-        return self.bitwuzla_lambda
-
-class Constant(Expression, btor2.Constant, z3interface.Constant):
+class Constant(Expression, btor2.Constant, z3interface.Constant, bitwuzlainterface.Constant):
     def __init__(self):
         Expression.__init__(self)
 
@@ -2536,12 +2464,6 @@ class Constant(Expression, btor2.Constant, z3interface.Constant):
 
     def get_values(self, step):
         return super().get_values(0)
-
-    def model_bitwuzla(self, tm):
-        if isinstance(self.sid_line, Bool):
-            return tm.mk_true() if bool(self.value) else tm.mk_false()
-        else:
-            return tm.mk_bv_value(self.sid_line.get_bitwuzla(tm), self.value)
 
 class Zero(Constant, btor2.Zero):
     def __init__(self, nid, sid_line, symbol, comment, line_no):
@@ -2568,16 +2490,13 @@ class Consth(Constant, btor2.Consth):
         Constant.__init__(self)
         btor2.Consth.__init__(self, nid, sid_line, value, comment, line_no)
 
-class Constant_Array(Expression, btor2.Constant_Array, z3interface.Constant_Array):
+class Constant_Array(Expression, btor2.Constant_Array, z3interface.Constant_Array, bitwuzlainterface.Constant_Array):
     def __init__(self, sid_line, constant_line):
         Expression.__init__(self)
         btor2.Constant_Array.__init__(self, sid_line, constant_line)
 
     def get_values(self, step):
         return self
-
-    def model_bitwuzla(self, tm):
-        return tm.mk_const_array(self.sid_line.get_bitwuzla(tm), self.constant_line.get_bitwuzla(tm))
 
 class Variable(Expression, btor2.Variable, z3interface.Variable):
     def __init__(self):
@@ -2593,7 +2512,7 @@ class Variable(Expression, btor2.Variable, z3interface.Variable):
     def get_values(self, step):
         return super().get_values(0)
 
-class Input(Variable, btor2.Input, z3interface.Input):
+class Input(Variable, btor2.Input, z3interface.Input, bitwuzlainterface.Input):
     def __init__(self, nid, sid_line, symbol, comment, line_no, index = None):
         Variable.__init__(self)
         btor2.Input.__init__(self, nid, sid_line, symbol, comment, line_no, index)
@@ -2601,21 +2520,12 @@ class Input(Variable, btor2.Input, z3interface.Input):
     def get_step_name(self, step):
         return self.name
 
-    def model_bitwuzla(self, tm):
-        return tm.mk_const(self.sid_line.get_bitwuzla(tm), self.name)
-
-    def get_bitwuzla_name(self, step, tm):
-        return self.get_bitwuzla(tm)
-
-    def get_bitwuzla_instance(self, step, tm):
-        return self.get_bitwuzla(tm)
-
-class State(Variable, btor2.State, z3interface.State):
+class State(Variable, btor2.State, z3interface.State, bitwuzlainterface.State):
     def __init__(self, nid, sid_line, symbol, comment, line_no, index = None):
         Variable.__init__(self)
         btor2.State.__init__(self, nid, sid_line, symbol, comment, line_no, index)
         z3interface.State.__init__(self)
-        self.cache_bitwuzla_name = {}
+        bitwuzlainterface.State.__init__(self)
         self.instance = Instance(self)
         self.instance.init_instance(self) # initialize with itself upon creation of state
 
@@ -2646,33 +2556,11 @@ class State(Variable, btor2.State, z3interface.State):
     def get_step_name(self, step):
         return f"{self.name}-{step}"
 
-    def model_bitwuzla(self, tm):
-        if self.init_line is None:
-            return tm.mk_const(self.sid_line.get_bitwuzla(tm), self.name)
-        else:
-            return tm.mk_var(self.sid_line.get_bitwuzla(tm), self.name)
-
-    def get_bitwuzla_name(self, step, tm):
-        if step == -1:
-            step = 0
-        if step not in self.cache_bitwuzla_name:
-            self.cache_bitwuzla_name[step] = tm.mk_const(self.sid_line.get_bitwuzla(tm),
-                self.get_step_name(step))
-        return self.cache_bitwuzla_name[step]
-
-    def get_bitwuzla_instance(self, step, tm):
-        if self.next_line is None:
-            # all instances of an untransitioned state are
-            # the state itself, if uninitialized, or its initial state
-            return self.instance.get_bitwuzla_instance(-1, tm)
-        else:
-            return self.instance.get_bitwuzla_instance(step, tm)
-
 class Indexed(Expression, btor2.Indexed):
     def __init__(self):
         Expression.__init__(self)
 
-class Ext(Indexed, btor2.Ext, z3interface.Ext):
+class Ext(Indexed, btor2.Ext, z3interface.Ext, bitwuzlainterface.Ext):
     def __init__(self, nid, op, sid_line, arg1_line, w, comment, line_no):
         Indexed.__init__(self)
         btor2.Ext.__init__(self, nid, op, sid_line, arg1_line, w, comment, line_no)
@@ -2689,15 +2577,7 @@ class Ext(Indexed, btor2.Ext, z3interface.Ext):
             arg1_value = arg1_value.get_expression()
             return self.copy(arg1_value)
 
-    def model_bitwuzla(self, tm):
-        if self.op == btor2.OP_SEXT:
-            bitwuzla_op = bitwuzla.Kind.BV_SIGN_EXTEND
-        else:
-            assert self.op == btor2.OP_UEXT
-            bitwuzla_op = bitwuzla.Kind.BV_ZERO_EXTEND
-        return tm.mk_term(bitwuzla_op, [self.arg1_line.get_bitwuzla(tm)], [self.w])
-
-class Slice(Indexed, btor2.Slice, z3interface.Slice):
+class Slice(Indexed, btor2.Slice, z3interface.Slice, bitwuzlainterface.Slice):
     def __init__(self, nid, sid_line, arg1_line, u, l, comment, line_no):
         Indexed.__init__(self)
         btor2.Slice.__init__(self, nid, sid_line, arg1_line, u, l, comment, line_no)
@@ -2710,10 +2590,7 @@ class Slice(Indexed, btor2.Slice, z3interface.Slice):
             arg1_value = arg1_value.get_expression()
             return self.copy(arg1_value)
 
-    def model_bitwuzla(self, tm):
-        return tm.mk_term(bitwuzla.Kind.BV_EXTRACT, [self.arg1_line.get_bitwuzla(tm)], [self.u, self.l])
-
-class Unary(Expression, btor2.Unary, z3interface.Unary):
+class Unary(Expression, btor2.Unary, z3interface.Unary, bitwuzlainterface.Unary):
     def __init__(self, nid, op, sid_line, arg1_line, comment, line_no):
         Expression.__init__(self)
         btor2.Unary.__init__(self, nid, op, sid_line, arg1_line, comment, line_no)
@@ -2737,26 +2614,11 @@ class Unary(Expression, btor2.Unary, z3interface.Unary):
             arg1_value = arg1_value.get_expression()
             return self.copy(arg1_value)
 
-    def model_bitwuzla(self, tm):
-        if self.op == btor2.OP_NOT:
-            if isinstance(self.sid_line, Bool):
-                bitwuzla_op = bitwuzla.Kind.NOT
-            else:
-                bitwuzla_op = bitwuzla.Kind.BV_NOT
-        elif self.op == btor2.OP_INC:
-            bitwuzla_op = bitwuzla.Kind.BV_INC
-        elif self.op == btor2.OP_DEC:
-            bitwuzla_op = bitwuzla.Kind.BV_DEC
-        else:
-            assert self.op == btor2.OP_NEG
-            bitwuzla_op = bitwuzla.Kind.BV_NEG
-        return tm.mk_term(bitwuzla_op, [self.arg1_line.get_bitwuzla(tm)])
-
 class Binary(Expression, btor2.Binary):
     def __init__(self):
         Expression.__init__(self)
 
-class Implies(Binary, btor2.Implies, z3interface.Implies):
+class Implies(Binary, btor2.Implies, z3interface.Implies, bitwuzlainterface.Implies):
     def __init__(self, nid, op, sid_line, arg1_line, arg2_line, comment, line_no):
         Binary.__init__(self)
         btor2.Implies.__init__(self, nid, op, sid_line, arg1_line, arg2_line, comment, line_no)
@@ -2777,11 +2639,7 @@ class Implies(Binary, btor2.Implies, z3interface.Implies):
         arg2_value = arg2_value.get_expression()
         return self.copy(arg1_value, arg2_value)
 
-    def model_bitwuzla(self, tm):
-        return tm.mk_term(bitwuzla.Kind.IMPLIES,
-            [self.arg1_line.get_bitwuzla(tm), self.arg2_line.get_bitwuzla(tm)])
-
-class Comparison(Binary, btor2.Comparison, z3interface.Comparison):
+class Comparison(Binary, btor2.Comparison, z3interface.Comparison, bitwuzlainterface.Comparison):
     def __init__(self, nid, op, sid_line, arg1_line, arg2_line, comment, line_no):
         Binary.__init__(self)
         btor2.Comparison.__init__(self, nid, op, sid_line, arg1_line, arg2_line, comment, line_no)
@@ -2816,32 +2674,7 @@ class Comparison(Binary, btor2.Comparison, z3interface.Comparison):
         arg2_value = arg2_value.get_expression()
         return self.copy(arg1_value, arg2_value)
 
-    def model_bitwuzla(self, tm):
-        if self.op == btor2.OP_EQ:
-            bitwuzla_op = bitwuzla.Kind.EQUAL
-        elif self.op == btor2.OP_NEQ:
-            bitwuzla_op = bitwuzla.Kind.DISTINCT
-        elif self.op == btor2.OP_SGT:
-            bitwuzla_op = bitwuzla.Kind.BV_SGT
-        elif self.op == btor2.OP_UGT:
-            bitwuzla_op = bitwuzla.Kind.BV_UGT
-        elif self.op == btor2.OP_SGTE:
-            bitwuzla_op = bitwuzla.Kind.BV_SGE
-        elif self.op == btor2.OP_UGTE:
-            bitwuzla_op = bitwuzla.Kind.BV_UGE
-        elif self.op == btor2.OP_SLT:
-            bitwuzla_op = bitwuzla.Kind.BV_SLT
-        elif self.op == btor2.OP_ULT:
-            bitwuzla_op = bitwuzla.Kind.BV_ULT
-        elif self.op == btor2.OP_SLTE:
-            bitwuzla_op = bitwuzla.Kind.BV_SLE
-        else:
-            assert self.op == btor2.OP_ULTE
-            bitwuzla_op = bitwuzla.Kind.BV_ULE
-        return tm.mk_term(bitwuzla_op,
-            [self.arg1_line.get_bitwuzla(tm), self.arg2_line.get_bitwuzla(tm)])
-
-class Logical(Binary, btor2.Logical, z3interface.Logical):
+class Logical(Binary, btor2.Logical, z3interface.Logical, bitwuzlainterface.Logical):
     def __init__(self, nid, op, sid_line, arg1_line, arg2_line, comment, line_no):
         Binary.__init__(self)
         btor2.Logical.__init__(self, nid, op, sid_line, arg1_line, arg2_line, comment, line_no)
@@ -2891,27 +2724,7 @@ class Logical(Binary, btor2.Logical, z3interface.Logical):
         arg2_value = arg2_value.get_expression()
         return self.copy(arg1_value, arg2_value)
 
-    def model_bitwuzla(self, tm):
-        if isinstance(self.sid_line, Bool):
-            if self.op == btor2.OP_AND:
-                bitwuzla_op = bitwuzla.Kind.AND
-            elif self.op == btor2.OP_OR:
-                bitwuzla_op = bitwuzla.Kind.OR
-            else:
-                assert self.op == btor2.OP_XOR
-                bitwuzla_op = bitwuzla.Kind.XOR
-        else:
-            if self.op == btor2.OP_AND:
-                bitwuzla_op = bitwuzla.Kind.BV_AND
-            elif self.op == btor2.OP_OR:
-                bitwuzla_op = bitwuzla.Kind.BV_OR
-            else:
-                assert self.op == btor2.OP_XOR
-                bitwuzla_op = bitwuzla.Kind.BV_XOR
-        return tm.mk_term(bitwuzla_op,
-            [self.arg1_line.get_bitwuzla(tm), self.arg2_line.get_bitwuzla(tm)])
-
-class Computation(Binary, btor2.Computation, z3interface.Computation):
+class Computation(Binary, btor2.Computation, z3interface.Computation, bitwuzlainterface.Computation):
     def __init__(self, nid, op, sid_line, arg1_line, arg2_line, comment, line_no):
         Binary.__init__(self)
         btor2.Computation.__init__(self, nid, op, sid_line, arg1_line, arg2_line, comment, line_no)
@@ -2946,32 +2759,7 @@ class Computation(Binary, btor2.Computation, z3interface.Computation):
         arg2_value = arg2_value.get_expression()
         return self.copy(arg1_value, arg2_value)
 
-    def model_bitwuzla(self, tm):
-        if self.op == btor2.OP_SLL:
-            bitwuzla_op = bitwuzla.Kind.BV_SHL
-        elif self.op == btor2.OP_SRL:
-            bitwuzla_op = bitwuzla.Kind.BV_SHR
-        elif self.op == btor2.OP_SRA:
-            bitwuzla_op = bitwuzla.Kind.BV_ASHR
-        elif self.op == btor2.OP_ADD:
-            bitwuzla_op = bitwuzla.Kind.BV_ADD
-        elif self.op == btor2.OP_SUB:
-            bitwuzla_op = bitwuzla.Kind.BV_SUB
-        elif self.op == btor2.OP_MUL:
-            bitwuzla_op = bitwuzla.Kind.BV_MUL
-        elif self.op == btor2.OP_SDIV:
-            bitwuzla_op = bitwuzla.Kind.BV_SDIV
-        elif self.op == btor2.OP_UDIV:
-            bitwuzla_op = bitwuzla.Kind.BV_UDIV
-        elif self.op == btor2.OP_SREM:
-            bitwuzla_op = bitwuzla.Kind.BV_SREM
-        else:
-            assert self.op == btor2.OP_UREM
-            bitwuzla_op = bitwuzla.Kind.BV_UREM
-        return tm.mk_term(bitwuzla_op,
-            [self.arg1_line.get_bitwuzla(tm), self.arg2_line.get_bitwuzla(tm)])
-
-class Concat(Binary, btor2.Concat, z3interface.Concat):
+class Concat(Binary, btor2.Concat, z3interface.Concat, bitwuzlainterface.Concat):
     def __init__(self, nid, op, sid_line, arg1_line, arg2_line, comment, line_no):
         Binary.__init__(self)
         btor2.Concat.__init__(self, nid, op, sid_line, arg1_line, arg2_line, comment, line_no)
@@ -2986,11 +2774,7 @@ class Concat(Binary, btor2.Concat, z3interface.Concat):
         arg2_value = arg2_value.get_expression()
         return self.copy(arg1_value, arg2_value)
 
-    def model_bitwuzla(self, tm):
-        return tm.mk_term(bitwuzla.Kind.BV_CONCAT,
-            [self.arg1_line.get_bitwuzla(tm), self.arg2_line.get_bitwuzla(tm)])
-
-class Read(Binary, btor2.Read, z3interface.Read):
+class Read(Binary, btor2.Read, z3interface.Read, bitwuzlainterface.Read):
     def __init__(self, nid, op, sid_line, arg1_line, arg2_line, comment, line_no):
         Binary.__init__(self)
         btor2.Read.__init__(self, nid, op, sid_line, arg1_line, arg2_line, comment, line_no)
@@ -3000,15 +2784,11 @@ class Read(Binary, btor2.Read, z3interface.Read):
         arg2_value = self.arg2_line.get_values(step).get_expression()
         return self.copy(arg1_value, arg2_value)
 
-    def model_bitwuzla(self, tm):
-        return tm.mk_term(bitwuzla.Kind.ARRAY_SELECT,
-            [self.arg1_line.get_bitwuzla(tm), self.arg2_line.get_bitwuzla(tm)])
-
 class Ternary(Expression, btor2.Ternary):
     def __init__(self):
         Expression.__init__(self)
 
-class Ite(Ternary, btor2.Ite, z3interface.Ite):
+class Ite(Ternary, btor2.Ite, z3interface.Ite, bitwuzlainterface.Ite):
     def __init__(self, nid, sid_line, arg1_line, arg2_line, arg3_line, comment, line_no):
         Ternary.__init__(self)
         btor2.Ite.__init__(self, nid, sid_line, arg1_line, arg2_line, arg3_line, comment, line_no)
@@ -3060,16 +2840,7 @@ class Ite(Ternary, btor2.Ite, z3interface.Ite):
     def set_step(self, step):
         self.get_instance().set_instance(self, step)
 
-    def model_bitwuzla(self, tm):
-        return tm.mk_term(bitwuzla.Kind.ITE, [self.arg1_line.get_bitwuzla(tm),
-            self.arg2_line.get_bitwuzla(tm), self.arg3_line.get_bitwuzla(tm)])
-
-    def get_bitwuzla_step(self, step, tm):
-        # only needed for branching
-        self.set_step(step)
-        return self.get_instance().get_bitwuzla_instance(step, tm)
-
-class Write(Ternary, btor2.Write, z3interface.Write):
+class Write(Ternary, btor2.Write, z3interface.Write, bitwuzlainterface.Write):
     def __init__(self, nid, sid_line, arg1_line, arg2_line, arg3_line, comment, line_no):
         Ternary.__init__(self)
         btor2.Write.__init__(self, nid, sid_line, arg1_line, arg2_line, arg3_line, comment, line_no)
@@ -3080,17 +2851,11 @@ class Write(Ternary, btor2.Write, z3interface.Write):
         arg3_value = self.arg3_line.get_values(step).get_expression()
         return self.copy(arg1_value, arg2_value, arg3_value)
 
-    def model_bitwuzla(self, tm):
-        return tm.mk_term(bitwuzla.Kind.ARRAY_STORE,
-            [self.arg1_line.get_bitwuzla(tm),
-            self.arg2_line.get_bitwuzla(tm),
-            self.arg3_line.get_bitwuzla(tm)])
-
 class Transitional(Line, btor2.Transitional):
     def __init__(self):
         Line.__init__(self)
 
-class Init(Transitional, btor2.Init, z3interface.Init):
+class Init(Transitional, btor2.Init, z3interface.Init, bitwuzlainterface.Init):
     def __init__(self, nid, sid_line, state_line, exp_line, symbol, comment, line_no, array_line = None, index = None):
         Transitional.__init__(self)
         btor2.Init.__init__(self, nid, sid_line, state_line, exp_line, symbol, comment, line_no, array_line, index)
@@ -3110,24 +2875,12 @@ class Init(Transitional, btor2.Init, z3interface.Init):
         assert step == 0, f"set init with {step} != 0"
         self.state_line.set_instance(self.exp_line, -1)
 
-    def get_bitwuzla_step(self, step, tm):
-        assert step == 0, f"bitwuzla init with {step} != 0"
-        self.set_step(0)
-        if Instance.PROPAGATE is not None:
-            return tm.mk_true()
-        else:
-            return tm.mk_term(bitwuzla.Kind.EQUAL,
-                [self.state_line.get_bitwuzla_name(0, tm),
-                self.state_line.get_bitwuzla_instance(-1, tm)])
-
-class Next(Transitional, btor2.Next, z3interface.Next):
+class Next(Transitional, btor2.Next, z3interface.Next, bitwuzlainterface.Next):
     def __init__(self, nid, sid_line, state_line, exp_line, symbol, comment, line_no, array_line = None, index = None):
         Transitional.__init__(self)
         btor2.Next.__init__(self, nid, sid_line, state_line, exp_line, symbol, comment, line_no, array_line, index)
         z3interface.Next.__init__(self)
-        self.cache_bitwuzla_next_state = {}
-        self.cache_bitwuzla_is_state_changing = {}
-        self.cache_bitwuzla_state_is_not_changing = {}
+        bitwuzlainterface.Next.__init__(self)
 
     def get_instance(self):
         return self.state_line.instance
@@ -3149,43 +2902,7 @@ class Next(Transitional, btor2.Next, z3interface.Next):
         self.set_step(step)
         return self.get_step(step) == self.get_step(step - 1)
 
-    def get_bitwuzla_step(self, step, tm):
-        if step not in self.cache_bitwuzla_next_state:
-            self.set_step(step)
-            if Instance.PROPAGATE is not None:
-                self.cache_bitwuzla_next_state[step] = tm.mk_true()
-            else:
-                self.cache_bitwuzla_next_state[step] = tm.mk_term(bitwuzla.Kind.EQUAL,
-                    [self.state_line.get_bitwuzla_name(step + 1, tm),
-                    self.state_line.get_bitwuzla_instance(step, tm)])
-        return self.cache_bitwuzla_next_state[step]
-
-    def is_bitwuzla_state_changing(self, step, tm):
-        if step not in self.cache_bitwuzla_is_state_changing:
-            self.set_step(step)
-            if self.get_step(step).is_equal(self.get_step(step - 1)):
-                self.cache_bitwuzla_is_state_changing[step] = tm.mk_false()
-            else:
-                self.cache_bitwuzla_is_state_changing[step] = tm.mk_term(bitwuzla.Kind.DISTINCT,
-                    [self.state_line.get_bitwuzla_instance(step, tm),
-                    self.state_line.get_bitwuzla_instance(step - 1, tm)])
-        return self.cache_bitwuzla_is_state_changing[step]
-
-    def bitwuzla_state_is_not_changing(self, step, tm):
-        if step not in self.cache_bitwuzla_state_is_not_changing:
-            if Instance.PROPAGATE is not None:
-                self.set_step(step)
-                self.cache_bitwuzla_state_is_not_changing[step] = tm.mk_term(bitwuzla.Kind.EQUAL,
-                    [self.state_line.get_bitwuzla_instance(step, tm),
-                    self.state_line.get_bitwuzla_instance(step - 1, tm)])
-            else:
-                self.state_line.set_instance(self.state_line, step)
-                self.cache_bitwuzla_state_is_not_changing[step] = tm.mk_term(bitwuzla.Kind.EQUAL,
-                    [self.state_line.get_bitwuzla_name(step + 1, tm),
-                    self.state_line.get_bitwuzla_name(step, tm)])
-        return self.cache_bitwuzla_state_is_not_changing[step]
-
-class Property(Line, btor2.Property, z3interface.Property):
+class Property(Line, btor2.Property, z3interface.Property, bitwuzlainterface.Property):
     def __init__(self):
         Line.__init__(self)
         self.instance = Instance(self)
@@ -3198,10 +2915,6 @@ class Property(Line, btor2.Property, z3interface.Property):
 
     def set_step(self, step):
         self.instance.set_instance(self.property_line, step)
-
-    def get_bitwuzla_step(self, step, tm):
-        self.set_step(step)
-        return self.get_instance().get_bitwuzla_instance(step, tm)
 
 class Constraint(Property, btor2.Constraint):
     def __init__(self, nid, property_line, symbol, comment, line_no):
@@ -3306,82 +3019,9 @@ def print_message_with_propagation_profile(message, step = None, level = None):
     else:
         print_message(message, step, level)
 
-# Z3 and bitwuzla solver interface
-
-class Solver:
-    def __init__(self, solver):
-        self.solver = solver
-
-    def push(self):
-        self.solver.push()
-
-    def pop(self):
-        self.solver.pop()
-
-class Bitwuzla_Solver(Solver):
-    def __init__(self):
-        self.tm = bitwuzla.TermManager()
-        self.options = bitwuzla.Options()
-        self.options.set(bitwuzla.Option.PRODUCE_MODELS, True)
-        super().__init__(bitwuzla.Bitwuzla(self.tm, self.options))
-
-    def assert_this(self, assertions, step):
-        for assertion in assertions:
-            self.solver.assert_formula(assertion.get_bitwuzla_step(step, self.tm))
-
-    def assert_not_this(self, assertions, step):
-        for assertion in assertions:
-            self.solver.assert_formula(self.tm.mk_term(bitwuzla.Kind.NOT, [assertion.get_bitwuzla_step(step, self.tm)]))
-
-    def simplify(self):
-        # possibly increases performance
-        self.prove()
-
-    def prove(self):
-        return self.solver.check_sat()
-
-    def is_SAT(self, result):
-        return result is bitwuzla.Result.SAT
-
-    def is_UNSAT(self, result):
-        return result is bitwuzla.Result.UNSAT
-
-    def assert_is_state_changing(self, next_line, step):
-        self.solver.assert_formula(next_line.is_bitwuzla_state_changing(step, self.tm))
-
-    def assert_state_is_not_changing(self, next_line, step):
-        self.solver.assert_formula(next_line.bitwuzla_state_is_not_changing(step, self.tm))
-
-    def print_pc(self, pc, step, level):
-        self.prove()
-        pc_value = int(self.solver.get_value(pc.get_bitwuzla_instance(step - 1, self.tm)).value(16), 16)
-        print_message(f"{pc}\n", step, level)
-        print_message("%s = 0x%X\n" % (pc.get_bitwuzla_name(step, self.tm), pc_value), step, level)
-
-    def print_inputs(self, inputs, step, level):
-        for input_variable in inputs.values():
-            # only print value of uninitialized states
-            print_message(f"{input_variable}\n", step, level)
-            print_message("%s = %s\n" % (input_variable.get_bitwuzla_name(step, self.tm),
-                self.solver.get_value(input_variable.get_bitwuzla_instance(step - 1, self.tm))),
-                step, level)
-
-    def eval_inputs(self, inputs, step):
-        input_values = dict()
-        for input_variable in inputs.values():
-            bwz_inst = input_variable.get_bitwuzla_instance(step - 1, self.tm)
-            if isinstance(input_variable.sid_line, Array):
-                # Mimic the output of the BVDD naming scheme for consistency
-                for index in range(2**input_variable.sid_line.array_size_line.size):
-                    input_values[f"{input_variable.symbol}-{index}"] = self.solver.get_value(bwz_inst[index])
-            else:
-                input_values[input_variable.symbol] = self.solver.get_value(bwz_inst)
-
-        return input_values
-
 # bitme solver
 
-class Bitme_Solver(Solver):
+class Bitme_Solver:
     versions = {0:None}
     version = 0
     bump = 1
@@ -3821,8 +3461,8 @@ def main():
 
         if z3interface.is_Z3_present:
             z3_solver = z3interface.Z3_Solver(print_message, Instance.PROPAGATE, Instance.LAMBDAS)
-        if is_bitwuzla_present:
-            bitwuzla_solver = Bitwuzla_Solver()
+        if bitwuzlainterface.is_bitwuzla_present:
+            bitwuzla_solver = bitwuzlainterface.Bitwuzla_Solver(print_message, Instance.PROPAGATE, Instance.LAMBDAS)
 
         if args.use_BVDD:
             Values.BVDD = True
@@ -3852,7 +3492,7 @@ def main():
         else:
             if args.use_Z3 and z3interface.is_Z3_present:
                 bmc(z3_solver, kmin, kmax, args)
-            if args.use_bitwuzla and is_bitwuzla_present:
+            if args.use_bitwuzla and bitwuzlainterface.is_bitwuzla_present:
                 bmc(bitwuzla_solver, kmin, kmax, args)
 
     print_separator('#')
