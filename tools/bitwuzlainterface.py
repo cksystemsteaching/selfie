@@ -52,6 +52,7 @@ class Array:
 class Expression:
     def __init__(self):
         self.bitwuzla_lambda = None
+        self.cache_bitwuzla_instance = {}
 
     def get_bitwuzla_lambda(self, tm):
         if self.bitwuzla_lambda is None:
@@ -62,6 +63,36 @@ class Expression:
             else:
                 self.bitwuzla_lambda = self.get_bitwuzla(tm)
         return self.bitwuzla_lambda
+
+    def get_bitwuzla_select(self, step, tm):
+        if step not in self.cache_bitwuzla_instance:
+            domain = self.get_domain()
+            if domain:
+                self.cache_bitwuzla_instance[step] = tm.mk_term(bitwuzla.Kind.APPLY,
+                    [self.get_bitwuzla_lambda(tm),
+                    *[state.get_bitwuzla_name(step, tm) for state in domain]])
+            else:
+                self.cache_bitwuzla_instance[step] = self.get_bitwuzla_lambda(tm)
+        return self.cache_bitwuzla_instance[step]
+
+    def get_bitwuzla_substitute(self, step, tm):
+        if step not in self.cache_bitwuzla_instance:
+            domain = self.get_domain()
+            if domain:
+                current_states = [state.get_bitwuzla(tm) for state in domain]
+                next_states = [state.get_bitwuzla_name(step, tm) for state in domain]
+                renaming = dict(zip(current_states, next_states))
+                self.cache_bitwuzla_instance[step] = tm.substitute_term(self.get_bitwuzla(tm),
+                    renaming)
+            else:
+                self.cache_bitwuzla_instance[step] = self.get_bitwuzla(tm)
+        return self.cache_bitwuzla_instance[step]
+
+    def get_bitwuzla_instance(self, step, tm):
+        if Bitwuzla_Solver.LAMBDAS:
+            return self.get_bitwuzla_select(step, tm)
+        else:
+            return self.get_bitwuzla_substitute(step, tm)
 
 class Constant:
     def model_bitwuzla(self, tm):
@@ -81,9 +112,6 @@ class Input:
     def get_bitwuzla_name(self, step, tm):
         return self.get_bitwuzla(tm)
 
-    def get_bitwuzla_instance(self, step, tm):
-        return self.get_bitwuzla(tm)
-
 class State:
     def __init__(self):
         self.cache_bitwuzla_name = {}
@@ -95,20 +123,10 @@ class State:
             return tm.mk_var(self.sid_line.get_bitwuzla(tm), self.name)
 
     def get_bitwuzla_name(self, step, tm):
-        if step == -1:
-            step = 0
         if step not in self.cache_bitwuzla_name:
             self.cache_bitwuzla_name[step] = tm.mk_const(self.sid_line.get_bitwuzla(tm),
                 self.get_step_name(step))
         return self.cache_bitwuzla_name[step]
-
-    def get_bitwuzla_instance(self, step, tm):
-        if self.next_line is None:
-            # all instances of an untransitioned state are
-            # the state itself, if uninitialized, or its initial state
-            return self.instance.get_bitwuzla_instance(-1, tm)
-        else:
-            return self.instance.get_bitwuzla_instance(step, tm)
 
 class Ext:
     def model_bitwuzla(self, tm):
@@ -234,8 +252,7 @@ class Ite:
 
     def get_bitwuzla_step(self, step, tm):
         # only needed for branching
-        self.set_step(step)
-        return self.get_instance().get_bitwuzla_instance(step, tm)
+        return self.get_step(step).get_expression().get_bitwuzla_instance(step, tm)
 
 class Write:
     def model_bitwuzla(self, tm):
@@ -247,13 +264,13 @@ class Write:
 class Init:
     def get_bitwuzla_step(self, step, tm):
         assert step == 0, f"bitwuzla init with {step} != 0"
-        self.set_step(0)
         if Bitwuzla_Solver.PROPAGATE is not None:
+            self.get_step(step)
             return tm.mk_true()
         else:
             return tm.mk_term(bitwuzla.Kind.EQUAL,
                 [self.state_line.get_bitwuzla_name(0, tm),
-                self.state_line.get_bitwuzla_instance(-1, tm)])
+                self.get_step(0).get_bitwuzla_instance(0, tm)])
 
 class Next:
     def __init__(self):
@@ -263,35 +280,32 @@ class Next:
 
     def get_bitwuzla_step(self, step, tm):
         if step not in self.cache_bitwuzla_next_state:
-            self.set_step(step)
             if Bitwuzla_Solver.PROPAGATE is not None:
+                self.get_step(step)
                 self.cache_bitwuzla_next_state[step] = tm.mk_true()
             else:
                 self.cache_bitwuzla_next_state[step] = tm.mk_term(bitwuzla.Kind.EQUAL,
                     [self.state_line.get_bitwuzla_name(step + 1, tm),
-                    self.state_line.get_bitwuzla_instance(step, tm)])
+                    self.get_step(step).get_bitwuzla_instance(step, tm)])
         return self.cache_bitwuzla_next_state[step]
 
     def is_bitwuzla_state_changing(self, step, tm):
         if step not in self.cache_bitwuzla_is_state_changing:
-            self.set_step(step)
             if self.get_step(step).is_equal(self.get_step(step - 1)):
                 self.cache_bitwuzla_is_state_changing[step] = tm.mk_false()
             else:
                 self.cache_bitwuzla_is_state_changing[step] = tm.mk_term(bitwuzla.Kind.DISTINCT,
-                    [self.state_line.get_bitwuzla_instance(step, tm),
-                    self.state_line.get_bitwuzla_instance(step - 1, tm)])
+                    [self.get_step(step).get_expression().get_bitwuzla_instance(step, tm),
+                    self.get_step(step - 1).get_expression().get_bitwuzla_instance(step - 1, tm)])
         return self.cache_bitwuzla_is_state_changing[step]
 
     def bitwuzla_state_is_not_changing(self, step, tm):
         if step not in self.cache_bitwuzla_state_is_not_changing:
             if Bitwuzla_Solver.PROPAGATE is not None:
-                self.set_step(step)
                 self.cache_bitwuzla_state_is_not_changing[step] = tm.mk_term(bitwuzla.Kind.EQUAL,
-                    [self.state_line.get_bitwuzla_instance(step, tm),
-                    self.state_line.get_bitwuzla_instance(step - 1, tm)])
+                    [self.get_step(step).get_expression().get_bitwuzla_instance(step, tm),
+                    self.get_step(step - 1).get_expression().get_bitwuzla_instance(step - 1, tm)])
             else:
-                self.state_line.set_instance(self.state_line, step)
                 self.cache_bitwuzla_state_is_not_changing[step] = tm.mk_term(bitwuzla.Kind.EQUAL,
                     [self.state_line.get_bitwuzla_name(step + 1, tm),
                     self.state_line.get_bitwuzla_name(step, tm)])
@@ -299,45 +313,7 @@ class Next:
 
 class Property:
     def get_bitwuzla_step(self, step, tm):
-        self.set_step(step)
-        return self.get_instance().get_bitwuzla_instance(step, tm)
-
-class Instance:
-    def __init__(self):
-        self.cache_bitwuzla_instance = {}
-
-    def get_bitwuzla_select(self, step, tm):
-        if step not in self.cache_bitwuzla_instance:
-            instance = self.get_instance(step).get_expression()
-            assert step not in self.cache_bitwuzla_instance
-            domain = instance.get_domain()
-            if domain:
-                self.cache_bitwuzla_instance[step] = tm.mk_term(bitwuzla.Kind.APPLY,
-                    [instance.get_bitwuzla_lambda(tm),
-                    *[state.get_bitwuzla_name(step, tm) for state in domain]])
-            else:
-                self.cache_bitwuzla_instance[step] = instance.get_bitwuzla_lambda(tm)
-        return self.cache_bitwuzla_instance[step]
-
-    def get_bitwuzla_substitute(self, step, tm):
-        if step not in self.cache_bitwuzla_instance:
-            instance = self.get_instance(step).get_expression()
-            assert step not in self.cache_bitwuzla_instance
-            self.cache_bitwuzla_instance[step] = instance.get_bitwuzla(tm)
-            domain = instance.get_domain()
-            if domain:
-                current_states = [state.get_bitwuzla(tm) for state in domain]
-                next_states = [state.get_bitwuzla_name(step, tm) for state in domain]
-                renaming = dict(zip(current_states, next_states))
-
-                self.cache_bitwuzla_instance[step] = tm.substitute_term(self.cache_bitwuzla_instance[step], renaming)
-        return self.cache_bitwuzla_instance[step]
-
-    def get_bitwuzla_instance(self, step, tm):
-        if Bitwuzla_Solver.LAMBDAS:
-            return self.get_bitwuzla_select(step, tm)
-        else:
-            return self.get_bitwuzla_substitute(step, tm)
+        return self.get_step(step).get_expression().get_bitwuzla_instance(step, tm)
 
 class Bitwuzla_Solver:
     PROPAGATE = None
