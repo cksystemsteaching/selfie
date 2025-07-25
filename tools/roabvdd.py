@@ -100,12 +100,6 @@ class ROABVDD_Exit:
     def union(self, bvdd, inorder = True):
         return self.merge(bvdd, inorder)
 
-    def exclude(self, bvdd):
-        return self.get_binary_exit(bvdd)
-
-    def exclusion(self, bvdd):
-        return self.exclude(bvdd)
-
     def sample_input_values(self):
         return dict()
 
@@ -117,9 +111,6 @@ class ROABVDD_Node:
 
     union_bvdds = {}
     union_hits = 0
-
-    exclusion_bvdds = {}
-    exclusion_hits = 0
 
     def __init__(self, var_line):
         self.var_line = var_line
@@ -226,7 +217,7 @@ class ROABVDD_Node:
         if isinstance(bvdd, tuple):
             if op is None:
                 if bvdd[1] is None or right_exits is None:
-                    # ignore right exit of constrain, merge, and exclude
+                    # ignore right exit of constrain and merge
                     new_value = left_exits[bvdd[0]]
                 else:
                     assert bvdd[0] is None
@@ -354,52 +345,6 @@ class ROABVDD_Node:
                 ROABVDD_Node.union_bvdds[(bvdd, self)] = merge_bvdd
             return merge_bvdd
 
-    def exclude(self, bvdd):
-        if isinstance(bvdd, ROABVDD_Exit):
-            return None
-        else:
-            if bvdd is None:
-                exclude_bvdd = ROABVDD_Node(self.var_line)
-                for output in self.outputs:
-                    exclude_bvdd.set_input(self.outputs[output], output.exclusion(None))
-            else:
-                assert isinstance(bvdd, ROABVDD_Node), f"expected ROABVDD_Node, got {type(bvdd)}"
-                if self.var_line > bvdd.var_line:
-                    exclude_bvdd = ROABVDD_Node(bvdd.var_line)
-                    for output in bvdd.outputs:
-                        exclude_bvdd.set_input(bvdd.outputs[output],
-                            self.exclusion(output))
-                else:
-                    exclude_bvdd = ROABVDD_Node(self.var_line)
-                    if self.var_line < bvdd.var_line:
-                        for output in self.outputs:
-                            exclude_bvdd.set_input(self.outputs[output],
-                                output.exclusion(bvdd))
-                    else:
-                        assert self.var_line is bvdd.var_line
-                        for output1 in self.outputs:
-                            inputs1 = self.outputs[output1]
-                            if inputs1 & bvdd.inputs:
-                                for output2 in bvdd.outputs:
-                                    inputs2 = inputs1 & bvdd.outputs[output2]
-                                    if inputs2:
-                                        exclude_bvdd.set_input(inputs2,
-                                            output1.exclusion(output2))
-                                        inputs1 &= ~bvdd.outputs[output2]
-                            if inputs1:
-                                exclude_bvdd.set_input(inputs1, output1.exclusion(None))
-            return exclude_bvdd.reduce()
-
-    def exclusion(self, bvdd):
-        if (self, bvdd) in ROABVDD_Node.exclusion_bvdds:
-            ROABVDD_Node.exclusion_hits += 1
-            return ROABVDD_Node.exclusion_bvdds[(self, bvdd)]
-        else:
-            exclude_bvdd = self.exclude(bvdd)
-            assert (self, bvdd) not in ROABVDD_Node.exclusion_bvdds
-            ROABVDD_Node.exclusion_bvdds[(self, bvdd)] = exclude_bvdd
-            return exclude_bvdd
-
     def sample_input_values(self):
         # Grab an arbitrary branch to walk down to
         outp, inp = next(self.outputs.items())
@@ -434,7 +379,6 @@ class ROABVDD:
         print(f"Exit cache utilization: {utilization(ROABVDD_Exit.exit_hits, len(ROABVDD_Exit.exits))}")
         print(f"Node intersection cache utilization: {utilization(ROABVDD_Node.intersection_hits, len(ROABVDD_Node.intersection_bvdds))}")
         print(f"Node union cache utilization: {utilization(ROABVDD_Node.union_hits, len(ROABVDD_Node.union_bvdds))}")
-        print(f"Node exclusion cache utilization: {utilization(ROABVDD_Node.exclusion_hits, len(ROABVDD_Node.exclusion_bvdds))}")
 
     def number_of_inputs(self):
         return self.bvdd.number_of_inputs()
@@ -497,14 +441,6 @@ class ROABVDD:
         new_bvdd = self.bvdd.union(roabvdd.bvdd)
         assert new_bvdd is not None
         return ROABVDD(*ROABVDD_Node.compute_binary(new_bvdd, sid_line, None, self.exits, roabvdd.exits))
-
-    def exclude(self, sid_line, constraint):
-        if constraint.is_never_false():
-            return self
-        else:
-            new_bvdd = self.bvdd.exclusion(constraint.bvdd)
-            assert new_bvdd is not None
-            return ROABVDD(*ROABVDD_Node.compute_binary(new_bvdd, sid_line, None, self.exits, None))
 
     def get_false_constraint(self):
         if False in self.values:

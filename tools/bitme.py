@@ -559,16 +559,6 @@ class Values:
             # lazy evaluation of true and false case
             return self.merge(values2, values3)
 
-    # bitme solver
-
-    def exclude(self, constraint):
-        assert isinstance(constraint.sid_line, Bool)
-        roabvdd = None
-        if Values.ROABVDD:
-            values = self.constrain(constraint.get_true_constraint())
-            roabvdd = values.roabvdd.exclude(self.sid_line, constraint.get_false_constraint().roabvdd)
-        return Values(self.sid_line, None, None, self.bvdd, roabvdd, self.cflobvdd)
-
 LAMBDAS = True
 
 UNROLL = False
@@ -1172,7 +1162,7 @@ class Bitme_Solver:
     version = 0
     bump = 1
 
-    def __init__(self, z3_solver, bitwuzla_solver, exclude):
+    def __init__(self, z3_solver, bitwuzla_solver):
         self.z3_solver = z3_solver
         self.bitwuzla_solver = bitwuzla_solver
         self.fallback = False
@@ -1180,7 +1170,6 @@ class Bitme_Solver:
         self.constraint = Values.TRUE()
         self.proven = {}
         self.unproven = {}
-        self.exclude = exclude
 
     def push(self):
         if self.fallback:
@@ -1304,17 +1293,6 @@ class Bitme_Solver:
                          assert isinstance(assertion.sid_line, Bool)
                          assert self.unproven[step][assertion] is True
                          self.constraint = assertion.And(self.constraint)
-                if self.exclude:
-                    if not self.constraint.is_never_false() and not self.constraint.is_never_true():
-                        for assertion in self.unproven[step]:
-                            if isinstance(assertion, Transitional):
-                                values = assertion.get_step(step)
-                                if isinstance(values, Values):
-                                    values = values.exclude(self.constraint)
-                                    # constraining cached instances requires versioning cached values
-                                    assertion.set_cached_instance(values, step)
-                                else:
-                                    return self.solve()
             self.proven |= self.unproven
             self.unproven = {}
             return not self.constraint.is_never_false() and not self.constraint.is_never_true()
@@ -1580,8 +1558,6 @@ def main():
     parser.add_argument('--print-transition', action='store_true')
     parser.add_argument('--branching', action='store_true') # only for rotor models
 
-    parser.add_argument('--exclude', action='store_true') # only for ROABVDDs
-
     args = parser.parse_args()
 
     global LAMBDAS
@@ -1631,7 +1607,7 @@ def main():
         if not args.use_BVDD and not args.use_ROABVDD and not args.use_CFLOBVDD:
             Values.ROABVDD = True
 
-        bitme_solver = Bitme_Solver(z3_solver, bitwuzla_solver, args.exclude)
+        bitme_solver = Bitme_Solver(z3_solver, bitwuzla_solver)
 
         if not args.use_Z3 and not args.use_bitwuzla:
             if Variable.cflobvdd_input:
