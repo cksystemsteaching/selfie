@@ -1347,7 +1347,7 @@ class Bitme_Solver:
                 self.bitwuzla_solver.print_pc(pc, step, level)
         else:
             self.prove()
-            pc_value = pc.get_instance(step - 1)
+            pc_value = pc.get_values(step)
             print_message(f"{pc}\n", step, level)
             print_message("%s = %s\n" % (pc.get_step_name(step), pc_value), step, level)
 
