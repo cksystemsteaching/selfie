@@ -103,7 +103,8 @@ class Constant:
 
 class Constant_Array:
     def model_bitwuzla(self, tm):
-        return tm.mk_const_array(self.sid_line.get_bitwuzla(tm), self.constant_line.get_bitwuzla(tm))
+        return tm.mk_const_array(self.sid_line.get_bitwuzla(tm),
+            self.constant_line.get_bitwuzla(tm))
 
 class Input:
     def model_bitwuzla(self, tm):
@@ -139,7 +140,8 @@ class Ext:
 
 class Slice:
     def model_bitwuzla(self, tm):
-        return tm.mk_term(bitwuzla.Kind.BV_EXTRACT, [self.arg1_line.get_bitwuzla(tm)], [self.u, self.l])
+        return tm.mk_term(bitwuzla.Kind.BV_EXTRACT,
+            [self.arg1_line.get_bitwuzla(tm)], [self.u, self.l])
 
 class Unary:
     def model_bitwuzla(self, tm):
@@ -340,7 +342,8 @@ class Bitwuzla_Solver:
 
     def assert_not_this(self, assertions, step):
         for assertion in assertions:
-            self.solver.assert_formula(self.tm.mk_term(bitwuzla.Kind.NOT, [assertion.get_bitwuzla_step(step, self.tm)]))
+            self.solver.assert_formula(self.tm.mk_term(bitwuzla.Kind.NOT,
+                [assertion.get_bitwuzla_step(step, self.tm)]))
 
     def simplify(self):
         # possibly increases performance
@@ -363,27 +366,28 @@ class Bitwuzla_Solver:
 
     def print_pc(self, pc, step, level):
         self.prove()
-        pc_value = int(self.solver.get_value(pc.get_bitwuzla_instance(step - 1, self.tm)).value(16), 16)
+        pc_value = pc.get_values(step).get_expression().get_bitwuzla_instance(step, self.tm)
         self.print_message(f"{pc}\n", step, level)
-        self.print_message("%s = 0x%X\n" % (pc.get_bitwuzla_name(step, self.tm), pc_value), step, level)
+        self.print_message("%s = 0x%X\n" % (pc.get_bitwuzla_name(step, self.tm),
+            int(self.solver.get_value(pc_value).value(16), 16)), step, level)
 
     def print_inputs(self, inputs, step, level):
         for input_variable in inputs.values():
             # only print value of uninitialized states
+            input_value = input_variable.get_values(step).get_expression().get_bitwuzla_instance(step, self.tm)
             self.print_message(f"{input_variable}\n", step, level)
             self.print_message("%s = %s\n" % (input_variable.get_bitwuzla_name(step, self.tm),
-                self.solver.get_value(input_variable.get_bitwuzla_instance(step - 1, self.tm))),
-                step, level)
+                self.solver.get_value(input_value)), step, level)
 
     def eval_inputs(self, inputs, step):
         input_values = dict()
         for input_variable in inputs.values():
-            bwz_inst = input_variable.get_bitwuzla_instance(step - 1, self.tm)
+            input_value = input_variable.get_values(step).get_expression().get_bitwuzla_instance(step, self.tm)
             if isinstance(input_variable.sid_line, Array):
-                # Mimic the output of the BVDD naming scheme for consistency
+                # mimic output of BVDD naming scheme for consistency
                 for index in range(2**input_variable.sid_line.array_size_line.size):
-                    input_values[f"{input_variable.symbol}-{index}"] = self.solver.get_value(bwz_inst[index])
+                    input_values[f"{input_variable.symbol}-{index}"] = \
+                        self.solver.get_value(input_value[index])
             else:
-                input_values[input_variable.symbol] = self.solver.get_value(bwz_inst)
-
+                input_values[input_variable.symbol] = self.solver.get_value(input_value)
         return input_values
