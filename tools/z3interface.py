@@ -50,6 +50,7 @@ class Array:
 class Expression:
     def __init__(self):
         self.z3_lambda = None
+        self.cache_z3_instance = {}
 
     def get_z3_lambda(self):
         if self.z3_lambda is None:
@@ -59,6 +60,34 @@ class Expression:
             else:
                 self.z3_lambda = self.get_z3()
         return self.z3_lambda
+
+    def get_z3_select(self, step):
+        if step not in self.cache_z3_instance:
+            domain = self.get_domain()
+            if domain:
+                self.cache_z3_instance[step] = z3.Select(self.get_z3_lambda(),
+                    *[state.get_z3_name(step) for state in domain])
+            else:
+                self.cache_z3_instance[step] = self.get_z3_lambda()
+        return self.cache_z3_instance[step]
+
+    def get_z3_substitute(self, step):
+        if step not in self.cache_z3_instance:
+            domain = self.get_domain()
+            if domain:
+                current_states = [state.get_z3() for state in domain]
+                next_states = [state.get_z3_name(step) for state in domain]
+                renaming = list(zip(current_states, next_states))
+                self.cache_z3_instance[step] = z3.substitute(self.get_z3(), renaming)
+            else:
+                self.cache_z3_instance[step] = self.get_z3()
+        return self.cache_z3_instance[step]
+
+    def get_z3_instance(self, step):
+        if Z3_Solver.LAMBDAS:
+            return self.get_z3_select(step)
+        else:
+            return self.get_z3_substitute(step)
 
 class Constant:
     def model_z3(self):
@@ -79,27 +108,14 @@ class Input:
     def get_z3_name(self, step):
         return self.get_z3()
 
-    def get_z3_instance(self, step):
-        return self.get_z3()
-
 class State:
     def __init__(self):
         self.cache_z3_name = {}
 
     def get_z3_name(self, step):
-        if step == -1:
-            step = 0
         if step not in self.cache_z3_name:
             self.cache_z3_name[step] = z3.Const(self.get_step_name(step), self.sid_line.get_z3())
         return self.cache_z3_name[step]
-
-    def get_z3_instance(self, step):
-        if self.next_line is None:
-            # all instances of an untransitioned state are
-            # the state itself, if uninitialized, or its initial state
-            return self.instance.get_z3_instance(-1)
-        else:
-            return self.instance.get_z3_instance(step)
 
 class Ext:
     def model_z3(self):
@@ -220,8 +236,7 @@ class Ite:
 
     def get_z3_step(self, step):
         # only needed for branching
-        self.set_step(step)
-        return self.get_instance().get_z3_instance(step)
+        return self.get_step(step).get_expression().get_z3_instance(step)
 
 class Write:
     def model_z3(self):
@@ -230,11 +245,12 @@ class Write:
 class Init:
     def get_z3_step(self, step):
         assert step == 0, f"z3 init with {step} != 0"
-        self.set_step(0)
-        if Z3_Solver.PROPAGATE is not None:
+        if Z3_Solver.UNROLL:
+            self.get_step(step)
             return z3.BoolVal(True)
         else:
-            return self.state_line.get_z3_name(0) == self.state_line.get_z3_instance(-1)
+            return (self.state_line.get_z3_name(0) ==
+                self.get_step(0).get_expression().get_z3_instance(0))
 
 class Next:
     def __init__(self):
@@ -244,81 +260,48 @@ class Next:
 
     def get_z3_step(self, step):
         if step not in self.cache_z3_next_state:
-            self.set_step(step)
-            if Z3_Solver.PROPAGATE is not None:
+            if Z3_Solver.UNROLL:
+                self.get_step(step)
                 self.cache_z3_next_state[step] = z3.BoolVal(True)
             else:
-                self.cache_z3_next_state[step] = self.state_line.get_z3_name(step + 1) == self.state_line.get_z3_instance(step)
+                self.cache_z3_next_state[step] = \
+                    (self.state_line.get_z3_name(step + 1) ==
+                        self.get_step(step).get_expression().get_z3_instance(step))
         return self.cache_z3_next_state[step]
 
     def is_z3_state_changing(self, step):
         if step not in self.cache_z3_is_state_changing:
-            self.set_step(step)
             if self.get_step(step).is_equal(self.get_step(step - 1)):
                 self.cache_z3_is_state_changing[step] = z3.BoolVal(False)
             else:
-                self.cache_z3_is_state_changing[step] = self.state_line.get_z3_instance(step) != self.state_line.get_z3_instance(step - 1)
+                self.cache_z3_is_state_changing[step] = \
+                    (self.get_step(step).get_expression().get_z3_instance(step) !=
+                        self.get_step(step - 1).get_expression().get_z3_instance(step - 1))
         return self.cache_z3_is_state_changing[step]
 
     def z3_state_is_not_changing(self, step):
         if step not in self.cache_z3_state_is_not_changing:
-            if Z3_Solver.PROPAGATE is not None:
-                self.set_step(step)
-                self.cache_z3_state_is_not_changing[step] = self.state_line.get_z3_instance(step) == self.state_line.get_z3_instance(step - 1)
+            if Z3_Solver.UNROLL:
+                self.cache_z3_state_is_not_changing[step] = \
+                    (self.get_step(step).get_expression().get_z3_instance(step) ==
+                        self.get_step(step - 1).get_expression().get_z3_instance(step - 1))
             else:
-                self.state_line.set_instance(self.state_line, step)
-                self.cache_z3_state_is_not_changing[step] = self.state_line.get_z3_name(step + 1) == self.state_line.get_z3_name(step)
+                self.cache_z3_state_is_not_changing[step] = \
+                    self.state_line.get_z3_name(step + 1) == self.state_line.get_z3_name(step)
         return self.cache_z3_state_is_not_changing[step]
 
 class Property:
     def get_z3_step(self, step):
-        self.set_step(step)
-        return self.get_instance().get_z3_instance(step)
-
-class Instance:
-    def __init__(self):
-        self.cache_z3_instance = {}
-
-    def get_z3_select(self, step):
-        if step not in self.cache_z3_instance:
-            instance = self.get_instance(step).get_expression()
-            assert step not in self.cache_z3_instance
-            domain = instance.get_domain()
-            if domain:
-                self.cache_z3_instance[step] = z3.Select(instance.get_z3_lambda(),
-                    *[state.get_z3_name(step) for state in domain])
-            else:
-                self.cache_z3_instance[step] = instance.get_z3_lambda()
-        return self.cache_z3_instance[step]
-
-    def get_z3_substitute(self, step):
-        if step not in self.cache_z3_instance:
-            instance = self.get_instance(step).get_expression()
-            assert step not in self.cache_z3_instance
-            self.cache_z3_instance[step] = instance.get_z3()
-            domain = instance.get_domain()
-            if domain:
-                current_states = [state.get_z3() for state in domain]
-                next_states = [state.get_z3_name(step) for state in domain]
-                renaming = list(zip(current_states, next_states))
-
-                self.cache_z3_instance[step] = z3.substitute(self.cache_z3_instance[step], renaming)
-        return self.cache_z3_instance[step]
-
-    def get_z3_instance(self, step):
-        if Z3_Solver.LAMBDAS:
-            return self.get_z3_select(step)
-        else:
-            return self.get_z3_substitute(step)
+        return self.get_step(step).get_expression().get_z3_instance(step)
 
 class Z3_Solver:
-    PROPAGATE = None
     LAMBDAS = True
+    UNROLL = False
 
-    def __init__(self, print_message, PROPAGATE, LAMBDAS):
+    def __init__(self, print_message, LAMBDAS, UNROLL):
         self.print_message = print_message
-        Z3_Solver.PROPAGATE = PROPAGATE
         Z3_Solver.LAMBDAS = LAMBDAS
+        Z3_Solver.UNROLL = UNROLL
         self.solver = z3.Solver()
 
     def push(self):
@@ -356,30 +339,31 @@ class Z3_Solver:
 
     def print_pc(self, pc, step, level):
         self.prove()
-        model = self.solver.model()
+        pc_value = pc.get_values(step).get_expression().get_z3_instance(step)
         self.print_message(f"{pc}\n", step, level)
         self.print_message("%s = 0x%X\n" % (pc.get_z3_name(step),
-            int(model.evaluate(pc.get_z3_instance(step - 1)).as_long())), step, level)
+            int(self.solver.model().evaluate(pc_value).as_long())), step, level)
 
     def print_inputs(self, inputs, step, level):
         model = self.solver.model()
         for input_variable in inputs.values():
             # only print value of uninitialized states
+            input_value = input_variable.get_values(step).get_expression().get_z3_instance(step)
             self.print_message(f"{input_variable}\n", step, level)
             self.print_message("%s = %s\n" % (input_variable.get_z3_name(step),
-                model.evaluate(input_variable.get_z3_instance(step - 1))), step, level)
+                model.evaluate(input_value)), step, level)
 
     def eval_inputs(self, inputs, step):
         model = self.solver.model()
-
         input_values = dict()
         for input_variable in inputs.values():
-            z3_inst = input_variable.get_z3_instance(step - 1)
+            input_value = input_variable.get_values(step).get_expression().get_z3_instance(step)
             if isinstance(input_variable.sid_line, Array):
-                # Mimic the output of the BVDD naming scheme for consistency
+                # mimic output of BVDD naming scheme for consistency
                 for index in range(2**input_variable.sid_line.array_size_line.size):
-                    input_values[f"{input_variable.symbol}-{index}"] = model.evaluate(z3_inst[index], model_completion=True).as_long()
+                    input_values[f"{input_variable.symbol}-{index}"] = \
+                        model.evaluate(input_value[index], model_completion=True).as_long()
             else:
-                input_values[input_variable.symbol] = model.evaluate(z3_inst, model_completion=True).as_long()
-
+                input_values[input_variable.symbol] = \
+                    model.evaluate(input_value, model_completion=True).as_long()
         return input_values
