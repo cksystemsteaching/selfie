@@ -264,13 +264,13 @@ class Write:
 class Init:
     def get_bitwuzla_step(self, step, tm):
         assert step == 0, f"bitwuzla init with {step} != 0"
-        if Bitwuzla_Solver.PROPAGATE is not None:
+        if Bitwuzla_Solver.UNROLL:
             self.get_step(step)
             return tm.mk_true()
         else:
             return tm.mk_term(bitwuzla.Kind.EQUAL,
                 [self.state_line.get_bitwuzla_name(0, tm),
-                self.get_step(0).get_bitwuzla_instance(0, tm)])
+                self.get_step(0).get_expression().get_bitwuzla_instance(0, tm)])
 
 class Next:
     def __init__(self):
@@ -280,13 +280,13 @@ class Next:
 
     def get_bitwuzla_step(self, step, tm):
         if step not in self.cache_bitwuzla_next_state:
-            if Bitwuzla_Solver.PROPAGATE is not None:
+            if Bitwuzla_Solver.UNROLL:
                 self.get_step(step)
                 self.cache_bitwuzla_next_state[step] = tm.mk_true()
             else:
                 self.cache_bitwuzla_next_state[step] = tm.mk_term(bitwuzla.Kind.EQUAL,
                     [self.state_line.get_bitwuzla_name(step + 1, tm),
-                    self.get_step(step).get_bitwuzla_instance(step, tm)])
+                    self.get_step(step).get_expression().get_bitwuzla_instance(step, tm)])
         return self.cache_bitwuzla_next_state[step]
 
     def is_bitwuzla_state_changing(self, step, tm):
@@ -301,7 +301,7 @@ class Next:
 
     def bitwuzla_state_is_not_changing(self, step, tm):
         if step not in self.cache_bitwuzla_state_is_not_changing:
-            if Bitwuzla_Solver.PROPAGATE is not None:
+            if Bitwuzla_Solver.UNROLL:
                 self.cache_bitwuzla_state_is_not_changing[step] = tm.mk_term(bitwuzla.Kind.EQUAL,
                     [self.get_step(step).get_expression().get_bitwuzla_instance(step, tm),
                     self.get_step(step - 1).get_expression().get_bitwuzla_instance(step - 1, tm)])
@@ -316,13 +316,13 @@ class Property:
         return self.get_step(step).get_expression().get_bitwuzla_instance(step, tm)
 
 class Bitwuzla_Solver:
-    PROPAGATE = None
     LAMBDAS = True
+    UNROLL = False
 
-    def __init__(self, print_message, PROPAGATE, LAMBDAS):
+    def __init__(self, print_message, LAMBDAS, UNROLL):
         self.print_message = print_message
-        Bitwuzla_Solver.PROPAGATE = PROPAGATE
         Bitwuzla_Solver.LAMBDAS = LAMBDAS
+        Bitwuzla_Solver.UNROLL = UNROLL
         self.tm = bitwuzla.TermManager()
         self.options = bitwuzla.Options()
         self.options.set(bitwuzla.Option.PRODUCE_MODELS, True)

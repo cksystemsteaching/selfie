@@ -565,11 +565,14 @@ class Values:
             roabvdd = values.roabvdd.exclude(self.sid_line, constraint.get_false_constraint().roabvdd)
         return Values(self.sid_line, None, None, self.bvdd, roabvdd, self.cflobvdd)
 
+LAMBDAS = True
+
+UNROLL = False
+
 PROPAGATE = None
 PROPAGATE_UNARY = True
 PROPAGATE_BINARY = True
 PROPAGATE_ITE = True
-LAMBDAS = True
 
 class Line(btor2.Line, z3interface.Z3, bitwuzlainterface.Bitwuzla):
     def __init__(self):
@@ -615,7 +618,7 @@ class Expression(Line, btor2.Expression, z3interface.Expression, bitwuzlainterfa
 
     def get_values(self, step):
         assert step >= 0
-        if PROPAGATE is not None:
+        if UNROLL or PROPAGATE is not None:
             # versioning needed for support of branching in bitme solver
             if step not in self.cache_values or self.cache_values[step][1] not in Bitme_Solver.versions:
                 self.cache_values[step] = (self.compute_values(step), Bitme_Solver.version)
@@ -629,7 +632,7 @@ class Constant(Expression, btor2.Constant, z3interface.Constant, bitwuzlainterfa
 
     def compute_values(self, step):
         assert step == 0
-        if PROPAGATE is not None and PROPAGATE > 0:
+        if PROPAGATE is not None:
             if isinstance(self.sid_line, Bool):
                 return Values.TRUE() if bool(self.value) else Values.FALSE()
             else:
@@ -716,13 +719,17 @@ class State(Variable, btor2.State, z3interface.State, bitwuzlainterface.State):
             if self.init_line is None:
                 # uninitialized state
                 return super().compute_values(0)
-            else:
+            elif UNROLL:
                 return self.init_line.get_step(0)
+            else:
+                return self
         elif self.next_line is None or self.next_line.exp_line is self:
             # untransitioned state or transitioned to itself
             return self.get_values(0)
-        else:
+        elif UNROLL:
             return self.next_line.get_step(step - 1)
+        else:
+            return self
 
 class Indexed(Expression, btor2.Indexed):
     def __init__(self):
@@ -1142,7 +1149,7 @@ def print_separator(separator, step = None, level = None):
     print_message(f"{separator * (80 - len(get_step(step, level)))}\n", step, level)
 
 def print_message_with_propagation_profile(message, step = None, level = None):
-    if PROPAGATE is not None:
+    if UNROLL or PROPAGATE is not None:
         string = f"({Values.total_number_of_constants} constants, "
         string += f"{Values.current_number_of_inputs} inputs, "
         string += f"{Values.max_number_of_values} values, "
@@ -1402,7 +1409,7 @@ def branching_bmc(solver, kmin, kmax, args, step, level):
             if solver.is_UNSAT(result):
                 print_separator('v', step, level)
                 print_message(f"{constraint}\n", step, level)
-                if PROPAGATE is not None:
+                if UNROLL or PROPAGATE is not None:
                     print_message_with_propagation_profile("propagation profile\n", step, level)
                 print_separator('^', step, level)
                 return
@@ -1418,7 +1425,7 @@ def branching_bmc(solver, kmin, kmax, args, step, level):
                     print_separator('v', step, level)
                     print_message(f"{bad}\n", step, level)
                     solver.print_inputs(Variable.inputs, step, level)
-                    if PROPAGATE is not None:
+                    if UNROLL or PROPAGATE is not None:
                         print_message_with_propagation_profile("propagation profile\n", step, level)
                     print_separator('^', step, level)
 
@@ -1552,8 +1559,10 @@ def main():
     parser.add_argument('--use-ROABVDD', action='store_true')
     parser.add_argument('--use-CFLOBVDD', nargs='?', default=None, const=8, type=int)
 
-    parser.add_argument('-propagate', nargs=1, type=int)
     parser.add_argument('--substitute', action='store_true')
+
+    parser.add_argument('--unroll', action='store_true')
+    parser.add_argument('-propagate', nargs=1, type=int)
 
     parser.add_argument('-array', nargs=1, type=int)
     parser.add_argument('--recursive-array', action='store_true')
@@ -1571,13 +1580,17 @@ def main():
 
     args = parser.parse_args()
 
-    global PROPAGATE
-
-    PROPAGATE = args.propagate[0] if args.propagate and args.propagate[0] >= 0 else None
-
     global LAMBDAS
 
     LAMBDAS = not args.substitute
+
+    global UNROLL
+
+    UNROLL = args.unroll
+
+    global PROPAGATE
+
+    PROPAGATE = args.propagate[0] if args.propagate and args.propagate[0] >= 0 else None
 
     btor2.Array.ARRAY_SIZE_BOUND = args.array[0] if args.array else 0
     btor2.Read.READ_ARRAY_ITERATIVELY = not args.recursive_array
@@ -1599,9 +1612,9 @@ def main():
         bitwuzla_solver = None
 
         if z3interface.is_Z3_present:
-            z3_solver = z3interface.Z3_Solver(print_message, PROPAGATE, LAMBDAS)
+            z3_solver = z3interface.Z3_Solver(print_message, LAMBDAS, UNROLL)
         if bitwuzlainterface.is_bitwuzla_present:
-            bitwuzla_solver = bitwuzlainterface.Bitwuzla_Solver(print_message, PROPAGATE, LAMBDAS)
+            bitwuzla_solver = bitwuzlainterface.Bitwuzla_Solver(print_message, LAMBDAS, UNROLL)
 
         if args.use_BVDD:
             Values.BVDD = True
