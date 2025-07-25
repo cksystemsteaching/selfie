@@ -101,6 +101,10 @@ class Values:
     def __str__(self):
         return f"{self.sid_line}: {self.bvdd} {self.roabvdd} {self.cflobvdd}"
 
+    def __hash__(self):
+        # for termination check
+        return hash((self.sid_line, self.bvdd, self.roabvdd, self.cflobvdd))
+
     def match_sorts(self, values):
         return self.sid_line.match_sorts(values.sid_line)
 
