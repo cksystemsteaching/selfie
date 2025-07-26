@@ -843,6 +843,8 @@ class Collapsed_Classes:
         return Collapsed_Classes.cache[collapsed_classes]
 
 class CFLOBVDD:
+    REDUCE = True
+
     max_level = 0
 
     representatives = {}
@@ -893,6 +895,9 @@ class CFLOBVDD:
     def number_of_values(self):
         return len(self.outputs)
 
+    def number_of_distinct_values(self):
+        return len(set(self.outputs.values()))
+
     def get_printed_paths(paths, full_paths = True):
         printed_paths = []
         for path in paths:
@@ -931,9 +936,7 @@ class CFLOBVDD:
                     value_paths += "\n"
                 value_paths += (f"{self.outputs[exit_i]} <- " +
                     CFLOBVDD.get_printed_paths(self.grouping.get_paths(exit_i))[0])
-                if value is not None:
-                    # only print specified value
-                    break
+                # without reductions value may appear more than once
         return value_paths
 
     def get_printed_CFLOBVDD(self, value = None):
@@ -941,8 +944,9 @@ class CFLOBVDD:
             f"{2**self.grouping.level * self.number_of_input_bits} input bits in total\n" +
             f"{2**self.grouping.level} input variables\n" +
             f"{self.number_of_input_bits} input bits per variable\n" +
-            f"{self.number_of_values()} output values\n"
-            f"{self.number_of_output_bits} output bits per value\n"
+            f"{self.number_of_values()} output values\n" +
+            f"{self.number_of_distinct_values()} disctinct output values\n"
+            f"{self.number_of_output_bits} output bits per value\n" +
             f"{self.number_of_paths()} paths\n" +
             f"{self.number_of_inputs()} inputs\n" +
             f"{self.get_printed_value_paths(value)}")
@@ -950,7 +954,8 @@ class CFLOBVDD:
     def is_consistent(self):
         assert self.grouping.is_consistent()
         assert self.number_of_values() == self.grouping.number_of_exits, f"{self.number_of_values()} == {self.grouping.number_of_exits}"
-        assert self.number_of_values() == len(set(self.outputs.values()))
+        assert self.number_of_values() >= self.number_of_distinct_values()
+        assert not CFLOBVDD.REDUCE or self.number_of_values() == self.number_of_distinct_values()
         assert all([0 <= self.outputs[i] < 2**self.number_of_output_bits for i in self.outputs])
         return True
 
@@ -964,10 +969,18 @@ class CFLOBVDD:
         return CFLOBVDD.representatives[cflobvdd]
 
     def is_never_false(self):
-        return len(self.outputs) == 1 and self.outputs[1] is True
+        # without reductions True may appear more than once
+        return all([self.outputs[i] is True for i in self.outputs])
 
     def is_never_true(self):
-        return len(self.outputs) == 1 and self.outputs[1] is False
+        # without reductions False may appear more than once
+        return all([self.outputs[i] is False for i in self.outputs])
+
+    def is_always_false(self):
+        return self.is_never_true()
+
+    def is_always_true(self):
+        return self.is_never_false()
 
     def constant(level, output, number_of_input_bits, number_of_output_bits):
         return CFLOBVDD.representative(
@@ -992,6 +1005,7 @@ class CFLOBVDD:
         return CFLOBVDD.constant(level, True, number_of_input_bits, 1)
 
     def flip_value_tuple(self):
+        # self must be reduced
         assert self.number_of_values() == 2
         return CFLOBVDD.representative(self.grouping,
             {1:self.outputs[2], 2:self.outputs[1]},
@@ -1004,6 +1018,7 @@ class CFLOBVDD:
         elif self == CFLOBVDD.true(self.grouping.level, self.number_of_input_bits):
             return CFLOBVDD.false(self.grouping.level, self.number_of_input_bits)
         else:
+            # self must be reduced
             return self.flip_value_tuple()
 
     def unary_apply_and_reduce(self, op, number_of_output_bits):
@@ -1084,14 +1099,17 @@ class CFLOBVDD:
 
         g, pt = n1.grouping.pair_product(n2.grouping)
 
-        induced_value_tuple, induced_return_tuple = \
-            CFLOBVDD.linear_collapse_classes_leftmost(dict([(i,
-                op(n1.outputs[pt[i][0]], n2.outputs[pt[i][1]])) for i in pt]))
+        equiv_classes = dict([(i, op(n1.outputs[pt[i][0]], n2.outputs[pt[i][1]])) for i in pt])
 
-        return CFLOBVDD.representative(g.reduce(induced_return_tuple),
-            induced_value_tuple,
-            n1.number_of_input_bits,
-            number_of_output_bits)
+        if CFLOBVDD.REDUCE:
+            induced_value_tuple, induced_return_tuple = \
+                CFLOBVDD.linear_collapse_classes_leftmost(equiv_classes)
+            g = g.reduce(induced_return_tuple)
+        else:
+            induced_value_tuple = equiv_classes
+
+        return CFLOBVDD.representative(g, induced_value_tuple,
+            n1.number_of_input_bits, number_of_output_bits)
 
     def ternary_apply_and_reduce(self, n2, n3, op, number_of_output_bits):
         assert isinstance(n2, CFLOBVDD) and isinstance(n3, CFLOBVDD)
@@ -1102,14 +1120,18 @@ class CFLOBVDD:
 
         g, tt = n1.grouping.triple_product(n2.grouping, n3.grouping)
 
-        induced_value_tuple, induced_return_tuple = \
-            CFLOBVDD.linear_collapse_classes_leftmost(dict([(i,
-                op(n1.outputs[tt[i][0]], n2.outputs[tt[i][1]], n3.outputs[tt[i][2]])) for i in tt]))
+        equiv_classes = dict([(i,
+            op(n1.outputs[tt[i][0]], n2.outputs[tt[i][1]], n3.outputs[tt[i][2]])) for i in tt])
 
-        return CFLOBVDD.representative(g.reduce(induced_return_tuple),
-            induced_value_tuple,
-            n1.number_of_input_bits,
-            number_of_output_bits)
+        if CFLOBVDD.REDUCE:
+            induced_value_tuple, induced_return_tuple = \
+                CFLOBVDD.linear_collapse_classes_leftmost(equiv_classes)
+            g = g.reduce(induced_return_tuple)
+        else:
+            induced_value_tuple = equiv_classes
+
+        return CFLOBVDD.representative(g, induced_value_tuple,
+            n1.number_of_input_bits, number_of_output_bits)
 
 class CFLOBVDD_Test:
     # projection test cases

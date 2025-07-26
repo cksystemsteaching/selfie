@@ -108,13 +108,6 @@ class Values:
     def match_sorts(self, values):
         return self.sid_line.match_sorts(values.sid_line)
 
-    def is_equal(self, values):
-        return (type(self) is type(values) and
-            self.match_sorts(values) and
-            self.bvdd == values.bvdd and
-            self.roabvdd == values.roabvdd and
-            self.cflobvdd == values.cflobvdd)
-
     def is_consistent(self):
         return self.bvdd.is_consistent()
 
@@ -256,11 +249,15 @@ class Values:
 
     def is_always_false(self):
         assert isinstance(self.sid_line, Bool)
-        return self.is_equal(Values.FALSE())
+        return (self.bvdd == Values.FALSE().bvdd and
+            self.roabvdd == Values.FALSE().roabvdd and
+            self.cflobvdd.is_always_false())
 
     def is_always_true(self):
         assert isinstance(self.sid_line, Bool)
-        return self.is_equal(Values.TRUE())
+        return (self.bvdd == Values.TRUE().bvdd and
+            self.roabvdd == Values.TRUE().roabvdd and
+            self.cflobvdd.is_always_true())
 
     def is_never_false(self):
         assert isinstance(self.sid_line, Bool)
@@ -1541,6 +1538,8 @@ def main():
     parser.add_argument('--use-ROABVDD', action='store_true')
     parser.add_argument('--use-CFLOBVDD', nargs='?', default=None, const=8, type=int)
 
+    parser.add_argument('--no-reduction', action='store_true')
+
     parser.add_argument('--substitute', action='store_true')
 
     parser.add_argument('--unroll', action='store_true')
@@ -1603,6 +1602,8 @@ def main():
         if args.use_CFLOBVDD:
             Values.CFLOBVDD = True
             Values.number_of_input_bits = args.use_CFLOBVDD
+
+        CFLOBVDD.CFLOBVDD.REDUCE = not args.no_reduction
 
         if not args.use_BVDD and not args.use_ROABVDD and not args.use_CFLOBVDD:
             Values.ROABVDD = True
