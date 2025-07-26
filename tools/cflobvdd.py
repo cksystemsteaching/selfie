@@ -30,12 +30,17 @@ class BV_Grouping:
     reduction_cache = {}
     reduction_cache_hits = 0
 
-    def __init__(self, level, number_of_input_bits, number_of_exits = 1):
+    def __init__(self, level, number_of_input_bits, number_of_exits,
+            number_of_paths_per_exit = {}, number_of_inputs_per_exit = {}):
         assert level >= 0
         self.level = level
         assert 0 < number_of_input_bits <= 8
         self.number_of_input_bits = number_of_input_bits
         self.number_of_exits = number_of_exits
+        assert not number_of_paths_per_exit or len(number_of_paths_per_exit) == number_of_exits
+        self.number_of_paths_per_exit = number_of_paths_per_exit
+        assert not number_of_inputs_per_exit or len(number_of_inputs_per_exit) == number_of_exits
+        self.number_of_inputs_per_exit = number_of_inputs_per_exit
 
     def __repr__(self):
         return f"{self.level} w/ {self.number_of_input_bits} input bits & {self.number_of_exits} exits"
@@ -107,7 +112,6 @@ class BV_Grouping:
 
     def reduce(self, reduction_tuple):
         assert len(reduction_tuple) == self.number_of_exits
-
         if reduction_tuple == dict(enumerate(range(1, len(reduction_tuple) + 1), 1)):
             return 1, self
         else:
@@ -115,15 +119,14 @@ class BV_Grouping:
             if reduction_length == 1:
                 return 1, BV_No_Distinction_Proto.representative(self.level,
                     self.number_of_input_bits)
-            return reduction_length, self
+            else:
+                return reduction_length, self
 
 class BV_Dont_Care_Grouping(BV_Grouping):
     representatives = {}
 
     def __init__(self, number_of_input_bits):
-        super().__init__(0, number_of_input_bits)
-        self.number_of_paths_per_exit = {1:2**number_of_input_bits}
-        self.number_of_inputs_per_exit = {1:1}
+        super().__init__(0, number_of_input_bits, 1, {1:2**number_of_input_bits}, {1:1})
 
     def __repr__(self):
         return "dontcare @ " + super().__repr__()
@@ -214,11 +217,11 @@ class BV_Fork_Grouping(BV_Grouping):
     representatives_hits = 0
 
     def __init__(self, inputs, number_of_input_bits):
-        assert 0 < len(inputs) <= 2**number_of_input_bits
-        super().__init__(0, number_of_input_bits, len(inputs))
+        assert 1 < len(inputs) <= 2**number_of_input_bits
+        number_of_paths_per_exit = dict([(i, inputs[i].bit_count()) for i in inputs])
+        super().__init__(0, number_of_input_bits, len(inputs),
+            number_of_paths_per_exit, number_of_paths_per_exit)
         self.inputs = inputs
-        self.number_of_paths_per_exit = dict([(i, inputs[i].bit_count()) for i in inputs])
-        self.number_of_inputs_per_exit = self.number_of_paths_per_exit
 
     def __repr__(self):
         indentation = " " * (CFLOBVDD.max_level - self.level + 1)
@@ -300,8 +303,7 @@ class BV_Fork_Grouping(BV_Grouping):
         return BV_Fork_Grouping.representatives[self]
 
     def projection_proto(number_of_input_bits):
-        return BV_Fork_Grouping(dict([(i + 1, 2**i)
-            for i in range(2**number_of_input_bits)]),
+        return BV_Fork_Grouping(dict([(i + 1, 2**i) for i in range(2**number_of_input_bits)]),
             number_of_input_bits).representative()
 
     def fork_if_non_empty(inputs, number_of_input_bits, pair_tuples):
@@ -451,7 +453,7 @@ class BV_Internal_Grouping(BV_Grouping):
     representatives = {}
     representatives_hits = 0
 
-    def __init__(self, level, number_of_input_bits, number_of_exits = 1):
+    def __init__(self, level, number_of_input_bits, number_of_exits = 0):
         assert level > 0
         super().__init__(level, number_of_input_bits, number_of_exits)
         self.a_connection = None
@@ -459,8 +461,6 @@ class BV_Internal_Grouping(BV_Grouping):
         self.number_of_b_connections = 0
         self.b_connections = {}
         self.b_return_tuples = {}
-        self.number_of_paths_per_exit = {}
-        self.number_of_inputs_per_exit = {}
 
     def __repr__(self):
         indentation = " " * (CFLOBVDD.max_level - self.level + 1)
@@ -634,7 +634,7 @@ class BV_Internal_Grouping(BV_Grouping):
 
             g_a, pt_a = g1.a_connection.pair_product(g2.a_connection)
 
-            g = BV_Internal_Grouping(g1.level, g1.number_of_input_bits, 0)
+            g = BV_Internal_Grouping(g1.level, g1.number_of_input_bits)
 
             g.a_connection = g_a
             g.a_return_tuple = dict([(i, i) for i in pt_a])
@@ -684,7 +684,7 @@ class BV_Internal_Grouping(BV_Grouping):
 
             g_a, tt_a = g1.a_connection.triple_product(g2.a_connection, g3.a_connection)
 
-            g = BV_Internal_Grouping(g1.level, g1.number_of_input_bits, 0)
+            g = BV_Internal_Grouping(g1.level, g1.number_of_input_bits)
 
             g.a_connection = g_a
             g.a_return_tuple = dict([(i, i) for i in tt_a])
@@ -769,7 +769,7 @@ class BV_No_Distinction_Proto(BV_Internal_Grouping):
 
     def __init__(self, level, number_of_input_bits):
         assert level > 0
-        super().__init__(level, number_of_input_bits)
+        super().__init__(level, number_of_input_bits, 1)
 
     def representative(level, number_of_input_bits):
         if level == 0:
