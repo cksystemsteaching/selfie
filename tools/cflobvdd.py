@@ -306,12 +306,6 @@ class BV_Fork_Grouping(BV_Grouping):
         return BV_Fork_Grouping(dict([(i + 1, 2**i) for i in range(2**number_of_input_bits)]),
             number_of_input_bits).representative()
 
-    def fork_if_non_empty(inputs, number_of_input_bits, pair_tuples):
-        if inputs:
-            return BV_Fork_Grouping(inputs, number_of_input_bits).representative(), pair_tuples
-        else:
-            return BV_Dont_Care_Grouping.representative(number_of_input_bits).pair_product(BV_Dont_Care_Grouping.representative(number_of_input_bits))
-
     def pair_product(self, g2):
         assert isinstance(g2, BV_Grouping)
 
@@ -349,9 +343,8 @@ class BV_Fork_Grouping(BV_Grouping):
                             g2_inputs[g2_exit] = g2.inputs[g2_exit]
                     else:
                         return g1.cache_pair_product(g2,
-                            *BV_Fork_Grouping.fork_if_non_empty(g_inputs,
-                                g1.number_of_input_bits,
-                                g_pair_tuples))
+                            BV_Fork_Grouping(g_inputs, g1.number_of_input_bits).representative(),
+                            g_pair_tuples)
 
                 next_g2_exit = g2_exit
 
@@ -389,9 +382,8 @@ class BV_Fork_Grouping(BV_Grouping):
                         break
 
             return g1.cache_pair_product(g2,
-                *BV_Fork_Grouping.fork_if_non_empty(g_inputs,
-                    g1.number_of_input_bits,
-                    g_pair_tuples))
+                BV_Fork_Grouping(g_inputs, g1.number_of_input_bits).representative(),
+                g_pair_tuples)
 
     def triple_product(self, g2, g3):
         assert isinstance(g2, BV_Grouping) and isinstance(g3, BV_Grouping)
@@ -441,13 +433,17 @@ class BV_Fork_Grouping(BV_Grouping):
                     g_inputs[new_exit] = self.inputs[exit]
                 else:
                     new_exit = g_exits[reduced_to_exit]
-
                     assert g_inputs[new_exit] & self.inputs[exit] == 0
-
                     g_inputs[new_exit] |= self.inputs[exit]
 
-            return self.cache_reduction(reduction_tuple,
-                BV_Fork_Grouping(g_inputs, self.number_of_input_bits).representative())
+            assert len(g_inputs) > 0
+
+            if len(g_inputs) > 1:
+                g = BV_Fork_Grouping(g_inputs, self.number_of_input_bits).representative()
+            else:
+                g = BV_Dont_Care_Grouping.representative(self.number_of_input_bits)
+
+            return self.cache_reduction(reduction_tuple, g)
 
 class BV_Internal_Grouping(BV_Grouping):
     representatives = {}
