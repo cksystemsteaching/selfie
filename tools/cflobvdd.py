@@ -505,9 +505,9 @@ class BV_Internal_Grouping(BV_Grouping):
         assert super().is_consistent()
         g_a = self.a_connection
         assert isinstance(g_a, BV_Grouping)
-        assert len(self.a_return_tuple) == g_a.number_of_exits
+        assert not self.a_return_tuple or len(self.a_return_tuple) == g_a.number_of_exits
         assert len(self.a_return_tuple) == len(set(self.a_return_tuple.values()))
-        assert self.number_of_b_connections == len(self.a_return_tuple)
+        assert self.number_of_b_connections == g_a.number_of_exits
         assert len(self.b_connections) == self.number_of_b_connections
         assert len(self.b_return_tuples) == len(self.b_connections)
         for g_a_e_i in self.a_return_tuple:
@@ -579,8 +579,8 @@ class BV_Internal_Grouping(BV_Grouping):
                     number_of_output_bits)
                 g.a_connection = BV_Internal_Grouping.projection_proto(level - 1,
                     input_i, number_of_input_bits, a_number_of_output_bits)
-                g.a_return_tuple = dict([(e, e)
-                    for e in range(1, 2**a_number_of_output_bits + 1)])
+                # g.a_return_tuple == {} representing g.a_return_tuple = dict([(e, e)
+                    # for e in range(1, 2**a_number_of_output_bits + 1)])
 
                 input_i = 2**(level - 1)
             else:
@@ -588,7 +588,7 @@ class BV_Internal_Grouping(BV_Grouping):
 
                 g.a_connection = BV_No_Distinction_Proto.representative(level - 1,
                     number_of_input_bits)
-                g.a_return_tuple[1] = 1
+                # g.a_return_tuple == {} representing g.a_return_tuple[1] = 1
 
             g.number_of_b_connections = 2**a_number_of_output_bits
 
@@ -633,7 +633,7 @@ class BV_Internal_Grouping(BV_Grouping):
             g = BV_Internal_Grouping(g1.level, g1.number_of_input_bits)
 
             g.a_connection = g_a
-            g.a_return_tuple = dict([(i, i) for i in pt_a])
+            # g.a_return_tuple == {} representing g.a_return_tuple = dict([(i, i) for i in pt_a])
 
             g.number_of_b_connections = len(pt_a)
 
@@ -683,7 +683,7 @@ class BV_Internal_Grouping(BV_Grouping):
             g = BV_Internal_Grouping(g1.level, g1.number_of_input_bits)
 
             g.a_connection = g_a
-            g.a_return_tuple = dict([(i, i) for i in tt_a])
+            # g.a_return_tuple == {} representing g.a_return_tuple = dict([(i, i) for i in tt_a])
 
             g.number_of_b_connections = len(tt_a)
 
@@ -755,7 +755,8 @@ class BV_Internal_Grouping(BV_Grouping):
                 CFLOBVDD.linear_collapse_classes_leftmost(reduction_tuple_a)
 
             g_prime.a_connection = g.a_connection.reduce(induced_reduction_tuple)
-            g_prime.a_return_tuple = induced_return_tuple
+            assert all([i == induced_return_tuple[i] for i in induced_return_tuple])
+            # g_prime.a_return_tuple == {} representing g_prime.a_return_tuple = induced_return_tuple
 
             return g.cache_reduction(reduction_tuple, g_prime.representative())
 
@@ -778,7 +779,8 @@ class BV_No_Distinction_Proto(BV_Internal_Grouping):
 
             g.a_connection = BV_No_Distinction_Proto.representative(level - 1,
                 number_of_input_bits)
-            g.a_return_tuple[1] = 1
+            # g.a_return_tuple == {} representing g.a_return_tuple[1] = 1
+
             g.number_of_b_connections = 1
             g.b_connections[1] = g.a_connection
             g.b_return_tuples[1] = {1:1}
