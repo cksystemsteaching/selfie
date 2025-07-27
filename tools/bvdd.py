@@ -10,7 +10,7 @@
 
 # selfie.cs.uni-salzburg.at
 
-# Bitvector decision diagrams (BVDDs) for single byte inputs
+# Bitvector decision diagrams (BVDDs) for single-byte inputs
 
 # ------------------------------------------------------------
 
@@ -38,6 +38,12 @@ class BVDD:
 
     def is_never_true(self):
         return self.number_of_values() == 1 and False in self.i2v.values()
+
+    def is_always_false(self):
+        return self.is_never_true()
+
+    def is_always_true(self):
+        return self.is_never_false()
 
     def constant(output_value):
         assert isinstance(output_value, bool) or isinstance(output_value, int)

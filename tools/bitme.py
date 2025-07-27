@@ -250,15 +250,21 @@ class Values:
 
     def is_always_false(self):
         assert isinstance(self.sid_line, Bool)
-        return (self.bvdd == Values.FALSE().bvdd and
-            self.roabvdd == Values.FALSE().roabvdd and
-            self.cflobvdd.is_always_false())
+        if Values.BVDD:
+            return self.bvdd.is_always_false()
+        if Values.ROABVDD:
+            return self.roabvdd.is_always_false()
+        if Values.CFLOBVDD:
+            return self.cflobvdd.is_always_false()
 
     def is_always_true(self):
         assert isinstance(self.sid_line, Bool)
-        return (self.bvdd == Values.TRUE().bvdd and
-            self.roabvdd == Values.TRUE().roabvdd and
-            self.cflobvdd.is_always_true())
+        if Values.BVDD:
+            return self.bvdd.is_always_true()
+        if Values.ROABVDD:
+            return self.roabvdd.is_always_true()
+        if Values.CFLOBVDD:
+            return self.cflobvdd.is_always_true()
 
     def is_never_false(self):
         assert isinstance(self.sid_line, Bool)

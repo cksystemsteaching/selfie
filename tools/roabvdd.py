@@ -401,6 +401,12 @@ class ROABVDD:
     def is_never_true(self):
         return self.number_of_values() == 1 and False in self.values
 
+    def is_always_false(self):
+        return self.is_never_true() and isinstance(self.bvdd, ROABVDD_Exit)
+
+    def is_always_true(self):
+        return self.is_never_false() and isinstance(self.bvdd, ROABVDD_Exit)
+
     def constant(value, number_of_output_bits):
         assert isinstance(value, bool) or isinstance(value, int)
         exit = ROABVDD_Exit.new()
