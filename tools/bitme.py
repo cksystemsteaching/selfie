@@ -76,7 +76,7 @@ class Values:
             Values.total_number_of_constants += 1
         elif isinstance(var_line, Variable):
             if Values.BVDD:
-                self.bvdd = BVDD.BVDD.projection()
+                self.bvdd = BVDD.BVDD.projection(Variable.cflobvdd_index[var_line])
             if Values.ROABVDD:
                 self.roabvdd = ROABVDD.ROABVDD.projection(Variable.cflobvdd_index[var_line],
                     8, self.sid_line.size)
