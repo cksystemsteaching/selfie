@@ -68,7 +68,7 @@ class Values:
             if Values.BVDD:
                 self.bvdd = BVDD.BVDD.constant(value)
             if Values.ROABVDD:
-                self.roabvdd = ROABVDD.ROABVDD.constant(value)
+                self.roabvdd = ROABVDD.ROABVDD.constant(value, self.sid_line.size)
             if Values.CFLOBVDD:
                 self.cflobvdd = CFLOBVDD.CFLOBVDD.byte_constant(len(Variable.cflobvdd_input),
                     value, Values.number_of_input_bits, self.sid_line.size)
@@ -78,7 +78,8 @@ class Values:
             if Values.BVDD:
                 self.bvdd = BVDD.BVDD.projection()
             if Values.ROABVDD:
-                self.roabvdd = ROABVDD.ROABVDD.projection(var_line)
+                self.roabvdd = ROABVDD.ROABVDD.projection(Variable.cflobvdd_index[var_line],
+                    8, self.sid_line.size)
             if Values.CFLOBVDD:
                 self.cflobvdd = CFLOBVDD.CFLOBVDD.byte_projection(len(Variable.cflobvdd_input),
                     Variable.cflobvdd_index[var_line],
@@ -277,20 +278,6 @@ class Values:
         if Values.CFLOBVDD:
             return self.cflobvdd.is_never_true()
 
-    def get_false_constraint(self):
-        assert isinstance(self.sid_line, Bool)
-        roabvdd = None
-        if Values.ROABVDD:
-            roabvdd = self.roabvdd.get_false_constraint()
-        return Values(self.sid_line, None, None, self.bvdd, roabvdd, self.cflobvdd)
-
-    def get_true_constraint(self):
-        assert isinstance(self.sid_line, Bool)
-        roabvdd = None
-        if Values.ROABVDD:
-            roabvdd = self.roabvdd.get_true_constraint()
-        return Values(self.sid_line, None, None, self.bvdd, roabvdd, self.cflobvdd)
-
     def get_expression(self):
         # naive transition from domain propagation to bit blasting
         assert isinstance(self.sid_line, Bitvector)
@@ -311,7 +298,7 @@ class Values:
         if Values.BVDD:
             bvdd = self.bvdd.compute_unary(op)
         if Values.ROABVDD:
-            roabvdd = self.roabvdd.compute_unary(sid_line, op)
+            roabvdd = self.roabvdd.compute_unary(op, sid_line.size)
         if Values.CFLOBVDD:
             cflobvdd = self.cflobvdd.unary_apply_and_reduce(op, sid_line.size)
         return Values(sid_line, None, None, bvdd, roabvdd, cflobvdd)
@@ -356,7 +343,7 @@ class Values:
         if Values.BVDD:
             bvdd = self.bvdd.compute_binary(op, values.bvdd)
         if Values.ROABVDD:
-            roabvdd = self.roabvdd.compute_binary(sid_line, op, values.roabvdd)
+            roabvdd = self.roabvdd.compute_binary(op, values.roabvdd, sid_line.size)
         if Values.CFLOBVDD:
             cflobvdd = self.cflobvdd.binary_apply_and_reduce(values.cflobvdd, op, sid_line.size)
         return Values(sid_line, None, None, bvdd, roabvdd, cflobvdd)
@@ -520,17 +507,9 @@ class Values:
 
     def constrain(self, constraint):
         assert isinstance(constraint.sid_line, Bool)
-        bvdd = roabvdd = cflobvdd = None
-        if Values.BVDD:
-            bvdd = self.bvdd.compute_binary(lambda x, y: x, constraint.bvdd)
-        if Values.ROABVDD:
-            roabvdd = self.roabvdd.constrain(self.sid_line, constraint.roabvdd)
-        if Values.CFLOBVDD:
-            cflobvdd = self.cflobvdd.binary_apply_and_reduce(constraint.cflobvdd,
-                lambda x, y: x, self.sid_line.size)
-        return Values(self.sid_line, None, None, bvdd, roabvdd, cflobvdd)
+        return self.apply_binary(self.sid_line, constraint, lambda x, y: x)
 
-    def merge(self, values2, values3):
+    def compute_ite(self, values2, values3):
         assert isinstance(self.sid_line, Bool)
         assert isinstance(values2, Values) and isinstance(values3, Values)
         assert values2.match_sorts(values3)
@@ -538,9 +517,7 @@ class Values:
         if Values.BVDD:
             bvdd = self.bvdd.compute_ite(values2.bvdd, values3.bvdd)
         if Values.ROABVDD:
-            values2 = values2.constrain(self.get_true_constraint())
-            values3 = values3.constrain(self.get_false_constraint())
-            roabvdd = values2.roabvdd.merge(values2.sid_line, values3.roabvdd)
+            roabvdd = self.roabvdd.compute_ite(values2.roabvdd, values3.roabvdd)
         if Values.CFLOBVDD:
             cflobvdd = self.cflobvdd.ternary_apply_and_reduce(values2.cflobvdd, values3.cflobvdd,
                 lambda x, y, z: y if x else z, values2.sid_line.size)
@@ -554,7 +531,7 @@ class Values:
             return values3.constrain(self)
         else:
             # lazy evaluation of true and false case
-            return self.merge(values2, values3)
+            return self.compute_ite(values2, values3)
 
 LAMBDAS = True
 
@@ -1339,7 +1316,7 @@ class Bitme_Solver:
         elif Values.BVDD:
             print(self.constraint.bvdd.get_printed_BVDD(True))
         elif Values.ROABVDD:
-            print(self.constraint.get_true_constraint())
+            print(self.constraint.roabvdd.get_printed_ROABVDD(True))
         else:
             assert Values.CFLOBVDD
             print(self.constraint.cflobvdd.get_printed_CFLOBVDD(True))
