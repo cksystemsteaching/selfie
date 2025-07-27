@@ -53,20 +53,25 @@ class SBDD:
         return SBDD(dict([(input_value, input_value) for input_value in range(256)]))
 
     def compute_unary(self, op):
-        return SBDD(dict([(input_value, op(self.i2v[input_value])) for input_value in self.i2v]))
+        return type(self)(dict([(input_value, op(self.i2v[input_value])) for input_value in self.i2v]))
 
     def compute_binary(self, op, bvdd2):
         assert isinstance(bvdd2, SBDD)
         bvdd1 = self
-        return SBDD(dict([(input_value, op(bvdd1.i2v[input_value], bvdd2.i2v[input_value]))
+        return type(self)(dict([(input_value, op(bvdd1.i2v[input_value], bvdd2.i2v[input_value]))
             for input_value in range(256)])) # bvdd1.i2v.keys() & bvdd2.i2v.keys()
+
+    def compute_ternary(self, op, bvdd2, bvdd3):
+        assert isinstance(bvdd2, SBDD) and isinstance(bvdd3, SBDD)
+        bvdd1 = self
+        return type(self)(dict([(input_value,
+            op(bvdd1.i2v[input_value], bvdd2.i2v[input_value], bvdd3.i2v[input_value]))
+                for input_value in range(256)])) # bvdd1.i2v.keys() & bvdd2.i2v.keys() & bvdd3.i2v.keys()
 
     def compute_ite(self, bvdd2, bvdd3):
         assert isinstance(bvdd2, SBDD) and isinstance(bvdd3, SBDD)
         bvdd1 = self
-        return SBDD(dict([(input_value, bvdd2.i2v[input_value]
-            if bvdd1.i2v[input_value] else bvdd3.i2v[input_value])
-                for input_value in range(256)])) # bvdd1.i2v.keys() & bvdd2.i2v.keys() & bvdd3.i2v.keys()
+        return self.compute_ternary(lambda x, y, z: y if x else z, bvdd2, bvdd3)
 
     def get_printed_BVDD(self, value):
         return [input_value for input_value in self.i2v if self.i2v[input_value] == value]
@@ -107,7 +112,7 @@ class SBBVDD_i2v(SBDD):
         return self
 
     def compute_unary(self, op):
-        return SBBVDD_i2v(super().compute_unary(op).i2v).reduce()
+        return type(self)(super().compute_unary(op).i2v).reduce()
 
     def intersect_binary(self, bvdd2):
         assert isinstance(bvdd2, SBBVDD_i2v)
@@ -120,7 +125,7 @@ class SBBVDD_i2v(SBDD):
     def compute_binary(self, op, bvdd2):
         assert isinstance(bvdd2, SBBVDD_i2v)
         bvdd1 = self
-        return SBBVDD_i2v(dict([(inputs[0] & inputs[1], op(bvdd1.i2v[inputs[0]], bvdd2.i2v[inputs[1]]))
+        return type(self)(dict([(inputs[0] & inputs[1], op(bvdd1.i2v[inputs[0]], bvdd2.i2v[inputs[1]]))
             for inputs in bvdd1.intersect_binary(bvdd2)])).reduce()
 
     def intersect_ternary(self, bvdd2, bvdd3):
@@ -133,11 +138,11 @@ class SBBVDD_i2v(SBDD):
                     for inputs3 in bvdd3.i2v
                         if inputs1 & inputs2 & inputs3]
 
-    def compute_ite(self, bvdd2, bvdd3):
+    def compute_ternary(self, op, bvdd2, bvdd3):
         assert isinstance(bvdd2, SBBVDD_i2v) and isinstance(bvdd3, SBBVDD_i2v)
         bvdd1 = self
-        return SBBVDD_i2v(dict([(inputs[0] & inputs[1] & inputs[2], bvdd2.i2v[inputs[1]]
-            if bvdd1.i2v[inputs[0]] else bvdd3.i2v[inputs[2]])
+        return type(self)(dict([(inputs[0] & inputs[1] & inputs[2],
+            op(bvdd1.i2v[inputs[0]], bvdd2.i2v[inputs[1]], bvdd3.i2v[inputs[2]]))
                 for inputs in bvdd1.intersect_ternary(bvdd2, bvdd3)])).reduce()
 
     def get_printed_BVDD(self, value):
@@ -173,7 +178,7 @@ class SBBVDD_v2i(SBDD):
             self.v2i[value] |= inputs
 
     def compute_unary(self, op):
-        new_bvdd = SBBVDD_v2i({})
+        new_bvdd = type(self)({})
         for value in self.v2i:
             new_bvdd.map(op(value), self.v2i[value])
         return new_bvdd
@@ -189,7 +194,7 @@ class SBBVDD_v2i(SBDD):
     def compute_binary(self, op, bvdd2):
         assert isinstance(bvdd2, SBBVDD_v2i)
         bvdd1 = self
-        new_bvdd = SBBVDD_v2i({})
+        new_bvdd = type(self)({})
         for value_tuple in bvdd1.intersect_binary(bvdd2):
             new_bvdd.map(op(value_tuple[0], value_tuple[1]),
                 bvdd1.v2i[value_tuple[0]] & bvdd2.v2i[value_tuple[1]])
@@ -205,12 +210,12 @@ class SBBVDD_v2i(SBDD):
                     for value3 in bvdd3.v2i
                         if bvdd1.v2i[value1] & bvdd2.v2i[value2] & bvdd3.v2i[value3]]
 
-    def compute_ite(self, bvdd2, bvdd3):
+    def compute_ternary(self, op, bvdd2, bvdd3):
         assert isinstance(bvdd2, SBBVDD_v2i) and isinstance(bvdd3, SBBVDD_v2i)
         bvdd1 = self
-        new_bvdd = SBBVDD_v2i({})
+        new_bvdd = type(self)({})
         for value_tuple in bvdd1.intersect_ternary(bvdd2, bvdd3):
-            new_bvdd.map(value_tuple[1] if value_tuple[0] else value_tuple[2],
+            new_bvdd.map(op(value_tuple[0], value_tuple[1], value_tuple[2]),
                 bvdd1.v2i[value_tuple[0]] & bvdd2.v2i[value_tuple[1]] & bvdd3.v2i[value_tuple[2]])
         return new_bvdd
 
