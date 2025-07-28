@@ -72,7 +72,6 @@ class SBDD:
         return SBDD({}).constant_BVDD(output_value)
 
     def projection_BVDD(self, index = 0):
-        assert index == 0
         self.i2v = dict([(input_value, input_value) for input_value in range(256)])
         return self
 
@@ -134,7 +133,6 @@ class SBBVDD_i2v(SBDD):
         return SBBVDD_i2v({}).constant_BVDD(output_value)
 
     def projection_BVDD(self, index = 0):
-        assert index == 0
         self.i2v = dict([(2**input_value, input_value) for input_value in range(256)])
         return self
 
@@ -230,7 +228,6 @@ class SBBVDD_v2i(SBDD):
         return SBBVDD_v2i({}).constant_BVDD(output_value)
 
     def projection_BVDD(self, index = 0):
-        assert index == 0
         self.v2i = dict([(input_value, 2**input_value) for input_value in range(256)])
         return self
 

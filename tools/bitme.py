@@ -141,15 +141,15 @@ class Values:
                     var_line.comment, var_line.line_no)
             return [comparison_line]
 
-    def get_bvdd_node_expression(sid_line, bvdd_node, sbdd, index = 0):
-        if not isinstance(bvdd_node, BVDD.BVDD):
-            return Constd(btor2.Parser.next_nid(), sid_line, int(bvdd_node),
+    def get_bvdd_node_expression(sid_line, bvdd, sbdd, index = 0):
+        if isinstance(bvdd, bool) or isinstance(bvdd, int):
+            return Constd(btor2.Parser.next_nid(), sid_line, int(bvdd),
                 "domain-propagated value", 0)
         else:
             var_line = Variable.bvdd_input[index]
             exp_line = Zero(btor2.Parser.next_nid(), sid_line,
                 "unreachable-value", "unreachable value", 0)
-            i2v = bvdd_node.get_i2v()
+            i2v = bvdd.get_i2v()
             # assert i2v is sorted by inputs
             for inputs in i2v:
                 value_or_bvdd = i2v[inputs]
