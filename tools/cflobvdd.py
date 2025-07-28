@@ -972,11 +972,11 @@ class CFLOBVDD:
 
     def is_never_false(self):
         # without reductions True may appear more than once
-        return all([self.outputs[i] is True for i in self.outputs])
+        return self.number_of_distinct_values() == 1 and True in self.outputs.values()
 
     def is_never_true(self):
         # without reductions False may appear more than once
-        return all([self.outputs[i] is False for i in self.outputs])
+        return self.number_of_distinct_values() == 1 and False in self.outputs.values()
 
     def is_always_false(self):
         return self.is_never_true()
