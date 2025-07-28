@@ -151,18 +151,29 @@ class Values:
                     var_line.comment, var_line.line_no)
             return [comparison_line]
 
-    def get_bvdd_expression(self):
-        var_line = Variable.bvdd_input[0]
-        exp_line = Zero(btor2.Parser.next_nid(), self.sid_line, "unreachable-value", "unreachable value", 0)
-        # assert self.bvdd.i2v are sorted by inputs
-        for input_value in self.bvdd.i2v:
-            exp_line = Ite(btor2.Parser.next_nid(), self.sid_line,
-            Values.get_input_expression(var_line, 2**input_value)[0],
-            Constd(btor2.Parser.next_nid(), self.sid_line, int(self.bvdd.i2v[input_value]),
-                "domain-propagated value", 0),
-            exp_line,
-            var_line.comment, var_line.line_no)
+    def get_bvdd_node_expression(sid_line, bvdd, index = 0):
+        if not isinstance(bvdd, BVDD.BVDD):
+            return Constd(btor2.Parser.next_nid(), sid_line, int(bvdd),
+                "domain-propagated value", 0)
+        else:
+            var_line = Variable.bvdd_input[index]
+            exp_line = Zero(btor2.Parser.next_nid(), sid_line,
+                "unreachable-value", "unreachable value", 0)
+            i2v = bvdd.get_i2v()
+            # assert i2v is sorted by inputs
+            for inputs in i2v:
+                bvdd = i2v[inputs]
+                if not isinstance(bvdd, BVDD.SBBVDD_i2v) and not isinstance(bvdd, BVDD.SBBVDD_v2i):
+                    inputs = 2**inputs
+                exp_line = Ite(btor2.Parser.next_nid(), sid_line,
+                    Values.get_input_expression(var_line, inputs)[0],
+                    Values.get_bvdd_node_expression(sid_line, bvdd, index + 1),
+                    exp_line,
+                    var_line.comment, var_line.line_no)
         return exp_line
+
+    def get_bvdd_expression(self):
+        return Values.get_bvdd_node_expression(self.sid_line, self.bvdd)
 
     # ROABVDD adapter
 
