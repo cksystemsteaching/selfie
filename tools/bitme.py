@@ -70,19 +70,19 @@ class Values:
             if Values.ROABVDD:
                 self.roabvdd = ROABVDD.ROABVDD.constant(value, self.sid_line.size)
             if Values.CFLOBVDD:
-                self.cflobvdd = CFLOBVDD.CFLOBVDD.byte_constant(len(Variable.cflobvdd_input),
+                self.cflobvdd = CFLOBVDD.CFLOBVDD.byte_constant(len(Variable.bvdd_input),
                     value, Values.number_of_input_bits, self.sid_line.size)
 
             Values.total_number_of_constants += 1
         elif isinstance(var_line, Variable):
             if Values.BVDD:
-                self.bvdd = BVDD.BVDD.projection(Variable.cflobvdd_index[var_line])
+                self.bvdd = BVDD.BVDD.projection(Variable.bvdd_index[var_line])
             if Values.ROABVDD:
-                self.roabvdd = ROABVDD.ROABVDD.projection(Variable.cflobvdd_index[var_line],
+                self.roabvdd = ROABVDD.ROABVDD.projection(Variable.bvdd_index[var_line],
                     8, self.sid_line.size)
             if Values.CFLOBVDD:
-                self.cflobvdd = CFLOBVDD.CFLOBVDD.byte_projection(len(Variable.cflobvdd_input),
-                    Variable.cflobvdd_index[var_line],
+                self.cflobvdd = CFLOBVDD.CFLOBVDD.byte_projection(len(Variable.bvdd_input),
+                    Variable.bvdd_index[var_line],
                     Values.number_of_input_bits, self.sid_line.size)
 
             Values.total_number_of_constants += 2**var_line.sid_line.size
@@ -152,7 +152,7 @@ class Values:
             return [comparison_line]
 
     def get_bvdd_expression(self):
-        var_line = Variable.cflobvdd_input[0]
+        var_line = Variable.bvdd_input[0]
         exp_line = Zero(btor2.Parser.next_nid(), self.sid_line, "unreachable-value", "unreachable value", 0)
         # assert self.bvdd.i2v are sorted by inputs
         for input_value in self.bvdd.i2v:
@@ -210,7 +210,7 @@ class Values:
                 assert isinstance(path[1], int)
                 index_i = path[0]
                 inputs = path[1]
-                path_expression += Values.get_input_expression(Variable.cflobvdd_input[index_i], inputs)
+                path_expression += Values.get_input_expression(Variable.bvdd_input[index_i], inputs)
             else:
                 a_paths = Values.get_path_expression(path[0])
                 b_paths = Values.get_path_expression(path[1])
@@ -1594,7 +1594,7 @@ def main():
         bitme_solver = Bitme_Solver(z3_solver, bitwuzla_solver)
 
         if not args.use_Z3 and not args.use_bitwuzla:
-            if Variable.cflobvdd_input:
+            if Variable.bvdd_input:
                 bmc(bitme_solver, kmin, kmax, args)
 
                 print_separator('-')

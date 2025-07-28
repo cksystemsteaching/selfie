@@ -394,8 +394,8 @@ class Variable(Expression):
 
     inputs = {}
 
-    cflobvdd_input = {}
-    cflobvdd_index = {}
+    bvdd_input = {}
+    bvdd_index = {}
 
     def __init__(self, nid, sid_line, domain, symbol, comment, line_no, index):
         super().__init__(nid, sid_line, domain, 0, comment, line_no)
@@ -426,8 +426,8 @@ class Variable(Expression):
             Variable.inputs[self.nid] = self
 
             if isinstance(self.sid_line, Bitvector) and self.sid_line.size == 8:
-                Variable.cflobvdd_input[len(Variable.cflobvdd_input)] = self
-                Variable.cflobvdd_index[self] = len(Variable.cflobvdd_index)
+                Variable.bvdd_input[len(Variable.bvdd_input)] = self
+                Variable.bvdd_index[self] = len(Variable.bvdd_index)
 
     def get_mapped_array_expression_for(self, index):
         if index is not None:
