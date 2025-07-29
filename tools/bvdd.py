@@ -384,6 +384,26 @@ class BVDD_cached(BVDD_uncached):
             BVDD_cached.intersect_ternary_cache[(self, bvdd2, bvdd3)] = super().intersect_ternary(bvdd2, bvdd3)
         return BVDD_cached.intersect_ternary_cache[(self, bvdd2, bvdd3)]
 
+    constant_cache = {}
+    constant_hits = 0
+
+    def constant_BVDD(self, output_value):
+        if output_value in BVDD_cached.constant_cache:
+            BVDD_cached.constant_hits += 1
+        else:
+            BVDD_cached.constant_cache[output_value] = super().constant_BVDD(output_value)
+        return BVDD_cached.constant_cache[output_value]
+
+    projection_cache = {}
+    projection_hits = 0
+
+    def projection_BVDD(self, index = 0):
+        if index in BVDD_cached.projection_cache:
+            BVDD_cached.projection_hits += 1
+        else:
+            BVDD_cached.projection_cache[index] = super().projection_BVDD(index)
+        return BVDD_cached.projection_cache[index]
+
     compute_unary_cache = {}
     compute_unary_hits = 0
 
@@ -417,6 +437,8 @@ class BVDD_cached(BVDD_uncached):
     def print_profile():
         print(f"Binary intersection cache utilization: {utilization(BVDD_cached.intersect_binary_hits, len(BVDD_cached.intersect_binary_cache))}")
         print(f"Ternary intersection cache utilization: {utilization(BVDD_cached.intersect_ternary_hits, len(BVDD_cached.intersect_ternary_cache))}")
+        print(f"Constant cache utilization: {utilization(BVDD_cached.constant_hits, len(BVDD_cached.constant_cache))}")
+        print(f"Projection cache utilization: {utilization(BVDD_cached.projection_hits, len(BVDD_cached.projection_cache))}")
         print(f"Unary cache utilization: {utilization(BVDD_cached.compute_unary_hits, len(BVDD_cached.compute_unary_cache))}")
         print(f"Binary cache utilization: {utilization(BVDD_cached.compute_binary_hits, len(BVDD_cached.compute_binary_cache))}")
         print(f"Ternary cache utilization: {utilization(BVDD_cached.compute_ternary_hits, len(BVDD_cached.compute_ternary_cache))}")
