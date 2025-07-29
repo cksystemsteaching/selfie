@@ -12,8 +12,9 @@
 
 # Bitvector decision diagrams (BVDDs)
 
-# Given an n-bit bitvector, we use 2**n-bit unsigned integers
-# to represent sets of n-bit bitvector constants that in turn
+# Given an n-bit bitvector (currently for n == 8 only),
+# we use 2**2**n-bit unsigned integers to represent
+# sets of n-bit bitvector constants that in turn
 # represent branches in BVDDs:
 # Theta(2**n)-time set intersection (bitwise conjunction) with
 # O(2**n/n) and Omega(n*(2**n-1)/2**n) spatial overhead
