@@ -283,7 +283,7 @@ class SBBVDD_v2i(SBDD):
     def get_printed_BVDD(self, value):
         return SBBVDD_i2v.get_input_values(self.v2i[value]) if value in self.v2i else []
 
-class BVDD(SBBVDD_v2i):
+class BVDD_uncached(SBBVDD_v2i):
     def constant(output_value):
         return BVDD({}).constant_BVDD(output_value)
 
@@ -358,3 +358,67 @@ class BVDD(SBBVDD_v2i):
 
     def get_printed_BVDD(self, value):
         return self.extract(value)
+
+    def print_profile():
+        pass
+
+class BVDD_cached(BVDD_uncached):
+    intersect_binary_cache = {}
+    intersect_binary_hits = 0
+
+    def intersect_binary(self, bvdd2):
+        if (self, bvdd2) in BVDD_cached.intersect_binary_cache:
+            BVDD_cached.intersect_binary_hits += 1
+        else:
+            BVDD_cached.intersect_binary_cache[(self, bvdd2)] = super().intersect_binary(bvdd2)
+        return BVDD_cached.intersect_binary_cache[(self, bvdd2)]
+
+    intersect_ternary_cache = {}
+    intersect_ternary_hits = 0
+
+    def intersect_ternary(self, bvdd2, bvdd3):
+        if (self, bvdd2, bvdd3) in BVDD_cached.intersect_ternary_cache:
+            BVDD_cached.intersect_ternary_hits += 1
+        else:
+            BVDD_cached.intersect_ternary_cache[(self, bvdd2, bvdd3)] = super().intersect_ternary(bvdd2, bvdd3)
+        return BVDD_cached.intersect_ternary_cache[(self, bvdd2, bvdd3)]
+
+    compute_unary_cache = {}
+    compute_unary_hits = 0
+
+    def compute_unary(self, op):
+        if (op, self) in BVDD_cached.compute_unary_cache:
+            BVDD_cached.compute_unary_hits += 1
+        else:
+            BVDD_cached.compute_unary_cache[(op, self)] = super().compute_unary(op)
+        return BVDD_cached.compute_unary_cache[(op, self)]
+
+    compute_binary_cache = {}
+    compute_binary_hits = 0
+
+    def compute_binary(self, op, bvdd2):
+        if (op, self, bvdd2) in BVDD_cached.compute_binary_cache:
+            BVDD_cached.compute_binary_hits += 1
+        else:
+            BVDD_cached.compute_binary_cache[(op, self, bvdd2)] = super().compute_binary(op, bvdd2)
+        return BVDD_cached.compute_binary_cache[(op, self, bvdd2)]
+
+    compute_ternary_cache = {}
+    compute_ternary_hits = 0
+
+    def compute_ternary(self, op, bvdd2, bvdd3):
+        if (op, self, bvdd2, bvdd3) in BVDD_cached.compute_ternary_cache:
+            BVDD_cached.compute_ternary_hits += 1
+        else:
+            BVDD_cached.compute_ternary_cache[(op, self, bvdd2, bvdd3)] = super().compute_ternary(op, bvdd2, bvdd3)
+        return BVDD_cached.compute_ternary_cache[(op, self, bvdd2, bvdd3)]
+
+    def print_profile():
+        print(f"Binary intersection cache utilization: {utilization(BVDD_cached.intersect_binary_hits, len(BVDD_cached.intersect_binary_cache))}")
+        print(f"Ternary intersection cache utilization: {utilization(BVDD_cached.intersect_ternary_hits, len(BVDD_cached.intersect_ternary_cache))}")
+        print(f"Unary cache utilization: {utilization(BVDD_cached.compute_unary_hits, len(BVDD_cached.compute_unary_cache))}")
+        print(f"Binary cache utilization: {utilization(BVDD_cached.compute_binary_hits, len(BVDD_cached.compute_binary_cache))}")
+        print(f"Ternary cache utilization: {utilization(BVDD_cached.compute_ternary_hits, len(BVDD_cached.compute_ternary_cache))}")
+
+class BVDD(BVDD_uncached):
+    pass

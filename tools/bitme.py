@@ -1557,6 +1557,8 @@ def main():
                 bmc(bitme_solver, kmin, kmax, args)
 
                 print_separator('-')
+                if Values.BVDD:
+                    BVDD.BVDD.print_profile()
                 if Values.CFLOBVDD:
                     CFLOBVDD.CFLOBVDD.print_profile()
             else:
