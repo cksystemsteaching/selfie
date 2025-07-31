@@ -105,6 +105,9 @@ class SBDD:
     def get_printed_BVDD(self, value):
         return [input_value for input_value in self.i2o if self.i2o[input_value] == value]
 
+    def print_profile():
+        pass
+
 class SBBVDD_i2o(SBDD):
     def __str__(self):
         return str([f"{SBBVDD_i2o.get_input_values(inputs)}: {output}" for inputs, output in self.i2o.items()])
@@ -247,38 +250,38 @@ class SBBVDD_o2i(SBDD):
     def intersect_binary(self, bvdd2):
         assert type(bvdd2) is type(self)
         bvdd1 = self
-        return [(bvdd_value1, bvdd_value2)
-            for bvdd_value1 in bvdd1.o2i
-                for bvdd_value2 in bvdd2.o2i
-                    if bvdd1.o2i[bvdd_value1] & bvdd2.o2i[bvdd_value2]]
+        return [(output1, output2)
+            for output1 in bvdd1.o2i
+                for output2 in bvdd2.o2i
+                    if bvdd1.o2i[output1] & bvdd2.o2i[output2]]
 
     def compute_binary(self, op, bvdd2):
         assert type(bvdd2) is type(self)
         bvdd1 = self
         new_bvdd = type(self)({})
-        for bvdd_value_tuple in bvdd1.intersect_binary(bvdd2):
-            new_bvdd.map(bvdd1.o2i[bvdd_value_tuple[0]] & bvdd2.o2i[bvdd_value_tuple[1]],
-                op(bvdd_value_tuple[0], bvdd_value_tuple[1]))
+        for output_tuple in bvdd1.intersect_binary(bvdd2):
+            new_bvdd.map(bvdd1.o2i[output_tuple[0]] & bvdd2.o2i[output_tuple[1]],
+                op(output_tuple[0], output_tuple[1]))
         return new_bvdd
 
     def intersect_ternary(self, bvdd2, bvdd3):
         assert type(bvdd2) is type(self)
         assert type(bvdd3) is type(self)
         bvdd1 = self
-        return [(bvdd_value1, bvdd_value2, bvdd_value3)
-            for bvdd_value1 in bvdd1.o2i
-                for bvdd_value2 in bvdd2.o2i
-                    for bvdd_value3 in bvdd3.o2i
-                        if bvdd1.o2i[bvdd_value1] & bvdd2.o2i[bvdd_value2] & bvdd3.o2i[bvdd_value3]]
+        return [(output1, output2, output3)
+            for output1 in bvdd1.o2i
+                for output2 in bvdd2.o2i
+                    for output3 in bvdd3.o2i
+                        if bvdd1.o2i[output1] & bvdd2.o2i[output2] & bvdd3.o2i[output3]]
 
     def compute_ternary(self, op, bvdd2, bvdd3):
         assert type(bvdd2) is type(self)
         assert type(bvdd3) is type(self)
         bvdd1 = self
         new_bvdd = type(self)({})
-        for bvdd_value_tuple in bvdd1.intersect_ternary(bvdd2, bvdd3):
-            new_bvdd.map(bvdd1.o2i[bvdd_value_tuple[0]] & bvdd2.o2i[bvdd_value_tuple[1]] & bvdd3.o2i[bvdd_value_tuple[2]],
-                op(bvdd_value_tuple[0], bvdd_value_tuple[1], bvdd_value_tuple[2]))
+        for output_tuple in bvdd1.intersect_ternary(bvdd2, bvdd3):
+            new_bvdd.map(bvdd1.o2i[output_tuple[0]] & bvdd2.o2i[output_tuple[1]] & bvdd3.o2i[output_tuple[2]],
+                op(output_tuple[0], output_tuple[1], output_tuple[2]))
         return new_bvdd
 
     def get_printed_BVDD(self, value):
@@ -294,50 +297,50 @@ class BVDD_uncached(SBBVDD_o2i):
         else:
             return BVDD({}).constant_BVDD(BVDD.projection(index - 1))
 
-    def op_unary(op, bvdd1):
-        if isinstance(bvdd1, BVDD):
-            return bvdd1.compute_unary(op)
+    def op_unary(op, output1):
+        if isinstance(output1, BVDD):
+            return output1.compute_unary(op)
         else:
-            return op(bvdd1)
+            return op(output1)
 
     def compute_unary(self, op):
         return super().compute_unary(lambda x: BVDD.op_unary(op, x))
 
-    def op_binary(op, bvdd1, bvdd2):
-        if isinstance(bvdd1, BVDD):
-            if isinstance(bvdd2, BVDD):
-                return bvdd1.compute_binary(op, bvdd2)
+    def op_binary(op, output1, output2):
+        if isinstance(output1, BVDD):
+            if isinstance(output2, BVDD):
+                return output1.compute_binary(op, output2)
             else:
-                return bvdd1.compute_unary(lambda x: op(x, bvdd2))
-        elif isinstance(bvdd2, BVDD):
-            return bvdd2.compute_unary(lambda x: op(bvdd1, x))
+                return output1.compute_unary(lambda x: op(x, output2))
+        elif isinstance(output2, BVDD):
+            return output2.compute_unary(lambda x: op(output1, x))
         else:
-            return op(bvdd1, bvdd2)
+            return op(output1, output2)
 
     def compute_binary(self, op, bvdd2):
         assert isinstance(bvdd2, bool) or isinstance(bvdd2, int) or isinstance(bvdd2, BVDD)
         return super().compute_binary(lambda x, y: BVDD.op_binary(op, x, y), bvdd2)
 
-    def op_ternary(op, bvdd1, bvdd2, bvdd3):
-        if isinstance(bvdd1, BVDD):
-            if isinstance(bvdd2, BVDD):
-                if isinstance(bvdd3, BVDD):
-                    return bvdd1.compute_ternary(bvdd2, bvdd3)
+    def op_ternary(op, output1, output2, output3):
+        if isinstance(output1, BVDD):
+            if isinstance(output2, BVDD):
+                if isinstance(output3, BVDD):
+                    return output1.compute_ternary(output2, output3)
                 else:
-                    return bvdd1.compute_binary(lambda x, y: op(x, y, bvdd3), bvdd2)
-            elif isinstance(bvdd3, BVDD):
-                return bvdd1.compute_binary(lambda x, y: op(x, bvdd2, y), bvdd3)
+                    return output1.compute_binary(lambda x, y: op(x, y, output3), output2)
+            elif isinstance(output3, BVDD):
+                return output1.compute_binary(lambda x, y: op(x, output2, y), output3)
             else:
-                return bvdd1.compute_unary(lambda x: op(x, bvdd2, bvdd3))
-        elif isinstance(bvdd2, BVDD):
-            if isinstance(bvdd3, BVDD):
-                return bvdd2.compute_binary(lambda x, y: op(bvdd1, x, y), bvdd3)
+                return output1.compute_unary(lambda x: op(x, output2, output3))
+        elif isinstance(output2, BVDD):
+            if isinstance(output3, BVDD):
+                return output2.compute_binary(lambda x, y: op(output1, x, y), output3)
             else:
-                return bvdd2.compute_unary(lambda x: op(bvdd1, x, bvdd3))
-        elif isinstance(bvdd3, BVDD):
-            return bvdd3.compute_unary(lambda x: op(bvdd1, bvdd2, x))
+                return output2.compute_unary(lambda x: op(output1, x, output3))
+        elif isinstance(output3, BVDD):
+            return output3.compute_unary(lambda x: op(output1, output2, x))
         else:
-            return op(bvdd1, bvdd2, bvdd3)
+            return op(output1, output2, output3)
 
     def compute_ternary(self, op, bvdd2, bvdd3):
         assert isinstance(bvdd2, bool) or isinstance(bvdd2, int) or isinstance(bvdd2, BVDD)
@@ -359,9 +362,6 @@ class BVDD_uncached(SBBVDD_o2i):
 
     def get_printed_BVDD(self, value):
         return self.extract(value)
-
-    def print_profile():
-        pass
 
 class BVDD_cached(BVDD_uncached):
     intersect_binary_cache = {}
