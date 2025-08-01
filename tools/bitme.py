@@ -86,7 +86,7 @@ class Values:
             dd = self.cflobvdd
 
         Values.current_number_of_inputs = max(Values.current_number_of_inputs, dd.number_of_inputs())
-        Values.max_number_of_values = max(Values.max_number_of_values, dd.number_of_values())
+        Values.max_number_of_values = max(Values.max_number_of_values, dd.number_of_outputs())
         # for debugging assert self.is_consistent()
 
     def __str__(self):
@@ -243,20 +243,6 @@ class Values:
             return self.bvdd.is_always_true()
         if Values.CFLOBVDD:
             return self.cflobvdd.is_always_true()
-
-    def is_never_false(self):
-        assert isinstance(self.sid_line, Bool)
-        if Values.BVDD:
-            return self.bvdd.is_never_false()
-        if Values.CFLOBVDD:
-            return self.cflobvdd.is_never_false()
-
-    def is_never_true(self):
-        assert isinstance(self.sid_line, Bool)
-        if Values.BVDD:
-            return self.bvdd.is_never_true()
-        if Values.CFLOBVDD:
-            return self.cflobvdd.is_never_true()
 
     def get_expression(self):
         # naive transition from domain propagation to bit blasting
@@ -497,9 +483,9 @@ class Values:
 
     def If(self, values2, values3):
         assert isinstance(self.sid_line, Bool)
-        if self.is_never_false():
+        if self.is_always_true():
             return values2.constrain(self)
-        elif self.is_never_true():
+        elif self.is_always_false():
             return values3.constrain(self)
         else:
             # lazy evaluation of true and false case
@@ -911,7 +897,7 @@ class Ite(Ternary, btor2.Ite, z3interface.Ite, bitwuzlainterface.Ite):
     def compute_values(self, step):
         arg1_value = self.arg1_line.get_values(step)
         if PROPAGATE_ITE and isinstance(arg1_value, Values):
-            if arg1_value.is_never_false():
+            if arg1_value.is_always_true():
                 arg2_value = self.arg2_line.get_values(step)
                 if isinstance(arg2_value, Values):
                     return arg1_value.If(arg2_value, None)
@@ -921,7 +907,7 @@ class Ite(Ternary, btor2.Ite, z3interface.Ite, bitwuzlainterface.Ite):
                 else:
                     # lazy evaluation of false case into expression
                     arg3_value = self.arg3_line.get_values(step)
-            elif arg1_value.is_never_true():
+            elif arg1_value.is_always_false():
                 arg3_value = self.arg3_line.get_values(step)
                 if isinstance(arg3_value, Values):
                     return arg1_value.If(None, arg3_value)
@@ -1239,7 +1225,7 @@ class Bitme_Solver:
                          self.constraint = assertion.And(self.constraint)
             self.proven |= self.unproven
             self.unproven = {}
-            return not self.constraint.is_never_false() and not self.constraint.is_never_true()
+            return not self.constraint.is_always_false() and not self.constraint.is_always_true()
 
     def is_SAT(self, result):
         return result

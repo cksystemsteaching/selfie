@@ -44,23 +44,17 @@ class SBDD:
     def number_of_inputs(self):
         return 256
 
-    def number_of_values(self):
+    def number_of_outputs(self):
         return len(self.i2o.values())
 
-    def number_of_distinct_values(self):
+    def number_of_distinct_outputs(self):
         return len(set(self.i2o.values()))
 
-    def is_never_false(self):
-        return self.number_of_distinct_values() == 1 and True in self.i2o.values()
-
-    def is_never_true(self):
-        return self.number_of_distinct_values() == 1 and False in self.i2o.values()
-
     def is_always_false(self):
-        return self.is_never_true()
+        return self.number_of_distinct_outputs() == 1 and False in self.i2o.values()
 
     def is_always_true(self):
-        return self.is_never_false()
+        return self.number_of_distinct_outputs() == 1 and True in self.i2o.values()
 
     def constant_BVDD(self, output):
         assert (isinstance(output, bool) or
@@ -209,17 +203,17 @@ class SBBVDD_o2i(SBDD):
         assert output not in self.o2i
         self.o2i[output] = inputs
 
-    def number_of_values(self):
+    def number_of_outputs(self):
         return len(self.o2i)
 
-    def number_of_distinct_values(self):
-        return self.number_of_values()
+    def number_of_distinct_outputs(self):
+        return self.number_of_outputs()
 
-    def is_never_false(self):
-        return self.number_of_values() == 1 and True in self.o2i
+    def is_always_false(self):
+        return self.number_of_outputs() == 1 and False in self.o2i
 
-    def is_never_true(self):
-        return self.number_of_values() == 1 and False in self.o2i
+    def is_always_true(self):
+        return self.number_of_outputs() == 1 and True in self.o2i
 
     def constant_BVDD(self, output):
         assert (isinstance(output, bool) or

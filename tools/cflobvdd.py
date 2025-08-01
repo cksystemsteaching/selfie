@@ -894,10 +894,10 @@ class CFLOBVDD:
     def number_of_inputs(self):
         return self.grouping.number_of_inputs()
 
-    def number_of_values(self):
+    def number_of_outputs(self):
         return len(self.outputs)
 
-    def number_of_distinct_values(self):
+    def number_of_distinct_outputs(self):
         return len(set(self.outputs.values()))
 
     def get_printed_paths(paths, full_paths = True):
@@ -946,8 +946,8 @@ class CFLOBVDD:
             f"{2**self.grouping.level * self.number_of_input_bits} input bits in total\n" +
             f"{2**self.grouping.level} input variables\n" +
             f"{self.number_of_input_bits} input bits per variable\n" +
-            f"{self.number_of_values()} output values\n" +
-            f"{self.number_of_distinct_values()} disctinct output values\n"
+            f"{self.number_of_outputs()} output values\n" +
+            f"{self.number_of_distinct_outputs()} disctinct output values\n"
             f"{self.number_of_output_bits} output bits per value\n" +
             f"{self.number_of_paths()} paths\n" +
             f"{self.number_of_inputs()} inputs\n" +
@@ -955,9 +955,9 @@ class CFLOBVDD:
 
     def is_consistent(self):
         assert self.grouping.is_consistent()
-        assert self.number_of_values() == self.grouping.number_of_exits, f"{self.number_of_values()} == {self.grouping.number_of_exits}"
-        assert self.number_of_values() >= self.number_of_distinct_values()
-        assert not CFLOBVDD.REDUCE or self.number_of_values() == self.number_of_distinct_values()
+        assert self.number_of_outputs() == self.grouping.number_of_exits, f"{self.number_of_outputs()} == {self.grouping.number_of_exits}"
+        assert self.number_of_outputs() >= self.number_of_distinct_outputs()
+        assert not CFLOBVDD.REDUCE or self.number_of_outputs() == self.number_of_distinct_outputs()
         assert all([0 <= self.outputs[i] < 2**self.number_of_output_bits for i in self.outputs])
         return True
 
@@ -970,19 +970,13 @@ class CFLOBVDD:
             CFLOBVDD.representatives[cflobvdd] = cflobvdd
         return CFLOBVDD.representatives[cflobvdd]
 
-    def is_never_false(self):
-        # without reductions True may appear more than once
-        return self.number_of_distinct_values() == 1 and True in self.outputs.values()
-
-    def is_never_true(self):
-        # without reductions False may appear more than once
-        return self.number_of_distinct_values() == 1 and False in self.outputs.values()
-
     def is_always_false(self):
-        return self.is_never_true()
+        # without reductions False may appear more than once
+        return self.number_of_distinct_outputs() == 1 and False in self.outputs.values()
 
     def is_always_true(self):
-        return self.is_never_false()
+        # without reductions True may appear more than once
+        return self.number_of_distinct_outputs() == 1 and True in self.outputs.values()
 
     def constant(level, output, number_of_input_bits, number_of_output_bits):
         return CFLOBVDD.representative(
@@ -1008,7 +1002,7 @@ class CFLOBVDD:
 
     def flip_value_tuple(self):
         # self must be reduced
-        assert self.number_of_values() == 2
+        assert self.number_of_outputs() == 2
         return CFLOBVDD.representative(self.grouping,
             {1:self.outputs[2], 2:self.outputs[1]},
             self.number_of_input_bits,
