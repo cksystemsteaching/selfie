@@ -945,9 +945,12 @@ class Next(Transitional, btor2.Next, z3interface.Next, bitwuzlainterface.Next):
         btor2.Next.__init__(self, nid, sid_line, state_line, exp_line, symbol, comment, line_no, array_line, index)
         z3interface.Next.__init__(self)
         bitwuzlainterface.Next.__init__(self)
+        self.cache_futures = {}
 
     def get_step(self, step):
         assert step >= 0
+        if step in self.cache_futures:
+            concurrent.futures.wait([self.cache_futures[step]])
         return self.exp_line.get_values(step)
 
     def is_state_changing(self, step):
@@ -1409,7 +1412,7 @@ def branching_bmc(solver, kmin, kmax, args, step, level):
 
 def bmc(solver, kmin, kmax, args):
     print_separator('-')
-    print_message(f"bounded model checking: -kmin {kmin} -kmax {kmax}\n")
+    print_message(f"bitme bounded model checking: -kmin {kmin} -kmax {kmax}\n")
     print_separator('-')
 
     # initialize all states
@@ -1419,6 +1422,54 @@ def bmc(solver, kmin, kmax, args):
     solver.simplify()
 
     branching_bmc(solver, kmin, kmax, args, 0, 0)
+
+import concurrent.futures
+
+# bitr solver
+
+class Bitr_Solver:
+    def print_inputs(self, values, step):
+        if Values.BVDD:
+            print(values.bvdd.get_printed_BVDD(True))
+        else:
+            assert Values.CFLOBVDD
+            print(values.cflobvdd.get_printed_CFLOBVDD(True))
+
+# bitr bounded model checker
+
+def bitr(solver, kmin, kmax):
+    print_separator('-')
+    print_message(f"bitr bounded model checking: -kmin {kmin} -kmax {kmax}\n")
+    print_separator('-')
+
+    step = 0
+
+    for init in Init.inits.values():
+        print_message_with_propagation_profile(f"initializing {init.symbol}", step, 0)
+        init.get_step(step)
+
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        while step <= kmax:
+            for constraint in Constraint.constraints.values():
+                print_message_with_propagation_profile(f"asserting {constraint.symbol}", step, 0)
+                constraint.get_step(step)
+
+            for bad in Bad.bads.values():
+                print_message_with_propagation_profile(f"checking {bad.symbol}", step, 0)
+                if not bad.get_step(step).is_always_false():
+                    print_separator('v', step, 0)
+                    print_message(f"{bad}\n", step, 0)
+                    solver.print_inputs(bad.get_step(step), step)
+                    print_message_with_propagation_profile("propagation profile\n", step, 0)
+                    print_separator('^', step, 0)
+
+            for next_line in Next.nexts.values():
+                print_message_with_propagation_profile(f"transitioning {next_line.symbol}", step, 0)
+                next_line.cache_futures[step + 1] = executor.submit(next_line.get_step, step)
+
+            step += 1
+
+    print_message_with_propagation_profile("reached kmax: terminating\n", step, 0)
 
 import sys
 
@@ -1443,8 +1494,12 @@ def main():
     parser.add_argument('outputfile', nargs='?', type=argparse.FileType('w', encoding='UTF-8'))
 
     parser.add_argument('-analyzor', action='store_true')
+
+    parser.add_argument('--use-bitr', action='store_true')
+
     parser.add_argument('--use-Z3', action='store_true')
     parser.add_argument('--use-bitwuzla', action='store_true')
+
     parser.add_argument('--use-BVDD', action='store_true')
     parser.add_argument('--use-CFLOBVDD', nargs='?', default=None, const=8, type=int)
 
@@ -1520,7 +1575,10 @@ def main():
 
         if not args.use_Z3 and not args.use_bitwuzla:
             if Variable.bvdd_input:
-                bmc(bitme_solver, kmin, kmax, args)
+                if args.use_bitr:
+                    bitr(Bitr_Solver(), kmin, kmax)
+                else:
+                    bmc(bitme_solver, kmin, kmax, args)
 
                 print_separator('-')
                 if Values.BVDD:
