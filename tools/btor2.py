@@ -969,6 +969,8 @@ class Next(Transitional):
 class Property(Line):
     keywords = {OP_CONSTRAINT, OP_BAD}
 
+    conjunction_line = None
+
     def __init__(self, nid, property_line, symbol, comment, line_no):
         super().__init__(nid, comment, line_no)
         self.property_line = property_line
@@ -997,6 +999,12 @@ class Constraint(Property):
         assert self not in Constraint.constraints, f"constraint nid {self.nid} already defined @ {self.line_no}"
         Constraint.constraints[self.nid] = self
 
+    def And(self, other):
+        Constraint.conjunction_line = Parser.parser.get_class(Logical)(Parser.next_nid(),
+            OP_AND, Bool.boolean,
+            self.property_line, Constraint.conjunction_line,
+            f"constraining {self.property_line.comment}", self.line_no)
+
 class Bad(Property):
     keyword = OP_BAD
 
@@ -1012,6 +1020,17 @@ class Bad(Property):
     def new_bad(self):
         assert self.nid not in Bad.bads, f"bad nid {self.nid} already defined @ {self.line_no}"
         Bad.bads[self.nid] = self
+
+    def And(self):
+        negated_line = Parser.parser.get_class(Unary)(Parser.next_nid(), OP_NOT, Bool.boolean,
+            self.property_line, f"negation of {self.property_line.comment}", self.line_no)
+        if Bad.conjunction_line:
+            Bad.conjunction_line = Parser.parser.get_class(Logical)(Parser.next_nid(),
+                OP_AND, Bool.boolean,
+                negated_line, Bad.conjunction_line,
+                f"negating {self.property_line.comment}", self.line_no)
+        else:
+            Bad.conjunction_line = negated_line
 
 # BTOR2 parser
 
@@ -1443,6 +1462,12 @@ class Parser:
             print("branching conditions:")
             print(Ite.branching_conditions)
             print(Ite.non_branching_conditions)
+
+        for constraint in Constraint.constraints.values():
+            constraint.And()
+
+        for bad in Bad.bads.values():
+            bad.And()
 
         print("model profile:")
         print(f"{len(Line.lines)} lines in total")

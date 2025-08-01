@@ -1485,7 +1485,8 @@ def bitr(solver, kmin, kmax):
         print_message_with_propagation_profile(f"initializing {init.symbol}", step)
         init.get_step(step)
 
-    solver.fork(kmin, kmax)
+    if True: # for now always fork with bitr
+        solver.fork(kmin, kmax)
 
     while step <= kmax:
         for constraint in Constraint.constraints.values():
