@@ -218,7 +218,7 @@ class Values:
                 exp_line = output_line
         return exp_line
 
-    # constraints and expressions
+    # expressions
 
     def FALSE():
         if Values.false is None:
@@ -463,13 +463,9 @@ class Values:
         assert isinstance(self.sid_line, Bitvec) and isinstance(values.sid_line, Bitvec)
         return self.apply_binary(sid_line, values, lambda x, y: (x << values.sid_line.size) + y)
 
-    # ternary operators
+    # ternary operator
 
-    def constrain(self, constraint):
-        assert isinstance(constraint.sid_line, Bool)
-        return self.apply_binary(self.sid_line, constraint, lambda x, y: x)
-
-    def compute_ite(self, values2, values3):
+    def ite(self, values2, values3):
         assert isinstance(self.sid_line, Bool)
         assert isinstance(values2, Values) and isinstance(values3, Values)
         assert values2.match_sorts(values3)
@@ -480,16 +476,6 @@ class Values:
             cflobvdd = self.cflobvdd.ternary_apply_and_reduce(values2.cflobvdd, values3.cflobvdd,
                 lambda x, y, z: y if x else z, values2.sid_line.size)
         return Values(values2.sid_line, None, None, bvdd, cflobvdd)
-
-    def If(self, values2, values3):
-        assert isinstance(self.sid_line, Bool)
-        if self.is_always_true():
-            return values2.constrain(self)
-        elif self.is_always_false():
-            return values3.constrain(self)
-        else:
-            # lazy evaluation of true and false case
-            return self.compute_ite(values2, values3)
 
 LAMBDAS = True
 
@@ -900,14 +886,14 @@ class Ite(Ternary, btor2.Ite, z3interface.Ite, bitwuzlainterface.Ite):
             if arg1_value.is_always_true():
                 arg2_value = self.arg2_line.get_values(step)
                 if isinstance(arg2_value, Values):
-                    return arg1_value.If(arg2_value, None)
+                    return arg2_value
                 else:
                     # true case holds unconditionally
                     return arg2_value.get_expression()
             elif arg1_value.is_always_false():
                 arg3_value = self.arg3_line.get_values(step)
                 if isinstance(arg3_value, Values):
-                    return arg1_value.If(None, arg3_value)
+                    return arg3_value
                 else:
                     # false case holds unconditionally
                     return arg3_value.get_expression()
@@ -916,7 +902,7 @@ class Ite(Ternary, btor2.Ite, z3interface.Ite, bitwuzlainterface.Ite):
                 arg2_value = self.arg2_line.get_values(step)
                 arg3_value = self.arg3_line.get_values(step)
                 if isinstance(arg2_value, Values) and isinstance(arg3_value, Values):
-                    return arg1_value.If(arg2_value, arg3_value)
+                    return arg1_value.ite(arg2_value, arg3_value)
         else:
             arg2_value = self.arg2_line.get_values(step)
             arg3_value = self.arg3_line.get_values(step)
