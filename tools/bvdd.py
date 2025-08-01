@@ -63,8 +63,8 @@ class SBDD:
         self.i2o = dict([(input_value, output) for input_value in range(256)])
         return self
 
-    def constant(value):
-        return SBDD({}).constant_BVDD(value)
+    def constant(output_value):
+        return SBDD({}).constant_BVDD(output_value)
 
     def projection_BVDD(self, index = 0):
         self.i2o = dict([(input_value, input_value) for input_value in range(256)])
@@ -96,8 +96,8 @@ class SBDD:
         assert type(bvdd3) is type(self)
         return self.compute_ternary(lambda x, y, z: y if x else z, bvdd2, bvdd3)
 
-    def get_printed_BVDD(self, value):
-        return [input_value for input_value in self.i2o if self.i2o[input_value] == value]
+    def get_printed_BVDD(self, output_value):
+        return [input_value for input_value in self.i2o if self.i2o[input_value] == output_value]
 
     def print_profile():
         pass
@@ -127,8 +127,8 @@ class SBBVDD_i2o(SBDD):
         self.i2o = {2**256-1:output}
         return self
 
-    def constant(value):
-        return SBBVDD_i2o({}).constant_BVDD(value)
+    def constant(output_value):
+        return SBBVDD_i2o({}).constant_BVDD(output_value)
 
     def projection_BVDD(self, index = 0):
         self.i2o = dict([(2**input_value, input_value) for input_value in range(256)])
@@ -186,8 +186,8 @@ class SBBVDD_i2o(SBDD):
             op(bvdd1.i2o[inputs[0]], bvdd2.i2o[inputs[1]], bvdd3.i2o[inputs[2]]))
                 for inputs in bvdd1.intersect_ternary(bvdd2, bvdd3)])).reduce()
 
-    def get_printed_BVDD(self, value):
-        return [SBBVDD_i2o.get_input_values(inputs) for inputs in self.i2o if self.i2o[inputs] == value]
+    def get_printed_BVDD(self, output_value):
+        return [SBBVDD_i2o.get_input_values(inputs) for inputs in self.i2o if self.i2o[inputs] == output_value]
 
 class SBBVDD_o2i(SBDD):
     def __init__(self, o2i):
@@ -222,8 +222,8 @@ class SBBVDD_o2i(SBDD):
         self.o2i = {output:2**256-1}
         return self
 
-    def constant(value):
-        return SBBVDD_o2i({}).constant_BVDD(value)
+    def constant(output_value):
+        return SBBVDD_o2i({}).constant_BVDD(output_value)
 
     def projection_BVDD(self, index = 0):
         self.o2i = dict([(input_value, 2**input_value) for input_value in range(256)])
@@ -278,12 +278,12 @@ class SBBVDD_o2i(SBDD):
                 op(output_tuple[0], output_tuple[1], output_tuple[2]))
         return new_bvdd
 
-    def get_printed_BVDD(self, value):
-        return SBBVDD_i2o.get_input_values(self.o2i[value]) if value in self.o2i else []
+    def get_printed_BVDD(self, output_value):
+        return SBBVDD_i2o.get_input_values(self.o2i[output_value]) if output_value in self.o2i else []
 
 class BVDD_uncached(SBBVDD_o2i):
-    def constant(value):
-        return BVDD({}).constant_BVDD(value)
+    def constant(output_value):
+        return BVDD({}).constant_BVDD(output_value)
 
     def projection(index):
         if index == 0:
@@ -341,21 +341,21 @@ class BVDD_uncached(SBBVDD_o2i):
         assert isinstance(bvdd3, bool) or isinstance(bvdd3, int) or isinstance(bvdd3, BVDD)
         return super().compute_ternary(lambda x, y, z: BVDD.op_ternary(op, x, y, z), bvdd2, bvdd3)
 
-    def extract(self, value):
+    def extract(self, output_value):
         new_bvdd = BVDD({})
         i2o = self.get_i2o()
         for inputs in i2o:
             output = i2o[inputs]
-            if output == value:
+            if output == output_value:
                 new_bvdd.set(inputs, output)
             elif isinstance(output, BVDD):
-                extracted_bvdd = output.extract(value)
+                extracted_bvdd = output.extract(output_value)
                 if extracted_bvdd.get_i2o():
                     new_bvdd.set(inputs, extracted_bvdd)
         return new_bvdd
 
-    def get_printed_BVDD(self, value):
-        return self.extract(value)
+    def get_printed_BVDD(self, output_value):
+        return self.extract(output_value)
 
 class BVDD_cached(BVDD_uncached):
     intersect_binary_cache = {}
