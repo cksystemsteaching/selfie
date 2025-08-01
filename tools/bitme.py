@@ -38,6 +38,24 @@ except OSError:
     print("rotor is not available")
     is_rotor_present = False
 
+import concurrent.futures
+
+class Futures:
+    executor = concurrent.futures.ThreadPoolExecutor()
+
+    def __init__(self):
+        self.cache_futures = {}
+
+    def wait_step(self, step):
+        assert step >= 0
+        if step in self.cache_futures:
+            concurrent.futures.wait([self.cache_futures[step]])
+        return self.get_step(step)
+
+    def fork_step(self, step):
+        assert step >= 0
+        self.cache_futures[step] = Futures.executor.submit(self.get_step, step)
+
 from math import log2
 
 class Values:
@@ -939,27 +957,17 @@ class Init(Transitional, btor2.Init, z3interface.Init, bitwuzlainterface.Init):
         assert step == 0, f"get init with {step} != 0"
         return self.exp_line.get_values(0)
 
-class Next(Transitional, btor2.Next, z3interface.Next, bitwuzlainterface.Next):
+class Next(Transitional, btor2.Next, z3interface.Next, bitwuzlainterface.Next, Futures):
     def __init__(self, nid, sid_line, state_line, exp_line, symbol, comment, line_no, array_line = None, index = None):
         Transitional.__init__(self)
         btor2.Next.__init__(self, nid, sid_line, state_line, exp_line, symbol, comment, line_no, array_line, index)
         z3interface.Next.__init__(self)
         bitwuzlainterface.Next.__init__(self)
-        self.cache_futures = {}
+        Futures.__init__(self)
 
     def get_step(self, step):
         assert step >= 0
         return self.exp_line.get_values(step)
-
-    def wait_step(self, step):
-        assert step >= 0
-        if step + 1 in self.cache_futures:
-            concurrent.futures.wait([self.cache_futures[step + 1]])
-        return self.get_step(step)
-
-    def fork_step(self, executor, step):
-        assert step >= 0
-        self.cache_futures[step + 1] = executor.submit(self.get_step, step)
 
     def is_state_changing(self, step):
         return self.get_step(step) != self.get_step(step - 1)
@@ -967,24 +975,14 @@ class Next(Transitional, btor2.Next, z3interface.Next, bitwuzlainterface.Next):
     def state_is_not_changing(self, step):
         return self.get_step(step) == self.get_step(step - 1)
 
-class Property(Line, btor2.Property, z3interface.Property, bitwuzlainterface.Property):
+class Property(Line, btor2.Property, z3interface.Property, bitwuzlainterface.Property, Futures):
     def __init__(self):
         Line.__init__(self)
-        self.cache_futures = {}
+        Futures.__init__(self)
 
     def get_step(self, step):
         assert step >= 0
         return self.property_line.get_values(step)
-
-    def wait_step(self, step):
-        assert step >= 0
-        if step in self.cache_futures:
-            concurrent.futures.wait([self.cache_futures[step]])
-        return self.get_step(step)
-
-    def fork_step(self, executor, step):
-        assert step >= 0
-        self.cache_futures[step] = executor.submit(self.get_step, step)
 
 class Constraint(Property, btor2.Constraint):
     def __init__(self, nid, property_line, symbol, comment, line_no):
@@ -1442,27 +1440,22 @@ def bmc(solver, kmin, kmax, args):
 
     branching_bmc(solver, kmin, kmax, args, 0, 0)
 
-import concurrent.futures
-
 # bitr solver
 
 class Bitr_Solver:
-    def __init__(self):
-        self.executor = concurrent.futures.ThreadPoolExecutor()
-
     def fork(self, kmin, kmax):
         step = 0
 
         while step <= kmax:
             for constraint in Constraint.constraints.values():
-                constraint.fork_step(self.executor, step)
+                constraint.fork_step(step)
 
             if step >= kmin:
                 for bad in Bad.bads.values():
-                    bad.fork_step(self.executor, step)
+                    bad.fork_step(step)
 
             for next_line in Next.nexts.values():
-                next_line.fork_step(self.executor, step)
+                next_line.fork_step(step)
 
             step += 1
 
