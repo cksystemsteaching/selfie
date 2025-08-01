@@ -149,10 +149,10 @@ class Values:
             var_line = Variable.bvdd_input[index]
             exp_line = Zero(btor2.Parser.next_nid(), sid_line,
                 "unreachable-value", "unreachable value", 0)
-            i2v = bvdd.get_i2v()
-            # assert i2v is sorted by inputs
-            for inputs in i2v:
-                value_or_bvdd = i2v[inputs]
+            i2o = bvdd.get_i2o()
+            # assert i2o is sorted by inputs
+            for inputs in i2o:
+                value_or_bvdd = i2o[inputs]
                 if sbdd:
                     assert 0 <= inputs < 256
                     inputs = 2**inputs
@@ -165,8 +165,8 @@ class Values:
 
     def get_bvdd_expression(self):
         return Values.get_bvdd_node_expression(self.sid_line, self.bvdd,
-            not (isinstance(self.bvdd, BVDD.SBBVDD_i2v) or
-                isinstance(self.bvdd, BVDD.SBBVDD_v2i)))
+            not (isinstance(self.bvdd, BVDD.SBBVDD_i2o) or
+                isinstance(self.bvdd, BVDD.SBBVDD_o2i)))
 
     # CFLOBVDD adapter
 
