@@ -901,22 +901,16 @@ class Ite(Ternary, btor2.Ite, z3interface.Ite, bitwuzlainterface.Ite):
                 arg2_value = self.arg2_line.get_values(step)
                 if isinstance(arg2_value, Values):
                     return arg1_value.If(arg2_value, None)
-                elif arg1_value.is_always_true():
+                else:
                     # true case holds unconditionally
                     return arg2_value.get_expression()
-                else:
-                    # lazy evaluation of false case into expression
-                    arg3_value = self.arg3_line.get_values(step)
             elif arg1_value.is_always_false():
                 arg3_value = self.arg3_line.get_values(step)
                 if isinstance(arg3_value, Values):
                     return arg1_value.If(None, arg3_value)
-                elif arg1_value.is_always_false():
+                else:
                     # false case holds unconditionally
                     return arg3_value.get_expression()
-                else:
-                    # lazy evaluation of true case into expression
-                    arg2_value = self.arg2_line.get_values(step)
             else:
                 # lazy evaluation of true and false case
                 arg2_value = self.arg2_line.get_values(step)
