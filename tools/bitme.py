@@ -639,7 +639,7 @@ class State(Variable, btor2.State, z3interface.State, bitwuzlainterface.State):
             # untransitioned state or transitioned to itself
             return self.get_values(0)
         elif UNROLL:
-            return self.next_line.get_step(step - 1)
+            return self.next_line.wait_step(step - 1)
         else:
             return self
 
@@ -949,9 +949,17 @@ class Next(Transitional, btor2.Next, z3interface.Next, bitwuzlainterface.Next):
 
     def get_step(self, step):
         assert step >= 0
-        if step in self.cache_futures:
-            concurrent.futures.wait([self.cache_futures[step]])
         return self.exp_line.get_values(step)
+
+    def wait_step(self, step):
+        assert step >= 0
+        if step + 1 in self.cache_futures:
+            concurrent.futures.wait([self.cache_futures[step + 1]])
+        return self.get_step(step)
+
+    def fork_step(self, executor, step):
+        assert step >= 0
+        self.cache_futures[step + 1] = executor.submit(self.get_step, step)
 
     def is_state_changing(self, step):
         return self.get_step(step) != self.get_step(step - 1)
@@ -962,10 +970,21 @@ class Next(Transitional, btor2.Next, z3interface.Next, bitwuzlainterface.Next):
 class Property(Line, btor2.Property, z3interface.Property, bitwuzlainterface.Property):
     def __init__(self):
         Line.__init__(self)
+        self.cache_futures = {}
 
     def get_step(self, step):
         assert step >= 0
         return self.property_line.get_values(step)
+
+    def wait_step(self, step):
+        assert step >= 0
+        if step in self.cache_futures:
+            concurrent.futures.wait([self.cache_futures[step]])
+        return self.get_step(step)
+
+    def fork_step(self, executor, step):
+        assert step >= 0
+        self.cache_futures[step] = executor.submit(self.get_step, step)
 
 class Constraint(Property, btor2.Constraint):
     def __init__(self, nid, property_line, symbol, comment, line_no):
@@ -1428,6 +1447,31 @@ import concurrent.futures
 # bitr solver
 
 class Bitr_Solver:
+    def __init__(self):
+        self.executor = concurrent.futures.ThreadPoolExecutor()
+
+    def fork(self, kmin, kmax):
+        step = 0
+
+        while step <= kmax:
+            for constraint in Constraint.constraints.values():
+                constraint.fork_step(self.executor, step)
+
+            if step >= kmin:
+                for bad in Bad.bads.values():
+                    bad.fork_step(self.executor, step)
+
+            for next_line in Next.nexts.values():
+                next_line.fork_step(self.executor, step)
+
+            step += 1
+
+    def is_SAT(self, result):
+        return not result.is_always_false()
+
+    def is_UNSAT(self, result):
+        return not self.is_SAT(result)
+
     def print_inputs(self, values, step):
         if Values.BVDD:
             print(values.bvdd.get_printed_BVDD(True))
@@ -1445,29 +1489,36 @@ def bitr(solver, kmin, kmax):
     step = 0
 
     for init in Init.inits.values():
-        print_message_with_propagation_profile(f"initializing {init.symbol}", step, 0)
+        print_message_with_propagation_profile(f"initializing {init.symbol}", step)
         init.get_step(step)
 
-    with concurrent.futures.ThreadPoolExecutor() as executor:
-        while step <= kmax:
-            for constraint in Constraint.constraints.values():
-                print_message_with_propagation_profile(f"asserting {constraint.symbol}", step, 0)
-                constraint.get_step(step)
+    solver.fork(kmin, kmax)
 
+    while step <= kmax:
+        for constraint in Constraint.constraints.values():
+            print_message_with_propagation_profile(f"asserting {constraint.symbol}", step, 0)
+            if solver.is_UNSAT(constraint.wait_step(step)):
+                print_separator('v', step, level)
+                print_message(f"{constraint}\n", step, level)
+                print_message_with_propagation_profile("propagation profile\n", step, level)
+                print_separator('^', step, level)
+                return
+
+        if step >= kmin:
             for bad in Bad.bads.values():
                 print_message_with_propagation_profile(f"checking {bad.symbol}", step, 0)
-                if not bad.get_step(step).is_always_false():
+                if solver.is_SAT(bad.wait_step(step)):
                     print_separator('v', step, 0)
                     print_message(f"{bad}\n", step, 0)
                     solver.print_inputs(bad.get_step(step), step)
                     print_message_with_propagation_profile("propagation profile\n", step, 0)
                     print_separator('^', step, 0)
 
-            for next_line in Next.nexts.values():
-                print_message_with_propagation_profile(f"transitioning {next_line.symbol}", step, 0)
-                next_line.cache_futures[step + 1] = executor.submit(next_line.get_step, step)
+        for next_line in Next.nexts.values():
+            print_message_with_propagation_profile(f"transitioning {next_line.symbol}", step, 0)
+            next_line.wait_step(step)
 
-            step += 1
+        step += 1
 
     print_message_with_propagation_profile("reached kmax: terminating\n", step, 0)
 
