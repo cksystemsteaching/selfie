@@ -1225,7 +1225,7 @@ class Bitme_Solver:
                          self.constraint = assertion.And(self.constraint)
             self.proven |= self.unproven
             self.unproven = {}
-            return not self.constraint.is_always_false() and not self.constraint.is_always_true()
+            return not self.constraint.is_always_false()
 
     def is_SAT(self, result):
         return result
