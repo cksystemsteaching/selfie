@@ -357,75 +357,126 @@ class BVDD_uncached(SBBVDD_o2i):
     def get_printed_BVDD(self, output_value):
         return self.extract(output_value)
 
+import threading
+
 class BVDD_cached(BVDD_uncached):
+    intersect_binary_lock = threading.Lock()
     intersect_binary_cache = {}
     intersect_binary_hits = 0
 
-    def intersect_binary(self, bvdd2):
+    def intersect_binary(self, bvdd2, intersection = None):
         if (self, bvdd2) in BVDD_cached.intersect_binary_cache:
             BVDD_cached.intersect_binary_hits += 1
+        elif intersection:
+            # lock is acquired
+            BVDD_cached.intersect_binary_cache[(self, bvdd2)] = intersection
         else:
-            BVDD_cached.intersect_binary_cache[(self, bvdd2)] = super().intersect_binary(bvdd2)
+            # concurrent without acquiring lock
+            intersection = super().intersect_binary(bvdd2)
+            with BVDD_cached.intersect_binary_lock:
+                return self.intersect_binary(bvdd2, intersection)
         return BVDD_cached.intersect_binary_cache[(self, bvdd2)]
 
+    intersect_ternary_lock = threading.Lock()
     intersect_ternary_cache = {}
     intersect_ternary_hits = 0
 
-    def intersect_ternary(self, bvdd2, bvdd3):
+    def intersect_ternary(self, bvdd2, bvdd3, intersection = None):
         if (self, bvdd2, bvdd3) in BVDD_cached.intersect_ternary_cache:
             BVDD_cached.intersect_ternary_hits += 1
+        elif intersection:
+            # lock is acquired
+            BVDD_cached.intersect_ternary_cache[(self, bvdd2, bvdd3)] = intersection
         else:
-            BVDD_cached.intersect_ternary_cache[(self, bvdd2, bvdd3)] = super().intersect_ternary(bvdd2, bvdd3)
+            # concurrent without acquiring lock
+            intersection = super().intersect_ternary(bvdd2, bvdd3)
+            with BVDD_cached.intersect_ternary_lock:
+                return self.intersect_ternary(bvdd2, bvdd3, intersection)
         return BVDD_cached.intersect_ternary_cache[(self, bvdd2, bvdd3)]
 
+    constant_lock = threading.Lock()
     constant_cache = {}
     constant_hits = 0
 
-    def constant_BVDD(self, output):
+    def constant_BVDD(self, output, constant = None):
         if output in BVDD_cached.constant_cache:
             BVDD_cached.constant_hits += 1
+        elif constant:
+            # lock is acquired
+            BVDD_cached.constant_cache[output] = constant
         else:
-            BVDD_cached.constant_cache[output] = super().constant_BVDD(output)
+            # concurrent without acquiring lock
+            constant = super().constant_BVDD(output)
+            with BVDD_cached.constant_lock:
+                return self.constant_BVDD(output, constant)
         return BVDD_cached.constant_cache[output]
 
+    projection_lock = threading.Lock()
     projection_cache = {}
     projection_hits = 0
 
-    def projection_BVDD(self, index = 0):
+    def projection_BVDD(self, index = 0, projection = None):
         if index in BVDD_cached.projection_cache:
             BVDD_cached.projection_hits += 1
+        elif projection:
+            # lock is acquired
+            BVDD_cached.projection_cache[index] = projection
         else:
-            BVDD_cached.projection_cache[index] = super().projection_BVDD(index)
+            # concurrent without acquiring lock
+            projection = super().projection_BVDD(index)
+            with BVDD_cached.projection_lock:
+                return self.projection_BVDD(index, projection)
         return BVDD_cached.projection_cache[index]
 
+    compute_unary_lock = threading.Lock()
     compute_unary_cache = {}
     compute_unary_hits = 0
 
-    def compute_unary(self, op):
+    def compute_unary(self, op, unary = None):
         if (op, self) in BVDD_cached.compute_unary_cache:
             BVDD_cached.compute_unary_hits += 1
+        elif unary:
+            # lock is acquired
+            BVDD_cached.compute_unary_cache[(op, self)] = unary
         else:
-            BVDD_cached.compute_unary_cache[(op, self)] = super().compute_unary(op)
+            # concurrent without acquiring lock
+            unary = super().compute_unary(op)
+            with BVDD_cached.compute_unary_lock:
+                return self.compute_unary(op, unary)
         return BVDD_cached.compute_unary_cache[(op, self)]
 
+    compute_binary_lock = threading.Lock()
     compute_binary_cache = {}
     compute_binary_hits = 0
 
-    def compute_binary(self, op, bvdd2):
+    def compute_binary(self, op, bvdd2, binary = None):
         if (op, self, bvdd2) in BVDD_cached.compute_binary_cache:
             BVDD_cached.compute_binary_hits += 1
+        elif binary:
+            # lock is acquired
+            BVDD_cached.compute_binary_cache[(op, self, bvdd2)] = binary
         else:
-            BVDD_cached.compute_binary_cache[(op, self, bvdd2)] = super().compute_binary(op, bvdd2)
+            # concurrent without acquiring lock
+            binary = super().compute_binary(op, bvdd2)
+            with BVDD_cached.compute_binary_lock:
+                return self.compute_binary(op, bvdd2, binary)
         return BVDD_cached.compute_binary_cache[(op, self, bvdd2)]
 
+    compute_ternary_lock = threading.Lock()
     compute_ternary_cache = {}
     compute_ternary_hits = 0
 
-    def compute_ternary(self, op, bvdd2, bvdd3):
+    def compute_ternary(self, op, bvdd2, bvdd3, ternary = None):
         if (op, self, bvdd2, bvdd3) in BVDD_cached.compute_ternary_cache:
             BVDD_cached.compute_ternary_hits += 1
+        elif ternary:
+            # lock is acquired
+            BVDD_cached.compute_ternary_cache[(op, self, bvdd2, bvdd3)] = ternary
         else:
-            BVDD_cached.compute_ternary_cache[(op, self, bvdd2, bvdd3)] = super().compute_ternary(op, bvdd2, bvdd3)
+            # concurrent without acquiring lock
+            ternary = super().compute_ternary(op, bvdd2, bvdd3)
+            with BVDD_cached.compute_ternary_lock:
+                return self.compute_ternary(op, bvdd2, bvdd3, ternary)
         return BVDD_cached.compute_ternary_cache[(op, self, bvdd2, bvdd3)]
 
     def print_profile():
