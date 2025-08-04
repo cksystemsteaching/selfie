@@ -1442,19 +1442,79 @@ def bmc(solver, kmin, kmax, args):
 
 # bitr solver
 
+def constrain(unconstraining_bad):
+    global_constraint = None
+
+    for constraint in Constraint.constraints.values():
+        if global_constraint is None:
+            global_constraint = constraint.property_line
+        else:
+            global_constraint = Logical(btor2.Parser.next_nid(),
+                btor2.OP_AND, Bool.boolean,
+                constraint.property_line, global_constraint,
+                f"constraining {constraint.symbol}", constraint.line_no)
+
+    if not unconstraining_bad:
+        for bad in Bad.bads.values():
+            negated_property = Unary(btor2.Parser.next_nid(),
+                btor2.OP_NOT, Bool.boolean,
+                bad.property_line,
+                f"negation of {bad.symbol}", bad.line_no)
+            if global_constraint is None:
+                global_constraint = negated_property
+            else:
+                global_constraint = Logical(btor2.Parser.next_nid(),
+                    btor2.OP_AND, Bool.boolean,
+                    negated_property, global_constraint,
+                    f"constraining {bad.symbol}", bad.line_no)
+
+    if global_constraint:
+        true = One(btor2.Parser.next_nid(),
+            Bool.boolean, "global-constraint-true", "global constraint true", 0)
+        state = State(btor2.Parser.next_nid(),
+            Bool.boolean, "global-constraint-state", "global constraint state", 0)
+        Init(btor2.Parser.next_nid(),
+            Bool.boolean, state, true,
+            "global-constraint-init", "global constraint init", 0)
+        Next(btor2.Parser.next_nid(),
+            Bool.boolean, state, global_constraint,
+            "global-constraint-next", "global constraint next", 0)
+
+        # constrain constraint properties
+        for constraint in Constraint.constraints.values():
+            constraint.property_line = Logical(btor2.Parser.next_nid(),
+                btor2.OP_AND, Bool.boolean,
+                state, constraint.property_line,
+                f"global constraint for {constraint.symbol}", constraint.line_no)
+
+        # constrain bad properties
+        for bad in Bad.bads.values():
+            bad.property_line = Logical(btor2.Parser.next_nid(),
+                btor2.OP_AND, Bool.boolean,
+                state, bad.property_line,
+                f"global constraint for {bad.symbol}", bad.line_no)
+
+        # TODO: constrain transitions with global_constraint (not state)
+
 class Bitr_Solver:
+    def __init__(self, args):
+        self.args = args
+
     def fork(self, kmin, kmax):
         step = 0
 
         while step <= kmax:
+            # assert all constraints
             for constraint in Constraint.constraints.values():
                 constraint.fork_step(step)
 
             if step >= kmin:
+                # check all bad properties from kmin on
                 for bad in Bad.bads.values():
                     bad.fork_step(step)
 
             for next_line in Next.nexts.values():
+                # compute next step
                 next_line.fork_step(step)
 
             step += 1
@@ -1594,6 +1654,8 @@ def main():
 
         if are_there_state_transitions:
             kmax = max(kmin, kmax)
+
+            constrain(args.unconstraining_bad)
         else:
             kmin = kmax = 0
 
@@ -1621,7 +1683,7 @@ def main():
         if not args.use_Z3 and not args.use_bitwuzla:
             if Variable.bvdd_input:
                 if args.use_bitr:
-                    bitr(Bitr_Solver(), kmin, kmax)
+                    bitr(Bitr_Solver(args), kmin, kmax)
                 else:
                     bmc(bitme_solver, kmin, kmax, args)
 
