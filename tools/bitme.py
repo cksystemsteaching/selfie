@@ -1321,6 +1321,27 @@ class Bitme_Solver:
             # TODO
             pass
 
+# bitr concurrent bitme
+
+def fork(kmin, kmax):
+    step = 0
+
+    while step <= kmax:
+        # assert all constraints
+        for constraint in Constraint.constraints.values():
+            constraint.fork_step(step)
+
+        if step >= kmin:
+            # check all bad properties from kmin on
+            for bad in Bad.bads.values():
+                bad.fork_step(step)
+
+        for next_line in Next.nexts.values():
+            # compute next step
+            next_line.fork_step(step)
+
+        step += 1
+
 # bitme bounded model checker
 
 def branching_bmc(solver, kmin, kmax, args, step, level):
@@ -1457,166 +1478,12 @@ def bmc(solver, kmin, kmax, args):
     solver.assert_this(Init.inits.values(), 0)
 
     print_message("initializing", 0, 0)
-    solver.simplify()
+    solver.prove()
+
+    if args.use_bitr:
+        fork(kmin, kmax)
 
     branching_bmc(solver, kmin, kmax, args, 0, 0)
-
-# bitr solver
-
-def constrain(unconstraining_bad):
-    global_constraint = None
-
-    for constraint in Constraint.constraints.values():
-        if global_constraint is None:
-            global_constraint = constraint.property_line
-        else:
-            global_constraint = Logical(btor2.Parser.next_nid(),
-                btor2.OP_AND, Bool.boolean,
-                constraint.property_line, global_constraint,
-                f"constraining {constraint.symbol}", constraint.line_no)
-
-    if not unconstraining_bad:
-        for bad in Bad.bads.values():
-            negated_property = Unary(btor2.Parser.next_nid(),
-                btor2.OP_NOT, Bool.boolean,
-                bad.property_line,
-                f"negation of {bad.symbol}", bad.line_no)
-            if global_constraint is None:
-                global_constraint = negated_property
-            else:
-                global_constraint = Logical(btor2.Parser.next_nid(),
-                    btor2.OP_AND, Bool.boolean,
-                    negated_property, global_constraint,
-                    f"constraining {bad.symbol}", bad.line_no)
-
-    if global_constraint:
-        true = One(btor2.Parser.next_nid(),
-            Bool.boolean, "global-constraint-true", "global constraint true", 0)
-        state = State(btor2.Parser.next_nid(),
-            Bool.boolean, "global-constraint-state", "global constraint state", 0)
-        Init(btor2.Parser.next_nid(),
-            Bool.boolean, state, true,
-            "global-constraint-init", "global constraint init", 0)
-        Next(btor2.Parser.next_nid(),
-            Bool.boolean, state, global_constraint,
-            "global-constraint-next", "global constraint next", 0)
-
-        # constrain constraint properties
-        for constraint in Constraint.constraints.values():
-            constraint.property_line = Logical(btor2.Parser.next_nid(),
-                btor2.OP_AND, Bool.boolean,
-                state, constraint.property_line,
-                f"global constraint for {constraint.symbol}", constraint.line_no)
-
-        # constrain bad properties
-        for bad in Bad.bads.values():
-            bad.property_line = Logical(btor2.Parser.next_nid(),
-                btor2.OP_AND, Bool.boolean,
-                state, bad.property_line,
-                f"global constraint for {bad.symbol}", bad.line_no)
-
-        # TODO: constrain transitions with global_constraint (not state)
-
-def check_termination(check_termination):
-    if check_termination:
-        # check if any next line is state changing
-        for next_line in Next.nexts.values():
-            next_line.is_state_changing_line = Comparison(btor2.Parser.next_nid(),
-                btor2.OP_NEQ, Bool.boolean,
-                next_line.state_line, next_line.exp_line,
-                f"state change check for {next_line.symbol}", next_line.line_no)
-
-class Bitr_Solver:
-    def __init__(self, args):
-        self.args = args
-
-    def fork(self, kmin, kmax):
-        step = 0
-
-        while step <= kmax:
-            # assert all constraints
-            for constraint in Constraint.constraints.values():
-                constraint.fork_step(step)
-
-            if step >= kmin:
-                # check all bad properties from kmin on
-                for bad in Bad.bads.values():
-                    bad.fork_step(step)
-
-            for next_line in Next.nexts.values():
-                # compute next step
-                next_line.fork_step(step)
-
-            step += 1
-
-    def is_SAT(self, result):
-        return not result.is_always_false()
-
-    def is_UNSAT(self, result):
-        return not self.is_SAT(result)
-
-    def print_inputs(self, values, step):
-        if Values.BVDD:
-            print(values.bvdd.get_printed_BVDD(True))
-        else:
-            assert Values.CFLOBVDD
-            print(values.cflobvdd.get_printed_CFLOBVDD(True))
-
-# bitr bounded model checker
-
-def bitr(solver, kmin, kmax):
-    print_separator('-')
-    print_message(f"bitr bounded model checking: -kmin {kmin} -kmax {kmax}\n")
-    print_separator('-')
-
-    step = 0
-
-    for init in Init.inits.values():
-        print_message_with_propagation_profile(f"initializing {init.symbol}", step)
-        init.get_step(step)
-
-    if True: # for now always fork with bitr
-        solver.fork(kmin, kmax)
-
-    while step <= kmax:
-        for constraint in Constraint.constraints.values():
-            print_message_with_propagation_profile(f"asserting {constraint.symbol}", step, 0)
-            if solver.is_UNSAT(constraint.wait_step(step)):
-                print_separator('v', step, level)
-                print_message(f"{constraint}\n", step, level)
-                print_message_with_propagation_profile("propagation profile\n", step, level)
-                print_separator('^', step, level)
-                return
-
-        if step >= kmin:
-            for bad in Bad.bads.values():
-                print_message_with_propagation_profile(f"checking {bad.symbol}", step, 0)
-                if solver.is_SAT(bad.wait_step(step)):
-                    print_separator('v', step, 0)
-                    print_message(f"{bad}\n", step, 0)
-                    solver.print_inputs(bad.get_step(step), step)
-                    print_message_with_propagation_profile("propagation profile\n", step, 0)
-                    print_separator('^', step, 0)
-
-        if solver.args.check_termination:
-            state_change = False
-            for next_line in Next.nexts.values():
-                # check if state changes
-                print_message_with_propagation_profile(f"checking state change for {next_line.symbol}", step, 0)
-                if solver.is_SAT(next_line.is_state_changing(step)):
-                    state_change = True
-                    print_message(f"state change: {next_line}\n", step, 0)
-                if not state_change and next_line is list(Next.nexts.values())[-1]:
-                    print_message_with_propagation_profile("no states changed: terminating\n", step, 0)
-                    return
-        else:
-            for next_line in Next.nexts.values():
-                print_message_with_propagation_profile(f"transitioning {next_line.symbol}", step, 0)
-                next_line.wait_step(step)
-
-        step += 1
-
-    print_message_with_propagation_profile("reached kmax: terminating\n", step, 0)
 
 import sys
 
@@ -1696,10 +1563,6 @@ def main():
 
         if are_there_state_transitions:
             kmax = max(kmin, kmax)
-
-            # check termination before constraining to exclude global constraint
-            check_termination(args.check_termination)
-            constrain(args.unconstraining_bad)
         else:
             kmin = kmax = 0
 
@@ -1726,10 +1589,7 @@ def main():
 
         if not args.use_Z3 and not args.use_bitwuzla:
             if Variable.bvdd_input:
-                if args.use_bitr:
-                    bitr(Bitr_Solver(args), kmin, kmax)
-                else:
-                    bmc(bitme_solver, kmin, kmax, args)
+                bmc(bitme_solver, kmin, kmax, args)
 
                 print_separator('-')
                 if Values.BVDD:
