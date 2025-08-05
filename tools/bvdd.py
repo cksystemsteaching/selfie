@@ -32,7 +32,7 @@ class SBDD:
         self.i2o = i2o
 
     def __str__(self):
-        return str([f"{input_value}: {output}" for input_value, output in self.i2o.items()])
+        return str([f"{input_value} -> {output}" for input_value, output in self.i2o.items()])
 
     def get_i2o(self):
         return self.i2o
@@ -104,7 +104,7 @@ class SBDD:
 
 class SBBVDD_i2o(SBDD):
     def __str__(self):
-        return str([f"{SBBVDD_i2o.get_input_values(inputs)}: {output}" for inputs, output in self.i2o.items()])
+        return str([f"{SBBVDD_i2o.get_input_values(inputs)} -> {output}" for inputs, output in self.i2o.items()])
 
     def get_input_values(inputs):
         input_value = 0
@@ -194,7 +194,7 @@ class SBBVDD_o2i(SBDD):
         self.o2i = o2i
 
     def __str__(self):
-        return str([f"{SBBVDD_i2o.get_input_values(inputs)}: {output}" for output, inputs in self.o2i.items()])
+        return str([f"{SBBVDD_i2o.get_input_values(inputs)} -> {output}" for output, inputs in self.o2i.items()])
 
     def get_i2o(self):
         return dict([(inputs, output) for output, inputs in self.o2i.items()])
@@ -291,9 +291,16 @@ class BVDD_uncached(SBBVDD_o2i):
         else:
             return BVDD({}).constant_BVDD(BVDD.projection(index - 1))
 
+    def reduce_BVDD(self):
+        # assert index > 0
+        if self.number_of_distinct_outputs() == 1:
+            return next(iter(self.get_i2o().values()))
+        else:
+            return self
+
     def op_unary(op, output1):
         if isinstance(output1, BVDD):
-            return output1.compute_unary(op)
+            return output1.compute_unary(op).reduce_BVDD()
         else:
             return op(output1)
 
@@ -303,11 +310,11 @@ class BVDD_uncached(SBBVDD_o2i):
     def op_binary(op, output1, output2):
         if isinstance(output1, BVDD):
             if isinstance(output2, BVDD):
-                return output1.compute_binary(op, output2)
+                return output1.compute_binary(op, output2).reduce_BVDD()
             else:
-                return output1.compute_unary(lambda x: op(x, output2))
+                return output1.compute_unary(lambda x: op(x, output2)).reduce_BVDD()
         elif isinstance(output2, BVDD):
-            return output2.compute_unary(lambda x: op(output1, x))
+            return output2.compute_unary(lambda x: op(output1, x)).reduce_BVDD()
         else:
             return op(output1, output2)
 
@@ -319,20 +326,20 @@ class BVDD_uncached(SBBVDD_o2i):
         if isinstance(output1, BVDD):
             if isinstance(output2, BVDD):
                 if isinstance(output3, BVDD):
-                    return output1.compute_ternary(output2, output3)
+                    return output1.compute_ternary(output2, output3).reduce_BVDD()
                 else:
-                    return output1.compute_binary(lambda x, y: op(x, y, output3), output2)
+                    return output1.compute_binary(lambda x, y: op(x, y, output3), output2).reduce_BVDD()
             elif isinstance(output3, BVDD):
-                return output1.compute_binary(lambda x, y: op(x, output2, y), output3)
+                return output1.compute_binary(lambda x, y: op(x, output2, y), output3).reduce_BVDD()
             else:
-                return output1.compute_unary(lambda x: op(x, output2, output3))
+                return output1.compute_unary(lambda x: op(x, output2, output3)).reduce_BVDD()
         elif isinstance(output2, BVDD):
             if isinstance(output3, BVDD):
-                return output2.compute_binary(lambda x, y: op(output1, x, y), output3)
+                return output2.compute_binary(lambda x, y: op(output1, x, y), output3).reduce_BVDD()
             else:
-                return output2.compute_unary(lambda x: op(output1, x, output3))
+                return output2.compute_unary(lambda x: op(output1, x, output3)).reduce_BVDD()
         elif isinstance(output3, BVDD):
-            return output3.compute_unary(lambda x: op(output1, output2, x))
+            return output3.compute_unary(lambda x: op(output1, output2, x)).reduce_BVDD()
         else:
             return op(output1, output2, output3)
 
@@ -352,6 +359,7 @@ class BVDD_uncached(SBBVDD_o2i):
                 extracted_bvdd = output.extract(output_value)
                 if extracted_bvdd.get_i2o():
                     new_bvdd.set(inputs, extracted_bvdd)
+        # BVDD may be incomplete, only use for printing
         return new_bvdd
 
     def get_printed_BVDD(self, output_value):
