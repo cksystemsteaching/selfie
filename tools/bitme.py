@@ -978,6 +978,7 @@ class Next(Transitional, btor2.Next, z3interface.Next, bitwuzlainterface.Next, F
         z3interface.Next.__init__(self)
         bitwuzlainterface.Next.__init__(self)
         Futures.__init__(self)
+        self.is_state_changing_line = None
 
     def get_step(self, step):
         assert step >= 0
@@ -1516,6 +1517,15 @@ def constrain(unconstraining_bad):
 
         # TODO: constrain transitions with global_constraint (not state)
 
+def check_termination(check_termination):
+    if check_termination:
+        # check if any next line is state changing
+        for next_line in Next.nexts.values():
+            next_line.is_state_changing_line = Comparison(btor2.Parser.next_nid(),
+                btor2.OP_NEQ, Bool.boolean,
+                next_line.state_line, next_line.exp_line,
+                f"state change check for {next_line.symbol}", next_line.line_no)
+
 class Bitr_Solver:
     def __init__(self, args):
         self.args = args
@@ -1687,6 +1697,8 @@ def main():
         if are_there_state_transitions:
             kmax = max(kmin, kmax)
 
+            # check termination before constraining to exclude global constraint
+            check_termination(args.check_termination)
             constrain(args.unconstraining_bad)
         else:
             kmin = kmax = 0
