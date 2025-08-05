@@ -969,8 +969,14 @@ class Next(Transitional, btor2.Next, z3interface.Next, bitwuzlainterface.Next, F
         assert step >= 0
         return self.exp_line.get_values(step)
 
+    def wait_step(self, step):
+        if step < 0:
+            return self.state_line.get_values(0)
+        else:
+            return super().wait_step(step)
+
     def is_state_changing(self, step):
-        return self.get_step(step) != self.get_step(step - 1)
+        return self.wait_step(step) != self.wait_step(step - 1)
 
     def state_is_not_changing(self, step):
         return self.get_step(step) == self.get_step(step - 1)
@@ -1568,9 +1574,21 @@ def bitr(solver, kmin, kmax):
                     print_message_with_propagation_profile("propagation profile\n", step, 0)
                     print_separator('^', step, 0)
 
-        for next_line in Next.nexts.values():
-            print_message_with_propagation_profile(f"transitioning {next_line.symbol}", step, 0)
-            next_line.wait_step(step)
+        if solver.args.check_termination:
+            state_change = False
+            for next_line in Next.nexts.values():
+                # check if state changes
+                print_message_with_propagation_profile(f"checking state change for {next_line.symbol}", step, 0)
+                if solver.is_SAT(next_line.is_state_changing(step)):
+                    state_change = True
+                    print_message(f"state change: {next_line}\n", step, 0)
+                if not state_change and next_line is list(Next.nexts.values())[-1]:
+                    print_message_with_propagation_profile("no states changed: terminating\n", step, 0)
+                    return
+        else:
+            for next_line in Next.nexts.values():
+                print_message_with_propagation_profile(f"transitioning {next_line.symbol}", step, 0)
+                next_line.wait_step(step)
 
         step += 1
 
