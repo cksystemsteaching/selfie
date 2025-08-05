@@ -84,6 +84,7 @@ class Expression:
         return self.cache_z3_instance[step]
 
     def get_z3_instance(self, step):
+        step = max(0, step)
         if Z3_Solver.LAMBDAS:
             return self.get_z3_select(step)
         else:
@@ -106,6 +107,7 @@ class Variable:
 
 class Input:
     def get_z3_name(self, step):
+        assert step >= 0
         return self.get_z3()
 
 class State:
@@ -113,6 +115,7 @@ class State:
         self.cache_z3_name = {}
 
     def get_z3_name(self, step):
+        assert step >= 0
         if step not in self.cache_z3_name:
             self.cache_z3_name[step] = z3.Const(self.get_step_name(step), self.sid_line.get_z3())
         return self.cache_z3_name[step]
@@ -236,7 +239,7 @@ class Ite:
 
     def get_z3_step(self, step):
         # only needed for branching
-        return self.get_step(step).get_expression().get_z3_instance(step)
+        return self.wait_step(step).get_expression().get_z3_instance(step)
 
 class Write:
     def model_z3(self):
@@ -246,11 +249,11 @@ class Init:
     def get_z3_step(self, step):
         assert step == 0, f"z3 init with {step} != 0"
         if Z3_Solver.UNROLL:
-            self.get_step(step)
+            self.wait_step(step)
             return z3.BoolVal(True)
         else:
             return (self.state_line.get_z3_name(0) ==
-                self.get_step(0).get_expression().get_z3_instance(0))
+                self.wait_step(0).get_expression().get_z3_instance(0))
 
 class Next:
     def __init__(self):
@@ -261,30 +264,30 @@ class Next:
     def get_z3_step(self, step):
         if step not in self.cache_z3_next_state:
             if Z3_Solver.UNROLL:
-                self.get_step(step)
+                self.wait_step(step)
                 self.cache_z3_next_state[step] = z3.BoolVal(True)
             else:
                 self.cache_z3_next_state[step] = \
                     (self.state_line.get_z3_name(step + 1) ==
-                        self.get_step(step).get_expression().get_z3_instance(step))
+                        self.wait_step(step).get_expression().get_z3_instance(step))
         return self.cache_z3_next_state[step]
 
     def is_z3_state_changing(self, step):
         if step not in self.cache_z3_is_state_changing:
-            if self.get_step(step).is_equal(self.get_step(step - 1)):
+            if self.wait_step(step).is_equal(self.wait_step(step - 1)):
                 self.cache_z3_is_state_changing[step] = z3.BoolVal(False)
             else:
                 self.cache_z3_is_state_changing[step] = \
-                    (self.get_step(step).get_expression().get_z3_instance(step) !=
-                        self.get_step(step - 1).get_expression().get_z3_instance(step - 1))
+                    (self.wait_step(step).get_expression().get_z3_instance(step) !=
+                        self.wait_step(step - 1).get_expression().get_z3_instance(step - 1))
         return self.cache_z3_is_state_changing[step]
 
     def z3_state_is_not_changing(self, step):
         if step not in self.cache_z3_state_is_not_changing:
             if Z3_Solver.UNROLL:
                 self.cache_z3_state_is_not_changing[step] = \
-                    (self.get_step(step).get_expression().get_z3_instance(step) ==
-                        self.get_step(step - 1).get_expression().get_z3_instance(step - 1))
+                    (self.wait_step(step).get_expression().get_z3_instance(step) ==
+                        self.wait_step(step - 1).get_expression().get_z3_instance(step - 1))
             else:
                 self.cache_z3_state_is_not_changing[step] = \
                     self.state_line.get_z3_name(step + 1) == self.state_line.get_z3_name(step)
@@ -292,7 +295,7 @@ class Next:
 
 class Property:
     def get_z3_step(self, step):
-        return self.get_step(step).get_expression().get_z3_instance(step)
+        return self.wait_step(step).get_expression().get_z3_instance(step)
 
 class Z3_Solver:
     LAMBDAS = True

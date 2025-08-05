@@ -117,6 +117,12 @@ class Values:
     def match_sorts(self, values):
         return self.sid_line.match_sorts(values.sid_line)
 
+    def is_equal(self, values):
+        return (type(self) is type(values) and
+            self.match_sorts(values) and
+            self.bvdd == values.bvdd and
+            self.cflobvdd == values.cflobvdd)
+
     def is_consistent(self):
         return self.bvdd.is_consistent()
 
@@ -650,7 +656,7 @@ class State(Variable, btor2.State, z3interface.State, bitwuzlainterface.State):
                 # uninitialized state
                 return super().compute_values(0)
             elif UNROLL:
-                return self.init_line.get_step(0)
+                return self.init_line.wait_step(0)
             else:
                 return self
         elif self.next_line is None or self.next_line.exp_line is self:
@@ -933,6 +939,10 @@ class Ite(Ternary, btor2.Ite, z3interface.Ite, bitwuzlainterface.Ite):
         assert step >= 0
         return self.get_values(step)
 
+    def wait_step(self, step):
+        # no waiting
+        return self.get_step(step)
+
 class Write(Ternary, btor2.Write, z3interface.Write, bitwuzlainterface.Write):
     def __init__(self, nid, sid_line, arg1_line, arg2_line, arg3_line, comment, line_no):
         Ternary.__init__(self)
@@ -957,6 +967,10 @@ class Init(Transitional, btor2.Init, z3interface.Init, bitwuzlainterface.Init):
         assert step == 0, f"get init with {step} != 0"
         return self.exp_line.get_values(0)
 
+    def wait_step(self, step):
+        # no waiting
+        return self.get_step(step)
+
 class Next(Transitional, btor2.Next, z3interface.Next, bitwuzlainterface.Next, Futures):
     def __init__(self, nid, sid_line, state_line, exp_line, symbol, comment, line_no, array_line = None, index = None):
         Transitional.__init__(self)
@@ -979,7 +993,7 @@ class Next(Transitional, btor2.Next, z3interface.Next, bitwuzlainterface.Next, F
         return self.wait_step(step) != self.wait_step(step - 1)
 
     def state_is_not_changing(self, step):
-        return self.get_step(step) == self.get_step(step - 1)
+        return self.wait_step(step) == self.wait_step(step - 1)
 
 class Property(Line, btor2.Property, z3interface.Property, bitwuzlainterface.Property, Futures):
     def __init__(self):
@@ -1211,10 +1225,10 @@ class Bitme_Solver:
             for step in self.unproven:
                 for assertion in self.unproven[step]:
                     if isinstance(assertion, Transitional):
-                        assertion.get_step(step)
+                        assertion.wait_step(step)
                 for assertion in self.unproven[step]:
                     if isinstance(assertion, Ite) or isinstance(assertion, Property):
-                        condition = assertion.get_step(step)
+                        condition = assertion.wait_step(step)
                         assert isinstance(condition.sid_line, Bool)
                         if isinstance(condition, Values):
                             if self.unproven[step][assertion] is True:
