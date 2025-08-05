@@ -641,8 +641,11 @@ class Comparison(Binary):
         super().__init__(nid, op, sid_line, arg1_line, arg2_line, comment, line_no)
         if not isinstance(sid_line, Bool):
             raise model_error("Boolean result", line_no)
-        if not isinstance(arg1_line.sid_line, Bitvec):
+        if (op in {OP_SGT, OP_UGT, OP_SGTE, OP_UGTE, OP_SLT, OP_ULT, OP_SLTE, OP_ULTE} and
+            not isinstance(arg1_line.sid_line, Bitvec)):
             raise model_error("bitvector first operand", line_no)
+        if (op in {OP_EQ, OP_NEQ} and not isinstance(arg1_line.sid_line, Bitvector)):
+            raise model_error("Boolean or bitvector first operand", line_no)
         if not arg1_line.sid_line.match_sorts(arg2_line.sid_line):
             raise model_error("compatible first and second operand sorts", line_no)
 
