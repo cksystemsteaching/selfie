@@ -32,7 +32,11 @@ class SBDD:
         self.i2o = i2o
 
     def __str__(self):
-        return str([f"{input_value} -> {output}" for input_value, output in self.i2o.items()])
+        if self.is_consistent() and self.number_of_distinct_outputs() == 1:
+            # all inputs map to the same output in a consistent BVDD
+            return str([f"[0,255] -> {next(iter(self.get_i2o().values()))}"])
+        else:
+            return str([f"{input_value} -> {output}" for input_value, output in self.i2o.items()])
 
     def get_i2o(self):
         return self.i2o
@@ -42,13 +46,20 @@ class SBDD:
         self.i2o[input_value] = output
 
     def number_of_inputs(self):
-        return 256
+        return len(self.i2o)
 
     def number_of_outputs(self):
         return len(self.i2o.values())
 
     def number_of_distinct_outputs(self):
         return len(set(self.i2o.values()))
+
+    def is_consistent(self):
+        return self.number_of_inputs() == 256
+
+    def is_reduced(self):
+        assert self.is_consistent()
+        return True
 
     def is_always_false(self):
         return self.number_of_distinct_outputs() == 1 and False in self.i2o.values()
@@ -104,7 +115,11 @@ class SBDD:
 
 class SBBVDD_i2o(SBDD):
     def __str__(self):
-        return str([f"{SBBVDD_i2o.get_input_values(inputs)} -> {output}" for inputs, output in self.i2o.items()])
+        if self.is_consistent() and self.number_of_distinct_outputs() == 1:
+            # all inputs map to the same output in a consistent BVDD
+            return super().__str__()
+        else:
+            return str([f"{SBBVDD_i2o.get_input_values(inputs)} -> {output}" for inputs, output in self.get_i2o().items()])
 
     def get_input_values(inputs):
         input_value = 0
@@ -119,6 +134,20 @@ class SBBVDD_i2o(SBDD):
     def set(self, inputs, output):
         assert inputs not in self.i2o
         self.i2o[inputs] = output
+
+    def union(self):
+        union = 0
+        for inputs in self.get_i2o():
+            assert inputs & union == 0
+            union |= inputs
+        return union
+
+    def number_of_inputs(self):
+        return self.union().bit_count()
+
+    def is_reduced(self):
+        assert self.is_consistent()
+        return self.number_of_outputs() == self.number_of_distinct_outputs()
 
     def constant_BVDD(self, output):
         assert (isinstance(output, bool) or
@@ -145,10 +174,11 @@ class SBBVDD_i2o(SBDD):
         return o2i
 
     def reduce(self):
-        o2i = {}
-        for inputs in self.i2o:
-            o2i = SBBVDD_i2o.map(o2i, inputs, self.i2o[inputs])
-        self.i2o = dict([(inputs, output) for output, inputs in o2i.items()])
+        if not self.is_reduced():
+            o2i = {}
+            for inputs in self.i2o:
+                o2i = SBBVDD_i2o.map(o2i, inputs, self.i2o[inputs])
+            self.i2o = dict([(inputs, output) for output, inputs in o2i.items()])
         return self
 
     def compute_unary(self, op):
@@ -189,12 +219,9 @@ class SBBVDD_i2o(SBDD):
     def get_printed_BVDD(self, output_value):
         return [SBBVDD_i2o.get_input_values(inputs) for inputs in self.i2o if self.i2o[inputs] == output_value]
 
-class SBBVDD_o2i(SBDD):
+class SBBVDD_o2i(SBBVDD_i2o):
     def __init__(self, o2i):
         self.o2i = o2i
-
-    def __str__(self):
-        return str([f"{SBBVDD_i2o.get_input_values(inputs)} -> {output}" for output, inputs in self.o2i.items()])
 
     def get_i2o(self):
         return dict([(inputs, output) for output, inputs in self.o2i.items()])
@@ -293,7 +320,9 @@ class BVDD_uncached(SBBVDD_o2i):
 
     def reduce_BVDD(self):
         # assert index > 0
+        assert self.is_reduced()
         if self.number_of_distinct_outputs() == 1:
+            # all inputs map to the same output
             return next(iter(self.get_i2o().values()))
         else:
             return self
