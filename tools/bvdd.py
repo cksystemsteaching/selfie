@@ -309,6 +309,17 @@ class SBBVDD_o2i(SBBVDD_i2o):
         return SBBVDD_i2o.get_input_values(self.o2i[output_value]) if output_value in self.o2i else []
 
 class BVDD_uncached(SBBVDD_o2i):
+    def number_of_outputs(self):
+        count = 0
+        i2o = self.get_i2o()
+        for inputs in i2o:
+            output = i2o[inputs]
+            if isinstance(output, BVDD):
+                count += output.number_of_outputs()
+            else:
+                count += 1
+        return count
+
     def constant(output_value):
         return BVDD({}).constant_BVDD(output_value)
 

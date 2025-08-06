@@ -65,7 +65,7 @@ class Values:
     number_of_input_bits = 8
 
     total_number_of_constants = 0
-    max_number_of_values = 0
+    total_number_of_values = 0
 
     false = None
     true = None
@@ -95,14 +95,12 @@ class Values:
                     Values.number_of_input_bits, self.sid_line.size)
 
             Values.total_number_of_constants += 2**var_line.sid_line.size
+            if Values.BVDD:
+                Values.total_number_of_values += self.bvdd.number_of_outputs()
+            else:
+                assert Values.CFLOBVDD
+                Values.total_number_of_values += self.cflobvdd.number_of_outputs()
 
-        if Values.BVDD:
-            dd = self.bvdd
-        else:
-            assert Values.CFLOBVDD
-            dd = self.cflobvdd
-
-        Values.max_number_of_values = max(Values.max_number_of_values, dd.number_of_outputs())
         # for debugging assert self.is_consistent()
 
     def __str__(self):
@@ -1096,9 +1094,10 @@ def print_separator(separator, step = None, level = None):
 def print_message_with_propagation_profile(message, step = None, level = None):
     if UNROLL or PROPAGATE is not None:
         string = f"({Values.total_number_of_constants} constants, "
-        string += f"{Values.max_number_of_values} values, "
+        string += f"{Values.total_number_of_values} values, "
         string += f"{Expression.total_number_of_generated_expressions} expressions) {message}"
-    print_message(string, step, level)
+        message = string
+    print_message(message, step, level)
 
 # bitme solver
 
