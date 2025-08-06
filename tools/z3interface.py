@@ -84,7 +84,7 @@ class Expression:
         return self.cache_z3_instance[step]
 
     def get_z3_instance(self, step):
-        step = max(0, step)
+        assert step >= 0
         if Z3_Solver.LAMBDAS:
             return self.get_z3_select(step)
         else:
@@ -177,6 +177,10 @@ class Comparison:
         else:
             assert self.op == btor2.OP_ULTE
             return z3.ULE(z3_arg1, z3_arg2)
+
+    def get_z3_step(self, step):
+        # only needed for termination check
+        return self.wait_step(step).get_expression().get_z3_instance(step)
 
 class Logical:
     def model_z3(self):
@@ -274,20 +278,18 @@ class Next:
 
     def is_z3_state_changing(self, step):
         if step not in self.cache_z3_is_state_changing:
-            if self.wait_step(step).is_equal(self.wait_step(step - 1)):
+            if self.is_state_changing().wait_step(step).is_always_false():
                 self.cache_z3_is_state_changing[step] = z3.BoolVal(False)
             else:
                 self.cache_z3_is_state_changing[step] = \
-                    (self.wait_step(step).get_expression().get_z3_instance(step) !=
-                        self.wait_step(step - 1).get_expression().get_z3_instance(step - 1))
+                    self.is_state_changing().wait_step(step).get_expression().get_z3_instance(step)
         return self.cache_z3_is_state_changing[step]
 
     def z3_state_is_not_changing(self, step):
         if step not in self.cache_z3_state_is_not_changing:
             if Z3_Solver.UNROLL:
                 self.cache_z3_state_is_not_changing[step] = \
-                    (self.wait_step(step).get_expression().get_z3_instance(step) ==
-                        self.wait_step(step - 1).get_expression().get_z3_instance(step - 1))
+                    self.state_is_not_changing().wait_step(step).get_expression().get_z3_instance(step)
             else:
                 self.cache_z3_state_is_not_changing[step] = \
                     self.state_line.get_z3_name(step + 1) == self.state_line.get_z3_name(step)

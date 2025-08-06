@@ -89,7 +89,7 @@ class Expression:
         return self.cache_bitwuzla_instance[step]
 
     def get_bitwuzla_instance(self, step, tm):
-        step = max(0, step)
+        assert step >= 0
         if Bitwuzla_Solver.LAMBDAS:
             return self.get_bitwuzla_select(step, tm)
         else:
@@ -192,6 +192,10 @@ class Comparison:
             bitwuzla_op = bitwuzla.Kind.BV_ULE
         return tm.mk_term(bitwuzla_op,
             [self.arg1_line.get_bitwuzla(tm), self.arg2_line.get_bitwuzla(tm)])
+
+    def get_bitwuzla_step(self, step, tm):
+        # only needed for termination check
+        return self.wait_step(step).get_expression().get_bitwuzla_instance(step, tm)
 
 class Logical:
     def model_bitwuzla(self, tm):
@@ -296,20 +300,18 @@ class Next:
 
     def is_bitwuzla_state_changing(self, step, tm):
         if step not in self.cache_bitwuzla_is_state_changing:
-            if self.wait_step(step).is_equal(self.wait_step(step - 1)):
+            if self.is_state_changing().wait_step(step).is_always_false():
                 self.cache_bitwuzla_is_state_changing[step] = tm.mk_false()
             else:
-                self.cache_bitwuzla_is_state_changing[step] = tm.mk_term(bitwuzla.Kind.DISTINCT,
-                    [self.wait_step(step).get_expression().get_bitwuzla_instance(step, tm),
-                    self.wait_step(step - 1).get_expression().get_bitwuzla_instance(step - 1, tm)])
+                self.cache_bitwuzla_is_state_changing[step] = \
+                    self.is_state_changing().wait_step(step).get_expression().get_bitwuzla_instance(step, tm)
         return self.cache_bitwuzla_is_state_changing[step]
 
     def bitwuzla_state_is_not_changing(self, step, tm):
         if step not in self.cache_bitwuzla_state_is_not_changing:
             if Bitwuzla_Solver.UNROLL:
-                self.cache_bitwuzla_state_is_not_changing[step] = tm.mk_term(bitwuzla.Kind.EQUAL,
-                    [self.wait_step(step).get_expression().get_bitwuzla_instance(step, tm),
-                    self.wait_step(step - 1).get_expression().get_bitwuzla_instance(step - 1, tm)])
+                self.cache_bitwuzla_state_is_not_changing[step] = \
+                    self.state_is_not_changing().wait_step(step).get_expression().get_bitwuzla_instance(step, tm)
             else:
                 self.cache_bitwuzla_state_is_not_changing[step] = tm.mk_term(bitwuzla.Kind.EQUAL,
                     [self.state_line.get_bitwuzla_name(step + 1, tm),

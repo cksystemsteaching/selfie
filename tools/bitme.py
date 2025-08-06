@@ -106,18 +106,8 @@ class Values:
     def __str__(self):
         return f"{self.sid_line}: {self.bvdd} {self.cflobvdd}"
 
-    def __hash__(self):
-        # for termination check
-        return hash((self.sid_line, self.bvdd, self.cflobvdd))
-
     def match_sorts(self, values):
         return self.sid_line.match_sorts(values.sid_line)
-
-    def is_equal(self, values):
-        return (type(self) is type(values) and
-            self.match_sorts(values) and
-            self.bvdd == values.bvdd and
-            self.cflobvdd == values.cflobvdd)
 
     def is_consistent(self):
         return self.bvdd.is_consistent()
@@ -320,7 +310,7 @@ class Values:
     # binary operators
 
     def apply_binary(self, sid_line, values, op):
-        assert isinstance(values, Values), f"{values}"
+        assert isinstance(values, Values), f"{self} {op} {values}"
         bvdd = cflobvdd = None
         if Values.BVDD:
             bvdd = self.bvdd.compute_binary(op, values.bvdd)
@@ -540,10 +530,6 @@ class Expression(Line, btor2.Expression, z3interface.Expression, bitwuzlainterfa
         self.cache_values = {}
         z3interface.Expression.__init__(self)
         bitwuzlainterface.Expression.__init__(self)
-
-    def is_equal(self, exp_line):
-        # checking semantical equivalence is delegated to solvers
-        return False
 
     def get_expression(self):
         return self
@@ -781,6 +767,19 @@ class Comparison(Binary, btor2.Comparison, z3interface.Comparison, bitwuzlainter
         arg2_value = arg2_value.get_expression()
         return self.copy(arg1_value, arg2_value)
 
+    def is_always_false(self):
+        # only needed for termination check
+        return False
+
+    def get_step(self, step):
+        # only needed for termination check
+        assert step >= 0
+        return self.get_values(step)
+
+    def wait_step(self, step):
+        # no waiting
+        return self.get_step(step)
+
 class Logical(Binary, btor2.Logical, z3interface.Logical, bitwuzlainterface.Logical):
     def __init__(self, nid, op, sid_line, arg1_line, arg2_line, comment, line_no):
         Binary.__init__(self)
@@ -932,6 +931,7 @@ class Ite(Ternary, btor2.Ite, z3interface.Ite, bitwuzlainterface.Ite):
         return self.copy(arg1_value, arg2_value, arg3_value)
 
     def get_step(self, step):
+        # only needed for branching
         assert step >= 0
         return self.get_values(step)
 
@@ -975,22 +975,27 @@ class Next(Transitional, btor2.Next, z3interface.Next, bitwuzlainterface.Next, F
         bitwuzlainterface.Next.__init__(self)
         Futures.__init__(self)
         self.is_state_changing_line = None
+        self.state_is_not_changing_line = None
 
     def get_step(self, step):
         assert step >= 0
         return self.exp_line.get_values(step)
 
-    def wait_step(self, step):
-        if step < 0:
-            return self.state_line.get_values(0)
-        else:
-            return super().wait_step(step)
+    def is_state_changing(self):
+        if self.is_state_changing_line is None:
+            self.is_state_changing_line = Comparison(btor2.Parser.next_nid(),
+                btor2.OP_NEQ, Bool.boolean,
+                self.state_line, self.exp_line,
+                f"state change check for {self.symbol}", self.line_no)
+        return self.is_state_changing_line
 
-    def is_state_changing(self, step):
-        return self.wait_step(step) != self.wait_step(step - 1)
-
-    def state_is_not_changing(self, step):
-        return self.wait_step(step) == self.wait_step(step - 1)
+    def state_is_not_changing(self):
+        if self.state_is_not_changing_line is None:
+            self.state_is_not_changing_line = Comparison(btor2.Parser.next_nid(),
+                btor2.OP_EQ, Bool.boolean,
+                self.state_line, self.exp_line,
+                f"state is not changing for {self.symbol}", self.line_no)
+        return self.state_is_not_changing_line
 
 class Property(Line, btor2.Property, z3interface.Property, bitwuzlainterface.Property, Futures):
     def __init__(self):
@@ -1221,7 +1226,7 @@ class Bitme_Solver:
                     if isinstance(assertion, Transitional):
                         assertion.wait_step(step)
                 for assertion in self.unproven[step]:
-                    if isinstance(assertion, Ite) or isinstance(assertion, Property):
+                    if not isinstance(assertion, Transitional):
                         condition = assertion.wait_step(step)
                         assert isinstance(condition.sid_line, Bool)
                         if isinstance(condition, Values):
@@ -1232,11 +1237,6 @@ class Bitme_Solver:
                                 self.constraint = condition.Not().And(self.constraint)
                         else:
                             return self.solve()
-                    elif isinstance(assertion, Values):
-                         # support termination check
-                         assert isinstance(assertion.sid_line, Bool)
-                         assert self.unproven[step][assertion] is True
-                         self.constraint = assertion.And(self.constraint)
             self.proven |= self.unproven
             self.unproven = {}
             return not self.constraint.is_always_false()
@@ -1254,7 +1254,7 @@ class Bitme_Solver:
             if self.bitwuzla_solver:
                 self.bitwuzla_solver.assert_is_state_changing(next_line, step)
         else:
-            self.assert_this([next_line.is_state_changing(step)], step)
+            self.assert_this([next_line.is_state_changing()], step)
 
     def assert_state_is_not_changing(self, next_line, step):
         if self.fallback:
@@ -1263,7 +1263,7 @@ class Bitme_Solver:
             if self.bitwuzla_solver:
                 self.bitwuzla_solver.assert_state_is_not_changing(next_line, step)
         else:
-            self.assert_this([next_line.state_is_not_changing(step)], step)
+            self.assert_this([next_line.state_is_not_changing()], step)
 
     def print_pc(self, pc, step, level):
         if self.fallback:
