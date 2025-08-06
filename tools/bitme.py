@@ -65,7 +65,6 @@ class Values:
     number_of_input_bits = 8
 
     total_number_of_constants = 0
-    current_number_of_inputs = 0
     max_number_of_values = 0
 
     false = None
@@ -103,7 +102,6 @@ class Values:
             assert Values.CFLOBVDD
             dd = self.cflobvdd
 
-        Values.current_number_of_inputs = max(Values.current_number_of_inputs, dd.number_of_inputs())
         Values.max_number_of_values = max(Values.max_number_of_values, dd.number_of_outputs())
         # for debugging assert self.is_consistent()
 
@@ -1098,13 +1096,9 @@ def print_separator(separator, step = None, level = None):
 def print_message_with_propagation_profile(message, step = None, level = None):
     if UNROLL or PROPAGATE is not None:
         string = f"({Values.total_number_of_constants} constants, "
-        string += f"{Values.current_number_of_inputs} inputs, "
         string += f"{Values.max_number_of_values} values, "
         string += f"{Expression.total_number_of_generated_expressions} expressions) {message}"
-        print_message(string, step, level)
-        Values.current_number_of_inputs = 0
-    else:
-        print_message(message, step, level)
+    print_message(string, step, level)
 
 # bitme solver
 
