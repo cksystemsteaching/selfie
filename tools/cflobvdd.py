@@ -14,7 +14,7 @@
 
 # ------------------------------------------------------------
 
-from bvdd import utilization
+from bvdd import utilization, SBDD_i2o
 
 from math import log2
 from math import ceil
@@ -31,7 +31,7 @@ class BV_Grouping:
     reduction_cache_hits = 0
 
     def __init__(self, level, number_of_input_bits, number_of_exits,
-            number_of_paths_per_exit = {}, number_of_inputs_per_exit = {}):
+            number_of_paths_per_exit = {}, number_of_inputs_per_exit = {}, **kwargs):
         assert level >= 0
         self.level = level
         assert 0 < number_of_input_bits <= 8
@@ -212,33 +212,31 @@ class BV_Dont_Care_Grouping(BV_Grouping):
         assert reduction_tuple == {1:1}
         return self
 
-class BV_Fork_Grouping(BV_Grouping):
+class BV_Fork_Grouping(BV_Grouping, SBDD_i2o):
     representatives = {}
     representatives_hits = 0
 
-    def __init__(self, inputs, number_of_input_bits):
-        assert 1 < len(inputs) <= 2**number_of_input_bits
+    def __init__(self, i2o):
+        assert 1 < len(i2o) <= 2**8
         number_of_paths_per_exit = dict([(i, inputs[i].bit_count()) for i in inputs])
-        super().__init__(0, number_of_input_bits, len(inputs),
-            number_of_paths_per_exit, number_of_paths_per_exit)
-        self.inputs = inputs
+        super().__init__(level=0, number_of_input_bits=8, number_of_exits = len(i2o), number_of_paths_per_exit=number_of_paths_per_exit, number_of_inputs_per_exit=number_of_paths_per_exit, i2o=i2o)
 
     def __repr__(self):
         indentation = " " * (CFLOBVDD.max_level - self.level + 1)
         return (indentation + "\n" +
             indentation + "fork @ " + super().__repr__() + ":\n" +
-            indentation + f"{self.inputs}")
+            indentation + f"{self.i2o}")
 
     def __hash__(self):
         return hash((self.number_of_exits,
             self.number_of_input_bits,
-            tuple(self.inputs.values())))
+            tuple(self.i2o.values())))
 
     def __eq__(self, g2):
         return (isinstance(g2, BV_Fork_Grouping) and
             self.number_of_exits == g2.number_of_exits and
             self.number_of_input_bits == g2.number_of_input_bits and
-            self.inputs == g2.inputs)
+            self.i2o == g2.i2o)
 
     def get_input_values(inputs, input_value = 0):
         assert inputs >= 0
@@ -264,26 +262,26 @@ class BV_Fork_Grouping(BV_Grouping):
 
     def get_paths(self, exit_i, index_i = 0):
         assert 1 <= exit_i <= self.number_of_exits
-        return [(index_i, self.inputs[exit_i])]
+        return [(index_i, self.i2o[exit_i])]
 
-    def lowest_input(inputs):
-        assert inputs > 0
-        return inputs & ~(inputs - 1)
+    def lowest_input(inputs_representation):
+        assert inputs_representation > 0
+        return inputs_representation & ~(inputs_representation - 1)
 
-    def highest_input(inputs):
-        assert inputs > 0
-        return 2**int(log2(inputs))
+    def highest_input(inputs_representation):
+        assert inputs_representation > 0
+        return 2**int(log2(inputs_representation))
 
     def is_consistent(self):
         assert super().is_consistent()
-        assert len(self.inputs) == self.number_of_exits
+        assert len(self.i2o) == self.number_of_exits
         previous_exit = 0
         previous_inputs = 0
         union = 0
-        for exit in self.inputs:
+        for exit in self.i2o:
             assert exit == previous_exit + 1
             previous_exit = exit
-            current_inputs = self.inputs[exit]
+            current_inputs = self.i2o[exit]
             assert 0 < current_inputs < 2**2**self.number_of_input_bits - 1
             assert (exit == 1 or
                 BV_Fork_Grouping.lowest_input(current_inputs) >
@@ -422,7 +420,7 @@ class BV_Fork_Grouping(BV_Grouping):
             g_exits = {}
             g_inputs = {}
 
-            for exit in self.inputs:
+            for exit in self.i2o:
                 reduced_to_exit = reduction_tuple[exit]
 
                 assert reduced_to_exit <= exit
@@ -430,11 +428,11 @@ class BV_Fork_Grouping(BV_Grouping):
                 if reduced_to_exit not in g_exits:
                     new_exit = len(g_inputs) + 1
                     g_exits[reduced_to_exit] = new_exit
-                    g_inputs[new_exit] = self.inputs[exit]
+                    g_inputs[new_exit] = self.i2o[exit]
                 else:
                     new_exit = g_exits[reduced_to_exit]
-                    assert g_inputs[new_exit] & self.inputs[exit] == 0
-                    g_inputs[new_exit] |= self.inputs[exit]
+                    assert g_inputs[new_exit] & self.i2o[exit] == 0
+                    g_inputs[new_exit] |= self.i2o[exit]
 
             assert len(g_inputs) > 0
 

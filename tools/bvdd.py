@@ -29,16 +29,7 @@ def utilization(hits, misses):
         return f"{round(hits / (hits + misses) * 100, 2)}% ({hits} hits, {misses} misses)"
 
 class SBDD:
-    def __str__(self):
-        assert self.is_consistent() and self.number_of_distinct_outputs() == 1
-        # all inputs map to the same output
-        return str([f"[0,255] -> {self.get_dont_care_output()}"])
-
-    def is_consistent(self):
-        return self.number_of_inputs() == 256
-
     def get_input_values(inputs):
-        # for s2o and o2s only
         input_value = 0
         input_values = []
         while inputs != 0:
@@ -49,7 +40,6 @@ class SBDD:
         return input_values
 
     def union(self):
-        # for s2o and o2s only
         union = 0
         for inputs in self.get_s2o():
             assert inputs & union == 0
@@ -57,11 +47,12 @@ class SBDD:
         return union
 
     def number_of_inputs(self):
-        # for s2o and o2s only
         return self.union().bit_count()
 
+    def is_consistent(self):
+        return self.number_of_inputs() == 256
+
     def map(o2s, inputs, output):
-        # for s2o and o2s only
         if output not in o2s:
             o2s[output] = inputs
         else:
@@ -81,12 +72,13 @@ class SBDD:
 
 class SBDD_i2o(SBDD):
     # single-byte decision diagram with naive input-to-output mapping
-    def __init__(self, i2o):
+    def __init__(self, i2o, **kwargs):
         self.i2o = i2o
 
     def __str__(self):
         if self.is_consistent() and self.number_of_distinct_outputs() == 1:
-            return super().__str__()
+            # all inputs map to the same output in a consistent BVDD
+            return str([f"[0,255] -> {next(iter(self.i2o.values()))}"])
         else:
             return str([f"{input_value} -> {output}" for input_value, output in self.i2o.items()])
 
@@ -106,7 +98,7 @@ class SBDD_i2o(SBDD):
     def number_of_distinct_outputs(self):
         return len(set(self.i2o.values()))
 
-    def get_dont_care_output(self):
+    def get_only_output(self):
         assert self.number_of_distinct_outputs() == 1
         return next(iter(self.i2o.values()))
 
@@ -161,7 +153,8 @@ class SBDD_s2o(SBDD):
 
     def __str__(self):
         if self.is_consistent() and self.number_of_distinct_outputs() == 1:
-            return super().__str__()
+            # all inputs map to the same output in a consistent BVDD
+            return str([f"[0,255] -> {next(iter(self.s2o.values()))}"])
         else:
             return str([f"{SBDD.get_input_values(inputs)} -> {output}" for inputs, output in self.s2o.items()])
 
@@ -178,7 +171,7 @@ class SBDD_s2o(SBDD):
     def number_of_distinct_outputs(self):
         return len(set(self.s2o.values()))
 
-    def get_dont_care_output(self):
+    def get_only_output(self):
         assert self.number_of_distinct_outputs() == 1
         return next(iter(self.s2o.values()))
 
@@ -262,7 +255,8 @@ class SBDD_o2s(SBDD):
 
     def __str__(self):
         if self.is_consistent() and self.number_of_distinct_outputs() == 1:
-            return super().__str__()
+            # all inputs map to the same output in a consistent BVDD
+            return str([f"[0,255] -> {next(iter(self.o2s))}"])
         else:
             return str([f"{SBDD.get_input_values(inputs)} -> {output}" for output, inputs in self.o2s.items()])
 
@@ -279,7 +273,7 @@ class SBDD_o2s(SBDD):
     def number_of_distinct_outputs(self):
         return self.number_of_outputs()
 
-    def get_dont_care_output(self):
+    def get_only_output(self):
         assert self.number_of_distinct_outputs() == 1
         return next(iter(self.o2s))
 
@@ -358,7 +352,9 @@ class SBDD_o2s(SBDD):
 class BVDD_uncached(SBDD_o2s):
     def number_of_outputs(self):
         count = 0
-        for output in self.get_s2o().values():
+        s2o = self.get_s2o()
+        for inputs in s2o:
+            output = s2o[inputs]
             if isinstance(output, BVDD):
                 count += output.number_of_outputs()
             else:
@@ -379,7 +375,7 @@ class BVDD_uncached(SBDD_o2s):
         assert self.is_reduced()
         if self.number_of_distinct_outputs() == 1:
             # all inputs map to the same output
-            return self.get_dont_care_output()
+            return self.get_only_output()
         else:
             return self
 
