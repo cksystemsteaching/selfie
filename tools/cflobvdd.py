@@ -14,7 +14,7 @@
 
 # ------------------------------------------------------------
 
-from bvdd import utilization, SBDD_i2o
+from bvdd import utilization, SBDD_s2o
 
 from math import log2
 from math import ceil
@@ -212,48 +212,48 @@ class BV_Dont_Care_Grouping(BV_Grouping):
         assert reduction_tuple == {1:1}
         return self
 
-class BV_Fork_Grouping(BV_Grouping, SBDD_i2o):
+class BV_Fork_Grouping(BV_Grouping, SBDD_s2o):
     representatives = {}
     representatives_hits = 0
 
-    def __init__(self, i2o):
-        assert 1 < len(i2o) <= 2**8
+    def __init__(self, s2o):
+        assert 1 < len(s2o) <= 2**8
         number_of_paths_per_exit = dict([(i, inputs[i].bit_count()) for i in inputs])
-        super().__init__(level=0, number_of_input_bits=8, number_of_exits = len(i2o), number_of_paths_per_exit=number_of_paths_per_exit, number_of_inputs_per_exit=number_of_paths_per_exit, i2o=i2o)
+        super().__init__(level=0, number_of_input_bits=8, number_of_exits = len(s2o), number_of_paths_per_exit=number_of_paths_per_exit, number_of_inputs_per_exit=number_of_paths_per_exit, s2o=s2o)
 
     def __repr__(self):
         indentation = " " * (CFLOBVDD.max_level - self.level + 1)
         return (indentation + "\n" +
             indentation + "fork @ " + super().__repr__() + ":\n" +
-            indentation + f"{self.i2o}")
+            indentation + f"{self.s2o}")
 
     def __hash__(self):
         return hash((self.number_of_exits,
             self.number_of_input_bits,
-            tuple(self.i2o.values())))
+            tuple(self.s2o.values())))
 
     def __eq__(self, g2):
         return (isinstance(g2, BV_Fork_Grouping) and
             self.number_of_exits == g2.number_of_exits and
             self.number_of_input_bits == g2.number_of_input_bits and
-            self.i2o == g2.i2o)
+            self.s2o == g2.s2o)
 
-    def get_input_values(inputs, input_value = 0):
-        assert inputs >= 0
-        if inputs == 0:
+    def get_input_values(inputs_representation, input_value = 0):
+        assert inputs_representation >= 0
+        if inputs_representation == 0:
             return []
-        elif inputs == 1:
+        elif inputs_representation == 1:
             return [input_value]
         else:
-            number_of_input_bits = ceil(log2(inputs.bit_length()))
-            assert 0 < number_of_input_bits <= 8, f"number_of_input_bits {number_of_input_bits} out of range with {inputs}"
+            number_of_input_bits = ceil(log2(inputs_representation.bit_length()))
+            assert 0 < number_of_input_bits <= 8, f"number_of_input_bits {number_of_input_bits} out of range with {inputs_representation}"
 
             mid_input = 2**(number_of_input_bits - 1)
 
-            low_inputs = inputs % 2**mid_input
+            low_inputs = inputs_representation % 2**mid_input
             low_values = BV_Fork_Grouping.get_input_values(low_inputs, input_value)
 
-            high_inputs = inputs >> mid_input
+            high_inputs = inputs_representation >> mid_input
 
             if low_inputs == high_inputs:
                 return [low_value + mid_input for low_value in low_values] + low_values
@@ -262,7 +262,7 @@ class BV_Fork_Grouping(BV_Grouping, SBDD_i2o):
 
     def get_paths(self, exit_i, index_i = 0):
         assert 1 <= exit_i <= self.number_of_exits
-        return [(index_i, self.i2o[exit_i])]
+        return [(index_i, self.s2o[exit_i])]
 
     def lowest_input(inputs_representation):
         assert inputs_representation > 0
@@ -274,14 +274,14 @@ class BV_Fork_Grouping(BV_Grouping, SBDD_i2o):
 
     def is_consistent(self):
         assert super().is_consistent()
-        assert len(self.i2o) == self.number_of_exits
+        assert len(self.s2o) == self.number_of_exits
         previous_exit = 0
         previous_inputs = 0
         union = 0
-        for exit in self.i2o:
+        for exit in self.s2o:
             assert exit == previous_exit + 1
             previous_exit = exit
-            current_inputs = self.i2o[exit]
+            current_inputs = self.s2o[exit]
             assert 0 < current_inputs < 2**2**self.number_of_input_bits - 1
             assert (exit == 1 or
                 BV_Fork_Grouping.lowest_input(current_inputs) >
@@ -303,110 +303,122 @@ class BV_Fork_Grouping(BV_Grouping, SBDD_i2o):
     def projection_proto(number_of_input_bits):
         return BV_Fork_Grouping(dict([(i + 1, 2**i) for i in range(2**number_of_input_bits)]),
             number_of_input_bits).representative()
+    
+    ## TODO:   at this point, pair_product(self, g2) and 
+    ##         triple_product(self, g2, g3) has been im-
+    ##         lemented in the SBDD_s2o father class. t-
+    ##         he problem is this version does not util-
+    ##         ze the cache of BV_Grouping class. optio-
+    ##         ns are using BV_grouping cache by implem-
+    ##         enting a helper function here or using t-
+    ##         he cached versions of SBDD classes (clea-
+    ##         ner approach I suppose)
+    
+    """
+    # def pair_product(self, g2):
+    #     assert isinstance(g2, BV_Grouping)
 
-    def pair_product(self, g2):
-        assert isinstance(g2, BV_Grouping)
+    #     g1 = self
 
-        g1 = self
+    #     assert g1.number_of_input_bits == g2.number_of_input_bits
 
-        assert g1.number_of_input_bits == g2.number_of_input_bits
+    #     if isinstance(g2, BV_Dont_Care_Grouping):
+    #         return g2.pair_product(g1, False)
+    #     else:
+    #         if g1.is_pair_product_cached(g2):
+    #             return g1.get_cached_pair_product(g2)
 
-        if isinstance(g2, BV_Dont_Care_Grouping):
-            return g2.pair_product(g1, False)
-        else:
-            if g1.is_pair_product_cached(g2):
-                return g1.get_cached_pair_product(g2)
+    #         assert isinstance(g2, BV_Fork_Grouping)
 
-            assert isinstance(g2, BV_Fork_Grouping)
+    #         g_exit = 0
+    #         g_inputs = {}
+    #         g_pair_tuples = {}
 
-            g_exit = 0
-            g_inputs = {}
-            g_pair_tuples = {}
+    #         g2_exit = 1
+    #         g2_inputs = {}
+    #         g2_inputs[g2_exit] = g2.inputs[g2_exit]
 
-            g2_exit = 1
-            g2_inputs = {}
-            g2_inputs[g2_exit] = g2.inputs[g2_exit]
+    #         for g1_exit in g1.inputs:
+    #             g1_inputs = g1.inputs[g1_exit]
 
-            for g1_exit in g1.inputs:
-                g1_inputs = g1.inputs[g1_exit]
+    #             # exploit lexicographic ordering of g1 and g2 inputs by lowest input
 
-                # exploit lexicographic ordering of g1 and g2 inputs by lowest input
+    #             while (BV_Fork_Grouping.highest_input(g2_inputs[g2_exit]) <
+    #                 BV_Fork_Grouping.lowest_input(g1_inputs)):
+    #                 # move on to next g2 inputs
+    #                 if g2_exit < g2.number_of_exits:
+    #                     g2_exit += 1
+    #                     if g2_exit not in g2_inputs:
+    #                         g2_inputs[g2_exit] = g2.inputs[g2_exit]
+    #                 else:
+    #                     return g1.cache_pair_product(g2,
+    #                         BV_Fork_Grouping(g_inputs, g1.number_of_input_bits).representative(),
+    #                         g_pair_tuples)
 
-                while (BV_Fork_Grouping.highest_input(g2_inputs[g2_exit]) <
-                    BV_Fork_Grouping.lowest_input(g1_inputs)):
-                    # move on to next g2 inputs
-                    if g2_exit < g2.number_of_exits:
-                        g2_exit += 1
-                        if g2_exit not in g2_inputs:
-                            g2_inputs[g2_exit] = g2.inputs[g2_exit]
-                    else:
-                        return g1.cache_pair_product(g2,
-                            BV_Fork_Grouping(g_inputs, g1.number_of_input_bits).representative(),
-                            g_pair_tuples)
+    #             next_g2_exit = g2_exit
 
-                next_g2_exit = g2_exit
+    #             while (g1_inputs > 0 and
+    #                 BV_Fork_Grouping.lowest_input(g2_inputs[next_g2_exit]) <=
+    #                     BV_Fork_Grouping.highest_input(g1_inputs)):
+    #                 # intersect with all overlapping next g2 inputs
+    #                 intersection = g1_inputs & g2_inputs[next_g2_exit]
 
-                while (g1_inputs > 0 and
-                    BV_Fork_Grouping.lowest_input(g2_inputs[next_g2_exit]) <=
-                        BV_Fork_Grouping.highest_input(g1_inputs)):
-                    # intersect with all overlapping next g2 inputs
-                    intersection = g1_inputs & g2_inputs[next_g2_exit]
+    #                 if intersection != 0:
+    #                     g_exit += 1
 
-                    if intersection != 0:
-                        g_exit += 1
+    #                     # insert intersection sorted by lowest input
+    #                     # to establish lexicographical ordering of g inputs
+    #                     exit_i = g_exit
+    #                     while (exit_i > 1 and
+    #                         BV_Fork_Grouping.lowest_input(intersection) <
+    #                             BV_Fork_Grouping.lowest_input(g_inputs[exit_i - 1])):
+    #                         g_inputs[exit_i] = g_inputs[exit_i - 1]
+    #                         g_pair_tuples[exit_i] = g_pair_tuples[exit_i - 1]
+    #                         exit_i -= 1
+    #                     g_inputs[exit_i] = intersection
+    #                     g_pair_tuples[exit_i] = (g1_exit, next_g2_exit)
 
-                        # insert intersection sorted by lowest input
-                        # to establish lexicographical ordering of g inputs
-                        exit_i = g_exit
-                        while (exit_i > 1 and
-                            BV_Fork_Grouping.lowest_input(intersection) <
-                                BV_Fork_Grouping.lowest_input(g_inputs[exit_i - 1])):
-                            g_inputs[exit_i] = g_inputs[exit_i - 1]
-                            g_pair_tuples[exit_i] = g_pair_tuples[exit_i - 1]
-                            exit_i -= 1
-                        g_inputs[exit_i] = intersection
-                        g_pair_tuples[exit_i] = (g1_exit, next_g2_exit)
+    #                     g1_inputs &= ~intersection
+    #                     # do not remove intersection from next g2 inputs
+    #                     # to maintain lexicographical ordering of g2 inputs
 
-                        g1_inputs &= ~intersection
-                        # do not remove intersection from next g2 inputs
-                        # to maintain lexicographical ordering of g2 inputs
+    #                 next_g2_exit += 1
 
-                    next_g2_exit += 1
+    #                 if next_g2_exit <= len(g2.inputs):
+    #                     if next_g2_exit not in g2_inputs:
+    #                         g2_inputs[next_g2_exit] = g2.inputs[next_g2_exit]
+    #                 else:
+    #                     break
 
-                    if next_g2_exit <= len(g2.inputs):
-                        if next_g2_exit not in g2_inputs:
-                            g2_inputs[next_g2_exit] = g2.inputs[next_g2_exit]
-                    else:
-                        break
+    #         return g1.cache_pair_product(g2,
+    #             BV_Fork_Grouping(g_inputs, g1.number_of_input_bits).representative(),
+    #             g_pair_tuples)
 
-            return g1.cache_pair_product(g2,
-                BV_Fork_Grouping(g_inputs, g1.number_of_input_bits).representative(),
-                g_pair_tuples)
+    # def triple_product(self, g2, g3):
+    #     assert isinstance(g2, BV_Grouping) and isinstance(g3, BV_Grouping)
 
-    def triple_product(self, g2, g3):
-        assert isinstance(g2, BV_Grouping) and isinstance(g3, BV_Grouping)
+    #     g1 = self
 
-        g1 = self
+    #     assert g1.number_of_input_bits == g2.number_of_input_bits == g3.number_of_input_bits
 
-        assert g1.number_of_input_bits == g2.number_of_input_bits == g3.number_of_input_bits
+    #     if g2.is_no_distinction_proto():
+    #         return g2.triple_product(g1, g3, 2)
+    #     elif g3.is_no_distinction_proto():
+    #         return g3.triple_product(g1, g2, 3)
+    #     else:
+    #         if g1.is_triple_product_cached(g2, g3):
+    #             return g1.get_cached_triple_product(g2, g3)
 
-        if g2.is_no_distinction_proto():
-            return g2.triple_product(g1, g3, 2)
-        elif g3.is_no_distinction_proto():
-            return g3.triple_product(g1, g2, 3)
-        else:
-            if g1.is_triple_product_cached(g2, g3):
-                return g1.get_cached_triple_product(g2, g3)
+    #         assert isinstance(g2, BV_Fork_Grouping) and isinstance(g3, BV_Fork_Grouping)
 
-            assert isinstance(g2, BV_Fork_Grouping) and isinstance(g3, BV_Fork_Grouping)
+    #         g, pt23 = g2.pair_product(g3)
+    #         g, pt123 = g1.pair_product(g)
 
-            g, pt23 = g2.pair_product(g3)
-            g, pt123 = g1.pair_product(g)
+    #         tt = dict([(k, (pt123[k][0], pt23[pt123[k][1]][0], pt23[pt123[k][1]][1]))
+    #             for k in pt123])
 
-            tt = dict([(k, (pt123[k][0], pt23[pt123[k][1]][0], pt23[pt123[k][1]][1]))
-                for k in pt123])
-
-            return g1.cache_triple_product(g2, g3, g, tt)
+    #         return g1.cache_triple_product(g2, g3, g, tt)
+    """
 
     def reduce(self, reduction_tuple):
         reduction_length, reduction = super().reduce(reduction_tuple)
@@ -420,7 +432,7 @@ class BV_Fork_Grouping(BV_Grouping, SBDD_i2o):
             g_exits = {}
             g_inputs = {}
 
-            for exit in self.i2o:
+            for exit in self.s2o:
                 reduced_to_exit = reduction_tuple[exit]
 
                 assert reduced_to_exit <= exit
@@ -428,11 +440,11 @@ class BV_Fork_Grouping(BV_Grouping, SBDD_i2o):
                 if reduced_to_exit not in g_exits:
                     new_exit = len(g_inputs) + 1
                     g_exits[reduced_to_exit] = new_exit
-                    g_inputs[new_exit] = self.i2o[exit]
+                    g_inputs[new_exit] = self.s2o[exit]
                 else:
                     new_exit = g_exits[reduced_to_exit]
-                    assert g_inputs[new_exit] & self.i2o[exit] == 0
-                    g_inputs[new_exit] |= self.i2o[exit]
+                    assert g_inputs[new_exit] & self.s2o[exit] == 0
+                    g_inputs[new_exit] |= self.s2o[exit]
 
             assert len(g_inputs) > 0
 

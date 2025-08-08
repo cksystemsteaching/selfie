@@ -148,7 +148,7 @@ class SBDD_i2o(SBDD):
 
 class SBDD_s2o(SBDD):
     # single-byte decision diagram with input-sets-to-output mapping
-    def __init__(self, s2o):
+    def __init__(self, s2o, **kwargs):
         self.s2o = s2o
 
     def __str__(self):
@@ -210,6 +210,7 @@ class SBDD_s2o(SBDD):
             self.s2o = dict([(inputs, output) for output, inputs in o2s.items()])
         return self
 
+
     def compute_unary(self, op):
         return type(self)(dict([(inputs, op(self.s2o[inputs])) for inputs in self.s2o])).reduce()
 
@@ -221,11 +222,23 @@ class SBDD_s2o(SBDD):
                 for inputs2 in bvdd2.s2o
                     if inputs1 & inputs2]
 
+    def pair_product(self, bvdd2):
+        assert type(bvdd2) is type(self)
+        bvdd1 = self
+        new_bvdd = type(self)({})
+        intersection = dict(enumerate(bvdd1.intersect_binary(bvdd2), 1))
+        for output_index in intersection:
+            output_tuple = intersection[output_index]
+            new_bvdd.map(bvdd1.o2s[output_tuple[0]] & bvdd2.o2s[output_tuple[1]], output_index)
+        return new_bvdd
+
     def compute_binary(self, op, bvdd2):
         assert type(bvdd2) is type(self)
         bvdd1 = self
         return type(self)(dict([(inputs[0] & inputs[1], op(bvdd1.s2o[inputs[0]], bvdd2.s2o[inputs[1]]))
             for inputs in bvdd1.intersect_binary(bvdd2)])).reduce()
+
+
 
     def intersect_ternary(self, bvdd2, bvdd3):
         assert type(bvdd2) is type(self)
@@ -244,6 +257,18 @@ class SBDD_s2o(SBDD):
         return type(self)(dict([(inputs[0] & inputs[1] & inputs[2],
             op(bvdd1.s2o[inputs[0]], bvdd2.s2o[inputs[1]], bvdd3.s2o[inputs[2]]))
                 for inputs in bvdd1.intersect_ternary(bvdd2, bvdd3)])).reduce()
+
+    def triple_product(self, bvdd2, bvdd3):
+        assert type(bvdd2) is type(self)
+        assert type(bvdd3) is type(self)
+        bvdd1 = self
+        new_bvdd = type(self)({})
+        intersection = dict(enumerate(bvdd1.intersect_ternary(bvdd2, bvdd3)), 1)
+        for output_index in intersection():
+            output_tuple = intersection[outpu_index]
+            new_bvdd.map(bvdd1.o2s[ouput_tuplep[0]] & bvdd2.o2s[ouput_tuple[1]] & bvdd3.o2s[ouput_tuple[2]], ouput_index)
+        return new_bvdd
+
 
     def get_printed_BVDD(self, output_value):
         return [SBDD.get_input_values(inputs) for inputs in self.s2o if self.s2o[inputs] == output_value]
