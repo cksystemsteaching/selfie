@@ -67,6 +67,8 @@ class Values:
     total_number_of_constants = 0
     total_number_of_values = 0
 
+    total_number_of_distinct_inputs = 0
+
     false = None
     true = None
 
@@ -97,6 +99,7 @@ class Values:
             Values.total_number_of_constants += 2**var_line.sid_line.size
             if Values.BVDD:
                 Values.total_number_of_values += self.bvdd.number_of_outputs()
+                Values.total_number_of_distinct_inputs += self.bvdd.number_of_distinct_inputs()
             else:
                 assert Values.CFLOBVDD
                 Values.total_number_of_values += self.cflobvdd.number_of_outputs()
@@ -1100,6 +1103,7 @@ def print_message_with_propagation_profile(message, step = None, level = None):
     if UNROLL or PROPAGATE is not None:
         string = f"({Values.total_number_of_constants} constants, "
         string += f"{Values.total_number_of_values} values, "
+        string += f"{Values.total_number_of_distinct_inputs} distinct inputs, " if Values.total_number_of_distinct_inputs > 0 else ""
         string += f"{Expression.total_number_of_generated_expressions} expressions) {message}"
         message = string
     print_message(message, step, level)

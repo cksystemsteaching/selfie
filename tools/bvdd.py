@@ -30,12 +30,15 @@ def utilization(hits, misses):
 
 class SBDD:
     def __str__(self):
-        assert self.is_consistent() and self.number_of_distinct_outputs() == 1
+        assert self.is_consistent() and self.is_dont_care()
         # all inputs map to the same output
         return str([f"[0,255] -> {self.get_dont_care_output()}"])
 
     def is_consistent(self):
         return self.number_of_inputs() == 256
+
+    def is_dont_care(self):
+        return self.number_of_distinct_outputs() == 1
 
     def get_input_values(inputs):
         # for s2o and o2s only
@@ -56,9 +59,13 @@ class SBDD:
             union |= inputs
         return union
 
+    def number_of_inputs_for_input(self, inputs):
+        # for s2o and o2s only
+        return inputs.bit_count()
+
     def number_of_inputs(self):
         # for s2o and o2s only
-        return self.union().bit_count()
+        return self.number_of_inputs_for_input(self.union())
 
     def map(o2s, inputs, output):
         # for s2o and o2s only
@@ -85,7 +92,7 @@ class SBDD_i2o(SBDD):
         self.i2o = i2o
 
     def __str__(self):
-        if self.is_consistent() and self.number_of_distinct_outputs() == 1:
+        if self.is_consistent() and self.is_dont_care():
             return super().__str__()
         else:
             return str([f"{input_value} -> {output}" for input_value, output in self.i2o.items()])
@@ -97,6 +104,9 @@ class SBDD_i2o(SBDD):
         assert input_value not in self.i2o
         self.i2o[input_value] = output
 
+    def number_of_inputs_for_input(self, input_value):
+        return 1
+
     def number_of_inputs(self):
         return len(self.i2o)
 
@@ -107,14 +117,14 @@ class SBDD_i2o(SBDD):
         return len(set(self.i2o.values()))
 
     def get_dont_care_output(self):
-        assert self.number_of_distinct_outputs() == 1
+        assert self.is_dont_care()
         return next(iter(self.i2o.values()))
 
     def is_always_false(self):
-        return self.number_of_distinct_outputs() == 1 and False in self.i2o.values()
+        return self.is_dont_care() and False in self.i2o.values()
 
     def is_always_true(self):
-        return self.number_of_distinct_outputs() == 1 and True in self.i2o.values()
+        return self.is_dont_care() and True in self.i2o.values()
 
     def constant_BVDD(self, output):
         assert (isinstance(output, bool) or
@@ -160,7 +170,7 @@ class SBDD_s2o(SBDD):
         self.s2o = s2o
 
     def __str__(self):
-        if self.is_consistent() and self.number_of_distinct_outputs() == 1:
+        if self.is_consistent() and self.is_dont_care():
             return super().__str__()
         else:
             return str([f"{SBDD.get_input_values(inputs)} -> {output}" for inputs, output in self.s2o.items()])
@@ -179,7 +189,7 @@ class SBDD_s2o(SBDD):
         return len(set(self.s2o.values()))
 
     def get_dont_care_output(self):
-        assert self.number_of_distinct_outputs() == 1
+        assert self.is_dont_care()
         return next(iter(self.s2o.values()))
 
     def is_reduced(self):
@@ -187,10 +197,10 @@ class SBDD_s2o(SBDD):
         return self.number_of_outputs() == self.number_of_distinct_outputs()
 
     def is_always_false(self):
-        return self.number_of_distinct_outputs() == 1 and False in self.s2o.values()
+        return self.is_dont_care() and False in self.s2o.values()
 
     def is_always_true(self):
-        return self.number_of_distinct_outputs() == 1 and True in self.s2o.values()
+        return self.is_dont_care() and True in self.s2o.values()
 
     def constant_BVDD(self, output):
         assert (isinstance(output, bool) or
@@ -261,7 +271,7 @@ class SBDD_o2s(SBDD):
         self.o2s = o2s
 
     def __str__(self):
-        if self.is_consistent() and self.number_of_distinct_outputs() == 1:
+        if self.is_consistent() and self.is_dont_care():
             return super().__str__()
         else:
             return str([f"{SBDD.get_input_values(inputs)} -> {output}" for output, inputs in self.o2s.items()])
@@ -277,17 +287,18 @@ class SBDD_o2s(SBDD):
         return len(self.o2s)
 
     def number_of_distinct_outputs(self):
-        return self.number_of_outputs()
+        # for o2s only
+        return SBDD_o2s.number_of_outputs(self)
 
     def get_dont_care_output(self):
-        assert self.number_of_distinct_outputs() == 1
+        assert self.is_dont_care()
         return next(iter(self.o2s))
 
     def is_always_false(self):
-        return self.number_of_outputs() == 1 and False in self.o2s
+        return self.is_dont_care() and False in self.o2s
 
     def is_always_true(self):
-        return self.number_of_outputs() == 1 and True in self.o2s
+        return self.is_dont_care() and True in self.o2s
 
     def constant_BVDD(self, output):
         assert (isinstance(output, bool) or
@@ -365,6 +376,26 @@ class BVDD_uncached(SBDD_o2s):
                 count += 1
         return count
 
+    def number_of_distinct_inputs(self):
+        if self.is_dont_care():
+            # dont-care inputs do not count
+            output = self.get_dont_care_output()
+            if isinstance(output, BVDD):
+                return output.number_of_distinct_inputs()
+            else:
+                return 0
+        else:
+            count = 0
+            s2o = self.get_s2o()
+            for inputs in s2o:
+                output = s2o[inputs]
+                if isinstance(output, BVDD):
+                    other_count = output.number_of_distinct_inputs()
+                else:
+                    other_count = 1
+                count += self.number_of_inputs_for_input(inputs) * other_count
+            return count
+
     def constant(output_value):
         return BVDD({}).constant_BVDD(output_value)
 
@@ -377,7 +408,7 @@ class BVDD_uncached(SBDD_o2s):
     def reduce_BVDD(self):
         # assert index > 0
         assert self.is_reduced()
-        if self.number_of_distinct_outputs() == 1:
+        if self.is_dont_care():
             # all inputs map to the same output
             return self.get_dont_care_output()
         else:
