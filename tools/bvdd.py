@@ -391,6 +391,7 @@ class BVDD_uncached(SBDD_o2s):
                 output = s2o[inputs]
                 if isinstance(output, BVDD):
                     other_count = output.number_of_distinct_inputs()
+                    assert other_count > 0 # assert output.is_reduced()
                 else:
                     other_count = 1
                 count += self.number_of_inputs_for_input(inputs) * other_count
