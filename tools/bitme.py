@@ -162,22 +162,28 @@ class Values:
         if isinstance(bvdd, bool) or isinstance(bvdd, int):
             return Constd(btor2.Parser.next_nid(), sid_line, int(bvdd),
                 "domain-propagated value", 0)
+        elif bvdd.is_dont_care():
+            return Values.get_bvdd_node_expression(sid_line,
+                bvdd.get_dont_care_output(), sbdd, index + 1)
         else:
             var_line = Variable.bvdd_input[index]
-            exp_line = Zero(btor2.Parser.next_nid(), sid_line,
-                "unreachable-value", "unreachable value", 0)
+            exp_line = None
             s2o = bvdd.get_s2o()
             # assert s2o is sorted by inputs
             for inputs in s2o:
-                value_or_bvdd = s2o[inputs]
-                if sbdd:
-                    assert 0 <= inputs < 256
-                    inputs = 2**inputs
-                exp_line = Ite(btor2.Parser.next_nid(), sid_line,
-                    Values.get_input_expression(var_line, inputs)[0],
-                    Values.get_bvdd_node_expression(sid_line, value_or_bvdd, sbdd, index + 1),
-                    exp_line,
-                    var_line.comment, var_line.line_no)
+                output = s2o[inputs]
+                if exp_line is None:
+                    # reachable only if input value is in inputs
+                    exp_line = Values.get_bvdd_node_expression(sid_line, output, sbdd, index + 1),
+                else:
+                    if sbdd:
+                        assert 0 <= inputs < 256
+                        inputs = 2**inputs
+                    exp_line = Ite(btor2.Parser.next_nid(), sid_line,
+                        Values.get_input_expression(var_line, inputs)[0],
+                        Values.get_bvdd_node_expression(sid_line, output, sbdd, index + 1),
+                        exp_line,
+                        var_line.comment, var_line.line_no)
         return exp_line
 
     def get_bvdd_expression(self):
@@ -220,19 +226,23 @@ class Values:
         cflobvdd = self.cflobvdd
         exp_line = None
         for exit_i in cflobvdd.outputs:
-            input_line = Values.get_path_expression(cflobvdd.grouping.get_paths(exit_i))
-            output_line = Constd(btor2.Parser.next_nid(), self.sid_line, int(cflobvdd.outputs[exit_i]),
+            output_line = Constd(btor2.Parser.next_nid(), self.sid_line,
+                int(cflobvdd.outputs[exit_i]),
                 "domain-propagated value", 0)
-            if input_line:
+            if len(cflobvdd.outputs) == 1:
+                # dont-care output
+                return output_line
+            elif exp_line is None:
+                # reachable only if input value is in inputs
+                exp_line = output_line
+            else:
+                input_line = Values.get_path_expression(cflobvdd.grouping.get_paths(exit_i))
+                assert input_line
                 exp_line = Ite(btor2.Parser.next_nid(), self.sid_line,
                     input_line[0],
                     output_line,
-                    Zero(btor2.Parser.next_nid(), self.sid_line,
-                        "unreachable-value", "unreachable value", 0)
-                            if exp_line is None else exp_line,
+                    exp_line,
                     self.sid_line.comment, self.sid_line.line_no)
-            else:
-                exp_line = output_line
         return exp_line
 
     # expressions

@@ -496,8 +496,7 @@ class BV_Internal_Grouping(BV_Grouping):
             for b_e_i in b_rt:
                 if exit_i == b_rt[b_e_i]:
                     inputs += [(self.a_connection.get_paths(b_i, index_i),
-                        self.b_connections[b_i].get_paths(b_e_i,
-                            index_i + 2**(self.level - 1)))]
+                        self.b_connections[b_i].get_paths(b_e_i, index_i + 2**(self.level - 1)))]
                     break
         return inputs
 
