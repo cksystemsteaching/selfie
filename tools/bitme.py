@@ -131,6 +131,7 @@ class Values:
                 var_line.comment, var_line.line_no)
 
             if inputs.bit_count() == 1:
+                # true if value of var_line is in singleton-set inputs
                 comparison_line = Comparison(btor2.Parser.next_nid(), btor2.OP_EQ, Bool.boolean,
                     Constd(btor2.Parser.next_nid(), var_line.sid_line,
                         int(log2(inputs)),
@@ -138,11 +139,14 @@ class Values:
                     var_line,
                     var_line.comment, var_line.line_no)
             else:
+                # true if value of var_line is in inputs
                 comparison_line = Comparison(btor2.Parser.next_nid(), btor2.OP_NEQ, Bool.boolean,
+                    # check if value of var_line is in inputs by masking inputs with 2**var_line
                     Logical(btor2.Parser.next_nid(), btor2.OP_AND, inputs_sid_line,
                         Constd(btor2.Parser.next_nid(), inputs_sid_line,
                             inputs,
                             var_line.comment, var_line.line_no),
+                        # calculate 2**var_line by shifting 1 left by value of var_line
                         Computation(btor2.Parser.next_nid(), btor2.OP_SLL, inputs_sid_line,
                             inputs_one_line,
                             Ext(btor2.Parser.next_nid(), btor2.OP_UEXT, inputs_sid_line, var_line,
@@ -162,10 +166,10 @@ class Values:
             var_line = Variable.bvdd_input[index]
             exp_line = Zero(btor2.Parser.next_nid(), sid_line,
                 "unreachable-value", "unreachable value", 0)
-            i2o = bvdd.get_i2o()
-            # assert i2o is sorted by inputs
-            for inputs in i2o:
-                value_or_bvdd = i2o[inputs]
+            s2o = bvdd.get_s2o()
+            # assert s2o is sorted by inputs
+            for inputs in s2o:
+                value_or_bvdd = s2o[inputs]
                 if sbdd:
                     assert 0 <= inputs < 256
                     inputs = 2**inputs
@@ -178,8 +182,8 @@ class Values:
 
     def get_bvdd_expression(self):
         return Values.get_bvdd_node_expression(self.sid_line, self.bvdd,
-            not (isinstance(self.bvdd, BVDD.SBBVDD_i2o) or
-                isinstance(self.bvdd, BVDD.SBBVDD_o2i)))
+            not (isinstance(self.bvdd, BVDD.SBDD_s2o) or
+                isinstance(self.bvdd, BVDD.SBDD_o2s)))
 
     # CFLOBVDD adapter
 
