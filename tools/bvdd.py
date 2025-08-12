@@ -150,6 +150,7 @@ class SBDD_s2o(SBDD):
     # single-byte decision diagram with input-sets-to-output mapping
     def __init__(self, s2o, **kwargs):
         self.s2o = s2o
+        print("SBDD_s2o's init just finished execution.")
 
     def __str__(self):
         if self.is_consistent() and self.number_of_distinct_outputs() == 1:

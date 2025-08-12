@@ -41,6 +41,13 @@ class BV_Grouping:
         self.number_of_paths_per_exit = number_of_paths_per_exit
         assert not number_of_inputs_per_exit or len(number_of_inputs_per_exit) == number_of_exits
         self.number_of_inputs_per_exit = number_of_inputs_per_exit
+        
+        #### probably very bad practice, but a findable bug.
+        if "s2o" in kwargs:
+            print(kwargs)
+            super().__init__(kwargs["s2o"])
+        
+        print("BV_Grouping init just finished execution.")
 
     def __repr__(self):
         return f"{self.level} w/ {self.number_of_input_bits} input bits & {self.number_of_exits} exits"
@@ -127,6 +134,7 @@ class BV_Dont_Care_Grouping(BV_Grouping):
 
     def __init__(self, number_of_input_bits):
         super().__init__(0, number_of_input_bits, 1, {1:2**number_of_input_bits}, {1:1})
+
 
     def __repr__(self):
         return "dontcare @ " + super().__repr__()
@@ -218,7 +226,7 @@ class BV_Fork_Grouping(BV_Grouping, SBDD_s2o):
 
     def __init__(self, s2o):
         assert 1 < len(s2o) <= 2**8
-        number_of_paths_per_exit = dict([(i, inputs[i].bit_count()) for i in inputs])
+        number_of_paths_per_exit = dict([(i, s2o[i].bit_count()) for i in s2o])
         super().__init__(level=0, number_of_input_bits=8, number_of_exits = len(s2o), number_of_paths_per_exit=number_of_paths_per_exit, number_of_inputs_per_exit=number_of_paths_per_exit, s2o=s2o)
 
     def __repr__(self):
@@ -301,19 +309,10 @@ class BV_Fork_Grouping(BV_Grouping, SBDD_s2o):
         return BV_Fork_Grouping.representatives[self]
 
     def projection_proto(number_of_input_bits):
-        return BV_Fork_Grouping(dict([(i + 1, 2**i) for i in range(2**number_of_input_bits)]),
-            number_of_input_bits).representative()
+        return BV_Fork_Grouping(dict([(i + 1, 2**i) for i in range(2**number_of_input_bits)]), 
+                                number_of_input_bits).representative()
     
-    ## TODO:   at this point, pair_product(self, g2) and 
-    ##         triple_product(self, g2, g3) has been im-
-    ##         lemented in the SBDD_s2o father class. t-
-    ##         he problem is this version does not util-
-    ##         ze the cache of BV_Grouping class. optio-
-    ##         ns are using BV_grouping cache by implem-
-    ##         enting a helper function here or using t-
-    ##         he cached versions of SBDD classes (clea-
-    ##         ner approach I suppose)
-    
+
     """
     # def pair_product(self, g2):
     #     assert isinstance(g2, BV_Grouping)
@@ -1273,3 +1272,12 @@ class CFLOBVDD:
             CFLOBVDD.projection(2, 3, 4, 4), lambda x, y, z: y if x else z, 4)
         CFLOBVDD.projection(2, 0, 4, 4).ternary_apply_and_reduce(CFLOBVDD.projection(2, 2, 4, 4),
             CFLOBVDD.projection(2, 3, 4, 4), lambda x, y, z: y if x else z, 4)
+
+
+
+
+
+if __name__ == '__main__':
+    a = {2: 42, 16: 53}
+    b = BV_Fork_Grouping(a)
+
