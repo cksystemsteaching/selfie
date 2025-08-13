@@ -30,12 +30,14 @@ class BV_Grouping:
     reduction_cache = {}
     reduction_cache_hits = 0
 
-    def __init__(self, level, number_of_exits, number_of_inputs_per_exit = {}):
+    def __init__(self, level, number_of_exits,
+        number_of_inputs_per_exit = {}, number_of_connections = 0):
         assert level >= 0
         self.level = level
         self.number_of_exits = number_of_exits
         assert not number_of_inputs_per_exit or len(number_of_inputs_per_exit) == number_of_exits
         self.number_of_inputs_per_exit = number_of_inputs_per_exit
+        self.number_of_connections = number_of_connections
 
     def __repr__(self):
         return f"{self.level} w/ {self.number_of_exits} exits"
@@ -205,7 +207,7 @@ class BV_Fork_Grouping(BV_Grouping):
 
     def __init__(self, inputs):
         number_of_inputs_per_exit = dict([(i, inputs[i].bit_count()) for i in inputs])
-        super().__init__(0, len(inputs), number_of_inputs_per_exit)
+        super().__init__(0, len(inputs), number_of_inputs_per_exit, len(inputs))
         self.inputs = inputs
 
     def __repr__(self):
@@ -514,9 +516,11 @@ class BV_Internal_Grouping(BV_Grouping):
     def pre_compute_number_of_inputs_per_exit(self):
         self.number_of_inputs_per_exit = dict([(i, 0) for i in range(1, self.number_of_exits + 1)])
         g_a = self.a_connection
+        self.number_of_connections = g_a.number_of_connections
         for g_b_i in self.b_connections:
             a_number_of_inputs = g_a.number_of_inputs_per_exit[g_b_i]
             g_b = self.b_connections[g_b_i]
+            self.number_of_connections += g_b.number_of_connections
             g_b_i_rt = self.b_return_tuples[g_b_i]
             for g_b_i_rt_e_j in g_b_i_rt:
                 e_i = g_b_i_rt[g_b_i_rt_e_j]
@@ -883,6 +887,7 @@ class CFLOBVDD:
     def get_printed_CFLOBVDD(self, value = None):
         return (f"CFLOBVDD:\n" +
             f"{2**self.grouping.level} input variables\n" +
+            f"{self.grouping.number_of_connections} connections\n" +
             f"{self.number_of_outputs()} output values\n" +
             f"{self.number_of_distinct_outputs()} disctinct output values\n"
             f"{self.number_of_distinct_inputs()} distinct inputs\n" +
