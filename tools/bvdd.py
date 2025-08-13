@@ -366,20 +366,20 @@ class SBDD_o2s(SBDD):
         return SBDD.get_input_values(self.o2s[output_value]) if output_value in self.o2s else []
 
 class BVDD_uncached(SBDD_o2s):
-    def number_of_outputs(self):
-        count = 0
-        for output in self.get_s2o().values():
-            if isinstance(output, BVDD):
-                count += output.number_of_outputs()
-            else:
-                count += 1
-        return count
-
     def number_of_connections(self):
         count = 0
         for output in self.get_s2o().values():
             if isinstance(output, BVDD):
                 count += output.number_of_connections() + 1
+            else:
+                count += 1
+        return count
+
+    def number_of_outputs(self):
+        count = 0
+        for output in self.get_s2o().values():
+            if isinstance(output, BVDD):
+                count += output.number_of_connections()
             else:
                 count += 1
         return count
@@ -396,12 +396,12 @@ class BVDD_uncached(SBDD_o2s):
     def number_of_distinct_outputs(self):
         return len(self.get_distinct_outputs())
 
-    def number_of_distinct_inputs(self):
+    def number_of_distinct_inputs(self, output_value = None):
         if self.is_dont_care():
             # dont-care inputs do not count
             output = self.get_dont_care_output()
             if isinstance(output, BVDD):
-                return output.number_of_distinct_inputs()
+                return output.number_of_distinct_inputs(output_value)
             else:
                 return 0
         else:
@@ -410,12 +410,17 @@ class BVDD_uncached(SBDD_o2s):
             for inputs in s2o:
                 output = s2o[inputs]
                 if isinstance(output, BVDD):
-                    other_count = output.number_of_distinct_inputs()
-                    assert other_count > 0 # assert output.is_reduced()
-                else:
+                    other_count = output.number_of_distinct_inputs(output_value)
+                    assert output_value is not None or other_count > 0 # assert output.is_reduced()
+                elif output_value is None or output == output_value:
                     other_count = 1
+                else:
+                    other_count = 0
                 count += self.number_of_inputs_for_input(inputs) * other_count
             return count
+
+    def number_of_solutions(self, output_value):
+        return self.number_of_distinct_inputs(output_value)
 
     def constant(output_value):
         return BVDD({}).constant_BVDD(output_value)
@@ -505,6 +510,7 @@ class BVDD_uncached(SBDD_o2s):
             f"{self.number_of_outputs()} outputs\n" +
             f"{self.number_of_distinct_outputs()} distinct output values\n" +
             f"{self.number_of_distinct_inputs()} distinct inputs\n" +
+            f"{self.number_of_solutions(output_value)} solutions\n" +
             f"{self.extract(output_value)}")
 
 import threading

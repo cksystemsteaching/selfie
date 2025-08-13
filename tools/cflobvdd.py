@@ -42,8 +42,11 @@ class BV_Grouping:
     def __repr__(self):
         return f"{self.level} w/ {self.number_of_exits} exits"
 
-    def number_of_distinct_inputs(self):
-        return sum(self.number_of_inputs_per_exit.values())
+    def number_of_distinct_inputs(self, exit_i = None):
+        if exit_i is not None:
+            return self.number_of_inputs_per_exit[exit_i]
+        else:
+            return sum(self.number_of_inputs_per_exit.values())
 
     def is_consistent(self):
         assert self.number_of_exits > 0
@@ -834,14 +837,18 @@ class CFLOBVDD:
         print(f"CFLOBVDD collapsed-equivalence-classes cache utilization: {utilization(Collapsed_Classes.cache_hits, len(Collapsed_Classes.cache))}")
         print(f"CFLOBVDD cache utilization: {utilization(CFLOBVDD.representatives_hits, len(CFLOBVDD.representatives))}")
 
-    def number_of_distinct_inputs(self):
-        return self.grouping.number_of_distinct_inputs()
-
     def number_of_outputs(self):
         return len(self.outputs)
 
     def number_of_distinct_outputs(self):
         return len(set(self.outputs.values()))
+
+    def number_of_distinct_inputs(self):
+        return self.grouping.number_of_distinct_inputs()
+
+    def number_of_solutions(self, value):
+        return sum(self.grouping.number_of_distinct_inputs(exit_i)
+            for exit_i in self.outputs if self.outputs[exit_i] == value)
 
     def get_printed_paths(paths, full_paths = True):
         printed_paths = []
@@ -891,6 +898,7 @@ class CFLOBVDD:
             f"{self.number_of_outputs()} output values\n" +
             f"{self.number_of_distinct_outputs()} disctinct output values\n"
             f"{self.number_of_distinct_inputs()} distinct inputs\n" +
+            f"{self.number_of_solutions(value)} solutions\n" +
             f"{self.get_printed_value_paths(value)}")
 
     def is_consistent(self):
