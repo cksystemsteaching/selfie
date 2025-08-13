@@ -38,7 +38,7 @@ class SBDD:
         return self.number_of_inputs() == 256
 
     def is_dont_care(self):
-        return self.number_of_distinct_outputs() == 1
+        return self.number_of_distinct_SBDD_outputs() == 1
 
     def get_input_values(inputs):
         # for s2o and o2s only
@@ -110,10 +110,10 @@ class SBDD_i2o(SBDD):
     def number_of_inputs(self):
         return len(self.i2o)
 
-    def number_of_outputs(self):
+    def number_of_SBDD_outputs(self):
         return len(self.i2o.values())
 
-    def number_of_distinct_outputs(self):
+    def number_of_distinct_SBDD_outputs(self):
         return len(set(self.i2o.values()))
 
     def get_dont_care_output(self):
@@ -182,10 +182,10 @@ class SBDD_s2o(SBDD):
         assert inputs not in self.s2o
         self.s2o[inputs] = output
 
-    def number_of_outputs(self):
+    def number_of_SBDD_outputs(self):
         return len(self.s2o.values())
 
-    def number_of_distinct_outputs(self):
+    def number_of_distinct_SBDD_outputs(self):
         return len(set(self.s2o.values()))
 
     def get_dont_care_output(self):
@@ -194,7 +194,7 @@ class SBDD_s2o(SBDD):
 
     def is_reduced(self):
         assert self.is_consistent()
-        return self.number_of_outputs() == self.number_of_distinct_outputs()
+        return self.number_of_SBDD_outputs() == self.number_of_distinct_SBDD_outputs()
 
     def is_always_false(self):
         return self.is_dont_care() and False in self.s2o.values()
@@ -283,12 +283,11 @@ class SBDD_o2s(SBDD):
         assert output not in self.o2s
         self.o2s[output] = inputs
 
-    def number_of_outputs(self):
+    def number_of_SBDD_outputs(self):
         return len(self.o2s)
 
-    def number_of_distinct_outputs(self):
-        # for o2s only
-        return SBDD_o2s.number_of_outputs(self)
+    def number_of_distinct_SBDD_outputs(self):
+        return self.number_of_SBDD_outputs()
 
     def get_dont_care_output(self):
         assert self.is_dont_care()
@@ -375,6 +374,27 @@ class BVDD_uncached(SBDD_o2s):
             else:
                 count += 1
         return count
+
+    def number_of_connections(self):
+        count = 0
+        for output in self.get_s2o().values():
+            if isinstance(output, BVDD):
+                count += output.number_of_connections() + 1
+            else:
+                count += 1
+        return count
+
+    def get_distinct_outputs(self):
+        outputs = {}
+        for output in self.get_s2o().values():
+            if isinstance(output, BVDD):
+                outputs |= output.get_distinct_outputs()
+            else:
+                outputs[output] = output
+        return outputs
+
+    def number_of_distinct_outputs(self):
+        return len(self.get_distinct_outputs())
 
     def number_of_distinct_inputs(self):
         if self.is_dont_care():
@@ -480,7 +500,12 @@ class BVDD_uncached(SBDD_o2s):
         return new_bvdd
 
     def get_printed_BVDD(self, output_value):
-        return self.extract(output_value)
+        return (f"BVDD:\n" +
+            f"{self.number_of_connections()} connections\n" +
+            f"{self.number_of_outputs()} outputs\n" +
+            f"{self.number_of_distinct_outputs()} distinct output values\n" +
+            f"{self.number_of_distinct_inputs()} distinct inputs\n" +
+            f"{self.extract(output_value)}")
 
 import threading
 
