@@ -30,23 +30,17 @@ class BV_Grouping:
     reduction_cache = {}
     reduction_cache_hits = 0
 
-    def __init__(self, level, number_of_exits,
-            number_of_paths_per_exit = {}, number_of_inputs_per_exit = {}):
+    def __init__(self, level, number_of_exits, number_of_inputs_per_exit = {}):
         assert level >= 0
         self.level = level
         self.number_of_exits = number_of_exits
-        assert not number_of_paths_per_exit or len(number_of_paths_per_exit) == number_of_exits
-        self.number_of_paths_per_exit = number_of_paths_per_exit
         assert not number_of_inputs_per_exit or len(number_of_inputs_per_exit) == number_of_exits
         self.number_of_inputs_per_exit = number_of_inputs_per_exit
 
     def __repr__(self):
         return f"{self.level} w/ {self.number_of_exits} exits"
 
-    def number_of_paths(self):
-        return sum(self.number_of_paths_per_exit.values())
-
-    def number_of_inputs(self):
+    def number_of_distinct_inputs(self):
         return sum(self.number_of_inputs_per_exit.values())
 
     def is_consistent(self):
@@ -123,7 +117,7 @@ class BV_Dont_Care_Grouping(BV_Grouping):
     representatives = None
 
     def __init__(self):
-        super().__init__(0, 1, {1:256}, {1:1})
+        super().__init__(0, 1, {1:1})
 
     def __repr__(self):
         return "dontcare @ " + super().__repr__()
@@ -210,8 +204,8 @@ class BV_Fork_Grouping(BV_Grouping):
     representatives_hits = 0
 
     def __init__(self, inputs):
-        number_of_paths_per_exit = dict([(i, inputs[i].bit_count()) for i in inputs])
-        super().__init__(0, len(inputs), number_of_paths_per_exit, number_of_paths_per_exit)
+        number_of_inputs_per_exit = dict([(i, inputs[i].bit_count()) for i in inputs])
+        super().__init__(0, len(inputs), number_of_inputs_per_exit)
         self.inputs = inputs
 
     def __repr__(self):
@@ -517,25 +511,21 @@ class BV_Internal_Grouping(BV_Grouping):
             g_exits |= g_b_i_rt_targets
         return True
 
-    def pre_compute_number_of_paths_and_inputs_per_exit(self):
-        self.number_of_paths_per_exit = dict([(i, 0) for i in range(1, self.number_of_exits + 1)])
+    def pre_compute_number_of_inputs_per_exit(self):
         self.number_of_inputs_per_exit = dict([(i, 0) for i in range(1, self.number_of_exits + 1)])
         g_a = self.a_connection
         for g_b_i in self.b_connections:
-            a_number_of_paths = g_a.number_of_paths_per_exit[g_b_i]
             a_number_of_inputs = g_a.number_of_inputs_per_exit[g_b_i]
             g_b = self.b_connections[g_b_i]
             g_b_i_rt = self.b_return_tuples[g_b_i]
             for g_b_i_rt_e_j in g_b_i_rt:
                 e_i = g_b_i_rt[g_b_i_rt_e_j]
-                b_number_of_paths = g_b.number_of_paths_per_exit[g_b_i_rt_e_j]
                 b_number_of_inputs = g_b.number_of_inputs_per_exit[g_b_i_rt_e_j]
-                self.number_of_paths_per_exit[e_i] += a_number_of_paths * b_number_of_paths
                 self.number_of_inputs_per_exit[e_i] += a_number_of_inputs * b_number_of_inputs
-        assert self.number_of_paths() >= self.number_of_inputs() >= self.number_of_exits
+        assert self.number_of_distinct_inputs() >= self.number_of_exits
 
     def representative(self):
-        self.pre_compute_number_of_paths_and_inputs_per_exit()
+        self.pre_compute_number_of_inputs_per_exit()
         if self in BV_Internal_Grouping.representatives:
             BV_Internal_Grouping.representatives_hits += 1
         else:
@@ -748,7 +738,7 @@ class BV_No_Distinction_Proto(BV_Internal_Grouping):
             g.b_connections[1] = g.a_connection
             g.b_return_tuples[1] = {1:1}
 
-            g.pre_compute_number_of_paths_and_inputs_per_exit()
+            g.pre_compute_number_of_inputs_per_exit()
 
             BV_No_Distinction_Proto.representatives[level] = g
 
@@ -840,11 +830,8 @@ class CFLOBVDD:
         print(f"CFLOBVDD collapsed-equivalence-classes cache utilization: {utilization(Collapsed_Classes.cache_hits, len(Collapsed_Classes.cache))}")
         print(f"CFLOBVDD cache utilization: {utilization(CFLOBVDD.representatives_hits, len(CFLOBVDD.representatives))}")
 
-    def number_of_paths(self):
-        return self.grouping.number_of_paths()
-
-    def number_of_inputs(self):
-        return self.grouping.number_of_inputs()
+    def number_of_distinct_inputs(self):
+        return self.grouping.number_of_distinct_inputs()
 
     def number_of_outputs(self):
         return len(self.outputs)
@@ -898,8 +885,7 @@ class CFLOBVDD:
             f"{2**self.grouping.level} input variables\n" +
             f"{self.number_of_outputs()} output values\n" +
             f"{self.number_of_distinct_outputs()} disctinct output values\n"
-            f"{self.number_of_paths()} paths\n" +
-            f"{self.number_of_inputs()} inputs\n" +
+            f"{self.number_of_distinct_inputs()} distinct inputs\n" +
             f"{self.get_printed_value_paths(value)}")
 
     def is_consistent(self):

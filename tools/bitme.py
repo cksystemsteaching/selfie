@@ -99,6 +99,7 @@ class Values:
             else:
                 assert Values.CFLOBVDD
                 Values.total_number_of_values += self.cflobvdd.number_of_outputs()
+                Values.total_number_of_distinct_inputs += self.cflobvdd.number_of_distinct_inputs()
 
         # for debugging assert self.is_consistent()
 
