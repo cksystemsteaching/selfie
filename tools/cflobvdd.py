@@ -20,7 +20,7 @@ from math import log2
 from math import ceil
 
 class BV_Grouping:
-    # generalizing CFLOBDDs to bitvector input variables with up to 8 bits
+    # generalizing CFLOBDDs to single-byte input variables
     pair_product_cache = {}
     pair_product_cache_hits = 0
 
@@ -30,12 +30,10 @@ class BV_Grouping:
     reduction_cache = {}
     reduction_cache_hits = 0
 
-    def __init__(self, level, number_of_input_bits, number_of_exits,
+    def __init__(self, level, number_of_exits,
             number_of_paths_per_exit = {}, number_of_inputs_per_exit = {}):
         assert level >= 0
         self.level = level
-        assert 0 < number_of_input_bits <= 8
-        self.number_of_input_bits = number_of_input_bits
         self.number_of_exits = number_of_exits
         assert not number_of_paths_per_exit or len(number_of_paths_per_exit) == number_of_exits
         self.number_of_paths_per_exit = number_of_paths_per_exit
@@ -43,7 +41,7 @@ class BV_Grouping:
         self.number_of_inputs_per_exit = number_of_inputs_per_exit
 
     def __repr__(self):
-        return f"{self.level} w/ {self.number_of_input_bits} input bits & {self.number_of_exits} exits"
+        return f"{self.level} w/ {self.number_of_exits} exits"
 
     def number_of_paths(self):
         return sum(self.number_of_paths_per_exit.values())
@@ -117,16 +115,15 @@ class BV_Grouping:
         else:
             reduction_length = len(set(reduction_tuple.values()))
             if reduction_length == 1:
-                return 1, BV_No_Distinction_Proto.representative(self.level,
-                    self.number_of_input_bits)
+                return 1, BV_No_Distinction_Proto.representative(self.level)
             else:
                 return reduction_length, self
 
 class BV_Dont_Care_Grouping(BV_Grouping):
-    representatives = {}
+    representatives = None
 
-    def __init__(self, number_of_input_bits):
-        super().__init__(0, number_of_input_bits, 1, {1:2**number_of_input_bits}, {1:1})
+    def __init__(self):
+        super().__init__(0, 1, {1:256}, {1:1})
 
     def __repr__(self):
         return "dontcare @ " + super().__repr__()
@@ -139,11 +136,11 @@ class BV_Dont_Care_Grouping(BV_Grouping):
         assert super().is_consistent()
         return True
 
-    def representative(number_of_input_bits):
-        if number_of_input_bits not in BV_Dont_Care_Grouping.representatives:
-            BV_Dont_Care_Grouping.representatives[number_of_input_bits] = BV_Dont_Care_Grouping(number_of_input_bits)
-            assert BV_Dont_Care_Grouping.representatives[number_of_input_bits].is_consistent()
-        return BV_Dont_Care_Grouping.representatives[number_of_input_bits]
+    def representative():
+        if BV_Dont_Care_Grouping.representatives is None:
+            BV_Dont_Care_Grouping.representatives = BV_Dont_Care_Grouping()
+            assert BV_Dont_Care_Grouping.representatives.is_consistent()
+        return BV_Dont_Care_Grouping.representatives
 
     def pair_product(self, g2, inorder = True):
         assert isinstance(g2, BV_Grouping)
@@ -156,8 +153,6 @@ class BV_Dont_Care_Grouping(BV_Grouping):
 
         if g1.is_pair_product_cached(g2):
             return g1.get_cached_pair_product(g2)
-
-        assert g1.number_of_input_bits == g2.number_of_input_bits
 
         if inorder:
             return g1.cache_pair_product(g2,
@@ -182,8 +177,6 @@ class BV_Dont_Care_Grouping(BV_Grouping):
 
         if g1.is_triple_product_cached(g2, g3):
             return g1.get_cached_triple_product(g2, g3)
-
-        assert g1.number_of_input_bits == g2.number_of_input_bits == g3.number_of_input_bits
 
         if g1.is_no_distinction_proto() and g2.is_no_distinction_proto():
             return g1.cache_triple_product(g2, g3,
@@ -216,11 +209,9 @@ class BV_Fork_Grouping(BV_Grouping):
     representatives = {}
     representatives_hits = 0
 
-    def __init__(self, inputs, number_of_input_bits):
-        assert 1 < len(inputs) <= 2**number_of_input_bits
+    def __init__(self, inputs):
         number_of_paths_per_exit = dict([(i, inputs[i].bit_count()) for i in inputs])
-        super().__init__(0, number_of_input_bits, len(inputs),
-            number_of_paths_per_exit, number_of_paths_per_exit)
+        super().__init__(0, len(inputs), number_of_paths_per_exit, number_of_paths_per_exit)
         self.inputs = inputs
 
     def __repr__(self):
@@ -231,13 +222,11 @@ class BV_Fork_Grouping(BV_Grouping):
 
     def __hash__(self):
         return hash((self.number_of_exits,
-            self.number_of_input_bits,
             tuple(self.inputs.values())))
 
     def __eq__(self, g2):
         return (isinstance(g2, BV_Fork_Grouping) and
             self.number_of_exits == g2.number_of_exits and
-            self.number_of_input_bits == g2.number_of_input_bits and
             self.inputs == g2.inputs)
 
     def get_input_values(inputs, input_value = 0):
@@ -284,14 +273,14 @@ class BV_Fork_Grouping(BV_Grouping):
             assert exit == previous_exit + 1
             previous_exit = exit
             current_inputs = self.inputs[exit]
-            assert 0 < current_inputs < 2**2**self.number_of_input_bits - 1
+            assert 0 < current_inputs < 2**256 - 1
             assert (exit == 1 or
                 BV_Fork_Grouping.lowest_input(current_inputs) >
                     BV_Fork_Grouping.lowest_input(previous_inputs)), f"{exit} == 1 or {BV_Fork_Grouping.lowest_input(current_inputs)} > {BV_Fork_Grouping.lowest_input(previous_inputs)}"
             previous_inputs = current_inputs
             assert current_inputs & union == 0
             union |= current_inputs
-        assert union == 2**2**self.number_of_input_bits - 1, f"{union} == {2**2**self.number_of_input_bits - 1}"
+        assert union == 2**256 - 1, f"{union} == {2**256 - 1}"
         return True
 
     def representative(self):
@@ -302,16 +291,13 @@ class BV_Fork_Grouping(BV_Grouping):
             BV_Fork_Grouping.representatives[self] = self
         return BV_Fork_Grouping.representatives[self]
 
-    def projection_proto(number_of_input_bits):
-        return BV_Fork_Grouping(dict([(i + 1, 2**i) for i in range(2**number_of_input_bits)]),
-            number_of_input_bits).representative()
+    def projection_proto():
+        return BV_Fork_Grouping(dict([(i + 1, 2**i) for i in range(256)])).representative()
 
     def pair_product(self, g2):
         assert isinstance(g2, BV_Grouping)
 
         g1 = self
-
-        assert g1.number_of_input_bits == g2.number_of_input_bits
 
         if isinstance(g2, BV_Dont_Care_Grouping):
             return g2.pair_product(g1, False)
@@ -343,7 +329,7 @@ class BV_Fork_Grouping(BV_Grouping):
                             g2_inputs[g2_exit] = g2.inputs[g2_exit]
                     else:
                         return g1.cache_pair_product(g2,
-                            BV_Fork_Grouping(g_inputs, g1.number_of_input_bits).representative(),
+                            BV_Fork_Grouping(g_inputs).representative(),
                             g_pair_tuples)
 
                 next_g2_exit = g2_exit
@@ -382,15 +368,13 @@ class BV_Fork_Grouping(BV_Grouping):
                         break
 
             return g1.cache_pair_product(g2,
-                BV_Fork_Grouping(g_inputs, g1.number_of_input_bits).representative(),
+                BV_Fork_Grouping(g_inputs).representative(),
                 g_pair_tuples)
 
     def triple_product(self, g2, g3):
         assert isinstance(g2, BV_Grouping) and isinstance(g3, BV_Grouping)
 
         g1 = self
-
-        assert g1.number_of_input_bits == g2.number_of_input_bits == g3.number_of_input_bits
 
         if g2.is_no_distinction_proto():
             return g2.triple_product(g1, g3, 2)
@@ -439,9 +423,9 @@ class BV_Fork_Grouping(BV_Grouping):
             assert len(g_inputs) > 0
 
             if len(g_inputs) > 1:
-                g = BV_Fork_Grouping(g_inputs, self.number_of_input_bits).representative()
+                g = BV_Fork_Grouping(g_inputs).representative()
             else:
-                g = BV_Dont_Care_Grouping.representative(self.number_of_input_bits)
+                g = BV_Dont_Care_Grouping.representative()
 
             return self.cache_reduction(reduction_tuple, g)
 
@@ -449,9 +433,9 @@ class BV_Internal_Grouping(BV_Grouping):
     representatives = {}
     representatives_hits = 0
 
-    def __init__(self, level, number_of_input_bits, number_of_exits = 0):
+    def __init__(self, level, number_of_exits = 0):
         assert level > 0
-        super().__init__(level, number_of_input_bits, number_of_exits)
+        super().__init__(level, number_of_exits)
         self.a_connection = None
         self.a_return_tuple = {}
         self.number_of_b_connections = 0
@@ -470,7 +454,6 @@ class BV_Internal_Grouping(BV_Grouping):
 
     def __hash__(self):
         return hash((self.level,
-            self.number_of_input_bits,
             self.number_of_exits,
             self.a_connection,
             tuple(self.a_return_tuple.values()),
@@ -481,7 +464,6 @@ class BV_Internal_Grouping(BV_Grouping):
     def __eq__(self, g2):
         return (isinstance(g2, BV_Internal_Grouping) and
             self.level == g2.level and
-            self.number_of_input_bits == g2.number_of_input_bits and
             self.number_of_exits == g2.number_of_exits and
             self.a_connection == g2.a_connection and
             self.a_return_tuple == g2.a_return_tuple and
@@ -561,53 +543,38 @@ class BV_Internal_Grouping(BV_Grouping):
             BV_Internal_Grouping.representatives[self] = self
         return BV_Internal_Grouping.representatives[self]
 
-    def projection_proto(level, input_i, number_of_input_bits, number_of_output_bits):
-        # generalizing CFLOBDD projection to bitvectors of size >= 1
+    def projection_proto(level, input_i):
+        # generalizing CFLOBDD projection to bitvectors of size == 8
         if level == 0:
-            assert input_i == 0 and number_of_output_bits == number_of_input_bits
-            return BV_Fork_Grouping.projection_proto(number_of_input_bits)
+            assert input_i == 0
+            return BV_Fork_Grouping.projection_proto()
         else:
             assert 0 <= input_i < 2**level
-            assert number_of_output_bits % number_of_input_bits == 0
-            assert 0 < number_of_output_bits <= (2**level - input_i) * number_of_input_bits
 
-            g = BV_Internal_Grouping(level, number_of_input_bits, 2**number_of_output_bits)
+            g = BV_Internal_Grouping(level, 256)
 
             if input_i < 2**(level - 1):
-                a_number_of_output_bits = min((2**(level - 1) - input_i) * number_of_input_bits,
-                    number_of_output_bits)
-                g.a_connection = BV_Internal_Grouping.projection_proto(level - 1,
-                    input_i, number_of_input_bits, a_number_of_output_bits)
+                g.a_connection = BV_Internal_Grouping.projection_proto(level - 1, input_i)
                 # g.a_return_tuple == {} representing g.a_return_tuple = dict([(e, e)
-                    # for e in range(1, 2**a_number_of_output_bits + 1)])
+                    # for e in range(1, 256 + 1)])
 
-                input_i = 2**(level - 1)
+                g.number_of_b_connections = 256
+
+                projection_proto = BV_No_Distinction_Proto.representative(level - 1)
+
+                g.b_connections = dict([(c, projection_proto) for c in range(1, 256 + 1)])
+                g.b_return_tuples = dict([(e, {1:e}) for e in range(1, 256 + 1)])
             else:
-                a_number_of_output_bits = 0
-
-                g.a_connection = BV_No_Distinction_Proto.representative(level - 1,
-                    number_of_input_bits)
+                g.a_connection = BV_No_Distinction_Proto.representative(level - 1)
                 # g.a_return_tuple == {} representing g.a_return_tuple[1] = 1
 
-            g.number_of_b_connections = 2**a_number_of_output_bits
+                g.number_of_b_connections = 1
 
-            b_number_of_output_bits = number_of_output_bits - a_number_of_output_bits
-
-            if b_number_of_output_bits == 0:
-                projection_proto = BV_No_Distinction_Proto.representative(level - 1,
-                    number_of_input_bits)
-            else:
                 projection_proto = BV_Internal_Grouping.projection_proto(level - 1,
-                    input_i - 2**(level - 1),
-                    number_of_input_bits,
-                    b_number_of_output_bits)
+                    input_i - 2**(level - 1))
 
-            g.b_connections = dict([(c, projection_proto)
-                for c in range(1, g.number_of_b_connections + 1)])
-            g.b_return_tuples = dict([(c,
-                dict([(e, 2**b_number_of_output_bits * (c - 1) + e)
-                    for e in range(1, 2**b_number_of_output_bits + 1)]))
-                for c in range(1, g.number_of_b_connections + 1)])
+                g.b_connections = {1:projection_proto}
+                g.b_return_tuples = {1:dict([(e, e) for e in range(1, 256 + 1)])}
 
             return g.representative()
 
@@ -617,7 +584,6 @@ class BV_Internal_Grouping(BV_Grouping):
         g1 = self
 
         assert g1.level == g2.level
-        assert g1.number_of_input_bits == g2.number_of_input_bits
 
         if g2.is_no_distinction_proto():
             return g2.pair_product(g1, False)
@@ -629,7 +595,7 @@ class BV_Internal_Grouping(BV_Grouping):
 
             g_a, pt_a = g1.a_connection.pair_product(g2.a_connection)
 
-            g = BV_Internal_Grouping(g1.level, g1.number_of_input_bits)
+            g = BV_Internal_Grouping(g1.level)
 
             g.a_connection = g_a
             # g.a_return_tuple == {} representing g.a_return_tuple = dict([(i, i) for i in pt_a])
@@ -665,7 +631,6 @@ class BV_Internal_Grouping(BV_Grouping):
         g1 = self
 
         assert g1.level == g2.level == g3.level
-        assert g1.number_of_input_bits == g2.number_of_input_bits == g3.number_of_input_bits
 
         if g2.is_no_distinction_proto():
             return g2.triple_product(g1, g3, 2)
@@ -679,7 +644,7 @@ class BV_Internal_Grouping(BV_Grouping):
 
             g_a, tt_a = g1.a_connection.triple_product(g2.a_connection, g3.a_connection)
 
-            g = BV_Internal_Grouping(g1.level, g1.number_of_input_bits)
+            g = BV_Internal_Grouping(g1.level)
 
             g.a_connection = g_a
             # g.a_return_tuple == {} representing g.a_return_tuple = dict([(i, i) for i in tt_a])
@@ -735,7 +700,7 @@ class BV_Internal_Grouping(BV_Grouping):
             if g.is_reduction_cached(reduction_tuple):
                 return g.get_cached_reduction(reduction_tuple)
 
-            g_prime = BV_Internal_Grouping(g.level, g.number_of_input_bits, reduction_length)
+            g_prime = BV_Internal_Grouping(g.level, reduction_length)
 
             reduction_tuple_a = {}
 
@@ -763,21 +728,20 @@ class BV_No_Distinction_Proto(BV_Internal_Grouping):
     representatives = {}
     representatives_hits = 0
 
-    def __init__(self, level, number_of_input_bits):
+    def __init__(self, level):
         assert level > 0
-        super().__init__(level, number_of_input_bits, 1)
+        super().__init__(level, 1)
 
-    def representative(level, number_of_input_bits):
+    def representative(level):
         if level == 0:
-            return BV_Dont_Care_Grouping.representative(number_of_input_bits)
-        elif (level, number_of_input_bits) in BV_No_Distinction_Proto.representatives:
+            return BV_Dont_Care_Grouping.representative()
+        elif level in BV_No_Distinction_Proto.representatives:
             BV_No_Distinction_Proto.representatives_hits += 1
-            return BV_No_Distinction_Proto.representatives[(level, number_of_input_bits)]
+            return BV_No_Distinction_Proto.representatives[level]
         else:
-            g = BV_No_Distinction_Proto(level, number_of_input_bits)
+            g = BV_No_Distinction_Proto(level)
 
-            g.a_connection = BV_No_Distinction_Proto.representative(level - 1,
-                number_of_input_bits)
+            g.a_connection = BV_No_Distinction_Proto.representative(level - 1)
             # g.a_return_tuple == {} representing g.a_return_tuple[1] = 1
 
             g.number_of_b_connections = 1
@@ -786,7 +750,7 @@ class BV_No_Distinction_Proto(BV_Internal_Grouping):
 
             g.pre_compute_number_of_paths_and_inputs_per_exit()
 
-            BV_No_Distinction_Proto.representatives[(level, number_of_input_bits)] = g
+            BV_No_Distinction_Proto.representatives[level] = g
 
             return g
 
@@ -796,7 +760,6 @@ class BV_No_Distinction_Proto(BV_Internal_Grouping):
         g1 = self
 
         assert g1.level == g2.level
-        assert g1.number_of_input_bits == g2.number_of_input_bits
 
         return BV_Dont_Care_Grouping.pair_product(g1, g2, inorder)
 
@@ -806,7 +769,6 @@ class BV_No_Distinction_Proto(BV_Internal_Grouping):
         g1 = self
 
         assert g1.level == g2.level == g3.level
-        assert g1.number_of_input_bits == g2.number_of_input_bits == g3.number_of_input_bits
 
         return BV_Dont_Care_Grouping.triple_product(g1, g2, g3, order)
 
@@ -851,31 +813,22 @@ class CFLOBVDD:
     representatives = {}
     representatives_hits = 0
 
-    def __init__(self, grouping, outputs, number_of_input_bits, number_of_output_bits):
+    def __init__(self, grouping, outputs):
         self.grouping = grouping
         self.outputs = outputs
-        self.number_of_input_bits = number_of_input_bits
-        self.number_of_output_bits = number_of_output_bits
 
     def __str__(self):
         return ("CFLOBVDD with\n" +
             f"g: {self.grouping}\n" +
-            f"o: {self.outputs}\n" +
-            f"n_of_i_b: {self.number_of_input_bits}\n" +
-            f"n_of_o_b: {self.number_of_output_bits}")
+            f"o: {self.outputs}\n")
 
     def __hash__(self):
-        return hash((self.grouping,
-            tuple(self.outputs.values()),
-            self.number_of_input_bits,
-            self.number_of_output_bits))
+        return hash((self.grouping, tuple(self.outputs.values())))
 
     def __eq__(self, n2):
         return (isinstance(n2, CFLOBVDD) and
             self.grouping == n2.grouping and
-            self.outputs == n2.outputs and
-            self.number_of_input_bits == n2.number_of_input_bits and
-            self.number_of_output_bits == n2.number_of_output_bits)
+            self.outputs == n2.outputs)
 
     def print_profile():
         print(f"BV_Fork_Grouping cache utilization: {utilization(BV_Fork_Grouping.representatives_hits, len(BV_Fork_Grouping.representatives))}")
@@ -942,12 +895,9 @@ class CFLOBVDD:
 
     def get_printed_CFLOBVDD(self, value = None):
         return (f"CFLOBVDD:\n" +
-            f"{2**self.grouping.level * self.number_of_input_bits} input bits in total\n" +
             f"{2**self.grouping.level} input variables\n" +
-            f"{self.number_of_input_bits} input bits per variable\n" +
             f"{self.number_of_outputs()} output values\n" +
             f"{self.number_of_distinct_outputs()} disctinct output values\n"
-            f"{self.number_of_output_bits} output bits per value\n" +
             f"{self.number_of_paths()} paths\n" +
             f"{self.number_of_inputs()} inputs\n" +
             f"{self.get_printed_value_paths(value)}")
@@ -957,11 +907,10 @@ class CFLOBVDD:
         assert self.number_of_outputs() == self.grouping.number_of_exits, f"{self.number_of_outputs()} == {self.grouping.number_of_exits}"
         assert self.number_of_outputs() >= self.number_of_distinct_outputs()
         assert not CFLOBVDD.REDUCE or self.number_of_outputs() == self.number_of_distinct_outputs()
-        assert all([0 <= self.outputs[i] < 2**self.number_of_output_bits for i in self.outputs])
         return True
 
-    def representative(grouping, outputs, number_of_input_bits, number_of_output_bits):
-        cflobvdd = CFLOBVDD(grouping, outputs, number_of_input_bits, number_of_output_bits)
+    def representative(grouping, outputs):
+        cflobvdd = CFLOBVDD(grouping, outputs)
         if cflobvdd in CFLOBVDD.representatives:
             CFLOBVDD.representatives_hits += 1
         else:
@@ -977,72 +926,51 @@ class CFLOBVDD:
         # without reductions True may appear more than once
         return self.number_of_distinct_outputs() == 1 and True in self.outputs.values()
 
-    def constant(level, output, number_of_input_bits, number_of_output_bits):
+    def constant(level, output = 0):
+        CFLOBVDD.max_level = max(CFLOBVDD.max_level, level)
         return CFLOBVDD.representative(
-            BV_No_Distinction_Proto.representative(level, number_of_input_bits),
-            {1:output},
-            number_of_input_bits,
-            number_of_output_bits)
+            BV_No_Distinction_Proto.representative(level), {1:output})
 
-    def byte_constant(number_of_input_bytes, output, number_of_input_bits, number_of_output_bits):
+    def byte_constant(number_of_input_bytes, output):
         assert number_of_input_bytes > 0
-        assert 0 < number_of_input_bits <= 8
-        assert 8 % number_of_input_bits == 0
+        level = ceil(log2(number_of_input_bytes))
+        return CFLOBVDD.constant(level, output)
 
-        level = ceil(log2(number_of_input_bytes * (8 // number_of_input_bits)))
+    def false(level):
+        return CFLOBVDD.constant(level, False)
 
-        return CFLOBVDD.constant(level, output, number_of_input_bits, number_of_output_bits)
-
-    def false(level, number_of_input_bits):
-        return CFLOBVDD.constant(level, False, number_of_input_bits, 1)
-
-    def true(level, number_of_input_bits):
-        return CFLOBVDD.constant(level, True, number_of_input_bits, 1)
+    def true(level):
+        return CFLOBVDD.constant(level, True)
 
     def flip_value_tuple(self):
         # self must be reduced
         assert self.number_of_outputs() == 2
-        return CFLOBVDD.representative(self.grouping,
-            {1:self.outputs[2], 2:self.outputs[1]},
-            self.number_of_input_bits,
-            self.number_of_output_bits)
+        return CFLOBVDD.representative(self.grouping, {1:self.outputs[2], 2:self.outputs[1]})
 
     def complement(self):
-        if self == CFLOBVDD.false(self.grouping.level, self.number_of_input_bits):
-            return CFLOBVDD.true(self.grouping.level, self.number_of_input_bits)
-        elif self == CFLOBVDD.true(self.grouping.level, self.number_of_input_bits):
-            return CFLOBVDD.false(self.grouping.level, self.number_of_input_bits)
+        if self == CFLOBVDD.false(self.grouping.level):
+            return CFLOBVDD.true(self.grouping.level)
+        elif self == CFLOBVDD.true(self.grouping.level):
+            return CFLOBVDD.false(self.grouping.level)
         else:
             # self must be reduced
             return self.flip_value_tuple()
 
     def unary_apply_and_reduce(self, op, number_of_output_bits):
-        return self.binary_apply_and_reduce(CFLOBVDD.constant(self.grouping.level,
-                0, self.number_of_input_bits, number_of_output_bits),
-            lambda x, y: op(x), number_of_output_bits)
+        return self.binary_apply_and_reduce(
+            CFLOBVDD.constant(self.grouping.level), lambda x, y: op(x), number_of_output_bits)
 
-    def projection(level, input_i, number_of_input_bits, number_of_output_bits):
+    def projection(level, input_i):
         assert 0 <= input_i < 2**level
-        assert number_of_output_bits % number_of_input_bits == 0
-        assert number_of_output_bits <= (2**level - input_i) * number_of_input_bits
         CFLOBVDD.max_level = max(CFLOBVDD.max_level, level)
         return CFLOBVDD.representative(
-            BV_Internal_Grouping.projection_proto(level,
-                input_i, number_of_input_bits, number_of_output_bits),
-            dict([(output + 1, output) for output in range(2**number_of_output_bits)]),
-            number_of_input_bits,
-            number_of_output_bits)
+            BV_Internal_Grouping.projection_proto(level, input_i),
+            dict([(output + 1, output) for output in range(256)]))
 
-    def byte_projection(number_of_input_bytes, byte_i, number_of_input_bits, number_of_output_bits):
-        assert number_of_input_bytes > 0
+    def byte_projection(number_of_input_bytes, byte_i):
         assert 0 <= byte_i < number_of_input_bytes
-        assert 0 < number_of_input_bits <= 8
-        assert 8 % number_of_input_bits == 0
-
-        level = ceil(log2(number_of_input_bytes * (8 // number_of_input_bits)))
-        input_i = byte_i * (8 // number_of_input_bits)
-
-        return CFLOBVDD.projection(level, input_i, number_of_input_bits, number_of_output_bits)
+        level = ceil(log2(number_of_input_bytes))
+        return CFLOBVDD.projection(level, byte_i)
 
     def collapse_classes_leftmost(equiv_classes):
         # legacy code
@@ -1090,11 +1018,11 @@ class CFLOBVDD:
 
         n1 = self
 
-        assert n1.number_of_input_bits == n2.number_of_input_bits
-
         g, pt = n1.grouping.pair_product(n2.grouping)
 
         equiv_classes = dict([(i, op(n1.outputs[pt[i][0]], n2.outputs[pt[i][1]])) for i in pt])
+
+        assert all(0 <= equiv_classes[i] < 2**number_of_output_bits for i in pt)
 
         if CFLOBVDD.REDUCE:
             induced_value_tuple, induced_return_tuple = \
@@ -1103,20 +1031,19 @@ class CFLOBVDD:
         else:
             induced_value_tuple = equiv_classes
 
-        return CFLOBVDD.representative(g, induced_value_tuple,
-            n1.number_of_input_bits, number_of_output_bits)
+        return CFLOBVDD.representative(g, induced_value_tuple)
 
     def ternary_apply_and_reduce(self, n2, n3, op, number_of_output_bits):
         assert isinstance(n2, CFLOBVDD) and isinstance(n3, CFLOBVDD)
 
         n1 = self
 
-        assert n1.number_of_input_bits == n2.number_of_input_bits == n3.number_of_input_bits
-
         g, tt = n1.grouping.triple_product(n2.grouping, n3.grouping)
 
         equiv_classes = dict([(i,
             op(n1.outputs[tt[i][0]], n2.outputs[tt[i][1]], n3.outputs[tt[i][2]])) for i in tt])
+
+        assert all(0 <= equiv_classes[i] < 2**number_of_output_bits for i in tt)
 
         if CFLOBVDD.REDUCE:
             induced_value_tuple, induced_return_tuple = \
@@ -1125,140 +1052,4 @@ class CFLOBVDD:
         else:
             induced_value_tuple = equiv_classes
 
-        return CFLOBVDD.representative(g, induced_value_tuple,
-            n1.number_of_input_bits, number_of_output_bits)
-
-    def test():
-        # projection test cases
-
-        CFLOBVDD.projection(0, 0, 1, 1)
-
-        CFLOBVDD.projection(1, 0, 1, 1)
-        CFLOBVDD.projection(1, 1, 1, 1)
-
-        CFLOBVDD.projection(1, 0, 1, 2)
-
-        CFLOBVDD.projection(2, 0, 1, 1)
-        CFLOBVDD.projection(2, 1, 1, 1)
-
-        CFLOBVDD.projection(2, 0, 1, 2)
-        CFLOBVDD.projection(2, 1, 1, 2)
-        CFLOBVDD.projection(2, 2, 1, 2)
-
-        CFLOBVDD.projection(2, 0, 2, 2)
-        CFLOBVDD.projection(2, 1, 2, 2)
-        CFLOBVDD.projection(2, 2, 2, 2)
-        CFLOBVDD.projection(2, 3, 2, 2)
-
-        # pairing test cases
-
-        CFLOBVDD.projection(0, 0, 1, 1).grouping.pair_product(CFLOBVDD.projection(0, 0, 1, 1).grouping)
-
-        CFLOBVDD.projection(1, 0, 1, 1).grouping.pair_product(CFLOBVDD.projection(1, 0, 1, 1).grouping)
-        CFLOBVDD.projection(1, 0, 1, 1).grouping.pair_product(CFLOBVDD.projection(1, 1, 1, 1).grouping)
-        CFLOBVDD.projection(1, 1, 1, 1).grouping.pair_product(CFLOBVDD.projection(1, 0, 1, 1).grouping)
-        CFLOBVDD.projection(1, 1, 1, 1).grouping.pair_product(CFLOBVDD.projection(1, 1, 1, 1).grouping)
-
-        CFLOBVDD.projection(1, 0, 1, 2).grouping.pair_product(CFLOBVDD.projection(1, 0, 1, 2).grouping)
-
-        CFLOBVDD.projection(2, 0, 1, 1).grouping.pair_product(CFLOBVDD.projection(2, 0, 1, 1).grouping)
-        CFLOBVDD.projection(2, 0, 1, 1).grouping.pair_product(CFLOBVDD.projection(2, 1, 1, 1).grouping)
-        CFLOBVDD.projection(2, 1, 1, 1).grouping.pair_product(CFLOBVDD.projection(2, 1, 1, 1).grouping)
-        CFLOBVDD.projection(2, 1, 1, 1).grouping.pair_product(CFLOBVDD.projection(2, 0, 1, 1).grouping)
-
-        CFLOBVDD.projection(2, 0, 1, 2).grouping.pair_product(CFLOBVDD.projection(2, 0, 1, 2).grouping)
-        CFLOBVDD.projection(2, 0, 1, 2).grouping.pair_product(CFLOBVDD.projection(2, 1, 1, 2).grouping)
-        CFLOBVDD.projection(2, 0, 1, 2).grouping.pair_product(CFLOBVDD.projection(2, 2, 1, 2).grouping)
-        CFLOBVDD.projection(2, 1, 1, 2).grouping.pair_product(CFLOBVDD.projection(2, 0, 1, 2).grouping)
-        CFLOBVDD.projection(2, 1, 1, 2).grouping.pair_product(CFLOBVDD.projection(2, 1, 1, 2).grouping)
-        CFLOBVDD.projection(2, 1, 1, 2).grouping.pair_product(CFLOBVDD.projection(2, 2, 1, 2).grouping)
-        CFLOBVDD.projection(2, 2, 1, 2).grouping.pair_product(CFLOBVDD.projection(2, 0, 1, 2).grouping)
-        CFLOBVDD.projection(2, 2, 1, 2).grouping.pair_product(CFLOBVDD.projection(2, 1, 1, 2).grouping)
-        CFLOBVDD.projection(2, 2, 1, 2).grouping.pair_product(CFLOBVDD.projection(2, 2, 1, 2).grouping)
-        CFLOBVDD.projection(2, 0, 2, 2).grouping.pair_product(CFLOBVDD.projection(2, 0, 2, 2).grouping)
-        CFLOBVDD.projection(2, 0, 2, 2).grouping.pair_product(CFLOBVDD.projection(2, 1, 2, 2).grouping)
-        CFLOBVDD.projection(2, 0, 2, 2).grouping.pair_product(CFLOBVDD.projection(2, 2, 2, 2).grouping)
-        CFLOBVDD.projection(2, 0, 2, 2).grouping.pair_product(CFLOBVDD.projection(2, 3, 2, 2).grouping)
-        CFLOBVDD.projection(2, 1, 2, 2).grouping.pair_product(CFLOBVDD.projection(2, 0, 2, 2).grouping)
-        CFLOBVDD.projection(2, 1, 2, 2).grouping.pair_product(CFLOBVDD.projection(2, 1, 2, 2).grouping)
-        CFLOBVDD.projection(2, 1, 2, 2).grouping.pair_product(CFLOBVDD.projection(2, 2, 2, 2).grouping)
-        CFLOBVDD.projection(2, 1, 2, 2).grouping.pair_product(CFLOBVDD.projection(2, 3, 2, 2).grouping)
-        CFLOBVDD.projection(2, 2, 2, 2).grouping.pair_product(CFLOBVDD.projection(2, 0, 2, 2).grouping)
-        CFLOBVDD.projection(2, 2, 2, 2).grouping.pair_product(CFLOBVDD.projection(2, 1, 2, 2).grouping)
-        CFLOBVDD.projection(2, 2, 2, 2).grouping.pair_product(CFLOBVDD.projection(2, 2, 2, 2).grouping)
-        CFLOBVDD.projection(2, 2, 2, 2).grouping.pair_product(CFLOBVDD.projection(2, 3, 2, 2).grouping)
-        CFLOBVDD.projection(2, 3, 2, 2).grouping.pair_product(CFLOBVDD.projection(2, 0, 2, 2).grouping)
-        CFLOBVDD.projection(2, 3, 2, 2).grouping.pair_product(CFLOBVDD.projection(2, 1, 2, 2).grouping)
-        CFLOBVDD.projection(2, 3, 2, 2).grouping.pair_product(CFLOBVDD.projection(2, 2, 2, 2).grouping)
-        CFLOBVDD.projection(2, 3, 2, 2).grouping.pair_product(CFLOBVDD.projection(2, 3, 2, 2).grouping)
-
-        # binary apply and reduce test cases
-
-        CFLOBVDD.projection(0, 0, 1, 1).binary_apply_and_reduce(CFLOBVDD.projection(0, 0, 1, 1), lambda x, y: x == y, 1)
-
-        CFLOBVDD.projection(1, 0, 1, 1).binary_apply_and_reduce(CFLOBVDD.projection(1, 0, 1, 1), lambda x, y: x == y, 1)
-        CFLOBVDD.projection(1, 0, 1, 1).binary_apply_and_reduce(CFLOBVDD.projection(1, 1, 1, 1), lambda x, y: x == y, 1)
-        CFLOBVDD.projection(1, 1, 1, 1).binary_apply_and_reduce(CFLOBVDD.projection(1, 0, 1, 1), lambda x, y: x == y, 1)
-        CFLOBVDD.projection(1, 1, 1, 1).binary_apply_and_reduce(CFLOBVDD.projection(1, 1, 1, 1), lambda x, y: x == y, 1)
-
-        CFLOBVDD.projection(1, 0, 1, 2).binary_apply_and_reduce(CFLOBVDD.projection(1, 0, 1, 2), lambda x, y: x == y, 1)
-
-        CFLOBVDD.projection(2, 0, 1, 1).binary_apply_and_reduce(CFLOBVDD.projection(2, 0, 1, 1), lambda x, y: x == y, 1)
-        CFLOBVDD.projection(2, 0, 1, 1).binary_apply_and_reduce(CFLOBVDD.projection(2, 1, 1, 1), lambda x, y: x == y, 1)
-        CFLOBVDD.projection(2, 1, 1, 1).binary_apply_and_reduce(CFLOBVDD.projection(2, 1, 1, 1), lambda x, y: x == y, 1)
-        CFLOBVDD.projection(2, 1, 1, 1).binary_apply_and_reduce(CFLOBVDD.projection(2, 0, 1, 1), lambda x, y: x == y, 1)
-
-        CFLOBVDD.projection(2, 0, 1, 2).binary_apply_and_reduce(CFLOBVDD.projection(2, 0, 1, 2), lambda x, y: x == y, 1)
-        CFLOBVDD.projection(2, 0, 1, 2).binary_apply_and_reduce(CFLOBVDD.projection(2, 1, 1, 2), lambda x, y: x == y, 1)
-        CFLOBVDD.projection(2, 0, 1, 2).binary_apply_and_reduce(CFLOBVDD.projection(2, 2, 1, 2), lambda x, y: x == y, 1)
-        CFLOBVDD.projection(2, 1, 1, 2).binary_apply_and_reduce(CFLOBVDD.projection(2, 0, 1, 2), lambda x, y: x == y, 1)
-        CFLOBVDD.projection(2, 1, 1, 2).binary_apply_and_reduce(CFLOBVDD.projection(2, 1, 1, 2), lambda x, y: x == y, 1)
-        CFLOBVDD.projection(2, 1, 1, 2).binary_apply_and_reduce(CFLOBVDD.projection(2, 2, 1, 2), lambda x, y: x == y, 1)
-        CFLOBVDD.projection(2, 2, 1, 2).binary_apply_and_reduce(CFLOBVDD.projection(2, 0, 1, 2), lambda x, y: x == y, 1)
-        CFLOBVDD.projection(2, 2, 1, 2).binary_apply_and_reduce(CFLOBVDD.projection(2, 1, 1, 2), lambda x, y: x == y, 1)
-        CFLOBVDD.projection(2, 2, 1, 2).binary_apply_and_reduce(CFLOBVDD.projection(2, 2, 1, 2), lambda x, y: x == y, 1)
-        CFLOBVDD.projection(2, 0, 2, 2).binary_apply_and_reduce(CFLOBVDD.projection(2, 0, 2, 2), lambda x, y: x == y, 1)
-        CFLOBVDD.projection(2, 0, 2, 2).binary_apply_and_reduce(CFLOBVDD.projection(2, 1, 2, 2), lambda x, y: x == y, 1)
-        CFLOBVDD.projection(2, 0, 2, 2).binary_apply_and_reduce(CFLOBVDD.projection(2, 2, 2, 2), lambda x, y: x == y, 1)
-        CFLOBVDD.projection(2, 0, 2, 2).binary_apply_and_reduce(CFLOBVDD.projection(2, 3, 2, 2), lambda x, y: x == y, 1)
-        CFLOBVDD.projection(2, 1, 2, 2).binary_apply_and_reduce(CFLOBVDD.projection(2, 0, 2, 2), lambda x, y: x == y, 1)
-        CFLOBVDD.projection(2, 1, 2, 2).binary_apply_and_reduce(CFLOBVDD.projection(2, 1, 2, 2), lambda x, y: x == y, 1)
-        CFLOBVDD.projection(2, 1, 2, 2).binary_apply_and_reduce(CFLOBVDD.projection(2, 2, 2, 2), lambda x, y: x == y, 1)
-        CFLOBVDD.projection(2, 1, 2, 2).binary_apply_and_reduce(CFLOBVDD.projection(2, 3, 2, 2), lambda x, y: x == y, 1)
-        CFLOBVDD.projection(2, 2, 2, 2).binary_apply_and_reduce(CFLOBVDD.projection(2, 0, 2, 2), lambda x, y: x == y, 1)
-        CFLOBVDD.projection(2, 2, 2, 2).binary_apply_and_reduce(CFLOBVDD.projection(2, 1, 2, 2), lambda x, y: x == y, 1)
-        CFLOBVDD.projection(2, 2, 2, 2).binary_apply_and_reduce(CFLOBVDD.projection(2, 2, 2, 2), lambda x, y: x == y, 1)
-        CFLOBVDD.projection(2, 2, 2, 2).binary_apply_and_reduce(CFLOBVDD.projection(2, 3, 2, 2), lambda x, y: x == y, 1)
-        CFLOBVDD.projection(2, 3, 2, 2).binary_apply_and_reduce(CFLOBVDD.projection(2, 0, 2, 2), lambda x, y: x == y, 1)
-        CFLOBVDD.projection(2, 3, 2, 2).binary_apply_and_reduce(CFLOBVDD.projection(2, 1, 2, 2), lambda x, y: x == y, 1)
-        CFLOBVDD.projection(2, 3, 2, 2).binary_apply_and_reduce(CFLOBVDD.projection(2, 2, 2, 2), lambda x, y: x == y, 1)
-        CFLOBVDD.projection(2, 3, 2, 2).binary_apply_and_reduce(CFLOBVDD.projection(2, 3, 2, 2), lambda x, y: x == y, 1)
-
-        # ternary apply and reduce test cases
-
-        CFLOBVDD.projection(2, 0, 1, 1).ternary_apply_and_reduce(CFLOBVDD.projection(2, 1, 1, 1),
-            CFLOBVDD.projection(2, 2, 1, 1), lambda x, y, z: y if x else z, 1)
-        CFLOBVDD.projection(2, 1, 1, 1).ternary_apply_and_reduce(CFLOBVDD.projection(2, 2, 1, 1),
-            CFLOBVDD.projection(2, 3, 1, 1), lambda x, y, z: y if x else z, 1)
-        CFLOBVDD.projection(2, 0, 1, 1).ternary_apply_and_reduce(CFLOBVDD.projection(2, 2, 1, 1),
-            CFLOBVDD.projection(2, 3, 1, 1), lambda x, y, z: y if x else z, 1)
-        CFLOBVDD.projection(2, 0, 1, 1).ternary_apply_and_reduce(CFLOBVDD.projection(2, 2, 1, 1),
-            CFLOBVDD.projection(2, 3, 1, 1), lambda x, y, z: y if x else z, 1)
-
-        CFLOBVDD.projection(2, 0, 2, 2).ternary_apply_and_reduce(CFLOBVDD.projection(2, 1, 2, 2),
-            CFLOBVDD.projection(2, 2, 2, 2), lambda x, y, z: y if x else z, 2)
-        CFLOBVDD.projection(2, 1, 2, 2).ternary_apply_and_reduce(CFLOBVDD.projection(2, 2, 2, 2),
-            CFLOBVDD.projection(2, 3, 2, 2), lambda x, y, z: y if x else z, 2)
-        CFLOBVDD.projection(2, 0, 2, 2).ternary_apply_and_reduce(CFLOBVDD.projection(2, 2, 2, 2),
-            CFLOBVDD.projection(2, 3, 2, 2), lambda x, y, z: y if x else z, 2)
-        CFLOBVDD.projection(2, 0, 2, 2).ternary_apply_and_reduce(CFLOBVDD.projection(2, 2, 2, 2),
-            CFLOBVDD.projection(2, 3, 2, 2), lambda x, y, z: y if x else z, 2)
-
-        CFLOBVDD.projection(2, 0, 4, 4).ternary_apply_and_reduce(CFLOBVDD.projection(2, 1, 4, 4),
-            CFLOBVDD.projection(2, 2, 4, 4), lambda x, y, z: y if x else z, 4)
-        CFLOBVDD.projection(2, 1, 4, 4).ternary_apply_and_reduce(CFLOBVDD.projection(2, 2, 4, 4),
-            CFLOBVDD.projection(2, 3, 4, 4), lambda x, y, z: y if x else z, 4)
-        CFLOBVDD.projection(2, 0, 4, 4).ternary_apply_and_reduce(CFLOBVDD.projection(2, 2, 4, 4),
-            CFLOBVDD.projection(2, 3, 4, 4), lambda x, y, z: y if x else z, 4)
-        CFLOBVDD.projection(2, 0, 4, 4).ternary_apply_and_reduce(CFLOBVDD.projection(2, 2, 4, 4),
-            CFLOBVDD.projection(2, 3, 4, 4), lambda x, y, z: y if x else z, 4)
+        return CFLOBVDD.representative(g, induced_value_tuple)

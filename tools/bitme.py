@@ -62,8 +62,6 @@ class Values:
     BVDD = False
     CFLOBVDD = False
 
-    number_of_input_bits = 8
-
     total_number_of_constants = 0
     total_number_of_values = 0
 
@@ -84,8 +82,7 @@ class Values:
             if Values.BVDD:
                 self.bvdd = BVDD.BVDD.constant(value)
             if Values.CFLOBVDD:
-                self.cflobvdd = CFLOBVDD.CFLOBVDD.byte_constant(len(Variable.bvdd_input),
-                    value, Values.number_of_input_bits, self.sid_line.size)
+                self.cflobvdd = CFLOBVDD.CFLOBVDD.byte_constant(len(Variable.bvdd_input), value)
 
             Values.total_number_of_constants += 1
         elif isinstance(var_line, Variable):
@@ -93,8 +90,7 @@ class Values:
                 self.bvdd = BVDD.BVDD.projection(Variable.bvdd_index[var_line])
             if Values.CFLOBVDD:
                 self.cflobvdd = CFLOBVDD.CFLOBVDD.byte_projection(len(Variable.bvdd_input),
-                    Variable.bvdd_index[var_line],
-                    Values.number_of_input_bits, self.sid_line.size)
+                    Variable.bvdd_index[var_line])
 
             Values.total_number_of_constants += 2**var_line.sid_line.size
             if Values.BVDD:
@@ -1589,7 +1585,6 @@ def main():
             Values.BVDD = True
         if args.use_CFLOBVDD:
             Values.CFLOBVDD = True
-            Values.number_of_input_bits = args.use_CFLOBVDD
 
         CFLOBVDD.CFLOBVDD.REDUCE = not args.no_reduction
 
