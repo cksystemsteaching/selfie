@@ -28,7 +28,7 @@ def utilization(hits, misses):
     else:
         return f"{round(hits / (hits + misses) * 100, 2)}% ({hits} hits, {misses} misses)"
 
-class SBDD:
+class BVDD_Node:
     def __str__(self):
         assert self.is_consistent() and self.is_dont_care()
         # all inputs map to the same output
@@ -39,6 +39,62 @@ class SBDD:
 
     def is_dont_care(self):
         return self.number_of_distinct_SBDD_outputs() == 1
+
+    def number_of_connections(self):
+        count = 0
+        for output in self.get_s2o().values():
+            if isinstance(output, BVDD):
+                count += output.number_of_connections() + 1
+            else:
+                count += 1
+        return count
+
+    def number_of_outputs(self):
+        count = 0
+        for output in self.get_s2o().values():
+            if isinstance(output, BVDD):
+                count += output.number_of_connections()
+            else:
+                count += 1
+        return count
+
+    def get_distinct_outputs(self):
+        outputs = {}
+        for output in self.get_s2o().values():
+            if isinstance(output, BVDD):
+                outputs |= output.get_distinct_outputs()
+            else:
+                outputs[output] = output
+        return outputs
+
+    def number_of_distinct_outputs(self):
+        return len(self.get_distinct_outputs())
+
+    def number_of_distinct_inputs(self, output_value = None):
+        if self.is_dont_care():
+            # dont-care inputs do not count
+            output = self.get_dont_care_output()
+            if isinstance(output, BVDD):
+                return output.number_of_distinct_inputs(output_value)
+            else:
+                return 0
+        else:
+            count = 0
+            s2o = self.get_s2o()
+            for inputs in s2o:
+                output = s2o[inputs]
+                if isinstance(output, BVDD):
+                    other_count = output.number_of_distinct_inputs(output_value)
+                    assert output_value is not None or other_count > 0 # assert output.is_reduced()
+                elif output_value is None or output == output_value:
+                    other_count = 1
+                else:
+                    other_count = 0
+                count += self.number_of_inputs_for_input(inputs) * other_count
+            return count
+
+    def number_of_solutions(self, output_value):
+        return self.number_of_distinct_inputs(output_value)
 
     def get_input_values(inputs):
         # for s2o and o2s only
@@ -85,12 +141,12 @@ class SBDD:
 
     def pair_product(self, bvdd2):
         pair_inv = {}
-        return (self.compute_binary(lambda x, y: SBDD.tuple2exit(pair_inv, (x, y)), bvdd2),
+        return (self.compute_binary(lambda x, y: BVDD_Node.tuple2exit(pair_inv, (x, y)), bvdd2),
             dict([(pair_inv[pair], pair) for pair in pair_inv]))
 
     def triple_product(self, bvdd2, bvdd3):
         triple_inv = {}
-        return (self.compute_ternary(lambda x, y, z: SBDD.tuple2exit(triple_inv, (x, y, z)), bvdd2, bvdd3),
+        return (self.compute_ternary(lambda x, y, z: BVDD_Node.tuple2exit(triple_inv, (x, y, z)), bvdd2, bvdd3),
             dict([(triple_inv[triple], triple) for triple in triple_inv]))
 
     def compute_ite(self, bvdd2, bvdd3):
@@ -101,7 +157,30 @@ class SBDD:
     def print_profile():
         pass
 
-class SBDD_i2o(SBDD):
+    def extract(self, output_value):
+        new_bvdd = BVDD({})
+        s2o = self.get_s2o()
+        for inputs in s2o:
+            output = s2o[inputs]
+            if output == output_value:
+                new_bvdd.set(inputs, output)
+            elif isinstance(output, BVDD):
+                extracted_bvdd = output.extract(output_value)
+                if extracted_bvdd.get_s2o():
+                    new_bvdd.set(inputs, extracted_bvdd)
+        # BVDD may be incomplete, only use for printing
+        return new_bvdd
+
+    def get_printed_BVDD(self, output_value):
+        return (f"{type(self).__name__}:\n" +
+            f"{self.number_of_connections()} connections\n" +
+            f"{self.number_of_outputs()} outputs\n" +
+            f"{self.number_of_distinct_outputs()} distinct output values\n" +
+            f"{self.number_of_distinct_inputs()} distinct inputs\n" +
+            f"{self.number_of_solutions(output_value)} solutions\n" +
+            f"{self.extract(output_value)}")
+
+class SBDD_i2o(BVDD_Node):
     # single-byte decision diagram with naive input-to-output mapping
     def __init__(self, i2o):
         self.i2o = i2o
@@ -188,10 +267,7 @@ class SBDD_i2o(SBDD):
             op(bvdd1.i2o[input_value], bvdd2.i2o[input_value], bvdd3.i2o[input_value]))
                 for input_value, _, _ in bvdd1.intersect_ternary(bvdd2, bvdd3)]))
 
-    def get_printed_BVDD(self, output_value):
-        return [input_value for input_value in self.i2o if self.i2o[input_value] == output_value]
-
-class SBDD_s2o(SBDD):
+class SBDD_s2o(BVDD_Node):
     # single-byte decision diagram with input-sets-to-output mapping
     def __init__(self, s2o):
         self.s2o = s2o
@@ -200,7 +276,7 @@ class SBDD_s2o(SBDD):
         if self.is_consistent() and self.is_dont_care():
             return super().__str__()
         else:
-            return str([f"{SBDD.get_input_values(inputs)} -> {output}" for inputs, output in self.s2o.items()])
+            return str([f"{BVDD_Node.get_input_values(inputs)} -> {output}" for inputs, output in self.s2o.items()])
 
     def get_s2o(self):
         return self.s2o
@@ -250,7 +326,7 @@ class SBDD_s2o(SBDD):
         if not self.is_reduced():
             o2s = {}
             for inputs in self.s2o:
-                SBDD.map(o2s, inputs, self.s2o[inputs])
+                BVDD_Node.map(o2s, inputs, self.s2o[inputs])
             self.s2o = dict([(inputs, output) for output, inputs in o2s.items()])
         return self
 
@@ -290,10 +366,7 @@ class SBDD_s2o(SBDD):
             op(bvdd1.s2o[inputs1], bvdd2.s2o[inputs2], bvdd3.s2o[inputs3]))
                 for inputs1, inputs2, inputs3 in bvdd1.intersect_ternary(bvdd2, bvdd3)])).reduce()
 
-    def get_printed_BVDD(self, output_value):
-        return [SBDD.get_input_values(inputs) for inputs in self.s2o if self.s2o[inputs] == output_value]
-
-class SBDD_o2s(SBDD):
+class SBDD_o2s(BVDD_Node):
     # single-byte decision diagram with output-to-input-sets mapping
     def __init__(self, o2s):
         self.o2s = o2s
@@ -302,7 +375,7 @@ class SBDD_o2s(SBDD):
         if self.is_consistent() and self.is_dont_care():
             return super().__str__()
         else:
-            return str([f"{SBDD.get_input_values(inputs)} -> {output}" for output, inputs in self.o2s.items()])
+            return str([f"{BVDD_Node.get_input_values(inputs)} -> {output}" for output, inputs in self.o2s.items()])
 
     def get_s2o(self):
         return dict([(inputs, output) for output, inputs in self.o2s.items()])
@@ -345,7 +418,7 @@ class SBDD_o2s(SBDD):
         return SBDD_o2s({}).projection_BVDD(index)
 
     def map(self, inputs, output):
-        SBDD.map(self.o2s, inputs, output)
+        BVDD_Node.map(self.o2s, inputs, output)
 
     def compute_unary(self, op):
         new_bvdd = type(self)({})
@@ -389,66 +462,7 @@ class SBDD_o2s(SBDD):
                 op(output1, output2, output3))
         return new_bvdd
 
-    def get_printed_BVDD(self, output_value):
-        return SBDD.get_input_values(self.o2s[output_value]) if output_value in self.o2s else []
-
 class BVDD_uncached(SBDD_o2s):
-    def number_of_connections(self):
-        count = 0
-        for output in self.get_s2o().values():
-            if isinstance(output, BVDD):
-                count += output.number_of_connections() + 1
-            else:
-                count += 1
-        return count
-
-    def number_of_outputs(self):
-        count = 0
-        for output in self.get_s2o().values():
-            if isinstance(output, BVDD):
-                count += output.number_of_connections()
-            else:
-                count += 1
-        return count
-
-    def get_distinct_outputs(self):
-        outputs = {}
-        for output in self.get_s2o().values():
-            if isinstance(output, BVDD):
-                outputs |= output.get_distinct_outputs()
-            else:
-                outputs[output] = output
-        return outputs
-
-    def number_of_distinct_outputs(self):
-        return len(self.get_distinct_outputs())
-
-    def number_of_distinct_inputs(self, output_value = None):
-        if self.is_dont_care():
-            # dont-care inputs do not count
-            output = self.get_dont_care_output()
-            if isinstance(output, BVDD):
-                return output.number_of_distinct_inputs(output_value)
-            else:
-                return 0
-        else:
-            count = 0
-            s2o = self.get_s2o()
-            for inputs in s2o:
-                output = s2o[inputs]
-                if isinstance(output, BVDD):
-                    other_count = output.number_of_distinct_inputs(output_value)
-                    assert output_value is not None or other_count > 0 # assert output.is_reduced()
-                elif output_value is None or output == output_value:
-                    other_count = 1
-                else:
-                    other_count = 0
-                count += self.number_of_inputs_for_input(inputs) * other_count
-            return count
-
-    def number_of_solutions(self, output_value):
-        return self.number_of_distinct_inputs(output_value)
-
     def constant(output_value):
         return BVDD({}).constant_BVDD(output_value)
 
@@ -516,29 +530,6 @@ class BVDD_uncached(SBDD_o2s):
         assert isinstance(bvdd2, bool) or isinstance(bvdd2, int) or isinstance(bvdd2, BVDD)
         assert isinstance(bvdd3, bool) or isinstance(bvdd3, int) or isinstance(bvdd3, BVDD)
         return super().compute_ternary(lambda x, y, z: BVDD.op_ternary(op, x, y, z), bvdd2, bvdd3)
-
-    def extract(self, output_value):
-        new_bvdd = BVDD({})
-        s2o = self.get_s2o()
-        for inputs in s2o:
-            output = s2o[inputs]
-            if output == output_value:
-                new_bvdd.set(inputs, output)
-            elif isinstance(output, BVDD):
-                extracted_bvdd = output.extract(output_value)
-                if extracted_bvdd.get_s2o():
-                    new_bvdd.set(inputs, extracted_bvdd)
-        # BVDD may be incomplete, only use for printing
-        return new_bvdd
-
-    def get_printed_BVDD(self, output_value):
-        return (f"BVDD:\n" +
-            f"{self.number_of_connections()} connections\n" +
-            f"{self.number_of_outputs()} outputs\n" +
-            f"{self.number_of_distinct_outputs()} distinct output values\n" +
-            f"{self.number_of_distinct_inputs()} distinct inputs\n" +
-            f"{self.number_of_solutions(output_value)} solutions\n" +
-            f"{self.extract(output_value)}")
 
 import threading
 
