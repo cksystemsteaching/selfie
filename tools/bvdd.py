@@ -149,6 +149,18 @@ class BVDD_Node:
         return (self.compute_ternary(lambda x, y, z: BVDD_Node.tuple2exit(triple_inv, (x, y, z)), bvdd2, bvdd3),
             dict([(triple_inv[triple], triple) for triple in triple_inv]))
 
+    def reduce(self, reduction_tuple):
+        new_bvdd = type(self)({})
+        s2o = self.get_s2o()
+        for inputs in s2o:
+            output = s2o[inputs]
+            if isinstance(output, BVDD):
+                reduced_output = output.reduce(reduction_tuple)
+                new_bvdd.set(inputs, reduced_output)
+            else:
+                new_bvdd.set(inputs, reduction_tuple[output])
+        return new_bvdd.reduce_BVDD()
+
     def compute_ite(self, bvdd2, bvdd3):
         assert type(bvdd2) is type(self)
         assert type(bvdd3) is type(self)
@@ -230,12 +242,12 @@ class SBDD_i2o(BVDD_Node):
     def constant(output_value):
         return SBDD_i2o({}).constant_BVDD(output_value)
 
-    def projection_BVDD(self, index = 0):
-        self.i2o = dict([(input_value, input_value) for input_value in range(256)])
+    def projection_BVDD(self, index = 0, offset = 0):
+        self.i2o = dict([(input_value, input_value + offset) for input_value in range(256)])
         return self
 
-    def projection(index = 0):
-        return SBDD_i2o({}).projection_BVDD(index)
+    def projection(index = 0, offset = 0):
+        return SBDD_i2o({}).projection_BVDD(index, offset)
 
     def compute_unary(self, op):
         return type(self)(dict([(input_value, op(self.i2o[input_value]))
@@ -315,15 +327,17 @@ class SBDD_s2o(BVDD_Node):
     def constant(output_value):
         return SBDD_s2o({}).constant_BVDD(output_value)
 
-    def projection_BVDD(self, index = 0):
-        self.s2o = dict([(2**input_value, input_value) for input_value in range(256)])
+    def projection_BVDD(self, index = 0, offset = 0):
+        self.s2o = dict([(2**input_value, input_value + offset) for input_value in range(256)])
         return self
 
-    def projection(index = 0):
-        return SBDD_s2o({}).projection_BVDD(index)
+    def projection(index = 0, offset = 0):
+        return SBDD_s2o({}).projection_BVDD(index, offset)
 
-    def reduce(self):
-        if not self.is_reduced():
+    def reduce(self, reduction_tuple = None):
+        if reduction_tuple is not None:
+            return super().reduce(reduction_tuple)
+        elif not self.is_reduced():
             o2s = {}
             for inputs in self.s2o:
                 BVDD_Node.map(o2s, inputs, self.s2o[inputs])
@@ -380,9 +394,11 @@ class SBDD_o2s(BVDD_Node):
     def get_s2o(self):
         return dict([(inputs, output) for output, inputs in self.o2s.items()])
 
+    def map(self, inputs, output):
+        BVDD_Node.map(self.o2s, inputs, output)
+
     def set(self, inputs, output):
-        assert output not in self.o2s
-        self.o2s[output] = inputs
+        self.map(inputs, output)
 
     def number_of_SBDD_outputs(self):
         return len(self.o2s)
@@ -410,15 +426,12 @@ class SBDD_o2s(BVDD_Node):
     def constant(output_value):
         return SBDD_o2s({}).constant_BVDD(output_value)
 
-    def projection_BVDD(self, index = 0):
-        self.o2s = dict([(input_value, 2**input_value) for input_value in range(256)])
+    def projection_BVDD(self, index = 0, offset = 0):
+        self.o2s = dict([(input_value + offset, 2**input_value) for input_value in range(256)])
         return self
 
-    def projection(index = 0):
-        return SBDD_o2s({}).projection_BVDD(index)
-
-    def map(self, inputs, output):
-        BVDD_Node.map(self.o2s, inputs, output)
+    def projection(index = 0, offset = 0):
+        return SBDD_o2s({}).projection_BVDD(index, offset)
 
     def compute_unary(self, op):
         new_bvdd = type(self)({})
@@ -466,11 +479,14 @@ class BVDD_uncached(SBDD_o2s):
     def constant(output_value):
         return BVDD({}).constant_BVDD(output_value)
 
-    def projection(index):
+    def projection(index, offset = 0):
         if index == 0:
-            return BVDD({}).projection_BVDD()
+            return BVDD({}).projection_BVDD(0, offset)
         else:
-            return BVDD({}).constant_BVDD(BVDD.projection(index - 1))
+            return BVDD({}).constant_BVDD(BVDD.projection(index - 1, offset))
+
+    def projection_proto():
+        return BVDD_uncached.projection(0, 1)
 
     def reduce_BVDD(self):
         # assert index > 0
@@ -589,7 +605,7 @@ class BVDD_cached(BVDD_uncached):
     projection_cache = {}
     projection_hits = 0
 
-    def projection_BVDD(self, index = 0, projection = None):
+    def projection_BVDD(self, index = 0, offset = 0, projection = None):
         if index in BVDD_cached.projection_cache:
             BVDD_cached.projection_hits += 1
         elif projection:
@@ -597,9 +613,9 @@ class BVDD_cached(BVDD_uncached):
             BVDD_cached.projection_cache[index] = projection
         else:
             # concurrent without acquiring lock
-            projection = super().projection_BVDD(index)
+            projection = super().projection_BVDD(index, offset)
             with BVDD_cached.projection_lock:
-                return self.projection_BVDD(index, projection)
+                return self.projection_BVDD(index, offset, projection)
         return BVDD_cached.projection_cache[index]
 
     compute_unary_lock = threading.Lock()

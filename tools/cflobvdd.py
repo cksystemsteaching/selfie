@@ -14,7 +14,7 @@
 
 # ------------------------------------------------------------
 
-from bvdd import utilization
+import bvdd as BVDD
 
 from math import log2
 from math import ceil
@@ -208,25 +208,26 @@ class BV_Fork_Grouping(BV_Grouping):
     representatives = {}
     representatives_hits = 0
 
-    def __init__(self, inputs):
-        number_of_inputs_per_exit = dict([(i, inputs[i].bit_count()) for i in inputs])
-        super().__init__(0, len(inputs), number_of_inputs_per_exit, len(inputs))
-        self.inputs = inputs
+    def __init__(self, bvdd, number_of_exits):
+        super().__init__(0,
+            number_of_exits,
+            dict([(i + 1, 0) for i in range(number_of_exits)]), # TODO: implement
+            0) # TODO: implement
+        self.bvdd = bvdd
 
     def __repr__(self):
         indentation = " " * (CFLOBVDD.max_level - self.level + 1)
         return (indentation + "\n" +
             indentation + "fork @ " + super().__repr__() + ":\n" +
-            indentation + f"{self.inputs}")
+            indentation + f"{self.bvdd}")
 
     def __hash__(self):
-        return hash((self.number_of_exits,
-            tuple(self.inputs.values())))
+        return hash((self.number_of_exits, self.bvdd))
 
     def __eq__(self, g2):
         return (isinstance(g2, BV_Fork_Grouping) and
             self.number_of_exits == g2.number_of_exits and
-            self.inputs == g2.inputs)
+            self.bvdd == g2.bvdd)
 
     def get_input_values(inputs, input_value = 0):
         assert inputs >= 0
@@ -252,34 +253,12 @@ class BV_Fork_Grouping(BV_Grouping):
 
     def get_paths(self, exit_i, index_i = 0):
         assert 1 <= exit_i <= self.number_of_exits
-        return [(index_i, self.inputs[exit_i])]
-
-    def lowest_input(inputs):
-        assert inputs > 0
-        return inputs & ~(inputs - 1)
-
-    def highest_input(inputs):
-        assert inputs > 0
-        return 2**int(log2(inputs))
+        return [(index_i, self.bvdd.o2s[exit_i])] # TODO: generalize
 
     def is_consistent(self):
         assert super().is_consistent()
-        assert len(self.inputs) == self.number_of_exits
-        previous_exit = 0
-        previous_inputs = 0
-        union = 0
-        for exit in self.inputs:
-            assert exit == previous_exit + 1
-            previous_exit = exit
-            current_inputs = self.inputs[exit]
-            assert 0 < current_inputs < 2**256 - 1
-            assert (exit == 1 or
-                BV_Fork_Grouping.lowest_input(current_inputs) >
-                    BV_Fork_Grouping.lowest_input(previous_inputs)), f"{exit} == 1 or {BV_Fork_Grouping.lowest_input(current_inputs)} > {BV_Fork_Grouping.lowest_input(previous_inputs)}"
-            previous_inputs = current_inputs
-            assert current_inputs & union == 0
-            union |= current_inputs
-        assert union == 2**256 - 1, f"{union} == {2**256 - 1}"
+        # TODO: assert len(self.bvdd.number_of_exits) == self.number_of_exits
+        assert self.bvdd.is_consistent()
         return True
 
     def representative(self):
@@ -291,7 +270,7 @@ class BV_Fork_Grouping(BV_Grouping):
         return BV_Fork_Grouping.representatives[self]
 
     def projection_proto():
-        return BV_Fork_Grouping(dict([(i + 1, 2**i) for i in range(256)])).representative()
+        return BV_Fork_Grouping(BVDD.BVDD.projection_proto(), 256).representative()
 
     def pair_product(self, g2):
         assert isinstance(g2, BV_Grouping)
@@ -306,69 +285,9 @@ class BV_Fork_Grouping(BV_Grouping):
 
             assert isinstance(g2, BV_Fork_Grouping)
 
-            g_exit = 0
-            g_inputs = {}
-            g_pair_tuples = {}
+            g, pt = g1.bvdd.pair_product(g2.bvdd)
 
-            g2_exit = 1
-            g2_inputs = {}
-            g2_inputs[g2_exit] = g2.inputs[g2_exit]
-
-            for g1_exit in g1.inputs:
-                g1_inputs = g1.inputs[g1_exit]
-
-                # exploit lexicographic ordering of g1 and g2 inputs by lowest input
-
-                while (BV_Fork_Grouping.highest_input(g2_inputs[g2_exit]) <
-                    BV_Fork_Grouping.lowest_input(g1_inputs)):
-                    # move on to next g2 inputs
-                    if g2_exit < g2.number_of_exits:
-                        g2_exit += 1
-                        if g2_exit not in g2_inputs:
-                            g2_inputs[g2_exit] = g2.inputs[g2_exit]
-                    else:
-                        return g1.cache_pair_product(g2,
-                            BV_Fork_Grouping(g_inputs).representative(),
-                            g_pair_tuples)
-
-                next_g2_exit = g2_exit
-
-                while (g1_inputs > 0 and
-                    BV_Fork_Grouping.lowest_input(g2_inputs[next_g2_exit]) <=
-                        BV_Fork_Grouping.highest_input(g1_inputs)):
-                    # intersect with all overlapping next g2 inputs
-                    intersection = g1_inputs & g2_inputs[next_g2_exit]
-
-                    if intersection != 0:
-                        g_exit += 1
-
-                        # insert intersection sorted by lowest input
-                        # to establish lexicographical ordering of g inputs
-                        exit_i = g_exit
-                        while (exit_i > 1 and
-                            BV_Fork_Grouping.lowest_input(intersection) <
-                                BV_Fork_Grouping.lowest_input(g_inputs[exit_i - 1])):
-                            g_inputs[exit_i] = g_inputs[exit_i - 1]
-                            g_pair_tuples[exit_i] = g_pair_tuples[exit_i - 1]
-                            exit_i -= 1
-                        g_inputs[exit_i] = intersection
-                        g_pair_tuples[exit_i] = (g1_exit, next_g2_exit)
-
-                        g1_inputs &= ~intersection
-                        # do not remove intersection from next g2 inputs
-                        # to maintain lexicographical ordering of g2 inputs
-
-                    next_g2_exit += 1
-
-                    if next_g2_exit <= len(g2.inputs):
-                        if next_g2_exit not in g2_inputs:
-                            g2_inputs[next_g2_exit] = g2.inputs[next_g2_exit]
-                    else:
-                        break
-
-            return g1.cache_pair_product(g2,
-                BV_Fork_Grouping(g_inputs).representative(),
-                g_pair_tuples)
+            return g1.cache_pair_product(g2, BV_Fork_Grouping(g, len(pt)).representative(), pt)
 
     def triple_product(self, g2, g3):
         assert isinstance(g2, BV_Grouping) and isinstance(g3, BV_Grouping)
@@ -385,13 +304,9 @@ class BV_Fork_Grouping(BV_Grouping):
 
             assert isinstance(g2, BV_Fork_Grouping) and isinstance(g3, BV_Fork_Grouping)
 
-            g, pt23 = g2.pair_product(g3)
-            g, pt123 = g1.pair_product(g)
+            g, tt = g1.bvdd.triple_product(g2.bvdd, g3.bvdd)
 
-            tt = dict([(k, (pt123[k][0], pt23[pt123[k][1]][0], pt23[pt123[k][1]][1]))
-                for k in pt123])
-
-            return g1.cache_triple_product(g2, g3, g, tt)
+            return g1.cache_triple_product(g2, g3, BV_Fork_Grouping(g, len(tt)).representative(), tt)
 
     def reduce(self, reduction_tuple):
         reduction_length, reduction = super().reduce(reduction_tuple)
@@ -402,29 +317,9 @@ class BV_Fork_Grouping(BV_Grouping):
             if self.is_reduction_cached(reduction_tuple):
                 return self.get_cached_reduction(reduction_tuple)
 
-            g_exits = {}
-            g_inputs = {}
+            g = BV_Fork_Grouping(self.bvdd.reduce(reduction_tuple), reduction_length).representative()
 
-            for exit in self.inputs:
-                reduced_to_exit = reduction_tuple[exit]
-
-                assert reduced_to_exit <= exit
-
-                if reduced_to_exit not in g_exits:
-                    new_exit = len(g_inputs) + 1
-                    g_exits[reduced_to_exit] = new_exit
-                    g_inputs[new_exit] = self.inputs[exit]
-                else:
-                    new_exit = g_exits[reduced_to_exit]
-                    assert g_inputs[new_exit] & self.inputs[exit] == 0
-                    g_inputs[new_exit] |= self.inputs[exit]
-
-            assert len(g_inputs) > 0
-
-            if len(g_inputs) > 1:
-                g = BV_Fork_Grouping(g_inputs).representative()
-            else:
-                g = BV_Dont_Care_Grouping.representative()
+            assert g.number_of_exits == reduction_length
 
             return self.cache_reduction(reduction_tuple, g)
 
@@ -529,7 +424,7 @@ class BV_Internal_Grouping(BV_Grouping):
                 e_i = g_b_i_rt[g_b_i_rt_e_j]
                 b_number_of_inputs = g_b.number_of_inputs_per_exit[g_b_i_rt_e_j]
                 self.number_of_inputs_per_exit[e_i] += a_number_of_inputs * b_number_of_inputs
-        assert self.number_of_distinct_inputs() >= self.number_of_exits
+        # TODO: assert self.number_of_distinct_inputs() >= self.number_of_exits
 
     def representative(self):
         self.pre_compute_number_of_inputs_per_exit()
@@ -828,14 +723,14 @@ class CFLOBVDD:
             self.outputs == n2.outputs)
 
     def print_profile():
-        print(f"BV_Fork_Grouping cache utilization: {utilization(BV_Fork_Grouping.representatives_hits, len(BV_Fork_Grouping.representatives))}")
-        print(f"BV_Internal_Grouping cache utilization: {utilization(BV_Internal_Grouping.representatives_hits, len(BV_Internal_Grouping.representatives))}")
-        print(f"BV_No_Distinction_Proto cache utilization: {utilization(BV_No_Distinction_Proto.representatives_hits, len(BV_No_Distinction_Proto.representatives))}")
-        print(f"BV_Grouping pair-product cache utilization: {utilization(BV_Grouping.pair_product_cache_hits, len(BV_Grouping.pair_product_cache))}")
-        print(f"BV_Grouping triple-product cache utilization: {utilization(BV_Grouping.triple_product_cache_hits, len(BV_Grouping.triple_product_cache))}")
-        print(f"BV_Grouping reduction cache utilization: {utilization(BV_Grouping.reduction_cache_hits, len(BV_Grouping.reduction_cache))}")
-        print(f"CFLOBVDD collapsed-equivalence-classes cache utilization: {utilization(Collapsed_Classes.cache_hits, len(Collapsed_Classes.cache))}")
-        print(f"CFLOBVDD cache utilization: {utilization(CFLOBVDD.representatives_hits, len(CFLOBVDD.representatives))}")
+        print(f"BV_Fork_Grouping cache utilization: {BVDD.utilization(BV_Fork_Grouping.representatives_hits, len(BV_Fork_Grouping.representatives))}")
+        print(f"BV_Internal_Grouping cache utilization: {BVDD.utilization(BV_Internal_Grouping.representatives_hits, len(BV_Internal_Grouping.representatives))}")
+        print(f"BV_No_Distinction_Proto cache utilization: {BVDD.utilization(BV_No_Distinction_Proto.representatives_hits, len(BV_No_Distinction_Proto.representatives))}")
+        print(f"BV_Grouping pair-product cache utilization: {BVDD.utilization(BV_Grouping.pair_product_cache_hits, len(BV_Grouping.pair_product_cache))}")
+        print(f"BV_Grouping triple-product cache utilization: {BVDD.utilization(BV_Grouping.triple_product_cache_hits, len(BV_Grouping.triple_product_cache))}")
+        print(f"BV_Grouping reduction cache utilization: {BVDD.utilization(BV_Grouping.reduction_cache_hits, len(BV_Grouping.reduction_cache))}")
+        print(f"CFLOBVDD collapsed-equivalence-classes cache utilization: {BVDD.utilization(Collapsed_Classes.cache_hits, len(Collapsed_Classes.cache))}")
+        print(f"CFLOBVDD cache utilization: {BVDD.utilization(CFLOBVDD.representatives_hits, len(CFLOBVDD.representatives))}")
 
     def number_of_outputs(self):
         return len(self.outputs)
