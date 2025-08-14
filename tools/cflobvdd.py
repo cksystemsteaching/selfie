@@ -229,31 +229,12 @@ class BV_Fork_Grouping(BV_Grouping):
             self.number_of_exits == g2.number_of_exits and
             self.bvdd == g2.bvdd)
 
-    def get_input_values(inputs, input_value = 0):
-        assert inputs >= 0
-        if inputs == 0:
-            return []
-        elif inputs == 1:
-            return [input_value]
-        else:
-            number_of_input_bits = ceil(log2(inputs.bit_length()))
-            assert 0 < number_of_input_bits <= 8, f"number_of_input_bits {number_of_input_bits} out of range with {inputs}"
-
-            mid_input = 2**(number_of_input_bits - 1)
-
-            low_inputs = inputs % 2**mid_input
-            low_values = BV_Fork_Grouping.get_input_values(low_inputs, input_value)
-
-            high_inputs = inputs >> mid_input
-
-            if low_inputs == high_inputs:
-                return [low_value + mid_input for low_value in low_values] + low_values
-            else:
-                return BV_Fork_Grouping.get_input_values(high_inputs, input_value + mid_input) + low_values
+    def get_input_values(inputs):
+        return BVDD.BVDD.get_input_values(inputs)
 
     def get_paths(self, exit_i, index_i = 0):
         assert 1 <= exit_i <= self.number_of_exits
-        return [(index_i, self.bvdd.o2s[exit_i])] # TODO: generalize
+        return self.bvdd.get_paths(exit_i, index_i)
 
     def is_consistent(self):
         assert super().is_consistent()

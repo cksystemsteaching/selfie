@@ -97,15 +97,22 @@ class BVDD_Node:
         return self.number_of_distinct_inputs(output_value)
 
     def get_input_values(inputs):
-        # for s2o and o2s only
-        input_value = 0
-        input_values = []
-        while inputs != 0:
-            if inputs % 2 == 1:
-                input_values += [input_value]
-            inputs //= 2
-            input_value += 1
-        return input_values
+        assert inputs >= 0
+        if inputs == 0:
+            return []
+        else:
+            input_value = 0
+            input_values = []
+            while inputs != 0:
+                if inputs % 2 == 1:
+                    input_values += [input_value]
+                inputs //= 2
+                input_value += 1
+            return input_values
+
+    def get_paths(self, exit_i, index_i = 0):
+        # TODO: generalize to BVDDs
+        return [(index_i, self.get_inputs_for_output(exit_i))]
 
     def union(self):
         # for s2o and o2s only
@@ -134,6 +141,9 @@ class BVDD_Node:
         assert self.is_consistent()
         return True
 
+    def projection_proto():
+        return BVDD.projection(0, 1)
+
     def tuple2exit(tuple_inv, tuple_ins):
         if tuple_ins not in tuple_inv:
             tuple_inv[tuple_ins] = len(tuple_inv) + 1
@@ -149,6 +159,9 @@ class BVDD_Node:
         return (self.compute_ternary(lambda x, y, z: BVDD_Node.tuple2exit(triple_inv, (x, y, z)), bvdd2, bvdd3),
             dict([(triple_inv[triple], triple) for triple in triple_inv]))
 
+    def reduce_BVDD(self):
+        return self
+
     def reduce(self, reduction_tuple):
         new_bvdd = type(self)({})
         s2o = self.get_s2o()
@@ -159,7 +172,7 @@ class BVDD_Node:
                 new_bvdd.set(inputs, reduced_output)
             else:
                 new_bvdd.set(inputs, reduction_tuple[output])
-        return new_bvdd.reduce_BVDD()
+        return new_bvdd.reduce().reduce_BVDD()
 
     def compute_ite(self, bvdd2, bvdd3):
         assert type(bvdd2) is type(self)
@@ -209,6 +222,14 @@ class SBDD_i2o(BVDD_Node):
     def __eq__(self, bvdd2):
         return type(bvdd2) is type(self) and self.i2o == bvdd2.i2o
 
+    def get_inputs_for_output(self, output_value):
+        inputs = 0
+        for input_value in self.i2o:
+            output = self.i2o[input_value]
+            if output == output_value:
+                inputs |= 2**input_value
+        return inputs
+
     def get_s2o(self):
         return self.i2o
 
@@ -254,6 +275,12 @@ class SBDD_i2o(BVDD_Node):
 
     def projection(index = 0, offset = 0):
         return SBDD_i2o({}).projection_BVDD(index, offset)
+
+    def reduce(self, reduction_tuple = None):
+        if reduction_tuple is not None:
+            return super().reduce(reduction_tuple)
+        else:
+            return self
 
     def compute_unary(self, op):
         return type(self)(dict([(input_value, op(self.i2o[input_value]))
@@ -301,6 +328,14 @@ class SBDD_s2o(BVDD_Node):
 
     def __eq__(self, bvdd2):
         return type(bvdd2) is type(self) and self.s2o == bvdd2.s2o
+
+    def get_inputs_for_output(self, output_value):
+        assert self.is_reduced()
+        for inputs in self.s2o:
+            output = self.s2o[inputs]
+            if output == output_value:
+                return inputs
+        return 0
 
     def get_s2o(self):
         return self.s2o
@@ -409,6 +444,9 @@ class SBDD_o2s(BVDD_Node):
     def __eq__(self, bvdd2):
         return type(bvdd2) is type(self) and self.o2s == bvdd2.o2s
 
+    def get_inputs_for_output(self, output_value):
+        return self.o2s[output_value] if output_value in self.o2s else 0
+
     def get_s2o(self):
         return dict([(inputs, output) for output, inputs in self.o2s.items()])
 
@@ -450,6 +488,12 @@ class SBDD_o2s(BVDD_Node):
 
     def projection(index = 0, offset = 0):
         return SBDD_o2s({}).projection_BVDD(index, offset)
+
+    def reduce(self, reduction_tuple = None):
+        if reduction_tuple is not None:
+            return super().reduce(reduction_tuple)
+        else:
+            return self
 
     def compute_unary(self, op):
         new_bvdd = type(self)({})
@@ -502,9 +546,6 @@ class BVDD_uncached(SBDD_o2s):
             return BVDD({}).projection_BVDD(0, offset)
         else:
             return BVDD({}).constant_BVDD(BVDD.projection(index - 1, offset))
-
-    def projection_proto():
-        return BVDD_uncached.projection(0, 1)
 
     def reduce_BVDD(self):
         # assert index > 0
