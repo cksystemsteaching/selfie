@@ -147,11 +147,23 @@ class SBDD_i2o(SBDD):
         return type(self)(dict([(input_value, op(self.i2o[input_value]))
             for input_value in self.i2o]))
 
+    def intersect_binary(self, bvdd2):
+        assert type(bvdd2) is type(self)
+        # bvdd1.i2o.keys() & bvdd2.i2o.keys()
+        return [(input_value, input_value) for input_value in range(256)]
+
     def compute_binary(self, op, bvdd2):
         assert type(bvdd2) is type(self)
         bvdd1 = self
-        return type(self)(dict([(input_value, op(bvdd1.i2o[input_value], bvdd2.i2o[input_value]))
-            for input_value in range(256)])) # bvdd1.i2o.keys() & bvdd2.i2o.keys()
+        return type(self)(dict([(input_value,
+            op(bvdd1.i2o[input_value], bvdd2.i2o[input_value]))
+                for input_value, _ in bvdd1.intersect_binary(bvdd2)]))
+
+    def intersect_ternary(self, bvdd2, bvdd3):
+        assert type(bvdd2) is type(self)
+        assert type(bvdd3) is type(self)
+        # bvdd1.i2o.keys() & bvdd2.i2o.keys() & bvdd3.i2o.keys()
+        return [(input_value, input_value, input_value) for input_value in range(256)]
 
     def compute_ternary(self, op, bvdd2, bvdd3):
         assert type(bvdd2) is type(self)
@@ -159,7 +171,7 @@ class SBDD_i2o(SBDD):
         bvdd1 = self
         return type(self)(dict([(input_value,
             op(bvdd1.i2o[input_value], bvdd2.i2o[input_value], bvdd3.i2o[input_value]))
-                for input_value in range(256)])) # bvdd1.i2o.keys() & bvdd2.i2o.keys() & bvdd3.i2o.keys()
+                for input_value, _, _ in bvdd1.intersect_ternary(bvdd2, bvdd3)]))
 
     def get_printed_BVDD(self, output_value):
         return [input_value for input_value in self.i2o if self.i2o[input_value] == output_value]
@@ -241,8 +253,9 @@ class SBDD_s2o(SBDD):
     def compute_binary(self, op, bvdd2):
         assert type(bvdd2) is type(self)
         bvdd1 = self
-        return type(self)(dict([(inputs[0] & inputs[1], op(bvdd1.s2o[inputs[0]], bvdd2.s2o[inputs[1]]))
-            for inputs in bvdd1.intersect_binary(bvdd2)])).reduce()
+        return type(self)(dict([(inputs1 & inputs2,
+            op(bvdd1.s2o[inputs1], bvdd2.s2o[inputs2]))
+                for inputs1, inputs2 in bvdd1.intersect_binary(bvdd2)])).reduce()
 
     def intersect_ternary(self, bvdd2, bvdd3):
         assert type(bvdd2) is type(self)
@@ -258,9 +271,9 @@ class SBDD_s2o(SBDD):
         assert type(bvdd2) is type(self)
         assert type(bvdd3) is type(self)
         bvdd1 = self
-        return type(self)(dict([(inputs[0] & inputs[1] & inputs[2],
-            op(bvdd1.s2o[inputs[0]], bvdd2.s2o[inputs[1]], bvdd3.s2o[inputs[2]]))
-                for inputs in bvdd1.intersect_ternary(bvdd2, bvdd3)])).reduce()
+        return type(self)(dict([(inputs1 & inputs2 & inputs3,
+            op(bvdd1.s2o[inputs1], bvdd2.s2o[inputs2], bvdd3.s2o[inputs3]))
+                for inputs1, inputs2, inputs3 in bvdd1.intersect_ternary(bvdd2, bvdd3)])).reduce()
 
     def get_printed_BVDD(self, output_value):
         return [SBDD.get_input_values(inputs) for inputs in self.s2o if self.s2o[inputs] == output_value]
@@ -337,9 +350,8 @@ class SBDD_o2s(SBDD):
         assert type(bvdd2) is type(self)
         bvdd1 = self
         new_bvdd = type(self)({})
-        for output_tuple in bvdd1.intersect_binary(bvdd2):
-            new_bvdd.map(bvdd1.o2s[output_tuple[0]] & bvdd2.o2s[output_tuple[1]],
-                op(output_tuple[0], output_tuple[1]))
+        for output1, output2 in bvdd1.intersect_binary(bvdd2):
+            new_bvdd.map(bvdd1.o2s[output1] & bvdd2.o2s[output2], op(output1, output2))
         return new_bvdd
 
     def intersect_ternary(self, bvdd2, bvdd3):
@@ -357,9 +369,9 @@ class SBDD_o2s(SBDD):
         assert type(bvdd3) is type(self)
         bvdd1 = self
         new_bvdd = type(self)({})
-        for output_tuple in bvdd1.intersect_ternary(bvdd2, bvdd3):
-            new_bvdd.map(bvdd1.o2s[output_tuple[0]] & bvdd2.o2s[output_tuple[1]] & bvdd3.o2s[output_tuple[2]],
-                op(output_tuple[0], output_tuple[1], output_tuple[2]))
+        for output1, output2, output3 in bvdd1.intersect_ternary(bvdd2, bvdd3):
+            new_bvdd.map(bvdd1.o2s[output1] & bvdd2.o2s[output2] & bvdd3.o2s[output3],
+                op(output1, output2, output3))
         return new_bvdd
 
     def get_printed_BVDD(self, output_value):
