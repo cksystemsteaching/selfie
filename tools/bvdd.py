@@ -78,6 +78,21 @@ class SBDD:
         assert self.is_consistent()
         return True
 
+    def tuple2exit(tuple_inv, tuple_ins):
+        if tuple_ins not in tuple_inv:
+            tuple_inv[tuple_ins] = len(tuple_inv) + 1
+        return tuple_inv[tuple_ins]
+
+    def pair_product(self, bvdd2):
+        pair_inv = {}
+        return (self.compute_binary(lambda x, y: SBDD.tuple2exit(pair_inv, (x, y)), bvdd2),
+            dict([(pair_inv[pair], pair) for pair in pair_inv]))
+
+    def triple_product(self, bvdd2, bvdd3):
+        triple_inv = {}
+        return (self.compute_ternary(lambda x, y, z: SBDD.tuple2exit(triple_inv, (x, y, z)), bvdd2, bvdd3),
+            dict([(triple_inv[triple], triple) for triple in triple_inv]))
+
     def compute_ite(self, bvdd2, bvdd3):
         assert type(bvdd2) is type(self)
         assert type(bvdd3) is type(self)
