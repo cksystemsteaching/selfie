@@ -111,8 +111,18 @@ class BVDD_Node:
             return input_values
 
     def get_paths(self, exit_i, index_i = 0):
-        # TODO: generalize to BVDDs
-        return [(index_i, self.get_inputs_for_output(exit_i))]
+        path = []
+        s2o = self.get_s2o()
+        for inputs in s2o:
+            output = s2o[inputs]
+            inputs = 2**inputs if isinstance(self, SBDD_i2o) else inputs
+            if isinstance(output, BVDD):
+                other_path = output.get_paths(exit_i, index_i + 1)
+                if other_path:
+                    path += [([(index_i, inputs)], other_path)]
+            elif output == exit_i:
+                path += [(index_i, inputs)]
+        return path
 
     def union(self):
         # for s2o and o2s only
@@ -141,8 +151,8 @@ class BVDD_Node:
         assert self.is_consistent()
         return True
 
-    def projection_proto():
-        return BVDD.projection(0, 1)
+    def projection_proto(index):
+        return BVDD.projection(index, 1)
 
     def tuple2exit(tuple_inv, tuple_ins):
         if tuple_ins not in tuple_inv:

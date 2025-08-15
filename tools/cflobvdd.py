@@ -20,7 +20,6 @@ from math import log2
 from math import ceil
 
 class BV_Grouping:
-    # generalizing CFLOBDDs to single-byte input variables
     pair_product_cache = {}
     pair_product_cache_hits = 0
 
@@ -202,11 +201,12 @@ class BV_Dont_Care_Grouping(BV_Grouping):
         return self
 
 class BV_Fork_Grouping(BV_Grouping):
+    # generalizing CFLOBDD forking to BVDDs
     representatives = {}
     representatives_hits = 0
 
-    def __init__(self, bvdd, number_of_exits):
-        super().__init__(0, number_of_exits)
+    def __init__(self, level, number_of_exits, bvdd):
+        super().__init__(level, number_of_exits)
         self.bvdd = bvdd
 
     def __repr__(self):
@@ -216,10 +216,11 @@ class BV_Fork_Grouping(BV_Grouping):
             indentation + f"{self.bvdd}")
 
     def __hash__(self):
-        return hash((self.number_of_exits, self.bvdd))
+        return hash((self.level, self.number_of_exits, self.bvdd))
 
     def __eq__(self, g2):
         return (isinstance(g2, BV_Fork_Grouping) and
+            self.level == g2.level and
             self.number_of_exits == g2.number_of_exits and
             self.bvdd == g2.bvdd)
 
@@ -250,15 +251,15 @@ class BV_Fork_Grouping(BV_Grouping):
             BV_Fork_Grouping.representatives[self] = self
         return BV_Fork_Grouping.representatives[self]
 
-    def projection_proto():
-        return BV_Fork_Grouping(BVDD.BVDD.projection_proto(), 256).representative()
+    def projection_proto(level, input_i):
+        return BV_Fork_Grouping(level, 256, BVDD.BVDD.projection_proto(input_i)).representative()
 
     def pair_product(self, g2):
         assert isinstance(g2, BV_Grouping)
 
         g1 = self
 
-        if isinstance(g2, BV_Dont_Care_Grouping):
+        if g2.is_no_distinction_proto():
             return g2.pair_product(g1, False)
         else:
             if g1.is_pair_product_cached(g2):
@@ -268,7 +269,8 @@ class BV_Fork_Grouping(BV_Grouping):
 
             g, pt = g1.bvdd.pair_product(g2.bvdd)
 
-            return g1.cache_pair_product(g2, BV_Fork_Grouping(g, len(pt)).representative(), pt)
+            return g1.cache_pair_product(g2,
+                BV_Fork_Grouping(self.level, len(pt), g).representative(), pt)
 
     def triple_product(self, g2, g3):
         assert isinstance(g2, BV_Grouping) and isinstance(g3, BV_Grouping)
@@ -287,7 +289,8 @@ class BV_Fork_Grouping(BV_Grouping):
 
             g, tt = g1.bvdd.triple_product(g2.bvdd, g3.bvdd)
 
-            return g1.cache_triple_product(g2, g3, BV_Fork_Grouping(g, len(tt)).representative(), tt)
+            return g1.cache_triple_product(g2, g3,
+                BV_Fork_Grouping(self.level, len(tt), g).representative(), tt)
 
     def reduce(self, reduction_tuple):
         reduction_length, reduction = super().reduce(reduction_tuple)
@@ -298,7 +301,8 @@ class BV_Fork_Grouping(BV_Grouping):
             if self.is_reduction_cached(reduction_tuple):
                 return self.get_cached_reduction(reduction_tuple)
 
-            g = BV_Fork_Grouping(self.bvdd.reduce(reduction_tuple), reduction_length).representative()
+            g = BV_Fork_Grouping(self.level, reduction_length,
+                self.bvdd.reduce(reduction_tuple)).representative()
 
             assert g.number_of_exits == reduction_length
 
@@ -421,18 +425,17 @@ class BV_Internal_Grouping(BV_Grouping):
             BV_Internal_Grouping.representatives[self] = self
         return BV_Internal_Grouping.representatives[self]
 
-    def projection_proto(level, input_i):
-        # generalizing CFLOBDD projection to bitvectors of size == 8
-        if level == 0:
-            assert input_i == 0
-            return BV_Fork_Grouping.projection_proto()
+    def projection_proto(level, fork_level, input_i):
+        # generalizing CFLOBDD projection to CFLOBVDD projection
+        assert 0 <= input_i < 2**level
+        if level == fork_level:
+            return BV_Fork_Grouping.projection_proto(level, input_i)
         else:
-            assert 0 <= input_i < 2**level
-
             g = BV_Internal_Grouping(level, 256)
 
             if input_i < 2**(level - 1):
-                g.a_connection = BV_Internal_Grouping.projection_proto(level - 1, input_i)
+                g.a_connection = BV_Internal_Grouping.projection_proto(level - 1, fork_level,
+                    input_i)
                 # g.a_return_tuple == {} representing g.a_return_tuple = dict([(e, e)
                     # for e in range(1, 256 + 1)])
 
@@ -448,7 +451,7 @@ class BV_Internal_Grouping(BV_Grouping):
 
                 g.number_of_b_connections = 1
 
-                projection_proto = BV_Internal_Grouping.projection_proto(level - 1,
+                projection_proto = BV_Internal_Grouping.projection_proto(level - 1, fork_level,
                     input_i - 2**(level - 1))
 
                 g.b_connections = {1:projection_proto}
@@ -812,9 +815,9 @@ class CFLOBVDD:
         return CFLOBVDD.representative(
             BV_No_Distinction_Proto.representative(level), {1:output})
 
-    def byte_constant(number_of_input_bytes, output):
+    def byte_constant(number_of_input_bytes, fork_level, output):
         assert number_of_input_bytes > 0
-        level = ceil(log2(number_of_input_bytes))
+        level = max(ceil(log2(number_of_input_bytes)), fork_level)
         return CFLOBVDD.constant(level, output)
 
     def false(level):
@@ -841,17 +844,18 @@ class CFLOBVDD:
         return self.binary_apply_and_reduce(
             CFLOBVDD.constant(self.grouping.level), lambda x, y: op(x), number_of_output_bits)
 
-    def projection(level, input_i):
+    def projection(level, fork_level, input_i):
+        assert 0 <= fork_level <= level
         assert 0 <= input_i < 2**level
         CFLOBVDD.max_level = max(CFLOBVDD.max_level, level)
         return CFLOBVDD.representative(
-            BV_Internal_Grouping.projection_proto(level, input_i),
+            BV_Internal_Grouping.projection_proto(level, fork_level, input_i),
             dict([(output + 1, output) for output in range(256)]))
 
-    def byte_projection(number_of_input_bytes, byte_i):
+    def byte_projection(number_of_input_bytes, fork_level, byte_i):
         assert 0 <= byte_i < number_of_input_bytes
-        level = ceil(log2(number_of_input_bytes))
-        return CFLOBVDD.projection(level, byte_i)
+        level = max(ceil(log2(number_of_input_bytes)), fork_level)
+        return CFLOBVDD.projection(level, fork_level, byte_i)
 
     def collapse_classes_leftmost(equiv_classes):
         # legacy code
