@@ -230,7 +230,7 @@ class BV_Fork_Grouping(BV_Grouping):
         return True
 
     def number_of_connections(self):
-        return self.number_of_exits
+        return self.bvdd.number_of_connections()
 
     def number_of_distinct_inputs(self, exit_i):
         return self.bvdd.number_of_distinct_inputs(exit_i)
