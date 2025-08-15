@@ -112,10 +112,9 @@ class BVDD_Node:
 
     def get_paths(self, exit_i, index_i = 0):
         path = []
-        s2o = self.get_s2o()
-        for inputs in s2o:
-            output = s2o[inputs]
-            inputs = 2**inputs if isinstance(self, SBDD_i2o) else inputs
+        o2s = self.get_o2s()
+        for output in o2s:
+            inputs = o2s[output]
             if isinstance(output, BVDD):
                 other_path = output.get_paths(exit_i, index_i + 1)
                 if other_path:
@@ -232,16 +231,14 @@ class SBDD_i2o(BVDD_Node):
     def __eq__(self, bvdd2):
         return type(bvdd2) is type(self) and self.i2o == bvdd2.i2o
 
-    def get_inputs_for_output(self, output_value):
-        inputs = 0
-        for input_value in self.i2o:
-            output = self.i2o[input_value]
-            if output == output_value:
-                inputs |= 2**input_value
-        return inputs
-
     def get_s2o(self):
         return self.i2o
+
+    def get_o2s(self):
+        o2s = {}
+        for input_value in self.i2o:
+            BVDD_Node.map(o2s, 2**input_value, self.i2o[input_value])
+        return o2s
 
     def set(self, input_value, output):
         assert input_value not in self.i2o
@@ -339,16 +336,12 @@ class SBDD_s2o(BVDD_Node):
     def __eq__(self, bvdd2):
         return type(bvdd2) is type(self) and self.s2o == bvdd2.s2o
 
-    def get_inputs_for_output(self, output_value):
-        assert self.is_reduced()
-        for inputs in self.s2o:
-            output = self.s2o[inputs]
-            if output == output_value:
-                return inputs
-        return 0
-
     def get_s2o(self):
         return self.s2o
+
+    def get_o2s(self):
+        assert self.is_reduced()
+        return dict([(output, inputs) for inputs, output in self.s2o.items()])
 
     def set(self, inputs, output):
         assert inputs not in self.s2o
@@ -454,11 +447,11 @@ class SBDD_o2s(BVDD_Node):
     def __eq__(self, bvdd2):
         return type(bvdd2) is type(self) and self.o2s == bvdd2.o2s
 
-    def get_inputs_for_output(self, output_value):
-        return self.o2s[output_value] if output_value in self.o2s else 0
-
     def get_s2o(self):
         return dict([(inputs, output) for output, inputs in self.o2s.items()])
+
+    def get_o2s(self):
+        return self.o2s
 
     def map(self, inputs, output):
         BVDD_Node.map(self.o2s, inputs, output)
