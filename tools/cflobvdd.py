@@ -30,27 +30,25 @@ class BV_Grouping:
     reduction_cache = {}
     reduction_cache_hits = 0
 
-    def __init__(self, level, number_of_exits,
-        number_of_inputs_per_exit = {}, number_of_connections = 0):
+    def __init__(self, level, number_of_exits, number_of_inputs_per_exit = {}):
         assert level >= 0
         self.level = level
         self.number_of_exits = number_of_exits
         assert not number_of_inputs_per_exit or len(number_of_inputs_per_exit) == number_of_exits
         self.number_of_inputs_per_exit = number_of_inputs_per_exit
-        self.number_of_connections = number_of_connections
 
     def __repr__(self):
         return f"{self.level} w/ {self.number_of_exits} exits"
+
+    def is_consistent(self):
+        assert self.number_of_exits > 0
+        return True
 
     def number_of_distinct_inputs(self, exit_i = None):
         if exit_i is not None:
             return self.number_of_inputs_per_exit[exit_i]
         else:
             return sum(self.number_of_inputs_per_exit.values())
-
-    def is_consistent(self):
-        assert self.number_of_exits > 0
-        return True
 
     def is_pair_product_cached(self, g2):
         if (self, g2) in BV_Grouping.pair_product_cache:
@@ -127,13 +125,16 @@ class BV_Dont_Care_Grouping(BV_Grouping):
     def __repr__(self):
         return "dontcare @ " + super().__repr__()
 
-    def get_paths(self, exit_i, index_i = 0):
-        assert exit_i == 1
-        return [(index_i, 0)]
-
     def is_consistent(self):
         assert super().is_consistent()
         return True
+
+    def number_of_connections(self):
+        return 0
+
+    def get_paths(self, exit_i, index_i = 0):
+        assert exit_i == 1
+        return [(index_i, 0)]
 
     def representative():
         if BV_Dont_Care_Grouping.representatives is None:
@@ -211,8 +212,7 @@ class BV_Fork_Grouping(BV_Grouping):
     def __init__(self, bvdd, number_of_exits):
         super().__init__(0,
             number_of_exits,
-            dict([(i + 1, 0) for i in range(number_of_exits)]), # TODO: implement
-            0) # TODO: implement
+            dict([(i + 1, 0) for i in range(number_of_exits)])) # TODO: implement
         self.bvdd = bvdd
 
     def __repr__(self):
@@ -229,18 +229,21 @@ class BV_Fork_Grouping(BV_Grouping):
             self.number_of_exits == g2.number_of_exits and
             self.bvdd == g2.bvdd)
 
+    def is_consistent(self):
+        assert super().is_consistent()
+        # TODO: assert len(self.bvdd.number_of_exits) == self.number_of_exits
+        assert self.bvdd.is_consistent()
+        return True
+
+    def number_of_connections(self):
+        return self.number_of_exits
+
     def get_input_values(inputs):
         return BVDD.BVDD.get_input_values(inputs)
 
     def get_paths(self, exit_i, index_i = 0):
         assert 1 <= exit_i <= self.number_of_exits
         return self.bvdd.get_paths(exit_i, index_i)
-
-    def is_consistent(self):
-        assert super().is_consistent()
-        # TODO: assert len(self.bvdd.number_of_exits) == self.number_of_exits
-        assert self.bvdd.is_consistent()
-        return True
 
     def representative(self):
         if self in BV_Fork_Grouping.representatives:
@@ -346,17 +349,6 @@ class BV_Internal_Grouping(BV_Grouping):
             self.b_connections == g2.b_connections and
             self.b_return_tuples == g2.b_return_tuples)
 
-    def get_paths(self, exit_i, index_i = 0):
-        inputs = []
-        for b_i in self.b_return_tuples:
-            b_rt = self.b_return_tuples[b_i]
-            for b_e_i in b_rt:
-                if exit_i == b_rt[b_e_i]:
-                    inputs += [(self.a_connection.get_paths(b_i, index_i),
-                        self.b_connections[b_i].get_paths(b_e_i, index_i + 2**(self.level - 1)))]
-                    break
-        return inputs
-
     def is_consistent(self):
         assert super().is_consistent()
         g_a = self.a_connection
@@ -392,20 +384,37 @@ class BV_Internal_Grouping(BV_Grouping):
             g_exits |= g_b_i_rt_targets
         return True
 
+    def number_of_connections(self):
+        g_a = self.a_connection
+        count = g_a.number_of_connections()
+        for g_b_i in self.b_connections:
+            g_b = self.b_connections[g_b_i]
+            count += g_b.number_of_connections()
+        return count
+
     def pre_compute_number_of_inputs_per_exit(self):
         self.number_of_inputs_per_exit = dict([(i, 0) for i in range(1, self.number_of_exits + 1)])
         g_a = self.a_connection
-        self.number_of_connections = g_a.number_of_connections
         for g_b_i in self.b_connections:
             a_number_of_inputs = g_a.number_of_inputs_per_exit[g_b_i]
             g_b = self.b_connections[g_b_i]
-            self.number_of_connections += g_b.number_of_connections
             g_b_i_rt = self.b_return_tuples[g_b_i]
             for g_b_i_rt_e_j in g_b_i_rt:
                 e_i = g_b_i_rt[g_b_i_rt_e_j]
                 b_number_of_inputs = g_b.number_of_inputs_per_exit[g_b_i_rt_e_j]
                 self.number_of_inputs_per_exit[e_i] += a_number_of_inputs * b_number_of_inputs
         # TODO: assert self.number_of_distinct_inputs() >= self.number_of_exits
+
+    def get_paths(self, exit_i, index_i = 0):
+        inputs = []
+        for b_i in self.b_return_tuples:
+            b_rt = self.b_return_tuples[b_i]
+            for b_e_i in b_rt:
+                if exit_i == b_rt[b_e_i]:
+                    inputs += [(self.a_connection.get_paths(b_i, index_i),
+                        self.b_connections[b_i].get_paths(b_e_i, index_i + 2**(self.level - 1)))]
+                    break
+        return inputs
 
     def representative(self):
         self.pre_compute_number_of_inputs_per_exit()
@@ -713,6 +722,9 @@ class CFLOBVDD:
         print(f"CFLOBVDD collapsed-equivalence-classes cache utilization: {BVDD.utilization(Collapsed_Classes.cache_hits, len(Collapsed_Classes.cache))}")
         print(f"CFLOBVDD cache utilization: {BVDD.utilization(CFLOBVDD.representatives_hits, len(CFLOBVDD.representatives))}")
 
+    def number_of_connections(self):
+        return self.grouping.number_of_connections()
+
     def number_of_outputs(self):
         return len(self.outputs)
 
@@ -770,7 +782,7 @@ class CFLOBVDD:
     def get_printed_CFLOBVDD(self, value = None):
         return (f"CFLOBVDD:\n" +
             f"{2**self.grouping.level} input variables\n" +
-            f"{self.grouping.number_of_connections} connections\n" +
+            f"{self.number_of_connections()} connections\n" +
             f"{self.number_of_outputs()} output values\n" +
             f"{self.number_of_distinct_outputs()} disctinct output values\n"
             f"{self.number_of_distinct_inputs()} distinct inputs\n" +
