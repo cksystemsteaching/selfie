@@ -40,6 +40,9 @@ class BVDD_Node:
     def is_dont_care(self):
         return self.number_of_distinct_SBDD_outputs() == 1
 
+    def is_constant(self):
+        return self.is_dont_care() and not isinstance(self.get_dont_care_output(), BVDD)
+
     def number_of_connections(self):
         count = 0
         for output in self.get_s2o().values():

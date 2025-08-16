@@ -304,7 +304,7 @@ class BV_Fork_Grouping(BV_Grouping):
 
             bvdd = self.bvdd.reduce(reduction_tuple)
 
-            if bvdd.is_dont_care():
+            if bvdd.is_constant():
                 g = BV_Dont_Care_Grouping.representative(self.fork_level)
             else:
                 g = BV_Fork_Grouping(self.level, reduction_length, bvdd).representative()
