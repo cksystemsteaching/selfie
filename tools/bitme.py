@@ -62,6 +62,7 @@ class Values:
     BVDD = False
 
     CFLOBVDD = False
+    CFLOBVDD_level = 0
     CFLOBVDD_fork_level = 0
 
     total_number_of_constants = 0
@@ -84,8 +85,10 @@ class Values:
             if Values.BVDD:
                 self.bvdd = BVDD.BVDD.constant(value)
             if Values.CFLOBVDD:
-                self.cflobvdd = CFLOBVDD.CFLOBVDD.byte_constant(len(Variable.bvdd_input),
+                self.cflobvdd = CFLOBVDD.CFLOBVDD.byte_constant(
+                    Values.CFLOBVDD_level,
                     Values.CFLOBVDD_fork_level,
+                    len(Variable.bvdd_input),
                     value)
 
             Values.total_number_of_constants += 1
@@ -93,8 +96,10 @@ class Values:
             if Values.BVDD:
                 self.bvdd = BVDD.BVDD.projection(Variable.bvdd_index[var_line])
             if Values.CFLOBVDD:
-                self.cflobvdd = CFLOBVDD.CFLOBVDD.byte_projection(len(Variable.bvdd_input),
+                self.cflobvdd = CFLOBVDD.CFLOBVDD.byte_projection(
+                    Values.CFLOBVDD_level,
                     Values.CFLOBVDD_fork_level,
+                    len(Variable.bvdd_input),
                     Variable.bvdd_index[var_line])
 
             Values.total_number_of_constants += 2**var_line.sid_line.size
@@ -1528,7 +1533,7 @@ def main():
     parser.add_argument('--use-bitwuzla', action='store_true')
 
     parser.add_argument('--use-BVDD', action='store_true')
-    parser.add_argument('--use-CFLOBVDD', nargs='?', default=None, const=0, type=int)
+    parser.add_argument('--use-CFLOBVDD', nargs='*', type=int)
 
     parser.add_argument('--no-reduction', action='store_true')
 
@@ -1591,7 +1596,8 @@ def main():
             Values.BVDD = True
         if args.use_CFLOBVDD is not None:
             Values.CFLOBVDD = True
-            Values.CFLOBVDD_fork_level = args.use_CFLOBVDD
+            Values.CFLOBVDD_level = args.use_CFLOBVDD[0] if len(args.use_CFLOBVDD) > 0 else 0
+            Values.CFLOBVDD_fork_level = args.use_CFLOBVDD[1] if len(args.use_CFLOBVDD) > 1 else 0
 
         CFLOBVDD.CFLOBVDD.REDUCE = not args.no_reduction
 

@@ -815,9 +815,9 @@ class CFLOBVDD:
         return CFLOBVDD.representative(
             BV_No_Distinction_Proto.representative(level), {1:output})
 
-    def byte_constant(number_of_input_bytes, fork_level, output):
+    def byte_constant(level, fork_level, number_of_input_bytes, output):
         assert number_of_input_bytes > 0
-        level = max(ceil(log2(number_of_input_bytes)), fork_level)
+        level = max(level, fork_level, ceil(log2(number_of_input_bytes)))
         return CFLOBVDD.constant(level, output)
 
     def false(level):
@@ -852,9 +852,9 @@ class CFLOBVDD:
             BV_Internal_Grouping.projection_proto(level, fork_level, input_i),
             dict([(output + 1, output) for output in range(256)]))
 
-    def byte_projection(number_of_input_bytes, fork_level, byte_i):
+    def byte_projection(level, fork_level, number_of_input_bytes, byte_i):
         assert 0 <= byte_i < number_of_input_bytes
-        level = max(ceil(log2(number_of_input_bytes)), fork_level)
+        level = max(level, fork_level, ceil(log2(number_of_input_bytes)))
         return CFLOBVDD.projection(level, fork_level, byte_i)
 
     def collapse_classes_leftmost(equiv_classes):
