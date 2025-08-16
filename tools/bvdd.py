@@ -147,10 +147,12 @@ class BVDD_Node:
             o2s[output] |= inputs
 
     def is_reduced(self):
+        # only for i2o and o2s
         assert self.is_consistent()
         return True
 
     def projection_proto(index):
+        # use offset 1 for CFLOBVDDs
         return BVDD.projection(index, 1)
 
     def tuple2exit(tuple_inv, tuple_ins):
@@ -168,6 +170,10 @@ class BVDD_Node:
         return (self.compute_ternary(lambda x, y, z: BVDD_Node.tuple2exit(triple_inv, (x, y, z)), bvdd2, bvdd3),
             dict([(triple_inv[triple], triple) for triple in triple_inv]))
 
+    def reduce_SBDD(self):
+        # only for i2o and o2s
+        return self
+
     def reduce_BVDD(self, index = 1):
         # dont-care SBDDs are not reduced
         return self
@@ -182,7 +188,7 @@ class BVDD_Node:
                 new_bvdd.set(inputs, reduced_output)
             else:
                 new_bvdd.set(inputs, reduction_tuple[output])
-        return new_bvdd.reduce().reduce_BVDD(index)
+        return new_bvdd.reduce_SBDD().reduce_BVDD(index)
 
     def compute_ite(self, bvdd2, bvdd3):
         assert type(bvdd2) is type(self)
@@ -284,12 +290,6 @@ class SBDD_i2o(BVDD_Node):
     def projection(index = 0, offset = 0):
         return SBDD_i2o({}).projection_BVDD(index, offset)
 
-    def reduce(self, reduction_tuple = None, index = 0):
-        if reduction_tuple is not None:
-            return super().reduce(reduction_tuple, index)
-        else:
-            return self
-
     def compute_unary(self, op):
         return type(self)(dict([(input_value, op(self.i2o[input_value]))
             for input_value in self.i2o]))
@@ -385,10 +385,8 @@ class SBDD_s2o(BVDD_Node):
     def projection(index = 0, offset = 0):
         return SBDD_s2o({}).projection_BVDD(index, offset)
 
-    def reduce(self, reduction_tuple = None, index = 0):
-        if reduction_tuple is not None:
-            return super().reduce(reduction_tuple, index)
-        elif not self.is_reduced():
+    def reduce_SBDD(self):
+        if not self.is_reduced():
             o2s = {}
             for inputs in self.s2o:
                 BVDD_Node.map(o2s, inputs, self.s2o[inputs])
@@ -396,7 +394,7 @@ class SBDD_s2o(BVDD_Node):
         return self
 
     def compute_unary(self, op):
-        return type(self)(dict([(inputs, op(self.s2o[inputs])) for inputs in self.s2o])).reduce()
+        return type(self)(dict([(inputs, op(self.s2o[inputs])) for inputs in self.s2o])).reduce_SBDD()
 
     def intersect_binary(self, bvdd2):
         assert type(bvdd2) is type(self)
@@ -411,7 +409,7 @@ class SBDD_s2o(BVDD_Node):
         bvdd1 = self
         return type(self)(dict([(inputs1 & inputs2,
             op(bvdd1.s2o[inputs1], bvdd2.s2o[inputs2]))
-                for inputs1, inputs2 in bvdd1.intersect_binary(bvdd2)])).reduce()
+                for inputs1, inputs2 in bvdd1.intersect_binary(bvdd2)])).reduce_SBDD()
 
     def intersect_ternary(self, bvdd2, bvdd3):
         assert type(bvdd2) is type(self)
@@ -429,7 +427,7 @@ class SBDD_s2o(BVDD_Node):
         bvdd1 = self
         return type(self)(dict([(inputs1 & inputs2 & inputs3,
             op(bvdd1.s2o[inputs1], bvdd2.s2o[inputs2], bvdd3.s2o[inputs3]))
-                for inputs1, inputs2, inputs3 in bvdd1.intersect_ternary(bvdd2, bvdd3)])).reduce()
+                for inputs1, inputs2, inputs3 in bvdd1.intersect_ternary(bvdd2, bvdd3)])).reduce_SBDD()
 
 class SBDD_o2s(BVDD_Node):
     # single-byte decision diagram with output-to-input-sets mapping
@@ -493,12 +491,6 @@ class SBDD_o2s(BVDD_Node):
     def projection(index = 0, offset = 0):
         return SBDD_o2s({}).projection_BVDD(index, offset)
 
-    def reduce(self, reduction_tuple = None, index = 0):
-        if reduction_tuple is not None:
-            return super().reduce(reduction_tuple, index)
-        else:
-            return self
-
     def compute_unary(self, op):
         new_bvdd = type(self)({})
         for output in self.o2s:
@@ -557,6 +549,7 @@ class BVDD_uncached(SBDD_o2s):
             # all inputs map to the same output
             return self.get_dont_care_output()
         else:
+            # keep dont-care SBDDs at index 0
             return self
 
     def op_unary(op, output1):
