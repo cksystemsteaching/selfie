@@ -32,7 +32,7 @@ class BVDD_Node:
     def __str__(self):
         assert self.is_consistent() and self.is_dont_care()
         # all inputs map to the same output
-        return str([f"[0,255] -> {self.get_dont_care_output()}"])
+        return f"[0,255] -> {self.get_dont_care_output()}"
 
     def is_consistent(self):
         return self.number_of_inputs() == 256
@@ -271,10 +271,10 @@ class SBDD_i2o(BVDD_Node):
         return next(iter(self.i2o.values()))
 
     def is_always_false(self):
-        return self.is_dont_care() and False in self.i2o.values()
+        return self.is_constant() and False in self.i2o.values()
 
     def is_always_true(self):
-        return self.is_dont_care() and True in self.i2o.values()
+        return self.is_constant() and True in self.i2o.values()
 
     def constant_BVDD(self, output):
         assert (isinstance(output, bool) or
@@ -366,10 +366,10 @@ class SBDD_s2o(BVDD_Node):
         return self.number_of_SBDD_outputs() == self.number_of_distinct_SBDD_outputs()
 
     def is_always_false(self):
-        return self.is_dont_care() and False in self.s2o.values()
+        return self.is_constant() and False in self.s2o.values()
 
     def is_always_true(self):
-        return self.is_dont_care() and True in self.s2o.values()
+        return self.is_constant() and True in self.s2o.values()
 
     def constant_BVDD(self, output):
         assert (isinstance(output, bool) or
@@ -472,10 +472,10 @@ class SBDD_o2s(BVDD_Node):
         return next(iter(self.o2s))
 
     def is_always_false(self):
-        return self.is_dont_care() and False in self.o2s
+        return self.is_constant() and False in self.o2s
 
     def is_always_true(self):
-        return self.is_dont_care() and True in self.o2s
+        return self.is_constant() and True in self.o2s
 
     def constant_BVDD(self, output):
         assert (isinstance(output, bool) or
@@ -548,8 +548,8 @@ class BVDD_uncached(SBDD_o2s):
 
     def reduce_BVDD(self, index = 1):
         assert self.is_reduced()
-        if index > 0 and self.is_dont_care():
-            # all inputs map to the same output
+        if index > 0 and self.is_constant():
+            # all inputs map to a constant
             return self.get_dont_care_output()
         else:
             # keep dont-care SBDDs at index 0
