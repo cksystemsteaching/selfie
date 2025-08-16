@@ -828,11 +828,11 @@ class CFLOBVDD:
         level = max(level, fork_level, ceil(log2(number_of_input_bytes)))
         return CFLOBVDD.constant(level, fork_level, output)
 
-    def false(level):
-        return CFLOBVDD.constant(level, False)
+    def false(level, fork_level):
+        return CFLOBVDD.constant(level, fork_level, False)
 
-    def true(level):
-        return CFLOBVDD.constant(level, True)
+    def true(level, fork_level):
+        return CFLOBVDD.constant(level, fork_level, True)
 
     def flip_value_tuple(self):
         # self must be reduced
@@ -840,10 +840,10 @@ class CFLOBVDD:
         return CFLOBVDD.representative(self.grouping, {1:self.outputs[2], 2:self.outputs[1]})
 
     def complement(self):
-        if self == CFLOBVDD.false(self.grouping.level):
-            return CFLOBVDD.true(self.grouping.level)
-        elif self == CFLOBVDD.true(self.grouping.level):
-            return CFLOBVDD.false(self.grouping.level)
+        if self == CFLOBVDD.false(self.grouping.level, self.grouping.fork_level):
+            return CFLOBVDD.true(self.grouping.level, self.grouping.fork_level)
+        elif self == CFLOBVDD.true(self.grouping.level, self.grouping.fork_level):
+            return CFLOBVDD.false(self.grouping.level, self.grouping.fork_level)
         else:
             # self must be reduced
             return self.flip_value_tuple()
