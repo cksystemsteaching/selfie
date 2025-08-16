@@ -168,20 +168,21 @@ class BVDD_Node:
         return (self.compute_ternary(lambda x, y, z: BVDD_Node.tuple2exit(triple_inv, (x, y, z)), bvdd2, bvdd3),
             dict([(triple_inv[triple], triple) for triple in triple_inv]))
 
-    def reduce_BVDD(self):
+    def reduce_BVDD(self, index = 1):
+        # dont-care SBDDs are not reduced
         return self
 
-    def reduce(self, reduction_tuple):
+    def reduce(self, reduction_tuple, index = 0):
         new_bvdd = type(self)({})
         s2o = self.get_s2o()
         for inputs in s2o:
             output = s2o[inputs]
             if isinstance(output, BVDD):
-                reduced_output = output.reduce(reduction_tuple)
+                reduced_output = output.reduce(reduction_tuple, index + 1)
                 new_bvdd.set(inputs, reduced_output)
             else:
                 new_bvdd.set(inputs, reduction_tuple[output])
-        return new_bvdd.reduce().reduce_BVDD()
+        return new_bvdd.reduce().reduce_BVDD(index)
 
     def compute_ite(self, bvdd2, bvdd3):
         assert type(bvdd2) is type(self)
@@ -283,9 +284,9 @@ class SBDD_i2o(BVDD_Node):
     def projection(index = 0, offset = 0):
         return SBDD_i2o({}).projection_BVDD(index, offset)
 
-    def reduce(self, reduction_tuple = None):
+    def reduce(self, reduction_tuple = None, index = 0):
         if reduction_tuple is not None:
-            return super().reduce(reduction_tuple)
+            return super().reduce(reduction_tuple, index)
         else:
             return self
 
@@ -384,9 +385,9 @@ class SBDD_s2o(BVDD_Node):
     def projection(index = 0, offset = 0):
         return SBDD_s2o({}).projection_BVDD(index, offset)
 
-    def reduce(self, reduction_tuple = None):
+    def reduce(self, reduction_tuple = None, index = 0):
         if reduction_tuple is not None:
-            return super().reduce(reduction_tuple)
+            return super().reduce(reduction_tuple, index)
         elif not self.is_reduced():
             o2s = {}
             for inputs in self.s2o:
@@ -492,9 +493,9 @@ class SBDD_o2s(BVDD_Node):
     def projection(index = 0, offset = 0):
         return SBDD_o2s({}).projection_BVDD(index, offset)
 
-    def reduce(self, reduction_tuple = None):
+    def reduce(self, reduction_tuple = None, index = 0):
         if reduction_tuple is not None:
-            return super().reduce(reduction_tuple)
+            return super().reduce(reduction_tuple, index)
         else:
             return self
 
@@ -550,10 +551,9 @@ class BVDD_uncached(SBDD_o2s):
         else:
             return BVDD({}).constant_BVDD(BVDD.projection(index - 1, offset))
 
-    def reduce_BVDD(self):
-        # assert index > 0
+    def reduce_BVDD(self, index = 1):
         assert self.is_reduced()
-        if self.is_dont_care():
+        if index > 0 and self.is_dont_care():
             # all inputs map to the same output
             return self.get_dont_care_output()
         else:
