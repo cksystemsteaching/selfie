@@ -1589,13 +1589,13 @@ def main():
 
         if args.use_BVDD:
             Values.BVDD = True
-        if args.use_CFLOBVDD:
+        if args.use_CFLOBVDD is not None:
             Values.CFLOBVDD = True
             Values.CFLOBVDD_fork_level = args.use_CFLOBVDD
 
         CFLOBVDD.CFLOBVDD.REDUCE = not args.no_reduction
 
-        if not args.use_BVDD and not args.use_CFLOBVDD:
+        if not args.use_BVDD and args.use_CFLOBVDD is None:
             Values.BVDD = True
 
         bitme_solver = Bitme_Solver(z3_solver, bitwuzla_solver)
