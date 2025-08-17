@@ -789,7 +789,7 @@ class CFLOBVDD:
         return (f"CFLOBVDD:\n" +
             f"{2**self.grouping.level} input variables\n" +
             f"{self.number_of_connections()} connections\n" +
-            f"{self.number_of_outputs()} output values\n" +
+            f"{self.number_of_outputs()} outputs\n" +
             f"{self.number_of_distinct_outputs()} disctinct output values\n"
             f"{self.number_of_distinct_inputs()} distinct inputs\n" +
             f"{self.number_of_solutions(value)} solutions\n" +
