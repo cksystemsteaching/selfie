@@ -395,7 +395,6 @@ class Variable(Expression):
     inputs = {}
 
     bvdd_input = {}
-    bvdd_index = {}
 
     def __init__(self, nid, sid_line, domain, symbol, comment, line_no, index):
         super().__init__(nid, sid_line, domain, 0, comment, line_no)
@@ -427,7 +426,6 @@ class Variable(Expression):
 
             if isinstance(self.sid_line, Bitvector) and self.sid_line.size == 8:
                 Variable.bvdd_input[len(Variable.bvdd_input)] = self
-                Variable.bvdd_index[self] = len(Variable.bvdd_index)
 
     def get_mapped_array_expression_for(self, index):
         if index is not None:

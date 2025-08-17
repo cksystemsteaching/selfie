@@ -57,13 +57,19 @@ class Futures:
         self.cache_futures[step] = Futures.executor.submit(self.get_step, step)
 
 from math import log2
+from math import ceil
 
 class Values:
     BVDD = False
+    BVDD_level = 0
+    BVDD_input = {}
+    BVDD_index = {}
 
     CFLOBVDD = False
     CFLOBVDD_level = 0
     CFLOBVDD_fork_level = 0
+    CFLOBVDD_input = {}
+    CFLOBVDD_index = {}
 
     total_number_of_constants = 0
     total_number_of_values = 0
@@ -88,19 +94,19 @@ class Values:
                 self.cflobvdd = CFLOBVDD.CFLOBVDD.byte_constant(
                     Values.CFLOBVDD_level,
                     Values.CFLOBVDD_fork_level,
-                    len(Variable.bvdd_input),
+                    len(Values.CFLOBVDD_input),
                     value)
 
             Values.total_number_of_constants += 1
         elif isinstance(var_line, Variable):
             if Values.BVDD:
-                self.bvdd = BVDD.BVDD.projection(Variable.bvdd_index[var_line])
+                self.bvdd = BVDD.BVDD.projection(Values.BVDD_index[var_line])
             if Values.CFLOBVDD:
                 self.cflobvdd = CFLOBVDD.CFLOBVDD.byte_projection(
                     Values.CFLOBVDD_level,
                     Values.CFLOBVDD_fork_level,
-                    len(Variable.bvdd_input),
-                    Variable.bvdd_index[var_line])
+                    len(Values.CFLOBVDD_input),
+                    Values.CFLOBVDD_index[var_line])
 
             Values.total_number_of_constants += 2**var_line.sid_line.size
             if Values.BVDD:
@@ -173,7 +179,7 @@ class Values:
             return Values.get_bvdd_node_expression(sid_line,
                 bvdd.get_dont_care_output(), sbdd, index + 1)
         else:
-            var_line = Variable.bvdd_input[index]
+            var_line = Values.BVDD_input[index]
             exp_line = None
             s2o = bvdd.get_s2o()
             # assert s2o is sorted by inputs
@@ -222,7 +228,7 @@ class Values:
                 assert isinstance(path[1], int)
                 index_i = path[0]
                 inputs = path[1]
-                path_expression += Values.get_input_expression(Variable.bvdd_input[index_i], inputs)
+                path_expression += Values.get_input_expression(Values.CFLOBVDD_input[index_i], inputs)
             else:
                 a_paths = Values.get_path_expression(path[0])
                 b_paths = Values.get_path_expression(path[1])
@@ -266,6 +272,8 @@ class Values:
 
     def is_always_false(self):
         assert isinstance(self.sid_line, Bool)
+        if Values.BVDD and Values.CFLOBVDD:
+            assert self.bvdd.is_always_false() == self.cflobvdd.is_always_false()
         if Values.BVDD:
             return self.bvdd.is_always_false()
         if Values.CFLOBVDD:
@@ -273,6 +281,8 @@ class Values:
 
     def is_always_true(self):
         assert isinstance(self.sid_line, Bool)
+        if Values.BVDD and Values.CFLOBVDD:
+            assert self.bvdd.is_always_true() == self.cflobvdd.is_always_true()
         if Values.BVDD:
             return self.bvdd.is_always_true()
         if Values.CFLOBVDD:
@@ -1308,11 +1318,11 @@ class Bitme_Solver:
                 self.z3_solver.print_inputs(inputs, step, level)
             if self.bitwuzla_solver:
                 self.bitwuzla_solver.print_inputs(inputs, step, level)
-        elif Values.BVDD:
-            print(self.constraint.bvdd.get_printed_BVDD(True))
         else:
-            assert Values.CFLOBVDD
-            print(self.constraint.cflobvdd.get_printed_CFLOBVDD(True))
+            if Values.BVDD:
+                print(self.constraint.bvdd.get_printed_BVDD(True))
+            if Values.CFLOBVDD:
+                print(self.constraint.cflobvdd.get_printed_CFLOBVDD(True))
 
     def eval_inputs(self, inputs, step):
         if self.fallback:
@@ -1532,7 +1542,7 @@ def main():
     parser.add_argument('--use-Z3', action='store_true')
     parser.add_argument('--use-bitwuzla', action='store_true')
 
-    parser.add_argument('--use-BVDD', action='store_true')
+    parser.add_argument('--use-BVDD', nargs='?', const=0, type=int)
     parser.add_argument('--use-CFLOBVDD', nargs='*', type=int)
 
     parser.add_argument('--no-reduction', action='store_true')
@@ -1592,17 +1602,52 @@ def main():
         if bitwuzlainterface.is_bitwuzla_present:
             bitwuzla_solver = bitwuzlainterface.Bitwuzla_Solver(print_message, LAMBDAS, UNROLL)
 
-        if args.use_BVDD:
+        if args.use_BVDD is not None:
             Values.BVDD = True
+            Values.BVDD_level = args.use_BVDD
+
+            level = max(Values.BVDD_level,
+                ceil(log2(len(Variable.bvdd_input))) if Variable.bvdd_input else 0)
+
+            Values.BVDD_input = dict([(2**level - 1 - index, var_line)
+                for index, var_line in Variable.bvdd_input.items()])
+            Values.BVDD_index = dict([(var_line, index)
+                for index, var_line in Values.BVDD_input.items()])
+
+            print_separator('-')
+            print(f"BVDD configuration: {2**level} input bytes " +
+                f"@ level {Values.BVDD_level}")
+
         if args.use_CFLOBVDD is not None:
             Values.CFLOBVDD = True
             Values.CFLOBVDD_level = args.use_CFLOBVDD[0] if len(args.use_CFLOBVDD) > 0 else 0
             Values.CFLOBVDD_fork_level = args.use_CFLOBVDD[1] if len(args.use_CFLOBVDD) > 1 else 0
+            assert 0 <= Values.CFLOBVDD_fork_level <= Values.CFLOBVDD_level, \
+                f"invalid CFLOBVDD fork level {Values.CFLOBVDD_fork_level} for level {Values.CFLOBVDD_level}"
+
+            level = max(Values.CFLOBVDD_level, Values.CFLOBVDD_fork_level,
+                ceil(log2(len(Variable.bvdd_input))) if Variable.bvdd_input else 0)
+
+            Values.CFLOBVDD_input = dict([(2**level - 1 - index, var_line)
+                for index, var_line in Variable.bvdd_input.items()])
+            Values.CFLOBVDD_index = dict([(var_line, index)
+                for index, var_line in Values.CFLOBVDD_input.items()])
+
+            print_separator('-')
+            print(f"CFLOBVDD configuration: {2**level} input bytes " +
+                f"@ level {Values.CFLOBVDD_level} and fork level {Values.CFLOBVDD_fork_level}")
 
         CFLOBVDD.CFLOBVDD.REDUCE = not args.no_reduction
 
-        if not args.use_BVDD and args.use_CFLOBVDD is None:
+        if args.use_BVDD is None and args.use_CFLOBVDD is None:
             Values.BVDD = True
+
+            Values.BVDD_input = Variable.bvdd_input
+            Values.BVDD_index = dict([(var_line, index)
+                for index, var_line in Values.BVDD_input.items()])
+
+            print_separator('-')
+            print(f"BVDD configuration: {len(Values.BVDD_input)} input bytes ")
 
         bitme_solver = Bitme_Solver(z3_solver, bitwuzla_solver)
 

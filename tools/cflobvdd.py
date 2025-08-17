@@ -130,7 +130,7 @@ class BV_Dont_Care_Grouping(BV_Grouping):
 
     def get_paths(self, exit_i, index_i = 0):
         assert exit_i == 1
-        return [(index_i, 0)]
+        return [(i, 0) for i in range(index_i, index_i + 2**self.level)]
 
     def representative(fork_level):
         if BV_Dont_Care_Grouping.representatives is None:
@@ -750,13 +750,14 @@ class CFLOBVDD:
                 assert isinstance(path[1], int)
                 index_i = path[0]
                 inputs = path[1]
-                if inputs == 0:
+                if inputs == 0 or inputs == 2**256-1:
                     if full_paths:
                         printed_paths += [f"[dontcare @ {index_i}]"]
                 else:
                     printed_paths += ["[" +
                         f"input @ {index_i}: " +
-                        "|".join([str(input_value) for input_value in BV_Fork_Grouping.get_input_values(inputs)]) +
+                        "|".join([str(input_value)
+                            for input_value in BV_Fork_Grouping.get_input_values(inputs)]) +
                         "]"]
             else:
                 a_paths = CFLOBVDD.get_printed_paths(path[0], full_paths)
@@ -863,8 +864,8 @@ class CFLOBVDD:
             dict([(output + 1, output) for output in range(256)]))
 
     def byte_projection(level, fork_level, number_of_input_bytes, byte_i):
-        assert 0 <= byte_i < number_of_input_bytes
         level = max(level, fork_level, ceil(log2(number_of_input_bytes)))
+        assert 0 <= byte_i < 2**level
         return CFLOBVDD.projection(level, fork_level, byte_i)
 
     def collapse_classes_leftmost(equiv_classes):
