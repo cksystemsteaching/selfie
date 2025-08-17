@@ -73,6 +73,9 @@ class BVDD_Node:
     def number_of_distinct_outputs(self):
         return len(self.get_distinct_outputs())
 
+    def number_of_exits(self):
+        return self.number_of_distinct_outputs()
+
     def number_of_distinct_inputs(self, output_value = None):
         if self.is_dont_care():
             # dont-care inputs do not count
@@ -218,8 +221,8 @@ class BVDD_Node:
     def get_printed_BVDD(self, output_value):
         return (f"{type(self).__name__}:\n" +
             f"{self.number_of_connections()} connections\n" +
-            f"{self.number_of_outputs()} outputs\n" +
-            f"{self.number_of_distinct_outputs()} distinct output values\n" +
+            f"{self.number_of_outputs()} output values\n" +
+            f"{self.number_of_distinct_outputs()} distinct output values (exits)\n" +
             f"{self.number_of_distinct_inputs()} distinct inputs\n" +
             f"{self.number_of_solutions(output_value)} solutions\n" +
             f"{self.extract(output_value)}")

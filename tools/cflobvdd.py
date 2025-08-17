@@ -227,8 +227,8 @@ class BV_Fork_Grouping(BV_Grouping):
 
     def is_consistent(self):
         assert super().is_consistent()
-        # TODO: assert len(self.bvdd.number_of_exits) == self.number_of_exits
         assert self.bvdd.is_consistent()
+        assert self.bvdd.number_of_exits() == self.number_of_exits
         return True
 
     def number_of_connections(self):
@@ -789,8 +789,8 @@ class CFLOBVDD:
         return (f"CFLOBVDD:\n" +
             f"{2**self.grouping.level} input variables\n" +
             f"{self.number_of_connections()} connections\n" +
-            f"{self.number_of_outputs()} outputs\n" +
-            f"{self.number_of_distinct_outputs()} disctinct output values\n"
+            f"{self.number_of_outputs()} output values\n" +
+            f"{self.number_of_distinct_outputs()} disctinct output values (exits)\n"
             f"{self.number_of_distinct_inputs()} distinct inputs\n" +
             f"{self.number_of_solutions(value)} solutions\n" +
             f"{self.get_printed_value_paths(value)}")
