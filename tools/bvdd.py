@@ -230,16 +230,6 @@ class BVDD_Node:
             f"{self.number_of_solutions(output_value)} solutions\n" +
             f"{self.extract(output_value)}")
 
-    def rt2exit(return_tuples, rt1, exit1, output2):
-        return_tuples[len(return_tuples) + 1] = rt1[exit1] | {len(rt1[exit1]) + 1:output2}
-        return len(return_tuples)
-
-    def exclusive_union(self, bvdd2, rt1):
-        assert type(bvdd2) is type(self)
-        return_tuples = {}
-        return (self.compute_binary(lambda x, y: BVDD.rt2exit(return_tuples, rt1, x, y), bvdd2),
-            return_tuples)
-
     def apply(self, return_tuple):
         new_bvdd = type(self)({})
         s2o = self.get_s2o()
@@ -257,19 +247,24 @@ class BVDD_Node:
         return new_bvdd
 
     def flip(self):
-        bvdd2flip = type(self)({})
-        exit_i = 1
+        flip2right_bvdd = type(self)({})
+        flip2right_exit_i = 1
         new_bvdd = BVDD.constant(1)
         return_tuples = {1:{}}
         s2o = self.get_s2o()
         for inputs in s2o:
-            bvdd2flip.set(inputs, exit_i)
-            exit_i += 1
+            flip2right_bvdd.set(inputs, flip2right_exit_i)
+            flip2right_exit_i += 1
             output = s2o[inputs]
             if not isinstance(output, BVDD):
                 output = BVDD.constant(output)
-            new_bvdd, return_tuples = new_bvdd.exclusive_union(output, return_tuples)
-        return new_bvdd.link(bvdd2flip, return_tuples)
+            new_bvdd, pt = new_bvdd.pair_product(output)
+            return_tuples = dict([(i,
+                # pt[i][0] is the exit index of the already paired flip2left BVDDs
+                # pt[i][1] is the exit index or output of the next flip2left BVDD being paired
+                return_tuples[pt[i][0]] | {len(return_tuples[pt[i][0]]) + 1:pt[i][1]})
+                    for i in pt])
+        return new_bvdd.link(flip2right_bvdd, return_tuples)
 
 class SBDD_i2o(BVDD_Node):
     # single-byte decision diagram with naive input-to-output mapping

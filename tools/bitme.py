@@ -1609,6 +1609,7 @@ def main():
             level = max(Values.BVDD_level,
                 ceil(log2(len(Variable.bvdd_input))) if Variable.bvdd_input else 0)
 
+            # reversing order of input variables
             Values.BVDD_input = dict([(2**level - 1 - index, var_line)
                 for index, var_line in Variable.bvdd_input.items()])
             Values.BVDD_index = dict([(var_line, index)
@@ -1628,6 +1629,7 @@ def main():
             level = max(Values.CFLOBVDD_level, Values.CFLOBVDD_fork_level,
                 ceil(log2(len(Variable.bvdd_input))) if Variable.bvdd_input else 0)
 
+            # reversing order of input variables
             Values.CFLOBVDD_input = dict([(2**level - 1 - index, var_line)
                 for index, var_line in Variable.bvdd_input.items()])
             Values.CFLOBVDD_index = dict([(var_line, index)

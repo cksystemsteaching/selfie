@@ -313,6 +313,10 @@ class BV_Fork_Grouping(BV_Grouping):
 
             return self.cache_reduction(reduction_tuple, g)
 
+    def flip(self):
+        return BV_Fork_Grouping(self.level, self.number_of_exits,
+            self.bvdd.flip()).representative()
+
 class BV_Internal_Grouping(BV_Grouping):
     representatives = {}
     representatives_hits = 0
@@ -611,6 +615,35 @@ class BV_Internal_Grouping(BV_Grouping):
             # g_prime.a_return_tuple == {} representing g_prime.a_return_tuple = induced_return_tuple
 
             return g.cache_reduction(reduction_tuple, g_prime.representative())
+
+    def flip(self):
+        g = BV_Internal_Grouping(self.level, self.fork_level, self.number_of_exits)
+
+        g.a_connection = BV_Fork_Grouping(self.level - 1, 1, BVDD.BVDD.constant(1)).representative()
+        g.b_return_tuples = {1:{}}
+
+        for b_i in self.b_connections:
+            g_b_i = self.b_connections[b_i]
+            g.a_connection, pt = g.a_connection.pair_product(g_b_i)
+            g.b_return_tuples = dict([(i,
+                # pt[i][0] is the exit index of the already paired b_connections
+                # pt[i][1] is the exit index of the next b_connection being paired
+                g.b_return_tuples[pt[i][0]] |
+                    {len(g.b_return_tuples[pt[i][0]]) + 1:self.b_return_tuples[b_i][pt[i][1]]})
+                        for i in pt])
+
+        g.number_of_b_connections = len(g.b_return_tuples)
+
+        for b_i in g.b_return_tuples:
+            g_b_i_rt = g.b_return_tuples[b_i]
+
+            induced_return_tuple, induced_reduction_tuple = \
+                CFLOBVDD.linear_collapse_classes_leftmost(g_b_i_rt)
+
+            g.b_connections[b_i] = self.a_connection.reduce(induced_reduction_tuple)
+            g.b_return_tuples[b_i] = induced_return_tuple
+
+        return g.representative()
 
 class BV_No_Distinction_Proto(BV_Internal_Grouping):
     representatives = {}
@@ -949,3 +982,6 @@ class CFLOBVDD:
             induced_value_tuple = equiv_classes
 
         return CFLOBVDD.representative(g, induced_value_tuple)
+
+    def flip(self):
+        return CFLOBVDD.representative(self.grouping.flip(), self.outputs)
