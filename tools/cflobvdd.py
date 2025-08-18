@@ -622,18 +622,22 @@ class BV_Internal_Grouping(BV_Grouping):
         g.a_connection = BV_Fork_Grouping(self.level - 1, 1, BVDD.BVDD.constant(1)).representative()
         g.b_return_tuples = {1:{}}
 
+        # a_connection becomes product of all b_connections
         for b_i in self.b_connections:
             g_b_i = self.b_connections[b_i]
             g.a_connection, pt = g.a_connection.pair_product(g_b_i)
             g.b_return_tuples = dict([(i,
                 # pt[i][0] is the exit index of the already paired b_connections
                 # pt[i][1] is the exit index of the next b_connection being paired
+                # extend b_return_tuples for reduced versions of a_connection below
                 g.b_return_tuples[pt[i][0]] |
+                    # with the original exit of the next b_connection being paired
                     {len(g.b_return_tuples[pt[i][0]]) + 1:self.b_return_tuples[b_i][pt[i][1]]})
                         for i in pt])
 
         g.number_of_b_connections = len(g.b_return_tuples)
 
+        # b_connections become reduced versions of a_connection
         for b_i in g.b_return_tuples:
             g_b_i_rt = g.b_return_tuples[b_i]
 
