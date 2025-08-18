@@ -619,7 +619,7 @@ class BV_Internal_Grouping(BV_Grouping):
     def flip(self):
         g = BV_Internal_Grouping(self.level, self.fork_level, self.number_of_exits)
 
-        g.a_connection = BV_Fork_Grouping(self.level - 1, 1, BVDD.BVDD.constant(1)).representative()
+        g.a_connection = BV_No_Distinction_Proto.representative(self.level - 1, self.fork_level)
         g.b_return_tuples = {1:{}}
 
         # a_connection becomes product of all b_connections
