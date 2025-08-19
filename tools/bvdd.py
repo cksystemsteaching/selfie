@@ -48,8 +48,6 @@ class BVDD_Node:
         for output in self.get_s2o().values():
             if isinstance(output, BVDD):
                 count += output.number_of_connections() + 1
-            else:
-                count += 1
         return count
 
     def number_of_outputs(self):

@@ -398,7 +398,7 @@ class BV_Internal_Grouping(BV_Grouping):
 
     def number_of_connections(self):
         g_a = self.a_connection
-        count = g_a.number_of_connections()
+        count = g_a.number_of_connections() + g_a.number_of_exits
         for g_b_i in self.b_connections:
             g_b = self.b_connections[g_b_i]
             count += g_b.number_of_connections()
