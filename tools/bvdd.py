@@ -30,9 +30,12 @@ def utilization(hits, misses):
 
 class BVDD_Node:
     def __str__(self):
-        assert self.is_consistent() and self.is_dont_care()
-        # all inputs map to the same output
-        return "{" + f"[0,255] -> {self.get_dont_care_output()}" + "}"
+        if self.is_consistent() and self.is_dont_care():
+            # all inputs map to the same output
+            return "{" + f"[0,255] -> {self.get_dont_care_output()}" + "}"
+        else:
+            return "{" + ", ".join([f"{BVDD_Node.get_input_values(inputs)} -> {output}"
+                for output, inputs in self.get_o2s().items()]) + "}"
 
     def is_consistent(self):
         return self.number_of_inputs() == 256
@@ -278,13 +281,6 @@ class SBDD_i2o(BVDD_Node):
     def __init__(self, i2o):
         self.i2o = i2o
 
-    def __str__(self):
-        if self.is_consistent() and self.is_dont_care():
-            return super().__str__()
-        else:
-            return "{" + ", ".join([f"{input_value} -> {output}"
-                for input_value, output in self.i2o.items()]) + "}"
-
     def __hash__(self):
         return hash(tuple(self.i2o.items()))
 
@@ -377,13 +373,6 @@ class SBDD_s2o(BVDD_Node):
     # single-byte decision diagram with input-sets-to-output mapping
     def __init__(self, s2o):
         self.s2o = s2o
-
-    def __str__(self):
-        if self.is_consistent() and self.is_dont_care():
-            return super().__str__()
-        else:
-            return "{" + ", ".join([f"{BVDD_Node.get_input_values(inputs)} -> {output}"
-                for inputs, output in self.s2o.items()]) + "}"
 
     def __hash__(self):
         return hash(tuple(self.s2o.items()))
@@ -487,13 +476,6 @@ class SBDD_o2s(BVDD_Node):
     # single-byte decision diagram with output-to-input-sets mapping
     def __init__(self, o2s):
         self.o2s = o2s
-
-    def __str__(self):
-        if self.is_consistent() and self.is_dont_care():
-            return super().__str__()
-        else:
-            return "{" + ", ".join([f"{BVDD_Node.get_input_values(inputs)} -> {output}"
-                for output, inputs in self.o2s.items()]) + "}"
 
     def __hash__(self):
         return hash(tuple(self.o2s.items()))
