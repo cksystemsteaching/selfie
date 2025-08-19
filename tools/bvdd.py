@@ -247,7 +247,10 @@ class BVDD_Node:
         s2o = self.get_s2o()
         for inputs in s2o:
             output = s2o[inputs]
-            new_bvdd.set(inputs, bvdd2.apply(return_tuples[output]))
+            if isinstance(output, BVDD):
+                new_bvdd.set(inputs, output.link(bvdd2, return_tuples))
+            else:
+                new_bvdd.set(inputs, bvdd2.apply(return_tuples[output]))
         return new_bvdd
 
     def flip(self):
