@@ -104,24 +104,15 @@ class BVDD_Node:
         return self.number_of_distinct_inputs(output_value)
 
     def get_input_values(inputs):
-        assert inputs >= 0
-        if inputs == 0:
-            return []
+        assert inputs > 0
+        input_values = [input_value for input_value in range(256)
+            if 2**input_value & inputs != 0]
+        if len(input_values) <= 128:
+            return str(input_values)
         else:
-            input_value = 0
-            input_values = []
-            not_input_values = []
-            # consider all 256 bits to calculate not_input_values
-            inputs += 2**256
-            while inputs != 1:
-                if inputs % 2 == 1:
-                    input_values += [input_value]
-                else:
-                    not_input_values += [input_value]
-                inputs //= 2
-                input_value += 1
-            return (("" if len(input_values) < len(not_input_values) else "not ") +
-                str(input_values if len(input_values) < len(not_input_values) else not_input_values))
+            not_input_values = [not_input_value for not_input_value in range(256)
+                if 2**not_input_value & inputs == 0]
+            return "not " + str(not_input_values)
 
     def get_paths(self, exit_i, index_i = 0):
         path = []
