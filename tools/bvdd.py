@@ -32,7 +32,7 @@ class BVDD_Node:
     def __str__(self):
         assert self.is_consistent() and self.is_dont_care()
         # all inputs map to the same output
-        return f"[0,255] -> {self.get_dont_care_output()}"
+        return "{" + f"[0,255] -> {self.get_dont_care_output()}" + "}"
 
     def is_consistent(self):
         return self.number_of_inputs() == 256
@@ -109,12 +109,18 @@ class BVDD_Node:
         else:
             input_value = 0
             input_values = []
-            while inputs != 0:
+            not_input_values = []
+            # consider all 256 bits to calculate not_input_values
+            inputs += 2**256
+            while inputs != 1:
                 if inputs % 2 == 1:
                     input_values += [input_value]
+                else:
+                    not_input_values += [input_value]
                 inputs //= 2
                 input_value += 1
-            return input_values
+            return (("" if len(input_values) < len(not_input_values) else "not ") +
+                str(input_values if len(input_values) < len(not_input_values) else not_input_values))
 
     def get_paths(self, exit_i, index_i = 0):
         path = []
@@ -275,7 +281,8 @@ class SBDD_i2o(BVDD_Node):
         if self.is_consistent() and self.is_dont_care():
             return super().__str__()
         else:
-            return str([f"{input_value} -> {output}" for input_value, output in self.i2o.items()])
+            return "{" + ", ".join([f"{input_value} -> {output}"
+                for input_value, output in self.i2o.items()]) + "}"
 
     def __hash__(self):
         return hash(tuple(self.i2o.items()))
@@ -374,7 +381,8 @@ class SBDD_s2o(BVDD_Node):
         if self.is_consistent() and self.is_dont_care():
             return super().__str__()
         else:
-            return str([f"{BVDD_Node.get_input_values(inputs)} -> {output}" for inputs, output in self.s2o.items()])
+            return "{" + ", ".join([f"{BVDD_Node.get_input_values(inputs)} -> {output}"
+                for inputs, output in self.s2o.items()]) + "}"
 
     def __hash__(self):
         return hash(tuple(self.s2o.items()))
@@ -483,7 +491,8 @@ class SBDD_o2s(BVDD_Node):
         if self.is_consistent() and self.is_dont_care():
             return super().__str__()
         else:
-            return str([f"{BVDD_Node.get_input_values(inputs)} -> {output}" for output, inputs in self.o2s.items()])
+            return "{" + ", ".join([f"{BVDD_Node.get_input_values(inputs)} -> {output}"
+                for output, inputs in self.o2s.items()]) + "}"
 
     def __hash__(self):
         return hash(tuple(self.o2s.items()))

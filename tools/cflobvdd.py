@@ -791,11 +791,8 @@ class CFLOBVDD:
                     if full_paths:
                         printed_paths += [f"[dontcare @ {index_i}]"]
                 else:
-                    printed_paths += ["[" +
-                        f"input @ {index_i}: " +
-                        "|".join([str(input_value)
-                            for input_value in BV_Fork_Grouping.get_input_values(inputs)]) +
-                        "]"]
+                    printed_paths += ["[" + f"input @ {index_i}: " +
+                        BV_Fork_Grouping.get_input_values(inputs) + "]"]
             else:
                 a_paths = CFLOBVDD.get_printed_paths(path[0], full_paths)
                 b_paths = CFLOBVDD.get_printed_paths(path[1], full_paths)
