@@ -95,7 +95,8 @@ class Values:
                     Values.CFLOBVDD_level,
                     Values.CFLOBVDD_fork_level,
                     len(Values.CFLOBVDD_input),
-                    value)
+                    value,
+                    True)
 
             Values.total_number_of_constants += 1
         elif isinstance(var_line, Variable):
@@ -106,7 +107,8 @@ class Values:
                     Values.CFLOBVDD_level,
                     Values.CFLOBVDD_fork_level,
                     len(Values.CFLOBVDD_input),
-                    Values.CFLOBVDD_index[var_line])
+                    Values.CFLOBVDD_index[var_line],
+                    True)
 
             Values.total_number_of_constants += 2**var_line.sid_line.size
             if Values.BVDD:
@@ -249,7 +251,7 @@ class Values:
                 # reachable only if input value is in inputs
                 exp_line = output_line
             else:
-                input_line = Values.get_path_expression(cflobvdd.grouping.get_paths(exit_i))
+                input_line = Values.get_path_expression(cflobvdd.grouping.get_paths(cflobvdd.ordering, exit_i))
                 assert input_line
                 exp_line = Ite(btor2.Parser.next_nid(), self.sid_line,
                     input_line[0],
@@ -1610,8 +1612,9 @@ def main():
                 ceil(log2(len(Variable.bvdd_input))) if Variable.bvdd_input else 0)
 
             # reversing order of input variables
-            Values.BVDD_input = dict([(2**level - 1 - index, var_line)
-                for index, var_line in Variable.bvdd_input.items()])
+            # Values.BVDD_input = dict([(2**level - 1 - index, var_line)
+            #     for index, var_line in Variable.bvdd_input.items()])
+            Values.BVDD_input = Variable.bvdd_input
             Values.BVDD_index = dict([(var_line, index)
                 for index, var_line in Values.BVDD_input.items()])
 
@@ -1630,8 +1633,9 @@ def main():
                 ceil(log2(len(Variable.bvdd_input))) if Variable.bvdd_input else 0)
 
             # reversing order of input variables
-            Values.CFLOBVDD_input = dict([(2**level - 1 - index, var_line)
-                for index, var_line in Variable.bvdd_input.items()])
+            # Values.CFLOBVDD_input = dict([(2**level - 1 - index, var_line)
+            #     for index, var_line in Variable.bvdd_input.items()])
+            Values.CFLOBVDD_input = Variable.bvdd_input
             Values.CFLOBVDD_index = dict([(var_line, index)
                 for index, var_line in Values.CFLOBVDD_input.items()])
 
