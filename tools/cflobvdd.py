@@ -944,7 +944,7 @@ class CFLOBVDD:
     def byte_constant(level, fork_level, number_of_input_bytes, output, a2b = False):
         assert number_of_input_bytes > 0
         level = max(level, fork_level, ceil(log2(number_of_input_bytes)))
-        ordering = 2**level - 1 if a2b else 0
+        ordering = 2**(level - fork_level) - 1 if a2b else 0
         return CFLOBVDD.constant(level, fork_level, output, ordering)
 
     def false(level, fork_level):
