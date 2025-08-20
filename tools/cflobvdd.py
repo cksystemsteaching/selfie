@@ -61,37 +61,37 @@ class BV_Grouping:
             BV_Grouping.flip_cache[self] = self
         return BV_Grouping.flip_cache[self]
 
-    def is_pair_product_cached(self, g2):
-        if (self, g2) in BV_Grouping.pair_product_cache:
+    def is_pair_product_cached(self, g2, o1, o2):
+        if (self, g2, o1, o2) in BV_Grouping.pair_product_cache:
             BV_Grouping.pair_product_cache_hits += 1
             return True
         else:
             return False
 
-    def get_cached_pair_product(self, g2):
-        assert self.is_pair_product_cached(g2)
-        return BV_Grouping.pair_product_cache[(self, g2)]
+    def get_cached_pair_product(self, g2, o1, o2):
+        assert self.is_pair_product_cached(g2, o1, o2)
+        return BV_Grouping.pair_product_cache[(self, g2, o1, o2)]
 
-    def cache_pair_product(self, g2, pair_product, pt_ans):
-        if (self, g2) not in BV_Grouping.pair_product_cache:
-            BV_Grouping.pair_product_cache[(self, g2)] = (pair_product, pt_ans)
-        return BV_Grouping.pair_product_cache[(self, g2)]
+    def cache_pair_product(self, g2, o1, o2, pair_product, pt_ans):
+        if (self, g2, o1, o2) not in BV_Grouping.pair_product_cache:
+            BV_Grouping.pair_product_cache[(self, g2, o1, o2)] = (pair_product, pt_ans)
+        return BV_Grouping.pair_product_cache[(self, g2, o1, o2)]
 
-    def is_triple_product_cached(self, g2, g3):
-        if (self, g2, g3) in BV_Grouping.triple_product_cache:
+    def is_triple_product_cached(self, g2, g3, o1, o2, o3):
+        if (self, g2, g3, o1, o2, o3) in BV_Grouping.triple_product_cache:
             BV_Grouping.triple_product_cache_hits += 1
             return True
         else:
             return False
 
-    def get_cached_triple_product(self, g2, g3):
-        assert self.is_triple_product_cached(g2, g3)
-        return BV_Grouping.triple_product_cache[(self, g2, g3)]
+    def get_cached_triple_product(self, g2, g3, o1, o2, o3):
+        assert self.is_triple_product_cached(g2, g3, o1, o2, o3)
+        return BV_Grouping.triple_product_cache[(self, g2, g3, o1, o2, o3)]
 
-    def cache_triple_product(self, g2, g3, triple_product, pt_ans):
-        if (self, g2, g3) not in BV_Grouping.triple_product_cache:
-            BV_Grouping.triple_product_cache[(self, g2, g3)] = (triple_product, pt_ans)
-        return BV_Grouping.triple_product_cache[(self, g2, g3)]
+    def cache_triple_product(self, g2, g3, o1, o2, o3, triple_product, pt_ans):
+        if (self, g2, g3, o1, o2, o3) not in BV_Grouping.triple_product_cache:
+            BV_Grouping.triple_product_cache[(self, g2, g3, o1, o2, o3)] = (triple_product, pt_ans)
+        return BV_Grouping.triple_product_cache[(self, g2, g3, o1, o2, o3)]
 
     def reduction_hash(reduction_tuple):
         return hash(tuple(reduction_tuple.values()))
@@ -165,16 +165,21 @@ class BV_Dont_Care_Grouping(BV_Grouping):
         else:
             g1 = g2
             g2 = self
+            o = o1
+            o1 = o2
+            o2 = o
 
-        if g1.is_pair_product_cached(g2):
-            return g1.get_cached_pair_product(g2)
+        if g1.is_pair_product_cached(g2, o1, o2):
+            return g1.get_cached_pair_product(g2, o1, o2)
 
         if inorder:
-            return g1.cache_pair_product(g2,
-                g2, dict([(k, (1, k)) for k in range(1, g2.number_of_exits + 1)]))
+            g = g2
+            pt_ans = dict([(k, (1, k)) for k in range(1, g2.number_of_exits + 1)])
         else:
-            return g1.cache_pair_product(g2,
-                g1, dict([(k, (k, 1)) for k in range(1, g1.number_of_exits + 1)]))
+            g = g1
+            pt_ans = dict([(k, (k, 1)) for k in range(1, g1.number_of_exits + 1)])
+
+        return g1.cache_pair_product(g2, o1, o2, g, pt_ans)
 
     def triple_product(self, g2, g3, o1, o2, o3, order = 1):
         assert isinstance(g2, BV_Grouping) or isinstance(g3, BV_Grouping)
@@ -197,31 +202,30 @@ class BV_Dont_Care_Grouping(BV_Grouping):
             o2 = o3
             o3 = o
 
-        if g1.is_triple_product_cached(g2, g3):
-            return g1.get_cached_triple_product(g2, g3)
+        if g1.is_triple_product_cached(g2, g3, o1, o2, o3):
+            return g1.get_cached_triple_product(g2, g3, o1, o2, o3)
 
         if g1.is_no_distinction_proto() and g2.is_no_distinction_proto():
-            return g1.cache_triple_product(g2, g3,
-                g3, dict([(k, (1, 1, k)) for k in range(1, g3.number_of_exits + 1)]))
+            g = g3
+            pt_ans = dict([(k, (1, 1, k)) for k in range(1, g3.number_of_exits + 1)])
         elif g1.is_no_distinction_proto() and g3.is_no_distinction_proto():
-            return g1.cache_triple_product(g2, g3,
-                g2, dict([(k, (1, k, 1)) for k in range(1, g2.number_of_exits + 1)]))
+            g = g2
+            pt_ans = dict([(k, (1, k, 1)) for k in range(1, g2.number_of_exits + 1)])
         elif g2.is_no_distinction_proto() and g3.is_no_distinction_proto():
-            return g1.cache_triple_product(g2, g3,
-                g1, dict([(k, (k, 1, 1)) for k in range(1, g1.number_of_exits + 1)]))
+            g = g1
+            pt_ans = dict([(k, (k, 1, 1)) for k in range(1, g1.number_of_exits + 1)])
         elif g1.is_no_distinction_proto():
             g, pt = g2.pair_product(g3, o2, o3)
-            return g1.cache_triple_product(g2, g3,
-                g, dict([(jk, (1, pt[jk][0], pt[jk][1])) for jk in pt]))
+            pt_ans = dict([(jk, (1, pt[jk][0], pt[jk][1])) for jk in pt])
         elif g2.is_no_distinction_proto():
             g, pt = g1.pair_product(g3, o1, o3)
-            return g1.cache_triple_product(g2, g3,
-                g, dict([(jk, (pt[jk][0], 1, pt[jk][1])) for jk in pt]))
+            pt_ans = dict([(jk, (pt[jk][0], 1, pt[jk][1])) for jk in pt])
         else:
             assert g3.is_no_distinction_proto()
             g, pt = g1.pair_product(g2, o1, o2)
-            return g1.cache_triple_product(g2, g3,
-                g, dict([(jk, (pt[jk][0], pt[jk][1], 1)) for jk in pt]))
+            pt_ans = dict([(jk, (pt[jk][0], pt[jk][1], 1)) for jk in pt])
+
+        return g1.cache_triple_product(g2, g3, o1, o2, o3, g, pt_ans)
 
     def reduce(self, reduction_tuple):
         assert reduction_tuple == {1:1}
@@ -296,12 +300,12 @@ class BV_Fork_Grouping(BV_Grouping):
 
             assert o1 == o2 == 0
 
-            if g1.is_pair_product_cached(g2):
-                return g1.get_cached_pair_product(g2)
+            if g1.is_pair_product_cached(g2, o1, o2):
+                return g1.get_cached_pair_product(g2, o1, o2)
 
             g, pt = g1.bvdd.pair_product(g2.bvdd)
 
-            return g1.cache_pair_product(g2,
+            return g1.cache_pair_product(g2, o1, o2,
                 BV_Fork_Grouping(self.level, len(pt), g).representative(), pt)
 
     def triple_product(self, g2, g3, o1, o2, o3):
@@ -318,12 +322,12 @@ class BV_Fork_Grouping(BV_Grouping):
 
             assert o1 == o2 == o3 == 0
 
-            if g1.is_triple_product_cached(g2, g3):
-                return g1.get_cached_triple_product(g2, g3)
+            if g1.is_triple_product_cached(g2, g3, o1, o2, o3):
+                return g1.get_cached_triple_product(g2, g3, o1, o2, o3)
 
             g, tt = g1.bvdd.triple_product(g2.bvdd, g3.bvdd)
 
-            return g1.cache_triple_product(g2, g3,
+            return g1.cache_triple_product(g2, g3, o1, o2, o3,
                 BV_Fork_Grouping(self.level, len(tt), g).representative(), tt)
 
     def reduce(self, reduction_tuple):
@@ -560,22 +564,32 @@ class BV_Internal_Grouping(BV_Grouping):
         else:
             assert isinstance(g2, BV_Internal_Grouping)
 
+            if g1.is_pair_product_cached(g2, o1, o2):
+                return g1.get_cached_pair_product(g2, o1, o2)
+
+            g1_orig = g1
+            g2_orig = g2
+            o1_orig = o1
+            o2_orig = o2
+
             r1 = o1 % 2 == 1
             r2 = o2 % 2 == 1
 
             if (r1 ^ r2):
                 if r1:
                     g1 = g1.flip()
+                    o1 -= 1
                 if r2:
                     g2 = g2.flip()
+                    o2 -= 1
 
-            if g1.is_pair_product_cached(g2):
-                return g1.get_cached_pair_product(g2)
+            if g1.is_pair_product_cached(g2, o1, o2):
+                return g1.get_cached_pair_product(g2, o1, o2)
 
-            o1 >>= 1
-            o2 >>= 1
+            o1_next = o1 >> 1
+            o2_next = o2 >> 1
 
-            g_a, pt_a = g1.a_connection.pair_product(g2.a_connection, o1, o2)
+            g_a, pt_a = g1.a_connection.pair_product(g2.a_connection, o1_next, o2_next)
 
             g = BV_Internal_Grouping(g1.level, g1.fork_level)
 
@@ -589,7 +603,7 @@ class BV_Internal_Grouping(BV_Grouping):
 
             for j in pt_a:
                 g_b, pt_b = g1.b_connections[pt_a[j][0]].pair_product(g2.b_connections[pt_a[j][1]],
-                    o1, o2)
+                    o1_next, o2_next)
 
                 g.b_connections[j] = g_b
                 g.b_return_tuples[j] = {}
@@ -606,7 +620,11 @@ class BV_Internal_Grouping(BV_Grouping):
                         pt_ans[len(pt_ans) + 1] = (c1, c2)
                         pt_ans_inv[(c1, c2)] = len(pt_ans)
 
-            return g1.cache_pair_product(g2, g.representative(), pt_ans)
+            g = g.representative()
+
+            g1_orig.cache_pair_product(g2_orig, o1_orig, o2_orig, g, pt_ans)
+
+            return g1.cache_pair_product(g2, o1, o2, g, pt_ans)
 
     def triple_product(self, g2, g3, o1, o2, o3):
         assert isinstance(g2, BV_Grouping) and isinstance(g3, BV_Grouping)
@@ -622,6 +640,16 @@ class BV_Internal_Grouping(BV_Grouping):
         else:
             assert isinstance(g2, BV_Internal_Grouping) and isinstance(g3, BV_Internal_Grouping)
 
+            if g1.is_triple_product_cached(g2, g3, o1, o2, o3):
+                return g1.get_cached_triple_product(g2, g3, o1, o2, o3)
+
+            g1_orig = g1
+            g2_orig = g2
+            g3_orig = g3
+            o1_orig = o1
+            o2_orig = o2
+            o3_orig = o3
+
             r1 = o1 % 2 == 1
             r2 = o2 % 2 == 1
             r3 = o3 % 2 == 1
@@ -629,20 +657,23 @@ class BV_Internal_Grouping(BV_Grouping):
             if (r1 ^ r2) or (r1 ^ r3) or (r2 ^ r3):
                 if r1:
                     g1 = g1.flip()
+                    o1 -= 1
                 if r2:
                     g2 = g2.flip()
+                    o2 -= 1
                 if r3:
                     g3 = g3.flip()
+                    o3 -= 1
 
-            if g1.is_triple_product_cached(g2, g3):
-                return g1.get_cached_triple_product(g2, g3)
+            if g1.is_triple_product_cached(g2, g3, o1, o2, o3):
+                return g1.get_cached_triple_product(g2, g3, o1, o2, o3)
 
-            o1 >>= 1
-            o2 >>= 1
-            o3 >>= 1
+            o1_next >>= 1
+            o2_next >>= 1
+            o3_next >>= 1
 
             g_a, tt_a = g1.a_connection.triple_product(g2.a_connection, g3.a_connection,
-                o1, o2, o3)
+                o1_next, o2_next, o3_next)
 
             g = BV_Internal_Grouping(g1.level, g1.fork_level)
 
@@ -656,7 +687,7 @@ class BV_Internal_Grouping(BV_Grouping):
 
             for j in tt_a:
                 g_b, pt_b = g1.b_connections[tt_a[j][0]].triple_product(g2.b_connections[tt_a[j][1]],
-                    g3.b_connections[tt_a[j][2]], o1, o2, o3)
+                    g3.b_connections[tt_a[j][2]], o1_next, o2_next, o3_next)
 
                 g.b_connections[j] = g_b
                 g.b_return_tuples[j] = {}
@@ -674,7 +705,11 @@ class BV_Internal_Grouping(BV_Grouping):
                         pt_ans[len(pt_ans) + 1] = (c1, c2, c3)
                         pt_ans_inv[(c1, c2, c3)] = len(pt_ans)
 
-            return g1.cache_triple_product(g2, g3, g.representative(), pt_ans)
+            g = g.representative()
+
+            g1_orig.cache_triple_product(g2_orig, g3_orig, o1_orig, o2_orig, o3_orig, g, pt_ans)
+
+            return g1.cache_triple_product(g2, g3, o1, o2, o3, g, pt_ans)
 
     def insert_b_connection(self, h, return_tuple):
         assert isinstance(h, BV_Grouping)
