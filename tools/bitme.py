@@ -251,7 +251,7 @@ class Values:
                 # reachable only if input value is in inputs
                 exp_line = output_line
             else:
-                input_line = Values.get_path_expression(cflobvdd.grouping.get_paths(cflobvdd.ordering, exit_i))
+                input_line = Values.get_path_expression(cflobvdd.grouping.get_paths(exit_i))
                 assert input_line
                 exp_line = Ite(btor2.Parser.next_nid(), self.sid_line,
                     input_line[0],
