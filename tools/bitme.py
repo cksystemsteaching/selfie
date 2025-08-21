@@ -1623,8 +1623,8 @@ def main():
 
         if args.use_CFLOBVDD is not None:
             Values.CFLOBVDD = True
-            Values.CFLOBVDD_level = args.use_CFLOBVDD[0] if len(args.use_CFLOBVDD) > 0 else 0
-            Values.CFLOBVDD_fork_level = args.use_CFLOBVDD[1] if len(args.use_CFLOBVDD) > 1 else 0
+            Values.CFLOBVDD_fork_level = args.use_CFLOBVDD[0] if len(args.use_CFLOBVDD) > 0 else 0
+            Values.CFLOBVDD_level = args.use_CFLOBVDD[1] if len(args.use_CFLOBVDD) > 1 else Values.CFLOBVDD_fork_level
             assert 0 <= Values.CFLOBVDD_fork_level <= Values.CFLOBVDD_level, \
                 f"invalid CFLOBVDD fork level {Values.CFLOBVDD_fork_level} for level {Values.CFLOBVDD_level}"
 
