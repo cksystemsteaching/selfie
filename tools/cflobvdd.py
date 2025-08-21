@@ -23,6 +23,9 @@ class BV_Grouping:
     flip_cache = {}
     flip_cache_hits = 0
 
+    compressed_cache = {}
+    compressed_cache_hits = 0
+
     pair_product_cache = {}
     pair_product_cache_hits = 0
 
@@ -60,6 +63,22 @@ class BV_Grouping:
         if self not in BV_Grouping.flip_cache:
             BV_Grouping.flip_cache[self] = g
         return BV_Grouping.flip_cache[self]
+
+    def is_compressed_cached(self):
+        if self in BV_Grouping.compressed_cache:
+            BV_Grouping.compressed_cache_hits += 1
+            return True
+        else:
+            return False
+
+    def get_cached_compressed(self):
+        assert self.is_compressed_cached()
+        return BV_Grouping.compressed_cache[self]
+
+    def cache_compressed(self, g):
+        if self not in BV_Grouping.compressed_cache:
+            BV_Grouping.compressed_cache[self] = g
+        return BV_Grouping.compressed_cache[self]
 
     def is_pair_product_cached(self, g2):
         if (self, g2) in BV_Grouping.pair_product_cache:
@@ -745,6 +764,9 @@ class BV_Internal_Grouping(BV_Grouping):
             return g.cache_reduction(reduction_tuple, g_prime.representative())
 
     def compress(self):
+        if self.is_compressed_cached():
+            return self.get_cached_compressed()
+
         g = BV_Internal_Grouping(self.level, self.fork_level, self.a2b, self.number_of_exits)
 
         g.a_connection = self.a_connection.compress()
@@ -772,9 +794,9 @@ class BV_Internal_Grouping(BV_Grouping):
         g_flipped = g.flip()
 
         if g_flipped.number_of_b_connections < g.number_of_b_connections:
-            return g_flipped
+            return self.cache_compressed(g_flipped)
         else:
-            return g
+            return self.cache_compressed(g)
 
 class BV_No_Distinction_Proto(BV_Internal_Grouping):
     representatives = {}
@@ -892,6 +914,7 @@ class CFLOBVDD:
         print(f"BV_Internal_Grouping cache utilization: {BVDD.utilization(BV_Internal_Grouping.representatives_hits, len(BV_Internal_Grouping.representatives))}")
         print(f"BV_No_Distinction_Proto cache utilization: {BVDD.utilization(BV_No_Distinction_Proto.representatives_hits, len(BV_No_Distinction_Proto.representatives))}")
         print(f"BV_Grouping flip cache utilization: {BVDD.utilization(BV_Grouping.flip_cache_hits, len(BV_Grouping.flip_cache))}")
+        print(f"BV_Grouping compressed cache utilization: {BVDD.utilization(BV_Grouping.compressed_cache_hits, len(BV_Grouping.compressed_cache))}")
         print(f"BV_Grouping pair-product cache utilization: {BVDD.utilization(BV_Grouping.pair_product_cache_hits, len(BV_Grouping.pair_product_cache))}")
         print(f"BV_Grouping triple-product cache utilization: {BVDD.utilization(BV_Grouping.triple_product_cache_hits, len(BV_Grouping.triple_product_cache))}")
         print(f"BV_Grouping reduction cache utilization: {BVDD.utilization(BV_Grouping.reduction_cache_hits, len(BV_Grouping.reduction_cache))}")
