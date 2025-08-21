@@ -227,14 +227,14 @@ class BV_Dont_Care_Grouping(BV_Grouping):
             g = g1
             pt_ans = dict([(k, (k, 1, 1)) for k in range(1, g1.number_of_exits + 1)])
         elif g1.is_no_distinction_proto():
-            g, pt = g2.pair_product(g3, o2, o3)
+            g, pt = g2.pair_product(g3)
             pt_ans = dict([(jk, (1, pt[jk][0], pt[jk][1])) for jk in pt])
         elif g2.is_no_distinction_proto():
-            g, pt = g1.pair_product(g3, o1, o3)
+            g, pt = g1.pair_product(g3)
             pt_ans = dict([(jk, (pt[jk][0], 1, pt[jk][1])) for jk in pt])
         else:
             assert g3.is_no_distinction_proto()
-            g, pt = g1.pair_product(g2, o1, o2)
+            g, pt = g1.pair_product(g2)
             pt_ans = dict([(jk, (pt[jk][0], pt[jk][1], 1)) for jk in pt])
 
         return g1.cache_triple_product(g2, g3, g, pt_ans)
