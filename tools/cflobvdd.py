@@ -112,11 +112,11 @@ class BV_Grouping:
             BV_Grouping.triple_product_cache[(self, g2, g3)] = (triple_product, pt_ans)
         return BV_Grouping.triple_product_cache[(self, g2, g3)]
 
-    def reduction_key(self, reduction_tuple):
-        return tuple([self] + [reduction_tuple.values()])
+    def reduction_hash(reduction_tuple):
+        return hash(tuple(reduction_tuple.values()))
 
     def is_reduction_cached(self, reduction_tuple):
-        if self.reduction_key(reduction_tuple) in BV_Grouping.reduction_cache:
+        if (self, BV_Grouping.reduction_hash(reduction_tuple)) in BV_Grouping.reduction_cache:
             BV_Grouping.reduction_cache_hits += 1
             return True
         else:
@@ -124,13 +124,13 @@ class BV_Grouping:
 
     def get_cached_reduction(self, reduction_tuple):
         assert self.is_reduction_cached(reduction_tuple)
-        return BV_Grouping.reduction_cache[self.reduction_key(reduction_tuple)]
+        return BV_Grouping.reduction_cache[(self, BV_Grouping.reduction_hash(reduction_tuple))]
 
     def cache_reduction(self, reduction_tuple, reduction):
-        reduction_key = self.reduction_key(reduction_tuple)
-        if reduction_key not in BV_Grouping.reduction_cache:
-            BV_Grouping.reduction_cache[reduction_key] = reduction
-        return BV_Grouping.reduction_cache[reduction_key]
+        reduction_hash = BV_Grouping.reduction_hash(reduction_tuple)
+        if (self, reduction_hash) not in BV_Grouping.reduction_cache:
+            BV_Grouping.reduction_cache[(self, reduction_hash)] = reduction
+        return BV_Grouping.reduction_cache[(self, reduction_hash)]
 
     def is_no_distinction_proto(self):
         return isinstance(self, BV_Dont_Care_Grouping) or isinstance(self, BV_No_Distinction_Proto)
