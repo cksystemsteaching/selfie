@@ -516,27 +516,40 @@ class BV_Internal_Grouping(BV_Grouping):
 
             return g.representative(), ordering << 1 | flipped
 
-    def flip(self):
-        if self.is_flip_cached():
-            return self.get_cached_flip()
+    def utilization(self):
+        max_b = max([self.b_connections[b_i].number_of_exits for b_i in self.b_connections])
+        #avg_b = sum([self.b_connections[b_i].number_of_exits for b_i in self.b_connections]) / self.number_of_b_connections
+        #return max_b / (max_b + self.a_connection.number_of_exits)
+        return self.number_of_exits / (self.number_of_exits + self.a_connection.number_of_exits)
+
+    def flip(self, ordering, b_orderings = None):
+        if b_orderings is not None and len(set(b_orderings.values())) == 1:
+            b_orderings = None
+
+        if b_orderings is None and self.is_flip_cached():
+            return self.get_cached_flip(), ordering + 1 if ordering % 2 == 0 else ordering - 1
 
         g = BV_Internal_Grouping(self.level, self.fork_level, self.number_of_exits)
 
         g.a_connection = BV_No_Distinction_Proto.representative(self.level - 1, self.fork_level)
         g.b_return_tuples = {1:{}}
 
+        ordering >>= 1
+
         # a_connection becomes product of all b_connections
         for b_i in self.b_connections:
             g_b_i = self.b_connections[b_i]
-            g.a_connection, pt = g.a_connection.pair_product(g_b_i, 0, 0)
+            g_b_ordering = b_orderings[b_i] if b_orderings is not None else ordering
+            g_b_i_rt = self.b_return_tuples[b_i]
+            g.a_connection, pt = g.a_connection.pair_product(g_b_i, ordering, g_b_ordering)
             g.b_return_tuples = dict([(i,
                 # pt[i][0] is the exit index of the already paired b_connections
                 # pt[i][1] is the exit index of the next b_connection being paired
                 # extend b_return_tuples for reduced versions of a_connection below
                 g.b_return_tuples[pt[i][0]] |
                     # with the original exit of the next b_connection being paired
-                    {len(g.b_return_tuples[pt[i][0]]) + 1:self.b_return_tuples[b_i][pt[i][1]]})
-                        for i in pt])
+                    {len(g.b_return_tuples[pt[i][0]]) + 1:g_b_i_rt[pt[i][1]]}) for i in pt])
+            ordering = ordering & g_b_ordering
 
         g.number_of_b_connections = len(g.b_return_tuples)
 
@@ -550,7 +563,12 @@ class BV_Internal_Grouping(BV_Grouping):
             g.b_connections[b_i] = self.a_connection.reduce(induced_reduction_tuple)
             g.b_return_tuples[b_i] = induced_return_tuple
 
-        return g.representative().cache_flip()
+        g = g.representative()
+
+        if b_orderings is None:
+            g = g.cache_flip()
+
+        return g, ordering << 1
 
     def pair_uncompress(self, g2, o1, o2):
         assert isinstance(g2, BV_Internal_Grouping)
@@ -562,11 +580,9 @@ class BV_Internal_Grouping(BV_Grouping):
 
         if (r1 ^ r2):
             if r1:
-                g1 = g1.flip()
-                o1 -= 1
+                g1, o1 = g1.flip(o1)
             if r2:
-                g2 = g2.flip()
-                o2 -= 1
+                g2, o2 = g2.flip(o2)
 
         return g1, g2, o1, o2
 
@@ -595,9 +611,9 @@ class BV_Internal_Grouping(BV_Grouping):
             if g1.is_pair_product_cached(g2, o1, o2):
                 return g1.get_cached_pair_product(g2, o1, o2)
 
-            g_a, pt_a = g1.a_connection.pair_product(g2.a_connection, o1 >> 1, o2 >> 1)
-
             g = BV_Internal_Grouping(g1.level, g1.fork_level)
+
+            g_a, pt_a = g1.a_connection.pair_product(g2.a_connection, o1 >> 1, o2 >> 1)
 
             g.a_connection = g_a
             # g.a_return_tuple == {} representing g.a_return_tuple = dict([(i, i) for i in pt_a])
@@ -643,14 +659,11 @@ class BV_Internal_Grouping(BV_Grouping):
 
         if (r1 ^ r2) or (r1 ^ r3) or (r2 ^ r3):
             if r1:
-                g1 = g1.flip()
-                o1 -= 1
+                g1, o1 = g1.flip(o1)
             if r2:
-                g2 = g2.flip()
-                o2 -= 1
+                g2, o2 = g2.flip(o2)
             if r3:
-                g3 = g3.flip()
-                o3 -= 1
+                g3, o3 = g3.flip(o3)
 
         return g1, g2, g3, o1, o2, o3
 
@@ -683,10 +696,10 @@ class BV_Internal_Grouping(BV_Grouping):
             if g1.is_triple_product_cached(g2, g3, o1, o2, o3):
                 return g1.get_cached_triple_product(g2, g3, o1, o2, o3)
 
+            g = BV_Internal_Grouping(g1.level, g1.fork_level)
+
             g_a, tt_a = g1.a_connection.triple_product(g2.a_connection, g3.a_connection,
                 o1 >> 1, o2 >> 1, o3 >> 1)
-
-            g = BV_Internal_Grouping(g1.level, g1.fork_level)
 
             g.a_connection = g_a
             # g.a_return_tuple == {} representing g.a_return_tuple = dict([(i, i) for i in tt_a])
@@ -769,6 +782,40 @@ class BV_Internal_Grouping(BV_Grouping):
             # g_prime.a_return_tuple == {} representing g_prime.a_return_tuple = induced_return_tuple
 
             return g.cache_reduction(reduction_tuple, g_prime.representative())
+
+    def compress(self, ordering):
+        g = self
+
+        g_prime = BV_Internal_Grouping(g.level, g.fork_level)
+
+        g_prime.a_connection = g.a_connection.compress(ordering >> 1)
+
+        assert g_prime.a_connection.number_of_exits == g.a_connection.number_of_exits
+
+        g_prime.number_of_b_connections = g_prime.a_connection.number_of_exits
+
+        g_prime.b_connections = {}
+        g_prime.b_return_tuples = {}
+
+        g_prime_b_orderings = {}
+
+        for g_b_i in g.b_connections:
+            g_b = g.b_connections[g_b_i]
+            g_b_i_rt = g.b_return_tuples[g_b_i]
+
+            g_prime_b_compressed, g_prime_b_ordering = g_b.compress(ordering >> 1)
+
+            g_prime.b_connections[len(g_prime.b_connections) + 1] = g_prime_b_compressed
+            g_prime.b_return_tuples[len(g_prime.b_return_tuples) + 1] = g_b_i_rt
+
+            g_prime_b_orderings[len(g_prime_b_orderings) + 1] = g_prime_b_ordering
+
+        g_flipped, flipped_ordering = g_prime.flip(ordering, g_prime_b_orderings)
+
+        if g_flipped.number_of_b_connections < g_prime.number_of_b_connections:
+            return g_flipped, flipped_ordering
+        else:
+            return g_prime, ordering
 
 class BV_No_Distinction_Proto(BV_Internal_Grouping):
     representatives = {}
