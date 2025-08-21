@@ -414,8 +414,7 @@ class BV_Internal_Grouping(BV_Grouping):
                 assert g_b_i_rt_e_j_e_t not in g_b_i_rt_targets
                 g_b_i_rt_targets[g_b_i_rt_e_j_e_t] = None
                 if g_b_i_rt_e_j_e_t not in g_exits:
-                    if previous_target != 0:
-                        assert g_b_i_rt_e_j_e_t == previous_target + 1
+                    assert g_b_i_rt_e_j_e_t > previous_target
                     previous_target = g_b_i_rt_e_j_e_t
             g_exits |= g_b_i_rt_targets
         return True
@@ -520,10 +519,10 @@ class BV_Internal_Grouping(BV_Grouping):
         g.b_return_tuples = {1:{}}
 
         # a_connection becomes product of all b_connections
-        for b_i in self.b_connections:
-            g_b_i = self.b_connections[b_i]
-            g_b_i_rt = self.b_return_tuples[b_i]
-            g.a_connection, pt = g.a_connection.pair_product(g_b_i)
+        for g_b_i in self.b_connections:
+            g_b = self.b_connections[g_b_i]
+            g_b_i_rt = self.b_return_tuples[g_b_i]
+            g.a_connection, pt = g.a_connection.pair_product(g_b)
             g.b_return_tuples = dict([(i,
                 # pt[i][0] is the exit index of the already paired b_connections
                 # pt[i][1] is the exit index of the next b_connection being paired
@@ -535,14 +534,14 @@ class BV_Internal_Grouping(BV_Grouping):
         g.number_of_b_connections = len(g.b_return_tuples)
 
         # b_connections become reduced versions of a_connection
-        for b_i in g.b_return_tuples:
-            g_b_i_rt = g.b_return_tuples[b_i]
+        for g_b_i in g.b_return_tuples:
+            g_b_i_rt = g.b_return_tuples[g_b_i]
 
             induced_return_tuple, induced_reduction_tuple = \
                 CFLOBVDD.linear_collapse_classes_leftmost(g_b_i_rt)
 
-            g.b_connections[b_i] = self.a_connection.reduce(induced_reduction_tuple)
-            g.b_return_tuples[b_i] = induced_return_tuple
+            g.b_connections[g_b_i] = self.a_connection.reduce(induced_reduction_tuple)
+            g.b_return_tuples[g_b_i] = induced_return_tuple
 
         return self.cache_flip(g.representative())
 
@@ -750,36 +749,36 @@ class BV_Internal_Grouping(BV_Grouping):
             return g.cache_reduction(reduction_tuple, g_prime.representative())
 
     def compress(self):
-        g = self
+        g = BV_Internal_Grouping(self.level, self.fork_level, self.a2b, self.number_of_exits)
 
-        g_prime = BV_Internal_Grouping(g.level, g.fork_level, g.a2b, g.number_of_exits)
+        g.a_connection = self.a_connection.compress()
 
-        g_prime.a_connection = g.a_connection.compress()
+        assert g.a_connection.number_of_exits == self.a_connection.number_of_exits
 
-        assert g_prime.a_connection.number_of_exits == g.a_connection.number_of_exits
+        g.number_of_b_connections = g.a_connection.number_of_exits
 
-        g_prime.number_of_b_connections = g_prime.a_connection.number_of_exits
+        g.b_connections = {}
+        g.b_return_tuples = {}
 
-        g_prime.b_connections = {}
-        g_prime.b_return_tuples = {}
+        for g_b_i in self.b_connections:
+            g_b = self.b_connections[g_b_i]
+            g_b_i_rt = self.b_return_tuples[g_b_i]
 
-        for g_b_i in g.b_connections:
-            g_b = g.b_connections[g_b_i]
-            g_b_i_rt = g.b_return_tuples[g_b_i]
+            g_b_compressed = g_b.compress()
 
-            g_prime_b_compressed = g_b.compress()
+            g.b_connections[len(g.b_connections) + 1] = g_b_compressed
+            g.b_return_tuples[len(g.b_return_tuples) + 1] = g_b_i_rt
 
-            g_prime.b_connections[len(g_prime.b_connections) + 1] = g_prime_b_compressed
-            g_prime.b_return_tuples[len(g_prime.b_return_tuples) + 1] = g_b_i_rt
+            assert g_b_compressed.number_of_exits == len(g_b_i_rt)
 
-            assert g_prime_b_compressed.number_of_exits == len(g_b_i_rt)
+        g = g.representative()
 
-        g_flipped = g_prime.representative().flip()
+        g_flipped = g.flip()
 
-        if g_flipped.number_of_b_connections < g_prime.number_of_b_connections:
+        if g_flipped.number_of_b_connections < g.number_of_b_connections:
             return g_flipped
         else:
-            return g_prime
+            return g
 
 class BV_No_Distinction_Proto(BV_Internal_Grouping):
     representatives = {}
@@ -997,7 +996,7 @@ class CFLOBVDD:
         return CFLOBVDD.representative(
             BV_No_Distinction_Proto.representative(level, fork_level), {1:output})
 
-    def byte_constant(level, fork_level, number_of_input_bytes, output, reorder = False):
+    def byte_constant(level, fork_level, number_of_input_bytes, output):
         assert number_of_input_bytes > 0
         level = max(level, fork_level, ceil(log2(number_of_input_bytes)))
         return CFLOBVDD.constant(level, fork_level, output)

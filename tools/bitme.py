@@ -95,8 +95,7 @@ class Values:
                     Values.CFLOBVDD_level,
                     Values.CFLOBVDD_fork_level,
                     len(Values.CFLOBVDD_input),
-                    value,
-                    True)
+                    value)
 
             Values.total_number_of_constants += 1
         elif isinstance(var_line, Variable):
