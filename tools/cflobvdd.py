@@ -518,12 +518,6 @@ class BV_Internal_Grouping(BV_Grouping):
 
             return g.representative()
 
-    def utilization(self):
-        max_b = max([self.b_connections[b_i].number_of_exits for b_i in self.b_connections])
-        #avg_b = sum([self.b_connections[b_i].number_of_exits for b_i in self.b_connections]) / self.number_of_b_connections
-        #return max_b / (max_b + self.a_connection.number_of_exits)
-        return self.number_of_exits / (self.number_of_exits + self.a_connection.number_of_exits)
-
     def flip(self):
         if self.is_flip_cached():
             return self.get_cached_flip()
@@ -560,7 +554,7 @@ class BV_Internal_Grouping(BV_Grouping):
 
         return self.cache_flip(g.representative())
 
-    def pair_uncompress(self, g2):
+    def pair_decompress(self, g2):
         assert isinstance(g2, BV_Internal_Grouping)
 
         g1 = self
@@ -591,7 +585,7 @@ class BV_Internal_Grouping(BV_Grouping):
             if g1_orig.is_pair_product_cached(g2_orig):
                 return g1_orig.get_cached_pair_product(g2_orig)
 
-            g1, g2 = g1.pair_uncompress(g2)
+            g1, g2 = g1.pair_decompress(g2)
 
             if g1.is_pair_product_cached(g2):
                 return g1.get_cached_pair_product(g2)
@@ -634,7 +628,7 @@ class BV_Internal_Grouping(BV_Grouping):
 
             return g1.cache_pair_product(g2, g, pt_ans)
 
-    def triple_uncompress(self, g2, g3):
+    def triple_decompress(self, g2, g3):
         assert isinstance(g2, BV_Internal_Grouping) and isinstance(g3, BV_Internal_Grouping)
 
         g1 = self
@@ -670,7 +664,7 @@ class BV_Internal_Grouping(BV_Grouping):
             if g1_orig.is_triple_product_cached(g2_orig, g3_orig):
                 return g1_orig.get_cached_triple_product(g2_orig, g3_orig)
 
-            g1, g2, g3 = g1.triple_uncompress(g2, g3)
+            g1, g2, g3 = g1.triple_decompress(g2, g3)
 
             if g1.is_triple_product_cached(g2, g3):
                 return g1.get_cached_triple_product(g2, g3)
@@ -1113,10 +1107,12 @@ class CFLOBVDD:
 
         assert all(0 <= equiv_classes[i] < 2**number_of_output_bits for i in pt)
 
+        g = g.compress()
+
         if CFLOBVDD.REDUCE:
             induced_value_tuple, induced_return_tuple = \
                 CFLOBVDD.linear_collapse_classes_leftmost(equiv_classes)
-            g = g.reduce(induced_return_tuple)
+            g = g.reduce(induced_return_tuple).compress()
         else:
             induced_value_tuple = equiv_classes
 
@@ -1134,10 +1130,12 @@ class CFLOBVDD:
 
         assert all(0 <= equiv_classes[i] < 2**number_of_output_bits for i in tt)
 
+        g = g.compress()
+
         if CFLOBVDD.REDUCE:
             induced_value_tuple, induced_return_tuple = \
                 CFLOBVDD.linear_collapse_classes_leftmost(equiv_classes)
-            g = g.reduce(induced_return_tuple)
+            g = g.reduce(induced_return_tuple).compress()
         else:
             induced_value_tuple = equiv_classes
 
