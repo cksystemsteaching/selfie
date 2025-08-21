@@ -465,7 +465,7 @@ class BV_Internal_Grouping(BV_Grouping):
             BV_Internal_Grouping.representatives[self] = self
         return BV_Internal_Grouping.representatives[self]
 
-    def projection_proto(level, fork_level, input_i, reorder):
+    def projection_proto(level, fork_level, input_i):
         # generalizing CFLOBDD projection to generational CFLOBVDD projection
         assert 0 <= input_i < 2**level
         if level == fork_level:
@@ -473,13 +473,9 @@ class BV_Internal_Grouping(BV_Grouping):
         else:
             g = BV_Internal_Grouping(level, fork_level, True, 256)
 
-            if reorder and input_i < 2**(level - 1):
-                g.a2b = False
-                input_i += 2**(level - 1)
-
             if input_i < 2**(level - 1):
                 g.a_connection = BV_Internal_Grouping.projection_proto(level - 1,
-                    fork_level, input_i, reorder)
+                    fork_level, input_i)
                 # g.a_return_tuple == {} representing g.a_return_tuple = dict([(e, e)
                     # for e in range(1, 256 + 1)])
 
@@ -496,7 +492,7 @@ class BV_Internal_Grouping(BV_Grouping):
                 g.number_of_b_connections = 1
 
                 projection_proto = BV_Internal_Grouping.projection_proto(level - 1,
-                    fork_level, input_i - 2**(level - 1), reorder)
+                    fork_level, input_i - 2**(level - 1))
 
                 g.b_connections = {1:projection_proto}
                 g.b_return_tuples = {1:dict([(e, e) for e in range(1, 256 + 1)])}
@@ -1031,8 +1027,10 @@ class CFLOBVDD:
         assert 0 <= fork_level <= level
         assert 0 <= input_i < 2**level
         CFLOBVDD.max_level = max(CFLOBVDD.max_level, level)
-        return CFLOBVDD.representative(
-            BV_Internal_Grouping.projection_proto(level, fork_level, input_i, reorder),
+        grouping = BV_Internal_Grouping.projection_proto(level, fork_level, input_i)
+        if reorder:
+            grouping = grouping.compress()
+        return CFLOBVDD.representative(grouping,
             dict([(output + 1, output) for output in range(256)]))
 
     def byte_projection(level, fork_level, number_of_input_bytes, byte_i, reorder = False):
