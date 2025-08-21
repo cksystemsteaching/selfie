@@ -127,6 +127,9 @@ class BV_Grouping:
             else:
                 return reduction_length, self
 
+    def compress(self, ordering):
+        return self, ordering
+
 class BV_Dont_Care_Grouping(BV_Grouping):
     representatives = None
 
@@ -870,6 +873,9 @@ class BV_No_Distinction_Proto(BV_Internal_Grouping):
     def reduce(self, reduction_tuple):
         assert reduction_tuple == {1:1}
         return self
+
+    def compress(self, ordering):
+        return self, ordering
 
 class Collapsed_Classes:
     cache = {}
