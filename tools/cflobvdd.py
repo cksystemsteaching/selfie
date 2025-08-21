@@ -552,6 +552,24 @@ class BV_Internal_Grouping(BV_Grouping):
 
         return g.representative().cache_flip()
 
+    def pair_uncompress(self, g2, o1, o2):
+        assert isinstance(g2, BV_Internal_Grouping)
+
+        g1 = self
+
+        r1 = o1 % 2 == 1
+        r2 = o2 % 2 == 1
+
+        if (r1 ^ r2):
+            if r1:
+                g1 = g1.flip()
+                o1 -= 1
+            if r2:
+                g2 = g2.flip()
+                o2 -= 1
+
+        return g1, g2, o1, o2
+
     def pair_product(self, g2, o1, o2):
         assert isinstance(g2, BV_Grouping)
 
@@ -564,32 +582,20 @@ class BV_Internal_Grouping(BV_Grouping):
         else:
             assert isinstance(g2, BV_Internal_Grouping)
 
-            if g1.is_pair_product_cached(g2, o1, o2):
-                return g1.get_cached_pair_product(g2, o1, o2)
-
             g1_orig = g1
             g2_orig = g2
             o1_orig = o1
             o2_orig = o2
 
-            r1 = o1 % 2 == 1
-            r2 = o2 % 2 == 1
+            if g1_orig.is_pair_product_cached(g2_orig, o1_orig, o2_orig):
+                return g1_orig.get_cached_pair_product(g2_orig, o1_orig, o2_orig)
 
-            if (r1 ^ r2):
-                if r1:
-                    g1 = g1.flip()
-                    o1 -= 1
-                if r2:
-                    g2 = g2.flip()
-                    o2 -= 1
+            g1, g2, o1, o2 = g1.pair_uncompress(g2, o1, o2)
 
             if g1.is_pair_product_cached(g2, o1, o2):
                 return g1.get_cached_pair_product(g2, o1, o2)
 
-            o1_next = o1 >> 1
-            o2_next = o2 >> 1
-
-            g_a, pt_a = g1.a_connection.pair_product(g2.a_connection, o1_next, o2_next)
+            g_a, pt_a = g1.a_connection.pair_product(g2.a_connection, o1 >> 1, o2 >> 1)
 
             g = BV_Internal_Grouping(g1.level, g1.fork_level)
 
@@ -603,7 +609,7 @@ class BV_Internal_Grouping(BV_Grouping):
 
             for j in pt_a:
                 g_b, pt_b = g1.b_connections[pt_a[j][0]].pair_product(g2.b_connections[pt_a[j][1]],
-                    o1_next, o2_next)
+                    o1 >> 1, o2 >> 1)
 
                 g.b_connections[j] = g_b
                 g.b_return_tuples[j] = {}
@@ -626,6 +632,28 @@ class BV_Internal_Grouping(BV_Grouping):
 
             return g1.cache_pair_product(g2, o1, o2, g, pt_ans)
 
+    def triple_uncompress(self, g2, g3, o1, o2, o3):
+        assert isinstance(g2, BV_Internal_Grouping) and isinstance(g3, BV_Internal_Grouping)
+
+        g1 = self
+
+        r1 = o1 % 2 == 1
+        r2 = o2 % 2 == 1
+        r3 = o3 % 2 == 1
+
+        if (r1 ^ r2) or (r1 ^ r3) or (r2 ^ r3):
+            if r1:
+                g1 = g1.flip()
+                o1 -= 1
+            if r2:
+                g2 = g2.flip()
+                o2 -= 1
+            if r3:
+                g3 = g3.flip()
+                o3 -= 1
+
+        return g1, g2, g3, o1, o2, o3
+
     def triple_product(self, g2, g3, o1, o2, o3):
         assert isinstance(g2, BV_Grouping) and isinstance(g3, BV_Grouping)
 
@@ -640,9 +668,6 @@ class BV_Internal_Grouping(BV_Grouping):
         else:
             assert isinstance(g2, BV_Internal_Grouping) and isinstance(g3, BV_Internal_Grouping)
 
-            if g1.is_triple_product_cached(g2, g3, o1, o2, o3):
-                return g1.get_cached_triple_product(g2, g3, o1, o2, o3)
-
             g1_orig = g1
             g2_orig = g2
             g3_orig = g3
@@ -650,30 +675,16 @@ class BV_Internal_Grouping(BV_Grouping):
             o2_orig = o2
             o3_orig = o3
 
-            r1 = o1 % 2 == 1
-            r2 = o2 % 2 == 1
-            r3 = o3 % 2 == 1
+            if g1_orig.is_triple_product_cached(g2_orig, g3_orig, o1_orig, o2_orig, o3_orig):
+                return g1_orig.get_cached_triple_product(g2_orig, g3_orig, o1_orig, o2_orig, o3_orig)
 
-            if (r1 ^ r2) or (r1 ^ r3) or (r2 ^ r3):
-                if r1:
-                    g1 = g1.flip()
-                    o1 -= 1
-                if r2:
-                    g2 = g2.flip()
-                    o2 -= 1
-                if r3:
-                    g3 = g3.flip()
-                    o3 -= 1
+            g1, g2, g3, o1, o2, o3 = g1.triple_uncompress(g2, g3, o1, o2, o3)
 
             if g1.is_triple_product_cached(g2, g3, o1, o2, o3):
                 return g1.get_cached_triple_product(g2, g3, o1, o2, o3)
 
-            o1_next >>= 1
-            o2_next >>= 1
-            o3_next >>= 1
-
             g_a, tt_a = g1.a_connection.triple_product(g2.a_connection, g3.a_connection,
-                o1_next, o2_next, o3_next)
+                o1 >> 1, o2 >> 1, o3 >> 1)
 
             g = BV_Internal_Grouping(g1.level, g1.fork_level)
 
@@ -687,7 +698,7 @@ class BV_Internal_Grouping(BV_Grouping):
 
             for j in tt_a:
                 g_b, pt_b = g1.b_connections[tt_a[j][0]].triple_product(g2.b_connections[tt_a[j][1]],
-                    g3.b_connections[tt_a[j][2]], o1_next, o2_next, o3_next)
+                    g3.b_connections[tt_a[j][2]], o1 >> 1, o2 >> 1, o3 >> 1)
 
                 g.b_connections[j] = g_b
                 g.b_return_tuples[j] = {}
@@ -1076,6 +1087,8 @@ class CFLOBVDD:
 
         assert all(0 <= equiv_classes[i] < 2**number_of_output_bits for i in pt)
 
+        ordering = n1.ordering & n2.ordering
+
         if CFLOBVDD.REDUCE:
             induced_value_tuple, induced_return_tuple = \
                 CFLOBVDD.linear_collapse_classes_leftmost(equiv_classes)
@@ -1083,7 +1096,7 @@ class CFLOBVDD:
         else:
             induced_value_tuple = equiv_classes
 
-        return CFLOBVDD.representative(g, induced_value_tuple, n1.ordering & n2.ordering)
+        return CFLOBVDD.representative(g, induced_value_tuple, ordering)
 
     def ternary_apply_and_reduce(self, n2, n3, op, number_of_output_bits):
         assert isinstance(n2, CFLOBVDD) and isinstance(n3, CFLOBVDD)
@@ -1098,6 +1111,8 @@ class CFLOBVDD:
 
         assert all(0 <= equiv_classes[i] < 2**number_of_output_bits for i in tt)
 
+        ordering = n1.ordering & n2.ordering & n3.ordering
+
         if CFLOBVDD.REDUCE:
             induced_value_tuple, induced_return_tuple = \
                 CFLOBVDD.linear_collapse_classes_leftmost(equiv_classes)
@@ -1105,5 +1120,4 @@ class CFLOBVDD:
         else:
             induced_value_tuple = equiv_classes
 
-        return CFLOBVDD.representative(g, induced_value_tuple,
-            n1.ordering & n2.ordering & n3.ordering)
+        return CFLOBVDD.representative(g, induced_value_tuple, ordering)
