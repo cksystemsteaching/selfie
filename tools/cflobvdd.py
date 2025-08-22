@@ -19,19 +19,26 @@ import bvdd as BVDD
 from math import log2
 from math import ceil
 
+import threading
+
 class BV_Grouping:
+    swap_cache_lock = threading.Lock()
     swap_cache = {}
     swap_cache_hits = 0
 
+    compressed_cache_lock = threading.Lock()
     compressed_cache = {}
     compressed_cache_hits = 0
 
+    pair_product_cache_lock = threading.Lock()
     pair_product_cache = {}
     pair_product_cache_hits = 0
 
+    triple_product_cache_lock = threading.Lock()
     triple_product_cache = {}
     triple_product_cache_hits = 0
 
+    reduction_cache_lock = threading.Lock()
     reduction_cache = {}
     reduction_cache_hits = 0
 
@@ -61,8 +68,9 @@ class BV_Grouping:
         return BV_Grouping.swap_cache[self]
 
     def cache_swap(self, g):
-        if self not in BV_Grouping.swap_cache:
-            BV_Grouping.swap_cache[self] = g
+        with BV_Grouping.swap_cache_lock:
+            if self not in BV_Grouping.swap_cache:
+                BV_Grouping.swap_cache[self] = g
         return BV_Grouping.swap_cache[self]
 
     def is_compressed_cached(self):
@@ -77,8 +85,9 @@ class BV_Grouping:
         return BV_Grouping.compressed_cache[self]
 
     def cache_compressed(self, g):
-        if self not in BV_Grouping.compressed_cache:
-            BV_Grouping.compressed_cache[self] = g
+        with BV_Grouping.compressed_cache_lock:
+            if self not in BV_Grouping.compressed_cache:
+                BV_Grouping.compressed_cache[self] = g
         return BV_Grouping.compressed_cache[self]
 
     def is_pair_product_cached(self, g2):
@@ -93,8 +102,9 @@ class BV_Grouping:
         return BV_Grouping.pair_product_cache[(self, g2)]
 
     def cache_pair_product(self, g2, pair_product, pt_ans):
-        if (self, g2) not in BV_Grouping.pair_product_cache:
-            BV_Grouping.pair_product_cache[(self, g2)] = (pair_product, pt_ans)
+        with BV_Grouping.pair_product_cache_lock:
+            if (self, g2) not in BV_Grouping.pair_product_cache:
+                BV_Grouping.pair_product_cache[(self, g2)] = (pair_product, pt_ans)
         return BV_Grouping.pair_product_cache[(self, g2)]
 
     def is_triple_product_cached(self, g2, g3):
@@ -109,8 +119,9 @@ class BV_Grouping:
         return BV_Grouping.triple_product_cache[(self, g2, g3)]
 
     def cache_triple_product(self, g2, g3, triple_product, pt_ans):
-        if (self, g2, g3) not in BV_Grouping.triple_product_cache:
-            BV_Grouping.triple_product_cache[(self, g2, g3)] = (triple_product, pt_ans)
+        with BV_Grouping.triple_product_cache_lock:
+            if (self, g2, g3) not in BV_Grouping.triple_product_cache:
+                BV_Grouping.triple_product_cache[(self, g2, g3)] = (triple_product, pt_ans)
         return BV_Grouping.triple_product_cache[(self, g2, g3)]
 
     def reduction_hash(reduction_tuple):
@@ -129,8 +140,9 @@ class BV_Grouping:
 
     def cache_reduction(self, reduction_tuple, reduction):
         reduction_hash = BV_Grouping.reduction_hash(reduction_tuple)
-        if (self, reduction_hash) not in BV_Grouping.reduction_cache:
-            BV_Grouping.reduction_cache[(self, reduction_hash)] = reduction
+        with BV_Grouping.reduction_cache_lock:
+            if (self, reduction_hash) not in BV_Grouping.reduction_cache:
+                BV_Grouping.reduction_cache[(self, reduction_hash)] = reduction
         return BV_Grouping.reduction_cache[(self, reduction_hash)]
 
     def is_no_distinction_proto(self):
@@ -153,6 +165,7 @@ class BV_Grouping:
         return self
 
 class BV_Dont_Care_Grouping(BV_Grouping):
+    representatives_lock = threading.Lock()
     representatives = None
 
     def __init__(self, level):
@@ -177,9 +190,10 @@ class BV_Dont_Care_Grouping(BV_Grouping):
         return [(i, 0) for i in range(index_i, index_i + 2**self.level)]
 
     def representative(level):
-        if BV_Dont_Care_Grouping.representatives is None:
-            BV_Dont_Care_Grouping.representatives = BV_Dont_Care_Grouping(level)
-            assert BV_Dont_Care_Grouping.representatives.is_consistent()
+        with BV_Dont_Care_Grouping.representatives_lock:
+            if BV_Dont_Care_Grouping.representatives is None:
+                BV_Dont_Care_Grouping.representatives = BV_Dont_Care_Grouping(level)
+                assert BV_Dont_Care_Grouping.representatives.is_consistent()
         return BV_Dont_Care_Grouping.representatives
 
     def pair_product(self, g2, inorder = True):
@@ -248,6 +262,7 @@ class BV_Dont_Care_Grouping(BV_Grouping):
 
 class BV_Fork_Grouping(BV_Grouping):
     # generalizing CFLOBDD forking to BVDDs
+    representatives_lock = threading.Lock()
     representatives = {}
     representatives_hits = 0
 
@@ -294,8 +309,10 @@ class BV_Fork_Grouping(BV_Grouping):
         if self in BV_Fork_Grouping.representatives:
             BV_Fork_Grouping.representatives_hits += 1
         else:
-            assert self.is_consistent()
-            BV_Fork_Grouping.representatives[self] = self
+            with BV_Fork_Grouping.representatives_lock:
+                if self not in BV_Fork_Grouping.representatives:
+                    assert self.is_consistent()
+                    BV_Fork_Grouping.representatives[self] = self
         return BV_Fork_Grouping.representatives[self]
 
     def projection_proto(level, input_i):
@@ -363,6 +380,7 @@ class BV_Fork_Grouping(BV_Grouping):
             return self.cache_reduction(reduction_tuple, g)
 
 class BV_Internal_Grouping(BV_Grouping):
+    representatives_lock = threading.Lock()
     representatives = {}
     representatives_hits = 0
 
@@ -487,8 +505,10 @@ class BV_Internal_Grouping(BV_Grouping):
         if self in BV_Internal_Grouping.representatives:
             BV_Internal_Grouping.representatives_hits += 1
         else:
-            assert self.is_consistent()
-            BV_Internal_Grouping.representatives[self] = self
+            with BV_Internal_Grouping.representatives_lock:
+                if self not in BV_Internal_Grouping.representatives:
+                    assert self.is_consistent()
+                    BV_Internal_Grouping.representatives[self] = self
         return BV_Internal_Grouping.representatives[self]
 
     def projection_proto(level, swap_level, fork_level, input_i):
@@ -865,6 +885,7 @@ class BV_Internal_Grouping(BV_Grouping):
             return self.cache_compressed(g)
 
 class BV_No_Distinction_Proto(BV_Internal_Grouping):
+    representatives_lock = threading.Lock()
     representatives = {}
     representatives_hits = 0
 
@@ -890,9 +911,11 @@ class BV_No_Distinction_Proto(BV_Internal_Grouping):
             g.b_connections[1] = g.a_connection
             g.b_return_tuples[1] = {1:1}
 
-            BV_No_Distinction_Proto.representatives[level] = g
+            with BV_No_Distinction_Proto.representatives_lock:
+                if level not in BV_No_Distinction_Proto.representatives:
+                    BV_No_Distinction_Proto.representatives[level] = g
 
-            return g
+            return BV_No_Distinction_Proto.representatives[level]
 
     def swap(self):
         assert self.swap_level < self.level
@@ -924,6 +947,7 @@ class BV_No_Distinction_Proto(BV_Internal_Grouping):
         return self
 
 class Collapsed_Classes:
+    cache_lock = threading.Lock()
     cache = {}
     cache_hits = 0
 
@@ -948,8 +972,9 @@ class Collapsed_Classes:
 
     def cache_collapsed_classes(equiv_classes, projected_classes, renumbered_classes):
         collapsed_classes = Collapsed_Classes(equiv_classes)
-        if collapsed_classes not in Collapsed_Classes.cache:
-            Collapsed_Classes.cache[collapsed_classes] = (projected_classes, renumbered_classes)
+        with Collapsed_Classes.cache_lock:
+            if collapsed_classes not in Collapsed_Classes.cache:
+                Collapsed_Classes.cache[collapsed_classes] = (projected_classes, renumbered_classes)
         return Collapsed_Classes.cache[collapsed_classes]
 
 class CFLOBVDD:
@@ -957,6 +982,7 @@ class CFLOBVDD:
 
     max_level = 0
 
+    representatives_lock = threading.Lock()
     representatives = {}
     representatives_hits = 0
 
@@ -1066,8 +1092,10 @@ class CFLOBVDD:
         if cflobvdd in CFLOBVDD.representatives:
             CFLOBVDD.representatives_hits += 1
         else:
-            assert cflobvdd.is_consistent()
-            CFLOBVDD.representatives[cflobvdd] = cflobvdd
+            with CFLOBVDD.representatives_lock:
+                if cflobvdd not in CFLOBVDD.representatives:
+                    assert cflobvdd.is_consistent()
+                    CFLOBVDD.representatives[cflobvdd] = cflobvdd
         return CFLOBVDD.representatives[cflobvdd]
 
     def is_always_false(self):
