@@ -805,6 +805,8 @@ class BV_Internal_Grouping(BV_Grouping):
         if self.is_compressed_cached():
             return self.get_cached_compressed()
 
+        # compress in levels top-down
+
         g_flipped = self.flip()
 
         g = g_flipped if g_flipped.number_of_b_connections < self.number_of_b_connections else self
@@ -829,11 +831,9 @@ class BV_Internal_Grouping(BV_Grouping):
             compressed_g.b_connections = compressed_b_connections
             compressed_g.b_return_tuples = g.b_return_tuples
 
-            compressed_g = compressed_g.representative()
+            return self.cache_compressed(compressed_g.representative())
         else:
-            compressed_g = g
-
-        return self.cache_compressed(compressed_g)
+            return self.cache_compressed(g)
 
 class BV_No_Distinction_Proto(BV_Internal_Grouping):
     representatives = {}
