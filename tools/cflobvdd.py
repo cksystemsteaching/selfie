@@ -527,7 +527,8 @@ class BV_Internal_Grouping(BV_Grouping):
         g.a_connection = BV_No_Distinction_Proto.representative(self.level - 1, self.fork_level)
         g.b_return_tuples = {1:{}}
 
-        # a_connection becomes product of all b_connections
+        # a_connection becomes product of all b_connections which
+        # is already reduced because a_return_tuple is idempotent
         for g_b_i in self.b_connections:
             g_b = self.b_connections[g_b_i]
             g_b_i_rt = self.b_return_tuples[g_b_i]
