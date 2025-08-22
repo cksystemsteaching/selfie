@@ -67,6 +67,7 @@ class Values:
 
     CFLOBVDD = False
     CFLOBVDD_level = 0
+    CFLOBVDD_swap_level = 0
     CFLOBVDD_fork_level = 0
     CFLOBVDD_input = {}
     CFLOBVDD_index = {}
@@ -75,7 +76,7 @@ class Values:
     total_number_of_values = 0
 
     total_number_of_distinct_inputs = 0
-    total_number_of_connections = 0
+    max_number_of_connections = 0
 
     false = None
     true = None
@@ -122,10 +123,12 @@ class Values:
                 Values.total_number_of_distinct_inputs += self.cflobvdd.number_of_distinct_inputs()
 
         if Values.BVDD:
-            Values.total_number_of_connections += self.bvdd.number_of_connections()
+            Values.max_number_of_connections = max(Values.max_number_of_connections,
+                self.bvdd.number_of_connections())
         else:
             assert Values.CFLOBVDD
-            Values.total_number_of_connections += self.cflobvdd.number_of_connections()
+            Values.max_number_of_connections = max(Values.max_number_of_connections,
+                self.cflobvdd.number_of_connections())
 
         # for debugging assert self.is_consistent()
 
@@ -1145,7 +1148,7 @@ def print_message_with_propagation_profile(message, step = None, level = None):
         string = f"({Values.total_number_of_constants} constants, "
         string += f"{Values.total_number_of_values} values, "
         string += f"{Values.total_number_of_distinct_inputs} distinct inputs, "
-        string += f"{Values.total_number_of_connections} connections, "
+        string += f"{Values.max_number_of_connections} connections, "
         string += f"{Expression.total_number_of_generated_expressions} expressions) {message}"
         message = string
     print_message(message, step, level)
