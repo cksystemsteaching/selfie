@@ -94,6 +94,7 @@ class Values:
             if Values.CFLOBVDD:
                 self.cflobvdd = CFLOBVDD.CFLOBVDD.byte_constant(
                     Values.CFLOBVDD_level,
+                    Values.CFLOBVDD_swap_level,
                     Values.CFLOBVDD_fork_level,
                     len(Values.CFLOBVDD_input),
                     value)
@@ -105,6 +106,7 @@ class Values:
             if Values.CFLOBVDD:
                 self.cflobvdd = CFLOBVDD.CFLOBVDD.byte_projection(
                     Values.CFLOBVDD_level,
+                    Values.CFLOBVDD_swap_level,
                     Values.CFLOBVDD_fork_level,
                     len(Values.CFLOBVDD_input),
                     Values.CFLOBVDD_index[var_line],
@@ -1632,11 +1634,12 @@ def main():
         if args.use_CFLOBVDD is not None:
             Values.CFLOBVDD = True
             Values.CFLOBVDD_fork_level = args.use_CFLOBVDD[0] if len(args.use_CFLOBVDD) > 0 else 0
-            Values.CFLOBVDD_level = args.use_CFLOBVDD[1] if len(args.use_CFLOBVDD) > 1 else Values.CFLOBVDD_fork_level
-            assert 0 <= Values.CFLOBVDD_fork_level <= Values.CFLOBVDD_level, \
-                f"invalid CFLOBVDD fork level {Values.CFLOBVDD_fork_level} for level {Values.CFLOBVDD_level}"
+            Values.CFLOBVDD_swap_level = args.use_CFLOBVDD[1] if len(args.use_CFLOBVDD) > 1 else Values.CFLOBVDD_fork_level
+            Values.CFLOBVDD_level = args.use_CFLOBVDD[2] if len(args.use_CFLOBVDD) > 2 else Values.CFLOBVDD_swap_level
+            assert 0 <= Values.CFLOBVDD_fork_level <= Values.CFLOBVDD_swap_level <= Values.CFLOBVDD_level, \
+                f"invalid fork level {Values.CFLOBVDD_fork_level} or swap level {Values.CFLOBVDD_swap_level} for level {Values.CFLOBVDD_level}"
 
-            level = max(Values.CFLOBVDD_level, Values.CFLOBVDD_fork_level,
+            level = max(Values.CFLOBVDD_level, Values.CFLOBVDD_swap_level, Values.CFLOBVDD_fork_level,
                 ceil(log2(len(Variable.bvdd_input))) if Variable.bvdd_input else 0)
 
             # reversing order of input variables
@@ -1648,7 +1651,7 @@ def main():
 
             print_separator('-')
             print(f"CFLOBVDD configuration: {2**level} input bytes " +
-                f"@ level {Values.CFLOBVDD_level} and fork level {Values.CFLOBVDD_fork_level}")
+                f"@ level {Values.CFLOBVDD_level}, swap level {Values.CFLOBVDD_swap_level}, and fork level {Values.CFLOBVDD_fork_level}")
 
         CFLOBVDD.CFLOBVDD.REDUCE = not args.no_reduction
 

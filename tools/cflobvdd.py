@@ -38,6 +38,7 @@ class BV_Grouping:
     def __init__(self, level, number_of_exits):
         assert level >= 0
         self.level = level
+        self.swap_level = level
         self.fork_level = level
         self.number_of_exits = number_of_exits
 
@@ -133,7 +134,8 @@ class BV_Grouping:
         return BV_Grouping.reduction_cache[(self, reduction_hash)]
 
     def is_no_distinction_proto(self):
-        return isinstance(self, BV_Dont_Care_Grouping) or isinstance(self, BV_No_Distinction_Proto)
+        return (isinstance(self, BV_Dont_Care_Grouping) or
+            isinstance(self, BV_No_Distinction_Proto))
 
     def reduce(self, reduction_tuple):
         assert len(reduction_tuple) == self.number_of_exits
@@ -142,7 +144,8 @@ class BV_Grouping:
         else:
             reduction_length = len(set(reduction_tuple.values()))
             if reduction_length == 1:
-                return 1, BV_No_Distinction_Proto.representative(self.level, self.fork_level)
+                return 1, BV_No_Distinction_Proto.representative(self.level,
+                    self.swap_level, self.fork_level)
             else:
                 return reduction_length, self
 
@@ -152,8 +155,8 @@ class BV_Grouping:
 class BV_Dont_Care_Grouping(BV_Grouping):
     representatives = None
 
-    def __init__(self, fork_level):
-        super().__init__(fork_level, 1)
+    def __init__(self, level):
+        super().__init__(level, 1)
 
     def __repr__(self):
         return "dontcare @ " + super().__repr__()
@@ -173,9 +176,9 @@ class BV_Dont_Care_Grouping(BV_Grouping):
         assert exit_i == 1
         return [(i, 0) for i in range(index_i, index_i + 2**self.level)]
 
-    def representative(fork_level):
+    def representative(level):
         if BV_Dont_Care_Grouping.representatives is None:
-            BV_Dont_Care_Grouping.representatives = BV_Dont_Care_Grouping(fork_level)
+            BV_Dont_Care_Grouping.representatives = BV_Dont_Care_Grouping(level)
             assert BV_Dont_Care_Grouping.representatives.is_consistent()
         return BV_Dont_Care_Grouping.representatives
 
@@ -348,8 +351,10 @@ class BV_Fork_Grouping(BV_Grouping):
 
             bvdd = self.bvdd.reduce(reduction_tuple)
 
+            assert self.level == self.fork_level
+
             if bvdd.is_constant():
-                g = BV_Dont_Care_Grouping.representative(self.fork_level)
+                g = BV_Dont_Care_Grouping.representative(self.level)
             else:
                 g = BV_Fork_Grouping(self.level, reduction_length, bvdd).representative()
 
@@ -361,10 +366,11 @@ class BV_Internal_Grouping(BV_Grouping):
     representatives = {}
     representatives_hits = 0
 
-    def __init__(self, level, fork_level, a2b, number_of_exits = 0):
+    def __init__(self, level, swap_level, fork_level, a2b, number_of_exits = 0):
         assert level > 0
         super().__init__(level, number_of_exits)
-        assert 0 <= fork_level <= level
+        assert 0 <= fork_level <= swap_level <= level
+        self.swap_level = swap_level
         self.fork_level = fork_level
         self.a2b = a2b
         self.a_connection = None
@@ -485,34 +491,36 @@ class BV_Internal_Grouping(BV_Grouping):
             BV_Internal_Grouping.representatives[self] = self
         return BV_Internal_Grouping.representatives[self]
 
-    def projection_proto(level, fork_level, input_i):
+    def projection_proto(level, swap_level, fork_level, input_i):
         # generalizing CFLOBDD projection to generational CFLOBVDD projection
         assert 0 <= input_i < 2**level
         if level == fork_level:
             return BV_Fork_Grouping.projection_proto(level, input_i)
         else:
-            g = BV_Internal_Grouping(level, fork_level, True, 256)
+            g = BV_Internal_Grouping(level, swap_level, fork_level, True, 256)
 
             if input_i < 2**(level - 1):
                 g.a_connection = BV_Internal_Grouping.projection_proto(level - 1,
-                    fork_level, input_i)
+                    swap_level, fork_level, input_i)
                 # g.a_return_tuple == {} representing g.a_return_tuple = dict([(e, e)
                     # for e in range(1, 256 + 1)])
 
                 g.number_of_b_connections = 256
 
-                projection_proto = BV_No_Distinction_Proto.representative(level - 1, fork_level)
+                projection_proto = BV_No_Distinction_Proto.representative(level - 1,
+                    swap_level, fork_level)
 
                 g.b_connections = dict([(c, projection_proto) for c in range(1, 256 + 1)])
                 g.b_return_tuples = dict([(e, {1:e}) for e in range(1, 256 + 1)])
             else:
-                g.a_connection = BV_No_Distinction_Proto.representative(level - 1, fork_level)
+                g.a_connection = BV_No_Distinction_Proto.representative(level - 1,
+                    swap_level, fork_level)
                 # g.a_return_tuple == {} representing g.a_return_tuple[1] = 1
 
                 g.number_of_b_connections = 1
 
                 projection_proto = BV_Internal_Grouping.projection_proto(level - 1,
-                    fork_level, input_i - 2**(level - 1))
+                    swap_level, fork_level, input_i - 2**(level - 1))
 
                 g.b_connections = {1:projection_proto}
                 g.b_return_tuples = {1:dict([(e, e) for e in range(1, 256 + 1)])}
@@ -520,12 +528,16 @@ class BV_Internal_Grouping(BV_Grouping):
             return g.representative()
 
     def swap(self):
+        assert self.swap_level < self.level
+
         if self.is_swap_cached():
             return self.get_cached_swap()
 
-        g = BV_Internal_Grouping(self.level, self.fork_level, not self.a2b, self.number_of_exits)
+        g = BV_Internal_Grouping(self.level, self.swap_level, self.fork_level,
+            not self.a2b, self.number_of_exits)
 
-        g.a_connection = BV_No_Distinction_Proto.representative(self.level - 1, self.fork_level)
+        g.a_connection = BV_No_Distinction_Proto.representative(self.level - 1,
+            self.swap_level, self.fork_level)
         g.b_return_tuples = {1:{}}
 
         # a_connection becomes product of all b_connections which
@@ -599,20 +611,21 @@ class BV_Internal_Grouping(BV_Grouping):
         else:
             assert isinstance(g2, BV_Internal_Grouping)
 
-            g1_orig = g1
-            g2_orig = g2
+            if g1.swap_level < g1.level:
+                g1_orig = g1
+                g2_orig = g2
 
-            if g1_orig.is_pair_product_cached(g2_orig):
-                return g1_orig.get_cached_pair_product(g2_orig)
+                if g1_orig.is_pair_product_cached(g2_orig):
+                    return g1_orig.get_cached_pair_product(g2_orig)
 
-            g1, g2 = g1.pair_align(g2)
+                g1, g2 = g1.pair_align(g2)
 
             if g1.is_pair_product_cached(g2):
                 return g1.get_cached_pair_product(g2)
 
             assert g1.a2b == g2.a2b
 
-            g = BV_Internal_Grouping(g1.level, g1.fork_level, g1.a2b)
+            g = BV_Internal_Grouping(g1.level, g1.swap_level, g1.fork_level, g1.a2b)
 
             g_a, pt_a = g1.a_connection.pair_product(g2.a_connection)
 
@@ -644,7 +657,8 @@ class BV_Internal_Grouping(BV_Grouping):
 
             g = g.representative()
 
-            g1_orig.cache_pair_product(g2_orig, g, pt_ans)
+            if g1.swap_level < g1.level:
+                g1_orig.cache_pair_product(g2_orig, g, pt_ans)
 
             return g1.cache_pair_product(g2, g, pt_ans)
 
@@ -703,21 +717,22 @@ class BV_Internal_Grouping(BV_Grouping):
         else:
             assert isinstance(g2, BV_Internal_Grouping) and isinstance(g3, BV_Internal_Grouping)
 
-            g1_orig = g1
-            g2_orig = g2
-            g3_orig = g3
+            if g1.swap_level < g1.level:
+                g1_orig = g1
+                g2_orig = g2
+                g3_orig = g3
 
-            if g1_orig.is_triple_product_cached(g2_orig, g3_orig):
-                return g1_orig.get_cached_triple_product(g2_orig, g3_orig)
+                if g1_orig.is_triple_product_cached(g2_orig, g3_orig):
+                    return g1_orig.get_cached_triple_product(g2_orig, g3_orig)
 
-            g1, g2, g3 = g1.triple_align(g2, g3)
+                g1, g2, g3 = g1.triple_align(g2, g3)
 
             if g1.is_triple_product_cached(g2, g3):
                 return g1.get_cached_triple_product(g2, g3)
 
             assert g1.a2b == g2.a2b == g3.a2b
 
-            g = BV_Internal_Grouping(g1.level, g1.fork_level, g1.a2b)
+            g = BV_Internal_Grouping(g1.level, g1.swap_level, g1.fork_level, g1.a2b)
 
             g_a, tt_a = g1.a_connection.triple_product(g2.a_connection, g3.a_connection)
 
@@ -751,7 +766,8 @@ class BV_Internal_Grouping(BV_Grouping):
 
             g = g.representative()
 
-            g1_orig.cache_triple_product(g2_orig, g3_orig, g, pt_ans)
+            if g1.swap_level < g1.level:
+                g1_orig.cache_triple_product(g2_orig, g3_orig, g, pt_ans)
 
             return g1.cache_triple_product(g2, g3, g, pt_ans)
 
@@ -779,7 +795,8 @@ class BV_Internal_Grouping(BV_Grouping):
             if g.is_reduction_cached(reduction_tuple):
                 return g.get_cached_reduction(reduction_tuple)
 
-            g_prime = BV_Internal_Grouping(g.level, g.fork_level, g.a2b, reduction_length)
+            g_prime = BV_Internal_Grouping(g.level, g.swap_level, g.fork_level,
+                g.a2b, reduction_length)
 
             reduction_tuple_a = {}
 
@@ -807,6 +824,9 @@ class BV_Internal_Grouping(BV_Grouping):
         # equivalent to pair_product of No_Distinction_Proto with self where
         # pair_product for No_Distinction_Proto actually traverses its connections
 
+        if self.swap_level == self.level:
+            return self
+
         if self.is_compressed_cached():
             return self.get_cached_compressed()
 
@@ -832,7 +852,8 @@ class BV_Internal_Grouping(BV_Grouping):
             has_been_compressed |= compressed_b_connections[g_b_i] is not g_b
 
         if has_been_compressed:
-            compressed_g = BV_Internal_Grouping(g.level, g.fork_level, g.a2b, g.number_of_exits)
+            compressed_g = BV_Internal_Grouping(g.level, g.swap_level, g.fork_level,
+                g.a2b, g.number_of_exits)
 
             compressed_g.a_connection = compressed_a_connection
             compressed_g.number_of_b_connections = g.number_of_b_connections
@@ -847,21 +868,22 @@ class BV_No_Distinction_Proto(BV_Internal_Grouping):
     representatives = {}
     representatives_hits = 0
 
-    def __init__(self, level, fork_level):
+    def __init__(self, level, swap_level, fork_level):
         assert level > 0
-        assert 0 <= fork_level <= level
-        super().__init__(level, fork_level, True, 1)
+        assert 0 <= fork_level <= swap_level <= level
+        super().__init__(level, swap_level, fork_level, True, 1)
 
-    def representative(level, fork_level):
+    def representative(level, swap_level, fork_level):
         if level == fork_level:
-            return BV_Dont_Care_Grouping.representative(fork_level)
+            return BV_Dont_Care_Grouping.representative(level)
         elif level in BV_No_Distinction_Proto.representatives:
             BV_No_Distinction_Proto.representatives_hits += 1
             return BV_No_Distinction_Proto.representatives[level]
         else:
-            g = BV_No_Distinction_Proto(level, fork_level)
+            g = BV_No_Distinction_Proto(level, swap_level, fork_level)
 
-            g.a_connection = BV_No_Distinction_Proto.representative(level - 1, fork_level)
+            g.a_connection = BV_No_Distinction_Proto.representative(level - 1,
+                swap_level, fork_level)
             # g.a_return_tuple == {} representing g.a_return_tuple[1] = 1
 
             g.number_of_b_connections = 1
@@ -873,6 +895,7 @@ class BV_No_Distinction_Proto(BV_Internal_Grouping):
             return g
 
     def swap(self):
+        assert self.swap_level < self.level
         return self
 
     def pair_product(self, g2, inorder = True):
@@ -1055,21 +1078,21 @@ class CFLOBVDD:
         # without reductions True may appear more than once
         return self.number_of_distinct_outputs() == 1 and True in self.outputs.values()
 
-    def constant(level, fork_level, output = 0):
+    def constant(level, swap_level, fork_level, output = 0):
         CFLOBVDD.max_level = max(CFLOBVDD.max_level, level)
         return CFLOBVDD.representative(
-            BV_No_Distinction_Proto.representative(level, fork_level), {1:output})
+            BV_No_Distinction_Proto.representative(level, swap_level, fork_level), {1:output})
 
-    def byte_constant(level, fork_level, number_of_input_bytes, output):
+    def byte_constant(level, swap_level, fork_level, number_of_input_bytes, output):
         assert number_of_input_bytes > 0
-        level = max(level, fork_level, ceil(log2(number_of_input_bytes)))
-        return CFLOBVDD.constant(level, fork_level, output)
+        level = max(level, swap_level, fork_level, ceil(log2(number_of_input_bytes)))
+        return CFLOBVDD.constant(level, swap_level, fork_level, output)
 
-    def false(level, fork_level):
-        return CFLOBVDD.constant(level, fork_level, False)
+    def false(level, swap_level, fork_level):
+        return CFLOBVDD.constant(level, swap_level, fork_level, False)
 
-    def true(level, fork_level):
-        return CFLOBVDD.constant(level, fork_level, True)
+    def true(level, swap_level, fork_level):
+        return CFLOBVDD.constant(level, swap_level, fork_level, True)
 
     def flip_value_tuple(self):
         # self must be reduced
@@ -1077,34 +1100,35 @@ class CFLOBVDD:
         return CFLOBVDD.representative(self.grouping, {1:self.outputs[2], 2:self.outputs[1]})
 
     def complement(self):
-        if self == CFLOBVDD.false(self.grouping.level, self.grouping.fork_level):
-            return CFLOBVDD.true(self.grouping.level, self.grouping.fork_level)
-        elif self == CFLOBVDD.true(self.grouping.level, self.grouping.fork_level):
-            return CFLOBVDD.false(self.grouping.level, self.grouping.fork_level)
+        if self == CFLOBVDD.false(self.grouping.level, self.grouping.swap_level, self.grouping.fork_level):
+            return CFLOBVDD.true(self.grouping.level, self.grouping.swap_level, self.grouping.fork_level)
+        elif self == CFLOBVDD.true(self.grouping.level, self.grouping.swap_level, self.grouping.fork_level):
+            return CFLOBVDD.false(self.grouping.level, self.grouping.swap_level, self.grouping.fork_level)
         else:
             # self must be reduced
             return self.flip_value_tuple()
 
     def unary_apply_and_reduce(self, op, number_of_output_bits):
         return self.binary_apply_and_reduce(
-            CFLOBVDD.constant(self.grouping.level, self.grouping.fork_level),
+            CFLOBVDD.constant(self.grouping.level,
+                self.grouping.swap_level, self.grouping.fork_level),
             lambda x, y: op(x),
             number_of_output_bits)
 
-    def projection(level, fork_level, input_i, reorder = False):
-        assert 0 <= fork_level <= level
+    def projection(level, swap_level, fork_level, input_i, reorder = False):
+        assert 0 <= fork_level <= swap_level <= level
         assert 0 <= input_i < 2**level
         CFLOBVDD.max_level = max(CFLOBVDD.max_level, level)
-        grouping = BV_Internal_Grouping.projection_proto(level, fork_level, input_i)
+        grouping = BV_Internal_Grouping.projection_proto(level, swap_level, fork_level, input_i)
         if reorder:
             grouping = grouping.compress()
         return CFLOBVDD.representative(grouping,
             dict([(output + 1, output) for output in range(256)]))
 
-    def byte_projection(level, fork_level, number_of_input_bytes, byte_i, reorder = False):
-        level = max(level, fork_level, ceil(log2(number_of_input_bytes)))
+    def byte_projection(level, swap_level, fork_level, number_of_input_bytes, byte_i, reorder = False):
+        level = max(level, swap_level, fork_level, ceil(log2(number_of_input_bytes)))
         assert 0 <= byte_i < 2**level
-        return CFLOBVDD.projection(level, fork_level, byte_i, reorder)
+        return CFLOBVDD.projection(level, swap_level, fork_level, byte_i, reorder)
 
     def collapse_classes_leftmost(equiv_classes):
         # legacy code
