@@ -761,36 +761,35 @@ class BV_Internal_Grouping(BV_Grouping):
         if self.is_compressed_cached():
             return self.get_cached_compressed()
 
-        g = BV_Internal_Grouping(self.level, self.fork_level, self.a2b, self.number_of_exits)
+        g_flipped = self.flip()
 
-        g.a_connection = self.a_connection.compress()
+        g = g_flipped if g_flipped.number_of_b_connections < self.number_of_b_connections else self
 
-        assert g.a_connection.number_of_exits == self.a_connection.number_of_exits
+        compressed_a_connection = g.a_connection.compress()
 
-        g.number_of_b_connections = g.a_connection.number_of_exits
+        has_been_compressed = compressed_a_connection is not g.a_connection
 
-        g.b_connections = {}
-        g.b_return_tuples = {}
+        compressed_b_connections = {}
 
-        for g_b_i in self.b_connections:
-            g_b = self.b_connections[g_b_i]
-            g_b_i_rt = self.b_return_tuples[g_b_i]
+        for g_b_i in g.b_connections:
+            g_b = g.b_connections[g_b_i]
+            compressed_b_connections[g_b_i] = g_b.compress()
 
-            g_b_compressed = g_b.compress()
+            has_been_compressed |= compressed_b_connections[g_b_i] is not g_b
 
-            g.b_connections[len(g.b_connections) + 1] = g_b_compressed
-            g.b_return_tuples[len(g.b_return_tuples) + 1] = g_b_i_rt
+        if has_been_compressed:
+            compressed_g = BV_Internal_Grouping(g.level, g.fork_level, g.a2b, g.number_of_exits)
 
-            assert g_b_compressed.number_of_exits == len(g_b_i_rt)
+            compressed_g.a_connection = compressed_a_connection
+            compressed_g.number_of_b_connections = g.number_of_b_connections
+            compressed_g.b_connections = compressed_b_connections
+            compressed_g.b_return_tuples = g.b_return_tuples
 
-        g = g.representative()
-
-        g_flipped = g.flip()
-
-        if g_flipped.number_of_b_connections < g.number_of_b_connections:
-            return self.cache_compressed(g_flipped)
+            compressed_g = compressed_g.representative()
         else:
-            return self.cache_compressed(g)
+            compressed_g = g
+
+        return self.cache_compressed(compressed_g)
 
 class BV_No_Distinction_Proto(BV_Internal_Grouping):
     representatives = {}
