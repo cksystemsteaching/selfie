@@ -1556,7 +1556,7 @@ def main():
     parser.add_argument('--use-Z3', action='store_true')
     parser.add_argument('--use-bitwuzla', action='store_true')
 
-    parser.add_argument('--use-BVDD', nargs='?', const=0, type=int)
+    parser.add_argument('--use-BVDD', action='store_true')
     parser.add_argument('--use-CFLOBVDD', nargs='*', type=int)
 
     parser.add_argument('--no-reduction', action='store_true')
@@ -1616,12 +1616,8 @@ def main():
         if bitwuzlainterface.is_bitwuzla_present:
             bitwuzla_solver = bitwuzlainterface.Bitwuzla_Solver(print_message, LAMBDAS, UNROLL)
 
-        if args.use_BVDD is not None:
+        if args.use_BVDD or args.use_CFLOBVDD is None:
             Values.BVDD = True
-            Values.BVDD_level = args.use_BVDD
-
-            level = max(Values.BVDD_level,
-                ceil(log2(len(Variable.bvdd_input))) if Variable.bvdd_input else 0)
 
             # reversing order of input variables
             # Values.BVDD_input = dict([(2**level - 1 - index, var_line)
@@ -1631,8 +1627,7 @@ def main():
                 for index, var_line in Values.BVDD_input.items()])
 
             print_separator('-')
-            print(f"BVDD configuration: {2**level} input bytes " +
-                f"@ level {Values.BVDD_level}")
+            print(f"BVDD configuration: {len(Values.BVDD_input)} input bytes")
 
         if args.use_CFLOBVDD is not None:
             Values.CFLOBVDD = True
@@ -1657,16 +1652,6 @@ def main():
                 f"@ level {Values.CFLOBVDD_level}, swap level {Values.CFLOBVDD_swap_level}, and fork level {Values.CFLOBVDD_fork_level}")
 
         CFLOBVDD.CFLOBVDD.REDUCE = not args.no_reduction
-
-        if args.use_BVDD is None and args.use_CFLOBVDD is None:
-            Values.BVDD = True
-
-            Values.BVDD_input = Variable.bvdd_input
-            Values.BVDD_index = dict([(var_line, index)
-                for index, var_line in Values.BVDD_input.items()])
-
-            print_separator('-')
-            print(f"BVDD configuration: {len(Values.BVDD_input)} input bytes ")
 
         bitme_solver = Bitme_Solver(z3_solver, bitwuzla_solver)
 
