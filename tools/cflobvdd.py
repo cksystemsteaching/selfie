@@ -274,7 +274,8 @@ class BV_Fork_Grouping(BV_Grouping):
         return True
 
     def number_of_connections(self):
-        return self.bvdd.number_of_connections()
+        # counting CFLOBVDD connections only
+        return 0
 
     def number_of_distinct_inputs(self, exit_i):
         return self.bvdd.number_of_distinct_inputs(exit_i)
