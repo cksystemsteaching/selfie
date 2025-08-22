@@ -554,18 +554,36 @@ class BV_Internal_Grouping(BV_Grouping):
 
         return self.cache_flip(g.representative())
 
-    def pair_decompress(self, g2):
+    def pair_compressed(self, g2, g1_other, g2_other):
         assert isinstance(g2, BV_Internal_Grouping)
 
         g1 = self
 
-        if (g1.a2b ^ g2.a2b):
-            if not g1.a2b:
-                g1 = g1.flip()
-            if not g2.a2b:
-                g2 = g2.flip()
+        size = g1.number_of_b_connections + g2.number_of_b_connections
+        size_other = g1_other.number_of_b_connections + g2_other.number_of_b_connections
 
-        return g1, g2
+        if size < size_other:
+            return g1, g2
+        elif size > size_other:
+            return g1_other, g2_other
+        elif g1.a2b:
+            # prefer original input ordering
+            return g1, g2
+        else:
+            return g1_other, g2_other
+
+    def pair_align(self, g2):
+        assert isinstance(g2, BV_Internal_Grouping)
+
+        g1 = self
+
+        g1_flipped = g1.flip()
+        g2_flipped = g2.flip()
+
+        if g1.a2b == g2.a2b:
+            return g1.pair_compressed(g2, g1_flipped, g2_flipped)
+        else:
+            return g1_flipped.pair_compressed(g2, g1, g2_flipped)
 
     def pair_product(self, g2):
         assert isinstance(g2, BV_Grouping)
@@ -585,7 +603,7 @@ class BV_Internal_Grouping(BV_Grouping):
             if g1_orig.is_pair_product_cached(g2_orig):
                 return g1_orig.get_cached_pair_product(g2_orig)
 
-            g1, g2 = g1.pair_decompress(g2)
+            g1, g2 = g1.pair_align(g2)
 
             if g1.is_pair_product_cached(g2):
                 return g1.get_cached_pair_product(g2)
@@ -628,20 +646,46 @@ class BV_Internal_Grouping(BV_Grouping):
 
             return g1.cache_pair_product(g2, g, pt_ans)
 
-    def triple_decompress(self, g2, g3):
+    def triple_compressed(self, g2, g3, g1_other, g2_other, g3_other):
         assert isinstance(g2, BV_Internal_Grouping) and isinstance(g3, BV_Internal_Grouping)
 
         g1 = self
 
-        if (g1.a2b ^ g2.a2b) or (g1.a2b ^ g3.a2b) or (g2.a2b ^ g3.a2b):
-            if not g1.a2b:
-                g1 = g1.flip()
-            if not g2.a2b:
-                g2 = g2.flip()
-            if not g3.a2b:
-                g3 = g3.flip()
+        size = (g1.number_of_b_connections +
+            g2.number_of_b_connections +
+            g3.number_of_b_connections)
+        size_other = (g1_other.number_of_b_connections +
+            g2_other.number_of_b_connections +
+            g3_other.number_of_b_connections)
 
-        return g1, g2, g3
+        if size < size_other:
+            return g1, g2, g3
+        elif size > size_other:
+            return g1_other, g2_other, g3_other
+        elif g1.a2b:
+            # prefer original input ordering
+            return g1, g2, g3
+        else:
+            return g1_other, g2_other, g3_other
+
+    def triple_align(self, g2, g3):
+        assert isinstance(g2, BV_Internal_Grouping) and isinstance(g3, BV_Internal_Grouping)
+
+        g1 = self
+
+        g1_flipped = g1.flip()
+        g2_flipped = g2.flip()
+        g3_flipped = g3.flip()
+
+        if g1.a2b == g2.a2b:
+            if g2.a2b == g3.a2b:
+                return g1.triple_compressed(g2, g3, g1_flipped, g2_flipped, g3_flipped)
+            else:
+                return g1.triple_compressed(g2, g3_flipped, g1_flipped, g2_flipped, g3)
+        elif g2.a2b == g3.a2b:
+            return g1.triple_compressed(g2_flipped, g3_flipped, g1_flipped, g2, g3)
+        else:
+            return g1.triple_compressed(g2_flipped, g3, g1_flipped, g2, g3_flipped)
 
     def triple_product(self, g2, g3):
         assert isinstance(g2, BV_Grouping) and isinstance(g3, BV_Grouping)
@@ -664,7 +708,7 @@ class BV_Internal_Grouping(BV_Grouping):
             if g1_orig.is_triple_product_cached(g2_orig, g3_orig):
                 return g1_orig.get_cached_triple_product(g2_orig, g3_orig)
 
-            g1, g2, g3 = g1.triple_decompress(g2, g3)
+            g1, g2, g3 = g1.triple_align(g2, g3)
 
             if g1.is_triple_product_cached(g2, g3):
                 return g1.get_cached_triple_product(g2, g3)
