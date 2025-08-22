@@ -803,6 +803,9 @@ class BV_Internal_Grouping(BV_Grouping):
             return g.cache_reduction(reduction_tuple, g_prime.representative())
 
     def compress(self):
+        # equivalent to pair_product of No_Distinction_Proto with self where
+        # pair_product for No_Distinction_Proto traverses its connections
+
         if self.is_compressed_cached():
             return self.get_cached_compressed()
 
@@ -810,7 +813,10 @@ class BV_Internal_Grouping(BV_Grouping):
 
         g_flipped = self.flip()
 
-        g = g_flipped if g_flipped.number_of_b_connections < self.number_of_b_connections else self
+        g = (g_flipped if g_flipped.number_of_b_connections < self.number_of_b_connections else
+            self if g_flipped.number_of_b_connections > self.number_of_b_connections else
+            # prefer original input ordering
+            g_flipped if g_flipped.a2b else self)
 
         compressed_a_connection = g.a_connection.compress()
 
