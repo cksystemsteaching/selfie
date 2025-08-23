@@ -267,22 +267,31 @@ class BV_Fork_Grouping(BV_Grouping):
     representatives = {}
     representatives_hits = 0
 
-    def __init__(self, level, number_of_exits, bvdd):
+    def __init__(self, level, swap_level, fork_level, ordering, number_of_exits, bvdd):
         super().__init__(level, number_of_exits)
+        assert 0 <= swap_level <= level
+        assert 0 <= fork_level <= level
+        self.swap_level = swap_level
+        self.fork_level = fork_level
+        self.ordering = ordering
         self.bvdd = bvdd
 
     def __repr__(self):
         indentation = " " * (CFLOBVDD.max_level - self.level + 1)
         return (indentation + "\n" +
             indentation + "fork @ " + super().__repr__() + ":\n" +
+            indentation + f"ordering: {format(self.ordering, 'b')}\n" +
             indentation + f"{self.bvdd}")
 
     def __hash__(self):
-        return hash((self.level, self.number_of_exits, self.bvdd))
+        return hash((self.level, self.swap_level, self.fork_level, self.ordering, self.number_of_exits, self.bvdd))
 
     def __eq__(self, g2):
         return (isinstance(g2, BV_Fork_Grouping) and
             self.level == g2.level and
+            self.swap_level == g2.swap_level and
+            self.fork_level == g2.fork_level and
+            self.ordering == g2.ordering and
             self.number_of_exits == g2.number_of_exits and
             self.bvdd == g2.bvdd)
 
@@ -319,7 +328,8 @@ class BV_Fork_Grouping(BV_Grouping):
     def projection_proto(level, input_i):
         # TODO: assert level == 0 and input_i == 0
         assert 0 <= input_i < 2**level
-        return BV_Fork_Grouping(level, 256, BVDD.BVDD.projection_proto(input_i)).representative()
+        return BV_Fork_Grouping(level, level, level, 0,
+            256, BVDD.BVDD.projection_proto(input_i)).representative()
 
     def upsample(self):
         return self
@@ -365,9 +375,8 @@ class BV_Fork_Grouping(BV_Grouping):
 
             bvdd, pt = g1.bvdd.pair_product(g2.bvdd)
 
-            # g = BV_Fork_Grouping(g1.level, g1.swap_level, g1.fork_level, g1.a2b, len(pt), bvdd)
-
-            g = BV_Fork_Grouping(g1.level, len(pt), bvdd)
+            g = BV_Fork_Grouping(g1.level, g1.swap_level, g1.fork_level, g1.ordering,
+                len(pt), bvdd)
 
             return g1_orig.cache_pair_product(g2_orig, g.representative(), pt)
 
@@ -434,9 +443,8 @@ class BV_Fork_Grouping(BV_Grouping):
 
             bvdd, tt = g1.bvdd.triple_product(g2.bvdd, g3.bvdd)
 
-            # g = BV_Fork_Grouping(g1.level, g1.swap_level, g1.fork_level, g1.a2b, len(tt), bvdd)
-
-            g = BV_Fork_Grouping(g1.level, len(tt), bvdd)
+            g = BV_Fork_Grouping(g1.level, g1.swap_level, g1.fork_level, g1.ordering,
+                len(tt), bvdd)
 
             return g1_orig.cache_triple_product(g2_orig, g3_orig, g.representative(), tt)
 
@@ -456,7 +464,8 @@ class BV_Fork_Grouping(BV_Grouping):
             if bvdd.is_constant():
                 g = BV_Dont_Care_Grouping.representative(self.level)
             else:
-                g = BV_Fork_Grouping(self.level, reduction_length, bvdd).representative()
+                g = BV_Fork_Grouping(self.level, self.swap_level, self.fork_level, self.ordering,
+                    reduction_length, bvdd).representative()
 
             assert g.number_of_exits == reduction_length
 
