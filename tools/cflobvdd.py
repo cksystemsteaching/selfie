@@ -463,8 +463,20 @@ class BV_Fork_Grouping(BV_Grouping):
             return self.cache_reduction(reduction_tuple, g)
 
     def compress(self):
-        return self
+        # equivalent to pair_product of No_Distinction_Proto with self where
+        # pair_product for No_Distinction_Proto actually traverses its connections
 
+        if self.level == self.swap_level:
+            return self
+
+        assert self.level > self.swap_level
+
+        if self.is_compressed_cached():
+            return self.get_cached_compressed()
+
+        return self.cache_compressed(self.upsample().compress())
+
+import threading
 class BV_Internal_Grouping(BV_Grouping):
     representatives_lock = threading.Lock()
     representatives = {}
@@ -956,8 +968,10 @@ class BV_Internal_Grouping(BV_Grouping):
         # equivalent to pair_product of No_Distinction_Proto with self where
         # pair_product for No_Distinction_Proto actually traverses its connections
 
-        if self.swap_level == self.level:
+        if self.level == self.swap_level:
             return self
+
+        assert self.level > self.swap_level
 
         if self.is_compressed_cached():
             return self.get_cached_compressed()
