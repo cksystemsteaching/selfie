@@ -118,7 +118,7 @@ class BVDD_Node:
         path = []
         o2s = self.get_o2s()
         for output in o2s:
-            inputs = o2s[output]
+            inputs = o2s[output] if o2s[output] < 2**256-1 else 0
             if isinstance(output, BVDD):
                 other_path = output.get_paths(exit_i, index_i + 1)
                 if other_path:

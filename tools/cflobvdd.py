@@ -165,8 +165,8 @@ class BV_Dont_Care_Grouping(BV_Grouping):
     representatives_lock = threading.Lock()
     representatives = None
 
-    def __init__(self, level):
-        super().__init__(level, 1)
+    def __init__(self):
+        super().__init__(0, 1)
 
     def __repr__(self):
         return "dontcare @ " + super().__repr__()
@@ -184,13 +184,13 @@ class BV_Dont_Care_Grouping(BV_Grouping):
 
     def get_paths(self, exit_i, index_i = 0):
         assert exit_i == 1
-        return [(i, 0) for i in range(index_i, index_i + 2**self.level)]
+        return [(index_i, 0)]
 
-    def representative(level):
+    def representative():
         if BV_Dont_Care_Grouping.representatives is None:
             with BV_Dont_Care_Grouping.representatives_lock:
                 if BV_Dont_Care_Grouping.representatives is None:
-                    BV_Dont_Care_Grouping.representatives = BV_Dont_Care_Grouping(level)
+                    BV_Dont_Care_Grouping.representatives = BV_Dont_Care_Grouping()
                     assert BV_Dont_Care_Grouping.representatives.is_consistent()
         return BV_Dont_Care_Grouping.representatives
 
@@ -328,8 +328,9 @@ class BV_Fork_Grouping(BV_Grouping):
     def projection_proto(level, input_i):
         # TODO: assert level == 0 and input_i == 0
         assert 0 <= input_i < 2**level
+        bvdd = BVDD.BVDD.projection_proto(input_i)
         return BV_Fork_Grouping(level, level, level, 0,
-            256, BVDD.BVDD.projection_proto(input_i)).representative()
+            bvdd.number_of_exits(), bvdd).representative()
 
     def upsample(self):
         return self
@@ -462,7 +463,7 @@ class BV_Fork_Grouping(BV_Grouping):
             assert self.level == self.fork_level
 
             if bvdd.is_constant():
-                g = BV_Dont_Care_Grouping.representative(self.level)
+                g = No_Distinction_Proto.representative(self.level, self.swap_level, self.fork_level)
             else:
                 g = BV_Fork_Grouping(self.level, self.swap_level, self.fork_level, self.ordering,
                     reduction_length, bvdd).representative()
@@ -596,6 +597,7 @@ class BV_Internal_Grouping(BV_Grouping):
         return count
 
     def get_paths(self, exit_i, index_i = 0):
+        assert 1 <= exit_i <= self.number_of_exits
         if self.a2b:
             a_index_i = index_i
             b_index_i = index_i + 2**(self.level - 1)
@@ -628,21 +630,23 @@ class BV_Internal_Grouping(BV_Grouping):
         if level == fork_level:
             return BV_Fork_Grouping.projection_proto(level, input_i)
         else:
-            g = BV_Internal_Grouping(level, swap_level, fork_level, True, 256)
+            g = BV_Internal_Grouping(level, swap_level, fork_level, True)
 
             if input_i < 2**(level - 1):
                 g.a_connection = BV_Internal_Grouping.projection_proto(level - 1,
                     swap_level, fork_level, input_i)
+                g.number_of_exits = g.a_connection.number_of_exits
                 # g.a_return_tuple == {} representing g.a_return_tuple = dict([(e, e)
-                    # for e in range(1, 256 + 1)])
+                    # for e in range(1, g.number_of_exits + 1)])
 
-                g.number_of_b_connections = 256
+                g.number_of_b_connections = g.number_of_exits
 
                 projection_proto = BV_No_Distinction_Proto.representative(level - 1,
                     swap_level, fork_level)
 
-                g.b_connections = dict([(c, projection_proto) for c in range(1, 256 + 1)])
-                g.b_return_tuples = dict([(e, {1:e}) for e in range(1, 256 + 1)])
+                g.b_connections = dict([(c, projection_proto)
+                    for c in range(1, g.number_of_b_connections + 1)])
+                g.b_return_tuples = dict([(e, {1:e}) for e in range(1, g.number_of_exits + 1)])
             else:
                 g.a_connection = BV_No_Distinction_Proto.representative(level - 1,
                     swap_level, fork_level)
@@ -653,8 +657,10 @@ class BV_Internal_Grouping(BV_Grouping):
                 projection_proto = BV_Internal_Grouping.projection_proto(level - 1,
                     swap_level, fork_level, input_i - 2**(level - 1))
 
+                g.number_of_exits = projection_proto.number_of_exits
+
                 g.b_connections = {1:projection_proto}
-                g.b_return_tuples = {1:dict([(e, e) for e in range(1, 256 + 1)])}
+                g.b_return_tuples = {1:dict([(e, e) for e in range(1, g.number_of_exits + 1)])}
 
             return g.representative()
 
@@ -1034,8 +1040,8 @@ class BV_No_Distinction_Proto(BV_Internal_Grouping):
         super().__init__(level, swap_level, fork_level, True, 1)
 
     def representative(level, swap_level, fork_level):
-        if level == fork_level:
-            return BV_Dont_Care_Grouping.representative(level)
+        if level == 0:
+            return BV_Dont_Care_Grouping.representative()
         elif level in BV_No_Distinction_Proto.representatives:
             BV_No_Distinction_Proto.representatives_hits += 1
             return BV_No_Distinction_Proto.representatives[level]
@@ -1179,7 +1185,7 @@ class CFLOBVDD:
                 assert isinstance(path[1], int)
                 index_i = path[0]
                 inputs = path[1]
-                if inputs == 0 or inputs == 2**256-1:
+                if inputs == 0:
                     if full_paths:
                         printed_paths += [f"[dontcare @ {index_i}]"]
                 else:
@@ -1294,7 +1300,7 @@ class CFLOBVDD:
         if reorder:
             grouping = grouping.compress()
         return CFLOBVDD.representative(grouping,
-            dict([(output + 1, output) for output in range(256)]))
+            dict([(output + 1, output) for output in range(grouping.number_of_exits)]))
 
     def byte_projection(level, swap_level, fork_level, number_of_input_bytes, byte_i, reorder = False):
         level = max(level, swap_level, fork_level, ceil(log2(number_of_input_bytes)))
