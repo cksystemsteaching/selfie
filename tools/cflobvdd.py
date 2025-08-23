@@ -118,10 +118,10 @@ class BV_Grouping:
         assert self.is_triple_product_cached(g2, g3)
         return BV_Grouping.triple_product_cache[(self, g2, g3)]
 
-    def cache_triple_product(self, g2, g3, triple_product, pt_ans):
+    def cache_triple_product(self, g2, g3, triple_product, tt_ans):
         with BV_Grouping.triple_product_cache_lock:
             if (self, g2, g3) not in BV_Grouping.triple_product_cache:
-                BV_Grouping.triple_product_cache[(self, g2, g3)] = (triple_product, pt_ans)
+                BV_Grouping.triple_product_cache[(self, g2, g3)] = (triple_product, tt_ans)
         return BV_Grouping.triple_product_cache[(self, g2, g3)]
 
     def reduction_hash(reduction_tuple):
@@ -160,9 +160,6 @@ class BV_Grouping:
                     self.swap_level, self.fork_level)
             else:
                 return reduction_length, self
-
-    def compress(self):
-        return self
 
 class BV_Dont_Care_Grouping(BV_Grouping):
     representatives_lock = threading.Lock()
@@ -237,28 +234,31 @@ class BV_Dont_Care_Grouping(BV_Grouping):
 
         if g1.is_no_distinction_proto() and g2.is_no_distinction_proto():
             g = g3
-            pt_ans = dict([(k, (1, 1, k)) for k in range(1, g3.number_of_exits + 1)])
+            tt_ans = dict([(k, (1, 1, k)) for k in range(1, g3.number_of_exits + 1)])
         elif g1.is_no_distinction_proto() and g3.is_no_distinction_proto():
             g = g2
-            pt_ans = dict([(k, (1, k, 1)) for k in range(1, g2.number_of_exits + 1)])
+            tt_ans = dict([(k, (1, k, 1)) for k in range(1, g2.number_of_exits + 1)])
         elif g2.is_no_distinction_proto() and g3.is_no_distinction_proto():
             g = g1
-            pt_ans = dict([(k, (k, 1, 1)) for k in range(1, g1.number_of_exits + 1)])
+            tt_ans = dict([(k, (k, 1, 1)) for k in range(1, g1.number_of_exits + 1)])
         elif g1.is_no_distinction_proto():
             g, pt = g2.pair_product(g3)
-            pt_ans = dict([(jk, (1, pt[jk][0], pt[jk][1])) for jk in pt])
+            tt_ans = dict([(jk, (1, pt[jk][0], pt[jk][1])) for jk in pt])
         elif g2.is_no_distinction_proto():
             g, pt = g1.pair_product(g3)
-            pt_ans = dict([(jk, (pt[jk][0], 1, pt[jk][1])) for jk in pt])
+            tt_ans = dict([(jk, (pt[jk][0], 1, pt[jk][1])) for jk in pt])
         else:
             assert g3.is_no_distinction_proto()
             g, pt = g1.pair_product(g2)
-            pt_ans = dict([(jk, (pt[jk][0], pt[jk][1], 1)) for jk in pt])
+            tt_ans = dict([(jk, (pt[jk][0], pt[jk][1], 1)) for jk in pt])
 
-        return g1.cache_triple_product(g2, g3, g, pt_ans)
+        return g1.cache_triple_product(g2, g3, g, tt_ans)
 
     def reduce(self, reduction_tuple):
         assert reduction_tuple == {1:1}
+        return self
+
+    def compress(self):
         return self
 
 class BV_Fork_Grouping(BV_Grouping):
@@ -317,8 +317,15 @@ class BV_Fork_Grouping(BV_Grouping):
         return BV_Fork_Grouping.representatives[self]
 
     def projection_proto(level, input_i):
+        # TODO: assert level == 0 and input_i == 0
         assert 0 <= input_i < 2**level
         return BV_Fork_Grouping(level, 256, BVDD.BVDD.projection_proto(input_i)).representative()
+
+    def upsample(self):
+        return self
+
+    def pair_align(self, g2):
+        return self, g2
 
     def pair_product(self, g2):
         assert isinstance(g2, BV_Grouping)
@@ -328,15 +335,44 @@ class BV_Fork_Grouping(BV_Grouping):
         if g2.is_no_distinction_proto():
             return g2.pair_product(g1, False)
         else:
+            g1_orig = g1
+            g2_orig = g2
+
+            if g1_orig.is_pair_product_cached(g2_orig):
+                return g1_orig.get_cached_pair_product(g2_orig)
+
+            if isinstance(g2, BV_Internal_Grouping):
+                if g1.level > g1.swap_level:
+                    g, pt = g1.upsample().pair_product(g2)
+                    return g1_orig.cache_pair_product(g2_orig, g, pt)
+                else:
+                    g2 = g2.downsample()
+
             assert isinstance(g2, BV_Fork_Grouping)
 
-            if g1.is_pair_product_cached(g2):
-                return g1.get_cached_pair_product(g2)
+            if g1.level > g1.swap_level:
+                # g1 and g2 may be unaligned
+                g1, g2 = g1.pair_align(g2)
 
-            g, pt = g1.bvdd.pair_product(g2.bvdd)
+            # assert g1.a2b == g2.a2b
 
-            return g1.cache_pair_product(g2,
-                BV_Fork_Grouping(self.level, len(pt), g).representative(), pt)
+            if g1.level < g1.fork_level:
+                # g1 and g2 are compressed in order, so downsample both
+                pass
+                # TODO:
+                #g, pt = g1.downsample().pair_product(g2.downsample())
+                #return g1_orig.cache_pair_product(g2_orig, g, pt)
+
+            bvdd, pt = g1.bvdd.pair_product(g2.bvdd)
+
+            # g = BV_Fork_Grouping(g1.level, g1.swap_level, g1.fork_level, g1.a2b, len(pt), bvdd)
+
+            g = BV_Fork_Grouping(g1.level, len(pt), bvdd)
+
+            return g1_orig.cache_pair_product(g2_orig, g.representative(), pt)
+
+    def triple_align(self, g2, g3):
+        return self, g2, g3
 
     def triple_product(self, g2, g3):
         assert isinstance(g2, BV_Grouping) and isinstance(g3, BV_Grouping)
@@ -348,15 +384,61 @@ class BV_Fork_Grouping(BV_Grouping):
         elif g3.is_no_distinction_proto():
             return g3.triple_product(g1, g2, 3)
         else:
+            g1_orig = g1
+            g2_orig = g2
+            g3_orig = g3
+
+            if g1_orig.is_triple_product_cached(g2_orig, g3_orig):
+                return g1_orig.get_cached_triple_product(g2_orig, g3_orig)
+
+            if isinstance(g2, BV_Internal_Grouping):
+                if g1.level > g1.swap_level:
+                    g, tt = g1.upsample().pair_product(g2)
+                    return g1_orig.cache_pair_product(g2_orig, g, tt)
+                else:
+                    g2 = g2.downsample()
+
+            if g1.level > g1.swap_level:
+                if isinstance(g2, BV_Internal_Grouping):
+                    if isinstance(g3, BV_Fork_Grouping):
+                        g3 = g3.upsample()
+                    assert isinstance(g3, BV_Internal_Grouping)
+                    g, tt = g1.upsample().triple_product(g2, g3)
+                    return g1_orig.cache_triple_product(g2_orig, g3_orig, g, tt)
+                elif isinstance(g3, BV_Internal_Grouping):
+                    assert isinstance(g2, BV_Fork_Grouping)
+                    g, tt = g1.upsample().triple_product(g2.upsample(), g3)
+                    return g1_orig.cache_triple_product(g2_orig, g3_orig, g, tt)
+            else:
+                if isinstance(g2, BV_Internal_Grouping):
+                    g2 = g2.downsample()
+                if isinstance(g3, BV_Internal_Grouping):
+                    g3 = g3.downsample()
+
             assert isinstance(g2, BV_Fork_Grouping) and isinstance(g3, BV_Fork_Grouping)
 
-            if g1.is_triple_product_cached(g2, g3):
-                return g1.get_cached_triple_product(g2, g3)
+            if g1.level > g1.swap_level:
+                # g1, g2, g3 may be unaligned
+                g1, g2, g3 = g1.triple_align(g2, g3)
 
-            g, tt = g1.bvdd.triple_product(g2.bvdd, g3.bvdd)
+            # assert g1.a2b == g2.a2b == g3.a2b
 
-            return g1.cache_triple_product(g2, g3,
-                BV_Fork_Grouping(self.level, len(tt), g).representative(), tt)
+            if g1.level < g1.fork_level:
+                # g1, g2, g3 are compressed in order, so downsample all three
+                pass
+                # TODO:
+                #g, tt = g1.downsample().triple_product(g2.downsample(), g3.downsample())
+                #return g1_orig.cache_triple_product(g2_orig, g3_orig, g, tt)
+
+            assert isinstance(g2, BV_Fork_Grouping) and isinstance(g3, BV_Fork_Grouping)
+
+            bvdd, tt = g1.bvdd.triple_product(g2.bvdd, g3.bvdd)
+
+            # g = BV_Fork_Grouping(g1.level, g1.swap_level, g1.fork_level, g1.a2b, len(tt), bvdd)
+
+            g = BV_Fork_Grouping(g1.level, len(tt), bvdd)
+
+            return g1_orig.cache_triple_product(g2_orig, g3_orig, g.representative(), tt)
 
     def reduce(self, reduction_tuple):
         reduction_length, reduction = super().reduce(reduction_tuple)
@@ -379,6 +461,9 @@ class BV_Fork_Grouping(BV_Grouping):
             assert g.number_of_exits == reduction_length
 
             return self.cache_reduction(reduction_tuple, g)
+
+    def compress(self):
+        return self
 
 class BV_Internal_Grouping(BV_Grouping):
     representatives_lock = threading.Lock()
@@ -589,6 +674,9 @@ class BV_Internal_Grouping(BV_Grouping):
 
         return self.cache_swap(g.representative())
 
+    def downsample(self):
+        return self
+
     def pair_compressed(self, g2, g1_other, g2_other):
         assert isinstance(g2, BV_Internal_Grouping)
 
@@ -630,21 +718,33 @@ class BV_Internal_Grouping(BV_Grouping):
         if g2.is_no_distinction_proto():
             return g2.pair_product(g1, False)
         else:
+            g1_orig = g1
+            g2_orig = g2
+
+            if g1_orig.is_pair_product_cached(g2_orig):
+                return g1_orig.get_cached_pair_product(g2_orig)
+
+            if isinstance(g2, BV_Fork_Grouping):
+                if g1.level > g1.swap_level:
+                    g2 = g2.upsample()
+                else:
+                    g, pt_ans = g1.downsample().pair_product(g2)
+                    return g1_orig.cache_pair_product(g2_orig, g, pt_ans)
+
             assert isinstance(g2, BV_Internal_Grouping)
 
-            if g1.swap_level < g1.level:
-                g1_orig = g1
-                g2_orig = g2
-
-                if g1_orig.is_pair_product_cached(g2_orig):
-                    return g1_orig.get_cached_pair_product(g2_orig)
-
+            if g1.level > g1.swap_level:
+                # g1 and g2 may be unaligned
                 g1, g2 = g1.pair_align(g2)
 
-            if g1.is_pair_product_cached(g2):
-                return g1.get_cached_pair_product(g2)
-
             assert g1.a2b == g2.a2b
+
+            if g1.level < g1.fork_level:
+                # g1 and g2 are compressed in order, so downsample both
+                pass
+                # TODO:
+                #g, pt_ans = g1.downsample().pair_product(g2.downsample())
+                #return g1_orig.cache_pair_product(g2_orig, g, pt_ans)
 
             g = BV_Internal_Grouping(g1.level, g1.swap_level, g1.fork_level, g1.a2b)
 
@@ -676,12 +776,7 @@ class BV_Internal_Grouping(BV_Grouping):
                         pt_ans[len(pt_ans) + 1] = (c1, c2)
                         pt_ans_inv[(c1, c2)] = len(pt_ans)
 
-            g = g.representative()
-
-            if g1.swap_level < g1.level:
-                g1_orig.cache_pair_product(g2_orig, g, pt_ans)
-
-            return g1.cache_pair_product(g2, g, pt_ans)
+            return g1_orig.cache_pair_product(g2_orig, g.representative(), pt_ans)
 
     def triple_compressed(self, g2, g3, g1_other, g2_other, g3_other):
         assert isinstance(g2, BV_Internal_Grouping) and isinstance(g3, BV_Internal_Grouping)
@@ -736,22 +831,43 @@ class BV_Internal_Grouping(BV_Grouping):
         elif g3.is_no_distinction_proto():
             return g3.triple_product(g1, g2, 3)
         else:
+            g1_orig = g1
+            g2_orig = g2
+            g3_orig = g3
+
+            if g1_orig.is_triple_product_cached(g2_orig, g3_orig):
+                return g1_orig.get_cached_triple_product(g2_orig, g3_orig)
+
+            if g1.level > g1.swap_level:
+                if isinstance(g2, BV_Fork_Grouping):
+                    g2 = g2.upsample()
+                if isinstance(g3, BV_Fork_Grouping):
+                    g3 = g3.upsample()
+            elif isinstance(g2, BV_Fork_Grouping):
+                if isinstance(g3, BV_Internal_Grouping):
+                    g3 = g3.downsample()
+                assert isinstance(g3, BV_Fork_Grouping)
+                g, tt_ans = g1.downsample().triple_product(g2, g3)
+                return g1_orig.cache_triple_product(g2_orig, g3_orig, g, tt_ans)
+            elif isinstance(g3, BV_Fork_Grouping):
+                assert isinstance(g2, BV_Internal_Grouping)
+                g, tt_ans = g1.downsample().triple_product(g2.downsample(), g3)
+                return g1_orig.cache_triple_product(g2_orig, g3_orig, g, tt_ans)
+
             assert isinstance(g2, BV_Internal_Grouping) and isinstance(g3, BV_Internal_Grouping)
 
-            if g1.swap_level < g1.level:
-                g1_orig = g1
-                g2_orig = g2
-                g3_orig = g3
-
-                if g1_orig.is_triple_product_cached(g2_orig, g3_orig):
-                    return g1_orig.get_cached_triple_product(g2_orig, g3_orig)
-
+            if g1.level > g1.swap_level:
+                # g1, g2, g3 may be unaligned
                 g1, g2, g3 = g1.triple_align(g2, g3)
 
-            if g1.is_triple_product_cached(g2, g3):
-                return g1.get_cached_triple_product(g2, g3)
-
             assert g1.a2b == g2.a2b == g3.a2b
+
+            if g1.level < g1.fork_level:
+                # g1, g2, g3 are compressed in order, so downsample all three
+                pass
+                # TODO:
+                #g, tt_ans = g1.downsample().triple_product(g2.downsample(), g3.downsample())
+                #return g1_orig.cache_triple_product(g2_orig, g3_orig, g, tt_ans)
 
             g = BV_Internal_Grouping(g1.level, g1.swap_level, g1.fork_level, g1.a2b)
 
@@ -762,35 +878,30 @@ class BV_Internal_Grouping(BV_Grouping):
 
             g.number_of_b_connections = len(tt_a)
 
-            pt_ans = {}
-            pt_ans_inv = {}
+            tt_ans = {}
+            tt_ans_inv = {}
 
             for j in tt_a:
-                g_b, pt_b = g1.b_connections[tt_a[j][0]].triple_product(g2.b_connections[tt_a[j][1]],
+                g_b, tt_b = g1.b_connections[tt_a[j][0]].triple_product(g2.b_connections[tt_a[j][1]],
                     g3.b_connections[tt_a[j][2]])
 
                 g.b_connections[j] = g_b
                 g.b_return_tuples[j] = {}
 
-                for i in pt_b:
-                    c1 = g1.b_return_tuples[tt_a[j][0]][pt_b[i][0]]
-                    c2 = g2.b_return_tuples[tt_a[j][1]][pt_b[i][1]]
-                    c3 = g3.b_return_tuples[tt_a[j][2]][pt_b[i][2]]
+                for i in tt_b:
+                    c1 = g1.b_return_tuples[tt_a[j][0]][tt_b[i][0]]
+                    c2 = g2.b_return_tuples[tt_a[j][1]][tt_b[i][1]]
+                    c3 = g3.b_return_tuples[tt_a[j][2]][tt_b[i][2]]
 
-                    if (c1, c2, c3) in pt_ans_inv:
-                        g.b_return_tuples[j][len(g.b_return_tuples[j]) + 1] = pt_ans_inv[(c1, c2, c3)]
+                    if (c1, c2, c3) in tt_ans_inv:
+                        g.b_return_tuples[j][len(g.b_return_tuples[j]) + 1] = tt_ans_inv[(c1, c2, c3)]
                     else:
                         g.number_of_exits += 1
                         g.b_return_tuples[j][len(g.b_return_tuples[j]) + 1] = g.number_of_exits
-                        pt_ans[len(pt_ans) + 1] = (c1, c2, c3)
-                        pt_ans_inv[(c1, c2, c3)] = len(pt_ans)
+                        tt_ans[len(tt_ans) + 1] = (c1, c2, c3)
+                        tt_ans_inv[(c1, c2, c3)] = len(tt_ans)
 
-            g = g.representative()
-
-            if g1.swap_level < g1.level:
-                g1_orig.cache_triple_product(g2_orig, g3_orig, g, pt_ans)
-
-            return g1.cache_triple_product(g2, g3, g, pt_ans)
+            return g1_orig.cache_triple_product(g2_orig, g3_orig, g.representative(), tt_ans)
 
     def insert_b_connection(self, h, return_tuple):
         assert isinstance(h, BV_Grouping)
