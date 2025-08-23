@@ -474,7 +474,12 @@ class BV_Fork_Grouping(BV_Grouping):
         if self.is_compressed_cached():
             return self.get_cached_compressed()
 
-        return self.cache_compressed(self.upsample().compress())
+        g = self.upsample().compress()
+
+        if self.level < self.fork_level:
+            g = g.downsample()
+
+        return self.cache_compressed(g)
 
 import threading
 class BV_Internal_Grouping(BV_Grouping):
