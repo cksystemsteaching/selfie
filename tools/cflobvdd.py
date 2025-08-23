@@ -190,10 +190,11 @@ class BV_Dont_Care_Grouping(BV_Grouping):
         return [(i, 0) for i in range(index_i, index_i + 2**self.level)]
 
     def representative(level):
-        with BV_Dont_Care_Grouping.representatives_lock:
-            if BV_Dont_Care_Grouping.representatives is None:
-                BV_Dont_Care_Grouping.representatives = BV_Dont_Care_Grouping(level)
-                assert BV_Dont_Care_Grouping.representatives.is_consistent()
+        if BV_Dont_Care_Grouping.representatives is None:
+            with BV_Dont_Care_Grouping.representatives_lock:
+                if BV_Dont_Care_Grouping.representatives is None:
+                    BV_Dont_Care_Grouping.representatives = BV_Dont_Care_Grouping(level)
+                    assert BV_Dont_Care_Grouping.representatives.is_consistent()
         return BV_Dont_Care_Grouping.representatives
 
     def pair_product(self, g2, inorder = True):
@@ -911,9 +912,10 @@ class BV_No_Distinction_Proto(BV_Internal_Grouping):
             g.b_connections[1] = g.a_connection
             g.b_return_tuples[1] = {1:1}
 
-            with BV_No_Distinction_Proto.representatives_lock:
-                if level not in BV_No_Distinction_Proto.representatives:
-                    BV_No_Distinction_Proto.representatives[level] = g
+            if level not in BV_No_Distinction_Proto.representatives:
+                with BV_No_Distinction_Proto.representatives_lock:
+                    if level not in BV_No_Distinction_Proto.representatives:
+                        BV_No_Distinction_Proto.representatives[level] = g
 
             return BV_No_Distinction_Proto.representatives[level]
 
@@ -980,6 +982,7 @@ class Collapsed_Classes:
 class CFLOBVDD:
     REDUCE = True
 
+    max_level_lock = threading.Lock()
     max_level = 0
 
     representatives_lock = threading.Lock()
@@ -1107,7 +1110,8 @@ class CFLOBVDD:
         return self.number_of_distinct_outputs() == 1 and True in self.outputs.values()
 
     def constant(level, swap_level, fork_level, output = 0):
-        CFLOBVDD.max_level = max(CFLOBVDD.max_level, level)
+        with CFLOBVDD.max_level_lock:
+            CFLOBVDD.max_level = max(CFLOBVDD.max_level, level)
         return CFLOBVDD.representative(
             BV_No_Distinction_Proto.representative(level, swap_level, fork_level), {1:output})
 
@@ -1146,7 +1150,8 @@ class CFLOBVDD:
     def projection(level, swap_level, fork_level, input_i, reorder = False):
         assert 0 <= fork_level <= swap_level <= level
         assert 0 <= input_i < 2**level
-        CFLOBVDD.max_level = max(CFLOBVDD.max_level, level)
+        with CFLOBVDD.max_level_lock:
+            CFLOBVDD.max_level = max(CFLOBVDD.max_level, level)
         grouping = BV_Internal_Grouping.projection_proto(level, swap_level, fork_level, input_i)
         if reorder:
             grouping = grouping.compress()
