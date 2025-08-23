@@ -364,7 +364,7 @@ class BV_Fork_Grouping(BV_Grouping):
                 # g1 and g2 may be unaligned
                 g1, g2 = g1.pair_align(g2)
 
-            # assert g1.a2b == g2.a2b
+            assert g1.ordering == g2.ordering
 
             if g1.level < g1.fork_level:
                 # g1 and g2 are compressed in order, so downsample both
@@ -430,7 +430,7 @@ class BV_Fork_Grouping(BV_Grouping):
                 # g1, g2, g3 may be unaligned
                 g1, g2, g3 = g1.triple_align(g2, g3)
 
-            # assert g1.a2b == g2.a2b == g3.a2b
+            assert g1.ordering == g2.ordering == g3.ordering
 
             if g1.level < g1.fork_level:
                 # g1, g2, g3 are compressed in order, so downsample all three
@@ -490,7 +490,6 @@ class BV_Fork_Grouping(BV_Grouping):
 
         return self.cache_compressed(g)
 
-import threading
 class BV_Internal_Grouping(BV_Grouping):
     representatives_lock = threading.Lock()
     representatives = {}
