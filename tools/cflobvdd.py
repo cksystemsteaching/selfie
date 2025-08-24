@@ -379,6 +379,7 @@ class BV_Fork_Grouping(BV_Grouping):
 
         g_a_bvdd, g_b_bvdds, g_b_return_tuples = self.bvdd.upsample(self.level)
 
+        # TODO: enable different input orderings
         g = BV_Internal_Grouping(self.level, self.swap_level, self.fork_level, True,
             len(g_b_return_tuples))
 
@@ -420,27 +421,19 @@ class BV_Fork_Grouping(BV_Grouping):
             if g1_orig.is_pair_product_cached(g2_orig):
                 return g1_orig.get_cached_pair_product(g2_orig)
 
-            if isinstance(g2, BV_Internal_Grouping):
-                if g1.level > g1.swap_level:
+            if g1.level > g1.swap_level:
+                if isinstance(g2, BV_Internal_Grouping):
                     g, pt = g1.upsample().pair_product(g2)
                     return g1_orig.cache_pair_product(g2_orig, g, pt)
                 else:
-                    g2 = g2.downsample()
+                    pass
+                    # TODO: align g1 and g2 when forks support different input orderings
+            elif isinstance(g2, BV_Internal_Grouping):
+                g2 = g2.downsample()
 
             assert isinstance(g2, BV_Fork_Grouping)
 
-            # TODO: align g1 and g2 when BVDDs support different input orderings
-            # if g1.level > g1.swap_level:
-            #     # g1 and g2 may be unaligned
-            #     g1, g2 = g1.pair_align(g2)
-            # assert g1.ordering == g2.ordering
-
-            if g1.level <= g1.fork_level:
-                # g1 and g2 are aligned, so downsample both
-                pass
-                # TODO:
-                #g, pt = g1.downsample().pair_product(g2.downsample())
-                #return g1_orig.cache_pair_product(g2_orig, g, pt)
+            # assert g1 and g2 are aligned
 
             bvdd, pt = g1.bvdd.pair_product(g2.bvdd)
 
@@ -465,13 +458,6 @@ class BV_Fork_Grouping(BV_Grouping):
             if g1_orig.is_triple_product_cached(g2_orig, g3_orig):
                 return g1_orig.get_cached_triple_product(g2_orig, g3_orig)
 
-            if isinstance(g2, BV_Internal_Grouping):
-                if g1.level > g1.swap_level:
-                    g, tt = g1.upsample().pair_product(g2)
-                    return g1_orig.cache_pair_product(g2_orig, g, tt)
-                else:
-                    g2 = g2.downsample()
-
             if g1.level > g1.swap_level:
                 if isinstance(g2, BV_Internal_Grouping):
                     if isinstance(g3, BV_Fork_Grouping):
@@ -483,6 +469,9 @@ class BV_Fork_Grouping(BV_Grouping):
                     assert isinstance(g2, BV_Fork_Grouping)
                     g, tt = g1.upsample().triple_product(g2.upsample(), g3)
                     return g1_orig.cache_triple_product(g2_orig, g3_orig, g, tt)
+                else:
+                    pass
+                    # TODO: align g1, g2, g3 when forks support different input orderings
             else:
                 if isinstance(g2, BV_Internal_Grouping):
                     g2 = g2.downsample()
@@ -491,20 +480,7 @@ class BV_Fork_Grouping(BV_Grouping):
 
             assert isinstance(g2, BV_Fork_Grouping) and isinstance(g3, BV_Fork_Grouping)
 
-            # TODO: align g1, g2, g3 when BVDDs support different input orderings
-            # if g1.level > g1.swap_level:
-            #     # g1, g2, g3 may be unaligned
-            #     g1, g2, g3 = g1.triple_align(g2, g3)
-            # assert g1.ordering == g2.ordering == g3.ordering
-
-            if g1.level <= g1.fork_level:
-                # g1, g2, g3 are aligned, so downsample all three
-                pass
-                # TODO:
-                #g, tt = g1.downsample().triple_product(g2.downsample(), g3.downsample())
-                #return g1_orig.cache_triple_product(g2_orig, g3_orig, g, tt)
-
-            assert isinstance(g2, BV_Fork_Grouping) and isinstance(g3, BV_Fork_Grouping)
+            # assert g1, g2, g3 are aligned
 
             bvdd, tt = g1.bvdd.triple_product(g2.bvdd, g3.bvdd)
 
@@ -550,7 +526,7 @@ class BV_Fork_Grouping(BV_Grouping):
 
         g = self.upsample().compress()
 
-        # TODO: enable when BVDDs support different input orderings
+        # TODO: enable when forks support different input orderings
         # if self.level <= self.fork_level:
         #     g = g.downsample()
 
@@ -779,7 +755,7 @@ class BV_Internal_Grouping(BV_Grouping):
         if self.a2b:
             g = self
         else:
-            # BVDDs do not yet support different input orderings
+            # forks do not yet support different input orderings
             g = self.swap()
 
         g_a_bvdd = g.a_connection.downsample().bvdd
@@ -845,23 +821,21 @@ class BV_Internal_Grouping(BV_Grouping):
             if g1_orig.is_pair_product_cached(g2_orig):
                 return g1_orig.get_cached_pair_product(g2_orig)
 
-            if isinstance(g2, BV_Fork_Grouping):
-                if g1.level > g1.swap_level:
-                    g2 = g2.upsample()
-                else:
-                    g, pt_ans = g1.downsample().pair_product(g2)
-                    return g1_orig.cache_pair_product(g2_orig, g, pt_ans)
-
-            assert isinstance(g2, BV_Internal_Grouping)
-
             if g1.level > g1.swap_level:
+                if isinstance(g2, BV_Fork_Grouping):
+                    g2 = g2.upsample()
                 # g1 and g2 may be unaligned
                 g1, g2 = g1.pair_align(g2)
+            elif isinstance(g2, BV_Fork_Grouping):
+                g, pt_ans = g1.downsample().pair_product(g2)
+                return g1_orig.cache_pair_product(g2_orig, g, pt_ans)
+
+            assert isinstance(g2, BV_Internal_Grouping)
 
             assert g1.a2b == g2.a2b
 
             if g1.level <= g1.fork_level:
-                # g1 and g2 are compressed in order, so downsample both
+                # g1 and g2 are downsampled in original order (decompressing)
                 pass
                 # TODO:
                 #g, pt_ans = g1.downsample().pair_product(g2.downsample())
@@ -964,6 +938,8 @@ class BV_Internal_Grouping(BV_Grouping):
                     g2 = g2.upsample()
                 if isinstance(g3, BV_Fork_Grouping):
                     g3 = g3.upsample()
+                # g1, g2, g3 may be unaligned
+                g1, g2, g3 = g1.triple_align(g2, g3)
             elif isinstance(g2, BV_Fork_Grouping):
                 if isinstance(g3, BV_Internal_Grouping):
                     g3 = g3.downsample()
@@ -977,14 +953,10 @@ class BV_Internal_Grouping(BV_Grouping):
 
             assert isinstance(g2, BV_Internal_Grouping) and isinstance(g3, BV_Internal_Grouping)
 
-            if g1.level > g1.swap_level:
-                # g1, g2, g3 may be unaligned
-                g1, g2, g3 = g1.triple_align(g2, g3)
-
             assert g1.a2b == g2.a2b == g3.a2b
 
             if g1.level <= g1.fork_level:
-                # g1, g2, g3 are compressed in order, so downsample all three
+                # g1, g2, g3 are downsampled in original order (decompressing)
                 pass
                 # TODO:
                 #g, tt_ans = g1.downsample().triple_product(g2.downsample(), g3.downsample())
