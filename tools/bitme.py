@@ -1663,6 +1663,7 @@ def main():
                 if Values.BVDD:
                     BVDD.BVDD.print_profile()
                 if Values.CFLOBVDD:
+                    BVDD.BVDD.print_profile()
                     CFLOBVDD.CFLOBVDD.print_profile()
             else:
                 print_separator('-')

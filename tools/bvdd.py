@@ -22,6 +22,8 @@
 
 # ------------------------------------------------------------
 
+import threading
+
 def utilization(hits, misses):
     if hits + misses == 0:
         return "0.0%"
@@ -29,6 +31,10 @@ def utilization(hits, misses):
         return f"{round(hits / (hits + misses) * 100, 2)}% ({hits} hits, {misses} misses)"
 
 class BVDD_Node:
+    node_cache_lock = threading.Lock()
+    node_cache = {}
+    node_cache_hits = 0
+
     def __str__(self):
         if self.is_consistent() and self.is_dont_care():
             # all inputs map to the same output
@@ -36,6 +42,15 @@ class BVDD_Node:
         else:
             return "{" + ", ".join([f"{BVDD_Node.get_input_values(inputs)} -> {output}"
                 for output, inputs in self.get_o2s().items()]) + "}"
+
+    def cache(self):
+        if self in BVDD_Node.node_cache:
+            BVDD_Node.node_cache_hits += 1
+        else:
+            with BVDD_Node.node_cache_lock:
+                if self not in BVDD_Node.node_cache:
+                    BVDD_Node.node_cache[self] = self
+        return BVDD_Node.node_cache[self]
 
     def is_consistent(self):
         return self.number_of_inputs() == 256
@@ -179,11 +194,11 @@ class BVDD_Node:
 
     def reduce_SBDD(self):
         # only for i2o and o2s
-        return self
+        return self.cache()
 
     def reduce_BVDD(self, index = 1):
         # dont-care SBDDs are not reduced
-        return self
+        return self.cache()
 
     def reduce(self, reduction_tuple, index = 0):
         new_bvdd = type(self)({})
@@ -203,7 +218,8 @@ class BVDD_Node:
         return self.compute_ternary(lambda x, y, z: y if x else z, bvdd2, bvdd3)
 
     def print_profile():
-        pass
+        print("BVDD cache profile:")
+        print(f"nodes: {utilization(BVDD_Node.node_cache_hits, len(BVDD_Node.node_cache))}")
 
     def extract(self, output_value):
         new_bvdd = BVDD({})
@@ -249,7 +265,7 @@ class BVDD_Node:
             else:
                 # apply may reduce to constant
                 new_bvdd.set(inputs, bvdd2.apply(return_tuples[output], 1))
-        return new_bvdd
+        return new_bvdd.reduce_BVDD()
 
     def swap(self):
         swap2right_bvdd = type(self)({})
@@ -327,21 +343,21 @@ class SBDD_i2o(BVDD_Node):
             isinstance(output, int) or
             isinstance(output, type(self)))
         self.i2o = dict([(input_value, output) for input_value in range(256)])
-        return self
+        return self.reduce_SBDD()
 
     def constant(output_value):
         return SBDD_i2o({}).constant_BVDD(output_value)
 
     def projection_BVDD(self, index = 0, offset = 0):
         self.i2o = dict([(input_value, input_value + offset) for input_value in range(256)])
-        return self
+        return self.reduce_SBDD()
 
     def projection(index = 0, offset = 0):
         return SBDD_i2o({}).projection_BVDD(index, offset)
 
     def compute_unary(self, op):
         return type(self)(dict([(input_value, op(self.i2o[input_value]))
-            for input_value in self.i2o]))
+            for input_value in self.i2o])).reduce_SBDD()
 
     def intersect_binary(self, bvdd2):
         assert type(bvdd2) is type(self)
@@ -353,7 +369,7 @@ class SBDD_i2o(BVDD_Node):
         bvdd1 = self
         return type(self)(dict([(input_value,
             op(bvdd1.i2o[input_value], bvdd2.i2o[input_value]))
-                for input_value, _ in bvdd1.intersect_binary(bvdd2)]))
+                for input_value, _ in bvdd1.intersect_binary(bvdd2)])).reduce_SBDD()
 
     def intersect_ternary(self, bvdd2, bvdd3):
         assert type(bvdd2) is type(self)
@@ -367,7 +383,7 @@ class SBDD_i2o(BVDD_Node):
         bvdd1 = self
         return type(self)(dict([(input_value,
             op(bvdd1.i2o[input_value], bvdd2.i2o[input_value], bvdd3.i2o[input_value]))
-                for input_value, _, _ in bvdd1.intersect_ternary(bvdd2, bvdd3)]))
+                for input_value, _, _ in bvdd1.intersect_ternary(bvdd2, bvdd3)])).reduce_SBDD()
 
 class SBDD_s2o(BVDD_Node):
     # single-byte decision diagram with input-sets-to-output mapping
@@ -416,14 +432,14 @@ class SBDD_s2o(BVDD_Node):
             isinstance(output, int) or
             type(output) is type(self))
         self.s2o = {2**256-1:output}
-        return self
+        return self.reduce_SBDD()
 
     def constant(output_value):
         return SBDD_s2o({}).constant_BVDD(output_value)
 
     def projection_BVDD(self, index = 0, offset = 0):
         self.s2o = dict([(2**input_value, input_value + offset) for input_value in range(256)])
-        return self
+        return self.reduce_SBDD()
 
     def projection(index = 0, offset = 0):
         return SBDD_s2o({}).projection_BVDD(index, offset)
@@ -434,7 +450,7 @@ class SBDD_s2o(BVDD_Node):
             for inputs in self.s2o:
                 BVDD_Node.map(o2s, inputs, self.s2o[inputs])
             self.s2o = dict([(inputs, output) for output, inputs in o2s.items()])
-        return self
+        return self.cache()
 
     def compute_unary(self, op):
         return type(self)(dict([(inputs, op(self.s2o[inputs])) for inputs in self.s2o])).reduce_SBDD()
@@ -516,14 +532,14 @@ class SBDD_o2s(BVDD_Node):
             isinstance(output, int) or
             type(output) is type(self))
         self.o2s = {output:2**256-1}
-        return self
+        return self.reduce_SBDD()
 
     def constant(output_value):
         return SBDD_o2s({}).constant_BVDD(output_value)
 
     def projection_BVDD(self, index = 0, offset = 0):
         self.o2s = dict([(input_value + offset, 2**input_value) for input_value in range(256)])
-        return self
+        return self.reduce_SBDD()
 
     def projection(index = 0, offset = 0):
         return SBDD_o2s({}).projection_BVDD(index, offset)
@@ -532,7 +548,7 @@ class SBDD_o2s(BVDD_Node):
         new_bvdd = type(self)({})
         for output in self.o2s:
             new_bvdd.map(self.o2s[output], op(output))
-        return new_bvdd
+        return new_bvdd.reduce_SBDD()
 
     def intersect_binary(self, bvdd2):
         assert type(bvdd2) is type(self)
@@ -548,7 +564,7 @@ class SBDD_o2s(BVDD_Node):
         new_bvdd = type(self)({})
         for output1, output2 in bvdd1.intersect_binary(bvdd2):
             new_bvdd.map(bvdd1.o2s[output1] & bvdd2.o2s[output2], op(output1, output2))
-        return new_bvdd
+        return new_bvdd.reduce_SBDD()
 
     def intersect_ternary(self, bvdd2, bvdd3):
         assert type(bvdd2) is type(self)
@@ -568,7 +584,7 @@ class SBDD_o2s(BVDD_Node):
         for output1, output2, output3 in bvdd1.intersect_ternary(bvdd2, bvdd3):
             new_bvdd.map(bvdd1.o2s[output1] & bvdd2.o2s[output2] & bvdd3.o2s[output3],
                 op(output1, output2, output3))
-        return new_bvdd
+        return new_bvdd.reduce_SBDD()
 
 class BVDD_uncached(SBDD_o2s):
     def constant(output_value):
@@ -587,7 +603,7 @@ class BVDD_uncached(SBDD_o2s):
             return self.get_dont_care_output()
         else:
             # keep dont-care SBDDs at index 0
-            return self
+            return self.cache()
 
     def op_unary(op, output1):
         if isinstance(output1, BVDD):
@@ -638,8 +654,6 @@ class BVDD_uncached(SBDD_o2s):
         assert isinstance(bvdd2, bool) or isinstance(bvdd2, int) or isinstance(bvdd2, BVDD)
         assert isinstance(bvdd3, bool) or isinstance(bvdd3, int) or isinstance(bvdd3, BVDD)
         return super().compute_ternary(lambda x, y, z: BVDD.op_ternary(op, x, y, z), bvdd2, bvdd3)
-
-import threading
 
 class BVDD_cached(BVDD_uncached):
     intersect_binary_lock = threading.Lock()
@@ -763,6 +777,7 @@ class BVDD_cached(BVDD_uncached):
 
     def print_profile():
         print("BVDD cache profile:")
+        print(f"nodes:                {utilization(BVDD_Node.node_cache_hits, len(BVDD_Node.node_cache))}")
         print(f"binary intersection:  {utilization(BVDD_cached.intersect_binary_hits, len(BVDD_cached.intersect_binary_cache))}")
         print(f"ternary intersection: {utilization(BVDD_cached.intersect_ternary_hits, len(BVDD_cached.intersect_ternary_cache))}")
         print(f"constants:            {utilization(BVDD_cached.constant_hits, len(BVDD_cached.constant_cache))}")
