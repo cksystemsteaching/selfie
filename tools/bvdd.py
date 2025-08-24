@@ -753,13 +753,14 @@ class BVDD_cached(BVDD_uncached):
         return BVDD_cached.compute_ternary_cache[(op, self, bvdd2, bvdd3)]
 
     def print_profile():
-        print(f"Binary intersection cache utilization: {utilization(BVDD_cached.intersect_binary_hits, len(BVDD_cached.intersect_binary_cache))}")
-        print(f"Ternary intersection cache utilization: {utilization(BVDD_cached.intersect_ternary_hits, len(BVDD_cached.intersect_ternary_cache))}")
-        print(f"Constant cache utilization: {utilization(BVDD_cached.constant_hits, len(BVDD_cached.constant_cache))}")
-        print(f"Projection cache utilization: {utilization(BVDD_cached.projection_hits, len(BVDD_cached.projection_cache))}")
-        print(f"Unary cache utilization: {utilization(BVDD_cached.compute_unary_hits, len(BVDD_cached.compute_unary_cache))}")
-        print(f"Binary cache utilization: {utilization(BVDD_cached.compute_binary_hits, len(BVDD_cached.compute_binary_cache))}")
-        print(f"Ternary cache utilization: {utilization(BVDD_cached.compute_ternary_hits, len(BVDD_cached.compute_ternary_cache))}")
+        print("BVDD cache profile:")
+        print(f"binary intersection:  {utilization(BVDD_cached.intersect_binary_hits, len(BVDD_cached.intersect_binary_cache))}")
+        print(f"ternary intersection: {utilization(BVDD_cached.intersect_ternary_hits, len(BVDD_cached.intersect_ternary_cache))}")
+        print(f"constants:            {utilization(BVDD_cached.constant_hits, len(BVDD_cached.constant_cache))}")
+        print(f"projection:           {utilization(BVDD_cached.projection_hits, len(BVDD_cached.projection_cache))}")
+        print(f"unary operators:      {utilization(BVDD_cached.compute_unary_hits, len(BVDD_cached.compute_unary_cache))}")
+        print(f"binary operators:     {utilization(BVDD_cached.compute_binary_hits, len(BVDD_cached.compute_binary_cache))}")
+        print(f"ternary operators:    {utilization(BVDD_cached.compute_ternary_hits, len(BVDD_cached.compute_ternary_cache))}")
 
 class BVDD(BVDD_uncached):
     pass

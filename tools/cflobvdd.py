@@ -26,6 +26,10 @@ class BV_Grouping:
     swap_cache = {}
     swap_cache_hits = 0
 
+    upsample_cache_lock = threading.Lock()
+    upsample_cache = {}
+    upsample_cache_hits = 0
+
     downsample_cache_lock = threading.Lock()
     downsample_cache = {}
     downsample_cache_hits = 0
@@ -76,6 +80,23 @@ class BV_Grouping:
             if self not in BV_Grouping.swap_cache:
                 BV_Grouping.swap_cache[self] = g
         return BV_Grouping.swap_cache[self]
+
+    def is_upsample_cached(self):
+        if self in BV_Grouping.upsample_cache:
+            BV_Grouping.upsample_cache_hits += 1
+            return True
+        else:
+            return False
+
+    def get_cached_upsample(self):
+        assert self.is_upsample_cached()
+        return BV_Grouping.upsample_cache[self]
+
+    def cache_upsample(self, g):
+        with BV_Grouping.upsample_cache_lock:
+            if self not in BV_Grouping.upsample_cache:
+                BV_Grouping.upsample_cache[self] = g
+        return BV_Grouping.upsample_cache[self]
 
     def is_downsample_cached(self):
         if self in BV_Grouping.downsample_cache:
@@ -351,7 +372,35 @@ class BV_Fork_Grouping(BV_Grouping):
             bvdd.number_of_exits(), bvdd).representative()
 
     def upsample(self):
-        return self
+        assert self.level > self.swap_level
+
+        if self.is_upsample_cached():
+            return self.get_cached_upsample()
+
+        g_a_bvdd, g_b_bvdds, g_b_return_tuples = self.bvdd.upsample(self.level)
+
+        g = BV_Internal_Grouping(self.level, self.swap_level, self.fork_level, True,
+            len(g_b_return_tuples))
+
+        g.a_connection = BV_Fork_Grouping(self.level - 1, self.swap_level, self.fork_level,
+            g_a_bvdd.number_of_exits(), g_a_bvdd).representative()
+
+        assert g.a_connection.number_of_exits == len(g_b_bvdds)
+
+        g.number_of_b_connections = g.a_connection.number_of_exits
+
+        g.b_connections = {}
+
+        for g_b_i in g_b_bvdds:
+            g_b = BV_Fork_Grouping(self.level - 1, self.swap_level, self.fork_level,
+                g_b_bvdds[g_b_i].number_of_exits(), g_b_bvdds[g_b_i]).representative()
+            g.b_connections[g_b_i] = g_b
+
+            assert g_b.number_of_exits == len(g_b_return_tuples[g_b_i])
+
+        g.b_return_tuples = g_b_return_tuples
+
+        return self.cache_upsample(g.representative())
 
     def downsample(self):
         assert self.level <= self.fork_level
@@ -1193,17 +1242,19 @@ class CFLOBVDD:
             self.outputs == n2.outputs)
 
     def print_profile():
-        print(f"BV_Fork_Grouping cache utilization: {BVDD.utilization(BV_Fork_Grouping.representatives_hits, len(BV_Fork_Grouping.representatives))}")
-        print(f"BV_Internal_Grouping cache utilization: {BVDD.utilization(BV_Internal_Grouping.representatives_hits, len(BV_Internal_Grouping.representatives))}")
-        print(f"BV_No_Distinction_Proto cache utilization: {BVDD.utilization(BV_No_Distinction_Proto.representatives_hits, len(BV_No_Distinction_Proto.representatives))}")
-        print(f"BV_Grouping swap cache utilization: {BVDD.utilization(BV_Grouping.swap_cache_hits, len(BV_Grouping.swap_cache))}")
-        print(f"BV_Grouping downsample cache utilization: {BVDD.utilization(BV_Grouping.downsample_cache_hits, len(BV_Grouping.downsample_cache))}")
-        print(f"BV_Grouping compressed cache utilization: {BVDD.utilization(BV_Grouping.compressed_cache_hits, len(BV_Grouping.compressed_cache))}")
-        print(f"BV_Grouping pair-product cache utilization: {BVDD.utilization(BV_Grouping.pair_product_cache_hits, len(BV_Grouping.pair_product_cache))}")
-        print(f"BV_Grouping triple-product cache utilization: {BVDD.utilization(BV_Grouping.triple_product_cache_hits, len(BV_Grouping.triple_product_cache))}")
-        print(f"BV_Grouping reduction cache utilization: {BVDD.utilization(BV_Grouping.reduction_cache_hits, len(BV_Grouping.reduction_cache))}")
-        print(f"CFLOBVDD collapsed-equivalence-classes cache utilization: {BVDD.utilization(Collapsed_Classes.cache_hits, len(Collapsed_Classes.cache))}")
-        print(f"CFLOBVDD cache utilization: {BVDD.utilization(CFLOBVDD.representatives_hits, len(CFLOBVDD.representatives))}")
+        print("CFLOBVDD cache profile:")
+        print(f"forks:          {BVDD.utilization(BV_Fork_Grouping.representatives_hits, len(BV_Fork_Grouping.representatives))}")
+        print(f"internals:      {BVDD.utilization(BV_Internal_Grouping.representatives_hits, len(BV_Internal_Grouping.representatives))}")
+        print(f"protos:         {BVDD.utilization(BV_No_Distinction_Proto.representatives_hits, len(BV_No_Distinction_Proto.representatives))}")
+        print(f"swap:           {BVDD.utilization(BV_Grouping.swap_cache_hits, len(BV_Grouping.swap_cache))}")
+        print(f"upsample:       {BVDD.utilization(BV_Grouping.upsample_cache_hits, len(BV_Grouping.upsample_cache))}")
+        print(f"downsample:     {BVDD.utilization(BV_Grouping.downsample_cache_hits, len(BV_Grouping.downsample_cache))}")
+        print(f"compressed:     {BVDD.utilization(BV_Grouping.compressed_cache_hits, len(BV_Grouping.compressed_cache))}")
+        print(f"pair product:   {BVDD.utilization(BV_Grouping.pair_product_cache_hits, len(BV_Grouping.pair_product_cache))}")
+        print(f"triple product: {BVDD.utilization(BV_Grouping.triple_product_cache_hits, len(BV_Grouping.triple_product_cache))}")
+        print(f"reduction:      {BVDD.utilization(BV_Grouping.reduction_cache_hits, len(BV_Grouping.reduction_cache))}")
+        print(f"classes:        {BVDD.utilization(Collapsed_Classes.cache_hits, len(Collapsed_Classes.cache))}")
+        print(f"CFLOBVDDs:      {BVDD.utilization(CFLOBVDD.representatives_hits, len(CFLOBVDD.representatives))}")
 
     def number_of_connections(self):
         return self.grouping.number_of_connections()
