@@ -26,6 +26,10 @@ class BV_Grouping:
     swap_cache = {}
     swap_cache_hits = 0
 
+    downsample_cache_lock = threading.Lock()
+    downsample_cache = {}
+    downsample_cache_hits = 0
+
     compressed_cache_lock = threading.Lock()
     compressed_cache = {}
     compressed_cache_hits = 0
@@ -72,6 +76,23 @@ class BV_Grouping:
             if self not in BV_Grouping.swap_cache:
                 BV_Grouping.swap_cache[self] = g
         return BV_Grouping.swap_cache[self]
+
+    def is_downsample_cached(self):
+        if self in BV_Grouping.downsample_cache:
+            BV_Grouping.downsample_cache_hits += 1
+            return True
+        else:
+            return False
+
+    def get_cached_downsample(self):
+        assert self.is_downsample_cached()
+        return BV_Grouping.downsample_cache[self]
+
+    def cache_downsample(self, g):
+        with BV_Grouping.downsample_cache_lock:
+            if self not in BV_Grouping.downsample_cache:
+                BV_Grouping.downsample_cache[self] = g
+        return BV_Grouping.downsample_cache[self]
 
     def is_compressed_cached(self):
         if self in BV_Grouping.compressed_cache:
@@ -267,31 +288,28 @@ class BV_Fork_Grouping(BV_Grouping):
     representatives = {}
     representatives_hits = 0
 
-    def __init__(self, level, swap_level, fork_level, ordering, number_of_exits, bvdd):
+    def __init__(self, level, swap_level, fork_level, number_of_exits, bvdd):
         super().__init__(level, number_of_exits)
         assert 0 <= swap_level <= level
         assert 0 <= fork_level <= level
         self.swap_level = swap_level
         self.fork_level = fork_level
-        self.ordering = ordering
         self.bvdd = bvdd
 
     def __repr__(self):
         indentation = " " * (CFLOBVDD.max_level - self.level + 1)
         return (indentation + "\n" +
             indentation + "fork @ " + super().__repr__() + ":\n" +
-            indentation + f"ordering: {format(self.ordering, 'b')}\n" +
             indentation + f"{self.bvdd}")
 
     def __hash__(self):
-        return hash((self.level, self.swap_level, self.fork_level, self.ordering, self.number_of_exits, self.bvdd))
+        return hash((self.level, self.swap_level, self.fork_level, self.number_of_exits, self.bvdd))
 
     def __eq__(self, g2):
         return (isinstance(g2, BV_Fork_Grouping) and
             self.level == g2.level and
             self.swap_level == g2.swap_level and
             self.fork_level == g2.fork_level and
-            self.ordering == g2.ordering and
             self.number_of_exits == g2.number_of_exits and
             self.bvdd == g2.bvdd)
 
@@ -329,14 +347,15 @@ class BV_Fork_Grouping(BV_Grouping):
         # TODO: assert level == 0 and input_i == 0
         assert 0 <= input_i < 2**level
         bvdd = BVDD.BVDD.projection_proto(input_i)
-        return BV_Fork_Grouping(level, level, level, 0,
+        return BV_Fork_Grouping(level, level, level,
             bvdd.number_of_exits(), bvdd).representative()
 
     def upsample(self):
         return self
 
-    def pair_align(self, g2):
-        return self, g2
+    def downsample(self):
+        assert self.level <= self.fork_level
+        return self
 
     def pair_product(self, g2):
         assert isinstance(g2, BV_Grouping)
@@ -361,14 +380,14 @@ class BV_Fork_Grouping(BV_Grouping):
 
             assert isinstance(g2, BV_Fork_Grouping)
 
-            if g1.level > g1.swap_level:
-                # g1 and g2 may be unaligned
-                g1, g2 = g1.pair_align(g2)
+            # TODO: align g1 and g2 when BVDDs support different input orderings
+            # if g1.level > g1.swap_level:
+            #     # g1 and g2 may be unaligned
+            #     g1, g2 = g1.pair_align(g2)
+            # assert g1.ordering == g2.ordering
 
-            assert g1.ordering == g2.ordering
-
-            if g1.level < g1.fork_level:
-                # g1 and g2 are compressed in order, so downsample both
+            if g1.level <= g1.fork_level:
+                # g1 and g2 are aligned, so downsample both
                 pass
                 # TODO:
                 #g, pt = g1.downsample().pair_product(g2.downsample())
@@ -376,13 +395,9 @@ class BV_Fork_Grouping(BV_Grouping):
 
             bvdd, pt = g1.bvdd.pair_product(g2.bvdd)
 
-            g = BV_Fork_Grouping(g1.level, g1.swap_level, g1.fork_level, g1.ordering,
-                len(pt), bvdd)
+            g = BV_Fork_Grouping(g1.level, g1.swap_level, g1.fork_level, len(pt), bvdd)
 
             return g1_orig.cache_pair_product(g2_orig, g.representative(), pt)
-
-    def triple_align(self, g2, g3):
-        return self, g2, g3
 
     def triple_product(self, g2, g3):
         assert isinstance(g2, BV_Grouping) and isinstance(g3, BV_Grouping)
@@ -427,14 +442,14 @@ class BV_Fork_Grouping(BV_Grouping):
 
             assert isinstance(g2, BV_Fork_Grouping) and isinstance(g3, BV_Fork_Grouping)
 
-            if g1.level > g1.swap_level:
-                # g1, g2, g3 may be unaligned
-                g1, g2, g3 = g1.triple_align(g2, g3)
+            # TODO: align g1, g2, g3 when BVDDs support different input orderings
+            # if g1.level > g1.swap_level:
+            #     # g1, g2, g3 may be unaligned
+            #     g1, g2, g3 = g1.triple_align(g2, g3)
+            # assert g1.ordering == g2.ordering == g3.ordering
 
-            assert g1.ordering == g2.ordering == g3.ordering
-
-            if g1.level < g1.fork_level:
-                # g1, g2, g3 are compressed in order, so downsample all three
+            if g1.level <= g1.fork_level:
+                # g1, g2, g3 are aligned, so downsample all three
                 pass
                 # TODO:
                 #g, tt = g1.downsample().triple_product(g2.downsample(), g3.downsample())
@@ -444,8 +459,7 @@ class BV_Fork_Grouping(BV_Grouping):
 
             bvdd, tt = g1.bvdd.triple_product(g2.bvdd, g3.bvdd)
 
-            g = BV_Fork_Grouping(g1.level, g1.swap_level, g1.fork_level, g1.ordering,
-                len(tt), bvdd)
+            g = BV_Fork_Grouping(g1.level, g1.swap_level, g1.fork_level, len(tt), bvdd)
 
             return g1_orig.cache_triple_product(g2_orig, g3_orig, g.representative(), tt)
 
@@ -465,7 +479,7 @@ class BV_Fork_Grouping(BV_Grouping):
             if bvdd.is_constant():
                 g = No_Distinction_Proto.representative(self.level, self.swap_level, self.fork_level)
             else:
-                g = BV_Fork_Grouping(self.level, self.swap_level, self.fork_level, self.ordering,
+                g = BV_Fork_Grouping(self.level, self.swap_level, self.fork_level,
                     reduction_length, bvdd).representative()
 
             assert g.number_of_exits == reduction_length
@@ -475,6 +489,7 @@ class BV_Fork_Grouping(BV_Grouping):
     def compress(self):
         # equivalent to pair_product of No_Distinction_Proto with self where
         # pair_product for No_Distinction_Proto actually traverses its connections
+        # (except for final downsampling as BVDDs do not yet different input orderings)
 
         if self.level == self.swap_level:
             return self
@@ -486,8 +501,9 @@ class BV_Fork_Grouping(BV_Grouping):
 
         g = self.upsample().compress()
 
-        if self.level < self.fork_level:
-            g = g.downsample()
+        # TODO: enable when BVDDs support different input orderings
+        # if self.level <= self.fork_level:
+        #     g = g.downsample()
 
         return self.cache_compressed(g)
 
@@ -665,7 +681,7 @@ class BV_Internal_Grouping(BV_Grouping):
             return g.representative()
 
     def swap(self):
-        assert self.swap_level < self.level
+        assert self.level > self.swap_level
 
         if self.is_swap_cached():
             return self.get_cached_swap()
@@ -706,7 +722,32 @@ class BV_Internal_Grouping(BV_Grouping):
         return self.cache_swap(g.representative())
 
     def downsample(self):
-        return self
+        assert self.level <= self.fork_level
+
+        if self.is_downsample_cached():
+            return self.get_cached_downsample()
+
+        if self.a2b:
+            g = self
+        else:
+            # BVDDs do not yet support different input orderings
+            g = self.swap()
+
+        g_a_bvdd = g.a_connection.downsample().bvdd
+
+        g_b_bvdds = {}
+
+        for g_b_i in g.b_connections:
+            g_b = g.b_connections[g_b_i]
+            g_b_bvdds[g_b_i] = g_b.downsample().bvdd
+
+        bvdd = g_a_bvdd.downsample(g_b_bvdds, g.b_return_tuples)
+
+        assert bvdd.number_of_exits() == g.number_of_exits
+
+        g = BV_Fork_Grouping(g.level, g.swap_level, g.fork_level, g.number_of_exits, bvdd)
+
+        return self.cache_downsample(g.representative())
 
     def pair_compressed(self, g2, g1_other, g2_other):
         assert isinstance(g2, BV_Internal_Grouping)
@@ -770,7 +811,7 @@ class BV_Internal_Grouping(BV_Grouping):
 
             assert g1.a2b == g2.a2b
 
-            if g1.level < g1.fork_level:
+            if g1.level <= g1.fork_level:
                 # g1 and g2 are compressed in order, so downsample both
                 pass
                 # TODO:
@@ -893,7 +934,7 @@ class BV_Internal_Grouping(BV_Grouping):
 
             assert g1.a2b == g2.a2b == g3.a2b
 
-            if g1.level < g1.fork_level:
+            if g1.level <= g1.fork_level:
                 # g1, g2, g3 are compressed in order, so downsample all three
                 pass
                 # TODO:
@@ -986,6 +1027,7 @@ class BV_Internal_Grouping(BV_Grouping):
     def compress(self):
         # equivalent to pair_product of No_Distinction_Proto with self where
         # pair_product for No_Distinction_Proto actually traverses its connections
+        # (except for final downsampling as BVDDs do not yet different input orderings)
 
         if self.level == self.swap_level:
             return self
@@ -1064,7 +1106,7 @@ class BV_No_Distinction_Proto(BV_Internal_Grouping):
             return BV_No_Distinction_Proto.representatives[level]
 
     def swap(self):
-        assert self.swap_level < self.level
+        assert self.level > self.swap_level
         return self
 
     def pair_product(self, g2, inorder = True):
@@ -1155,6 +1197,7 @@ class CFLOBVDD:
         print(f"BV_Internal_Grouping cache utilization: {BVDD.utilization(BV_Internal_Grouping.representatives_hits, len(BV_Internal_Grouping.representatives))}")
         print(f"BV_No_Distinction_Proto cache utilization: {BVDD.utilization(BV_No_Distinction_Proto.representatives_hits, len(BV_No_Distinction_Proto.representatives))}")
         print(f"BV_Grouping swap cache utilization: {BVDD.utilization(BV_Grouping.swap_cache_hits, len(BV_Grouping.swap_cache))}")
+        print(f"BV_Grouping downsample cache utilization: {BVDD.utilization(BV_Grouping.downsample_cache_hits, len(BV_Grouping.downsample_cache))}")
         print(f"BV_Grouping compressed cache utilization: {BVDD.utilization(BV_Grouping.compressed_cache_hits, len(BV_Grouping.compressed_cache))}")
         print(f"BV_Grouping pair-product cache utilization: {BVDD.utilization(BV_Grouping.pair_product_cache_hits, len(BV_Grouping.pair_product_cache))}")
         print(f"BV_Grouping triple-product cache utilization: {BVDD.utilization(BV_Grouping.triple_product_cache_hits, len(BV_Grouping.triple_product_cache))}")
