@@ -247,25 +247,25 @@ class BVDD_Node:
                 new_bvdd.set(inputs, bvdd2.apply(return_tuples[output]))
         return new_bvdd
 
-    def flip(self):
-        flip2right_bvdd = type(self)({})
-        flip2right_exit_i = 1
+    def swap(self):
+        swap2right_bvdd = type(self)({})
+        swap2right_exit_i = 1
         new_bvdd = BVDD.constant(1)
         return_tuples = {1:{}}
         s2o = self.get_s2o()
         for inputs in s2o:
-            flip2right_bvdd.set(inputs, flip2right_exit_i)
-            flip2right_exit_i += 1
+            swap2right_bvdd.set(inputs, swap2right_exit_i)
+            swap2right_exit_i += 1
             output = s2o[inputs]
             if not isinstance(output, BVDD):
                 output = BVDD.constant(output)
             new_bvdd, pt = new_bvdd.pair_product(output)
             return_tuples = dict([(i,
-                # pt[i][0] is the exit index of the already paired flip2left BVDDs
-                # pt[i][1] is the exit index or output of the next flip2left BVDD being paired
+                # pt[i][0] is the exit index of the already paired swap2left BVDDs
+                # pt[i][1] is the exit index or output of the next swap2left BVDD being paired
                 return_tuples[pt[i][0]] | {len(return_tuples[pt[i][0]]) + 1:pt[i][1]})
                     for i in pt])
-        return new_bvdd.link(flip2right_bvdd, return_tuples)
+        return new_bvdd.link(swap2right_bvdd, return_tuples)
 
 class SBDD_i2o(BVDD_Node):
     # single-byte decision diagram with naive input-to-output mapping
