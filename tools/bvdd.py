@@ -228,13 +228,16 @@ class BVDD_Node:
             f"{self.number_of_solutions(output_value)} solutions\n" +
             f"{self.extract(output_value)}")
 
-    def apply(self, return_tuple):
+    def apply(self, return_tuple, index = 0):
         new_bvdd = type(self)({})
         s2o = self.get_s2o()
         for inputs in s2o:
             output = s2o[inputs]
-            new_bvdd.set(inputs, return_tuple[output])
-        return new_bvdd.reduce_SBDD().reduce_BVDD()
+            if isinstance(output, BVDD):
+                new_bvdd.set(inputs, output.apply(return_tuple, index + 1))
+            else:
+                new_bvdd.set(inputs, return_tuple[output])
+        return new_bvdd.reduce_SBDD().reduce_BVDD(index)
 
     def link(self, bvdd2, return_tuples):
         new_bvdd = type(self)({})
@@ -244,7 +247,8 @@ class BVDD_Node:
             if isinstance(output, BVDD):
                 new_bvdd.set(inputs, output.link(bvdd2, return_tuples))
             else:
-                new_bvdd.set(inputs, bvdd2.apply(return_tuples[output]))
+                # apply may reduce to constant
+                new_bvdd.set(inputs, bvdd2.apply(return_tuples[output], 1))
         return new_bvdd
 
     def swap(self):
@@ -266,6 +270,11 @@ class BVDD_Node:
                 return_tuples[pt[i][0]] | {len(return_tuples[pt[i][0]]) + 1:pt[i][1]})
                     for i in pt])
         return new_bvdd.link(swap2right_bvdd, return_tuples)
+
+    def downsample(self, bvdds, return_tuples):
+        # apply to bvdds may reduce to constants
+        return self.apply(dict([(exit_i, bvdds[exit_i].apply(return_tuples[exit_i], 1))
+            for exit_i in bvdds]))
 
 class SBDD_i2o(BVDD_Node):
     # single-byte decision diagram with naive input-to-output mapping
