@@ -287,6 +287,59 @@ class BVDD_Node:
                     for i in pt])
         return new_bvdd.link(swap2right_bvdd, return_tuples)
 
+    def unapply(self, return_tuple = None, return_tuple_inv = None, index = 0):
+        new_bvdd = type(self)({})
+        return_tuple = return_tuple if return_tuple is not None else {}
+        return_tuple_inv = return_tuple_inv if return_tuple_inv is not None else {}
+        s2o = self.get_s2o()
+        for inputs in s2o:
+            output = s2o[inputs]
+            if isinstance(output, BVDD):
+                output, rt, rt_inv = output.unapply(return_tuple, return_tuple_inv, index + 1)
+                return_tuple |= rt
+                return_tuple_inv |= rt_inv
+                new_bvdd.set(inputs, output)
+            elif output not in return_tuple_inv:
+                return_tuple_inv[output] = len(return_tuple_inv) + 1
+                return_tuple[return_tuple_inv[output]] = output
+                new_bvdd.set(inputs, return_tuple_inv[output])
+            else:
+                new_bvdd.set(inputs, return_tuple_inv[output])
+        return new_bvdd.reduce_SBDD().reduce_BVDD(index), return_tuple, return_tuple_inv
+
+    def upsample(self, number_of_input_bytes, b_bvdds = None, b_return_tuples = None, a_return_tuple_inv = None, index = 0):
+        assert number_of_input_bytes >= 0
+        a_bvdd = type(self)({})
+        b_bvdds = b_bvdds if b_bvdds is not None else {}
+        b_return_tuples = b_return_tuples if b_return_tuples is not None else {}
+        a_return_tuple_inv = a_return_tuple_inv if a_return_tuple_inv is not None else {}
+        s2o = self.get_s2o()
+        for inputs in s2o:
+            output = s2o[inputs]
+            if isinstance(output, BVDD):
+                if number_of_input_bytes > 0:
+                    output, bvdds, rts, a_rt_inv = output.upsample(number_of_input_bytes - 1,
+                        b_bvdds, b_return_tuples, a_return_tuple_inv, index + 1)
+                    b_bvdds |= bvdds
+                    b_return_tuples |= rts
+                    a_return_tuple_inv |= a_rt_inv
+                    a_bvdd.set(inputs, output)
+                else:
+                    output, rt, _ = output.unapply()
+                    if output not in a_return_tuple_inv:
+                        a_return_tuple_inv[output] = len(a_return_tuple_inv) + 1
+                    b_bvdds[a_return_tuple_inv[output]] = output
+                    b_return_tuples[a_return_tuple_inv[output]] = rt
+                    a_bvdd.set(inputs, a_return_tuple_inv[output])
+            elif output not in a_return_tuple_inv:
+                a_return_tuple_inv[output] = len(a_return_tuple_inv) + 1
+                b_bvdds[a_return_tuple_inv[output]] = BVDD.constant(1)
+                b_return_tuples[a_return_tuple_inv[output]] = {1:1}
+                a_bvdd.set(inputs, a_return_tuple_inv[output])
+            else:
+                a_bvdd.set(inputs, a_return_tuple_inv[output])
+        return a_bvdd.reduce_SBDD().reduce_BVDD(index), b_bvdds, b_return_tuples, a_return_tuple_inv
+
     def downsample(self, bvdds, return_tuples):
         # apply to bvdds may reduce to constants
         return self.apply(dict([(exit_i, bvdds[exit_i].apply(return_tuples[exit_i], 1))

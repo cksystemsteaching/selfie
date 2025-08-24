@@ -377,7 +377,7 @@ class BV_Fork_Grouping(BV_Grouping):
         if self.is_upsample_cached():
             return self.get_cached_upsample()
 
-        g_a_bvdd, g_b_bvdds, g_b_return_tuples = self.bvdd.upsample(self.level)
+        g_a_bvdd, g_b_bvdds, g_b_return_tuples, _ = self.bvdd.upsample(2**(self.level - 1) - 1)
 
         # TODO: enable different input orderings
         g = BV_Internal_Grouping(self.level, self.swap_level, self.fork_level, True,
