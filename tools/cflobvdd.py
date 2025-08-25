@@ -236,6 +236,12 @@ class BV_Dont_Care_Grouping(BV_Grouping):
                     assert BV_Dont_Care_Grouping.representatives.is_consistent()
         return BV_Dont_Care_Grouping.representatives
 
+    def downsample(self):
+        if self.is_downsample_cached():
+            return self.get_cached_downsample()
+
+        return BV_No_Distinction_Proto.downsample(self)
+
     def pair_product(self, g2, inorder = True):
         assert isinstance(g2, BV_Grouping)
 
@@ -311,8 +317,8 @@ class BV_Fork_Grouping(BV_Grouping):
 
     def __init__(self, level, swap_level, fork_level, number_of_exits, bvdd):
         super().__init__(level, number_of_exits)
-        assert 0 <= swap_level <= level
-        assert 0 <= fork_level <= level
+        assert 0 <= swap_level
+        assert 0 <= fork_level
         self.swap_level = swap_level
         self.fork_level = fork_level
         self.bvdd = bvdd
@@ -364,11 +370,10 @@ class BV_Fork_Grouping(BV_Grouping):
                     BV_Fork_Grouping.representatives[self] = self
         return BV_Fork_Grouping.representatives[self]
 
-    def projection_proto(level, input_i):
-        # TODO: assert level == 0 and input_i == 0
-        assert 0 <= input_i < 2**level
-        bvdd = BVDD.BVDD.projection_proto(input_i)
-        return BV_Fork_Grouping(level, level, level,
+    def projection_proto(level, swap_level, fork_level):
+        assert level == 0
+        bvdd = BVDD.BVDD.projection_proto(0)
+        return BV_Fork_Grouping(level, swap_level, fork_level,
             bvdd.number_of_exits(), bvdd).representative()
 
     def upsample(self):
@@ -377,14 +382,18 @@ class BV_Fork_Grouping(BV_Grouping):
         if self.is_upsample_cached():
             return self.get_cached_upsample()
 
-        g_a_bvdd, g_b_bvdds, g_b_return_tuples, _ = self.bvdd.upsample(2**(self.level - 1) - 1)
+        g_a_bvdd, _, g_b_bvdds, g_b_return_tuples = self.bvdd.upsample(self.level)
 
         # TODO: enable different input orderings
         g = BV_Internal_Grouping(self.level, self.swap_level, self.fork_level, True,
             len(g_b_return_tuples))
 
-        g.a_connection = BV_Fork_Grouping(self.level - 1, self.swap_level, self.fork_level,
-            g_a_bvdd.number_of_exits(), g_a_bvdd).representative()
+        if g_a_bvdd.is_constant():
+            g.a_connection = BV_No_Distinction_Proto.representative(self.level - 1,
+                self.swap_level, self.fork_level)
+        else:
+            g.a_connection = BV_Fork_Grouping(self.level - 1, self.swap_level, self.fork_level,
+                g_a_bvdd.number_of_exits(), g_a_bvdd).representative()
 
         assert g.a_connection.number_of_exits == len(g_b_bvdds)
 
@@ -393,15 +402,28 @@ class BV_Fork_Grouping(BV_Grouping):
         g.b_connections = {}
 
         for g_b_i in g_b_bvdds:
-            g_b = BV_Fork_Grouping(self.level - 1, self.swap_level, self.fork_level,
-                g_b_bvdds[g_b_i].number_of_exits(), g_b_bvdds[g_b_i]).representative()
+            if g_b_bvdds[g_b_i].is_constant():
+                g_b = BV_No_Distinction_Proto.representative(self.level - 1,
+                    self.swap_level, self.fork_level)
+            else:
+                g_b = BV_Fork_Grouping(self.level - 1, self.swap_level, self.fork_level,
+                    g_b_bvdds[g_b_i].number_of_exits(), g_b_bvdds[g_b_i]).representative()
             g.b_connections[g_b_i] = g_b
 
             assert g_b.number_of_exits == len(g_b_return_tuples[g_b_i])
 
         g.b_return_tuples = g_b_return_tuples
 
-        return self.cache_upsample(g.representative())
+        if g.a_connection.is_no_distinction_proto():
+            print(self)
+
+        if (g.a_connection.is_no_distinction_proto() and
+            g.number_of_b_connections == 1 and
+            g.b_connections[1].is_no_distinction_proto()):
+            return self.cache_upsample(BV_No_Distinction_Proto.representative(self.level,
+                self.swap_level, self.fork_level))
+        else:
+            return self.cache_upsample(g.representative())
 
     def downsample(self):
         assert self.level <= self.fork_level
@@ -502,7 +524,8 @@ class BV_Fork_Grouping(BV_Grouping):
             assert self.level == self.fork_level
 
             if bvdd.is_constant():
-                g = No_Distinction_Proto.representative(self.level, self.swap_level, self.fork_level)
+                g = No_Distinction_Proto.representative(self.level,
+                    self.swap_level, self.fork_level)
             else:
                 g = BV_Fork_Grouping(self.level, self.swap_level, self.fork_level,
                     reduction_length, bvdd).representative()
@@ -540,7 +563,8 @@ class BV_Internal_Grouping(BV_Grouping):
     def __init__(self, level, swap_level, fork_level, a2b, number_of_exits = 0):
         assert level > 0
         super().__init__(level, number_of_exits)
-        assert 0 <= fork_level <= swap_level <= level
+        assert 0 <= swap_level
+        assert 0 <= fork_level
         self.swap_level = swap_level
         self.fork_level = fork_level
         self.a2b = a2b
@@ -668,8 +692,8 @@ class BV_Internal_Grouping(BV_Grouping):
     def projection_proto(level, swap_level, fork_level, input_i):
         # generalizing CFLOBDD projection to generational CFLOBVDD projection
         assert 0 <= input_i < 2**level
-        if level == fork_level:
-            return BV_Fork_Grouping.projection_proto(level, input_i)
+        if level == 0:
+            return BV_Fork_Grouping.projection_proto(level, swap_level, fork_level)
         else:
             g = BV_Internal_Grouping(level, swap_level, fork_level, True)
 
@@ -836,10 +860,8 @@ class BV_Internal_Grouping(BV_Grouping):
 
             if g1.level <= g1.fork_level:
                 # g1 and g2 are downsampled in original order (decompressing)
-                pass
-                # TODO:
-                #g, pt_ans = g1.downsample().pair_product(g2.downsample())
-                #return g1_orig.cache_pair_product(g2_orig, g, pt_ans)
+                g, pt_ans = g1.downsample().pair_product(g2.downsample())
+                return g1_orig.cache_pair_product(g2_orig, g, pt_ans)
 
             g = BV_Internal_Grouping(g1.level, g1.swap_level, g1.fork_level, g1.a2b)
 
@@ -957,10 +979,8 @@ class BV_Internal_Grouping(BV_Grouping):
 
             if g1.level <= g1.fork_level:
                 # g1, g2, g3 are downsampled in original order (decompressing)
-                pass
-                # TODO:
-                #g, tt_ans = g1.downsample().triple_product(g2.downsample(), g3.downsample())
-                #return g1_orig.cache_triple_product(g2_orig, g3_orig, g, tt_ans)
+                g, tt_ans = g1.downsample().triple_product(g2.downsample(), g3.downsample())
+                return g1_orig.cache_triple_product(g2_orig, g3_orig, g, tt_ans)
 
             g = BV_Internal_Grouping(g1.level, g1.swap_level, g1.fork_level, g1.a2b)
 
@@ -1099,7 +1119,8 @@ class BV_No_Distinction_Proto(BV_Internal_Grouping):
 
     def __init__(self, level, swap_level, fork_level):
         assert level > 0
-        assert 0 <= fork_level <= swap_level <= level
+        assert 0 <= swap_level
+        assert 0 <= fork_level
         super().__init__(level, swap_level, fork_level, True, 1)
 
     def representative(level, swap_level, fork_level):
@@ -1129,6 +1150,16 @@ class BV_No_Distinction_Proto(BV_Internal_Grouping):
     def swap(self):
         assert self.level > self.swap_level
         return self
+
+    def downsample(self):
+        assert self.level <= self.fork_level
+
+        if self.is_downsample_cached():
+            return self.get_cached_downsample()
+
+        return self.cache_downsample(BV_Fork_Grouping(self.level,
+            self.swap_level, self.fork_level,
+            1, BVDD.BVDD.constant(1)).representative())
 
     def pair_product(self, g2, inorder = True):
         assert isinstance(g2, BV_Grouping)
@@ -1320,6 +1351,8 @@ class CFLOBVDD:
         return self.number_of_distinct_outputs() == 1 and True in self.outputs.values()
 
     def constant(level, swap_level, fork_level, output = 0):
+        assert 0 <= swap_level <= level
+        assert 0 <= fork_level <= level
         with CFLOBVDD.max_level_lock:
             CFLOBVDD.max_level = max(CFLOBVDD.max_level, level)
         return CFLOBVDD.representative(
@@ -1358,7 +1391,8 @@ class CFLOBVDD:
             number_of_output_bits)
 
     def projection(level, swap_level, fork_level, input_i, reorder = False):
-        assert 0 <= fork_level <= swap_level <= level
+        assert 0 <= swap_level <= level
+        assert 0 <= fork_level <= level
         assert 0 <= input_i < 2**level
         with CFLOBVDD.max_level_lock:
             CFLOBVDD.max_level = max(CFLOBVDD.max_level, level)
