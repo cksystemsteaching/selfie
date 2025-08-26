@@ -174,76 +174,6 @@ class BVDD_Node:
         # use offset 1 for CFLOBVDDs
         return BVDD.projection(index, 1)
 
-    def tuple2exit(tuple_inv, tuple_ins):
-        if tuple_ins not in tuple_inv:
-            tuple_inv[tuple_ins] = len(tuple_inv) + 1
-        return tuple_inv[tuple_ins]
-
-    def pair_product(self, bvdd2):
-        assert type(bvdd2) is type(self)
-        pair_inv = {}
-        return (self.compute_binary(lambda x, y: BVDD_Node.tuple2exit(pair_inv, (x, y)), bvdd2),
-            dict([(pair_inv[pair], pair) for pair in pair_inv]))
-
-    def triple_product(self, bvdd2, bvdd3):
-        assert type(bvdd2) is type(self)
-        assert type(bvdd3) is type(self)
-        triple_inv = {}
-        return (self.compute_ternary(lambda x, y, z: BVDD_Node.tuple2exit(triple_inv, (x, y, z)), bvdd2, bvdd3),
-            dict([(triple_inv[triple], triple) for triple in triple_inv]))
-
-    def reduce_SBDD(self):
-        # only for i2o and o2s
-        return self.cache()
-
-    def reduce_BVDD(self, index = 1):
-        # dont-care SBDDs are not reduced
-        return self.cache()
-
-    def reduce(self, reduction_tuple, index = 0):
-        new_bvdd = type(self)({})
-        s2o = self.get_s2o()
-        for inputs in s2o:
-            output = s2o[inputs]
-            if isinstance(output, BVDD):
-                reduced_output = output.reduce(reduction_tuple, index + 1)
-                new_bvdd.set(inputs, reduced_output)
-            else:
-                new_bvdd.set(inputs, reduction_tuple[output])
-        return new_bvdd.reduce_SBDD().reduce_BVDD(index)
-
-    def compute_ite(self, bvdd2, bvdd3):
-        assert type(bvdd2) is type(self)
-        assert type(bvdd3) is type(self)
-        return self.compute_ternary(lambda x, y, z: y if x else z, bvdd2, bvdd3)
-
-    def print_profile():
-        print("BVDD cache profile:")
-        print(f"nodes: {utilization(BVDD_Node.node_cache_hits, len(BVDD_Node.node_cache))}")
-
-    def extract(self, output_value):
-        new_bvdd = BVDD({})
-        s2o = self.get_s2o()
-        for inputs in s2o:
-            output = s2o[inputs]
-            if output == output_value:
-                new_bvdd.set(inputs, output)
-            elif isinstance(output, BVDD):
-                extracted_bvdd = output.extract(output_value)
-                if extracted_bvdd.get_s2o():
-                    new_bvdd.set(inputs, extracted_bvdd)
-        # BVDD may be incomplete, only use for printing
-        return new_bvdd
-
-    def get_printed_BVDD(self, output_value):
-        return (f"{type(self).__name__}:\n" +
-            f"{self.number_of_connections()} connections\n" +
-            f"{self.number_of_outputs()} output values\n" +
-            f"{self.number_of_distinct_outputs()} distinct output values (exits)\n" +
-            f"{self.number_of_distinct_inputs()} distinct inputs\n" +
-            f"{self.number_of_solutions(output_value)} solutions\n" +
-            f"{self.extract(output_value)}")
-
     def apply(self, return_tuple, index = 0):
         new_bvdd = type(self)({})
         s2o = self.get_s2o()
@@ -344,6 +274,76 @@ class BVDD_Node:
         # apply to bvdds may reduce to constants
         return self.apply(dict([(exit_i, bvdds[exit_i].apply(return_tuples[exit_i], 1))
             for exit_i in bvdds]))
+
+    def tuple2exit(tuple_inv, tuple_ins):
+        if tuple_ins not in tuple_inv:
+            tuple_inv[tuple_ins] = len(tuple_inv) + 1
+        return tuple_inv[tuple_ins]
+
+    def pair_product(self, bvdd2):
+        assert type(bvdd2) is type(self)
+        pair_inv = {}
+        return (self.compute_binary(lambda x, y: BVDD_Node.tuple2exit(pair_inv, (x, y)), bvdd2),
+            dict([(pair_inv[pair], pair) for pair in pair_inv]))
+
+    def triple_product(self, bvdd2, bvdd3):
+        assert type(bvdd2) is type(self)
+        assert type(bvdd3) is type(self)
+        triple_inv = {}
+        return (self.compute_ternary(lambda x, y, z: BVDD_Node.tuple2exit(triple_inv, (x, y, z)), bvdd2, bvdd3),
+            dict([(triple_inv[triple], triple) for triple in triple_inv]))
+
+    def reduce_SBDD(self):
+        # only for i2o and o2s
+        return self.cache()
+
+    def reduce_BVDD(self, index = 1):
+        # dont-care SBDDs are not reduced
+        return self.cache()
+
+    def reduce(self, reduction_tuple, index = 0):
+        new_bvdd = type(self)({})
+        s2o = self.get_s2o()
+        for inputs in s2o:
+            output = s2o[inputs]
+            if isinstance(output, BVDD):
+                reduced_output = output.reduce(reduction_tuple, index + 1)
+                new_bvdd.set(inputs, reduced_output)
+            else:
+                new_bvdd.set(inputs, reduction_tuple[output])
+        return new_bvdd.reduce_SBDD().reduce_BVDD(index)
+
+    def compute_ite(self, bvdd2, bvdd3):
+        assert type(bvdd2) is type(self)
+        assert type(bvdd3) is type(self)
+        return self.compute_ternary(lambda x, y, z: y if x else z, bvdd2, bvdd3)
+
+    def print_profile():
+        print("BVDD cache profile:")
+        print(f"nodes: {utilization(BVDD_Node.node_cache_hits, len(BVDD_Node.node_cache))}")
+
+    def extract(self, output_value):
+        new_bvdd = BVDD({})
+        s2o = self.get_s2o()
+        for inputs in s2o:
+            output = s2o[inputs]
+            if output == output_value:
+                new_bvdd.set(inputs, output)
+            elif isinstance(output, BVDD):
+                extracted_bvdd = output.extract(output_value)
+                if extracted_bvdd.get_s2o():
+                    new_bvdd.set(inputs, extracted_bvdd)
+        # BVDD may be incomplete, only use for printing
+        return new_bvdd
+
+    def get_printed_BVDD(self, output_value):
+        return (f"{type(self).__name__}:\n" +
+            f"{self.number_of_connections()} connections\n" +
+            f"{self.number_of_outputs()} output values\n" +
+            f"{self.number_of_distinct_outputs()} distinct output values (exits)\n" +
+            f"{self.number_of_distinct_inputs()} distinct inputs\n" +
+            f"{self.number_of_solutions(output_value)} solutions\n" +
+            f"{self.extract(output_value)}")
 
 class SBDD_i2o(BVDD_Node):
     # single-byte decision diagram with naive input-to-output mapping

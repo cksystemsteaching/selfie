@@ -1634,10 +1634,10 @@ def main():
             Values.CFLOBVDD_fork_level = args.use_CFLOBVDD[0] if len(args.use_CFLOBVDD) > 0 else 0
             Values.CFLOBVDD_swap_level = args.use_CFLOBVDD[1] if len(args.use_CFLOBVDD) > 1 else Values.CFLOBVDD_fork_level
             Values.CFLOBVDD_level = args.use_CFLOBVDD[2] if len(args.use_CFLOBVDD) > 2 else Values.CFLOBVDD_swap_level
-            assert 0 <= Values.CFLOBVDD_swap_level <= Values.CFLOBVDD_level, \
-                f"invalid swap level {Values.CFLOBVDD_swap_level} for level {Values.CFLOBVDD_level}"
             assert 0 <= Values.CFLOBVDD_fork_level <= Values.CFLOBVDD_level, \
                 f"invalid fork level {Values.CFLOBVDD_fork_level} for level {Values.CFLOBVDD_level}"
+            assert 0 <= Values.CFLOBVDD_swap_level <= Values.CFLOBVDD_level, \
+                f"invalid swap level {Values.CFLOBVDD_swap_level} for level {Values.CFLOBVDD_level}"
 
             level = max(Values.CFLOBVDD_level, Values.CFLOBVDD_swap_level, Values.CFLOBVDD_fork_level,
                 ceil(log2(len(Variable.bvdd_input))) if Variable.bvdd_input else 0)
