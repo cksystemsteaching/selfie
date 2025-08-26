@@ -287,30 +287,31 @@ class BVDD_Node:
                     for i in pt])
         return new_bvdd.link(swap2right_bvdd, return_tuples)
 
-    def unapply(self, a_rt_inv, rt = None, rt_inv = None, index = 0):
+    def unapply(self, b_rt_inv, rt = None, rt_inv = None, index = 0):
         new_bvdd = type(self)({})
-        a_rt_inv = a_rt_inv if a_rt_inv is not None else {}
+        b_rt_inv = b_rt_inv if b_rt_inv is not None else {}
         rt = rt if rt is not None else {}
         rt_inv = rt_inv if rt_inv is not None else {}
         s2o = self.get_s2o()
         for inputs in s2o:
             output = s2o[inputs]
             if isinstance(output, BVDD):
-                output, a_rt_inv, rt, rt_inv = output.unapply(a_rt_inv, rt, rt_inv, index + 1)
+                output, b_rt_inv, rt, rt_inv = output.unapply(b_rt_inv, rt, rt_inv, index + 1)
                 new_bvdd.set(inputs, output)
             else:
                 if output not in rt_inv:
                     rt_inv[output] = len(rt_inv) + 1
-                    if output not in a_rt_inv:
-                        a_rt_inv[output] = len(a_rt_inv) + 1
-                    rt[rt_inv[output]] = a_rt_inv[output]
+                    if output not in b_rt_inv:
+                        b_rt_inv[output] = len(b_rt_inv) + 1
+                    rt[rt_inv[output]] = b_rt_inv[output]
                 new_bvdd.set(inputs, rt_inv[output])
-        return new_bvdd.reduce_SBDD().reduce_BVDD(index), a_rt_inv, rt, rt_inv
+        return new_bvdd.reduce_SBDD().reduce_BVDD(index), b_rt_inv, rt, rt_inv
 
-    def upsample(self, level, a_rt_inv = None, b_cs = None, b_rts = None, index = 0):
+    def upsample(self, level, a_rt_inv = None, b_rt_inv = None, b_cs = None, b_rts = None, index = 0):
         assert level > 0
         a_c = type(self)({})
         a_rt_inv = a_rt_inv if a_rt_inv is not None else {}
+        b_rt_inv = b_rt_inv if b_rt_inv is not None else {}
         b_cs = b_cs if b_cs is not None else {}
         b_rts = b_rts if b_rts is not None else {}
         s2o = self.get_s2o()
@@ -318,23 +319,26 @@ class BVDD_Node:
             output = s2o[inputs]
             if isinstance(output, BVDD):
                 if index < 2**(level - 1) - 1:
-                    output, a_rt_inv, b_cs, b_rts = output.upsample(level,
-                        a_rt_inv, b_cs, b_rts, index + 1)
+                    output, a_rt_inv, b_rt_inv, b_cs, b_rts = output.upsample(level,
+                        a_rt_inv, b_rt_inv, b_cs, b_rts, index + 1)
                     a_c.set(inputs, output)
                 else:
-                    output, a_rt_inv, rt, rt_inv = output.unapply(a_rt_inv)
-                    if output not in a_rt_inv:
-                        a_rt_inv[output] = len(a_rt_inv) + 1
-                        b_cs[a_rt_inv[output]] = output
-                        b_rts[a_rt_inv[output]] = rt
-                    a_c.set(inputs, a_rt_inv[output])
+                    output, b_rt_inv, rt, rt_inv = output.unapply(b_rt_inv)
+                    key = (output, tuple(rt.values()))
+                    if key not in a_rt_inv:
+                        a_rt_inv[key] = len(a_rt_inv) + 1
+                        b_cs[a_rt_inv[key]] = output
+                        b_rts[a_rt_inv[key]] = rt
+                    a_c.set(inputs, a_rt_inv[key])
             else:
                 if output not in a_rt_inv:
                     a_rt_inv[output] = len(a_rt_inv) + 1
+                    if output not in b_rt_inv:
+                        b_rt_inv[output] = len(b_rt_inv) + 1
                     b_cs[a_rt_inv[output]] = BVDD.constant(1)
-                    b_rts[a_rt_inv[output]] = {1:a_rt_inv[output]}
+                    b_rts[a_rt_inv[output]] = {1:b_rt_inv[output]}
                 a_c.set(inputs, a_rt_inv[output])
-        return a_c.reduce_SBDD().reduce_BVDD(index), a_rt_inv, b_cs, b_rts
+        return a_c.reduce_SBDD().reduce_BVDD(index), a_rt_inv, b_rt_inv, b_cs, b_rts
 
     def downsample(self, bvdds, return_tuples):
         # apply to bvdds may reduce to constants

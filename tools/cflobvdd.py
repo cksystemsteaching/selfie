@@ -382,11 +382,12 @@ class BV_Fork_Grouping(BV_Grouping):
         if self.is_upsample_cached():
             return self.get_cached_upsample()
 
-        g_a_bvdd, _, g_b_bvdds, g_b_return_tuples = self.bvdd.upsample(self.level)
+        g_a_bvdd, g_a_rt_inv, g_b_rt_inv, g_b_bvdds, g_b_return_tuples = self.bvdd.upsample(self.level)
+
+        assert g_a_bvdd.number_of_exits() == len(g_a_rt_inv)
 
         # TODO: enable different input orderings
-        g = BV_Internal_Grouping(self.level, self.swap_level, self.fork_level, True,
-            len(g_b_return_tuples))
+        g = BV_Internal_Grouping(self.level, self.swap_level, self.fork_level, True, len(g_b_rt_inv))
 
         if g_a_bvdd.is_constant():
             g.a_connection = BV_No_Distinction_Proto.representative(self.level - 1,
@@ -413,9 +414,6 @@ class BV_Fork_Grouping(BV_Grouping):
             assert g_b.number_of_exits == len(g_b_return_tuples[g_b_i])
 
         g.b_return_tuples = g_b_return_tuples
-
-        if g.a_connection.is_no_distinction_proto():
-            print(self)
 
         if (g.a_connection.is_no_distinction_proto() and
             g.number_of_b_connections == 1 and
@@ -520,8 +518,6 @@ class BV_Fork_Grouping(BV_Grouping):
                 return self.get_cached_reduction(reduction_tuple)
 
             bvdd = self.bvdd.reduce(reduction_tuple)
-
-            assert self.level == self.fork_level
 
             if bvdd.is_constant():
                 g = No_Distinction_Proto.representative(self.level,
