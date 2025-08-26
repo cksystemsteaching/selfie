@@ -12,6 +12,26 @@
 
 # Context-free language ordered bitvector decision diagrams (CFLOBVDDs)
 
+# CFLOBVDDs generalize CFLOBDDs in two ways:
+
+# CFLOBVDDs are CFLOBDDs over multi-node bitvector decision diagrams (BVDDs)
+# rather than single-node BDDs. A single node of a BVDD maps a bitvector of
+# size n, rather than just one bit, to no more than 2^n different values,
+# rather than just to no more than two different values. Hence a tree of
+# BVDD nodes of depth f maps a bitvector of size n*2^f bits to no more
+# than 2^(n*2^f) different values. A CFLOBVDD of depth l>=f over BVDDs
+# (mapping n*2^f-bit bitvectors) maps a bitvector of size n*2^(l-f) bits
+# to no more than 2^(n*2^(l-f)) different values.
+
+# CFLOBVDDs are kept minimal with respect to all recursively pairwise
+# reorderings of BVDDs in CFLOBVDDs (out of the factorially many possible
+# reorderings). Reorderings are explored from CFLOBVDD root nodes down to
+# a configurable level called swap level. CFLOBVDDs are initialized with
+# single-node BVDDs at level 0 which may then grow to a configurable level
+# called fork level (downsampling). If the swap level is less than the
+# fork level, BVDDs may be split in half recursively down to swap level
+# to explore reorderings (upsampling).
+
 # ------------------------------------------------------------
 
 import bvdd as BVDD
