@@ -54,7 +54,8 @@ class Futures:
 
     def fork_step(self, step):
         assert step >= 0
-        self.cache_futures[step] = Futures.executor.submit(self.get_step, step)
+        if step not in self.cache_futures:
+            self.cache_futures[step] = Futures.executor.submit(self.get_step, step)
 
 from math import log2
 from math import ceil
