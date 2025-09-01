@@ -39,32 +39,12 @@ except OSError:
     is_rotor_present = False
 
 import concurrent.futures
-import threading
 
 class Futures:
-    number_of_value_threads = 0
-
     executor = concurrent.futures.ThreadPoolExecutor()
-
-    lock = threading.Lock()
 
     def __init__(self):
         self.cache_futures = {}
-
-    def wait_values(self, future):
-        if future is not None:
-            concurrent.futures.wait([future])
-            with Futures.lock:
-                Futures.number_of_value_threads -= 1
-
-    def fork_values(self, step):
-        assert step >= 0
-        if Futures.number_of_value_threads < 0:
-            with Futures.lock:
-                if Futures.number_of_value_threads < 0:
-                    Futures.number_of_value_threads += 1
-                    return Futures.executor.submit(self.get_values, step)
-        return None
 
     def wait_step(self, step):
         assert step >= 0
@@ -592,11 +572,10 @@ class Array(Sort, btor2.Array, z3interface.Array, bitwuzlainterface.Array):
         Sort.__init__(self)
         btor2.Array.__init__(self, nid, array_size_line, element_size_line, comment, line_no)
 
-class Expression(Line, btor2.Expression, z3interface.Expression, bitwuzlainterface.Expression, Futures):
+class Expression(Line, btor2.Expression, z3interface.Expression, bitwuzlainterface.Expression):
     def __init__(self):
         Line.__init__(self)
         self.cache_values = {}
-        Futures.__init__(self)
         z3interface.Expression.__init__(self)
         bitwuzlainterface.Expression.__init__(self)
 
@@ -780,14 +759,6 @@ class Binary(Expression, btor2.Binary):
     def __init__(self):
         Expression.__init__(self)
 
-    def get_values(self, step):
-        assert step >= 0
-        future1 = self.arg1_line.fork_values(step)
-        future2 = self.arg2_line.fork_values(step)
-        self.arg1_line.wait_values(future1)
-        self.arg2_line.wait_values(future2)
-        return super().get_values(step)
-
 class Implies(Binary, btor2.Implies, z3interface.Implies, bitwuzlainterface.Implies):
     def __init__(self, nid, op, sid_line, arg1_line, arg2_line, comment, line_no):
         Binary.__init__(self)
@@ -962,10 +933,6 @@ class Read(Binary, btor2.Read, z3interface.Read, bitwuzlainterface.Read):
         Binary.__init__(self)
         btor2.Read.__init__(self, nid, op, sid_line, arg1_line, arg2_line, comment, line_no)
 
-    def get_values(self, step):
-        # skip Binary.get_values
-        return Expression.get_values(self, step)
-
     def compute_values(self, step):
         arg1_value = self.arg1_line.get_values(step).get_expression()
         arg2_value = self.arg2_line.get_values(step).get_expression()
@@ -979,16 +946,6 @@ class Ite(Ternary, btor2.Ite, z3interface.Ite, bitwuzlainterface.Ite):
     def __init__(self, nid, sid_line, arg1_line, arg2_line, arg3_line, comment, line_no):
         Ternary.__init__(self)
         btor2.Ite.__init__(self, nid, sid_line, arg1_line, arg2_line, arg3_line, comment, line_no)
-
-    def get_values(self, step):
-        assert step >= 0
-        future1 = self.arg1_line.fork_values(step)
-        future2 = self.arg2_line.fork_values(step)
-        future3 = self.arg3_line.fork_values(step)
-        self.arg1_line.wait_values(future1)
-        self.arg2_line.wait_values(future2)
-        self.arg3_line.wait_values(future3)
-        return super().get_values(step)
 
     def compute_values(self, step):
         arg1_value = self.arg1_line.get_values(step)
