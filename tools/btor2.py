@@ -496,6 +496,10 @@ class Indexed(Expression):
         if not isinstance(arg1_line.sid_line, Bitvec):
             raise model_error("bitvector operand", line_no)
 
+    def print_deep(self):
+        self.arg1_line.print_deep()
+        print(self)
+
     def get_mapped_array_expression_for(self, index):
         assert index is None
         arg1_line = self.arg1_line.get_mapped_array_expression_for(None)
@@ -784,6 +788,12 @@ class Ternary(Expression):
 
     def __str__(self):
         return f"{self.nid} {self.op} {self.sid_line.nid} {self.arg1_line.nid} {self.arg2_line.nid} {self.arg3_line.nid} {self.comment}"
+
+    def print_deep(self):
+        self.arg1_line.print_deep()
+        self.arg2_line.print_deep()
+        self.arg3_line.print_deep()
+        print(self)
 
 class Ite(Ternary):
     keyword = OP_ITE
