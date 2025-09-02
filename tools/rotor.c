@@ -1232,7 +1232,7 @@ uint64_t* eval_core_0_data_segment_data_flow_nid = (uint64_t*) 0;
 // heap segment
 
 uint64_t heap_initial_size = 0;
-uint64_t heap_allowance    = 4096; // must be multiple of WORDSIZE
+uint64_t heap_allowance    = 2048; // must be multiple of WORDSIZE
 
 uint64_t heap_start = 0;
 uint64_t heap_size  = 0;
