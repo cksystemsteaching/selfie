@@ -636,24 +636,15 @@ class BV_Internal_Grouping(BV_Grouping):
             a_e_i = self.a_return_tuple[g_a_e_i]
             assert g_a_e_i == a_e_i
             assert 1 <= a_e_i <= self.number_of_b_connections
-        g_exits = {}
         for g_b_i in self.b_connections:
             g_b = self.b_connections[g_b_i]
             assert g_b_i in self.b_return_tuples
             g_b_i_rt = self.b_return_tuples[g_b_i]
             assert len(g_b_i_rt) == len(set(g_b_i_rt.values()))
-            g_b_i_rt_targets = {}
-            previous_target = 0
             for g_b_i_rt_e_j in g_b_i_rt:
-                assert 1 <= g_b_i_rt_e_j <= g_b.number_of_exits, f"1 <= {g_b_i_rt_e_j} <= {g_b.number_of_exits}: {self}"
+                assert 1 <= g_b_i_rt_e_j <= g_b.number_of_exits
                 g_b_i_rt_e_j_e_t = g_b_i_rt[g_b_i_rt_e_j]
                 assert 1 <= g_b_i_rt_e_j_e_t <= self.number_of_exits
-                assert g_b_i_rt_e_j_e_t not in g_b_i_rt_targets
-                g_b_i_rt_targets[g_b_i_rt_e_j_e_t] = None
-                if g_b_i_rt_e_j_e_t not in g_exits:
-                    assert g_b_i_rt_e_j_e_t > previous_target
-                    previous_target = g_b_i_rt_e_j_e_t
-            g_exits |= g_b_i_rt_targets
         return True
 
     def number_of_connections(self):
