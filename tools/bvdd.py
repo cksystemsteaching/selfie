@@ -686,7 +686,7 @@ class BVDD_uncached(SBDD_o2s):
         if isinstance(output1, BVDD):
             if isinstance(output2, BVDD):
                 if isinstance(output3, BVDD):
-                    return output1.compute_ternary(output2, output3).reduce_BVDD()
+                    return output1.compute_ternary(op, output2, output3).reduce_BVDD()
                 else:
                     return output1.compute_binary(lambda x, y: op(x, y, output3), output2).reduce_BVDD()
             elif isinstance(output3, BVDD):
