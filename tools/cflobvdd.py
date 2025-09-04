@@ -803,7 +803,7 @@ class BV_Internal_Grouping(BV_Grouping):
             g_b = g.b_connections[g_b_i]
             g_b_bvdds[g_b_i] = g_b.downsample().bvdd
 
-        bvdd = g_a_bvdd.downsample(g_b_bvdds, g.b_return_tuples)
+        bvdd = g_a_bvdd.downsample(g.level, g_b_bvdds, g.b_return_tuples)
 
         assert bvdd.number_of_exits() == g.number_of_exits
 

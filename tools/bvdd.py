@@ -174,13 +174,15 @@ class BVDD_Node:
         # use offset 1 for CFLOBVDDs
         return BVDD.projection(index, 1)
 
-    def apply(self, return_tuple, index = 0):
+    def apply(self, return_tuple, index = 0, level = 0):
         new_bvdd = type(self)({})
         s2o = self.get_s2o()
         for inputs in s2o:
             output = s2o[inputs]
             if isinstance(output, BVDD):
-                new_bvdd.set(inputs, output.apply(return_tuple, index + 1))
+                new_bvdd.set(inputs, output.apply(return_tuple, index + 1, level))
+            elif index < 2**level - 1:
+                new_bvdd.set(inputs, BVDD.constant(output).apply(return_tuple, index + 1, level))
             else:
                 new_bvdd.set(inputs, return_tuple[output])
         return new_bvdd.reduce_SBDD().reduce_BVDD(index)
@@ -270,10 +272,11 @@ class BVDD_Node:
                 a_c.set(inputs, a_rt_inv[output])
         return a_c.reduce_SBDD().reduce_BVDD(index), a_rt_inv, b_rt_inv, b_cs, b_rts
 
-    def downsample(self, bvdds, return_tuples):
+    def downsample(self, level, bvdds, return_tuples):
+        assert level > 0
         # apply to bvdds may reduce to constants
         return self.apply(dict([(exit_i, bvdds[exit_i].apply(return_tuples[exit_i], 1))
-            for exit_i in bvdds]))
+            for exit_i in bvdds]), 0, level - 1)
 
     def tuple2exit(tuple_inv, tuple_ins):
         if tuple_ins not in tuple_inv:
