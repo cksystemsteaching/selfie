@@ -97,7 +97,6 @@ class BitmeConfig:
 
 class BitmeBVDDMode(enum.StrEnum):
     BVDD = enum.auto()
-    ROABVDD = enum.auto()
     CFLOBVDD = enum.auto()
 
     def __repr__(self) -> str:
@@ -127,9 +126,8 @@ class BitmeResult:
 
 def run_bitme(config: BitmeConfig, model: Path) -> BitmeResult:
     BVDD_FLAGS = {
-        BitmeBVDDMode.BVDD: "--use-BVDD",
-        BitmeBVDDMode.ROABVDD: "--use-ROABVDD",
-        BitmeBVDDMode.CFLOBVDD: "--use-CFLOBVDD",
+        BitmeBVDDMode.BVDD: ["--use-BVDD"],
+        BitmeBVDDMode.CFLOBVDD: ["--use-CFLOBVDD", "1", "1"],
     }
     SATSOLVER_FLAGS = {
         BitmeSatSolver.NONE: "",  # - default mode
@@ -140,12 +138,13 @@ def run_bitme(config: BitmeConfig, model: Path) -> BitmeResult:
     args = [
         BITME,
         "-analyzor",
-        BVDD_FLAGS[config.bvdd_mode],
+        *BVDD_FLAGS[config.bvdd_mode],
         SATSOLVER_FLAGS[config.satsolver],
         "-propagate",
         str(config.max_propagate_bits),
         "-array",
         str(config.max_array_flatten_bits),
+        "--unroll",
         model,
     ]
 
