@@ -201,7 +201,7 @@ class Values:
                 output = s2o[inputs]
                 if exp_line is None:
                     # reachable only if input value is in inputs
-                    exp_line = Values.get_bvdd_node_expression(sid_line, output, sbdd, index + 1),
+                    exp_line = Values.get_bvdd_node_expression(sid_line, output, sbdd, index + 1)
                 else:
                     if sbdd:
                         assert 0 <= inputs < 256
