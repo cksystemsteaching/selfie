@@ -99,8 +99,9 @@ class BV_Grouping:
         with BV_Grouping.swap_cache_lock:
             if self not in BV_Grouping.swap_cache:
                 BV_Grouping.swap_cache[self] = g
-                # swapping is idempotent
-                assert g not in BV_Grouping.swap_cache or self is g.swap()
+                # swapping is involutory (self-inverse)
+                assert g not in BV_Grouping.swap_cache
+                BV_Grouping.swap_cache[g] = self
         return BV_Grouping.swap_cache[self]
 
     def is_upsample_cached(self):
@@ -744,11 +745,8 @@ class BV_Internal_Grouping(BV_Grouping):
 
             return g.representative()
 
-    def swap(self):
+    def swap_uncached(self):
         assert self.level > self.swap_level
-
-        if self.is_swap_cached():
-            return self.get_cached_swap()
 
         g = BV_Internal_Grouping(self.level, self.swap_level, self.fork_level,
             not self.a2b, self.number_of_exits)
@@ -783,7 +781,19 @@ class BV_Internal_Grouping(BV_Grouping):
             g.b_connections[g_b_i] = self.a_connection.reduce(induced_reduction_tuple)
             g.b_return_tuples[g_b_i] = induced_return_tuple
 
-        return self.cache_swap(g.representative())
+        return g.representative()
+
+    def swap(self):
+        assert self.level > self.swap_level
+
+        if self.is_swap_cached():
+            return self.get_cached_swap()
+
+        g = self.swap_uncached()
+
+        # swapping is involutory: assert self is g.swap_uncached()
+
+        return self.cache_swap(g)
 
     def downsample(self):
         assert self.level <= self.fork_level
