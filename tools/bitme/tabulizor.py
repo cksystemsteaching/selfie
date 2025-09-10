@@ -43,9 +43,9 @@ for sample, r in samples.items():
         ).setdefault(sample, dict())[cfg] = res
 
 BTS = [
-    ("ROABVDD0", "green,mark=x", "SMT"),
-    ("ROABVDD1", "cyan,mark=+", "constant propagation"),
-    ("ROABVDD8", "red,mark=*", "ROABVDD domain propagation"),
+    ("BVDD0", "green,mark=x", "SMT"),
+    ("BVDD1", "cyan,mark=+", "constant propagation"),
+    ("BVDD8", "red,mark=*", "ROABVDD domain propagation"),
     ("CFLOBVDD8", "blue,mark=o", "CFLOBVDD domain propagation"),
 ]
 SAMPLES = list(samples.keys())
