@@ -39,13 +39,13 @@ class RotorConfig:
 
 # rotor configuration used for sample collection
 # TODO: allow each sample to specify its own options
-ROTOR_CONFIG = RotorConfig(1, 1, 128, 2048, False, True)
+ROTOR_CONFIG = RotorConfig(1, 1, 8, 256, False, True)
 
 
 def compile_rotor(config: RotorConfig, sample: Path):
     # Check if the sample specifies its own number of input bytes
     with sample.open("r") as f:
-        m = re.match("analyzor-input-bytes: ([0-9]+)", f.read())
+        m = next(re.finditer("analyzor-input-bytes: ([0-9]+)", f.read()))
         if m:
             config = dataclasses.replace(config, bytes_to_read=int(m.group(1)))
 

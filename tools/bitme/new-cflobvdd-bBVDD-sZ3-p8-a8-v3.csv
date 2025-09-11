@@ -1,0 +1,5 @@
+sample,runtime_secs,memory_usage_kb,bad_state,bad_step,bad_input
+cflobvdd-test-2.c,9.005738333333333,162837.33333333334,core-0-bad-exit-code,140,2a01
+cflobvdd-test-4.c,615.9462333333332,221310.66666666666,core-0-bad-exit-code,201,2a012a01
+cflobvdd-test-6.c,,,,,
+cflobvdd-test-8.c,,,,,
