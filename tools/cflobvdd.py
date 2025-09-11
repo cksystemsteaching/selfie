@@ -42,33 +42,43 @@ from math import ceil
 import threading
 
 class BV_Grouping:
+    NO_SWAP_CACHING = True
     swap_cache_lock = threading.Lock()
     swap_cache = {}
     swap_cache_hits = 0
 
+    NO_UPSAMPLE_CACHING = False
     upsample_cache_lock = threading.Lock()
     upsample_cache = {}
     upsample_cache_hits = 0
 
+    NO_DOWNSAMPLE_CACHING = False
     downsample_cache_lock = threading.Lock()
     downsample_cache = {}
     downsample_cache_hits = 0
 
+    NO_COMPRESSED_CACHING = False
     compressed_cache_lock = threading.Lock()
     compressed_cache = {}
     compressed_cache_hits = 0
 
+    NO_PAIR_CACHING = False
     pair_product_cache_lock = threading.Lock()
     pair_product_cache = {}
     pair_product_cache_hits = 0
 
+    NO_TRIPLE_CACHING = False
     triple_product_cache_lock = threading.Lock()
     triple_product_cache = {}
     triple_product_cache_hits = 0
 
+    NO_REDUCTION_CACHING = False
     reduction_cache_lock = threading.Lock()
     reduction_cache = {}
     reduction_cache_hits = 0
+
+    NO_CLASSES_CACHING = False
+    NO_REPRESENTATIVES = False
 
     def __init__(self, level, number_of_exits):
         assert level >= 0
@@ -96,6 +106,8 @@ class BV_Grouping:
         return BV_Grouping.swap_cache[self]
 
     def cache_swap(self, g):
+        if BV_Grouping.NO_SWAP_CACHING:
+            return g
         with BV_Grouping.swap_cache_lock:
             if self not in BV_Grouping.swap_cache:
                 BV_Grouping.swap_cache[self] = g
@@ -114,6 +126,8 @@ class BV_Grouping:
         return BV_Grouping.upsample_cache[self]
 
     def cache_upsample(self, g):
+        if BV_Grouping.NO_UPSAMPLE_CACHING:
+            return g
         with BV_Grouping.upsample_cache_lock:
             if self not in BV_Grouping.upsample_cache:
                 BV_Grouping.upsample_cache[self] = g
@@ -131,6 +145,8 @@ class BV_Grouping:
         return BV_Grouping.downsample_cache[self]
 
     def cache_downsample(self, g):
+        if BV_Grouping.NO_DOWNSAMPLE_CACHING:
+            return g
         with BV_Grouping.downsample_cache_lock:
             if self not in BV_Grouping.downsample_cache:
                 BV_Grouping.downsample_cache[self] = g
@@ -160,6 +176,8 @@ class BV_Grouping:
         return BV_Grouping.compressed_cache[self]
 
     def cache_compressed(self, g):
+        if BV_Grouping.NO_COMPRESSED_CACHING:
+            return g
         with BV_Grouping.compressed_cache_lock:
             if self not in BV_Grouping.compressed_cache:
                 BV_Grouping.compressed_cache[self] = g
@@ -177,6 +195,8 @@ class BV_Grouping:
         return BV_Grouping.pair_product_cache[(self, g2)]
 
     def cache_pair_product(self, g2, pair_product, pt_ans):
+        if BV_Grouping.NO_PAIR_CACHING:
+            return (pair_product, pt_ans)
         with BV_Grouping.pair_product_cache_lock:
             if (self, g2) not in BV_Grouping.pair_product_cache:
                 BV_Grouping.pair_product_cache[(self, g2)] = (pair_product, pt_ans)
@@ -194,6 +214,8 @@ class BV_Grouping:
         return BV_Grouping.triple_product_cache[(self, g2, g3)]
 
     def cache_triple_product(self, g2, g3, triple_product, tt_ans):
+        if BV_Grouping.NO_TRIPLE_CACHING:
+            return (triple_product, tt_ans)
         with BV_Grouping.triple_product_cache_lock:
             if (self, g2, g3) not in BV_Grouping.triple_product_cache:
                 BV_Grouping.triple_product_cache[(self, g2, g3)] = (triple_product, tt_ans)
@@ -214,6 +236,8 @@ class BV_Grouping:
         return BV_Grouping.reduction_cache[(self, BV_Grouping.reduction_hash(reduction_tuple))]
 
     def cache_reduction(self, reduction_tuple, reduction):
+        if BV_Grouping.NO_REDUCTION_CACHING:
+            return reduction
         reduction_hash = BV_Grouping.reduction_hash(reduction_tuple)
         with BV_Grouping.reduction_cache_lock:
             if (self, reduction_hash) not in BV_Grouping.reduction_cache:
@@ -262,6 +286,8 @@ class BV_Dont_Care_Grouping(BV_Grouping):
         return [(index_i, 0)]
 
     def representative():
+        if BV_Grouping.NO_REPRESENTATIVES:
+            return BV_Dont_Care_Grouping()
         if BV_Dont_Care_Grouping.representatives is None:
             with BV_Dont_Care_Grouping.representatives_lock:
                 if BV_Dont_Care_Grouping.representatives is None:
@@ -391,6 +417,8 @@ class BV_Fork_Grouping(BV_Grouping):
         return self.bvdd.get_paths(exit_i, index_i)
 
     def representative(self):
+        if BV_Grouping.NO_REPRESENTATIVES:
+            return self
         if self in BV_Fork_Grouping.representatives:
             BV_Fork_Grouping.representatives_hits += 1
         else:
@@ -713,6 +741,8 @@ class BV_Internal_Grouping(BV_Grouping):
         return inputs
 
     def representative(self):
+        if BV_Grouping.NO_REPRESENTATIVES:
+            return self
         if self in BV_Internal_Grouping.representatives:
             BV_Internal_Grouping.representatives_hits += 1
         else:
@@ -806,7 +836,24 @@ class BV_Internal_Grouping(BV_Grouping):
         if self.is_swap_cached():
             return self.get_cached_swap()
 
+        if BV_Grouping.NO_SWAP_CACHING:
+            NO_PAIR_CACHING = BV_Grouping.NO_PAIR_CACHING
+            NO_REDUCTION_CACHING = BV_Grouping.NO_REDUCTION_CACHING
+            NO_CLASSES_CACHING = BV_Grouping.NO_CLASSES_CACHING
+            NO_REPRESENTATIVES = BV_Grouping.NO_REPRESENTATIVES
+
+            BV_Grouping.NO_PAIR_CACHING = True
+            BV_Grouping.NO_REDUCTION_CACHING = True
+            BV_Grouping.NO_CLASSES_CACHING = True
+            BV_Grouping.NO_REPRESENTATIVES = True
+
         g = self.swap_uncached()
+
+        if BV_Grouping.NO_SWAP_CACHING:
+            BV_Grouping.NO_PAIR_CACHING = NO_PAIR_CACHING
+            BV_Grouping.NO_REDUCTION_CACHING = NO_REDUCTION_CACHING
+            BV_Grouping.NO_CLASSES_CACHING = NO_CLASSES_CACHING
+            BV_Grouping.NO_REPRESENTATIVES = NO_REPRESENTATIVES
 
         # swapping is involutory: assert self is g.swap_uncached()
 
@@ -846,14 +893,14 @@ class BV_Internal_Grouping(BV_Grouping):
         size_other = g1_other.number_of_b_connections + g2_other.number_of_b_connections
 
         if size < size_other:
-            return g1, g2
+            return g1.representative(), g2.representative()
         elif size > size_other:
-            return g1_other, g2_other
+            return g1_other.representative(), g2_other.representative()
         elif g1.a2b:
             # prefer original input ordering
-            return g1, g2
+            return g1.representative(), g2.representative()
         else:
-            return g1_other, g2_other
+            return g1_other.representative(), g2_other.representative()
 
     def pair_align(self, g2):
         assert isinstance(g2, BV_Internal_Grouping)
@@ -947,14 +994,14 @@ class BV_Internal_Grouping(BV_Grouping):
             g3_other.number_of_b_connections)
 
         if size < size_other:
-            return g1, g2, g3
+            return g1.representative(), g2.representative(), g3.representative()
         elif size > size_other:
-            return g1_other, g2_other, g3_other
+            return g1_other.representative(), g2_other.representative(), g3_other.representative()
         elif g1.a2b:
             # prefer original input ordering
-            return g1, g2, g3
+            return g1.representative(), g2.representative(), g3.representative()
         else:
-            return g1_other, g2_other, g3_other
+            return g1_other.representative(), g2_other.representative(), g3_other.representative()
 
     def triple_align(self, g2, g3):
         assert isinstance(g2, BV_Internal_Grouping) and isinstance(g3, BV_Internal_Grouping)
@@ -1149,7 +1196,7 @@ class BV_Internal_Grouping(BV_Grouping):
 
             return self.cache_compressed(compressed_g.representative())
         else:
-            return self.cache_compressed(g)
+            return self.cache_compressed(g.representative())
 
 class BV_No_Distinction_Proto(BV_Internal_Grouping):
     representatives_lock = threading.Lock()
@@ -1179,6 +1226,8 @@ class BV_No_Distinction_Proto(BV_Internal_Grouping):
             g.b_connections[1] = g.a_connection
             g.b_return_tuples[1] = {1:1}
 
+            if BV_Grouping.NO_REPRESENTATIVES:
+                return g
             if level not in BV_No_Distinction_Proto.representatives:
                 with BV_No_Distinction_Proto.representatives_lock:
                     if level not in BV_No_Distinction_Proto.representatives:
@@ -1244,6 +1293,8 @@ class Collapsed_Classes:
         return Collapsed_Classes.cache[Collapsed_Classes(equiv_classes)]
 
     def cache_collapsed_classes(equiv_classes, projected_classes, renumbered_classes):
+        if BV_Grouping.NO_CLASSES_CACHING:
+            return (projected_classes, renumbered_classes)
         collapsed_classes = Collapsed_Classes(equiv_classes)
         with Collapsed_Classes.cache_lock:
             if collapsed_classes not in Collapsed_Classes.cache:
@@ -1366,6 +1417,8 @@ class CFLOBVDD:
 
     def representative(grouping, outputs):
         cflobvdd = CFLOBVDD(grouping, outputs)
+        if BV_Grouping.NO_REPRESENTATIVES:
+            return cflobvdd
         if cflobvdd in CFLOBVDD.representatives:
             CFLOBVDD.representatives_hits += 1
         else:
