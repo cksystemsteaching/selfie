@@ -136,6 +136,18 @@ class BV_Grouping:
                 BV_Grouping.downsample_cache[self] = g
         return BV_Grouping.downsample_cache[self]
 
+    def downsample(self):
+        assert self.level <= self.fork_level
+
+        if self.is_downsample_cached():
+            return self.get_cached_downsample()
+
+        g = self.downsample_uncached()
+
+        # downsampling is inverse of upsampling: assert self is g.upsample_uncached()
+
+        return self.cache_downsample(g)
+
     def is_compressed_cached(self):
         if self in BV_Grouping.compressed_cache:
             BV_Grouping.compressed_cache_hits += 1
@@ -257,11 +269,8 @@ class BV_Dont_Care_Grouping(BV_Grouping):
                     assert BV_Dont_Care_Grouping.representatives.is_consistent()
         return BV_Dont_Care_Grouping.representatives
 
-    def downsample(self):
-        if self.is_downsample_cached():
-            return self.get_cached_downsample()
-
-        return BV_No_Distinction_Proto.downsample(self)
+    def downsample_uncached(self):
+        return BV_No_Distinction_Proto.downsample_uncached(self)
 
     def pair_product(self, g2, inorder = True):
         assert isinstance(g2, BV_Grouping)
@@ -397,15 +406,16 @@ class BV_Fork_Grouping(BV_Grouping):
         return BV_Fork_Grouping(level, swap_level, fork_level,
             bvdd.number_of_exits(), bvdd).representative()
 
-    def upsample(self):
-        assert self.level > self.swap_level
-
-        if self.is_upsample_cached():
-            return self.get_cached_upsample()
-
+    def upsample_uncached(self):
         g_a_bvdd, g_a_rt_inv, g_b_rt_inv, g_b_bvdds, g_b_return_tuples = self.bvdd.upsample(self.level)
 
         assert g_a_bvdd.number_of_exits() == len(g_a_rt_inv)
+
+        if self.level == 0:
+            if g_a_bvdd.is_constant():
+                return BV_Dont_Care_Grouping.representative()
+            else:
+                return self
 
         # TODO: enable different input orderings
         g = BV_Internal_Grouping(self.level, self.swap_level, self.fork_level, True, len(g_b_rt_inv))
@@ -439,10 +449,19 @@ class BV_Fork_Grouping(BV_Grouping):
         if (g.a_connection.is_no_distinction_proto() and
             g.number_of_b_connections == 1 and
             g.b_connections[1].is_no_distinction_proto()):
-            return self.cache_upsample(BV_No_Distinction_Proto.representative(self.level,
-                self.swap_level, self.fork_level))
+            return BV_No_Distinction_Proto.representative(self.level, self.swap_level, self.fork_level)
         else:
-            return self.cache_upsample(g.representative())
+            return g.representative()
+
+    def upsample(self):
+        if self.is_upsample_cached():
+            return self.get_cached_upsample()
+
+        g = self.upsample_uncached()
+
+        # upsampling is inverse of downsampling: assert self is g.downsample_uncached()
+
+        return self.cache_upsample(g)
 
     def downsample(self):
         assert self.level <= self.fork_level
@@ -793,11 +812,8 @@ class BV_Internal_Grouping(BV_Grouping):
 
         return self.cache_swap(g)
 
-    def downsample(self):
+    def downsample_uncached(self):
         assert self.level <= self.fork_level
-
-        if self.is_downsample_cached():
-            return self.get_cached_downsample()
 
         if self.a2b:
             g = self
@@ -819,7 +835,7 @@ class BV_Internal_Grouping(BV_Grouping):
 
         g = BV_Fork_Grouping(g.level, g.swap_level, g.fork_level, g.number_of_exits, bvdd)
 
-        return self.cache_downsample(g.representative())
+        return g.representative()
 
     def pair_compressed(self, g2, g1_other, g2_other):
         assert isinstance(g2, BV_Internal_Grouping)
@@ -1174,15 +1190,9 @@ class BV_No_Distinction_Proto(BV_Internal_Grouping):
         assert self.level > self.swap_level
         return self
 
-    def downsample(self):
-        assert self.level <= self.fork_level
-
-        if self.is_downsample_cached():
-            return self.get_cached_downsample()
-
-        return self.cache_downsample(BV_Fork_Grouping(self.level,
-            self.swap_level, self.fork_level,
-            1, BVDD.BVDD.constant(1)).representative())
+    def downsample_uncached(self):
+        return BV_Fork_Grouping(self.level, self.swap_level, self.fork_level,
+            1, BVDD.BVDD.constant(1)).representative()
 
     def pair_product(self, g2, inorder = True):
         assert isinstance(g2, BV_Grouping)

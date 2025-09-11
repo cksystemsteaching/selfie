@@ -240,7 +240,6 @@ class BVDD_Node:
         return new_bvdd.reduce_SBDD().reduce_BVDD(index), b_rt_inv, rt, rt_inv
 
     def upsample(self, level, a_rt_inv = None, b_rt_inv = None, b_cs = None, b_rts = None, index = 0):
-        assert level > 0
         a_c = type(self)({})
         a_rt_inv = a_rt_inv if a_rt_inv is not None else {}
         b_rt_inv = b_rt_inv if b_rt_inv is not None else {}
@@ -250,6 +249,7 @@ class BVDD_Node:
         for inputs in s2o:
             output = s2o[inputs]
             if isinstance(output, BVDD):
+                assert level > 0
                 if index < 2**(level - 1) - 1:
                     output, a_rt_inv, b_rt_inv, b_cs, b_rts = output.upsample(level,
                         a_rt_inv, b_rt_inv, b_cs, b_rts, index + 1)
