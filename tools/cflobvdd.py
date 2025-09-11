@@ -99,9 +99,7 @@ class BV_Grouping:
         with BV_Grouping.swap_cache_lock:
             if self not in BV_Grouping.swap_cache:
                 BV_Grouping.swap_cache[self] = g
-                # swapping is involutory (self-inverse)
-                assert g not in BV_Grouping.swap_cache
-                BV_Grouping.swap_cache[g] = self
+                # swapping is involutory (self-inverse) but only modulo compression
         return BV_Grouping.swap_cache[self]
 
     def is_upsample_cached(self):
