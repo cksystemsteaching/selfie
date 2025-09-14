@@ -82,11 +82,12 @@ class Values:
     false = None
     true = None
 
-    def __init__(self, sid_line, value, var_line = None, bvdd = None, cflobvdd = None):
+    def __init__(self, sid_line, value, var_line = None, bvdd = None, cflobvdd = None, values = None):
         assert isinstance(sid_line, Bitvector)
         self.sid_line = sid_line
         self.bvdd = bvdd
         self.cflobvdd = cflobvdd
+        self.values = values
 
         if isinstance(value, bool) or isinstance(value, int):
             assert sid_line.is_unsigned_value(value)
@@ -101,6 +102,8 @@ class Values:
                     len(Values.CFLOBVDD_input),
                     value)
 
+            self.values = set({value})
+
             Values.total_number_of_constants += 1
         elif isinstance(var_line, Variable):
             if Values.BVDD:
@@ -114,6 +117,8 @@ class Values:
                     Values.CFLOBVDD_index[var_line],
                     True)
 
+            self.values = set(range(2**var_line.sid_line.size))
+
             Values.total_number_of_constants += 2**var_line.sid_line.size
             if Values.BVDD:
                 Values.total_number_of_values += self.bvdd.number_of_outputs()
@@ -123,6 +128,8 @@ class Values:
                 Values.total_number_of_values += self.cflobvdd.number_of_outputs()
                 Values.total_number_of_distinct_inputs += self.cflobvdd.number_of_distinct_inputs()
 
+            Values.total_number_of_values += 2**var_line.sid_line.size
+
         if Values.BVDD:
             Values.max_number_of_connections = max(Values.max_number_of_connections,
                 self.bvdd.number_of_connections())
@@ -130,6 +137,8 @@ class Values:
             assert Values.CFLOBVDD
             Values.max_number_of_connections = max(Values.max_number_of_connections,
                 self.cflobvdd.number_of_connections())
+
+        Values.max_number_of_connections = max(Values.max_number_of_connections, len(self.values))
 
         # for debugging assert self.is_consistent()
 
@@ -286,6 +295,7 @@ class Values:
 
     def is_always_false(self):
         assert isinstance(self.sid_line, Bool)
+        return False in self.values and True not in self.values
         if Values.BVDD and Values.CFLOBVDD:
             assert self.bvdd.is_always_false() == self.cflobvdd.is_always_false()
         if Values.BVDD:
@@ -295,6 +305,7 @@ class Values:
 
     def is_always_true(self):
         assert isinstance(self.sid_line, Bool)
+        return True in self.values and False not in self.values
         if Values.BVDD and Values.CFLOBVDD:
             assert self.bvdd.is_always_true() == self.cflobvdd.is_always_true()
         if Values.BVDD:
@@ -321,7 +332,8 @@ class Values:
             bvdd = self.bvdd.compute_unary(op)
         if Values.CFLOBVDD:
             cflobvdd = self.cflobvdd.unary_apply_and_reduce(op, sid_line.size)
-        return Values(sid_line, None, None, bvdd, cflobvdd)
+        values = set(op(v) for v in self.values)
+        return Values(sid_line, None, None, bvdd, cflobvdd, values)
 
     def SignExt(self, sid_line):
         assert isinstance(self.sid_line, Bitvec)
@@ -364,7 +376,8 @@ class Values:
             bvdd = self.bvdd.compute_binary(op, values.bvdd)
         if Values.CFLOBVDD:
             cflobvdd = self.cflobvdd.binary_apply_and_reduce(values.cflobvdd, op, sid_line.size)
-        return Values(sid_line, None, None, bvdd, cflobvdd)
+        values = set(op(v1, v2) for v1 in self.values for v2 in values.values)
+        return Values(sid_line, None, None, bvdd, cflobvdd, values)
 
     def Implies(self, values):
         assert isinstance(self.sid_line, Bool)
@@ -533,7 +546,9 @@ class Values:
         if Values.CFLOBVDD:
             cflobvdd = self.cflobvdd.ternary_apply_and_reduce(values2.cflobvdd, values3.cflobvdd,
                 lambda x, y, z: y if x else z, values2.sid_line.size)
-        return Values(values2.sid_line, None, None, bvdd, cflobvdd)
+        values = ((values2.values.copy() if True in self.values else set()) |
+                    (values3.values.copy() if False in self.values else set()))
+        return Values(values2.sid_line, None, None, bvdd, cflobvdd, values)
 
 LAMBDAS = True
 
@@ -585,6 +600,9 @@ class Expression(Line, btor2.Expression, z3interface.Expression, bitwuzlainterfa
     def get_values(self, step):
         assert step >= 0
         if UNROLL or PROPAGATE is not None:
+            # anything two steps older can go
+            #if step > 2 and step - 2 in self.cache_values:
+            #    del self.cache_values[step - 2]
             # versioning needed for support of branching in bitme solver
             if step not in self.cache_values or self.cache_values[step][1] not in Bitme_Solver.versions:
                 self.cache_values[step] = (self.compute_values(step), Bitme_Solver.version)
