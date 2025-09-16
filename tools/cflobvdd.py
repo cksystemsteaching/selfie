@@ -1321,7 +1321,9 @@ class CFLOBVDD:
             f"o: {self.outputs}\n")
 
     def __hash__(self):
-        return hash((self.grouping, tuple(self.outputs.values())))
+        return hash((self.grouping,
+            tuple(self.outputs.values()),
+            isinstance(self.outputs[1], bool)))
 
     def __eq__(self, n2):
         return (isinstance(n2, CFLOBVDD) and
