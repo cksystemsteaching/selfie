@@ -800,7 +800,8 @@ class BV_Internal_Grouping(BV_Grouping):
 
         g.a_connection = BV_No_Distinction_Proto.representative(self.level - 1,
             self.swap_level, self.fork_level)
-        g.b_return_tuples = {1:{}}
+
+        g_b_return_tuples = {1:{}}
 
         # a_connection becomes product of all b_connections which
         # is already reduced because a_return_tuple is idempotent
@@ -808,25 +809,32 @@ class BV_Internal_Grouping(BV_Grouping):
             g_b = self.b_connections[g_b_i]
             g_b_i_rt = self.b_return_tuples[g_b_i]
             g.a_connection, pt = g.a_connection.pair_product(g_b)
-            g.b_return_tuples = dict([(i,
+            g_b_return_tuples = dict([(i,
                 # pt[i][0] is the exit index of the already paired b_connections
                 # pt[i][1] is the exit index of the next b_connection being paired
                 # extend b_return_tuples for reduced versions of a_connection below
-                g.b_return_tuples[pt[i][0]] |
+                g_b_return_tuples[pt[i][0]] |
                     # with the original exit of the next b_connection being paired
-                    {len(g.b_return_tuples[pt[i][0]]) + 1:g_b_i_rt[pt[i][1]]}) for i in pt])
+                    {len(g_b_return_tuples[pt[i][0]]) + 1:g_b_i_rt[pt[i][1]]}) for i in pt])
 
-        g.number_of_b_connections = len(g.b_return_tuples)
+        reduction_tuple_a = {}
 
         # b_connections become reduced versions of a_connection
-        for g_b_i in g.b_return_tuples:
-            g_b_i_rt = g.b_return_tuples[g_b_i]
+        for g_b_i in g_b_return_tuples:
+            g_b_i_rt = g_b_return_tuples[g_b_i]
 
             induced_return_tuple, induced_reduction_tuple = \
                 CFLOBVDD.linear_collapse_classes_leftmost(g_b_i_rt)
 
-            g.b_connections[g_b_i] = self.a_connection.reduce(induced_reduction_tuple)
-            g.b_return_tuples[g_b_i] = induced_return_tuple
+            h = self.a_connection.reduce(induced_reduction_tuple)
+            position = g.insert_b_connection(h, induced_return_tuple)
+            reduction_tuple_a[len(reduction_tuple_a) + 1] = position
+
+        induced_return_tuple, induced_reduction_tuple = \
+            CFLOBVDD.linear_collapse_classes_leftmost(reduction_tuple_a)
+
+        g.a_connection = g.a_connection.reduce(induced_reduction_tuple)
+        assert all([i == induced_return_tuple[i] for i in induced_return_tuple])
 
         return g.representative()
 
