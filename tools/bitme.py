@@ -63,6 +63,7 @@ from math import ceil
 class Values:
     BVDD = False
     BVDD_level = 0
+    BVDD_number_of_inputs = 0
     BVDD_input = {}
     BVDD_index = {}
 
@@ -70,6 +71,7 @@ class Values:
     CFLOBVDD_level = 0
     CFLOBVDD_swap_level = 0
     CFLOBVDD_fork_level = 0
+    CLOBVDD_number_of_inputs = 0
     CFLOBVDD_input = {}
     CFLOBVDD_index = {}
 
@@ -98,7 +100,7 @@ class Values:
                     Values.CFLOBVDD_level,
                     Values.CFLOBVDD_swap_level,
                     Values.CFLOBVDD_fork_level,
-                    len(Values.CFLOBVDD_input),
+                    Values.CFLOBVDD_number_of_inputs,
                     value)
 
             Values.total_number_of_constants += 1
@@ -110,8 +112,11 @@ class Values:
                     Values.CFLOBVDD_level,
                     Values.CFLOBVDD_swap_level,
                     Values.CFLOBVDD_fork_level,
-                    len(Values.CFLOBVDD_input),
+                    Values.CFLOBVDD_number_of_inputs,
                     Values.CFLOBVDD_index[var_line],
+                    # Experimental:
+                    # Values.CFLOBVDD_number_of_inputs * 2,
+                    # Values.CFLOBVDD_index[var_line] + Values.CFLOBVDD_number_of_inputs,
                     True)
 
             Values.total_number_of_constants += 2**var_line.sid_line.size
@@ -132,6 +137,11 @@ class Values:
                 self.cflobvdd.number_of_connections())
 
         # for debugging assert self.is_consistent()
+
+    def swap_flow(self):
+        if Values.CFLOBVDD:
+            self.cflobvdd = self.cflobvdd.swap_flow()
+        return self
 
     def __str__(self):
         return f"{self.sid_line}: {self.bvdd} {self.cflobvdd}"
@@ -1027,7 +1037,11 @@ class Next(Transitional, btor2.Next, z3interface.Next, bitwuzlainterface.Next, F
 
     def get_step(self, step):
         assert step >= 0
-        return self.exp_line.get_values(step)
+        values = self.exp_line.get_values(step)
+        # Experimental:
+        # if self.state_line.symbol == "core-0-pc":
+        #     values = values.swap_flow()
+        return values
 
     def is_state_changing(self):
         if self.is_state_changing_line is None:
@@ -1620,6 +1634,8 @@ def main():
         if args.use_BVDD or args.use_CFLOBVDD is None:
             Values.BVDD = True
 
+            Values.BVDD_number_of_inputs = len(Variable.bvdd_input) if Variable.bvdd_input else 1
+
             # reversing order of input variables
             # Values.BVDD_input = dict([(2**level - 1 - index, var_line)
             #     for index, var_line in Variable.bvdd_input.items()])
@@ -1640,8 +1656,10 @@ def main():
             assert 0 <= Values.CFLOBVDD_swap_level <= Values.CFLOBVDD_level, \
                 f"invalid swap level {Values.CFLOBVDD_swap_level} for level {Values.CFLOBVDD_level}"
 
-            level = max(Values.CFLOBVDD_level, Values.CFLOBVDD_swap_level, Values.CFLOBVDD_fork_level,
-                ceil(log2(len(Variable.bvdd_input))) if Variable.bvdd_input else 0)
+            Values.CFLOBVDD_number_of_inputs = 2**ceil(log2(len(Variable.bvdd_input))) if Variable.bvdd_input else 1
+
+            level = max(ceil(log2(Values.CFLOBVDD_number_of_inputs)),
+                Values.CFLOBVDD_level, Values.CFLOBVDD_swap_level, Values.CFLOBVDD_fork_level)
 
             # reversing order of input variables
             # Values.CFLOBVDD_input = dict([(2**level - 1 - index, var_line)
