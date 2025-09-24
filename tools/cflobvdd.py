@@ -389,7 +389,7 @@ class BV_Fork_Grouping(BV_Grouping):
         return hash((self.level, self.swap_level, self.fork_level, self.number_of_exits, self.bvdd))
 
     def __eq__(self, g2):
-        return (isinstance(g2, BV_Fork_Grouping) and
+        return self is g2 or (isinstance(g2, BV_Fork_Grouping) and
             self.level == g2.level and
             self.swap_level == g2.swap_level and
             self.fork_level == g2.fork_level and
@@ -660,7 +660,7 @@ class BV_Internal_Grouping(BV_Grouping):
             tuple([(tuple(rt), tuple(rt.values())) for rt in self.b_return_tuples.values()])))
 
     def __eq__(self, g2):
-        return (isinstance(g2, BV_Internal_Grouping) and
+        return self is g2 or (isinstance(g2, BV_Internal_Grouping) and
             self.level == g2.level and
             self.number_of_exits == g2.number_of_exits and
             self.a2b == g2.a2b and
@@ -1356,7 +1356,7 @@ class Collapsed_Classes:
             any(isinstance(self.classes[i], bool) for i in self.classes)))
 
     def __eq__(self, c2):
-        return isinstance(c2, Collapsed_Classes) and self.classes == c2.classes
+        return self is c2 or (isinstance(c2, Collapsed_Classes) and self.classes == c2.classes)
 
     def are_collapsed_classes_cached(equiv_classes):
         if Collapsed_Classes(equiv_classes) in Collapsed_Classes.cache:
@@ -1402,7 +1402,7 @@ class CFLOBVDD:
             any(isinstance(self.outputs[i], bool) for i in self.outputs)))
 
     def __eq__(self, n2):
-        return (isinstance(n2, CFLOBVDD) and
+        return self is n2 or (isinstance(n2, CFLOBVDD) and
             self.grouping == n2.grouping and
             self.outputs == n2.outputs)
 

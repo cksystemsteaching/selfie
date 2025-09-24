@@ -357,7 +357,7 @@ class SBDD_i2o(BVDD_Node):
         return hash((tuple(self.i2o.items()), tuple(isinstance(o, bool) for o in self.i2o.values())))
 
     def __eq__(self, bvdd2):
-        return type(bvdd2) is type(self) and self.i2o == bvdd2.i2o
+        return self is bvdd2 or (type(bvdd2) is type(self) and self.i2o == bvdd2.i2o)
 
     def get_s2o(self):
         return self.i2o
@@ -450,7 +450,7 @@ class SBDD_s2o(BVDD_Node):
         return hash((tuple(self.s2o.items()), tuple(isinstance(o, bool) for o in self.s2o.values())))
 
     def __eq__(self, bvdd2):
-        return type(bvdd2) is type(self) and self.s2o == bvdd2.s2o
+        return self is bvdd2 or (type(bvdd2) is type(self) and self.s2o == bvdd2.s2o)
 
     def get_s2o(self):
         return self.s2o
@@ -553,7 +553,7 @@ class SBDD_o2s(BVDD_Node):
         return hash((tuple(self.o2s.items()), tuple(isinstance(o, bool) for o in self.o2s)))
 
     def __eq__(self, bvdd2):
-        return type(bvdd2) is type(self) and self.o2s == bvdd2.o2s
+        return self is bvdd2 or (type(bvdd2) is type(self) and self.o2s == bvdd2.o2s)
 
     def get_s2o(self):
         return dict([(inputs, output) for output, inputs in self.o2s.items()])
