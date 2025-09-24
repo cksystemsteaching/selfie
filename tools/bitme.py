@@ -84,11 +84,12 @@ class Values:
     false = None
     true = None
 
-    def __init__(self, sid_line, value, var_line = None, bvdd = None, cflobvdd = None):
+    def __init__(self, sid_line, value, var_line = None, bvdd = None, cflobvdd = None, pcs = None):
         assert isinstance(sid_line, Bitvector)
         self.sid_line = sid_line
         self.bvdd = bvdd
         self.cflobvdd = cflobvdd
+        self.pcs = pcs
 
         if isinstance(value, bool) or isinstance(value, int):
             assert sid_line.is_unsigned_value(value)
@@ -128,20 +129,83 @@ class Values:
                 Values.total_number_of_values += self.cflobvdd.number_of_outputs()
                 Values.total_number_of_distinct_inputs += self.cflobvdd.number_of_distinct_inputs()
 
-        if Values.BVDD:
-            Values.max_number_of_connections = max(Values.max_number_of_connections,
-                self.bvdd.number_of_connections())
-        else:
-            assert Values.CFLOBVDD
-            Values.max_number_of_connections = max(Values.max_number_of_connections,
-                self.cflobvdd.number_of_connections())
+        if pcs is None:
+            if Values.BVDD:
+                Values.max_number_of_connections = max(Values.max_number_of_connections,
+                    self.bvdd.number_of_connections())
+            else:
+                assert Values.CFLOBVDD
+                Values.max_number_of_connections = max(Values.max_number_of_connections,
+                    self.cflobvdd.number_of_connections())
 
         # for debugging assert self.is_consistent()
 
-    def swap_flow(self):
-        if Values.CFLOBVDD:
-            self.cflobvdd = self.cflobvdd.swap_flow()
-        return self
+    def number_of_distinct_outputs(self):
+        if Values.BVDD:
+            return self.bvdd.number_of_distinct_outputs()
+        else:
+            assert Values.CFLOBVDD
+            return self.cflobvdd.number_of_distinct_outputs()
+
+    def get_distinct_outputs(self):
+        if Values.BVDD:
+            return self.bvdd.get_distinct_outputs()
+        else:
+            assert Values.CFLOBVDD
+            return self.cflobvdd.get_distinct_outputs()
+
+    def data2control_flow(self):
+        if self.pcs is None:
+            if self.number_of_distinct_outputs() == 1:
+                return self
+            else:
+                assert self.number_of_distinct_outputs() == 2
+                return Values(self.sid_line, None, None, None, None, self).data2control_flow()
+        elif isinstance(self.pcs, Values):
+            values = self.pcs[pc]
+            if values.number_of_distinct_outputs() == 2:
+                outputs = values.get_distinct_outputs()
+                left_pc, right_pc = (outputs[0], outputs[1])
+            else:
+                assert values.number_of_distinct_outputs() == 3
+                left_pc = right_pc = None
+                for output in values.get_distinct_outputs():
+                    if output is not None:
+                        if left_pc is None:
+                            left_pc = output
+                        else:
+                            assert right_pc is None
+                            right_pc = output
+            if left_pc is None or right_pc is None:
+                return self
+            else:
+                return Values(self.sid_line, None, None, None, None,
+                    (values.apply_unary(self.sid_line, lambda x: x if x is left_pc else None),
+                     values.apply_unary(self.sid_line, lambda x: x if x is right_pc else None)))
+        else:
+            return Values(self.sid_line, None, None, None, None,
+                (Values(self.sid_line, None, None, None, None, self.pcs[0]).data2control_flow(),
+                 Values(self.sid_line, None, None, None, None, self.pcs[1]).data2control_flow()))
+
+    def control2data_flow(self, data):
+        assert isinstance(data, Values)
+        if self.pcs is None:
+            assert data.pcs is None
+            return data
+        elif isinstance(self.pcs, Values):
+            assert isinstance(data.pcs, Values)
+            assert self.pcs.number_of_distinct_outputs() == 2 and None in self.pcs.get_distinct_outputs()
+            return data
+        elif data.pcs is None:
+            left_pcs = Values(data.sid_line, None, None, None, None, data)
+            right_pcs = Values(data.sid_line, None, None, None, None, data)
+        elif isinstance(data.pcs, Values):
+            left_pcs = Values(data.sid_line, None, None, None, None, data.pcs)
+            right_pcs = Values(data.sid_line, None, None, None, None, data.pcs)
+        else:
+            left_pcs, right_pcs = (data.pcs[0], data.pcs[1])
+        return Values(data.sid_line, None, None, None, None,
+            (self.pcs[0].control2data_flow(left_pcs), self.pcs[1].control2data_flow(right_pcs)))
 
     def __str__(self):
         return f"{self.sid_line}: {self.bvdd} {self.cflobvdd}"
@@ -325,7 +389,18 @@ class Values:
 
     # unary operators
 
+    def apply_unary_pcs(self, sid_line, op):
+        if isinstance(self.pcs, Values):
+            return Values(sid_line, None, None, None, None,
+                self.pcs.apply_unary(sid_line, op))
+        else:
+            return Values(sid_line, None, None, None, None,
+                (self.pcs[0].apply_unary_pcs(sid_line, op),
+                 self.pcs[1].apply_unary_pcs(sid_line, op)))
+
     def apply_unary(self, sid_line, op):
+        if self.pcs is not None:
+            return self.apply_unary_pcs(sid_line, op)
         bvdd = cflobvdd = None
         if Values.BVDD:
             bvdd = self.bvdd.compute_unary(op)
@@ -367,7 +442,18 @@ class Values:
 
     # binary operators
 
+    def apply_binary_pcs(self, sid_line, values, op):
+        if isinstance(self.pcs, Values):
+            return Values(sid_line, None, None, None, None,
+                self.pcs.apply_binary(sid_line, values.pcs, op))
+        else:
+            return Values(sid_line, None, None, None, None,
+                (self.pcs[0].apply_binary_pcs(sid_line, values.pcs[0], op),
+                 self.pcs[1].apply_binary_pcs(sid_line, values.pcs[1], op)))
+
     def apply_binary(self, sid_line, values, op):
+        if self.pcs is not None:
+            return self.apply_binary_pcs(sid_line, values, op)
         assert isinstance(values, Values), f"{self} {op} {values}"
         bvdd = cflobvdd = None
         if Values.BVDD:
@@ -533,7 +619,18 @@ class Values:
 
     # ternary operator
 
+    def apply_ite_pcs(self, values2, values3):
+        if isinstance(self.pcs, Values):
+            return Values(sid_line, None, None, None, None,
+                self.pcs.ite(values2.pcs, values3.pcs))
+        else:
+            return Values(sid_line, None, None, None, None,
+                (self.pcs[0].apply_ite_pcs(values2.pcs[0], values3.pcs[0]),
+                 self.pcs[1].apply_ite_pcs(values2.pcs[1], values3.pcs[1])))
+
     def ite(self, values2, values3):
+        if self.pcs is not None:
+            return self.apply_ite_pcs(values2, values3)
         assert isinstance(self.sid_line, Bool)
         assert isinstance(values2, Values) and isinstance(values3, Values)
         assert values2.match_sorts(values3)
@@ -1040,7 +1137,7 @@ class Next(Transitional, btor2.Next, z3interface.Next, bitwuzlainterface.Next, F
         values = self.exp_line.get_values(step)
         # Experimental:
         # if self.state_line.symbol == "core-0-pc":
-        #     values = values.swap_flow()
+        #     values = values.data2control_flow()
         return values
 
     def is_state_changing(self):

@@ -78,12 +78,12 @@ class BVDD_Node:
         return count
 
     def get_distinct_outputs(self):
-        outputs = {}
+        outputs = set()
         for output in self.get_s2o().values():
             if isinstance(output, BVDD):
                 outputs |= output.get_distinct_outputs()
             else:
-                outputs[output] = output
+                outputs |= set({output})
         return outputs
 
     def number_of_distinct_outputs(self):

@@ -1427,8 +1427,11 @@ class CFLOBVDD:
     def number_of_outputs(self):
         return len(self.outputs)
 
+    def get_distinct_outputs(self):
+        return set(self.outputs.values())
+
     def number_of_distinct_outputs(self):
-        return len(set(self.outputs.values()))
+        return len(self.get_distinct_outputs())
 
     def number_of_distinct_inputs(self):
         return sum(self.grouping.number_of_distinct_inputs(exit_i) for exit_i in self.outputs)
