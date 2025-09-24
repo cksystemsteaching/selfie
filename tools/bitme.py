@@ -1741,22 +1741,22 @@ def main():
                 for index, var_line in Values.BVDD_input.items()])
 
             print_separator('-')
-            print(f"BVDD configuration: {len(Values.BVDD_input)} input bytes")
+            print(f"BVDD configuration: {Values.BVDD_number_of_inputs} input bytes")
 
         if args.use_CFLOBVDD is not None:
             Values.CFLOBVDD = True
+
+            Values.CFLOBVDD_number_of_inputs = 2**ceil(log2(len(Variable.bvdd_input))) if Variable.bvdd_input else 1
+
+            level = ceil(log2(Values.CFLOBVDD_number_of_inputs))
+
             Values.CFLOBVDD_fork_level = args.use_CFLOBVDD[0] if len(args.use_CFLOBVDD) > 0 else 0
-            Values.CFLOBVDD_swap_level = args.use_CFLOBVDD[1] if len(args.use_CFLOBVDD) > 1 else Values.CFLOBVDD_fork_level
+            Values.CFLOBVDD_swap_level = args.use_CFLOBVDD[1] if len(args.use_CFLOBVDD) > 1 else level
             Values.CFLOBVDD_level = args.use_CFLOBVDD[2] if len(args.use_CFLOBVDD) > 2 else Values.CFLOBVDD_swap_level
             assert 0 <= Values.CFLOBVDD_fork_level <= Values.CFLOBVDD_level, \
                 f"invalid fork level {Values.CFLOBVDD_fork_level} for level {Values.CFLOBVDD_level}"
             assert 0 <= Values.CFLOBVDD_swap_level <= Values.CFLOBVDD_level, \
                 f"invalid swap level {Values.CFLOBVDD_swap_level} for level {Values.CFLOBVDD_level}"
-
-            Values.CFLOBVDD_number_of_inputs = 2**ceil(log2(len(Variable.bvdd_input))) if Variable.bvdd_input else 1
-
-            level = max(ceil(log2(Values.CFLOBVDD_number_of_inputs)),
-                Values.CFLOBVDD_level, Values.CFLOBVDD_swap_level, Values.CFLOBVDD_fork_level)
 
             # reversing order of input variables
             # Values.CFLOBVDD_input = dict([(2**level - 1 - index, var_line)
@@ -1766,7 +1766,7 @@ def main():
                 for index, var_line in Values.CFLOBVDD_input.items()])
 
             print_separator('-')
-            print(f"CFLOBVDD configuration: {2**level} input bytes " +
+            print(f"CFLOBVDD configuration: {Values.CFLOBVDD_number_of_inputs} input bytes " +
                 f"@ level {Values.CFLOBVDD_level}, swap level {Values.CFLOBVDD_swap_level}, and fork level {Values.CFLOBVDD_fork_level}")
 
         CFLOBVDD.CFLOBVDD.REDUCE = not args.no_reduction
