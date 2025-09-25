@@ -319,8 +319,7 @@ class BVDD_Node:
     def compute_ite(self, bvdd2, bvdd3):
         assert type(bvdd2) is type(self)
         assert type(bvdd3) is type(self)
-        return self.compute_ternary(lambda x, y, z: (y if x else z)
-            if x is not None and y is not None and z is not None else None, bvdd2, bvdd3)
+        return self.compute_ternary(lambda x, y, z: y if x else z, bvdd2, bvdd3)
 
     def print_profile():
         print("BVDD cache profile:")
@@ -579,22 +578,10 @@ class SBDD_o2s(BVDD_Node):
         return next(iter(self.o2s))
 
     def is_always_false(self):
-        for output in self.o2s:
-            if isinstance(output, BVDD):
-                if not output.is_always_false():
-                    return False
-            elif output is True:
-                return False
-        return True
+        return self.is_constant() and False in self.o2s
 
     def is_always_true(self):
-        for output in self.o2s:
-            if isinstance(output, BVDD):
-                if not output.is_always_true():
-                    return False
-            elif output is False:
-                return False
-        return True
+        return self.is_constant() and True in self.o2s
 
     def constant_BVDD(self, output):
         assert (isinstance(output, bool) or
