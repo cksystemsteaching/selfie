@@ -24,6 +24,8 @@
 
 import threading
 
+import concurrent.futures
+
 def utilization(hits, misses):
     if hits + misses == 0:
         return "0.0%"
@@ -600,11 +602,23 @@ class SBDD_o2s(BVDD_Node):
     def projection(index = 0, offset = 0):
         return SBDD_o2s({}).projection_BVDD(index, offset)
 
-    def compute_unary(self, op):
+    def compute(self, op, outputs):
+        if len(outputs) > 256:
+            half = len(outputs) // 2
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                # fine-grained alternative: new_s2o = executor.map(op, outputs)
+                new_s2o = list(executor.map(lambda x: [op(output) for output in x],
+                    [outputs[:half], outputs[half:]]))
+                new_s2o = new_s2o[0] + new_s2o[1]
+        else:
+            new_s2o = map(op, outputs)
         new_bvdd = type(self)({})
-        for output in self.o2s:
-            new_bvdd.map(self.o2s[output], op(output))
+        for s2o in new_s2o:
+            new_bvdd.map(s2o[0], s2o[1])
         return new_bvdd.reduce_SBDD()
+
+    def compute_unary(self, op):
+        return self.compute(lambda x: (self.o2s[x], op(x)), list(self.o2s.keys()))
 
     def intersect_binary(self, bvdd2):
         assert type(bvdd2) is type(self)
@@ -617,10 +631,8 @@ class SBDD_o2s(BVDD_Node):
     def compute_binary(self, op, bvdd2):
         assert type(bvdd2) is type(self)
         bvdd1 = self
-        new_bvdd = type(self)({})
-        for output1, output2 in bvdd1.intersect_binary(bvdd2):
-            new_bvdd.map(bvdd1.o2s[output1] & bvdd2.o2s[output2], op(output1, output2))
-        return new_bvdd.reduce_SBDD()
+        return bvdd1.compute(lambda x: (bvdd1.o2s[x[0]] & bvdd2.o2s[x[1]],
+            op(x[0], x[1])), bvdd1.intersect_binary(bvdd2))
 
     def intersect_ternary(self, bvdd2, bvdd3):
         assert type(bvdd2) is type(self)
@@ -636,11 +648,8 @@ class SBDD_o2s(BVDD_Node):
         assert type(bvdd2) is type(self)
         assert type(bvdd3) is type(self)
         bvdd1 = self
-        new_bvdd = type(self)({})
-        for output1, output2, output3 in bvdd1.intersect_ternary(bvdd2, bvdd3):
-            new_bvdd.map(bvdd1.o2s[output1] & bvdd2.o2s[output2] & bvdd3.o2s[output3],
-                op(output1, output2, output3))
-        return new_bvdd.reduce_SBDD()
+        return bvdd1.compute(lambda x: (bvdd1.o2s[x[0]] & bvdd2.o2s[x[1]] & bvdd3.o2s[x[2]],
+            op(x[0], x[1], x[2])), bvdd1.intersect_ternary(bvdd2, bvdd3))
 
 class BVDD_uncached(SBDD_o2s):
     def constant(output_value):
