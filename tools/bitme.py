@@ -317,53 +317,59 @@ class Values:
 
     # unary operators
 
-    def apply_unary(self, sid_line, op):
+    def apply_unary(self, sid_line, op, op_id):
         bvdd = cflobvdd = None
         if Values.BVDD:
-            bvdd = self.bvdd.compute_unary(op)
+            bvdd = self.bvdd.compute_unary(op, op_id)
         if Values.CFLOBVDD:
             cflobvdd = self.cflobvdd.unary_apply_and_reduce(op, sid_line.size)
         return Values(sid_line, None, None, bvdd, cflobvdd)
 
     def SignExt(self, sid_line):
         assert isinstance(self.sid_line, Bitvec)
-        return self.apply_unary(sid_line, lambda x: self.sid_line.get_signed_value(x) % 2**sid_line.size)
+        return self.apply_unary(sid_line,
+            lambda x: self.sid_line.get_signed_value(x) % 2**sid_line.size,
+            f"sext {self.sid_line.size} {sid_line.size}")
 
     def ZeroExt(self, sid_line):
         assert isinstance(self.sid_line, Bitvec)
-        return self.apply_unary(sid_line, lambda x: x)
+        return self.apply_unary(sid_line, lambda x: x, f"uext")
 
     def Extract(self, sid_line, u, l):
         assert isinstance(self.sid_line, Bitvec)
-        return self.apply_unary(sid_line, lambda x: (x & 2**(u + 1) - 1) >> l)
+        return self.apply_unary(sid_line, lambda x: (x & 2**(u + 1) - 1) >> l, f"slice {u} {l}")
 
     def Not(self):
         assert isinstance(self.sid_line, Bool)
-        return self.apply_unary(self.sid_line, lambda x: not x)
+        return self.apply_unary(self.sid_line, lambda x: not x, "not")
 
     def __invert__(self):
         assert isinstance(self.sid_line, Bitvec)
-        return self.apply_unary(self.sid_line, lambda x: ~x % 2**self.sid_line.size)
+        return self.apply_unary(self.sid_line, lambda x: ~x % 2**self.sid_line.size,
+            f"inv {self.sid_line.size}")
 
     def Inc(self):
         assert isinstance(self.sid_line, Bitvec)
-        return self.apply_unary(self.sid_line, lambda x: (x + 1) % 2**self.sid_line.size)
+        return self.apply_unary(self.sid_line, lambda x: (x + 1) % 2**self.sid_line.size,
+            f"inc {self.sid_line.size}")
 
     def Dec(self):
         assert isinstance(self.sid_line, Bitvec)
-        return self.apply_unary(self.sid_line, lambda x: (x - 1) % 2**self.sid_line.size)
+        return self.apply_unary(self.sid_line, lambda x: (x - 1) % 2**self.sid_line.size,
+            f"dec {self.sid_line.size}")
 
     def __neg__(self):
         assert isinstance(self.sid_line, Bitvec)
-        return self.apply_unary(self.sid_line, lambda x: -x % 2**self.sid_line.size)
+        return self.apply_unary(self.sid_line, lambda x: -x % 2**self.sid_line.size,
+            f"neg {self.sid_line.size}")
 
     # binary operators
 
-    def apply_binary(self, sid_line, values, op):
+    def apply_binary(self, sid_line, values, op, op_id):
         assert isinstance(values, Values), f"{self} {op} {values}"
         bvdd = cflobvdd = None
         if Values.BVDD:
-            bvdd = self.bvdd.compute_binary(op, values.bvdd)
+            bvdd = self.bvdd.compute_binary(op, values.bvdd, op_id)
         if Values.CFLOBVDD:
             cflobvdd = self.cflobvdd.binary_apply_and_reduce(values.cflobvdd, op, sid_line.size)
         return Values(sid_line, None, None, bvdd, cflobvdd)
@@ -375,51 +381,55 @@ class Values:
         else:
             # lazy evaluation of implied values
             assert isinstance(values, Values) and isinstance(values.sid_line, Bool)
-            return self.apply_binary(Bool.boolean, values, lambda x, y: (not x) or y)
+            return self.apply_binary(Bool.boolean, values, lambda x, y: (not x) or y, "implies")
 
     def __eq__(self, values):
         assert isinstance(self.sid_line, Bitvector) and self.sid_line.match_sorts(values.sid_line)
-        return self.apply_binary(Bool.boolean, values, lambda x, y: x == y)
+        return self.apply_binary(Bool.boolean, values, lambda x, y: x == y, "eq")
 
     def __ne__(self, values):
         assert isinstance(self.sid_line, Bitvector) and self.sid_line.match_sorts(values.sid_line)
-        return self.apply_binary(Bool.boolean, values, lambda x, y: x != y)
+        return self.apply_binary(Bool.boolean, values, lambda x, y: x != y, "neq")
 
     def __gt__(self, values):
         assert isinstance(self.sid_line, Bitvec) and self.sid_line.match_sorts(values.sid_line)
         return self.apply_binary(Bool.boolean, values,
-            lambda x, y: self.sid_line.get_signed_value(x) > values.sid_line.get_signed_value(y))
+            lambda x, y: self.sid_line.get_signed_value(x) > values.sid_line.get_signed_value(y),
+            f"sgt {self.sid_line.size} {values.sid_line.size}")
 
     def UGT(self, values):
         assert isinstance(self.sid_line, Bitvec) and self.sid_line.match_sorts(values.sid_line)
-        return self.apply_binary(Bool.boolean, values, lambda x, y: x > y)
+        return self.apply_binary(Bool.boolean, values, lambda x, y: x > y, "ugt")
 
     def __ge__(self, values):
         assert isinstance(self.sid_line, Bitvec) and self.sid_line.match_sorts(values.sid_line)
         return self.apply_binary(Bool.boolean, values,
-            lambda x, y: self.sid_line.get_signed_value(x) >= values.sid_line.get_signed_value(y))
+            lambda x, y: self.sid_line.get_signed_value(x) >= values.sid_line.get_signed_value(y),
+            f"sge {self.sid_line.size} {values.sid_line.size}")
 
     def UGE(self, values):
         assert isinstance(self.sid_line, Bitvec) and self.sid_line.match_sorts(values.sid_line)
-        return self.apply_binary(Bool.boolean, values, lambda x, y: x >= y)
+        return self.apply_binary(Bool.boolean, values, lambda x, y: x >= y, "uge")
 
     def __lt__(self, values):
         assert isinstance(self.sid_line, Bitvec) and self.sid_line.match_sorts(values.sid_line)
         return self.apply_binary(Bool.boolean, values,
-            lambda x, y: self.sid_line.get_signed_value(x) < values.sid_line.get_signed_value(y))
+            lambda x, y: self.sid_line.get_signed_value(x) < values.sid_line.get_signed_value(y),
+            f"slt {self.sid_line.size} {values.sid_line.size}")
 
     def ULT(self, values):
         assert isinstance(self.sid_line, Bitvec) and self.sid_line.match_sorts(values.sid_line)
-        return self.apply_binary(Bool.boolean, values, lambda x, y: x < y)
+        return self.apply_binary(Bool.boolean, values, lambda x, y: x < y, "ult")
 
     def __le__(self, values):
         assert isinstance(self.sid_line, Bitvec) and self.sid_line.match_sorts(values.sid_line)
         return self.apply_binary(Bool.boolean, values,
-            lambda x, y: self.sid_line.get_signed_value(x) <= values.sid_line.get_signed_value(y))
+            lambda x, y: self.sid_line.get_signed_value(x) <= values.sid_line.get_signed_value(y),
+            f"sle {self.sid_line.size} {values.sid_line.size}")
 
     def ULE(self, values):
         assert isinstance(self.sid_line, Bitvec) and self.sid_line.match_sorts(values.sid_line)
-        return self.apply_binary(Bool.boolean, values, lambda x, y: x <= y)
+        return self.apply_binary(Bool.boolean, values, lambda x, y: x <= y, "ule")
 
     def And(self, values):
         assert isinstance(self.sid_line, Bool)
@@ -428,7 +438,7 @@ class Values:
         else:
             # lazy evaluation of second operand
             assert isinstance(values, Values) and isinstance(values.sid_line, Bool)
-            return self.apply_binary(Bool.boolean, values, lambda x, y: x and y)
+            return self.apply_binary(Bool.boolean, values, lambda x, y: x and y, "And")
 
     def Or(self, values):
         assert isinstance(self.sid_line, Bool)
@@ -437,49 +447,60 @@ class Values:
         else:
             # lazy evaluation of second operand
             assert isinstance(values, Values) and isinstance(values.sid_line, Bool)
-            return self.apply_binary(Bool.boolean, values, lambda x, y: x or y)
+            return self.apply_binary(Bool.boolean, values, lambda x, y: x or y, "Or")
 
     def Xor(self, values):
         assert isinstance(self.sid_line, Bool) and isinstance(values.sid_line, Bool)
-        return self.apply_binary(Bool.boolean, values, lambda x, y: x != y)
+        return self.apply_binary(Bool.boolean, values, lambda x, y: x != y, "Xor")
 
     def __and__(self, values):
         assert isinstance(self.sid_line, Bitvec) and self.sid_line.match_sorts(values.sid_line)
-        return self.apply_binary(self.sid_line, values, lambda x, y: x & y)
+        return self.apply_binary(self.sid_line, values, lambda x, y: x & y, "and")
 
     def __or__(self, values):
         assert isinstance(self.sid_line, Bitvec) and self.sid_line.match_sorts(values.sid_line)
-        return self.apply_binary(self.sid_line, values, lambda x, y: x | y)
+        return self.apply_binary(self.sid_line, values, lambda x, y: x | y, "or")
 
     def __xor__(self, values):
         assert isinstance(self.sid_line, Bitvec) and self.sid_line.match_sorts(values.sid_line)
-        return self.apply_binary(self.sid_line, values, lambda x, y: x ^ y)
+        return self.apply_binary(self.sid_line, values, lambda x, y: x ^ y, "xor")
 
     def __lshift__(self, values):
         assert isinstance(self.sid_line, Bitvec) and self.sid_line.match_sorts(values.sid_line)
-        return self.apply_binary(self.sid_line, values, lambda x, y: (x << y) % 2**self.sid_line.size)
+        return self.apply_binary(self.sid_line, values,
+            lambda x, y: (x << y) % 2**self.sid_line.size,
+            f"lshl {self.sid_line.size}")
 
     def LShR(self, values):
         assert isinstance(self.sid_line, Bitvec) and self.sid_line.match_sorts(values.sid_line)
-        return self.apply_binary(self.sid_line, values, lambda x, y: (x >> y) % 2**self.sid_line.size)
+        return self.apply_binary(self.sid_line, values,
+            lambda x, y: (x >> y) % 2**self.sid_line.size,
+            f"lshr {self.sid_line.size}")
 
     def __rshift__(self, values):
         # right shift operator computes arithmetic right shift in Python
         assert isinstance(self.sid_line, Bitvec) and self.sid_line.match_sorts(values.sid_line)
         return self.apply_binary(self.sid_line, values,
-            lambda x, y: (self.sid_line.get_signed_value(x) >> y) % 2**self.sid_line.size)
+            lambda x, y: (self.sid_line.get_signed_value(x) >> y) % 2**self.sid_line.size,
+            f"ashr {self.sid_line.size}")
 
     def __add__(self, values):
         assert isinstance(self.sid_line, Bitvec) and self.sid_line.match_sorts(values.sid_line)
-        return self.apply_binary(self.sid_line, values, lambda x, y: (x + y) % 2**self.sid_line.size)
+        return self.apply_binary(self.sid_line, values,
+            lambda x, y: (x + y) % 2**self.sid_line.size,
+            f"add {self.sid_line.size}")
 
     def __sub__(self, values):
         assert isinstance(self.sid_line, Bitvec) and self.sid_line.match_sorts(values.sid_line)
-        return self.apply_binary(self.sid_line, values, lambda x, y: (x - y) % 2**self.sid_line.size)
+        return self.apply_binary(self.sid_line, values,
+            lambda x, y: (x - y) % 2**self.sid_line.size,
+            f"sub {self.sid_line.size}")
 
     def __mul__(self, values):
         assert isinstance(self.sid_line, Bitvec) and self.sid_line.match_sorts(values.sid_line)
-        return self.apply_binary(self.sid_line, values, lambda x, y: (x * y) % 2**self.sid_line.size)
+        return self.apply_binary(self.sid_line, values,
+            lambda x, y: (x * y) % 2**self.sid_line.size,
+            f"mul {self.sid_line.size}")
 
     def __truediv__(self, values):
         # using the integer portion of division, not floor division with the // operator,
@@ -491,13 +512,15 @@ class Values:
             lambda x, y: (int(self.sid_line.get_signed_value(x) / values.sid_line.get_signed_value(y))
                 if not (y == 0 or (self.sid_line.get_signed_value(x) == -2**(self.sid_line.size - 1) and
                     values.sid_line.get_signed_value(y) == -1))
-                else -1 if y == 0 else -2**(self.sid_line.size - 1)) % 2**self.sid_line.size)
+                else -1 if y == 0 else -2**(self.sid_line.size - 1)) % 2**self.sid_line.size,
+            f"sdiv {self.sid_line.size} {values.sid_line.size}")
 
     def UDiv(self, values):
         # using floor division is ok since x >= 0 and y >= 0
         assert isinstance(self.sid_line, Bitvec) and self.sid_line.match_sorts(values.sid_line)
         return self.apply_binary(self.sid_line, values,
-            lambda x, y: x // y if y != 0 else 2**self.sid_line.size - 1)
+            lambda x, y: x // y if y != 0 else 2**self.sid_line.size - 1,
+            f"udiv {self.sid_line.size}")
 
     def SRem(self, values):
         # using the integer portion of division, not the % operator,
@@ -512,16 +535,19 @@ class Values:
                     % 2**self.sid_line.size
                 if not (y == 0 or (self.sid_line.get_signed_value(x) == -2**(self.sid_line.size - 1) and
                     values.sid_line.get_signed_value(y) == -1))
-                else x if y == 0 else 0)
+                else x if y == 0 else 0,
+            f"srem {self.sid_line.size} {values.sid_line.size}")
 
     def URem(self, values):
         # using the % operator is ok since x >= 0 and y >= 0
         assert isinstance(self.sid_line, Bitvec) and self.sid_line.match_sorts(values.sid_line)
-        return self.apply_binary(self.sid_line, values, lambda x, y: x % y if y != 0 else x)
+        return self.apply_binary(self.sid_line, values, lambda x, y: x % y if y != 0 else x, "urem")
 
     def Concat(self, values, sid_line):
         assert isinstance(self.sid_line, Bitvec) and isinstance(values.sid_line, Bitvec)
-        return self.apply_binary(sid_line, values, lambda x, y: (x << values.sid_line.size) + y)
+        return self.apply_binary(sid_line, values,
+            lambda x, y: (x << values.sid_line.size) + y,
+            f"concat {values.sid_line.size}")
 
     # ternary operator
 
@@ -531,7 +557,7 @@ class Values:
         assert values2.match_sorts(values3)
         bvdd = cflobvdd = None
         if Values.BVDD:
-            bvdd = self.bvdd.compute_ite(values2.bvdd, values3.bvdd)
+            bvdd = self.bvdd.compute_ite(values2.bvdd, values3.bvdd, "ite")
         if Values.CFLOBVDD:
             cflobvdd = self.cflobvdd.ternary_apply_and_reduce(values2.cflobvdd, values3.cflobvdd,
                 lambda x, y, z: y if x else z, values2.sid_line.size)

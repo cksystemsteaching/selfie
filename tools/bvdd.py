@@ -316,10 +316,10 @@ class BVDD_Node:
                 new_bvdd.set(inputs, reduction_tuple[output])
         return new_bvdd.reduce_SBDD().reduce_BVDD(index)
 
-    def compute_ite(self, bvdd2, bvdd3):
+    def compute_ite(self, bvdd2, bvdd3, op_id):
         assert type(bvdd2) is type(self)
         assert type(bvdd3) is type(self)
-        return self.compute_ternary(lambda x, y, z: y if x else z, bvdd2, bvdd3)
+        return self.compute_ternary(lambda x, y, z: y if x else z, bvdd2, bvdd3, op_id)
 
     def print_profile():
         print("BVDD cache profile:")
@@ -411,7 +411,7 @@ class SBDD_i2o(BVDD_Node):
     def projection(index = 0, offset = 0):
         return SBDD_i2o({}).projection_BVDD(index, offset)
 
-    def compute_unary(self, op):
+    def compute_unary(self, op, op_id = None):
         return type(self)(dict([(input_value, op(self.i2o[input_value]))
             for input_value in self.i2o])).reduce_SBDD()
 
@@ -420,7 +420,7 @@ class SBDD_i2o(BVDD_Node):
         # bvdd1.i2o.keys() & bvdd2.i2o.keys()
         return [(input_value, input_value) for input_value in range(256)]
 
-    def compute_binary(self, op, bvdd2):
+    def compute_binary(self, op, bvdd2, op_id = None):
         assert type(bvdd2) is type(self)
         bvdd1 = self
         return type(self)(dict([(input_value,
@@ -433,7 +433,7 @@ class SBDD_i2o(BVDD_Node):
         # bvdd1.i2o.keys() & bvdd2.i2o.keys() & bvdd3.i2o.keys()
         return [(input_value, input_value, input_value) for input_value in range(256)]
 
-    def compute_ternary(self, op, bvdd2, bvdd3):
+    def compute_ternary(self, op, bvdd2, bvdd3, op_id = None):
         assert type(bvdd2) is type(self)
         assert type(bvdd3) is type(self)
         bvdd1 = self
@@ -474,7 +474,6 @@ class SBDD_s2o(BVDD_Node):
         return next(iter(self.s2o.values()))
 
     def is_reduced(self):
-        assert self.is_consistent()
         return self.number_of_SBDD_outputs() == self.number_of_distinct_SBDD_outputs()
 
     def is_always_false(self):
@@ -508,7 +507,7 @@ class SBDD_s2o(BVDD_Node):
             self.s2o = dict([(inputs, output) for output, inputs in o2s.items()])
         return self.cache()
 
-    def compute_unary(self, op):
+    def compute_unary(self, op, op_id = None):
         return type(self)(dict([(inputs, op(self.s2o[inputs])) for inputs in self.s2o])).reduce_SBDD()
 
     def intersect_binary(self, bvdd2):
@@ -519,7 +518,7 @@ class SBDD_s2o(BVDD_Node):
                 for inputs2 in bvdd2.s2o
                     if inputs1 & inputs2]
 
-    def compute_binary(self, op, bvdd2):
+    def compute_binary(self, op, bvdd2, op_id = None):
         assert type(bvdd2) is type(self)
         bvdd1 = self
         return type(self)(dict([(inputs1 & inputs2,
@@ -536,7 +535,7 @@ class SBDD_s2o(BVDD_Node):
                     for inputs3 in bvdd3.s2o
                         if inputs1 & inputs2 & inputs3]
 
-    def compute_ternary(self, op, bvdd2, bvdd3):
+    def compute_ternary(self, op, bvdd2, bvdd3, op_id = None):
         assert type(bvdd2) is type(self)
         assert type(bvdd3) is type(self)
         bvdd1 = self
@@ -600,7 +599,7 @@ class SBDD_o2s(BVDD_Node):
     def projection(index = 0, offset = 0):
         return SBDD_o2s({}).projection_BVDD(index, offset)
 
-    def compute_unary(self, op):
+    def compute_unary(self, op, op_id = None):
         new_bvdd = type(self)({})
         for output in self.o2s:
             new_bvdd.map(self.o2s[output], op(output))
@@ -614,7 +613,7 @@ class SBDD_o2s(BVDD_Node):
                 for output2 in bvdd2.o2s
                     if bvdd1.o2s[output1] & bvdd2.o2s[output2]]
 
-    def compute_binary(self, op, bvdd2):
+    def compute_binary(self, op, bvdd2, op_id = None):
         assert type(bvdd2) is type(self)
         bvdd1 = self
         new_bvdd = type(self)({})
@@ -632,7 +631,7 @@ class SBDD_o2s(BVDD_Node):
                     for output3 in bvdd3.o2s
                         if bvdd1.o2s[output1] & bvdd2.o2s[output2] & bvdd3.o2s[output3]]
 
-    def compute_ternary(self, op, bvdd2, bvdd3):
+    def compute_ternary(self, op, bvdd2, bvdd3, op_id = None):
         assert type(bvdd2) is type(self)
         assert type(bvdd3) is type(self)
         bvdd1 = self
@@ -661,55 +660,64 @@ class BVDD_uncached(SBDD_o2s):
             # keep dont-care SBDDs at index 0
             return self.cache()
 
-    def op_unary(op, output1):
+    def op_unary(op, output1, op_id):
         if isinstance(output1, BVDD):
-            return output1.compute_unary(op).reduce_BVDD()
+            return output1.compute_unary(op, op_id).reduce_BVDD()
         else:
             return op(output1)
 
-    def compute_unary(self, op):
-        return super().compute_unary(lambda x: BVDD.op_unary(op, x))
+    def compute_unary(self, op, op_id = None):
+        return super().compute_unary(lambda x: BVDD.op_unary(op, x, op_id))
 
-    def op_binary(op, output1, output2):
+    def op_binary(op, output1, output2, op_id):
         if isinstance(output1, BVDD):
             if isinstance(output2, BVDD):
-                return output1.compute_binary(op, output2).reduce_BVDD()
+                return output1.compute_binary(op, output2, op_id).reduce_BVDD()
             else:
-                return output1.compute_unary(lambda x: op(x, output2)).reduce_BVDD()
+                return output1.compute_unary(lambda x: op(x, output2),
+                    f"{op_id} x {output2}").reduce_BVDD()
         elif isinstance(output2, BVDD):
-            return output2.compute_unary(lambda x: op(output1, x)).reduce_BVDD()
+            return output2.compute_unary(lambda x: op(output1, x),
+                f"{op_id} {output1} x").reduce_BVDD()
         else:
             return op(output1, output2)
 
-    def compute_binary(self, op, bvdd2):
+    def compute_binary(self, op, bvdd2, op_id = None):
         assert isinstance(bvdd2, bool) or isinstance(bvdd2, int) or isinstance(bvdd2, BVDD)
-        return super().compute_binary(lambda x, y: BVDD.op_binary(op, x, y), bvdd2)
+        return super().compute_binary(lambda x, y: BVDD.op_binary(op, x, y, op_id), bvdd2)
 
-    def op_ternary(op, output1, output2, output3):
+    def op_ternary(op, output1, output2, output3, op_id):
         if isinstance(output1, BVDD):
             if isinstance(output2, BVDD):
                 if isinstance(output3, BVDD):
-                    return output1.compute_ternary(op, output2, output3).reduce_BVDD()
+                    return output1.compute_ternary(op, output2, output3, op_id).reduce_BVDD()
                 else:
-                    return output1.compute_binary(lambda x, y: op(x, y, output3), output2).reduce_BVDD()
+                    return output1.compute_binary(lambda x, y: op(x, y, output3), output2,
+                        f"{op_id} x y {output3}").reduce_BVDD()
             elif isinstance(output3, BVDD):
-                return output1.compute_binary(lambda x, y: op(x, output2, y), output3).reduce_BVDD()
+                return output1.compute_binary(lambda x, y: op(x, output2, y), output3,
+                    f"{op_id} x {output2} y").reduce_BVDD()
             else:
-                return output1.compute_unary(lambda x: op(x, output2, output3)).reduce_BVDD()
+                return output1.compute_unary(lambda x: op(x, output2, output3),
+                    f"{op_id} x {output2} {output3}").reduce_BVDD()
         elif isinstance(output2, BVDD):
             if isinstance(output3, BVDD):
-                return output2.compute_binary(lambda x, y: op(output1, x, y), output3).reduce_BVDD()
+                return output2.compute_binary(lambda x, y: op(output1, x, y), output3,
+                    f"{op_id} {output1} x y").reduce_BVDD()
             else:
-                return output2.compute_unary(lambda x: op(output1, x, output3)).reduce_BVDD()
+                return output2.compute_unary(lambda x: op(output1, x, output3),
+                    f"{op_id} {output1} x {output3}").reduce_BVDD()
         elif isinstance(output3, BVDD):
-            return output3.compute_unary(lambda x: op(output1, output2, x)).reduce_BVDD()
+            return output3.compute_unary(lambda x: op(output1, output2, x),
+                f"{op_id} {output1} {output2} x").reduce_BVDD()
         else:
             return op(output1, output2, output3)
 
-    def compute_ternary(self, op, bvdd2, bvdd3):
+    def compute_ternary(self, op, bvdd2, bvdd3, op_id = None):
         assert isinstance(bvdd2, bool) or isinstance(bvdd2, int) or isinstance(bvdd2, BVDD)
         assert isinstance(bvdd3, bool) or isinstance(bvdd3, int) or isinstance(bvdd3, BVDD)
-        return super().compute_ternary(lambda x, y, z: BVDD.op_ternary(op, x, y, z), bvdd2, bvdd3)
+        return super().compute_ternary(lambda x, y, z: BVDD.op_ternary(op, x, y, z, op_id),
+            bvdd2, bvdd3)
 
 class BVDD_cached(BVDD_uncached):
     intersect_binary_lock = threading.Lock()
@@ -784,52 +792,61 @@ class BVDD_cached(BVDD_uncached):
     compute_unary_cache = {}
     compute_unary_hits = 0
 
-    def compute_unary(self, op, unary = None):
-        if (op, self) in BVDD_cached.compute_unary_cache:
+    def compute_unary(self, op, op_id, unary = None):
+        assert op_id is not None
+        if (op_id, self) in BVDD_cached.compute_unary_cache:
+            # assert (super().compute_unary(op, op_id) ==
+            #     BVDD_cached.compute_unary_cache[(op_id, self)])
             BVDD_cached.compute_unary_hits += 1
         elif unary:
             # lock is acquired
-            BVDD_cached.compute_unary_cache[(op, self)] = unary
+            BVDD_cached.compute_unary_cache[(op_id, self)] = unary
         else:
             # concurrent without acquiring lock
-            unary = super().compute_unary(op)
+            unary = super().compute_unary(op, op_id)
             with BVDD_cached.compute_unary_lock:
-                return self.compute_unary(op, unary)
-        return BVDD_cached.compute_unary_cache[(op, self)]
+                return self.compute_unary(op, op_id, unary)
+        return BVDD_cached.compute_unary_cache[(op_id, self)]
 
     compute_binary_lock = threading.Lock()
     compute_binary_cache = {}
     compute_binary_hits = 0
 
-    def compute_binary(self, op, bvdd2, binary = None):
-        if (op, self, bvdd2) in BVDD_cached.compute_binary_cache:
+    def compute_binary(self, op, bvdd2, op_id, binary = None):
+        assert op_id is not None
+        if (op_id, self, bvdd2) in BVDD_cached.compute_binary_cache:
+            # assert (super().compute_binary(op, bvdd2, op_id) ==
+            #     BVDD_cached.compute_binary_cache[(op_id, self, bvdd2)])
             BVDD_cached.compute_binary_hits += 1
         elif binary:
             # lock is acquired
-            BVDD_cached.compute_binary_cache[(op, self, bvdd2)] = binary
+            BVDD_cached.compute_binary_cache[(op_id, self, bvdd2)] = binary
         else:
             # concurrent without acquiring lock
-            binary = super().compute_binary(op, bvdd2)
+            binary = super().compute_binary(op, bvdd2, op_id)
             with BVDD_cached.compute_binary_lock:
-                return self.compute_binary(op, bvdd2, binary)
-        return BVDD_cached.compute_binary_cache[(op, self, bvdd2)]
+                return self.compute_binary(op, bvdd2, op_id, binary)
+        return BVDD_cached.compute_binary_cache[(op_id, self, bvdd2)]
 
     compute_ternary_lock = threading.Lock()
     compute_ternary_cache = {}
     compute_ternary_hits = 0
 
-    def compute_ternary(self, op, bvdd2, bvdd3, ternary = None):
-        if (op, self, bvdd2, bvdd3) in BVDD_cached.compute_ternary_cache:
+    def compute_ternary(self, op, bvdd2, bvdd3, op_id, ternary = None):
+        assert op_id is not None
+        if (op_id, self, bvdd2, bvdd3) in BVDD_cached.compute_ternary_cache:
+            # assert (super().compute_ternary(op, bvdd2, bvdd3, op_id) ==
+            #     BVDD_cached.compute_ternary_cache[(op_id, self, bvdd2, bvdd3)])
             BVDD_cached.compute_ternary_hits += 1
         elif ternary:
             # lock is acquired
-            BVDD_cached.compute_ternary_cache[(op, self, bvdd2, bvdd3)] = ternary
+            BVDD_cached.compute_ternary_cache[(op_id, self, bvdd2, bvdd3)] = ternary
         else:
             # concurrent without acquiring lock
-            ternary = super().compute_ternary(op, bvdd2, bvdd3)
+            ternary = super().compute_ternary(op, bvdd2, bvdd3, op_id)
             with BVDD_cached.compute_ternary_lock:
-                return self.compute_ternary(op, bvdd2, bvdd3, ternary)
-        return BVDD_cached.compute_ternary_cache[(op, self, bvdd2, bvdd3)]
+                return self.compute_ternary(op, bvdd2, bvdd3, op_id, ternary)
+        return BVDD_cached.compute_ternary_cache[(op_id, self, bvdd2, bvdd3)]
 
     def print_profile():
         print("BVDD cache profile:")
@@ -842,5 +859,5 @@ class BVDD_cached(BVDD_uncached):
         print(f"binary operators:     {utilization(BVDD_cached.compute_binary_hits, len(BVDD_cached.compute_binary_cache))}")
         print(f"ternary operators:    {utilization(BVDD_cached.compute_ternary_hits, len(BVDD_cached.compute_ternary_cache))}")
 
-class BVDD(BVDD_uncached):
+class BVDD(BVDD_cached):
     pass
