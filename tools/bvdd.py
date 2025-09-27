@@ -675,10 +675,10 @@ class BVDD_uncached(SBDD_o2s):
                 return output1.compute_binary(op, output2, op_id).reduce_BVDD()
             else:
                 return output1.compute_unary(lambda x: op(x, output2),
-                    f"{op_id} x {output2}").reduce_BVDD()
+                    f"{op_id} x {output2}" if op_id is not None else None).reduce_BVDD()
         elif isinstance(output2, BVDD):
             return output2.compute_unary(lambda x: op(output1, x),
-                f"{op_id} {output1} x").reduce_BVDD()
+                f"{op_id} {output1} x" if op_id is not None else None).reduce_BVDD()
         else:
             return op(output1, output2)
 
@@ -693,23 +693,23 @@ class BVDD_uncached(SBDD_o2s):
                     return output1.compute_ternary(op, output2, output3, op_id).reduce_BVDD()
                 else:
                     return output1.compute_binary(lambda x, y: op(x, y, output3), output2,
-                        f"{op_id} x y {output3}").reduce_BVDD()
+                        f"{op_id} x y {output3}" if op_id is not None else None).reduce_BVDD()
             elif isinstance(output3, BVDD):
                 return output1.compute_binary(lambda x, y: op(x, output2, y), output3,
-                    f"{op_id} x {output2} y").reduce_BVDD()
+                    f"{op_id} x {output2} y" if op_id is not None else None).reduce_BVDD()
             else:
                 return output1.compute_unary(lambda x: op(x, output2, output3),
-                    f"{op_id} x {output2} {output3}").reduce_BVDD()
+                    f"{op_id} x {output2} {output3}" if op_id is not None else None).reduce_BVDD()
         elif isinstance(output2, BVDD):
             if isinstance(output3, BVDD):
                 return output2.compute_binary(lambda x, y: op(output1, x, y), output3,
-                    f"{op_id} {output1} x y").reduce_BVDD()
+                    f"{op_id} {output1} x y" if op_id is not None else None).reduce_BVDD()
             else:
                 return output2.compute_unary(lambda x: op(output1, x, output3),
-                    f"{op_id} {output1} x {output3}").reduce_BVDD()
+                    f"{op_id} {output1} x {output3}" if op_id is not None else None).reduce_BVDD()
         elif isinstance(output3, BVDD):
             return output3.compute_unary(lambda x: op(output1, output2, x),
-                f"{op_id} {output1} {output2} x").reduce_BVDD()
+                f"{op_id} {output1} {output2} x" if op_id is not None else None).reduce_BVDD()
         else:
             return op(output1, output2, output3)
 
@@ -792,9 +792,10 @@ class BVDD_cached(BVDD_uncached):
     compute_unary_cache = {}
     compute_unary_hits = 0
 
-    def compute_unary(self, op, op_id, unary = None):
-        assert op_id is not None
-        if (op_id, self) in BVDD_cached.compute_unary_cache:
+    def compute_unary(self, op, op_id = None, unary = None):
+        if op_id is None:
+            return super().compute_unary(op)
+        elif (op_id, self) in BVDD_cached.compute_unary_cache:
             # assert (super().compute_unary(op, op_id) ==
             #     BVDD_cached.compute_unary_cache[(op_id, self)])
             BVDD_cached.compute_unary_hits += 1
@@ -812,9 +813,10 @@ class BVDD_cached(BVDD_uncached):
     compute_binary_cache = {}
     compute_binary_hits = 0
 
-    def compute_binary(self, op, bvdd2, op_id, binary = None):
-        assert op_id is not None
-        if (op_id, self, bvdd2) in BVDD_cached.compute_binary_cache:
+    def compute_binary(self, op, bvdd2, op_id = None, binary = None):
+        if op_id is None:
+            return super().compute_binary(op, bvdd2)
+        elif (op_id, self, bvdd2) in BVDD_cached.compute_binary_cache:
             # assert (super().compute_binary(op, bvdd2, op_id) ==
             #     BVDD_cached.compute_binary_cache[(op_id, self, bvdd2)])
             BVDD_cached.compute_binary_hits += 1
@@ -832,9 +834,10 @@ class BVDD_cached(BVDD_uncached):
     compute_ternary_cache = {}
     compute_ternary_hits = 0
 
-    def compute_ternary(self, op, bvdd2, bvdd3, op_id, ternary = None):
-        assert op_id is not None
-        if (op_id, self, bvdd2, bvdd3) in BVDD_cached.compute_ternary_cache:
+    def compute_ternary(self, op, bvdd2, bvdd3, op_id = None, ternary = None):
+        if op_id is None:
+            return super().compute_ternary(op, bvdd2, bvdd3)
+        elif (op_id, self, bvdd2, bvdd3) in BVDD_cached.compute_ternary_cache:
             # assert (super().compute_ternary(op, bvdd2, bvdd3, op_id) ==
             #     BVDD_cached.compute_ternary_cache[(op_id, self, bvdd2, bvdd3)])
             BVDD_cached.compute_ternary_hits += 1
