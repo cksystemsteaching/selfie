@@ -530,9 +530,8 @@ class Values:
         assert isinstance(self.sid_line, Bitvec) and self.sid_line.match_sorts(values.sid_line)
         return self.apply_binary(self.sid_line, values,
             lambda x, y: (self.sid_line.get_signed_value(x) -
-                    int(self.sid_line.get_signed_value(x) / values.sid_line.get_signed_value(y)) *
-                        values.sid_line.get_signed_value(y))
-                    % 2**self.sid_line.size
+                int(self.sid_line.get_signed_value(x) / values.sid_line.get_signed_value(y)) *
+                    values.sid_line.get_signed_value(y)) % 2**self.sid_line.size
                 if not (y == 0 or (self.sid_line.get_signed_value(x) == -2**(self.sid_line.size - 1) and
                     values.sid_line.get_signed_value(y) == -1))
                 else x if y == 0 else 0,

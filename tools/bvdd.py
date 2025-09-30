@@ -681,48 +681,25 @@ class BVDD_uncached(SBDD_o2s):
         return super().compute_unary(lambda x: BVDD.op_unary(op, x, op_id))
 
     def op_binary(op, output1, output2, op_id):
-        if isinstance(output1, BVDD):
-            if isinstance(output2, BVDD):
-                return output1.compute_binary(op, output2, op_id).reduce_BVDD()
-            else:
-                return output1.compute_unary(lambda x: op(x, output2),
-                    f"{op_id} x {output2}" if op_id is not None else None).reduce_BVDD()
-        elif isinstance(output2, BVDD):
-            return output2.compute_unary(lambda x: op(output1, x),
-                f"{op_id} {output1} x" if op_id is not None else None).reduce_BVDD()
-        else:
+        if not (isinstance(output1, BVDD) or isinstance(output2, BVDD)):
             return op(output1, output2)
+        else:
+            output1 = output1 if isinstance(output1, BVDD) else BVDD.constant(output1)
+            output2 = output2 if isinstance(output2, BVDD) else BVDD.constant(output2)
+            return output1.compute_binary(op, output2, op_id).reduce_BVDD()
 
     def compute_binary(self, op, bvdd2, op_id = None):
         assert isinstance(bvdd2, bool) or isinstance(bvdd2, int) or isinstance(bvdd2, BVDD)
         return super().compute_binary(lambda x, y: BVDD.op_binary(op, x, y, op_id), bvdd2)
 
     def op_ternary(op, output1, output2, output3, op_id):
-        if isinstance(output1, BVDD):
-            if isinstance(output2, BVDD):
-                if isinstance(output3, BVDD):
-                    return output1.compute_ternary(op, output2, output3, op_id).reduce_BVDD()
-                else:
-                    return output1.compute_binary(lambda x, y: op(x, y, output3), output2,
-                        f"{op_id} x y {output3}" if op_id is not None else None).reduce_BVDD()
-            elif isinstance(output3, BVDD):
-                return output1.compute_binary(lambda x, y: op(x, output2, y), output3,
-                    f"{op_id} x {output2} y" if op_id is not None else None).reduce_BVDD()
-            else:
-                return output1.compute_unary(lambda x: op(x, output2, output3),
-                    f"{op_id} x {output2} {output3}" if op_id is not None else None).reduce_BVDD()
-        elif isinstance(output2, BVDD):
-            if isinstance(output3, BVDD):
-                return output2.compute_binary(lambda x, y: op(output1, x, y), output3,
-                    f"{op_id} {output1} x y" if op_id is not None else None).reduce_BVDD()
-            else:
-                return output2.compute_unary(lambda x: op(output1, x, output3),
-                    f"{op_id} {output1} x {output3}" if op_id is not None else None).reduce_BVDD()
-        elif isinstance(output3, BVDD):
-            return output3.compute_unary(lambda x: op(output1, output2, x),
-                f"{op_id} {output1} {output2} x" if op_id is not None else None).reduce_BVDD()
-        else:
+        if not (isinstance(output1, BVDD) or isinstance(output2, BVDD) or isinstance(output3, BVDD)):
             return op(output1, output2, output3)
+        else:
+            output1 = output1 if isinstance(output1, BVDD) else BVDD.constant(output1)
+            output2 = output2 if isinstance(output2, BVDD) else BVDD.constant(output2)
+            output3 = output3 if isinstance(output3, BVDD) else BVDD.constant(output3)
+            return output1.compute_ternary(op, output2, output3, op_id).reduce_BVDD()
 
     def compute_ternary(self, op, bvdd2, bvdd3, op_id = None):
         assert isinstance(bvdd2, bool) or isinstance(bvdd2, int) or isinstance(bvdd2, BVDD)
