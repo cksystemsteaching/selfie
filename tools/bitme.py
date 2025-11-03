@@ -64,16 +64,12 @@ class Values:
     BVDD = False
     BVDD_level = 0
     BVDD_number_of_inputs = 0
-    BVDD_input = {}
-    BVDD_index = {}
 
     CFLOBVDD = False
     CFLOBVDD_level = 0
     CFLOBVDD_swap_level = 0
     CFLOBVDD_fork_level = 0
     CLOBVDD_number_of_inputs = 0
-    CFLOBVDD_input = {}
-    CFLOBVDD_index = {}
 
     total_number_of_constants = 0
     total_number_of_values = 0
@@ -106,14 +102,14 @@ class Values:
             Values.total_number_of_constants += 1
         elif isinstance(var_line, Variable):
             if Values.BVDD:
-                self.bvdd = BVDD.BVDD.projection(Values.BVDD_index[var_line])
+                self.bvdd = BVDD.BVDD.projection(var_line.input_index)
             if Values.CFLOBVDD:
                 self.cflobvdd = CFLOBVDD.CFLOBVDD.byte_projection(
                     Values.CFLOBVDD_level,
                     Values.CFLOBVDD_swap_level,
                     Values.CFLOBVDD_fork_level,
                     Values.CFLOBVDD_number_of_inputs,
-                    Values.CFLOBVDD_index[var_line],
+                    var_line.input_index,
                     True)
 
             Values.total_number_of_constants += 2**var_line.sid_line.size
@@ -195,7 +191,7 @@ class Values:
             return Values.get_bvdd_node_expression(sid_line,
                 bvdd.get_dont_care_output(), sbdd, index + 1)
         else:
-            var_line = Values.BVDD_input[index]
+            var_line = Variable.input_indexes[index]
             exp_line = None
             s2o = bvdd.get_s2o()
             # assert s2o is sorted by inputs
@@ -244,7 +240,7 @@ class Values:
                 assert isinstance(path[1], int)
                 index_i = path[0]
                 inputs = path[1]
-                path_expression += Values.get_input_expression(Values.CFLOBVDD_input[index_i], inputs)
+                path_expression += Values.get_input_expression(Variable.input_indexes[index_i], inputs)
             else:
                 a_paths = Values.get_path_expression(path[0])
                 b_paths = Values.get_path_expression(path[1])
@@ -1559,6 +1555,9 @@ def bmc(solver, kmin, kmax, args):
 
     branching_bmc(solver, kmin, kmax, args, 0, 0)
 
+def ibmc(solver, kmin, kmax, imin, imax, args):
+    return bmc(solver, kmin, kmax, args)
+
 import sys
 
 def try_rotor():
@@ -1651,14 +1650,7 @@ def main():
         if args.use_BVDD or args.use_CFLOBVDD is None:
             Values.BVDD = True
 
-            Values.BVDD_number_of_inputs = len(Variable.bvdd_input) if Variable.bvdd_input else 1
-
-            # reversing order of input variables
-            # Values.BVDD_input = dict([(2**level - 1 - index, var_line)
-            #     for index, var_line in Variable.bvdd_input.items()])
-            Values.BVDD_input = Variable.bvdd_input
-            Values.BVDD_index = dict([(var_line, index)
-                for index, var_line in Values.BVDD_input.items()])
+            Values.BVDD_number_of_inputs = len(Variable.input_indexes) if Variable.input_indexes else 1
 
             print_separator('-')
             print(f"BVDD configuration: {Values.BVDD_number_of_inputs} input bytes")
@@ -1666,7 +1658,7 @@ def main():
         if args.use_CFLOBVDD is not None:
             Values.CFLOBVDD = True
 
-            Values.CFLOBVDD_number_of_inputs = 2**ceil(log2(len(Variable.bvdd_input))) if Variable.bvdd_input else 1
+            Values.CFLOBVDD_number_of_inputs = 2**ceil(log2(len(Variable.input_indexes))) if Variable.input_indexes else 1
 
             level = ceil(log2(Values.CFLOBVDD_number_of_inputs))
 
@@ -1678,13 +1670,6 @@ def main():
             assert 0 <= Values.CFLOBVDD_swap_level <= Values.CFLOBVDD_level, \
                 f"invalid swap level {Values.CFLOBVDD_swap_level} for level {Values.CFLOBVDD_level}"
 
-            # reversing order of input variables
-            # Values.CFLOBVDD_input = dict([(2**level - 1 - index, var_line)
-            #     for index, var_line in Variable.bvdd_input.items()])
-            Values.CFLOBVDD_input = Variable.bvdd_input
-            Values.CFLOBVDD_index = dict([(var_line, index)
-                for index, var_line in Values.CFLOBVDD_input.items()])
-
             print_separator('-')
             print(f"CFLOBVDD configuration: {Values.CFLOBVDD_number_of_inputs} input bytes " +
                 f"@ level {Values.CFLOBVDD_level}, swap level {Values.CFLOBVDD_swap_level}, and fork level {Values.CFLOBVDD_fork_level}")
@@ -1694,8 +1679,8 @@ def main():
         bitme_solver = Bitme_Solver(z3_solver, bitwuzla_solver)
 
         if not args.use_Z3 and not args.use_bitwuzla:
-            if Variable.bvdd_input:
-                bmc(bitme_solver, kmin, kmax, args)
+            if Variable.input_indexes:
+                ibmc(bitme_solver, kmin, kmax, 0, 0, args)
 
                 print_separator('-')
                 if Values.BVDD:
