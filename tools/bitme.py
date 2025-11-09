@@ -605,11 +605,29 @@ class Expression(Line, btor2.Expression, z3interface.Expression, bitwuzlainterfa
     def get_expression(self):
         return self
 
+    def is_cached(self, step):
+        assert step >= 0
+        if step in self.cache_values:
+            if self.cache_values[step][1] in Bitme_Solver.versions:
+                if self.cache_values[step][1] == Bitme_Solver.covered_version:
+                    return True
+                elif Bitme_Solver.version != Bitme_Solver.covered_version:
+                    return True
+                elif step < Bitme_Solver.covered_step:
+                    return True
+                else:
+                    # re-compute values for first uncovered step
+                    return False
+            else:
+                return False
+        else:
+            return False
+
     def get_values(self, step):
         assert step >= 0
         if UNROLL or PROPAGATE is not None:
-            # versioning needed for support of branching in bitme solver
-            if step not in self.cache_values or self.cache_values[step][1] not in Bitme_Solver.versions:
+            # versioning needed for support of branching and increments in bitme solver
+            if not self.is_cached(step):
                 self.cache_values[step] = (self.compute_values(step), Bitme_Solver.version)
             return self.cache_values[step][0]
         else:
@@ -618,6 +636,10 @@ class Expression(Line, btor2.Expression, z3interface.Expression, bitwuzlainterfa
 class Constant(Expression, btor2.Constant, z3interface.Constant, bitwuzlainterface.Constant):
     def __init__(self):
         Expression.__init__(self)
+
+    def get_values(self, step):
+        assert step >= 0
+        return super().get_values(0)
 
     def compute_values(self, step):
         assert step == 0
@@ -629,10 +651,6 @@ class Constant(Expression, btor2.Constant, z3interface.Constant, bitwuzlainterfa
                 return Values(self.sid_line, self.value)
         else:
             return self
-
-    def get_values(self, step):
-        assert step >= 0
-        return super().get_values(0)
 
 class Zero(Constant, btor2.Zero):
     def __init__(self, nid, sid_line, symbol, comment, line_no):
@@ -669,8 +687,30 @@ class Constant_Array(Expression, btor2.Constant_Array, z3interface.Constant_Arra
         return self
 
 class Variable(Expression, btor2.Variable, z3interface.Variable):
+    incremental_number_of_input_variables = 1
+
+    uncovered_steps = {}
+
     def __init__(self):
         Expression.__init__(self)
+
+    def is_uncovered(self):
+        return self.input_index is not None and \
+            self.input_index > Variable.incremental_number_of_input_variables - 1
+
+    def cover(self):
+        if self.is_uncovered():
+            return Variable.input_indexes[Variable.incremental_number_of_input_variables - 1]
+        else:
+            return self
+
+    def get_values(self, step):
+        if self.is_uncovered():
+            # exploiting thread-safe single dict updates
+            Variable.uncovered_steps[step] = None
+            return self.cover().get_values(step)
+        else:
+            return super().get_values(step)
 
     def compute_values(self, step):
         assert step == 0
@@ -742,8 +782,7 @@ class Ext(Indexed, btor2.Ext, z3interface.Ext, bitwuzlainterface.Ext):
                 assert self.op == btor2.OP_UEXT
                 return arg1_value.ZeroExt(self.sid_line)
         else:
-            arg1_value = arg1_value.get_expression()
-            return self.copy(arg1_value)
+            return self.copy(arg1_value.get_expression())
 
 class Slice(Indexed, btor2.Slice, z3interface.Slice, bitwuzlainterface.Slice):
     def __init__(self, nid, sid_line, arg1_line, u, l, comment, line_no):
@@ -755,8 +794,7 @@ class Slice(Indexed, btor2.Slice, z3interface.Slice, bitwuzlainterface.Slice):
         if PROPAGATE_UNARY and isinstance(arg1_value, Values):
             return arg1_value.Extract(self.sid_line, self.u, self.l)
         else:
-            arg1_value = arg1_value.get_expression()
-            return self.copy(arg1_value)
+            return self.copy(arg1_value.get_expression())
 
 class Unary(Expression, btor2.Unary, z3interface.Unary, bitwuzlainterface.Unary):
     def __init__(self, nid, op, sid_line, arg1_line, comment, line_no):
@@ -779,8 +817,7 @@ class Unary(Expression, btor2.Unary, z3interface.Unary, bitwuzlainterface.Unary)
                 assert self.op == btor2.OP_NEG
                 return -arg1_value
         else:
-            arg1_value = arg1_value.get_expression()
-            return self.copy(arg1_value)
+            return self.copy(arg1_value.get_expression())
 
 class Binary(Expression, btor2.Binary):
     def __init__(self):
@@ -803,9 +840,7 @@ class Implies(Binary, btor2.Implies, z3interface.Implies, bitwuzlainterface.Impl
                     return arg1_value.Implies(arg2_value)
         else:
             arg2_value = self.arg2_line.get_values(step)
-        arg1_value = arg1_value.get_expression()
-        arg2_value = arg2_value.get_expression()
-        return self.copy(arg1_value, arg2_value)
+        return self.copy(arg1_value.get_expression(), arg2_value.get_expression())
 
 class Comparison(Binary, btor2.Comparison, z3interface.Comparison, bitwuzlainterface.Comparison):
     def __init__(self, nid, op, sid_line, arg1_line, arg2_line, comment, line_no):
@@ -838,9 +873,7 @@ class Comparison(Binary, btor2.Comparison, z3interface.Comparison, bitwuzlainter
                 else:
                     assert self.op == btor2.OP_ULTE
                     return arg1_value.ULE(arg2_value)
-        arg1_value = arg1_value.get_expression()
-        arg2_value = arg2_value.get_expression()
-        return self.copy(arg1_value, arg2_value)
+        return self.copy(arg1_value.get_expression(), arg2_value.get_expression())
 
     def is_always_false(self):
         # only needed for termination check
@@ -901,9 +934,7 @@ class Logical(Binary, btor2.Logical, z3interface.Logical, bitwuzlainterface.Logi
         else:
             arg1_value = self.arg1_line.get_values(step)
             arg2_value = self.arg2_line.get_values(step)
-        arg1_value = arg1_value.get_expression()
-        arg2_value = arg2_value.get_expression()
-        return self.copy(arg1_value, arg2_value)
+        return self.copy(arg1_value.get_expression(), arg2_value.get_expression())
 
 class Computation(Binary, btor2.Computation, z3interface.Computation, bitwuzlainterface.Computation):
     def __init__(self, nid, op, sid_line, arg1_line, arg2_line, comment, line_no):
@@ -936,9 +967,7 @@ class Computation(Binary, btor2.Computation, z3interface.Computation, bitwuzlain
                 else:
                     assert self.op == btor2.OP_UREM
                     return arg1_value.URem(arg2_value)
-        arg1_value = arg1_value.get_expression()
-        arg2_value = arg2_value.get_expression()
-        return self.copy(arg1_value, arg2_value)
+        return self.copy(arg1_value.get_expression(), arg2_value.get_expression())
 
 class Concat(Binary, btor2.Concat, z3interface.Concat, bitwuzlainterface.Concat):
     def __init__(self, nid, op, sid_line, arg1_line, arg2_line, comment, line_no):
@@ -951,9 +980,7 @@ class Concat(Binary, btor2.Concat, z3interface.Concat, bitwuzlainterface.Concat)
         if PROPAGATE_BINARY:
             if isinstance(arg1_value, Values) and isinstance(arg2_value, Values):
                 return arg1_value.Concat(arg2_value, self.sid_line)
-        arg1_value = arg1_value.get_expression()
-        arg2_value = arg2_value.get_expression()
-        return self.copy(arg1_value, arg2_value)
+        return self.copy(arg1_value.get_expression(), arg2_value.get_expression())
 
 class Read(Binary, btor2.Read, z3interface.Read, bitwuzlainterface.Read):
     def __init__(self, nid, op, sid_line, arg1_line, arg2_line, comment, line_no):
@@ -979,18 +1006,14 @@ class Ite(Ternary, btor2.Ite, z3interface.Ite, bitwuzlainterface.Ite):
         if PROPAGATE_ITE and isinstance(arg1_value, Values):
             if arg1_value.is_always_true():
                 arg2_value = self.arg2_line.get_values(step)
-                if isinstance(arg2_value, Values):
-                    return arg2_value
-                else:
-                    # true case holds unconditionally
-                    return arg2_value.get_expression()
+                if not isinstance(arg2_value, Values):
+                    arg2_value = arg2_value.get_expression()
+                return arg2_value
             elif arg1_value.is_always_false():
                 arg3_value = self.arg3_line.get_values(step)
-                if isinstance(arg3_value, Values):
-                    return arg3_value
-                else:
-                    # false case holds unconditionally
-                    return arg3_value.get_expression()
+                if not isinstance(arg3_value, Values):
+                    arg3_value = arg3_value.get_expression()
+                return arg3_value
             else:
                 # lazy evaluation of true and false case
                 arg2_value = self.arg2_line.get_values(step)
@@ -1000,10 +1023,9 @@ class Ite(Ternary, btor2.Ite, z3interface.Ite, bitwuzlainterface.Ite):
         else:
             arg2_value = self.arg2_line.get_values(step)
             arg3_value = self.arg3_line.get_values(step)
-        arg1_value = arg1_value.get_expression()
-        arg2_value = arg2_value.get_expression()
-        arg3_value = arg3_value.get_expression()
-        return self.copy(arg1_value, arg2_value, arg3_value)
+        return self.copy(arg1_value.get_expression(),
+            arg2_value.get_expression(),
+            arg3_value.get_expression())
 
     def get_step(self, step):
         # only needed for branching
@@ -1186,7 +1208,11 @@ def print_message_with_propagation_profile(message, step = None, level = None):
 class Bitme_Solver:
     versions = {0:None}
     version = 0
-    bump = 1
+
+    covered_version = 1
+    covered_step = 0
+
+    bump = 2
 
     def __init__(self, z3_solver, bitwuzla_solver):
         self.z3_solver = z3_solver
@@ -1196,6 +1222,13 @@ class Bitme_Solver:
         self.constraint = Values.TRUE()
         self.proven = {}
         self.unproven = {}
+
+    def __str__(self):
+        return f"{self.fallback}\n" + \
+            f"Stack: {self.stack}\n" + \
+            f"Constraint: {self.constraint}\n" + \
+            f"Proven: {self.proven}\n" + \
+            f"Unproven: {self.unproven}\n"
 
     def push(self):
         if self.fallback:
@@ -1285,6 +1318,21 @@ class Bitme_Solver:
         self.stack = []
         return self.prove()
 
+    def cover(self):
+        for step in self.unproven:
+            if Variable.uncovered_steps and step > min(Variable.uncovered_steps):
+                return
+            else:
+                for assertion in self.unproven[step]:
+                    assertion.wait_step(step)
+                    if Variable.uncovered_steps and step == min(Variable.uncovered_steps):
+                        if Bitme_Solver.version == 0:
+                            assert Bitme_Solver.versions == {0:None}
+                            Bitme_Solver.versions[Bitme_Solver.covered_version] = None
+                            Bitme_Solver.version = Bitme_Solver.covered_version
+                            Bitme_Solver.covered_step = step
+                            return
+
     def prove(self):
         if self.fallback:
             z3_SAT = False
@@ -1298,13 +1346,12 @@ class Bitme_Solver:
                 return bitwuzla_SAT
             return z3_SAT
         else:
+            self.cover()
             for step in self.unproven:
                 for assertion in self.unproven[step]:
-                    if isinstance(assertion, Transitional):
-                        assertion.wait_step(step)
-                for assertion in self.unproven[step]:
-                    if not isinstance(assertion, Transitional):
-                        condition = assertion.wait_step(step)
+                    values = assertion.wait_step(step)
+                    if isinstance(assertion, Property):
+                        condition = values
                         assert isinstance(condition.sid_line, Bool)
                         if isinstance(condition, Values):
                             if self.unproven[step][assertion] is True:
@@ -1393,9 +1440,7 @@ class Bitme_Solver:
 
 # bitr concurrent bitme
 
-def fork(kmin, kmax):
-    step = 0
-
+def fork(kmin, kmax, step):
     while step <= kmax:
         # assert all constraints
         for constraint in Constraint.constraints.values():
@@ -1551,12 +1596,61 @@ def bmc(solver, kmin, kmax, args):
     solver.prove()
 
     if args.use_bitr:
-        fork(kmin, kmax)
+        fork(kmin, kmax, 0)
 
     branching_bmc(solver, kmin, kmax, args, 0, 0)
 
 def ibmc(solver, kmin, kmax, imin, imax, args):
-    return bmc(solver, kmin, kmax, args)
+    assert 0 < imin <= imax
+
+    for state in State.states.values():
+        if state.init_line is None:
+            if state.next_line is not None:
+                del Next.nexts[state.next_line.nid]
+
+    print_separator('-')
+    print_message(f"bitme incremental bounded model checking: -kmin {kmin} -kmax {kmax} -imin {imin} -imax {imax}\n")
+    print_separator('-')
+
+    # initialize all states
+    solver.assert_this(Init.inits.values(), 0)
+
+    print_message("initializing", 0, 0)
+    solver.prove()
+
+    Variable.incremental_number_of_input_variables = imin
+
+    step = 0
+
+    while Variable.incremental_number_of_input_variables <= imax:
+        print_message(f"{Variable.incremental_number_of_input_variables} incremental input variables at increment {step}\n")
+        print_separator('-')
+
+        if args.use_bitr:
+            fork(kmin, kmax, step)
+
+        branching_bmc(solver, kmin, kmax, args, step, 0)
+        print_separator('-')
+
+        assert not solver.stack
+
+        if Variable.uncovered_steps:
+            step = min(Variable.uncovered_steps)
+            Variable.uncovered_steps = {}
+
+            solver.constraint = Values.TRUE()
+            solver.unproven = {}
+
+            del Bitme_Solver.versions[Bitme_Solver.covered_version]
+
+            Bitme_Solver.covered_version = Bitme_Solver.bump
+            Bitme_Solver.bump += 1
+            Bitme_Solver.covered_step = 0
+            Bitme_Solver.version = 0
+
+            Variable.incremental_number_of_input_variables += 1
+        else:
+            return
 
 import sys
 
@@ -1603,6 +1697,9 @@ def main():
     parser.add_argument('-kmin', nargs=1, type=int)
     parser.add_argument('-kmax', nargs=1, type=int)
 
+    parser.add_argument('-imin', nargs=1, type=int)
+    parser.add_argument('-imax', nargs=1, type=int)
+
     parser.add_argument('--print-pc', action='store_true') # only for rotor models
     parser.add_argument('--check-termination', action='store_true')
     parser.add_argument('--unconstraining-bad', action='store_true')
@@ -1638,6 +1735,11 @@ def main():
             kmax = max(kmin, kmax)
         else:
             kmin = kmax = 0
+
+        imax = args.imax[0] if args.imax else len(Variable.input_indexes) if Variable.input_indexes else 1
+        imin = args.imin[0] if args.imin else imax
+
+        assert 0 < imin <= imax
 
         z3_solver = None
         bitwuzla_solver = None
@@ -1680,9 +1782,8 @@ def main():
 
         if not args.use_Z3 and not args.use_bitwuzla:
             if Variable.input_indexes:
-                ibmc(bitme_solver, kmin, kmax, 0, 0, args)
+                ibmc(bitme_solver, kmin, kmax, imin, imax, args)
 
-                print_separator('-')
                 if Values.BVDD:
                     BVDD.BVDD.print_profile()
                 if Values.CFLOBVDD:
