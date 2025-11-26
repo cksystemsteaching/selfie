@@ -1350,15 +1350,15 @@ class Bitme_Solver:
             for step in self.unproven:
                 for assertion in self.unproven[step]:
                     values = assertion.wait_step(step)
-                    if isinstance(assertion, Property):
-                        condition = values
-                        assert isinstance(condition.sid_line, Bool)
-                        if isinstance(condition, Values):
+                    if not isinstance(assertion, Transitional):
+                        # property or condition
+                        assert isinstance(values.sid_line, Bool)
+                        if isinstance(values, Values):
                             if self.unproven[step][assertion] is True:
-                                self.constraint = condition.And(self.constraint)
+                                self.constraint = values.And(self.constraint)
                             else:
                                 assert self.unproven[step][assertion] is False
-                                self.constraint = condition.Not().And(self.constraint)
+                                self.constraint = values.Not().And(self.constraint)
                         else:
                             return self.solve()
             self.proven |= self.unproven
