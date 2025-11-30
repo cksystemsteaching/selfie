@@ -748,20 +748,23 @@ class BVDD_cached(BVDD_uncached):
 
     constant_lock = threading.Lock()
     constant_cache = {}
+    boolean_cache = {}
     constant_hits = 0
 
     def constant_BVDD(self, output, constant = None):
-        if output in BVDD_cached.constant_cache:
+        cache = BVDD_cached.boolean_cache if isinstance(output, bool) \
+            else BVDD_cached.constant_cache
+        if output in cache:
             BVDD_cached.constant_hits += 1
         elif constant:
             # lock is acquired
-            BVDD_cached.constant_cache[output] = constant
+            cache[output] = constant
         else:
             # concurrent without acquiring lock
             constant = super().constant_BVDD(output)
             with BVDD_cached.constant_lock:
                 return self.constant_BVDD(output, constant)
-        return BVDD_cached.constant_cache[output]
+        return cache[output]
 
     projection_lock = threading.Lock()
     projection_cache = {}
@@ -848,7 +851,7 @@ class BVDD_cached(BVDD_uncached):
         print(f"nodes:                {utilization(BVDD_Node.node_cache_hits, len(BVDD_Node.node_cache))}")
         print(f"binary intersection:  {utilization(BVDD_cached.intersect_binary_hits, len(BVDD_cached.intersect_binary_cache))}")
         print(f"ternary intersection: {utilization(BVDD_cached.intersect_ternary_hits, len(BVDD_cached.intersect_ternary_cache))}")
-        print(f"constants:            {utilization(BVDD_cached.constant_hits, len(BVDD_cached.constant_cache))}")
+        print(f"constants:            {utilization(BVDD_cached.constant_hits, len(BVDD_cached.constant_cache) + len(BVDD_cached.boolean_cache))}")
         print(f"projection:           {utilization(BVDD_cached.projection_hits, len(BVDD_cached.projection_cache))}")
         print(f"unary operators:      {utilization(BVDD_cached.compute_unary_hits, len(BVDD_cached.compute_unary_cache))}")
         print(f"binary operators:     {utilization(BVDD_cached.compute_binary_hits, len(BVDD_cached.compute_binary_cache))}")
