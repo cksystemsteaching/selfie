@@ -1600,6 +1600,8 @@ def bmc(solver, kmin, kmax, args):
 
     branching_bmc(solver, kmin, kmax, args, 0, 0)
 
+    print_separator('-')
+
 def ibmc(solver, kmin, kmax, imin, imax, args):
     assert 0 < imin <= imax
 
@@ -1741,6 +1743,8 @@ def main():
 
         assert 0 < imin <= imax
 
+        Variable.incremental_number_of_input_variables = imin
+
         z3_solver = None
         bitwuzla_solver = None
 
@@ -1783,20 +1787,22 @@ def main():
         if not args.use_Z3 and not args.use_bitwuzla:
             if Variable.input_indexes:
                 ibmc(bitme_solver, kmin, kmax, imin, imax, args)
-
-                if Values.BVDD:
-                    BVDD.BVDD.print_profile()
-                if Values.CFLOBVDD:
-                    BVDD.BVDD.print_profile()
-                    CFLOBVDD.CFLOBVDD.print_profile()
             else:
                 print_separator('-')
                 print("model input is unmapped, consider increasing -array")
+                print_separator('#')
+                return
         else:
             if args.use_Z3 and z3interface.is_Z3_present:
                 bmc(z3_solver, kmin, kmax, args)
             if args.use_bitwuzla and bitwuzlainterface.is_bitwuzla_present:
                 bmc(bitwuzla_solver, kmin, kmax, args)
+
+        if Values.BVDD:
+            BVDD.BVDD.print_profile()
+        if Values.CFLOBVDD:
+            BVDD.BVDD.print_profile()
+            CFLOBVDD.CFLOBVDD.print_profile()
 
     print_separator('#')
 
