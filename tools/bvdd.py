@@ -415,6 +415,11 @@ class SBDD_i2o(BVDD_Node):
         return type(self)(dict([(input_value, op(self.i2o[input_value]))
             for input_value in self.i2o])).reduce_SBDD()
 
+    def get_s(self):
+        new_bvdd = type(self)({})
+        new_bvdd.i2o = dict([(input_value, input_value_i) for input_value_i, input_value in enumerate(self.i2o)])
+        return new_bvdd
+
     def intersect_binary(self, bvdd2):
         assert type(bvdd2) is type(self)
         # bvdd1.i2o.keys() & bvdd2.i2o.keys()
@@ -509,6 +514,11 @@ class SBDD_s2o(BVDD_Node):
 
     def compute_unary(self, op, op_id = None):
         return type(self)(dict([(inputs, op(self.s2o[inputs])) for inputs in self.s2o])).reduce_SBDD()
+
+    def get_s(self):
+        new_bvdd = type(self)({})
+        new_bvdd.s2o = dict([(inputs, inputs_i) for inputs_i, inputs in enumerate(self.s2o)])
+        return new_bvdd
 
     def intersect_binary(self, bvdd2):
         assert type(bvdd2) is type(self)
@@ -609,6 +619,11 @@ class SBDD_o2s(BVDD_Node):
         for output in self.o2s:
             new_bvdd.map(self.o2s[output], op(output))
         return new_bvdd.reduce_SBDD()
+
+    def get_s(self):
+        new_bvdd = type(self)({})
+        new_bvdd.o2s = dict(enumerate(self.o2s.values()))
+        return new_bvdd
 
     def intersect_binary(self, bvdd2):
         assert type(bvdd2) is type(self)
@@ -713,38 +728,39 @@ class BVDD_cached(BVDD_uncached):
     intersect_binary_hits = 0
 
     def intersect_binary(self, bvdd2, intersection = None):
-        key = hash((tuple(self.get_s2o().keys()), tuple(bvdd2.get_s2o().keys())))
-        if key in BVDD_cached.intersect_binary_cache:
+        s1 = self.get_s()
+        s2 = bvdd2.get_s()
+        if (s1, s2) in BVDD_cached.intersect_binary_cache:
             BVDD_cached.intersect_binary_hits += 1
         elif intersection:
             # lock is acquired
-            BVDD_cached.intersect_binary_cache[key] = intersection
+            BVDD_cached.intersect_binary_cache[(s1, s2)] = intersection
         else:
             # concurrent without acquiring lock
             intersection = super().intersect_binary(bvdd2)
             with BVDD_cached.intersect_binary_lock:
                 return self.intersect_binary(bvdd2, intersection)
-        return BVDD_cached.intersect_binary_cache[key]
+        return BVDD_cached.intersect_binary_cache[(s1, s2)]
 
     intersect_ternary_lock = threading.Lock()
     intersect_ternary_cache = {}
     intersect_ternary_hits = 0
 
     def intersect_ternary(self, bvdd2, bvdd3, intersection = None):
-        key = hash((tuple(self.get_s2o().keys()),
-            tuple(bvdd2.get_s2o().keys()),
-            tuple(bvdd3.get_s2o().keys())))
-        if key in BVDD_cached.intersect_ternary_cache:
+        s1 = self.get_s()
+        s2 = bvdd2.get_s()
+        s3 = bvdd3.get_s()
+        if (s1, s2, s3) in BVDD_cached.intersect_ternary_cache:
             BVDD_cached.intersect_ternary_hits += 1
         elif intersection:
             # lock is acquired
-            BVDD_cached.intersect_ternary_cache[key] = intersection
+            BVDD_cached.intersect_ternary_cache[(s1, s2, s3)] = intersection
         else:
             # concurrent without acquiring lock
             intersection = super().intersect_ternary(bvdd2, bvdd3)
             with BVDD_cached.intersect_ternary_lock:
                 return self.intersect_ternary(bvdd2, bvdd3, intersection)
-        return BVDD_cached.intersect_ternary_cache[key]
+        return BVDD_cached.intersect_ternary_cache[(s1, s2, s3)]
 
     constant_lock = threading.Lock()
     constant_cache = {}
