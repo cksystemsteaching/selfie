@@ -523,7 +523,7 @@ class SBDD_s2o(BVDD_Node):
     def intersect_binary(self, bvdd2):
         assert type(bvdd2) is type(self)
         bvdd1 = self
-        return [(inputs1_i, inputs2_i)
+        return [(inputs1 & inputs2, inputs1_i, inputs2_i)
             for inputs1_i, inputs1 in enumerate(bvdd1.s2o)
                 for inputs2_i, inputs2 in enumerate(bvdd2.s2o)
                     if inputs1 & inputs2]
@@ -531,17 +531,16 @@ class SBDD_s2o(BVDD_Node):
     def compute_binary(self, op, bvdd2, op_id = None):
         assert type(bvdd2) is type(self)
         bvdd1 = self
-        bvdd1_s2o = list(bvdd1.s2o.items())
-        bvdd2_s2o = list(bvdd2.s2o.items())
-        return type(self)(dict([(bvdd1_s2o[inputs1_i][0] & bvdd2_s2o[inputs2_i][0],
-            op(bvdd1_s2o[inputs1_i][1], bvdd2_s2o[inputs2_i][1]))
-                for inputs1_i, inputs2_i in bvdd1.intersect_binary(bvdd2)])).reduce_SBDD()
+        bvdd1_s2o = list(bvdd1.s2o.values())
+        bvdd2_s2o = list(bvdd2.s2o.values())
+        return type(self)(dict([(inputs, op(bvdd1_s2o[inputs1_i], bvdd2_s2o[inputs2_i]))
+            for inputs, inputs1_i, inputs2_i in bvdd1.intersect_binary(bvdd2)])).reduce_SBDD()
 
     def intersect_ternary(self, bvdd2, bvdd3):
         assert type(bvdd2) is type(self)
         assert type(bvdd3) is type(self)
         bvdd1 = self
-        return [(inputs1_i, inputs2_i, inputs3_i)
+        return [(inputs1 & inputs2 & inputs3, inputs1_i, inputs2_i, inputs3_i)
             for inputs1_i, inputs1 in enumerate(bvdd1.s2o)
                 for inputs2_i, inputs2 in enumerate(bvdd2.s2o)
                     for inputs3_i, inputs3 in enumerate(bvdd3.s2o)
@@ -551,12 +550,12 @@ class SBDD_s2o(BVDD_Node):
         assert type(bvdd2) is type(self)
         assert type(bvdd3) is type(self)
         bvdd1 = self
-        bvdd1_s2o = list(bvdd1.s2o.items())
-        bvdd2_s2o = list(bvdd2.s2o.items())
-        bvdd3_s2o = list(bvdd3.s2o.items())
-        return type(self)(dict([(bvdd1_s2o[inputs1_i][0] & bvdd2_s2o[inputs2_i][0] & bvdd3_s2o[inputs3_i][0],
-            op(bvdd1_s2o[inputs1_i][1], bvdd2_s2o[inputs2_i][1], bvdd3_s2o[inputs3_i][1]))
-                for inputs1_i, inputs2_i, inputs3_i in bvdd1.intersect_ternary(bvdd2, bvdd3)])).reduce_SBDD()
+        bvdd1_s2o = list(bvdd1.s2o.values())
+        bvdd2_s2o = list(bvdd2.s2o.values())
+        bvdd3_s2o = list(bvdd3.s2o.values())
+        return type(self)(dict([(inputs,
+            op(bvdd1_s2o[inputs1_i], bvdd2_s2o[inputs2_i], bvdd3_s2o[inputs3_i]))
+                for inputs, inputs1_i, inputs2_i, inputs3_i in bvdd1.intersect_ternary(bvdd2, bvdd3)])).reduce_SBDD()
 
 class SBDD_o2s(BVDD_Node):
     # single-byte decision diagram with output-to-input-sets mapping
@@ -628,7 +627,7 @@ class SBDD_o2s(BVDD_Node):
     def intersect_binary(self, bvdd2):
         assert type(bvdd2) is type(self)
         bvdd1 = self
-        return [(output1_i, output2_i)
+        return [(bvdd1.o2s[output1] & bvdd2.o2s[output2], output1_i, output2_i)
             for output1_i, output1 in enumerate(bvdd1.o2s)
                 for output2_i, output2 in enumerate(bvdd2.o2s)
                     if bvdd1.o2s[output1] & bvdd2.o2s[output2]]
@@ -636,38 +635,38 @@ class SBDD_o2s(BVDD_Node):
     def compute_binary(self, op, bvdd2, op_id = None):
         assert type(bvdd2) is type(self)
         bvdd1 = self
-        bvdd1_o2s = list(bvdd1.o2s.items())
-        bvdd2_o2s = list(bvdd2.o2s.items())
+        bvdd1_o2s = list(bvdd1.o2s)
+        bvdd2_o2s = list(bvdd2.o2s)
         new_bvdd = type(self)({})
-        for output1_i, output2_i in bvdd1.intersect_binary(bvdd2):
-            new_bvdd.map(bvdd1_o2s[output1_i][1] & bvdd2_o2s[output2_i][1],
-                op(bvdd1_o2s[output1_i][0], bvdd2_o2s[output2_i][0]))
+        for inputs, output1_i, output2_i in bvdd1.intersect_binary(bvdd2):
+            new_bvdd.map(inputs, op(bvdd1_o2s[output1_i], bvdd2_o2s[output2_i]))
         return new_bvdd.reduce_SBDD()
 
     def intersect_ternary(self, bvdd2, bvdd3):
         assert type(bvdd2) is type(self)
         assert type(bvdd3) is type(self)
         bvdd1 = self
-        return [(output1_i, output2_i, output3_i)
-            for output1_i, output1 in enumerate(bvdd1.o2s)
-                for output2_i, output2 in enumerate(bvdd2.o2s)
-                    for output3_i, output3 in enumerate(bvdd3.o2s)
-                        if bvdd1.o2s[output1] & bvdd2.o2s[output2] & bvdd3.o2s[output3]]
+        return [(bvdd1.o2s[output1] & bvdd2.o2s[output2] & bvdd3.o2s[output3],
+            output1_i, output2_i, output3_i)
+                for output1_i, output1 in enumerate(bvdd1.o2s)
+                    for output2_i, output2 in enumerate(bvdd2.o2s)
+                        for output3_i, output3 in enumerate(bvdd3.o2s)
+                            if bvdd1.o2s[output1] & bvdd2.o2s[output2] & bvdd3.o2s[output3]]
 
     def compute_ternary(self, op, bvdd2, bvdd3, op_id = None):
         assert type(bvdd2) is type(self)
         assert type(bvdd3) is type(self)
         bvdd1 = self
-        bvdd1_o2s = list(bvdd1.o2s.items())
-        bvdd2_o2s = list(bvdd2.o2s.items())
-        bvdd3_o2s = list(bvdd3.o2s.items())
+        bvdd1_o2s = list(bvdd1.o2s)
+        bvdd2_o2s = list(bvdd2.o2s)
+        bvdd3_o2s = list(bvdd3.o2s)
         new_bvdd = type(self)({})
-        for output1_i, output2_i, output3_i in bvdd1.intersect_ternary(bvdd2, bvdd3):
-            new_bvdd.map(bvdd1_o2s[output1_i][1] & bvdd2_o2s[output2_i][1] & bvdd3_o2s[output3_i][1],
-                op(bvdd1_o2s[output1_i][0], bvdd2_o2s[output2_i][0], bvdd3_o2s[output3_i][0]))
+        for inputs, output1_i, output2_i, output3_i in bvdd1.intersect_ternary(bvdd2, bvdd3):
+            new_bvdd.map(inputs,
+                op(bvdd1_o2s[output1_i], bvdd2_o2s[output2_i], bvdd3_o2s[output3_i]))
         return new_bvdd.reduce_SBDD()
 
-class BVDD_uncached(SBDD_o2s):
+class BVDD_uncached(SBDD_s2o):
     def constant(output_value):
         return BVDD({}).constant_BVDD(output_value)
 
