@@ -904,7 +904,7 @@ class BVDD_cached(BVDD_uncached):
         print(f"binary operators:     {utilization(BVDD_cached.compute_binary_hits, len(BVDD_cached.compute_binary_cache))}")
         print(f"ternary operators:    {utilization(BVDD_cached.compute_ternary_hits, len(BVDD_cached.compute_ternary_cache))}")
 
-class BVDD(BVDD_uncached):
+class BVDD(BVDD_cached):
     pass
 
 class PBVDD:
