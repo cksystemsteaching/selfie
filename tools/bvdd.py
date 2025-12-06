@@ -142,7 +142,7 @@ class BVDD_Node:
                 path += [(index_i, inputs)]
         return path
 
-    def union(self):
+    def inputs_union(self):
         # for s2o and o2s only
         union = 0
         for inputs in self.get_s2o():
@@ -156,7 +156,7 @@ class BVDD_Node:
 
     def number_of_inputs(self):
         # for s2o and o2s only
-        return self.number_of_inputs_for_input(self.union())
+        return self.number_of_inputs_for_input(self.inputs_union())
 
     def map(o2s, inputs, output):
         # for s2o and o2s only
@@ -169,6 +169,59 @@ class BVDD_Node:
         # only for i2o and o2s
         assert self.is_consistent()
         return True
+
+    def reduce_SBDD(self):
+        # only for i2o and o2s
+        return self.cache()
+
+    def reduce_BVDD(self, index = 1):
+        # dont-care SBDDs are not reduced
+        return self.cache()
+
+    def reduce(self, reduction_tuple, index = 0):
+        new_bvdd = type(self)({})
+        s2o = self.get_s2o()
+        for inputs in s2o:
+            output = s2o[inputs]
+            if isinstance(output, BVDD):
+                reduced_output = output.reduce(reduction_tuple, index + 1)
+                new_bvdd.set(inputs, reduced_output)
+            else:
+                new_bvdd.set(inputs, reduction_tuple[output])
+        return new_bvdd.reduce_SBDD().reduce_BVDD(index)
+
+    def compute_ite(self, bvdd2, bvdd3, op_id):
+        assert type(bvdd2) is type(self)
+        assert type(bvdd3) is type(self)
+        return self.compute_ternary(lambda x, y, z: y if x else z, bvdd2, bvdd3, op_id)
+
+    # for partitioned BVDDs
+
+    def op_union(output1, output2):
+        return output1 if output2 is None else output2
+
+    def union(self, bvdd2):
+        assert type(bvdd2) is type(self)
+        return self.compute_binary(lambda x, y: \
+            BVDD_uncached.op_binary(BVDD_Node.op_union, x, y, "union"), bvdd2)
+
+    def op_intersection(output1, output2, output3 = 0):
+        return output1 if output1 is None else output2 if output2 is None else output3
+
+    def intersection(self, bvdd2, bvdd3 = None):
+        assert type(bvdd2) is type(self)
+        if bvdd3 is None:
+            return self.compute_binary(lambda x, y: \
+                BVDD_uncached.op_binary(BVDD_Node.op_intersection, x, y, "intersection"), bvdd2)
+        else:
+            assert type(bvdd3) is type(self)
+            return self.compute_ternary(lambda x, y, z: \
+                BVDD_uncached.op_ternary(BVDD_Node.op_intersection, x, y, z, "intersection"), bvdd2, bvdd3)
+
+    def is_not_empty(self):
+        return not (self.is_constant() and self.get_dont_care_output() is None)
+
+    # for CFLOBVDDs
 
     def projection_proto(index):
         # use offset 1 for CFLOBVDDs
@@ -295,31 +348,6 @@ class BVDD_Node:
         triple_inv = {}
         return (self.compute_ternary(lambda x, y, z: BVDD_Node.tuple2exit(triple_inv, (x, y, z)), bvdd2, bvdd3),
             dict([(triple_inv[triple], triple) for triple in triple_inv]))
-
-    def reduce_SBDD(self):
-        # only for i2o and o2s
-        return self.cache()
-
-    def reduce_BVDD(self, index = 1):
-        # dont-care SBDDs are not reduced
-        return self.cache()
-
-    def reduce(self, reduction_tuple, index = 0):
-        new_bvdd = type(self)({})
-        s2o = self.get_s2o()
-        for inputs in s2o:
-            output = s2o[inputs]
-            if isinstance(output, BVDD):
-                reduced_output = output.reduce(reduction_tuple, index + 1)
-                new_bvdd.set(inputs, reduced_output)
-            else:
-                new_bvdd.set(inputs, reduction_tuple[output])
-        return new_bvdd.reduce_SBDD().reduce_BVDD(index)
-
-    def compute_ite(self, bvdd2, bvdd3, op_id):
-        assert type(bvdd2) is type(self)
-        assert type(bvdd3) is type(self)
-        return self.compute_ternary(lambda x, y, z: y if x else z, bvdd2, bvdd3, op_id)
 
     def print_profile():
         print("BVDD cache profile:")
@@ -599,15 +627,19 @@ class SBDD_o2s(BVDD_Node):
     def constant_BVDD(self, output):
         assert (isinstance(output, bool) or
             isinstance(output, int) or
-            type(output) is type(self))
+            type(output) is type(self) or
+            output is None)
         self.o2s = {output:2**256-1}
         return self.reduce_SBDD()
 
     def constant(output_value):
         return SBDD_o2s({}).constant_BVDD(output_value)
 
-    def projection_BVDD(self, index = 0, offset = 0):
-        self.o2s = dict([(input_value + offset, 2**input_value) for input_value in range(256)])
+    def projection_BVDD(self, index = 0, offset = 0, input_value = None):
+        if input_value is not None:
+            self.o2s = {offset:2**input_value, None:(2**256-1) & ~(2**input_value)}
+        else:
+            self.o2s = dict([(input_value + offset, 2**input_value) for input_value in range(256)])
         return self.reduce_SBDD()
 
     def projection(index = 0, offset = 0):
@@ -666,15 +698,15 @@ class SBDD_o2s(BVDD_Node):
                 op(bvdd1_o2s[output1_i], bvdd2_o2s[output2_i], bvdd3_o2s[output3_i]))
         return new_bvdd.reduce_SBDD()
 
-class BVDD_uncached(SBDD_s2o):
+class BVDD_uncached(SBDD_o2s):
     def constant(output_value):
         return BVDD({}).constant_BVDD(output_value)
 
-    def projection(index, offset = 0):
+    def projection(index, offset = 0, input_value = None):
         if index == 0:
-            return BVDD({}).projection_BVDD(0, offset)
+            return BVDD({}).projection_BVDD(0, offset, input_value)
         else:
-            return BVDD({}).constant_BVDD(BVDD.projection(index - 1, offset))
+            return BVDD({}).constant_BVDD(BVDD.projection(index - 1, offset, input_value))
 
     def reduce_BVDD(self, index = 1):
         assert self.is_reduced()
@@ -785,18 +817,18 @@ class BVDD_cached(BVDD_uncached):
     projection_cache = {}
     projection_hits = 0
 
-    def projection_BVDD(self, index = 0, offset = 0, projection = None):
-        if index in BVDD_cached.projection_cache:
+    def projection_BVDD(self, index = 0, offset = 0, input_value = None, projection = None):
+        if (index, offset, input_value) in BVDD_cached.projection_cache:
             BVDD_cached.projection_hits += 1
         elif projection:
             # lock is acquired
-            BVDD_cached.projection_cache[index] = projection
+            BVDD_cached.projection_cache[(index, offset, input_value)] = projection
         else:
             # concurrent without acquiring lock
-            projection = super().projection_BVDD(index, offset)
+            projection = super().projection_BVDD(index, offset, input_value)
             with BVDD_cached.projection_lock:
-                return self.projection_BVDD(index, offset, projection)
-        return BVDD_cached.projection_cache[index]
+                return self.projection_BVDD(index, offset, input_value, projection)
+        return BVDD_cached.projection_cache[(index, offset, input_value)]
 
     compute_unary_lock = threading.Lock()
     compute_unary_cache = {}
@@ -872,5 +904,103 @@ class BVDD_cached(BVDD_uncached):
         print(f"binary operators:     {utilization(BVDD_cached.compute_binary_hits, len(BVDD_cached.compute_binary_cache))}")
         print(f"ternary operators:    {utilization(BVDD_cached.compute_ternary_hits, len(BVDD_cached.compute_ternary_cache))}")
 
-class BVDD(BVDD_cached):
+class BVDD(BVDD_uncached):
     pass
+
+class PBVDD:
+    def __init__(self, o2b):
+        self.o2b = o2b
+
+    def __str__(self):
+        return "PBVDD: " + ", ".join([f"{bvdd} -> {output_value}"
+            for output_value, bvdd in self.o2b.items()])
+
+    def is_consistent(self):
+        for output1_value in self.o2b:
+            bvdd1 = self.o2b[output1_value]
+            if len(self.o2b) == 1:
+                if not bvdd1.is_constant() or bvdd1.get_dont_care_output() is None:
+                    return False
+            for output2_value in self.o2b:
+                if output1_value != output2_value:
+                    bvdd2 = self.o2b[output2_value]
+                    if bvdd1.intersection(bvdd2).is_not_empty():
+                        return False
+        return True
+
+    def is_always_false(self):
+        return len(self.o2b) == 1 and False in self.o2b
+
+    def is_always_true(self):
+        return len(self.o2b) == 1 and True in self.o2b
+
+    def constant(output_value):
+        assert isinstance(output_value, bool) or isinstance(output_value, int)
+        return PBVDD({output_value:BVDD.constant(0)})
+
+    def projection(index, offset = 0):
+        return PBVDD(dict([(input_value + offset, BVDD.projection(index, offset, input_value))
+            for input_value in range(256)]))
+
+    def map(self, inputs, output_value):
+        if output_value not in self.o2b:
+            self.o2b[output_value] = inputs
+        else:
+            self.o2b[output_value] = self.o2b[output_value].union(inputs)
+
+    def compute_unary(self, op, op_id = None):
+        new_bvdd = PBVDD({})
+        for output_value in self.o2b:
+            new_bvdd.map(self.o2b[output_value], op(output_value))
+        return new_bvdd
+
+    def compute_binary(self, op, bvdd2, op_id = None):
+        assert type(bvdd2) is type(self)
+        bvdd1 = self
+        new_bvdd = PBVDD({})
+        for output1_value in bvdd1.o2b:
+            for output2_value in bvdd2.o2b:
+                intersection = bvdd1.o2b[output1_value].intersection(bvdd2.o2b[output2_value])
+                if intersection.is_not_empty():
+                    new_bvdd.map(intersection, op(output1_value, output2_value))
+        return new_bvdd
+
+    def compute_ternary(self, op, bvdd2, bvdd3, op_id = None):
+        assert type(bvdd2) is type(self)
+        assert type(bvdd3) is type(self)
+        bvdd1 = self
+        new_bvdd = PBVDD({})
+        for output1_value in bvdd1.o2b:
+            for output2_value in bvdd2.o2b:
+                for output3_value in bvdd3.o2b:
+                    intersection = bvdd1.o2b[output1_value].intersection(
+                        bvdd2.o2b[output2_value],
+                        bvdd3.o2b[output3_value])
+                    if intersection.is_not_empty():
+                        new_bvdd.map(intersection,
+                            op(output1_value, output2_value, output3_value))
+        return new_bvdd
+
+    def compute_ite_slow(self, bvdd2, bvdd3, op_id):
+        assert type(bvdd2) is type(self)
+        assert type(bvdd3) is type(self)
+        return self.compute_ternary(lambda x, y, z: y if x else z, bvdd2, bvdd3, op_id)
+
+    def compute_ite(self, bvdd2, bvdd3, op_id):
+        assert type(bvdd2) is type(self)
+        assert type(bvdd3) is type(self)
+        bvdd1 = self
+        new_bvdd = PBVDD({})
+        for output1_value in bvdd1.o2b:
+            assert isinstance(output1_value, bool)
+            if output1_value:
+                for output2_value in bvdd2.o2b:
+                    intersection = bvdd1.o2b[output1_value].intersection(bvdd2.o2b[output2_value])
+                    if intersection.is_not_empty():
+                        new_bvdd.map(intersection, output2_value)
+            else:
+                for output3_value in bvdd3.o2b:
+                    intersection = bvdd1.o2b[output1_value].intersection(bvdd3.o2b[output3_value])
+                    if intersection.is_not_empty():
+                        new_bvdd.map(intersection, output3_value)
+        return new_bvdd
