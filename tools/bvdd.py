@@ -1106,10 +1106,10 @@ class PBVDD_cached(PBVDD_uncached):
     def print_profile():
         BVDD.print_profile()
         print("PBVDD cache profile:")
-        print(f"unary operators:      {utilization(PBVDD_cached.compute_unary_hits, len(PBVDD_cached.compute_unary_cache))}")
-        print(f"binary operators:     {utilization(PBVDD_cached.compute_binary_hits, len(PBVDD_cached.compute_binary_cache))}")
-        print(f"ite operators:        {utilization(PBVDD_cached.compute_ite_hits, len(PBVDD_cached.compute_ite_cache))}")
-        print(f"ternary operators:    {utilization(PBVDD_cached.compute_ternary_hits, len(PBVDD_cached.compute_ternary_cache))}")
+        print(f"unary operators:   {utilization(PBVDD_cached.compute_unary_hits, len(PBVDD_cached.compute_unary_cache))}")
+        print(f"binary operators:  {utilization(PBVDD_cached.compute_binary_hits, len(PBVDD_cached.compute_binary_cache))}")
+        print(f"ite operators:     {utilization(PBVDD_cached.compute_ite_hits, len(PBVDD_cached.compute_ite_cache))}")
+        print(f"ternary operators: {utilization(PBVDD_cached.compute_ternary_hits, len(PBVDD_cached.compute_ternary_cache))}")
 
 class PBVDD(PBVDD_cached):
     pass

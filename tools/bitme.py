@@ -90,7 +90,7 @@ class Values:
             assert sid_line.is_unsigned_value(value)
 
             if Values.BVDD:
-                self.bvdd = BVDD.BVDD.constant(value)
+                self.bvdd = BVDD.PBVDD.constant(value)
             if Values.CFLOBVDD:
                 self.cflobvdd = CFLOBVDD.CFLOBVDD.byte_constant(
                     Values.CFLOBVDD_level,
@@ -102,7 +102,7 @@ class Values:
             Values.total_number_of_constants += 1
         elif isinstance(var_line, Variable):
             if Values.BVDD:
-                self.bvdd = BVDD.BVDD.projection(var_line.input_index)
+                self.bvdd = BVDD.PBVDD.projection(var_line.input_index)
             if Values.CFLOBVDD:
                 self.cflobvdd = CFLOBVDD.CFLOBVDD.byte_projection(
                     Values.CFLOBVDD_level,
@@ -1799,9 +1799,9 @@ def main():
                 bmc(bitwuzla_solver, kmin, kmax, args)
 
         if Values.BVDD:
-            BVDD.BVDD.print_profile()
+            BVDD.PBVDD.print_profile()
         if Values.CFLOBVDD:
-            BVDD.BVDD.print_profile()
+            BVDD.PBVDD.print_profile()
             CFLOBVDD.CFLOBVDD.print_profile()
 
     print_separator('#')
