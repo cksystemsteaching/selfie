@@ -238,9 +238,9 @@ class BVDD_Node:
 
     # for CFLOBVDDs
 
-    def projection_proto(index):
+    def projection_proto(index, input_value = None):
         # use offset 1 for CFLOBVDDs
-        return BVDD.projection(index, 1)
+        return BVDD.projection(index, 1, input_value)
 
     def apply(self, return_tuple, index = 0, level = 0):
         new_bvdd = type(self)({})

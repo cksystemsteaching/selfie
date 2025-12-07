@@ -428,9 +428,9 @@ class BV_Fork_Grouping(BV_Grouping):
                     BV_Fork_Grouping.representatives[self] = self
         return BV_Fork_Grouping.representatives[self]
 
-    def projection_proto(level, swap_level, fork_level):
+    def projection_proto(level, swap_level, fork_level, input_value):
         assert level == 0
-        bvdd = BVDD.BVDD.projection_proto(0)
+        bvdd = BVDD.BVDD.projection_proto(0, input_value)
         return BV_Fork_Grouping(level, swap_level, fork_level,
             bvdd.number_of_exits(), bvdd).representative()
 
@@ -752,17 +752,18 @@ class BV_Internal_Grouping(BV_Grouping):
                     BV_Internal_Grouping.representatives[self] = self
         return BV_Internal_Grouping.representatives[self]
 
-    def projection_proto(level, swap_level, fork_level, input_i):
+    def projection_proto(level, swap_level, fork_level, input_i, input_value):
         # generalizing CFLOBDD projection to generational CFLOBVDD projection
         assert 0 <= input_i < 2**level
         if level == 0:
-            return BV_Fork_Grouping.projection_proto(level, swap_level, fork_level)
+            return BV_Fork_Grouping.projection_proto(level,
+                swap_level, fork_level, input_value)
         else:
             g = BV_Internal_Grouping(level, swap_level, fork_level, True)
 
             if input_i < 2**(level - 1):
                 g.a_connection = BV_Internal_Grouping.projection_proto(level - 1,
-                    swap_level, fork_level, input_i)
+                    swap_level, fork_level, input_i, input_value)
                 g.number_of_exits = g.a_connection.number_of_exits
                 # g.a_return_tuple == {} representing g.a_return_tuple = dict([(e, e)
                     # for e in range(1, g.number_of_exits + 1)])
@@ -783,7 +784,7 @@ class BV_Internal_Grouping(BV_Grouping):
                 g.number_of_b_connections = 1
 
                 projection_proto = BV_Internal_Grouping.projection_proto(level - 1,
-                    swap_level, fork_level, input_i - 2**(level - 1))
+                    swap_level, fork_level, input_i - 2**(level - 1), input_value)
 
                 g.number_of_exits = projection_proto.number_of_exits
 
@@ -1564,22 +1565,28 @@ class CFLOBVDD:
     def compute_unary(self, op, op_id, number_of_output_bits):
         return self.unary_apply_and_reduce(op, number_of_output_bits)
 
-    def projection(level, swap_level, fork_level, input_i, reorder = False):
+    def projection(level, swap_level, fork_level, input_i, reorder = False, input_value = None):
         assert 0 <= swap_level <= level
         assert 0 <= fork_level <= level
         assert 0 <= input_i < 2**level
         with CFLOBVDD.max_level_lock:
             CFLOBVDD.max_level = max(CFLOBVDD.max_level, level)
-        grouping = BV_Internal_Grouping.projection_proto(level, swap_level, fork_level, input_i)
+        grouping = BV_Internal_Grouping.projection_proto(level,
+            swap_level, fork_level, input_i, input_value)
         if reorder:
             grouping = grouping.compress()
-        return CFLOBVDD.representative(grouping,
-            dict([(output + 1, output) for output in range(grouping.number_of_exits)]))
+        if input_value is not None:
+            assert grouping.number_of_exits == 2
+            return CFLOBVDD.representative(grouping, {1:CFLOBVDD.has_input, 2:CFLOBVDD.no_input})
+        else:
+            return CFLOBVDD.representative(grouping,
+                dict([(output + 1, output) for output in range(grouping.number_of_exits)]))
 
-    def byte_projection(level, swap_level, fork_level, number_of_input_bytes, byte_i, reorder = False):
+    def byte_projection(level, swap_level, fork_level, number_of_input_bytes,
+            byte_i, reorder = False, input_value = None):
         level = max(level, swap_level, fork_level, ceil(log2(number_of_input_bytes)))
         assert 0 <= byte_i < 2**level
-        return CFLOBVDD.projection(level, swap_level, fork_level, byte_i, reorder)
+        return CFLOBVDD.projection(level, swap_level, fork_level, byte_i, reorder, input_value)
 
     def collapse_classes_leftmost(equiv_classes):
         # legacy code
@@ -1690,3 +1697,55 @@ class CFLOBVDD:
         grouping, outputs = self.grouping.swap_flow(self.outputs)
 
         return CFLOBVDD.representative(grouping, outputs)
+
+    # for PDDs
+
+    level = 0
+    swap_level = 0
+    fork_level = 0
+    number_of_inputs = 1
+
+    has_input = 0
+    no_input = 1
+
+    def number_of_partitioned_inputs(self):
+        return self.number_of_solutions(CFLOBVDD.has_input)
+
+    def partitioned_constant():
+        return CFLOBVDD.byte_constant(CFLOBVDD.level,
+            CFLOBVDD.swap_level,
+            CFLOBVDD.fork_level,
+            CFLOBVDD.number_of_inputs,
+            CFLOBVDD.has_input)
+
+    def partitioned_projection(index, input_value):
+        return CFLOBVDD.byte_projection(CFLOBVDD.level,
+            CFLOBVDD.swap_level,
+            CFLOBVDD.fork_level,
+            CFLOBVDD.number_of_inputs,
+            index,
+            True,
+            input_value)
+
+    def op_union(output1, output2):
+        return output1 if output2 == CFLOBVDD.no_input else output2
+
+    def union(self, n2):
+        return self.compute_binary(lambda x, y: CFLOBVDD.op_union(x, y), n2, None, 1)
+
+    def op_intersection(output1, output2, output3 = 0):
+        return output1 if output1 == CFLOBVDD.no_input else output2 if output2 == CFLOBVDD.no_input else output3
+
+    def intersection(self, n2, n3 = None):
+        if n3 is None:
+            return self.compute_binary(lambda x, y: CFLOBVDD.op_intersection(x, y),
+                n2, None, 1)
+        else:
+            return self.compute_ternary(lambda x, y, z: CFLOBVDD.op_intersection(x, y, z),
+                n2, n3, None, 1)
+
+    def is_not_empty(self):
+        return not (self.number_of_distinct_outputs() == 1 and self.outputs[1] == CFLOBVDD.no_input)
+
+    def is_not_full(self):
+        return not (self.number_of_distinct_outputs() == 1 and self.outputs[1] == CFLOBVDD.has_input)
