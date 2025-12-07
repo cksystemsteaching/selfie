@@ -31,6 +31,9 @@ def utilization(hits, misses):
         return f"{round(hits / (hits + misses) * 100, 2)}% ({hits} hits, {misses} misses)"
 
 class BVDD_Node:
+    has_input = 0
+    no_input = 1
+
     node_cache_lock = threading.Lock()
     node_cache = {}
     node_cache_hits = 0
@@ -197,8 +200,17 @@ class BVDD_Node:
 
     # for PDDs
 
+    def number_of_partitioned_inputs(self):
+        return self.number_of_distinct_inputs(BVDD_Node.has_input)
+
+    def partitioned_constant():
+        return BVDD.constant(BVDD_Node.has_input)
+
+    def partitioned_projection(index, input_value):
+        return BVDD.projection(index, 0, input_value)
+
     def op_union(output1, output2):
-        return output1 if output2 is None else output2
+        return output1 if output2 == BVDD_Node.no_input else output2
 
     def union(self, bvdd2):
         assert type(bvdd2) is type(self)
@@ -206,7 +218,7 @@ class BVDD_Node:
             BVDD_uncached.op_binary(BVDD_Node.op_union, x, y, "union"), bvdd2, "union")
 
     def op_intersection(output1, output2, output3 = 0):
-        return output1 if output1 is None else output2 if output2 is None else output3
+        return output1 if output1 == BVDD_Node.no_input else output2 if output2 == BVDD_Node.no_input else output3
 
     def intersection(self, bvdd2, bvdd3 = None):
         assert type(bvdd2) is type(self)
@@ -219,10 +231,10 @@ class BVDD_Node:
                 BVDD_uncached.op_ternary(BVDD_Node.op_intersection, x, y, z, "intersection"), bvdd2, bvdd3, "intersection")
 
     def is_not_empty(self):
-        return not (self.is_constant() and self.get_dont_care_output() is None)
+        return not (self.is_constant() and self.get_dont_care_output() == BVDD_Node.no_input)
 
     def is_not_full(self):
-        return not (self.is_constant() and self.get_dont_care_output() is not None)
+        return not (self.is_constant() and self.get_dont_care_output() == BVDD_Node.has_input)
 
     # for CFLOBVDDs
 
@@ -640,9 +652,11 @@ class SBDD_o2s(BVDD_Node):
 
     def projection_BVDD(self, index = 0, offset = 0, input_value = None):
         if input_value is not None:
-            self.o2s = {offset:2**input_value, None:(2**256-1) & ~(2**input_value)}
+            self.o2s = {BVDD_Node.has_input + offset:2**input_value,
+                BVDD_Node.no_input + offset:(2**256-1) & ~(2**input_value)}
         else:
-            self.o2s = dict([(input_value + offset, 2**input_value) for input_value in range(256)])
+            self.o2s = dict([(input_value + offset, 2**input_value)
+                for input_value in range(256)])
         return self.reduce_SBDD()
 
     def projection(index = 0, offset = 0):

@@ -40,7 +40,7 @@ class PDD_uncached:
         return True
 
     def number_of_distinct_inputs(self):
-        return sum([self.o2s[output_value].number_of_distinct_inputs(0) for output_value in self.o2s])
+        return sum([self.o2s[output_value].number_of_partitioned_inputs() for output_value in self.o2s])
 
     def number_of_connections(self):
         return sum([self.o2s[output_value].number_of_connections() for output_value in self.o2s])
@@ -56,10 +56,10 @@ class PDD_uncached:
 
     def constant(output_value, clss):
         assert isinstance(output_value, bool) or isinstance(output_value, int)
-        return PDD({output_value:clss.constant(0)})
+        return PDD({output_value:clss.partitioned_constant()})
 
     def projection(index, clss):
-        return PDD(dict([(input_value, clss.projection(index, 0, input_value))
+        return PDD(dict([(input_value, clss.partitioned_projection(index, input_value))
             for input_value in range(256)]))
 
     def map(self, inputs, output_value):
