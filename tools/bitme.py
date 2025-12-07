@@ -185,7 +185,9 @@ class Values:
             return [comparison_line]
 
     def get_bvdd_node_expression(sid_line, bvdd, sbdd, index = 0):
-        if isinstance(bvdd, bool) or isinstance(bvdd, int):
+        if bvdd is None:
+            return None
+        elif isinstance(bvdd, bool) or isinstance(bvdd, int):
             return Constd(btor2.Parser.next_nid(), sid_line, int(bvdd),
                 "domain-propagated value", 0)
         elif bvdd.is_dont_care():
@@ -205,9 +207,12 @@ class Values:
                     if sbdd:
                         assert 0 <= inputs < 256
                         inputs = 2**inputs
+                    output_line = Values.get_bvdd_node_expression(sid_line, output, sbdd, index + 1)
+                    if output_line is None:
+                        continue
                     exp_line = Ite(btor2.Parser.next_nid(), sid_line,
                         Values.get_input_expression(var_line, inputs)[0],
-                        Values.get_bvdd_node_expression(sid_line, output, sbdd, index + 1),
+                        output_line,
                         exp_line,
                         var_line.comment, var_line.line_no)
         return exp_line

@@ -30,7 +30,7 @@ class PDD_uncached:
         for output1_value in self.o2s:
             inputs1 = self.o2s[output1_value]
             if len(self.o2s) == 1:
-                if not inputs1.is_constant() or inputs1.get_dont_care_output() is None:
+                if inputs1.is_not_full():
                     return False
             for output2_value in self.o2s:
                 if output1_value != output2_value:

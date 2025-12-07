@@ -221,6 +221,9 @@ class BVDD_Node:
     def is_not_empty(self):
         return not (self.is_constant() and self.get_dont_care_output() is None)
 
+    def is_not_full(self):
+        return not (self.is_constant() and self.get_dont_care_output() is not None)
+
     # for CFLOBVDDs
 
     def projection_proto(index):
