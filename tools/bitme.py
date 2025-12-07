@@ -64,7 +64,6 @@ from math import ceil
 
 class Values:
     BVDD = False
-    BVDD_level = 0
     BVDD_number_of_inputs = 0
 
     CFLOBVDD = False
@@ -218,6 +217,35 @@ class Values:
             not (isinstance(self.bvdd, BVDD.SBDD_s2o) or
                 isinstance(self.bvdd, BVDD.SBDD_o2s)))
 
+    # PDD adapter
+
+    def get_pdd_expression(self):
+        pdd = self.bvdd
+        exp_line = None
+        for output_value in pdd.o2s:
+            inputs = pdd.o2s[output_value]
+            output_line = Constd(btor2.Parser.next_nid(), self.sid_line,
+                int(output_value),
+                "domain-propagated value", 0)
+            if len(pdd.o2s) == 1:
+                assert inputs.is_constant() and inputs.get_dont_care_output() == 0
+                # dont-care output
+                return output_line
+            elif exp_line is None:
+                # reachable only if input value is in inputs
+                exp_line = output_line
+            else:
+                input_line = Values.get_bvdd_node_expression(self.sid_line, inputs,
+                    not (isinstance(inputs, BVDD.SBDD_s2o) or
+                        isinstance(inputs, BVDD.SBDD_o2s)))
+                assert input_line
+                exp_line = Ite(btor2.Parser.next_nid(), self.sid_line,
+                    input_line,
+                    output_line,
+                    exp_line,
+                    self.sid_line.comment, self.sid_line.line_no)
+        return exp_line
+
     # CFLOBVDD adapter
 
     def get_logical_expression(op, paths):
@@ -306,7 +334,7 @@ class Values:
         # naive transition from domain propagation to bit blasting
         assert isinstance(self.sid_line, Bitvector)
         if Values.BVDD:
-            return self.get_bvdd_expression()
+            return self.get_pdd_expression()
         else:
             assert Values.CFLOBVDD
             return self.get_cflobvdd_expression()

@@ -39,14 +39,14 @@ class PDD_uncached:
                         return False
         return True
 
+    def number_of_distinct_inputs(self):
+        return sum([self.o2s[output_value].number_of_distinct_inputs(0) for output_value in self.o2s])
+
     def number_of_connections(self):
         return sum([self.o2s[output_value].number_of_connections() for output_value in self.o2s])
 
     def number_of_outputs(self):
         return len(self.o2s)
-
-    def number_of_distinct_inputs(self):
-        return sum([self.o2s[output_value].number_of_distinct_inputs(0) for output_value in self.o2s])
 
     def is_always_false(self):
         return len(self.o2s) == 1 and False in self.o2s
