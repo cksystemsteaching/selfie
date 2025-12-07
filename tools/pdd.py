@@ -68,13 +68,13 @@ class PDD_uncached:
         else:
             self.o2s[output_value] = self.o2s[output_value].union(inputs)
 
-    def compute_unary(self, op, op_id = None):
+    def compute_unary(self, op, op_id = None, bits = None):
         new_pdd = PDD({})
         for output_value in self.o2s:
             new_pdd.map(self.o2s[output_value], op(output_value))
         return new_pdd
 
-    def compute_binary(self, op, pdd2, op_id = None):
+    def compute_binary(self, op, pdd2, op_id = None, bits = None):
         assert type(pdd2) is type(self)
         pdd1 = self
         new_pdd = PDD({})
@@ -85,7 +85,7 @@ class PDD_uncached:
                     new_pdd.map(intersection, op(output1_value, output2_value))
         return new_pdd
 
-    def compute_ite(self, pdd2, pdd3, op_id):
+    def compute_ite(self, pdd2, pdd3, op_id = None, bits = None):
         assert type(pdd2) is type(self)
         assert type(pdd3) is type(self)
         pdd1 = self
@@ -104,7 +104,7 @@ class PDD_uncached:
                         new_pdd.map(intersection, output3_value)
         return new_pdd
 
-    def compute_ternary(self, op, pdd2, pdd3, op_id = None):
+    def compute_ternary(self, op, pdd2, pdd3, op_id = None, bits = None):
         assert type(pdd2) is type(self)
         assert type(pdd3) is type(self)
         pdd1 = self
@@ -120,10 +120,10 @@ class PDD_uncached:
                             op(output1_value, output2_value, output3_value))
         return new_pdd
 
-    def compute_ite_slow(self, pdd2, pdd3, op_id):
+    def compute_ite_slow(self, pdd2, pdd3, op_id = None, bits = None):
         assert type(pdd2) is type(self)
         assert type(pdd3) is type(self)
-        return self.compute_ternary(lambda x, y, z: y if x else z, pdd2, pdd3, op_id)
+        return self.compute_ternary(lambda x, y, z: y if x else z, pdd2, pdd3, op_id, bits)
 
     def get_printed_inputs(self, output_value):
         return (f"{type(self).__name__}:" +
@@ -134,11 +134,11 @@ class PDD_cached(PDD_uncached):
     compute_unary_cache = {}
     compute_unary_hits = 0
 
-    def compute_unary(self, op, op_id = None, unary = None):
+    def compute_unary(self, op, op_id = None, bits = None, unary = None):
         if op_id is None:
-            return super().compute_unary(op)
+            return super().compute_unary(op, op_id, bits)
         elif (op_id, self) in PDD_cached.compute_unary_cache:
-            # assert (super().compute_unary(op, op_id) ==
+            # assert (super().compute_unary(op, op_id, bits) ==
             #     PDD_cached.compute_unary_cache[(op_id, self)])
             PDD_cached.compute_unary_hits += 1
         elif unary:
@@ -146,20 +146,20 @@ class PDD_cached(PDD_uncached):
             PDD_cached.compute_unary_cache[(op_id, self)] = unary
         else:
             # concurrent without acquiring lock
-            unary = super().compute_unary(op, op_id)
+            unary = super().compute_unary(op, op_id, bits)
             with PDD_cached.compute_unary_lock:
-                return self.compute_unary(op, op_id, unary)
+                return self.compute_unary(op, op_id, bits, unary)
         return PDD_cached.compute_unary_cache[(op_id, self)]
 
     compute_binary_lock = threading.Lock()
     compute_binary_cache = {}
     compute_binary_hits = 0
 
-    def compute_binary(self, op, pdd2, op_id = None, binary = None):
+    def compute_binary(self, op, pdd2, op_id = None, bits = None, binary = None):
         if op_id is None:
-            return super().compute_binary(op, pdd2)
+            return super().compute_binary(op, pdd2, op_id, bits)
         elif (op_id, self, pdd2) in PDD_cached.compute_binary_cache:
-            # assert (super().compute_binary(op, pdd2, op_id) ==
+            # assert (super().compute_binary(op, pdd2, op_id, bits) ==
             #     PDD_cached.compute_binary_cache[(op_id, self, pdd2)])
             PDD_cached.compute_binary_hits += 1
         elif binary:
@@ -167,20 +167,20 @@ class PDD_cached(PDD_uncached):
             PDD_cached.compute_binary_cache[(op_id, self, pdd2)] = binary
         else:
             # concurrent without acquiring lock
-            binary = super().compute_binary(op, pdd2, op_id)
+            binary = super().compute_binary(op, pdd2, op_id, bits)
             with PDD_cached.compute_binary_lock:
-                return self.compute_binary(op, pdd2, op_id, binary)
+                return self.compute_binary(op, pdd2, op_id, bits, binary)
         return PDD_cached.compute_binary_cache[(op_id, self, pdd2)]
 
     compute_ite_lock = threading.Lock()
     compute_ite_cache = {}
     compute_ite_hits = 0
 
-    def compute_ite(self, pdd2, pdd3, op_id = None, ite = None):
+    def compute_ite(self, pdd2, pdd3, op_id = None, bits = None, ite = None):
         if op_id is None:
-            return super().compute_ite(pdd2, pdd3)
+            return super().compute_ite(pdd2, pdd3, op_id, bits)
         elif (op_id, self, pdd2, pdd3) in PDD_cached.compute_ite_cache:
-            # assert (super().compute_ite(pdd2, pdd3, op_id) ==
+            # assert (super().compute_ite(pdd2, pdd3, op_id, bits) ==
             #     PDD_cached.compute_ite_cache[(op_id, self, pdd2, pdd3)])
             PDD_cached.compute_ite_hits += 1
         elif ite:
@@ -188,20 +188,20 @@ class PDD_cached(PDD_uncached):
             PDD_cached.compute_ite_cache[(op_id, self, pdd2, pdd3)] = ite
         else:
             # concurrent without acquiring lock
-            ite = super().compute_ite(pdd2, pdd3, op_id)
+            ite = super().compute_ite(pdd2, pdd3, op_id, bits)
             with PDD_cached.compute_ite_lock:
-                return self.compute_ite(pdd2, pdd3, op_id, ite)
+                return self.compute_ite(pdd2, pdd3, op_id, bits, ite)
         return PDD_cached.compute_ite_cache[(op_id, self, pdd2, pdd3)]
 
     compute_ternary_lock = threading.Lock()
     compute_ternary_cache = {}
     compute_ternary_hits = 0
 
-    def compute_ternary(self, op, pdd2, pdd3, op_id = None, ternary = None):
+    def compute_ternary(self, op, pdd2, pdd3, op_id = None, bits = None, ternary = None):
         if op_id is None:
-            return super().compute_ternary(op, pdd2, pdd3)
+            return super().compute_ternary(op, pdd2, pdd3, op_id, bits)
         elif (op_id, self, pdd2, pdd3) in PDD_cached.compute_ternary_cache:
-            # assert (super().compute_ternary(op, pdd2, pdd3, op_id) ==
+            # assert (super().compute_ternary(op, pdd2, pdd3, op_id, bits) ==
             #     PDD_cached.compute_ternary_cache[(op_id, self, pdd2, pdd3)])
             PDD_cached.compute_ternary_hits += 1
         elif ternary:
@@ -209,9 +209,9 @@ class PDD_cached(PDD_uncached):
             PDD_cached.compute_ternary_cache[(op_id, self, pdd2, pdd3)] = ternary
         else:
             # concurrent without acquiring lock
-            ternary = super().compute_ternary(op, pdd2, pdd3, op_id)
+            ternary = super().compute_ternary(op, pdd2, pdd3, op_id, bits)
             with PDD_cached.compute_ternary_lock:
-                return self.compute_ternary(op, pdd2, pdd3, op_id, ternary)
+                return self.compute_ternary(op, pdd2, pdd3, op_id, bits, ternary)
         return PDD_cached.compute_ternary_cache[(op_id, self, pdd2, pdd3)]
 
     def print_profile():

@@ -1479,7 +1479,7 @@ class CFLOBVDD:
                 # without reductions value may appear more than once
         return value_paths
 
-    def get_printed_CFLOBVDD(self, value = None):
+    def get_printed_inputs(self, value = None):
         return (f"CFLOBVDD:\n" +
             f"{2**self.grouping.level} input variables\n" +
             f"{self.number_of_connections()} connections\n" +
@@ -1560,6 +1560,9 @@ class CFLOBVDD:
                 self.grouping.swap_level, self.grouping.fork_level),
             lambda x, y: op(x) if x is not None else None,
             number_of_output_bits)
+
+    def compute_unary(self, op, op_id, number_of_output_bits):
+        return self.unary_apply_and_reduce(op, number_of_output_bits)
 
     def projection(level, swap_level, fork_level, input_i, reorder = False):
         assert 0 <= swap_level <= level
@@ -1645,6 +1648,9 @@ class CFLOBVDD:
 
         return CFLOBVDD.representative(g, induced_value_tuple)
 
+    def compute_binary(self, op, n2, op_id, number_of_output_bits):
+        return self.binary_apply_and_reduce(n2, op, number_of_output_bits)
+
     def ternary_apply_and_reduce(self, n2, n3, op, number_of_output_bits):
         assert isinstance(n2, CFLOBVDD) and isinstance(n3, CFLOBVDD)
 
@@ -1672,6 +1678,13 @@ class CFLOBVDD:
             induced_value_tuple = equiv_classes
 
         return CFLOBVDD.representative(g, induced_value_tuple)
+
+    def compute_ternary(self, op, n2, n3, op_id, number_of_output_bits):
+        return self.ternary_apply_and_reduce(n2, n3, op, number_of_output_bits)
+
+    def compute_ite(self, n2, n3, op_id, number_of_output_bits):
+        return self.compute_ternary(lambda x, y, z: y if x else z, n2, n3,
+            op_id, number_of_output_bits)
 
     def swap_flow(self):
         grouping, outputs = self.grouping.swap_flow(self.outputs)

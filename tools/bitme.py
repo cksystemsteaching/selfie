@@ -357,9 +357,9 @@ class Values:
     def apply_unary(self, sid_line, op, op_id):
         bvdd = cflobvdd = None
         if Values.BVDD:
-            bvdd = self.bvdd.compute_unary(op, op_id)
+            bvdd = self.bvdd.compute_unary(op, op_id, sid_line.size)
         if Values.CFLOBVDD:
-            cflobvdd = self.cflobvdd.unary_apply_and_reduce(op, sid_line.size)
+            cflobvdd = self.cflobvdd.compute_unary(op, op_id, sid_line.size)
         return Values(sid_line, None, None, bvdd, cflobvdd)
 
     def SignExt(self, sid_line):
@@ -406,9 +406,9 @@ class Values:
         assert isinstance(values, Values), f"{self} {op} {values}"
         bvdd = cflobvdd = None
         if Values.BVDD:
-            bvdd = self.bvdd.compute_binary(op, values.bvdd, op_id)
+            bvdd = self.bvdd.compute_binary(op, values.bvdd, op_id, sid_line.size)
         if Values.CFLOBVDD:
-            cflobvdd = self.cflobvdd.binary_apply_and_reduce(values.cflobvdd, op, sid_line.size)
+            cflobvdd = self.cflobvdd.compute_binary(op, values.cflobvdd, op_id, sid_line.size)
         return Values(sid_line, None, None, bvdd, cflobvdd)
 
     def Implies(self, values):
@@ -593,10 +593,9 @@ class Values:
         assert values2.match_sorts(values3)
         bvdd = cflobvdd = None
         if Values.BVDD:
-            bvdd = self.bvdd.compute_ite(values2.bvdd, values3.bvdd, "ite")
+            bvdd = self.bvdd.compute_ite(values2.bvdd, values3.bvdd, "ite", values2.sid_line.size)
         if Values.CFLOBVDD:
-            cflobvdd = self.cflobvdd.ternary_apply_and_reduce(values2.cflobvdd, values3.cflobvdd,
-                lambda x, y, z: y if x else z, values2.sid_line.size)
+            cflobvdd = self.cflobvdd.compute_ite(values2.cflobvdd, values3.cflobvdd, "ite", values2.sid_line.size)
         return Values(values2.sid_line, None, None, bvdd, cflobvdd)
 
 LAMBDAS = True
@@ -1452,7 +1451,7 @@ class Bitme_Solver:
             if Values.BVDD:
                 print(self.constraint.bvdd.get_printed_inputs(True))
             if Values.CFLOBVDD:
-                print(self.constraint.cflobvdd.get_printed_CFLOBVDD(True))
+                print(self.constraint.cflobvdd.get_printed_inputs(True))
 
     def eval_inputs(self, inputs, step):
         if self.fallback:
