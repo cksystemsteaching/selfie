@@ -10,7 +10,7 @@
 
 # selfie.cs.uni-salzburg.at
 
-# Bitvector decision diagrams (BVDDs)
+# Bitvector Decision Diagrams (BVDDs)
 
 # Given an n-bit bitvector (currently for n == 8 only),
 # we use 2**n-bit unsigned integers to represent
@@ -195,7 +195,7 @@ class BVDD_Node:
         assert type(bvdd3) is type(self)
         return self.compute_ternary(lambda x, y, z: y if x else z, bvdd2, bvdd3, op_id)
 
-    # for partitioned BVDDs
+    # for PDDs
 
     def op_union(output1, output2):
         return output1 if output2 is None else output2
@@ -367,7 +367,7 @@ class BVDD_Node:
         # BVDD may be incomplete, only use for printing
         return new_bvdd
 
-    def get_printed_BVDD(self, output_value):
+    def get_printed_inputs(self, output_value):
         return (f"{type(self).__name__}:\n" +
             f"{self.number_of_connections()} connections\n" +
             f"{self.number_of_outputs()} output values\n" +
@@ -905,211 +905,4 @@ class BVDD_cached(BVDD_uncached):
         print(f"ternary operators:    {utilization(BVDD_cached.compute_ternary_hits, len(BVDD_cached.compute_ternary_cache))}")
 
 class BVDD(BVDD_cached):
-    pass
-
-class PBVDD_uncached:
-    def __init__(self, o2b):
-        self.o2b = o2b
-
-    def __str__(self):
-        return "PBVDD: " + ", ".join([f"{bvdd} -> {output_value}"
-            for output_value, bvdd in self.o2b.items()])
-
-    def is_consistent(self):
-        for output1_value in self.o2b:
-            bvdd1 = self.o2b[output1_value]
-            if len(self.o2b) == 1:
-                if not bvdd1.is_constant() or bvdd1.get_dont_care_output() is None:
-                    return False
-            for output2_value in self.o2b:
-                if output1_value != output2_value:
-                    bvdd2 = self.o2b[output2_value]
-                    if bvdd1.intersection(bvdd2).is_not_empty():
-                        return False
-        return True
-
-    def number_of_connections(self):
-        return sum([self.o2b[output_value].number_of_connections() for output_value in self.o2b])
-
-    def number_of_outputs(self):
-        return len(self.o2b)
-
-    def number_of_distinct_inputs(self):
-        return sum([self.o2b[output_value].number_of_distinct_inputs(0) for output_value in self.o2b])
-
-    def is_always_false(self):
-        return len(self.o2b) == 1 and False in self.o2b
-
-    def is_always_true(self):
-        return len(self.o2b) == 1 and True in self.o2b
-
-    def constant(output_value):
-        assert isinstance(output_value, bool) or isinstance(output_value, int)
-        return PBVDD({output_value:BVDD.constant(0)})
-
-    def projection(index, offset = 0):
-        return PBVDD(dict([(input_value + offset, BVDD.projection(index, offset, input_value))
-            for input_value in range(256)]))
-
-    def map(self, inputs, output_value):
-        if output_value not in self.o2b:
-            self.o2b[output_value] = inputs
-        else:
-            self.o2b[output_value] = self.o2b[output_value].union(inputs)
-
-    def compute_unary(self, op, op_id = None):
-        new_bvdd = PBVDD({})
-        for output_value in self.o2b:
-            new_bvdd.map(self.o2b[output_value], op(output_value))
-        return new_bvdd
-
-    def compute_binary(self, op, bvdd2, op_id = None):
-        assert type(bvdd2) is type(self)
-        bvdd1 = self
-        new_bvdd = PBVDD({})
-        for output1_value in bvdd1.o2b:
-            for output2_value in bvdd2.o2b:
-                intersection = bvdd1.o2b[output1_value].intersection(bvdd2.o2b[output2_value])
-                if intersection.is_not_empty():
-                    new_bvdd.map(intersection, op(output1_value, output2_value))
-        return new_bvdd
-
-    def compute_ite(self, bvdd2, bvdd3, op_id):
-        assert type(bvdd2) is type(self)
-        assert type(bvdd3) is type(self)
-        bvdd1 = self
-        new_bvdd = PBVDD({})
-        for output1_value in bvdd1.o2b:
-            assert isinstance(output1_value, bool)
-            if output1_value:
-                for output2_value in bvdd2.o2b:
-                    intersection = bvdd1.o2b[output1_value].intersection(bvdd2.o2b[output2_value])
-                    if intersection.is_not_empty():
-                        new_bvdd.map(intersection, output2_value)
-            else:
-                for output3_value in bvdd3.o2b:
-                    intersection = bvdd1.o2b[output1_value].intersection(bvdd3.o2b[output3_value])
-                    if intersection.is_not_empty():
-                        new_bvdd.map(intersection, output3_value)
-        return new_bvdd
-
-    def compute_ternary(self, op, bvdd2, bvdd3, op_id = None):
-        assert type(bvdd2) is type(self)
-        assert type(bvdd3) is type(self)
-        bvdd1 = self
-        new_bvdd = PBVDD({})
-        for output1_value in bvdd1.o2b:
-            for output2_value in bvdd2.o2b:
-                for output3_value in bvdd3.o2b:
-                    intersection = bvdd1.o2b[output1_value].intersection(
-                        bvdd2.o2b[output2_value],
-                        bvdd3.o2b[output3_value])
-                    if intersection.is_not_empty():
-                        new_bvdd.map(intersection,
-                            op(output1_value, output2_value, output3_value))
-        return new_bvdd
-
-    def compute_ite_slow(self, bvdd2, bvdd3, op_id):
-        assert type(bvdd2) is type(self)
-        assert type(bvdd3) is type(self)
-        return self.compute_ternary(lambda x, y, z: y if x else z, bvdd2, bvdd3, op_id)
-
-    def get_printed_BVDD(self, output_value):
-        return (f"{type(self).__name__}:" +
-            f"{self.o2b[output_value].get_printed_BVDD(0)} -> {output_value}")
-
-class PBVDD_cached(PBVDD_uncached):
-    compute_unary_lock = threading.Lock()
-    compute_unary_cache = {}
-    compute_unary_hits = 0
-
-    def compute_unary(self, op, op_id = None, unary = None):
-        if op_id is None:
-            return super().compute_unary(op)
-        elif (op_id, self) in PBVDD_cached.compute_unary_cache:
-            # assert (super().compute_unary(op, op_id) ==
-            #     PBVDD_cached.compute_unary_cache[(op_id, self)])
-            PBVDD_cached.compute_unary_hits += 1
-        elif unary:
-            # lock is acquired
-            PBVDD_cached.compute_unary_cache[(op_id, self)] = unary
-        else:
-            # concurrent without acquiring lock
-            unary = super().compute_unary(op, op_id)
-            with PBVDD_cached.compute_unary_lock:
-                return self.compute_unary(op, op_id, unary)
-        return PBVDD_cached.compute_unary_cache[(op_id, self)]
-
-    compute_binary_lock = threading.Lock()
-    compute_binary_cache = {}
-    compute_binary_hits = 0
-
-    def compute_binary(self, op, bvdd2, op_id = None, binary = None):
-        if op_id is None:
-            return super().compute_binary(op, bvdd2)
-        elif (op_id, self, bvdd2) in PBVDD_cached.compute_binary_cache:
-            # assert (super().compute_binary(op, bvdd2, op_id) ==
-            #     PBVDD_cached.compute_binary_cache[(op_id, self, bvdd2)])
-            PBVDD_cached.compute_binary_hits += 1
-        elif binary:
-            # lock is acquired
-            PBVDD_cached.compute_binary_cache[(op_id, self, bvdd2)] = binary
-        else:
-            # concurrent without acquiring lock
-            binary = super().compute_binary(op, bvdd2, op_id)
-            with PBVDD_cached.compute_binary_lock:
-                return self.compute_binary(op, bvdd2, op_id, binary)
-        return PBVDD_cached.compute_binary_cache[(op_id, self, bvdd2)]
-
-    compute_ite_lock = threading.Lock()
-    compute_ite_cache = {}
-    compute_ite_hits = 0
-
-    def compute_ite(self, bvdd2, bvdd3, op_id = None, ite = None):
-        if op_id is None:
-            return super().compute_ite(bvdd2, bvdd3)
-        elif (op_id, self, bvdd2, bvdd3) in PBVDD_cached.compute_ite_cache:
-            # assert (super().compute_ite(bvdd2, bvdd3, op_id) ==
-            #     PBVDD_cached.compute_ite_cache[(op_id, self, bvdd2, bvdd3)])
-            PBVDD_cached.compute_ite_hits += 1
-        elif ite:
-            # lock is acquired
-            PBVDD_cached.compute_ite_cache[(op_id, self, bvdd2, bvdd3)] = ite
-        else:
-            # concurrent without acquiring lock
-            ite = super().compute_ite(bvdd2, bvdd3, op_id)
-            with PBVDD_cached.compute_ite_lock:
-                return self.compute_ite(bvdd2, bvdd3, op_id, ite)
-        return PBVDD_cached.compute_ite_cache[(op_id, self, bvdd2, bvdd3)]
-
-    compute_ternary_lock = threading.Lock()
-    compute_ternary_cache = {}
-    compute_ternary_hits = 0
-
-    def compute_ternary(self, op, bvdd2, bvdd3, op_id = None, ternary = None):
-        if op_id is None:
-            return super().compute_ternary(op, bvdd2, bvdd3)
-        elif (op_id, self, bvdd2, bvdd3) in PBVDD_cached.compute_ternary_cache:
-            # assert (super().compute_ternary(op, bvdd2, bvdd3, op_id) ==
-            #     PBVDD_cached.compute_ternary_cache[(op_id, self, bvdd2, bvdd3)])
-            PBVDD_cached.compute_ternary_hits += 1
-        elif ternary:
-            # lock is acquired
-            PBVDD_cached.compute_ternary_cache[(op_id, self, bvdd2, bvdd3)] = ternary
-        else:
-            # concurrent without acquiring lock
-            ternary = super().compute_ternary(op, bvdd2, bvdd3, op_id)
-            with PBVDD_cached.compute_ternary_lock:
-                return self.compute_ternary(op, bvdd2, bvdd3, op_id, ternary)
-        return PBVDD_cached.compute_ternary_cache[(op_id, self, bvdd2, bvdd3)]
-
-    def print_profile():
-        BVDD.print_profile()
-        print("PBVDD cache profile:")
-        print(f"unary operators:   {utilization(PBVDD_cached.compute_unary_hits, len(PBVDD_cached.compute_unary_cache))}")
-        print(f"binary operators:  {utilization(PBVDD_cached.compute_binary_hits, len(PBVDD_cached.compute_binary_cache))}")
-        print(f"ite operators:     {utilization(PBVDD_cached.compute_ite_hits, len(PBVDD_cached.compute_ite_cache))}")
-        print(f"ternary operators: {utilization(PBVDD_cached.compute_ternary_hits, len(PBVDD_cached.compute_ternary_cache))}")
-
-class PBVDD(PBVDD_cached):
     pass

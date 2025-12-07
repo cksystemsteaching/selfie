@@ -29,6 +29,8 @@ import bitwuzlainterface
 import bvdd as BVDD
 import cflobvdd as CFLOBVDD
 
+import pdd as PDD
+
 import ctypes
 
 try:
@@ -90,7 +92,7 @@ class Values:
             assert sid_line.is_unsigned_value(value)
 
             if Values.BVDD:
-                self.bvdd = BVDD.PBVDD.constant(value)
+                self.bvdd = PDD.PDD.constant(value, BVDD.BVDD)
             if Values.CFLOBVDD:
                 self.cflobvdd = CFLOBVDD.CFLOBVDD.byte_constant(
                     Values.CFLOBVDD_level,
@@ -102,7 +104,7 @@ class Values:
             Values.total_number_of_constants += 1
         elif isinstance(var_line, Variable):
             if Values.BVDD:
-                self.bvdd = BVDD.PBVDD.projection(var_line.input_index)
+                self.bvdd = PDD.PDD.projection(var_line.input_index, BVDD.BVDD)
             if Values.CFLOBVDD:
                 self.cflobvdd = CFLOBVDD.CFLOBVDD.byte_projection(
                     Values.CFLOBVDD_level,
@@ -1409,7 +1411,7 @@ class Bitme_Solver:
                 self.bitwuzla_solver.print_inputs(inputs, step, level)
         else:
             if Values.BVDD:
-                print(self.constraint.bvdd.get_printed_BVDD(True))
+                print(self.constraint.bvdd.get_printed_inputs(True))
             if Values.CFLOBVDD:
                 print(self.constraint.cflobvdd.get_printed_CFLOBVDD(True))
 
@@ -1799,9 +1801,10 @@ def main():
                 bmc(bitwuzla_solver, kmin, kmax, args)
 
         if Values.BVDD:
-            BVDD.PBVDD.print_profile()
+            BVDD.BVDD.print_profile()
+            PDD.PDD.print_profile()
         if Values.CFLOBVDD:
-            BVDD.PBVDD.print_profile()
+            BVDD.BVDD.print_profile()
             CFLOBVDD.CFLOBVDD.print_profile()
 
     print_separator('#')

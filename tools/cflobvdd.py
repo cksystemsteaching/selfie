@@ -10,7 +10,7 @@
 
 # selfie.cs.uni-salzburg.at
 
-# Context-free language ordered bitvector decision diagrams (CFLOBVDDs)
+# Context-free Language Ordered Bitvector Decision Diagrams (CFLOBVDDs)
 
 # CFLOBVDDs generalize CFLOBDDs in two ways:
 
