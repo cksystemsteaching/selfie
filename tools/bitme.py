@@ -91,27 +91,20 @@ class Values:
             assert sid_line.is_unsigned_value(value)
 
             if Values.BVDD:
-                self.bvdd = PDD.PDD.constant(value, BVDD.BVDD)
+                self.bvdd = BVDD.BVDD.constant(value)
+                # self.bvdd = PDD.PDD.constant(value, BVDD.BVDD)
             if Values.CFLOBVDD:
-                self.cflobvdd = CFLOBVDD.CFLOBVDD.byte_constant(
-                    Values.CFLOBVDD_level,
-                    Values.CFLOBVDD_swap_level,
-                    Values.CFLOBVDD_fork_level,
-                    Values.CFLOBVDD_number_of_inputs,
-                    value)
+                self.cflobvdd = CFLOBVDD.CFLOBVDD.constant(value)
+                # self.cflobvdd = PDD.PDD.constant(value, CFLOBVDD.CFLOBVDD)
 
             Values.total_number_of_constants += 1
         elif isinstance(var_line, Variable):
             if Values.BVDD:
-                self.bvdd = PDD.PDD.projection(var_line.input_index, BVDD.BVDD)
+                self.bvdd = BVDD.BVDD.projection(var_line.input_index)
+                # self.bvdd = PDD.PDD.projection(var_line.input_index, BVDD.BVDD)
             if Values.CFLOBVDD:
-                self.cflobvdd = CFLOBVDD.CFLOBVDD.byte_projection(
-                    Values.CFLOBVDD_level,
-                    Values.CFLOBVDD_swap_level,
-                    Values.CFLOBVDD_fork_level,
-                    Values.CFLOBVDD_number_of_inputs,
-                    var_line.input_index,
-                    True)
+                self.cflobvdd = CFLOBVDD.CFLOBVDD.projection(var_line.input_index)
+                # self.cflobvdd = PDD.PDD.projection(var_line.input_index, CFLOBVDD.CFLOBVDD)
 
             Values.total_number_of_constants += 2**var_line.sid_line.size
             if Values.BVDD:
@@ -185,7 +178,7 @@ class Values:
             return [comparison_line]
 
     def get_bvdd_node_expression(sid_line, bvdd, sbdd, pdd, index = 0):
-        if pdd and bvdd == BVDD_Node.no_input:
+        if pdd and bvdd == BVDD.BVDD_Node.no_input:
             return None
         elif isinstance(bvdd, bool) or isinstance(bvdd, int):
             return Constd(btor2.Parser.next_nid(), sid_line, int(bvdd),
@@ -225,37 +218,6 @@ class Values:
             not (isinstance(self.bvdd, BVDD.SBDD_s2o) or
                 isinstance(self.bvdd, BVDD.SBDD_o2s)),
             False)
-
-    # PDD adapter
-
-    def get_pdd_expression(self):
-        pdd = self.bvdd
-        exp_line = None
-        for output_value in pdd.o2s:
-            inputs = pdd.o2s[output_value]
-            output_line = Constd(btor2.Parser.next_nid(), self.sid_line,
-                int(output_value),
-                "domain-propagated value", 0)
-            if len(pdd.o2s) == 1:
-                assert not inputs.is_not_full()
-                # dont-care output
-                return output_line
-            elif exp_line is None:
-                # reachable only if input value is in inputs
-                exp_line = output_line
-            else:
-                input_line = Values.get_bvdd_node_expression(self.sid_line,
-                    inputs,
-                    not (isinstance(inputs, BVDD.SBDD_s2o) or
-                        isinstance(inputs, BVDD.SBDD_o2s)),
-                    True)
-                assert input_line
-                exp_line = Ite(btor2.Parser.next_nid(), self.sid_line,
-                    input_line,
-                    output_line,
-                    exp_line,
-                    self.sid_line.comment, self.sid_line.line_no)
-        return exp_line
 
     # CFLOBVDD adapter
 
@@ -311,7 +273,58 @@ class Values:
                     self.sid_line.comment, self.sid_line.line_no)
         return exp_line
 
+    # PDD adapter
+
+    def get_pdd_expression(self, clss):
+        pdd = self.bvdd if clss is BVDD.BVDD else self.cflobvdd
+        exp_line = None
+        for output_value in pdd.o2s:
+            inputs = pdd.o2s[output_value]
+            output_line = Constd(btor2.Parser.next_nid(), self.sid_line,
+                int(output_value),
+                "domain-propagated value", 0)
+            if len(pdd.o2s) == 1:
+                assert not inputs.is_not_full()
+                # dont-care output
+                return output_line
+            elif exp_line is None:
+                # reachable only if input value is in inputs
+                exp_line = output_line
+            else:
+                if isinstance(inputs, BVDD):
+                    input_line = Values.get_bvdd_node_expression(self.sid_line,
+                        inputs,
+                        not (isinstance(inputs, BVDD.SBDD_s2o) or
+                            isinstance(inputs, BVDD.SBDD_o2s)),
+                        True)
+                else:
+                    assert 0 < len(inputs.outputs) <= 2
+                    exit_i = 1 if inputs.outputs[1] == CFLOBVDD.CFLOBVDD.has_input else 2
+                    input_line = Values.get_path_expression(inputs.grouping.get_paths(exit_i))[0]
+                assert input_line
+                exp_line = Ite(btor2.Parser.next_nid(), self.sid_line,
+                    input_line,
+                    output_line,
+                    exp_line,
+                    self.sid_line.comment, self.sid_line.line_no)
+        return exp_line
+
     # expressions
+
+    def get_expression(self):
+        # naive transition from domain propagation to bit blasting
+        assert isinstance(self.sid_line, Bitvector)
+        if Values.BVDD:
+            if isinstance(self.bvdd, BVDD.BVDD):
+                return self.get_bvdd_expression()
+            else:
+                return self.get_pdd_expression(BVDD.BVDD)
+        else:
+            assert Values.CFLOBVDD
+            if isinstance(self.cflobvdd, CFLOBVDD.CFLOBVDD):
+                return self.get_cflobvdd_expression()
+            else:
+                return self.get_pdd_expression(CFLOBVDD.CFLOBVDD)
 
     def FALSE():
         if Values.false is None:
@@ -340,15 +353,6 @@ class Values:
             return self.bvdd.is_always_true()
         if Values.CFLOBVDD:
             return self.cflobvdd.is_always_true()
-
-    def get_expression(self):
-        # naive transition from domain propagation to bit blasting
-        assert isinstance(self.sid_line, Bitvector)
-        if Values.BVDD:
-            return self.get_pdd_expression()
-        else:
-            assert Values.CFLOBVDD
-            return self.get_cflobvdd_expression()
 
     # per-value semantics of value sets
 
@@ -1816,6 +1820,11 @@ def main():
             assert 0 <= Values.CFLOBVDD_swap_level <= Values.CFLOBVDD_level, \
                 f"invalid swap level {Values.CFLOBVDD_swap_level} for level {Values.CFLOBVDD_level}"
 
+            CFLOBVDD.CFLOBVDD.level = Values.CFLOBVDD_level
+            CFLOBVDD.CFLOBVDD.swap_level = Values.CFLOBVDD_swap_level
+            CFLOBVDD.CFLOBVDD.fork_level = Values.CFLOBVDD_fork_level
+            CFLOBVDD.CFLOBVDD.number_of_inputs = Values.CFLOBVDD_number_of_inputs
+
             print_separator('-')
             print(f"CFLOBVDD configuration: {Values.CFLOBVDD_number_of_inputs} input bytes " +
                 f"@ level {Values.CFLOBVDD_level}, swap level {Values.CFLOBVDD_swap_level}, and fork level {Values.CFLOBVDD_fork_level}")
@@ -1844,6 +1853,7 @@ def main():
         if Values.CFLOBVDD:
             BVDD.BVDD.print_profile()
             CFLOBVDD.CFLOBVDD.print_profile()
+            PDD.PDD.print_profile()
 
     print_separator('#')
 
