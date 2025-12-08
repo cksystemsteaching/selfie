@@ -1522,7 +1522,7 @@ class CFLOBVDD:
             (self.number_of_distinct_outputs() == 1 or
                 (self.number_of_distinct_outputs() == 2 and None in self.outputs.values())))
 
-    def constant(level, swap_level, fork_level, output = 0):
+    def constant_CFLOBVDD(level, swap_level, fork_level, output = 0):
         assert 0 <= swap_level <= level
         assert 0 <= fork_level <= level
         with CFLOBVDD.max_level_lock:
@@ -1533,13 +1533,20 @@ class CFLOBVDD:
     def byte_constant(level, swap_level, fork_level, number_of_input_bytes, output):
         assert number_of_input_bytes > 0
         level = max(level, swap_level, fork_level, ceil(log2(number_of_input_bytes)))
-        return CFLOBVDD.constant(level, swap_level, fork_level, output)
+        return CFLOBVDD.constant_CFLOBVDD(level, swap_level, fork_level, output)
+
+    def constant(output):
+        return CFLOBVDD.byte_constant(CFLOBVDD.level,
+            CFLOBVDD.swap_level,
+            CFLOBVDD.fork_level,
+            CFLOBVDD.number_of_inputs,
+            output)
 
     def false(level, swap_level, fork_level):
-        return CFLOBVDD.constant(level, swap_level, fork_level, False)
+        return CFLOBVDD.constant_CFLOBVDD(level, swap_level, fork_level, False)
 
     def true(level, swap_level, fork_level):
-        return CFLOBVDD.constant(level, swap_level, fork_level, True)
+        return CFLOBVDD.constant_CFLOBVDD(level, swap_level, fork_level, True)
 
     def flip_value_tuple(self):
         # self must be reduced
@@ -1557,7 +1564,7 @@ class CFLOBVDD:
 
     def unary_apply_and_reduce(self, op, number_of_output_bits):
         return self.binary_apply_and_reduce(
-            CFLOBVDD.constant(self.grouping.level,
+            CFLOBVDD.constant_CFLOBVDD(self.grouping.level,
                 self.grouping.swap_level, self.grouping.fork_level),
             lambda x, y: op(x) if x is not None else None,
             number_of_output_bits)
@@ -1565,7 +1572,7 @@ class CFLOBVDD:
     def compute_unary(self, op, op_id, number_of_output_bits):
         return self.unary_apply_and_reduce(op, number_of_output_bits)
 
-    def projection(level, swap_level, fork_level, input_i, reorder = False, input_value = None):
+    def projection_CFLOBVDD(level, swap_level, fork_level, input_i, reorder = False, input_value = None):
         assert 0 <= swap_level <= level
         assert 0 <= fork_level <= level
         assert 0 <= input_i < 2**level
@@ -1586,7 +1593,16 @@ class CFLOBVDD:
             byte_i, reorder = False, input_value = None):
         level = max(level, swap_level, fork_level, ceil(log2(number_of_input_bytes)))
         assert 0 <= byte_i < 2**level
-        return CFLOBVDD.projection(level, swap_level, fork_level, byte_i, reorder, input_value)
+        return CFLOBVDD.projection_CFLOBVDD(level, swap_level, fork_level, byte_i, reorder, input_value)
+
+    def projection(index, input_value = None):
+        return CFLOBVDD.byte_projection(CFLOBVDD.level,
+            CFLOBVDD.swap_level,
+            CFLOBVDD.fork_level,
+            CFLOBVDD.number_of_inputs,
+            index,
+            True,
+            input_value)
 
     def collapse_classes_leftmost(equiv_classes):
         # legacy code
@@ -1712,20 +1728,10 @@ class CFLOBVDD:
         return self.number_of_solutions(CFLOBVDD.has_input)
 
     def partitioned_constant():
-        return CFLOBVDD.byte_constant(CFLOBVDD.level,
-            CFLOBVDD.swap_level,
-            CFLOBVDD.fork_level,
-            CFLOBVDD.number_of_inputs,
-            CFLOBVDD.has_input)
+        return CFLOBVDD.constant(CFLOBVDD.has_input)
 
     def partitioned_projection(index, input_value):
-        return CFLOBVDD.byte_projection(CFLOBVDD.level,
-            CFLOBVDD.swap_level,
-            CFLOBVDD.fork_level,
-            CFLOBVDD.number_of_inputs,
-            index,
-            True,
-            input_value)
+        return CFLOBVDD.projection(index, input_value)
 
     def op_union(output1, output2):
         return output1 if output2 == CFLOBVDD.no_input else output2
