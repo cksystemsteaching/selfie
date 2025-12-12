@@ -137,19 +137,19 @@ class PDD_cached(PDD_uncached):
     def compute_unary(self, op, op_id = None, bits = None, unary = None):
         if op_id is None:
             return super().compute_unary(op, op_id, bits)
-        elif (op_id, self) in PDD_cached.compute_unary_cache:
+        elif (op_id, bits, self) in PDD_cached.compute_unary_cache:
             # assert (super().compute_unary(op, op_id, bits) ==
-            #     PDD_cached.compute_unary_cache[(op_id, self)])
+            #     PDD_cached.compute_unary_cache[(op_id, bits, self)])
             PDD_cached.compute_unary_hits += 1
         elif unary:
             # lock is acquired
-            PDD_cached.compute_unary_cache[(op_id, self)] = unary
+            PDD_cached.compute_unary_cache[(op_id, bits, self)] = unary
         else:
             # concurrent without acquiring lock
             unary = super().compute_unary(op, op_id, bits)
             with PDD_cached.compute_unary_lock:
                 return self.compute_unary(op, op_id, bits, unary)
-        return PDD_cached.compute_unary_cache[(op_id, self)]
+        return PDD_cached.compute_unary_cache[(op_id, bits, self)]
 
     compute_binary_lock = threading.Lock()
     compute_binary_cache = {}
@@ -158,19 +158,19 @@ class PDD_cached(PDD_uncached):
     def compute_binary(self, op, pdd2, op_id = None, bits = None, binary = None):
         if op_id is None:
             return super().compute_binary(op, pdd2, op_id, bits)
-        elif (op_id, self, pdd2) in PDD_cached.compute_binary_cache:
+        elif (op_id, bits, self, pdd2) in PDD_cached.compute_binary_cache:
             # assert (super().compute_binary(op, pdd2, op_id, bits) ==
-            #     PDD_cached.compute_binary_cache[(op_id, self, pdd2)])
+            #     PDD_cached.compute_binary_cache[(op_id, bits, self, pdd2)])
             PDD_cached.compute_binary_hits += 1
         elif binary:
             # lock is acquired
-            PDD_cached.compute_binary_cache[(op_id, self, pdd2)] = binary
+            PDD_cached.compute_binary_cache[(op_id, bits, self, pdd2)] = binary
         else:
             # concurrent without acquiring lock
             binary = super().compute_binary(op, pdd2, op_id, bits)
             with PDD_cached.compute_binary_lock:
                 return self.compute_binary(op, pdd2, op_id, bits, binary)
-        return PDD_cached.compute_binary_cache[(op_id, self, pdd2)]
+        return PDD_cached.compute_binary_cache[(op_id, bits, self, pdd2)]
 
     compute_ite_lock = threading.Lock()
     compute_ite_cache = {}
@@ -179,19 +179,19 @@ class PDD_cached(PDD_uncached):
     def compute_ite(self, pdd2, pdd3, op_id = None, bits = None, ite = None):
         if op_id is None:
             return super().compute_ite(pdd2, pdd3, op_id, bits)
-        elif (op_id, self, pdd2, pdd3) in PDD_cached.compute_ite_cache:
+        elif (op_id, bits, self, pdd2, pdd3) in PDD_cached.compute_ite_cache:
             # assert (super().compute_ite(pdd2, pdd3, op_id, bits) ==
-            #     PDD_cached.compute_ite_cache[(op_id, self, pdd2, pdd3)])
+            #     PDD_cached.compute_ite_cache[(op_id, bits, self, pdd2, pdd3)])
             PDD_cached.compute_ite_hits += 1
         elif ite:
             # lock is acquired
-            PDD_cached.compute_ite_cache[(op_id, self, pdd2, pdd3)] = ite
+            PDD_cached.compute_ite_cache[(op_id, bits, self, pdd2, pdd3)] = ite
         else:
             # concurrent without acquiring lock
             ite = super().compute_ite(pdd2, pdd3, op_id, bits)
             with PDD_cached.compute_ite_lock:
                 return self.compute_ite(pdd2, pdd3, op_id, bits, ite)
-        return PDD_cached.compute_ite_cache[(op_id, self, pdd2, pdd3)]
+        return PDD_cached.compute_ite_cache[(op_id, bits, self, pdd2, pdd3)]
 
     compute_ternary_lock = threading.Lock()
     compute_ternary_cache = {}
@@ -200,19 +200,19 @@ class PDD_cached(PDD_uncached):
     def compute_ternary(self, op, pdd2, pdd3, op_id = None, bits = None, ternary = None):
         if op_id is None:
             return super().compute_ternary(op, pdd2, pdd3, op_id, bits)
-        elif (op_id, self, pdd2, pdd3) in PDD_cached.compute_ternary_cache:
+        elif (op_id, bits, self, pdd2, pdd3) in PDD_cached.compute_ternary_cache:
             # assert (super().compute_ternary(op, pdd2, pdd3, op_id, bits) ==
-            #     PDD_cached.compute_ternary_cache[(op_id, self, pdd2, pdd3)])
+            #     PDD_cached.compute_ternary_cache[(op_id, bits, self, pdd2, pdd3)])
             PDD_cached.compute_ternary_hits += 1
         elif ternary:
             # lock is acquired
-            PDD_cached.compute_ternary_cache[(op_id, self, pdd2, pdd3)] = ternary
+            PDD_cached.compute_ternary_cache[(op_id, bits, self, pdd2, pdd3)] = ternary
         else:
             # concurrent without acquiring lock
             ternary = super().compute_ternary(op, pdd2, pdd3, op_id, bits)
             with PDD_cached.compute_ternary_lock:
                 return self.compute_ternary(op, pdd2, pdd3, op_id, bits, ternary)
-        return PDD_cached.compute_ternary_cache[(op_id, self, pdd2, pdd3)]
+        return PDD_cached.compute_ternary_cache[(op_id, bits, self, pdd2, pdd3)]
 
     def print_profile():
         print("PDD cache profile:")

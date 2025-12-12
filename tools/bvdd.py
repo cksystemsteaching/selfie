@@ -854,19 +854,19 @@ class BVDD_cached(BVDD_uncached):
     def compute_unary(self, op, op_id = None, bits = None, unary = None):
         if op_id is None:
             return super().compute_unary(op, op_id, bits)
-        elif (op_id, self) in BVDD_cached.compute_unary_cache:
+        elif (op_id, bits, self) in BVDD_cached.compute_unary_cache:
             # assert (super().compute_unary(op, op_id, bits) ==
-            #     BVDD_cached.compute_unary_cache[(op_id, self)])
+            #     BVDD_cached.compute_unary_cache[(op_id, bits, self)])
             BVDD_cached.compute_unary_hits += 1
         elif unary:
             # lock is acquired
-            BVDD_cached.compute_unary_cache[(op_id, self)] = unary
+            BVDD_cached.compute_unary_cache[(op_id, bits, self)] = unary
         else:
             # concurrent without acquiring lock
             unary = super().compute_unary(op, op_id, bits)
             with BVDD_cached.compute_unary_lock:
                 return self.compute_unary(op, op_id, bits, unary)
-        return BVDD_cached.compute_unary_cache[(op_id, self)]
+        return BVDD_cached.compute_unary_cache[(op_id, bits, self)]
 
     compute_binary_lock = threading.Lock()
     compute_binary_cache = {}
@@ -875,19 +875,19 @@ class BVDD_cached(BVDD_uncached):
     def compute_binary(self, op, bvdd2, op_id = None, bits = None, binary = None):
         if op_id is None:
             return super().compute_binary(op, bvdd2, op_id, bits)
-        elif (op_id, self, bvdd2) in BVDD_cached.compute_binary_cache:
+        elif (op_id, bits, self, bvdd2) in BVDD_cached.compute_binary_cache:
             # assert (super().compute_binary(op, bvdd2, op_id, bits) ==
-            #     BVDD_cached.compute_binary_cache[(op_id, self, bvdd2)])
+            #     BVDD_cached.compute_binary_cache[(op_id, bits, self, bvdd2)])
             BVDD_cached.compute_binary_hits += 1
         elif binary:
             # lock is acquired
-            BVDD_cached.compute_binary_cache[(op_id, self, bvdd2)] = binary
+            BVDD_cached.compute_binary_cache[(op_id, bits, self, bvdd2)] = binary
         else:
             # concurrent without acquiring lock
             binary = super().compute_binary(op, bvdd2, op_id, bits)
             with BVDD_cached.compute_binary_lock:
                 return self.compute_binary(op, bvdd2, op_id, bits, binary)
-        return BVDD_cached.compute_binary_cache[(op_id, self, bvdd2)]
+        return BVDD_cached.compute_binary_cache[(op_id, bits, self, bvdd2)]
 
     compute_ternary_lock = threading.Lock()
     compute_ternary_cache = {}
@@ -896,19 +896,19 @@ class BVDD_cached(BVDD_uncached):
     def compute_ternary(self, op, bvdd2, bvdd3, op_id = None, bits = None, ternary = None):
         if op_id is None:
             return super().compute_ternary(op, bvdd2, bvdd3, op_id, bits)
-        elif (op_id, self, bvdd2, bvdd3) in BVDD_cached.compute_ternary_cache:
+        elif (op_id, bits, self, bvdd2, bvdd3) in BVDD_cached.compute_ternary_cache:
             # assert (super().compute_ternary(op, bvdd2, bvdd3, op_id, bits) ==
-            #     BVDD_cached.compute_ternary_cache[(op_id, self, bvdd2, bvdd3)])
+            #     BVDD_cached.compute_ternary_cache[(op_id, bits, self, bvdd2, bvdd3)])
             BVDD_cached.compute_ternary_hits += 1
         elif ternary:
             # lock is acquired
-            BVDD_cached.compute_ternary_cache[(op_id, self, bvdd2, bvdd3)] = ternary
+            BVDD_cached.compute_ternary_cache[(op_id, bits, self, bvdd2, bvdd3)] = ternary
         else:
             # concurrent without acquiring lock
             ternary = super().compute_ternary(op, bvdd2, bvdd3, op_id, bits)
             with BVDD_cached.compute_ternary_lock:
                 return self.compute_ternary(op, bvdd2, bvdd3, op_id, bits, ternary)
-        return BVDD_cached.compute_ternary_cache[(op_id, self, bvdd2, bvdd3)]
+        return BVDD_cached.compute_ternary_cache[(op_id, bits, self, bvdd2, bvdd3)]
 
     def print_profile():
         print("BVDD cache profile:")
