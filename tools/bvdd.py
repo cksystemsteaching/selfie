@@ -62,7 +62,7 @@ class BVDD_Node:
         return self.number_of_distinct_SBDD_outputs() == 1
 
     def is_constant(self):
-        return self.is_dont_care() and not isinstance(self.get_dont_care_output(), BVDD)
+        return self.is_dont_care() and isinstance(self.get_dont_care_output(), int)
 
     def number_of_connections(self):
         count = 0
@@ -652,20 +652,91 @@ class SBDD_o2s(BVDD_Node):
 
     def projection_BVDD(self, index = 0, offset = 0, input_value = None):
         if input_value is not None:
-            self.o2s = {BVDD_Node.has_input + offset:2**input_value,
-                BVDD_Node.no_input + offset:(2**256-1) & ~(2**input_value)}
+            if isinstance(input_value, int):
+                self.o2s = {BVDD_Node.has_input + offset:2**input_value,
+                    BVDD_Node.no_input + offset:(2**256-1) & ~(2**input_value)}
+            else:
+                # (0,8) normalizes to input_value (+ 0) with 8 bits
+                self.o2s = {(0,8):2**256-1}
         else:
             self.o2s = dict([(input_value + offset, 2**input_value)
                 for input_value in range(256)])
         return self.reduce_SBDD()
 
-    def projection(index = 0, offset = 0):
-        return SBDD_o2s({}).projection_BVDD(index, offset)
+    def projection(index = 0, offset = 0, input_value = None):
+        return SBDD_o2s({}).projection_BVDD(index, offset, input_value)
+
+    def are_not_normalized_outputs(output1, output2, output3):
+        return (not isinstance(output1, tuple) and
+            (output2 is None or not isinstance(output2, tuple)) and
+            (output3 is None or not isinstance(output3, tuple)))
+
+    def are_not_BVDD(output1, output2, output3):
+        return (not isinstance(output1, BVDD) and
+            (output2 is None or not isinstance(output2, BVDD)) and
+            (output3 is None or not isinstance(output3, BVDD)))
+
+    def normalize(inputs, output_value, bits):
+        if (isinstance(output_value, BVDD) or
+            isinstance(output_value, bool) or
+            abs(bits) <= 64):
+            # TODO: determine threshold on bits
+            return output_value
+        else:
+            assert inputs > 0
+            if inputs & (inputs - 1) != 0:
+                # multiple input values
+                return output_value
+            else:
+                # just one input value, make output value dependent on input value
+                input_value = inputs.bit_length() - 1
+                return output_value - input_value if bits >= 0 else \
+                    (2**-bits - output_value) - input_value, bits
+
+    def denormalize(input_value, output):
+        if not isinstance(output, tuple):
+            return output
+        else:
+            normalized_value = output[0]
+            bits = output[1]
+            assert 0 <= input_value < 256
+            return input_value + normalized_value if bits >= 0 else \
+                2**-bits - (input_value + normalized_value)
+
+    def denormalize_op(op, input_value, output1, output2 = None, output3 = None):
+        output1_value = SBDD_o2s.denormalize(input_value, output1)
+        if output2 is None and output2 is None:
+            return op(output1_value)
+        else:
+            output2_value = SBDD_o2s.denormalize(input_value, output2)
+            if output3 is None:
+                return op(output1_value, output2_value)
+            else:
+                output3_value = SBDD_o2s.denormalize(input_value, output3)
+                return op(output1_value, output2_value, output3_value)
+
+    def normalized_map(self, bits, op, op_id, inputs, output1, output2 = None, output3 = None):
+        if SBDD_o2s.are_not_normalized_outputs(output1, output2, output3):
+            self.map(inputs,
+                SBDD_o2s.normalize(inputs,
+                    SBDD_o2s.denormalize_op(op, inputs, output1, output2, output3), bits))
+        else:
+            if SBDD_o2s.are_not_BVDD(output1, output2, output3):
+                if op_id == "ite":
+                    self.map(inputs, op(output1, output2, output3))
+                    return
+                # TODO: pass normalized outputs to other op
+            while inputs > 0:
+                input_value = (inputs & -inputs).bit_length() - 1
+                self.map(2**input_value,
+                    SBDD_o2s.normalize(2**input_value,
+                        SBDD_o2s.denormalize_op(op, input_value, output1, output2, output3), bits))
+                inputs &= inputs - 1
 
     def compute_unary(self, op, op_id = None, bits = None):
         new_bvdd = type(self)({})
         for output in self.o2s:
-            new_bvdd.map(self.o2s[output], op(output))
+            new_bvdd.normalized_map(bits, op, op_id, self.o2s[output], output)
         return new_bvdd.reduce_SBDD()
 
     def get_s(self):
@@ -688,7 +759,8 @@ class SBDD_o2s(BVDD_Node):
         bvdd2_o2s = list(bvdd2.o2s)
         new_bvdd = type(self)({})
         for inputs, output1_i, output2_i in bvdd1.intersect_binary(bvdd2):
-            new_bvdd.map(inputs, op(bvdd1_o2s[output1_i], bvdd2_o2s[output2_i]))
+            new_bvdd.normalized_map(bits, op, op_id, inputs,
+                bvdd1_o2s[output1_i], bvdd2_o2s[output2_i])
         return new_bvdd.reduce_SBDD()
 
     def intersect_ternary(self, bvdd2, bvdd3):
@@ -711,8 +783,8 @@ class SBDD_o2s(BVDD_Node):
         bvdd3_o2s = list(bvdd3.o2s)
         new_bvdd = type(self)({})
         for inputs, output1_i, output2_i, output3_i in bvdd1.intersect_ternary(bvdd2, bvdd3):
-            new_bvdd.map(inputs,
-                op(bvdd1_o2s[output1_i], bvdd2_o2s[output2_i], bvdd3_o2s[output3_i]))
+            new_bvdd.normalized_map(bits, op, op_id, inputs,
+                bvdd1_o2s[output1_i], bvdd2_o2s[output2_i], bvdd3_o2s[output3_i])
         return new_bvdd.reduce_SBDD()
 
 class BVDD_uncached(SBDD_o2s):
@@ -741,7 +813,7 @@ class BVDD_uncached(SBDD_o2s):
             return op(output1)
 
     def compute_unary(self, op, op_id = None, bits = None):
-        return super().compute_unary(lambda x: BVDD.op_unary(op, x, op_id, bits))
+        return super().compute_unary(lambda x: BVDD.op_unary(op, x, op_id, bits), op_id, bits)
 
     def op_binary(op, output1, output2, op_id, bits):
         if not (isinstance(output1, BVDD) or isinstance(output2, BVDD)):
@@ -753,7 +825,8 @@ class BVDD_uncached(SBDD_o2s):
 
     def compute_binary(self, op, bvdd2, op_id = None, bits = None):
         assert isinstance(bvdd2, bool) or isinstance(bvdd2, int) or isinstance(bvdd2, BVDD)
-        return super().compute_binary(lambda x, y: BVDD.op_binary(op, x, y, op_id, bits), bvdd2)
+        return super().compute_binary(lambda x, y: BVDD.op_binary(op, x, y, op_id, bits), bvdd2,
+            op_id, bits)
 
     def op_ternary(op, output1, output2, output3, op_id, bits):
         if not (isinstance(output1, BVDD) or isinstance(output2, BVDD) or isinstance(output3, BVDD)):
@@ -768,7 +841,7 @@ class BVDD_uncached(SBDD_o2s):
         assert isinstance(bvdd2, bool) or isinstance(bvdd2, int) or isinstance(bvdd2, BVDD)
         assert isinstance(bvdd3, bool) or isinstance(bvdd3, int) or isinstance(bvdd3, BVDD)
         return super().compute_ternary(lambda x, y, z: BVDD.op_ternary(op, x, y, z, op_id, bits),
-            bvdd2, bvdd3)
+            bvdd2, bvdd3, op_id, bits)
 
 class BVDD_cached(BVDD_uncached):
     intersect_binary_lock = threading.Lock()
