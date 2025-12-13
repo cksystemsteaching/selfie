@@ -18,7 +18,7 @@ RUN apt-get update \
         autoconf automake autotools-dev curl python3 python3-pip libmpc-dev libmpfr-dev \
         libgmp-dev gawk build-essential bison flex texinfo gperf libtool patchutils bc \
         zlib1g-dev libexpat-dev ninja-build git cmake libglib2.0-dev \
-    && apt clean
+    && apt clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 RUN git clone https://github.com/riscv/riscv-gnu-toolchain
 
@@ -42,7 +42,7 @@ RUN apt-get update \
         ca-certificates \
         make git \
         gcc-riscv64-linux-gnu libc-dev-riscv64-cross \
-    && apt clean
+    && apt clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 RUN git clone https://github.com/riscv/riscv-pk
 
@@ -73,7 +73,7 @@ RUN apt-get update \
        ca-certificates \
        make git \
        g++ device-tree-compiler libboost-regex-dev libboost-system-dev \
-  && apt clean
+  && apt clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 RUN git clone https://github.com/riscv/riscv-isa-sim
 
@@ -98,7 +98,7 @@ WORKDIR $TOP
 RUN apt-get update \
   && apt-get install -y --no-install-recommends \
        qemu-user-static qemu-system-misc \
-  && apt clean
+  && apt clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 # copy QEMU RISC-V statically linked binary to common output folder
 RUN mkdir -p $RISCV/bin \
@@ -126,7 +126,7 @@ RUN apt-get update \
        make git \
        g++ \
        pkg-config cmake meson libgmp-dev libmpfr-dev \
-  && apt clean
+  && apt clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 RUN git clone https://github.com/bitwuzla/bitwuzla
 
@@ -162,7 +162,7 @@ RUN apt-get update \
        binutils-riscv64-linux-gnu libc-dev-riscv64-cross \
        libusb-dev libhidapi-dev \
        xxd gettext curl \
-  && apt clean
+  && apt clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 # copy pk, spike, qemu, and bitwuzla from builder images
 COPY --from=pkbuilder $RISCV/ $RISCV/
@@ -193,7 +193,7 @@ FROM selfieall AS selfieeverything
 # install tools for 32-bit selfie
 RUN apt-get update \
   && apt-get install -y --no-install-recommends lib32gcc-13-dev lib32gcc-12-dev \
-  && apt clean
+  && apt clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 # specify user work directory
 WORKDIR /opt/selfie
