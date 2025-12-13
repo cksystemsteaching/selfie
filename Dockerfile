@@ -125,7 +125,7 @@ RUN apt-get update \
        ca-certificates \
        make git \
        g++ \
-       pkg-config cmake meson libgmp-dev \
+       pkg-config cmake meson libgmp-dev libmpfr-dev \
   && apt clean
 
 RUN git clone https://github.com/bitwuzla/bitwuzla
