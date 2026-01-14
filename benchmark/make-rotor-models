@@ -1,4 +1,4 @@
-make rotor-btor2 rotor="1 -bytestoread 1 -stackallowance 256 -heapallowance 8"
-make rotor-btor2 rotor="1 -riscuonly -bytestoread 1 -stackallowance 256 -heapallowance 8"
-make rotor-btor2 arch="-m32" rotor="1 -bytestoread 1 -stackallowance 128 -heapallowance 4"
 make rotor-btor2 arch="-m32" rotor="1 -riscuonly -bytestoread 1 -stackallowance 128 -heapallowance 4"
+make rotor-btor2 arch="-m32" rotor="1 -bytestoread 1 -stackallowance 128 -heapallowance 4"
+make rotor-btor2 rotor="1 -riscuonly -bytestoread 1 -stackallowance 256 -heapallowance 8"
+make rotor-btor2 rotor="1 -bytestoread 1 -stackallowance 256 -heapallowance 8"
