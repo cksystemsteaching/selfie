@@ -9,7 +9,8 @@ and add a legend derived from the remaining column names. Show the legend as
 title on top. Label the y-axis "#solved instances" and use integers only.
 make background white. Derive the name of the png file from the name of the csv file.
 Format long legends into a multi-line legend that is not wider than the chart.
-Add unique dot types for each graph. Add prompt as comment.
+Add unique dot types for each graph. Only label x-axis if there are data points.
+Add prompt as comment.
 """
 
 import pandas as pd
@@ -18,7 +19,7 @@ from matplotlib.ticker import MaxNLocator
 import sys
 import os
 import textwrap
-import itertools  # Added for cycling markers
+import itertools
 
 def generate_graph(csv_file):
     # Check if file exists
@@ -50,7 +51,6 @@ def generate_graph(csv_file):
         ax.set_facecolor('white')
 
         # Define a list of distinct markers
-        # o=circle, s=square, ^=triangle_up, D=diamond, v=triangle_down, etc.
         marker_list = ['o', 's', '^', 'D', 'v', '<', '>', 'p', '*', 'h', 'X', 'd']
         marker_cycle = itertools.cycle(marker_list)
 
@@ -59,10 +59,14 @@ def generate_graph(csv_file):
             current_marker = next(marker_cycle)
             ax.plot(df[x_col], df[col], label=col, marker=current_marker)
 
-        # Formatting Axes
+        # Formatting Y-Axis
         ax.set_ylabel("#solved instances")
         ax.yaxis.set_major_locator(MaxNLocator(integer=True)) # Integers only
+
+        # Formatting X-Axis
         ax.set_xlabel(x_col)
+        # Force ticks to appear ONLY at the data points present in the X column
+        ax.set_xticks(df[x_col])
 
         # --- LEGEND FORMATTING ---
         handles, labels = ax.get_legend_handles_labels()
@@ -70,7 +74,7 @@ def generate_graph(csv_file):
         # Wrap long label text
         labels = [ '\n'.join(textwrap.wrap(l, 25)) for l in labels ]
 
-        # Limit columns to max 3
+        # Limit columns to max 4
         max_legend_cols = 4
         actual_cols = min(len(labels), max_legend_cols)
 
