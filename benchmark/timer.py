@@ -119,7 +119,7 @@ def main():
         current_timeout += args.step
 
     # 3. Write Data
-    headers = ['Timeout (s)'] + [os.path.basename(s) for s in args.scripts]
+    headers = ['timeout (s)'] + [os.path.basename(s) for s in args.scripts]
 
     try:
         with open(args.output, 'w', newline='') as csvfile:
