@@ -12105,9 +12105,19 @@ void open_model_file() {
   uint64_t i;
 
   if (custom_model_name == 0) {
-    if (number_of_binaries == number_of_cores)
+    if (number_of_binaries == number_of_cores) {
       suffix = "-rotorized";
-    else
+
+      if (not(IS64BITTARGET)) {
+        sprintf(string_buffer, "%s-m32", suffix);
+        suffix = string_copy(string_buffer);
+      }
+
+      if (RISCUONLY) {
+        sprintf(string_buffer, "%s-riscuonly", suffix);
+        suffix = string_copy(string_buffer);
+      }
+    } else
       suffix = "-synthesize";
 
     if (printing_unrolled_model) {

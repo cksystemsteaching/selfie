@@ -306,7 +306,8 @@ beator-btor2: $(beators) selfie-beaten.btor2
 rotor: tools/rotor.c selfie.h
 	$(CC) $(CFLAGS) --include selfie.h $< -o $@
 
-# Invoke rotor with arguments in rotor variable
+# Invoke rotor with arguments in arch and rotor variables
+arch = -m64
 rotor = 0
 
 # Run rotor, the RISC-V symbolic model generator, natively on itself and as RISC-U executable
@@ -321,7 +322,7 @@ rot: rotor selfie.h selfie
 
 # Translate *.c including selfie.c into BTOR2 model using rotor
 %-rotorized.btor2: %.c rotor
-	./rotor -c $< - $(rotor)
+	./rotor $(arch) -c $< - $(rotor)
 
 # Run rotor to generate 64-bit RISC-V machine model for synthesizing exit system call wrapper
 64-bit-riscv-machine-synthesize.btor2: rotor
