@@ -3,7 +3,13 @@
 """
 benchmark all single-byte input examples:
 
-./benchmark/timer.py benchmark/m64-full-Z3 benchmark/m64-full-Z3-const benchmark/m64-riscu-Z3 benchmark/m64-riscu-Z3-const benchmark/m32-full-Z3 benchmark/m32-full-Z3-const benchmark/m32-riscu-Z3 benchmark/m32-riscu-Z3-const benchmark/m64-full-bitwuzla benchmark/m64-full-bitwuzla-const benchmark/m64-riscu-bitwuzla benchmark/m64-riscu-bitwuzla-const benchmark/m32-full-bitwuzla benchmark/m32-full-bitwuzla-const benchmark/m32-riscu-bitwuzla benchmark/m32-riscu-bitwuzla-const benchmark/m64-full-BVDD benchmark/m64-riscu-BVDD benchmark/m32-full-BVDD benchmark/m32-riscu-BVDD -o all.csv --start 0 --end 150 --step 30
+rotor:
+
+./benchmark/timer.py benchmark/m64-full-Z3 benchmark/m64-full-Z3-const benchmark/m64-riscu-Z3 benchmark/m64-riscu-Z3-const benchmark/m32-full-Z3 benchmark/m32-full-Z3-const benchmark/m32-riscu-Z3 benchmark/m32-riscu-Z3-const benchmark/m64-full-bitwuzla benchmark/m64-full-bitwuzla-const benchmark/m64-riscu-bitwuzla benchmark/m64-riscu-bitwuzla-const benchmark/m32-full-bitwuzla benchmark/m32-full-bitwuzla-const benchmark/m32-riscu-bitwuzla benchmark/m32-riscu-bitwuzla-const benchmark/m64-full-BVDD benchmark/m64-riscu-BVDD benchmark/m32-full-BVDD benchmark/m32-riscu-BVDD -o rotor.csv --start 0 --end 150 --step 30
+
+bitme:
+
+./benchmark/timer.py benchmark/m32-riscu-Z3 benchmark/m32-riscu-Z3-const benchmark/m32-riscu-bitwuzla benchmark/m32-riscu-bitwuzla-const benchmark/m32-riscu-BVDD benchmark/m32-riscu-BVDD-bitr benchmark/m32-riscu-CFLOBVDD benchmark/m32-riscu-CFLOBVDD-bitr -o bitme.csv --start 0 --end 150 --step 30
 """
 
 import subprocess
