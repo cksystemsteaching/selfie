@@ -679,6 +679,7 @@ class SBDD_o2s(BVDD_Node):
     def normalize(inputs, output_value, bits):
         if (isinstance(output_value, BVDD) or
             isinstance(output_value, bool) or
+            bits is None or
             abs(bits) <= 64):
             # TODO: determine threshold on bits
             return output_value
