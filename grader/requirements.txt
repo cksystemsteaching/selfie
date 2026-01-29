@@ -1,0 +1,7 @@
+textdistance[extras]
+langid
+laserembeddings
+scikit-learn
+transliterate
+certifi
+torch

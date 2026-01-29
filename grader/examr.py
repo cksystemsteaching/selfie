@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+# source .venv/bin/activate
+
 # requires: pip3 install "textdistance[extras]"
 
 import textdistance
@@ -36,7 +38,7 @@ def get_lasered_cosine_similarity(vector1, vector2):
 
 def formality(text):
     # list more restrictive patterns first
-    formal = "(uint64_t\*?)|(_?[a-z]+(_[a-z]+)+)|('.')|(\d)|(\+)|(\-)|(\*)|(\/)|(%)|(\|)|(==)|(!=)|(<=)|(<)|(>=)|(>)|(=)|(lui)|(addi)|(ld)|(sd)|(add)|(sub)|(mul)|(divu)|(remu)|(sltu)|(beq)|(jalr)|(jal)|(ecall)"
+    formal = r"(uint64_t\*?)|(_?[a-z]+(_[a-z]+)+)|('.')|(\d)|(\+)|(\-)|(\*)|(\/)|(%)|(\|)|(==)|(!=)|(<=)|(<)|(>=)|(>)|(=)|(lui)|(addi)|(ld)|(sd)|(add)|(sub)|(mul)|(divu)|(remu)|(sltu)|(beq)|(jalr)|(jal)|(ecall)"
     return len(re.findall(formal, text, re.IGNORECASE))
 
 class Student:
