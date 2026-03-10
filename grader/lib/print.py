@@ -95,11 +95,11 @@ class SpinnerThread(threading.Thread):
 
     def run(self):
         while not self.should_stop:
-            println('[  ' + next(self.spinner) + '   ] ' + self.msg, end='')
+            println('\r[  ' + next(self.spinner) + '   ] ' + self.msg, end='')
             sys.stdout.flush()
             time.sleep(0.15)
-            println('\b' * (len(self.msg) + 9), end='')
 
+        println('\r', end='')
         sys.stdout.flush()
 
 
