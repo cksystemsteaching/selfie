@@ -216,7 +216,8 @@ uint64_t* zmalloc(uint64_t size); // use this to allocate zeroed memory
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
-char* SELFIE_URL = (char*) 0;
+char* SELFIE_URL       = (char*) 0;
+char* ASSERT_PROC_NAME = (char*) 0;
 
 uint64_t IS64BITSYSTEM = 1; // flag indicating 64-bit selfie
 uint64_t IS64BITTARGET = 1; // flag indicating 64-bit target
@@ -310,7 +311,8 @@ void init_library() {
     // avoid repeated initialization in tools
     return;
 
-  SELFIE_URL = "selfie.cs.uni-salzburg.at";
+  SELFIE_URL       = "selfie.cs.uni-salzburg.at";
+  ASSERT_PROC_NAME = "assert";
 
   SIZEOFUINT64INBITS     = sizeof(uint64_t) * 8;
   SIZEOFUINT64STARINBITS = sizeof(uint64_t*) * 8;
@@ -5595,8 +5597,13 @@ void compile_procedure(char* procedure, uint64_t type) {
   uint64_t* entry;
   uint64_t number_of_local_variable_bytes;
 
-  // lookahead of 1: identifier already parsed into procedure (type may be left-factored)
+  // allow all names except "assert"
+  if (string_compare(procedure, ASSERT_PROC_NAME)) {
+    syntax_error_message("assert is a reserved debug procedure call!");
+    exit(EXITCODE_COMPILERERROR);
+  }
 
+  // lookahead of 1: identifier already parsed into procedure (type may be left-factored)
   local_symbol_table = (uint64_t*) 0;
 
   // assuming procedure is not variadic
@@ -5859,6 +5866,23 @@ uint64_t compile_call(char* procedure) {
   uint64_t number_of_actual_parameters;
   uint64_t number_of_formal_parameters;
   uint64_t type;
+
+  // check for procedure name "assert" and allow only assert(...); and emit no code!
+  if (string_compare(procedure, ASSERT_PROC_NAME)) {
+    get_expected_symbol(SYM_LPARENTHESIS);
+
+    while (symbol != SYM_RPARENTHESIS) {
+      // TODO: expression parsing support (IF REQUIRED)
+      get_symbol();
+
+      if (symbol == SYM_EOF)
+        syntax_error_unexpected_symbol();
+    }
+
+    get_expected_symbol(SYM_RPARENTHESIS);
+
+    return VOID_T;
+  }
 
   // lookahead of 1: identifier already parsed into procedure
 

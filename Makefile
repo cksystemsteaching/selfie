@@ -11,14 +11,14 @@
 # This is the Makefile of the selfie system.
 
 # Compiler flags
-CFLAGS := -Wall -Wextra -O3 -D'uint64_t=unsigned long'
+CFLAGS := -Wall -Wextra -O3 -D'uint64_t=unsigned long' -include /usr/include/assert.h
 
 # Bootstrap selfie.c into selfie executable
 selfie: selfie.c
 	$(CC) $(CFLAGS) $< -o $@
 
 # 32-bit compiler flags
-32-BIT-CFLAGS := -Wall -Wextra -Wno-builtin-declaration-mismatch -O3 -m32 -D'uint64_t=unsigned long'
+32-BIT-CFLAGS := -Wall -Wextra -Wno-builtin-declaration-mismatch -O3 -m32 -D'uint64_t=unsigned long' -include /usr/include/assert.h
 
 # Bootstrap selfie.c into 32-bit selfie executable, requires 32-bit compiler support
 selfie-32: selfie.c
