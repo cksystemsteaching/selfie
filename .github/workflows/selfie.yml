@@ -96,7 +96,14 @@ jobs:
   make-everything-on-docker:
     name: Make everything of selfie on docker
     runs-on: ubuntu-latest
-    if: ${{ ((github.event_name != 'workflow_dispatch') || (github.event.inputs.rundocker == 'true')) && (((!github.event.repository.private) || ((github.ref == 'refs/heads/main') && (github.event_name != 'schedule'))) || (github.event_name == 'workflow_dispatch')) }}
+    # 1. Workflow is triggered by event workflow_dispatch.
+    # 2. Repository isn't private and workflow is triggered by push/pull to the main branch.
+    # 3. Repository isn't private and workflow is triggered by cron schedule.
+    if : ${{
+            ((github.event_name == 'workflow_dispatch') && github.event.inputs.rundocker)                                ||
+            (!github.event.repository.private && (github.ref == 'refs/heads/main') && (github.event_name != 'schedule')) ||
+            (!github.event.repository.private && (github.event_name == 'schedule'))
+          }}
 
     # usage: optional run argument --platform=linux/amd64 or --platform=linux/arm64
     #
