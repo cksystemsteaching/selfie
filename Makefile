@@ -17,20 +17,12 @@ CFLAGS := -Wall -Wextra -O3 -D'uint64_t=unsigned long'
 selfie: selfie.c
 	$(CC) $(CFLAGS) $< -o $@
 
-# Compile with assertion support for gcc/clang enabled
-selfie-assert: selfie.c
-	$(CC) $(CFLAGS) -include /usr/include/assert.h $< -o selfie
-
 # 32-bit compiler flags
 32-BIT-CFLAGS := -Wall -Wextra -Wno-builtin-declaration-mismatch -O3 -m32 -D'uint64_t=unsigned long'
 
 # Bootstrap selfie.c into 32-bit selfie executable, requires 32-bit compiler support
 selfie-32: selfie.c
 	$(CC) $(32-BIT-CFLAGS) $< -o $@
-
-# Compile 32-bit binary with assertion support for gcc/clang enabled
-selfie-32-assert: selfie.c
-	$(CC) $(32-BIT-CFLAGS) -include /usr/include/assert.h $< -o selfie-32
 
 # Compile *.c including selfie.c into RISC-U *.m executable
 %.m: %.c selfie
