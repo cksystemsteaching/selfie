@@ -4886,7 +4886,7 @@ void compile_assignment(char* variable) {
       get_symbol();
 
       // load expression value (as address)
-      ltype = compile_expression();
+      ltype = compile_arithmetic();
 
       get_expected_symbol(SYM_RPARENTHESIS);
     } else {
