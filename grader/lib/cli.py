@@ -240,12 +240,13 @@ def grade_commit(commit_url, assignment, baseline):
     info = parse_commit_url(commit_url)
 
     if info is None:
-        print_message(commit_url + '" is not a valid github commit link')
+        print_message(
+            '6 (' + repr(commit_url) + ' is not a valid github commit link)',
+            loud=True,
+        )
         return
 
     repo_id = '{}/{}'.format(info['user'], info['repo'])
-
-    print_message(repo_id + ': ', end='', loud=True)
 
     clone_dir = os.path.join(bulk_grade_directory, repo_id)
 
@@ -255,7 +256,7 @@ def grade_commit(commit_url, assignment, baseline):
                         stdout=DEVNULL, stderr=DEVNULL).returncode
 
         if status != 0:
-            print_message('error while cloning ' + repo_id, loud=True)
+            print_message('5 (error while cloning ' + repo_id + ')', loud=True)
             return
 
     os.chdir(clone_dir)
@@ -277,11 +278,11 @@ def grade_commit(commit_url, assignment, baseline):
         else:
             print_message('')
             check_assignment(assignment, baseline)
-            print_message('', loud=True)
     else:
         print_message(
                     'commit hash "{}" is not valid'.format(info['commit']), loud=True)
 
+    print_message(' (' + repo_id + ')', loud=True)
     os.chdir(bulk_grade_directory)
 
 
