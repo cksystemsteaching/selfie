@@ -80,7 +80,7 @@ def set_up():
     execute('make selfie')
 
 
-def execute(command, timeout=60):
+def execute(command, timeout=10):
     # combine stdout and stderr in one output
     process = Popen(shlex.split(command), stdout=PIPE, stderr=STDOUT)
 
@@ -212,7 +212,7 @@ def check_assembler_instruction_format(instruction, file) -> List[Check]:
     return [Check(msg, command, execute_check)]
 
 
-def check_execution(command, msg, success_criteria=True, should_succeed=True, mandatory=False, timeout=60) -> List[Check]:
+def check_execution(command, msg, success_criteria=True, should_succeed=True, mandatory=False, timeout=10) -> List[Check]:
     secure_command = insert_assignment_path(command)
 
     def execute_check() -> CheckResult:
