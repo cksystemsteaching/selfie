@@ -55,8 +55,10 @@ class TestBulkGrader(unittest.TestCase):
             output = capture.get_loud_output()
 
         for line in output.split('\n'):
-            self.assertTrue(line == '' or re.match(
-                '[^/]+/[^/:]+: [1-5]', line) != None)
+            self.assertTrue(
+                line == '' or
+                re.match(r'^[1-6] \([A-Za-z0-9-]+/[A-Za-z0-9-]+\)$', line) is not None
+            )
 
     def test_cloning_without_permissions(self):
         with CaptureOutput() as capture:
@@ -65,8 +67,8 @@ class TestBulkGrader(unittest.TestCase):
             output = capture.get_loud_output()
 
         # should not raise an exception and state errors for both repositories
-        self.assertIn('cksystemsteaching/selfie: ', output)
-        self.assertIn('ChristianMoesl/selfie: ', output)
+        self.assertIn('cksystemsteaching/selfie', output)
+        self.assertIn('ChristianMoesl/selfie', output)
 
 
 if __name__ == '__main__':
