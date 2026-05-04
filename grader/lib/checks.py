@@ -1,6 +1,7 @@
 import os
 import re
 import shlex
+import signal
 import sys
 from pathlib import Path
 from typing import List, Tuple
@@ -80,9 +81,9 @@ def set_up():
     execute('make selfie')
 
 
-def execute(command, timeout=60):
+def execute(command, timeout=10):
     # combine stdout and stderr in one output
-    process = Popen(shlex.split(command), stdout=PIPE, stderr=STDOUT)
+    process = Popen(shlex.split(command), stdout=PIPE, stderr=STDOUT, start_new_session=True)
 
     timedout = False
 
@@ -92,7 +93,7 @@ def execute(command, timeout=60):
         try:
             stdoutdata, _ = process.communicate(timeout=timeout)
         except TimeoutExpired:
-            process.kill()
+            os.killpg(process.pid, signal.SIGKILL)
             stdoutdata, _ = process.communicate()
 
             timedout = True
@@ -212,7 +213,7 @@ def check_assembler_instruction_format(instruction, file) -> List[Check]:
     return [Check(msg, command, execute_check)]
 
 
-def check_execution(command, msg, success_criteria=True, should_succeed=True, mandatory=False, timeout=60) -> List[Check]:
+def check_execution(command, msg, success_criteria=True, should_succeed=True, mandatory=False, timeout=10) -> List[Check]:
     secure_command = insert_assignment_path(command)
 
     def execute_check() -> CheckResult:
