@@ -19,7 +19,8 @@ on:
         - bitwise-shift-compilation
         - bitwise-shift-execution
         - bitwise-and-or-not
-        - array
+        - array-access
+        - array-allocation
         - array-multidimensional
         - struct-declaration
         - struct-execution
