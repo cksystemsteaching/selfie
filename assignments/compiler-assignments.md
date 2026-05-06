@@ -104,6 +104,16 @@ Change the Boolean operators `&&`, `||`, and `!` such that lazy evaluation is us
 
 
 
+## Assignment `array-access`:
+
+Implement support of and code generation for array access on pointers in C\* with the symbols `[` and `]`.
+
+- Before coding, extend the grammar in **grammar.md** to include `[` and `]` for access.
+- Do not modify any files other than **grammar.md** and **selfie.c**.
+- Use the `array-access` target in the grader to determine your grade.
+
+
+
 ## Assignment `array-allocation`:
 
 Implement support for allocation of one-dimensional arrays in C\* with the symbols `[` and `]`.

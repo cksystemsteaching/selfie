@@ -177,6 +177,17 @@ def check_lazy_evaluation() -> List[Check]:
                                 'lazy evaluation with logical or works when executed with MIPSTER')
 
 
+def check_array_access() -> List[Check]:
+    return check_compilable('use.c',
+                            'array use does compile') + \
+        check_compilable('assign.c',
+                        'array assignment does compile') + \
+        check_mipster_execution('use.c', 42,
+                                'array use is implemented with the right semantics') + \
+        check_mipster_execution('assign.c', 42,
+                                'array assignment is implemented with the right semantics')
+
+
 def check_array_allocation() -> List[Check]:
     return check_compilable('global-declaration.c',
                             'global array declaration do compile') + \
@@ -382,9 +393,12 @@ assignment_for_loop = Assignment('for-loop', 'Compiler', 'for-loop',
 assignment_lazy_evaluation = Assignment('lazy-evaluation', 'Compiler', 'logical',
            REPO_BLOB_BASE_URI + 'grader/compiler-assignments.md#assignment-lazy-evaluation',
            check_lazy_evaluation, parent = assignment_logical_and_or_not)
+assignment_array_access = Assignment('array-access', 'Compiler', 'array',
+           REPO_BLOB_BASE_URI + 'grader/compiler-assignments.md#assignment-array-access',
+           check_array_access)
 assignment_array_allocation = Assignment('array-allocation', 'Compiler', 'array',
            REPO_BLOB_BASE_URI + 'grader/compiler-assignments.md#assignment-array-allocation',
-           check_array_allocation)
+           check_array_allocation, parent = assignment_array_access)
 assignment_multidimensional_array = Assignment('array-multidimensional', 'Compiler', 'array',
            REPO_BLOB_BASE_URI + 'grader/compiler-assignments.md#assignment-array-multidimensional',
            check_multidimensional_array, parent = assignment_array_allocation)
@@ -431,6 +445,7 @@ assignments: List[Assignment] = [
     assignment_logical_and_or_not,
     assignment_for_loop,
     assignment_lazy_evaluation,
+    assignment_array_access,
     assignment_array_allocation,
     assignment_multidimensional_array,
     assignment_struct_declaration,
