@@ -104,14 +104,13 @@ Change the Boolean operators `&&`, `||`, and `!` such that lazy evaluation is us
 
 
 
-## Assignment `array`:
+## Assignment `array-allocation`:
 
-Implement support of and code generation for one-dimensional arrays in C\* with the symbols `[` and `]`.
+Implement support for allocation of one-dimensional arrays in C\* with the symbols `[` and `]`.
 
-- Before coding, extend the grammar in **grammar.md** to include `[` and `]`.
+- Before coding, extend the grammar in **grammar.md** to include `[` and `]` for declaration.
 - Do not modify any files other than **grammar.md** and **selfie.c**.
-- Use the `array` target in the grader to determine your grade.
-
+- Use the `array-allocation` target in the grader to determine your grade.
 
 
 ## Assignment `array-multidimensional`:
