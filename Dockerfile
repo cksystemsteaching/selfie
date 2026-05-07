@@ -97,7 +97,7 @@ WORKDIR $TOP
 # install statically linked QEMU (so it's easier to move it to another image)
 RUN apt-get update \
   && apt-get install -y --no-install-recommends \
-       qemu-user-static qemu-system-misc \
+       qemu-user qemu-system-misc \
   && apt clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 # copy QEMU RISC-V statically linked binary to common output folder
