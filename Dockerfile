@@ -94,17 +94,19 @@ ENV TOP=/opt RISCV=/opt/riscv PATH=$PATH:/opt/riscv/bin
 
 WORKDIR $TOP
 
-# install statically linked QEMU (so it's easier to move it to another image)
+# install QEMU user-mode binaries — on Ubuntu 25.10 these are statically
+# linked (static-pie) but no longer carry the -static suffix, so we rename
+# on copy to preserve the filenames the selfie Makefile expects
 RUN apt-get update \
   && apt-get install -y --no-install-recommends \
        qemu-user qemu-system-misc \
   && apt clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
-# copy QEMU RISC-V statically linked binary to common output folder
+# copy QEMU RISC-V binaries to common output folder, restoring -static suffix
 RUN mkdir -p $RISCV/bin \
-  && cp /usr/bin/qemu-riscv64-static $RISCV/bin \
+  && cp /usr/bin/qemu-riscv64 $RISCV/bin/qemu-riscv64-static \
   && cp /usr/bin/qemu-system-riscv64 $RISCV/bin \
-  && cp /usr/bin/qemu-riscv32-static $RISCV/bin \
+  && cp /usr/bin/qemu-riscv32 $RISCV/bin/qemu-riscv32-static \
   && cp /usr/bin/qemu-system-riscv32 $RISCV/bin
 
 #######################################
