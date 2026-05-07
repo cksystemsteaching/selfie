@@ -6,7 +6,7 @@ int main(int argc, char** argv) {
   arr[0] = 4;
   arr[1] = 8;
   arr[1 * 2]= 14;
-  arr[arr[0] - 1] = 16;
+  arr[*(arr + 1)  - 5] = 16;
 
   return *arr + *(arr + 1) + *(arr + 2) + *(arr + 3);
 }
