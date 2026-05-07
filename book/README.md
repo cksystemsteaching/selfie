@@ -5024,7 +5024,7 @@ The take away message here is that pure operator syntax does not necessarily det
 
 > Syntactic sugar
 
-The `[]` operator is considered *syntactic sugar* which makes the code look "sweeter" to humans, that is, closer to what is intended, namely, access of array elements rather than pointer arithmetic which is only a means to get there. However, support of syntactic sugar is not strictly necessary. C\* does not support arrays explicitly in syntax but there is an exercise on implementing array support in C\*. However, doing the exercises requires additional knowledge in how procedures work, so we wait with the exercise until we get to procedures. However, there is an opportunity to do another, very enlightening exercise which helps you deepen your understanding of the material presented so far.
+The `[]` operator is considered *syntactic sugar* which makes the code look "sweeter" to humans, that is, closer to what is intended, namely, access of array elements rather than pointer arithmetic which is only a means to get there. However, support of syntactic sugar is not strictly necessary. C\* does not support arrays explicitly in syntax but there are exercises on implementing array support in C\*. However, doing the exercises requires additional knowledge in how procedures work, so we wait until we get to procedures. However, there is an opportunity to do another, very enlightening exercise which helps you deepen your understanding of the material presented so far.
 
 > Bitwise shift operators
 
