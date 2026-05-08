@@ -406,7 +406,7 @@ uint64_t kstrlcpy_from_vspace(char* dest_kaddr, uint64_t src_vaddr, uint64_t n, 
     uint64_t src_kaddr = vaddr_to_paddr(table, src_vaddr);
 
     // Perform the actual copy (1..8 bytes)
-    uint64_t copied = strlcpy(dest_kaddr, src_kaddr, read_size + 1); // +1 due to \0
+    uint64_t copied = strlcpy(dest_kaddr, (const char*) src_kaddr, read_size + 1); // +1 due to \0
     read += copied;
 
     // Advancing the dest and src pointers by copied

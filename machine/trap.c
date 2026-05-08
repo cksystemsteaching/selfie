@@ -346,8 +346,10 @@ void implement_syscall_read(struct context* context) {
 }
 
 void implement_syscall_write(struct context* context) {
-  // Sadly we have to decide between a compiler warning and duplicating 50 LOC. :(
-  implement_syscalls_read_and_write(context, &kwrite);
+  // kwrite takes a const char* buffer, but the dispatcher signature uses char* so
+  // it can be shared with kread. The kernel_func callback only ever reads the buffer
+  // for write, so the cast is safe.
+  implement_syscalls_read_and_write(context, (ssize_t (*)(int, char*, size_t, FILEDESC*, size_t)) &kwrite);
 }
 
 void implement_syscall_openat(struct context* context) {

@@ -13,7 +13,7 @@ void bootstrap() {
 
   kernel_environ_init();
 
-  char* args[] = {
+  const char* args[] = {
     "./" INIT_FILE_PATH,
     "-c",
     "selfie.c",
@@ -25,13 +25,13 @@ void bootstrap() {
     "1",
     "-c",
     "hello-world.c",
-    (char*) 0,
+    (const char*) 0,
   };
   int argc = 0;
 
   puts("Booting " INIT_FILE_PATH " with args: \n");
 
-  while (args[argc] != (char*) 0) {
+  while (args[argc] != (const char*) 0) {
     printf("    %s\n", args[argc]);
     argc++;
   }
