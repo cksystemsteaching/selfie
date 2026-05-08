@@ -99,7 +99,7 @@ WORKDIR $TOP
 # on copy to preserve the filenames the selfie Makefile expects
 RUN apt-get update \
   && apt-get install -y --no-install-recommends \
-       qemu-user qemu-system-misc \
+       qemu-user qemu-system-riscv \
   && apt clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 # copy QEMU RISC-V binaries to common output folder, restoring -static suffix
