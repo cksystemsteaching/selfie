@@ -192,9 +192,12 @@ FROM selfieall AS selfieeverything
 
 # only works on amd64 for now
 
-# install tools for 32-bit selfie
+# install tools for 32-bit selfie — match the lib32gcc-*-dev to the
+# version of gcc the system is using (Ubuntu's gcc package currently
+# tracks gcc-15). The gcc-multilib meta-package would conflict with
+# gcc-riscv64-linux-gnu, so install the 32-bit support libraries directly.
 RUN apt-get update \
-  && apt-get install -y --no-install-recommends lib32gcc-13-dev lib32gcc-12-dev \
+  && apt-get install -y --no-install-recommends lib32gcc-15-dev libc6-dev-i386 \
   && apt clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 # specify user work directory
