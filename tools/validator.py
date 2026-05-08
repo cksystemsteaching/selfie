@@ -331,7 +331,7 @@ else:
     # beator output is discarded
     system(args.beator_path + " -c " + args.in_file + " - " + str(args.bad_exit_code) + " 1 > /dev/null")
 
-btor_name = path.splitext(args.in_file)[0]
+btor_name = path.splitext(args.in_file)[0] + "-beaten"
 system("mv " + btor_name + ".btor2 ./temp/model.btor2")
 
 if args.debug:
