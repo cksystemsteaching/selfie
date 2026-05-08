@@ -5,8 +5,8 @@ int main(int argc, char** argv) {
 
   arr[0] = 4;
   arr[1] = 8;
-  arr[2]= 14;
-  arr[3] = 16;
+  arr[1 * 2]= 14;
+  arr[*(arr + 1)  - 5] = 16;
 
   return *arr + *(arr + 1) + *(arr + 2) + *(arr + 3);
 }
