@@ -5024,7 +5024,7 @@ The take away message here is that pure operator syntax does not necessarily det
 
 > Syntactic sugar
 
-The `[]` operator is considered *syntactic sugar* which makes the code look "sweeter" to humans, that is, closer to what is intended, namely, access of array elements rather than pointer arithmetic which is only a means to get there. However, support of syntactic sugar is not strictly necessary. C\* does not support arrays explicitly in syntax but there is an exercise on implementing array support in C\*. However, doing the exercise requires additional knowledge in how procedures work, so we wait with the exercise until we get to procedures. However, there is an opportunity to do another, very enlightning exercise which helps you deepen your understanding of the material presented so far.
+The `[]` operator is considered *syntactic sugar* which makes the code look "sweeter" to humans, that is, closer to what is intended, namely, access of array elements rather than pointer arithmetic which is only a means to get there. However, support of syntactic sugar is not strictly necessary. C\* does not support arrays explicitly in syntax but there are exercises on implementing array support in C\*. However, doing the exercises requires additional knowledge in how procedures work, so we wait until we get to procedures. However, there is an opportunity to do another, very enlightening exercise which helps you deepen your understanding of the material presented so far.
 
 > Bitwise shift operators
 
@@ -5880,13 +5880,9 @@ Since `main` accesses a local variable, the full prologue and epilogue are neces
 
 > Arrays
 
-We are finally prepared for advanced exercises in the design and implementation of arrays in selfie, and, further below, structs as well. C\* is a *structured programming language* yet structured only as in structured control flow through procedures and statements such as possibly recursive procedure calls and nested `while` loops. However, C\* is not structured as in data flow. There are no structured data types in C\*, on purpose. The following exercises show what it takes to change that with support of arrays and structs. For the first array exercise, use the autograder as follows:
+We are finally prepared for advanced exercises in the design and implementation of arrays in selfie, and, further below, structs as well. C\* is a _structured programming language_ yet structured only as in structured control flow through procedures and statements such as possibly recursive procedure calls and nested `while` loops. However, C\* is not structured as in data flow. There are no structured data types in C\*, on purpose. The following exercises show what it takes to change that with support of arrays and structs.
 
-```bash
-./grader/self.py array
-```
-
-In C, an *array* is essentially a pointer to a contiguous block of memory that is evenly partitioned into *array elements* all of the same type that are accessed via an integer value called an *index*. Array declarations and array access both involve the bracket operator `[]` which is, as confusing it might be, used for these two very different purposes. Consider the following example:
+In C, an _array_ is essentially a pointer to a contiguous block of memory that is evenly partitioned into _array elements_ all of the same type that are accessed via an integer value called an _index_. Array access and array declarations both involve the bracket operator `[]` which is, as confusing it might be, used for these two very different purposes. Consider the following example:
 
 ```c
 uint64_t a[2];
@@ -5908,9 +5904,35 @@ void initialize_b() {
 }
 ```
 
-The only difference between the two examples is that the declaration of `a` results in static memory allocation in the data segment while the declaration of `b` results in dynamic memory allocation on the call stack.
+The only difference between the two examples is that the declaration of `a` results in static memory allocation in the data segment while the declaration of `b` results in dynamic memory allocation on the call stack. Furthermore, you can also allocate an array on the heap using pointers:
 
-Here is what you need to do. As usual, extend the C\* grammar first. While an index into an array can be any expression, the size of an array can only be an integer literal. Then, extend symbol table entries with type information on arrays, in particular the element type, here `uint64_t`, and the array size, here `2`. In this context, a word of caution is in order: do not forget to increase the amount of memory allocated for a symbol table entry when extending it, see the procedure `allocate_symbol_table_entry`. Next, make sure that sufficient memory is allocated for arrays, here a contiguous block of `2` machine words, statically in the data segment for global variables such as `a`, and dynamically on the call stack for local variables such as `b` through proper code generation. Hint: the latter requires modifying procedure prologues! Finally, generate code for array access which involves computing addresses of array elements in memory. Hint: `a[1]` is equivalent to `*(a + 1)`. However, before doing so, there is one more thing to figure out, which appears to be the key challenge with this exercise and ultimately points to a larger, quite important issue. Consider the following example:
+```c
+void initialize_p() {
+  uint64_t* p;
+  p = malloc(sizeof(uint64_t) * 2);
+
+  p[0] = 42;
+  p[1] = p[0];
+}
+```
+
+Here, despite `p` not being declared an array, but rather a pointer to `uint64_t`, we can still access elements as if it were an array. After all, an array is a pointer to a block of contiguous memory and `p` is a pointer to a contiguous block of memory on the heap.
+
+Thus, the first array exercise only requires support for array access through pointers. Use the autograder as follows:
+
+```bash
+./grader/self.py array-access
+```
+
+As usual, extend the C\* grammar first. Accessing an array element may involve either using its value or assigning a new value to it. In both cases, the address of the element in memory must first be computed from the expression. Hint: `a[1]` is equivalent to `*(a + 1)`.
+
+The next step is to support allocation of arrays in the data segment and on the stack. Invoke the autograder as follows:
+
+```bash
+./grader/self.py array-allocation
+```
+
+Here is what you need to do. First, extend the C\* grammar. While an index into an array can be any expression, the size of an array can only be an integer literal. Then, extend symbol table entries with type information on arrays, in particular the element type, here `uint64_t`, and the array size, here `2`. In this context, a word of caution is in order: do not forget to increase the amount of memory allocated for a symbol table entry when extending it, see the procedure `allocate_symbol_table_entry`. Next, make sure that sufficient memory is allocated for arrays, here a contiguous block of `2` machine words, statically in the data segment for global variables such as `a`, and dynamically on the call stack for local variables such as `b` through proper code generation. Hint: the latter requires modifying procedure prologues! Finally, ensure that array access through arrays works as well. Hint: Let a variable of type array evaluate to its pointer. However, before doing so, there is one more thing to figure out, which appears to be the key challenge with this exercise and ultimately points to a larger, quite important issue. Consider the following example:
 
 ```c
 void initialize_x(uint64_t x[2]) {
