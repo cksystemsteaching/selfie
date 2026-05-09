@@ -421,10 +421,15 @@ pythons: validator grader grade
 failingFiles := $(wildcard examples/symbolic/*-fail-*.c)
 succeedFiles := $(filter-out $(failingFiles),$(wildcard examples/symbolic/*.c))
 
-# Run validator on *.c files in symbolic
+# Run validator on *.c files in symbolic. The btormc timeout is set to 2m:
+# the slowest succeeding file (recursive-ackermann) needs ~70s of btormc
+# time, while the slowest failing file that *does* eventually verify
+# (three-level-nested-loop-fail) needs ~7m. 2m sits comfortably between
+# those bounds, so all succeedFiles verify and all failingFiles either
+# fail verification or hit the btormc timeout, as required.
 validator: selfie beator
-	$(foreach file, $(succeedFiles), tools/validator.py $(file) &&) true
-#   $(foreach file, $(failingFiles), ! tools/validator.py $(file) &&) true
+	$(foreach file, $(succeedFiles), tools/validator.py -tb 2m $(file) &&) true
+	$(foreach file, $(failingFiles), ! tools/validator.py -tb 2m $(file) &&) true
 
 # Test autograder
 grader: selfie
