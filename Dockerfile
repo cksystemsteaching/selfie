@@ -109,6 +109,47 @@ RUN mkdir -p $RISCV/bin \
   && cp /usr/bin/qemu-riscv32 $RISCV/bin/qemu-riscv32-static \
   && cp /usr/bin/qemu-system-riscv32 $RISCV/bin
 
+########################################
+# Boolector (SMT solver) builder image #
+########################################
+# Pinned to ubuntu:24.04 because boolector's bundled lingeling does not
+# compile under gcc 15 (it has function-pointer mismatches that gcc 15
+# promotes to hard errors and lingeling's makefile does not honor CFLAGS,
+# so they cannot be downgraded from outside). 24.04 ships gcc 13, which
+# emits only warnings. The resulting btormc binary runs fine on the
+# newer selfieall stage thanks to glibc forward compatibility.
+FROM ubuntu:24.04 AS boolectorbuilder
+
+ENV TOP=/opt RISCV=/opt/riscv PATH=$PATH:/opt/riscv/bin
+
+WORKDIR $TOP
+
+# Setting non-interactive mode
+RUN echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selections
+
+# install tools to build boolector
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends \
+       ca-certificates \
+       make git \
+       g++ \
+       curl cmake \
+  && apt clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
+RUN git clone https://github.com/Boolector/boolector
+
+ENV MAKEFLAGS=-j4
+
+# build boolector and dependencies
+RUN mkdir -p $RISCV \
+  && cd boolector \
+  && ./contrib/setup-lingeling.sh \
+  && ./contrib/setup-btor2tools.sh \
+  && ./configure.sh --prefix $RISCV \
+  && cd build \
+  && make \
+  && make install
+
 #######################################
 # Bitwuzla (SMT solver) builder image #
 #######################################
@@ -166,10 +207,11 @@ RUN apt-get update \
        xxd gettext curl \
   && apt clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
-# copy pk, spike, qemu, and bitwuzla from builder images
+# copy pk, spike, qemu, boolector, and bitwuzla from builder images
 COPY --from=pkbuilder $RISCV/ $RISCV/
 COPY --from=spikebuilder $RISCV/ $RISCV/
 COPY --from=qemubuilder $RISCV/ $RISCV/
+COPY --from=boolectorbuilder $RISCV/ $RISCV/
 COPY --from=bitwuzlabuilder $RISCV/ $RISCV/
 
 # add selfie sources to the image
