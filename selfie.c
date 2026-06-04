@@ -4456,7 +4456,7 @@ void check_variable_redefinition(uint64_t scope, char* variable) {
     return;
 
   print_line_number("syntax error", line_number);
-  printf("redefinition of variable '%s', original definition present on line %ld\n", get_string(entry), get_line_number(entry));
+  printf("redefinition of variable %s, original definition in line %lu\n", get_string(entry), get_line_number(entry));
 
   number_of_syntax_errors = number_of_syntax_errors + 1;
 }
