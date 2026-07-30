@@ -31,21 +31,21 @@ two-column treatment: **what it forbids** / **what it opens**.
 
 | Part | Title | Slides | Plan |
 |---|---|---|---|
-| 0 | Prologue — the question, and the short answer up front | 1–4 | 3:51 |
-| I | Vastness — bits, exponential state spaces, why bugs are geometry | 5–11 | 5:15 |
-| II | Infinity — countability, diagonalization, meaning outnumbers notation | 12–18 | 5:21 |
-| III | Self-Reference — syntax/semantics, Gödelisierung, incompleteness, halting, Rice | 19–28 | 8:42 |
-| IV | Cost — decidable ≠ doable, NP-completeness, Landauer's energy floor | 29–34 | 4:36 |
-| V | Everywhere — biology, mind, and the notations that made every field | 35–38 | 3:03 |
-| VI | Machines — what today's AI is, and what it cannot escape | 39–43 | 3:57 |
-| VII | Practice — six habits, the definition, depth, humour, Goethe | 44–55 | 10:15 |
+| 0 | Prologue — disclosure, acknowledgement, the question, the short answer up front | 1–5 | 3:51 |
+| I | Vastness — bits, exponential state spaces, why bugs are geometry | 6–12 | 5:15 |
+| II | Infinity — countability, diagonalization, meaning outnumbers notation | 13–19 | 5:21 |
+| III | Self-Reference — syntax/semantics, Gödelisierung, incompleteness, halting, Rice | 20–29 | 8:42 |
+| IV | Cost — decidable ≠ doable, NP-completeness, Landauer's energy floor | 30–35 | 4:36 |
+| V | Everywhere — biology, mind, and the notations that made every field | 36–39 | 3:03 |
+| VI | Machines — what today's AI is, where world models take it, what neither escapes | 40–45 | 3:57 |
+| VII | Practice — six habits, the definition, depth, humour, Goethe | 46–57 | 10:15 |
 
-55 slides; the per-slide budget in `data-mins` sums to exactly **45:00**. Press <kbd>t</kbd> to start
+57 slides; the per-slide budget in `data-mins` sums to exactly **45:00**. Press <kbd>t</kbd> to start
 the clock — it turns amber if you are a minute behind the plan and rose if you are three behind.
 
 **Running long?** These four are self-contained and can be dropped without breaking the argument,
-buying 3:06: slide 11 (Borges), 13 (pairing ℕ ↔ evens), 16 (Cantor's theorem in general form),
-47 (bridges and aviation). Do not cut 15–17, 23, 25, 48–50 — they carry the thesis.
+buying 3:06: slide 12 (Borges), 14 (pairing ℕ ↔ evens), 17 (Cantor's theorem in general form),
+49 (bridges and aviation). Do not cut 16, 18, 24, 26, 50–52 — they carry the thesis.
 
 ## Keys
 
@@ -105,3 +105,9 @@ Both themes are designed; the viewer's system preference or the <kbd>d</kbd> key
 Everything is sized from a single unit (`--u` = deck width ⁄ 100) so the 16:9 stage scales to any
 projector, and all twelve figures are drawn on canvas at whatever size they are given. Animation is
 suppressed under `prefers-reduced-motion`, where every build step shows at once.
+
+Two guards keep text off text on machines whose font stacks resolve differently from the author's.
+At load, `autofit()` measures each slide and, for any whose content would run past its bottom padding
+onto the progress bar, scales that slide's unit down until it fits — a pure scale, so nothing
+re-wraps. On canvas, every label is drawn with bounds it may not leave: too wide a string is shrunk
+and nudged rather than allowed to run off the figure or onto its caption.

@@ -78,7 +78,8 @@ body{font-family:var(--serif);-webkit-font-smoothing:antialiased}
     radial-gradient(120% 90% at 50% 0%, var(--ground-2) 0%, var(--ground) 62%);
 }
 #deck{
-  --u:8px;
+  --u0:8px;          /* the deck unit, set by fit() from the viewport */
+  --u:var(--u0);
   position:relative;width:calc(var(--u)*100);height:calc(var(--u)*56.25);
   outline:none;
 }
@@ -90,32 +91,52 @@ body{font-family:var(--serif);-webkit-font-smoothing:antialiased}
 
 /* ---------- slides ---------- */
 .slide{
+  /* --k is set per slide by autofit() when the authored content would otherwise
+     run past the bottom padding onto the progress bar and footer */
+  --u:calc(var(--u0) * var(--k, 1));
   position:absolute;inset:0;
   padding:calc(var(--u)*5.8) calc(var(--u)*7) calc(var(--u)*5.9);
   display:flex;flex-direction:column;gap:calc(var(--u)*1.6);
   opacity:0;visibility:hidden;transform:translateY(calc(var(--u)*1.1));
-  transition:opacity .42s ease,transform .42s ease,visibility .42s;
+  /* leaving: fade out over .18s, then hide. The zero-duration visibility
+     transition is what defers the flip until the fade has finished. */
+  transition:opacity .18s ease,transform .3s ease,visibility 0s .18s;
 }
-.slide.on{opacity:1;visibility:visible;transform:none}
+/* arriving: hold at opacity 0 until the outgoing slide has cleared, so the two
+   never paint over one another */
+.slide.on{opacity:1;visibility:visible;transform:none;
+  transition:opacity .3s ease .18s,transform .3s ease .18s,visibility 0s}
 .slide.out{transform:translateY(calc(var(--u)*-1.1))}
+/* belt and braces: show() stamps this on every non-current slide, so a skipped
+   or throttled transition can never leave two slides painted at once */
+.slide.gone:not(.on){visibility:hidden;transition:none}
+/* measuring pass for auto-fit: freeze motion, reveal every fragment */
+#deck.measuring .slide{transition:none;transform:none}
+#deck.measuring .f{opacity:1;transform:none;transition:none}
 
 /* ---------- chrome ---------- */
+/* z-index keeps the chrome above the slides: full-bleed canvases (the ambient
+   title/closing animation) must never draw over the rail, bar or footer. */
 #rail,#foot{position:absolute;left:calc(var(--u)*4);right:calc(var(--u)*4);display:flex;align-items:center;gap:calc(var(--u)*1.4);
-  font-family:var(--mono);font-size:calc(var(--u)*1.18);letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+  font-family:var(--mono);font-size:calc(var(--u)*1.18);letter-spacing:.14em;text-transform:uppercase;color:var(--muted);
+  z-index:5;pointer-events:none}
 #rail{top:calc(var(--u)*3.1)}
 #foot{bottom:calc(var(--u)*2.6)}
 #actname{color:var(--ink-2)}
 #actname b{color:var(--sem);font-weight:400}
 #rail .sp,#foot .sp{flex:1}
 #bar{position:absolute;left:calc(var(--u)*4);right:calc(var(--u)*4);bottom:calc(var(--u)*4.9);height:calc(var(--u)*.34);
-  display:flex;gap:calc(var(--u)*.4)}
+  display:flex;gap:calc(var(--u)*.4);z-index:5;pointer-events:none}
 #bar .seg{flex:1;background:var(--line);position:relative;overflow:hidden;border-radius:99px}
 #bar .seg i{position:absolute;inset:0;transform-origin:left;transform:scaleX(0);background:var(--muted);transition:transform .4s ease}
 #bar .seg.cur i{background:var(--sem)}
 #clock{font-variant-numeric:tabular-nums;color:var(--ink-2)}
 #clock.warn{color:var(--syn)}
 #clock.late{color:var(--bad)}
-#pageno{font-variant-numeric:tabular-nums}
+/* the page number sits next to the footer title: the bottom-right corner
+   belongs to the nav buttons, which used to cover it */
+#pageno{font-variant-numeric:tabular-nums;color:var(--ink-2)}
+#pageno::before{content:"·";margin-right:calc(var(--u)*1.4);color:var(--muted)}
 .nav{position:absolute;bottom:calc(var(--u)*2.1);right:calc(var(--u)*4);display:flex;gap:calc(var(--u)*.7);z-index:6}
 .nav button{
   font-family:var(--mono);font-size:calc(var(--u)*1.15);color:var(--ink-2);background:var(--panel);
@@ -276,7 +297,9 @@ blockquote cite{display:block;margin-top:calc(var(--u)*1.4);font-family:var(--mo
 #help dd{margin:0;color:var(--ink-2)}
 
 @media (prefers-reduced-motion: reduce){
-  .slide,.f,#bar .seg i{transition:none}
+  /* .slide.on is listed explicitly: it carries its own transition, which would
+     otherwise outrank a bare .slide selector here */
+  .slide,.slide.on,.f,#bar .seg i{transition:none}
   .f{opacity:1;transform:none}
 }
 </style>
@@ -289,7 +312,7 @@ blockquote cite{display:block;margin-top:calc(var(--u)*1.4);font-family:var(--mo
   </div>
   <div id="bar" aria-hidden="true"></div>
   <div id="foot" aria-hidden="true">
-    <span>What is Intelligence?</span><span class="sp"></span><span id="pageno"></span>
+    <span>What is Intelligence?</span><span id="pageno"></span><span class="sp"></span>
   </div>
   <div class="nav">
     <button id="bPrev" title="Previous (←)">←</button>
@@ -300,7 +323,7 @@ blockquote cite{display:block;margin-top:calc(var(--u)*1.4);font-family:var(--mo
 
 <!-- ══════════════════ ACT 0 · PROLOGUE ══════════════════ -->
 
-<section class="slide" data-act="0" data-mins="1.2">
+<section class="slide" data-act="0" data-mins="1.0">
   <div class="fig bare" style="position:absolute;inset:0"><canvas data-anim="ambient"></canvas></div>
   <div class="fill center" style="position:relative">
     <div class="row mid" style="gap:calc(var(--u)*5)">
@@ -317,16 +340,37 @@ blockquote cite{display:block;margin-top:calc(var(--u)*1.4);font-family:var(--mo
       <div class="stack grow" style="flex:.9">
         <div class="card syn f" data-step="1"><span class="h">Full disclosure</span>
           <p>This entire talk was generated by an AI.</p></div>
-        <p class="sm f" data-step="2">It also took me forty-odd years to become someone who could prompt it into existence. I could do that today. I could not have done it yesterday.</p>
-        <p class="sm f" data-step="3">Along the way I met people vastly more intelligent than I am — several of them my own students.</p>
-        <p class="f" data-step="4" style="font-size:calc(var(--u)*2.1);color:var(--ink)">So: drop the phone, drop the AI, drop the distraction — and <em>help</em> those people find you, by <span class="k">becoming who you are and no one else</span>. This talk is about that.</p>
+        <p class="sm f" data-step="2">It took me 40+ years to become someone who could prompt it into existence. I could do that today. I could not have done it yesterday.</p>
+        <p class="sm f" data-step="3">I met people on the way vastly more intelligent than me, including some of my students. Without them this talk would not exist.</p>
+        <p class="f" data-step="4" style="font-size:calc(var(--u)*2.1);color:var(--ink)">So, join me in preventing our smartphones, social media, and AI from distracting us, and help such people find you by <span class="k">becoming who you are and no one else</span>. This talk is about that.</p>
       </div>
     </div>
   </div>
   <aside class="notes"><p>Open with the disclosure and let the laugh happen. Then the real point, delivered straight: the prompt is not the achievement — forty years of reading, building and being wrong is what made the prompt possible. The tool collapsed the last mile, not the road. Two promises for the hour: no prior computer science required, and you will leave with a definition of intelligence that applies to you, to your field, and to machines that do not exist yet.</p></aside>
 </section>
 
-<section class="slide" data-act="0" data-mins="0.85">
+<section class="slide" data-act="0" data-mins="0.6">
+  <div class="eyebrow sem">Acknowledgement</div>
+  <h2>This is a <span class="k">collaborative effort</span>.</h2>
+  <div class="fill row mid">
+    <div class="stack grow">
+      <div class="byline f" data-step="1">
+        <span class="who">Leoni Brand<br>Eva Jonas<br>Julius Möller<br>Stefan Reiß</span>
+        <span class="aff"><b>Department of Psychology</b><br>University of Salzburg, Austria</span>
+      </div>
+      <p class="f" data-step="2">They inspired me, encouraged me, and helped me leave my computer-science comfort zone — and reach out to everyone affected by AI.</p>
+    </div>
+    <div class="stack grow">
+      <div class="card syn f" data-step="3"><span class="h">Not by repeating</span>
+        <p>The booming. The dooming. Both are forecasts about a product cycle, and both expire on the next one.</p></div>
+      <div class="card f" data-step="4"><span class="h">But by academic grounding</span>
+        <p>Results that were already true before this technology arrived, and will still be true after whatever replaces it. That is the whole of what follows.</p></div>
+    </div>
+  </div>
+  <aside class="notes"><p>Name them, and say why it matters rather than treating this as a formality. The framing of this hour — that the audience is everyone affected by AI, not the people who build it — is not a computer scientist's instinct; it came from the psychologists, and they had to push me out of my own department to get it. Then land the contrast on the right: the alternative to boom and doom is not neutrality, it is grounding — and grounding is what a university is for.</p></aside>
+</section>
+
+<section class="slide" data-act="0" data-mins="0.75">
   <div class="eyebrow">The question · and why we won't answer it</div>
   <h2>"Is it intelligent?" is a <span class="j">badly posed</span> question.</h2>
   <div class="fill">
@@ -344,7 +388,7 @@ blockquote cite{display:block;margin-top:calc(var(--u)*1.4);font-family:var(--mo
   <aside class="notes"><p>Dijkstra's point isn't dismissive — it's linguistic. "Swim" was coined for bodies with muscles. Submarines cross oceans; whether that is "swimming" is a question about our word, not about the submarine. Same for "think." So we replace the noun question ("is it intelligent?") with a process question, which we'll build up to.</p></aside>
 </section>
 
-<section class="slide" data-act="0" data-mins="1.15">
+<section class="slide" data-act="0" data-mins="1.05">
   <div class="eyebrow sem">The short answer · stated now, earned later</div>
   <h2 style="max-width:26em">Intelligence is finding the <span class="k">next language</span> — which means finding truth you cannot yet prove.</h2>
   <div class="fill">
@@ -358,7 +402,7 @@ blockquote cite{display:block;margin-top:calc(var(--u)*1.4);font-family:var(--mo
   <aside class="notes"><p>Give the answer away immediately; the talk becomes a derivation rather than a mystery. The load-bearing word is <em>unproven</em>: intelligence lives in the gap between truth and proof, which is exactly the gap Parts II and III measure. Note the symmetry — this is not a claim that humans have special sauce, it is a claim that the step is not algorithmic for anybody.</p></aside>
 </section>
 
-<section class="slide" data-act="0" data-mins="0.65">
+<section class="slide" data-act="0" data-mins="0.45">
   <div class="eyebrow">Route</div>
   <h2>Seven parts.</h2>
   <div class="fill">
@@ -472,7 +516,7 @@ blockquote cite{display:block;margin-top:calc(var(--u)*1.4);font-family:var(--mo
     <div class="stack grow">
       <p class="f" data-step="1">The Library of Babel holds every possible book: every truth, every refutation — and overwhelmingly, gibberish.</p>
       <p class="f" data-step="2">Its inhabitants go mad: <strong>containing</strong> every truth is worthless without a way of <span class="k">finding</span> one.</p>
-      <p class="f" data-step="3">Modern echo: a large model already "contains" astonishing amounts of text. Containment was never the hard part.</p>
+      <p class="f" data-step="3">Modern echo: a large language model already "contains" astonishing amounts of text. Containment was never the hard part.</p>
     </div>
     <div class="stack grow f" data-step="1">
       <div class="card"><span class="h">Borges · 1941</span>
@@ -957,14 +1001,14 @@ blockquote cite{display:block;margin-top:calc(var(--u)*1.4);font-family:var(--mo
   <aside class="notes"><p>Tone here matters. Not debunking, not hype. These systems are among the most useful artefacts ever built. And they are computations, so the mathematics applies to them exactly as it applies to a spreadsheet.</p></aside>
 </section>
 
-<section class="slide" data-act="VI" data-mins="0.95">
+<section class="slide" data-act="VI" data-mins="0.75">
   <div class="eyebrow">What it is</div>
-  <h2>A large model is a machine trained on <span class="j">notation</span>, asked for <span class="k">meaning</span>.</h2>
+  <h2>A large language model is a machine trained on <span class="j">notation</span>, asked for <span class="k">meaning</span>.</h2>
   <div class="fill">
     <div class="two">
       <div class="stack">
-        <p class="f" data-step="1">Mechanically: a function from a sequence of tokens to a probability distribution over the next token, fitted to an enormous corpus, then sampled.</p>
-        <p class="f" data-step="2">The training signal is <strong>syntactic</strong> — which symbol follows which. Meaning is never handed to it; it is inferred from whatever correlates with the symbols.</p>
+        <p class="f" data-step="1">Mechanically, a <strong>large language model</strong> — an <strong>LLM</strong> — is a function from a sequence of tokens to a probability distribution over the next token, fitted to an enormous corpus, then sampled.</p>
+        <p class="f" data-step="2">The name is exact: what it is trained on is <em>language</em>, so the signal is <strong>syntactic</strong> — which symbol follows which. Meaning is never handed to it; it is inferred from whatever correlates with the symbols.</p>
         <p class="f" data-step="3">That this works as well as it does is the genuine scientific surprise of our decade. It does not change what kind of object it is.</p>
       </div>
       <div class="stack">
@@ -978,7 +1022,7 @@ blockquote cite{display:block;margin-top:calc(var(--u)*1.4);font-family:var(--mo
   <aside class="notes"><p>Keep the description mechanical and unpolemical — students should leave able to explain what these systems are to a friend. The important consequence is the last one: "we tested it extensively" is Part I all over again. Testing shows presence, not absence.</p></aside>
 </section>
 
-<section class="slide dense" data-act="VI" data-mins="0.95">
+<section class="slide dense" data-act="VI" data-mins="0.75">
   <div class="eyebrow">The old gap, industrialised</div>
   <h2>A hallucination is a <span class="j">proof-shaped object</span> that isn't <span class="k">true</span>.</h2>
   <div class="fill row mid">
@@ -997,7 +1041,30 @@ blockquote cite{display:block;margin-top:calc(var(--u)*1.4);font-family:var(--mo
   <aside class="notes"><p>Land this without cynicism: the same slide explains why retrieval, tool use, unit tests and human review help so much. They are all ways of importing an external semantics. That is the engineering response to Gödel's second theorem, and it works.</p></aside>
 </section>
 
-<section class="slide" data-act="VI" data-mins="0.95">
+<section class="slide dense" data-act="VI" data-mins="0.8">
+  <div class="eyebrow">Where it is going</div>
+  <h2>World models aim at <span class="k">meaning itself</span> — and inherit every limit anyway.</h2>
+  <div class="fill row mid">
+    <div class="stack grow" style="flex:1.3">
+      <p class="f" data-step="1">The next step is not more text but a model of the <em>world</em> — state, dynamics, consequence — learned from video, sensors, simulation and action. Predict what <strong>happens</strong>, not what is <strong>said</strong>.</p>
+      <p class="f" data-step="2">Taken seriously that is an attempt at real semantics: learning the function from notation to meaning, and fixing it against a world rather than against agreement.</p>
+      <p class="f" data-step="3">It is also a bid for <strong>efficiency</strong>. An LLM learns the world second-hand, from a transcript of it; a world model goes after whatever wrote the transcript — fewer examples, fewer parameters, fewer joules. And on a fixed budget <em>efficiency is capability</em>, so world models may well end up outperforming LLMs outright.</p>
+      <p class="f" data-step="4">And still: a world model is a <span class="j">finite notation</span> — finite data, finite parameters, finite budget. Parts II–IV apply to it <strong>unchanged</strong>.</p>
+    </div>
+    <div class="stack grow f" data-step="5">
+      <div class="card syn"><span class="h">What it inherits</span>
+        <p><strong>Counting</strong> — models are countable, behaviours are not.<br>
+          <strong>Rice</strong> — "is this model right?" is semantic. Undecidable.<br>
+          <strong>Gödel</strong> — it sits inside the world it models; no self-certificate.<br>
+          <strong>Cost</strong> — the world's state space did not shrink. Only the map did.</p></div>
+      <div class="card f" data-step="6"><span class="h">And that is the good news</span>
+        <p>A world model is a new language built to hold meaning the old one could not. Not an escape from this talk's thesis — an <em>instance</em> of it, running faster.</p></div>
+    </div>
+  </div>
+  <aside class="notes"><p>Take the strongest version of the opposing case and then answer it. The world-model programme is not hype: it is the correct diagnosis of what is missing, and precisely what Harnad's grounding problem asks for — fix the interpretation by prediction against a world rather than by agreement with text. Do not skip the efficiency beat, it is the one with commercial teeth: text is a lossy, wildly redundant recording of a world, so learning from it is the expensive way round, and a system that learns the dynamics directly should need far less data, compute and energy for the same competence. Part IV's 20-watt brain is the standing proof that the job can be done orders of magnitude cheaper than we are doing it. Since every budget is finite, that is not a side benefit — it is how one approach overtakes another. Hence the honest forecast: LLMs are unlikely to be the last architecture. What no architecture escapes is Parts II to IV, because a model is still a finite object sitting inside the world it models. Better maps, arriving faster and cheaper, of a territory that stays uncountable — and still no map that certifies itself. If someone asks whether this changes the definition at the end, the answer is no: it is an example of it.</p></aside>
+</section>
+
+<section class="slide" data-act="VI" data-mins="0.7">
   <div class="eyebrow">Self-reference · again</div>
   <h2>The loops are already <span class="x">closed</span>.</h2>
   <div class="fill row mid">
@@ -1015,7 +1082,7 @@ blockquote cite{display:block;margin-top:calc(var(--u)*1.4);font-family:var(--mo
   <aside class="notes"><p>The payoff of Part III. Every AI-safety debate that assumes a sufficiently smart system could simply verify itself is refuted by a 1931 theorem. Which is not despair — it tells you exactly where to spend effort: on external, independent, bounded checks.</p></aside>
 </section>
 
-<section class="slide" data-act="VI" data-mins="0.85">
+<section class="slide" data-act="VI" data-mins="0.7">
   <div class="eyebrow sem">What actually changed</div>
   <h2>Generation got cheap. Verification <span class="k">did not</span>.</h2>
   <div class="fill">
@@ -1274,10 +1341,54 @@ function fit(){
   const pad = 0.985;
   const w = stage.clientWidth*pad, h = stage.clientHeight*pad;
   const u = Math.min(w/100, h/56.25);
-  deck.style.setProperty("--u", u+"px");
+  deck.style.setProperty("--u0", u+"px");
   sizeCanvases();
 }
-addEventListener("resize", fit);
+
+/* Slides are authored on a fixed 100 x 56.25 u grid, but how tall the text
+   actually runs depends on which of the fallback fonts a machine has. Where a
+   slide would overflow its bottom padding — printing over the progress bar and
+   the footer — shrink that one slide's unit until it fits. Every length in a
+   slide is a multiple of --u, so this is a pure scale: nothing re-wraps. */
+function autofit(){
+  deck.classList.add("measuring");
+  slides.forEach(s=>{
+    s.style.removeProperty("--k");
+    let k = 1;
+    /* a couple of passes: 1px borders and rules do not scale with --u, so one
+       division does not always land the slide inside its box */
+    for(let pass=0; pass<5; pass++){
+      const cs = getComputedStyle(s), r = s.getBoundingClientRect();
+      const top = r.top + parseFloat(cs.paddingTop), limit = r.bottom - parseFloat(cs.paddingBottom);
+      let bottom = top;
+      (function walk(node){               /* in-flow content only: an absolutely
+                                             positioned subtree (a full-bleed
+                                             figure, a caption) is not what sets
+                                             the height of the slide */
+        for(const e of node.children){
+          const es = getComputedStyle(e);
+          if(es.position === "absolute" || es.position === "fixed" || es.display === "none") continue;
+          const b = e.getBoundingClientRect();
+          if(b.height > .5 && b.bottom > bottom) bottom = b.bottom;
+          walk(e);
+        }
+      })(s);
+      const need = bottom - top, avail = limit - top;
+      if(need <= avail + .5) break;      /* a .fill stretches to exactly avail;
+                                            only a genuine overrun is > avail */
+      k = Math.max(.7, k * avail/need * .996);
+      s.style.setProperty("--k", k.toFixed(4));
+    }
+  });
+  deck.classList.remove("measuring");
+}
+
+let refit = null;
+addEventListener("resize", ()=>{
+  fit();
+  clearTimeout(refit);
+  refit = setTimeout(()=>{ autofit(); sizeCanvases(); }, 180);
+});
 
 /* ---------- theme-aware palette for canvas ---------- */
 let C = {};
@@ -1303,6 +1414,7 @@ function paint(){
   const s = slides[cur];
   $$(".f",s).forEach(f=>f.classList.toggle("shown", (+(f.dataset.step||1)) <= s._step));
 }
+let hideT = null;
 function show(i, dir=1){
   i = Math.max(0, Math.min(slides.length-1, i));
   if(i===cur){ paint(); return; }
@@ -1310,7 +1422,9 @@ function show(i, dir=1){
   old.classList.remove("on"); old.classList.toggle("out", dir>0);
   cur = i;
   const s = slides[cur];
-  s.classList.remove("out"); s.classList.add("on");
+  s.classList.remove("out", "gone"); s.classList.add("on");
+  clearTimeout(hideT);
+  hideT = setTimeout(()=>slides.forEach(x=>{ if(x!==slides[cur]) x.classList.add("gone"); }), 340);
   if(s._step===0 && s._max>0 && reduce) s._step = s._max;
   paint(); chrome(); startAnims();
 }
@@ -1433,10 +1547,26 @@ function startAnims(){
 
 /* helpers */
 const rnd = seed => ()=> (seed = (seed*1103515245 + 12345) & 0x7fffffff)/0x7fffffff;
-function txt(ctx, s, x, y, {size=13, col=C.muted, font=C.mono, align="left", weight=400}={}){
+/* txt(): `box:[left,right]` keeps a label inside those bounds — it shrinks the
+   type if the string is too wide, then nudges x so nothing is clipped. Every
+   caption-sized label passes box:[…] because the fallback fonts differ per
+   machine, and a label that just fits here can overrun the canvas elsewhere. */
+function txt(ctx, s, x, y, {size=13, col=C.muted, font=C.mono, align="left", weight=400, box=null}={}){
   ctx.fillStyle=col; ctx.textAlign=align; ctx.textBaseline="middle";
-  ctx.font = weight+" "+size+"px "+font; ctx.fillText(s,x,y);
+  ctx.font = weight+" "+size+"px "+font;
+  if(box){
+    const lim = box[1]-box[0];
+    let wd = ctx.measureText(s).width;
+    if(wd > lim){ size = Math.max(4, size*lim/wd); ctx.font = weight+" "+size+"px "+font; wd = ctx.measureText(s).width; }
+    const l = align==="center" ? x-wd/2 : (align==="right"||align==="end") ? x-wd : x;
+    /* if it still cannot fit, hold the right edge: box[1] is the side that is
+       usually the edge of the canvas, and running off that is the worse fault */
+    x += (wd >= lim ? box[1]-wd : Math.min(Math.max(l, box[0]), box[1]-wd)) - l;
+  }
+  ctx.fillText(s,x,y);
 }
+/* the bottom-left strip of every .fig is occupied by its permanent caption */
+const capfree = h => h*.86;
 function rr(ctx,x,y,w,h,r){ ctx.beginPath(); ctx.moveTo(x+r,y);
   ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r);
   ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); }
@@ -1484,10 +1614,10 @@ ANIM.bits = (ctx,w,h,st,t)=>{
     rr(ctx,x,y0,cell,cell,cell*.15); ctx.fill(); ctx.stroke();
     txt(ctx, on?"1":"0", x+cell/2, y0+cell/2, {size:cell*.52, col:on?C.panel:C.muted, align:"center"});
   }
-  txt(ctx, n+" bit"+(n>1?"s":""), w/2, y0-cell*.75, {size:h*.036, col:C.muted, align:"center"});
+  txt(ctx, n+" bit"+(n>1?"s":""), w/2, y0-cell*.75, {size:h*.036, col:C.muted, align:"center", box:[4,w-4]});
   txt(ctx, "2^"+n+"  =  "+Math.pow(2,n).toLocaleString("en-US")+" states", w/2, y0+cell*1.95,
-      {size:Math.min(h*.085, w*.052), col:C.ink, align:"center"});
-  const gy=h*.87, gh=h*.28, x1=w*.13, x2=w*.87;
+      {size:Math.min(h*.085, w*.052), col:C.ink, align:"center", box:[4,w-4]});
+  const gy=h*.84, gh=h*.26, x1=w*.13, x2=w*.87;
   ctx.strokeStyle=C.line; ctx.lineWidth=1; ctx.beginPath(); ctx.moveTo(x1,gy); ctx.lineTo(x2,gy); ctx.stroke();
   ctx.strokeStyle=C.syn; ctx.lineWidth=1.8; ctx.beginPath();
   for(let i=0;i<=100;i++){
@@ -1495,7 +1625,7 @@ ANIM.bits = (ctx,w,h,st,t)=>{
     i?ctx.lineTo(X,Y):ctx.moveTo(X,Y);
   }
   ctx.stroke();
-  txt(ctx,"bits →", x2, gy+h*.045, {size:h*.032, col:C.muted, align:"right"});
+  txt(ctx,"bits →", x2, gy+h*.042, {size:h*.032, col:C.muted, align:"right", box:[4,w-4]});
 };
 
 /* --- ruler: log scale to 10^80 --- */
@@ -1503,30 +1633,34 @@ ANIM.ruler = (ctx,w,h,st,t)=>{
   const x1=w*.1, x2=w*.9, y=h*.55, MAX=80, F=h*.036;
   ctx.strokeStyle=C.line; ctx.lineWidth=1;
   ctx.beginPath(); ctx.moveTo(x1,y); ctx.lineTo(x2,y); ctx.stroke();
+  const slot=(x2-x1)*10/MAX;            /* one decade: each tick label owns its slot */
   for(let e=0;e<=MAX;e+=10){
     const X=x1+(x2-x1)*e/MAX;
     ctx.beginPath(); ctx.moveTo(X,y-h*.015); ctx.lineTo(X,y+h*.015); ctx.stroke();
-    txt(ctx,"10^"+e, X, y+h*.05, {size:F*.92, col:C.muted, align:"center"});
+    txt(ctx,"10^"+e, X, y+h*.05, {size:F*.92, col:C.muted, align:"center",
+        box:[Math.max(2,X-slot*.46), Math.min(w-2,X+slot*.46)]});
   }
+  /* stem length is per mark, not just up/down: "8 bits" and "molecules in a
+     spoonful" are both above the rule and used to collide on the left. */
   const marks = [
-    [ 2, "8 bits", C.muted],
-    [10, "grains of sand on Earth", C.muted],
-    [23, "molecules in a spoonful", C.muted],
-    [80, "atoms in the universe", C.sem]
+    [ 2, "8 bits",                  C.muted, -.15],
+    [10, "grains of sand on Earth", C.muted,  .19],
+    [23, "molecules in a spoonful", C.muted, -.27],
+    [80, "atoms in the universe",   C.sem,    .29]
   ];
-  marks.forEach(([e,lab,col],i)=>{
+  marks.forEach(([e,lab,col,stem],i)=>{
     if(st < 1 && i<3) return;
-    const X=x1+(x2-x1)*e/MAX, up = i%2===0;
+    const X=x1+(x2-x1)*e/MAX, up = stem<0, tip = y+h*stem;
     ctx.strokeStyle=col; ctx.setLineDash([2,3]);
-    ctx.beginPath(); ctx.moveTo(X,y); ctx.lineTo(X, up?y-h*.15:y+h*.20); ctx.stroke(); ctx.setLineDash([]);
-    txt(ctx,lab,X, up?y-h*.15-F*.8:y+h*.20+F*.8,{size:F,col,align:"center"});
+    ctx.beginPath(); ctx.moveTo(X,y); ctx.lineTo(X, tip); ctx.stroke(); ctx.setLineDash([]);
+    txt(ctx,lab,X, tip+(up?-F*.8:F*.8),{size:F,col,align:"center",box:[w*.02,w*.98]});
   });
   if(st>=2){
     const a = ease((t-0.1)*1.1), X=x1+(x2-x1)*80.07/MAX;
     ctx.globalAlpha=a; ctx.fillStyle=C.syn;
     ctx.beginPath(); ctx.arc(X,y,h*.014,0,7); ctx.fill();
-    txt(ctx,"266 bits", X, y-h*.33, {size:F*1.25, col:C.syn, align:"center"});
-    ctx.strokeStyle=C.syn; ctx.beginPath(); ctx.moveTo(X,y-h*.02); ctx.lineTo(X,y-h*.30); ctx.stroke();
+    txt(ctx,"266 bits", X, y-h*.40, {size:F*1.25, col:C.syn, align:"center", box:[4,w-4]});
+    ctx.strokeStyle=C.syn; ctx.beginPath(); ctx.moveTo(X,y-h*.02); ctx.lineTo(X,y-h*.37); ctx.stroke();
     ctx.globalAlpha=1;
   }
 };
@@ -1555,7 +1689,7 @@ ANIM.needle = (ctx,w,h,st,t)=>{
     ctx.beginPath(); ctx.arc(x,y,h*.03+pulse*h*.012,0,7); ctx.stroke();
     ctx.fillStyle=C.bad; ctx.beginPath(); ctx.arc(x,y,2.6,0,7); ctx.fill();
     ctx.globalAlpha=1;
-    txt(ctx,"a bad state, untested", x+h*.05, y, {size:h*.036, col:C.bad});
+    txt(ctx,"a bad state, untested", x+h*.05, y, {size:h*.036, col:C.bad, box:[4,w-4]});
   }
 };
 
@@ -1586,8 +1720,8 @@ ANIM.enum = (ctx,w,h,st,t)=>{
     txt(ctx, s, w*.33, y0+i*dy, {size:F, col: i===rows.length-1?C.muted:C.sem});
     ctx.globalAlpha=1;
   });
-  txt(ctx,"every finite text", w*.72, h*.46, {size:F*.72, col:C.ink2, align:"center"});
-  txt(ctx,"has a number", w*.72, h*.54, {size:F*.72, col:C.ink2, align:"center"});
+  txt(ctx,"every finite text", w*.72, h*.46, {size:F*.72, col:C.ink2, align:"center", box:[w*.46,w-4]});
+  txt(ctx,"has a number", w*.72, h*.54, {size:F*.72, col:C.ink2, align:"center", box:[w*.46,w-4]});
 };
 
 /* --- diagonal: Cantor --- */
@@ -1619,15 +1753,15 @@ ANIM.diagonal = (ctx,w,h,st,t)=>{
     }
     if(st>=3)
       txt(ctx,"differs from every row — so it is on no row",
-          x0+gw/2, yD+cell*1.9, {size:F*.82, col:C.sem, align:"center"});
+          x0+gw/2, Math.min(yD+cell*1.9, capfree(h)), {size:F*.82, col:C.sem, align:"center", box:[4,w-4]});
   }
 };
 
 /* --- gap: countable vs uncountable --- */
 ANIM.gap = (ctx,w,h,st,t)=>{
   const xa=w*.24, xb=w*.64, bw=w*.1, y0=h*.14, H=h*.7, F=h*.038;
-  txt(ctx,"NOTATION", xa, y0-h*.07, {size:F, col:C.syn, align:"center"});
-  txt(ctx,"MEANING", xb+bw/2, y0-h*.07, {size:F, col:C.sem, align:"center"});
+  txt(ctx,"NOTATION", xa, y0-h*.07, {size:F, col:C.syn, align:"center", box:[4,xb-6]});
+  txt(ctx,"MEANING", xb+bw/2, y0-h*.07, {size:F, col:C.sem, align:"center", box:[xb-2,w-4]});
   const N=11;
   for(let i=0;i<N;i++){
     const y=y0+H*i/(N-1), a=Math.max(0,Math.min(1,t*2-i*.07));
@@ -1641,12 +1775,12 @@ ANIM.gap = (ctx,w,h,st,t)=>{
   if(st>=2){
     const pulse=.55+.45*Math.sin(t*2);
     ctx.globalAlpha=pulse;
-    txt(ctx,"everything here", xb+bw+h*.03, y0+H*.42,{size:F,col:C.sem});
-    txt(ctx,"has no name", xb+bw+h*.03, y0+H*.42+F*1.3,{size:F,col:C.sem});
+    txt(ctx,"everything here", xb+bw+h*.03, y0+H*.42,{size:F,col:C.sem,box:[xb+bw+h*.02,w*.985]});
+    txt(ctx,"has no name", xb+bw+h*.03, y0+H*.42+F*1.3,{size:F,col:C.sem,box:[xb+bw+h*.02,w*.985]});
     ctx.globalAlpha=1;
   }
-  txt(ctx,"countable · listable", xa, y0+H+h*.055, {size:F*.86, col:C.muted, align:"center"});
-  txt(ctx,"uncountable", xb+bw/2, y0+H+h*.055, {size:F*.86, col:C.muted, align:"center"});
+  txt(ctx,"countable · listable", xa, y0+H+h*.055, {size:F*.86, col:C.muted, align:"center", box:[4,xb-6]});
+  txt(ctx,"uncountable", xb+bw/2, y0+H+h*.055, {size:F*.86, col:C.muted, align:"center", box:[xb-2,w-4]});
 };
 
 /* --- decimal digit rain for the 8GB number --- */
@@ -1663,10 +1797,10 @@ ANIM.godel = (ctx,w,h,st,t)=>{
   const y1=h*.24, y2=h*.5, F=Math.min(w*.058, h*.1);
   txt(ctx,"SYNTAX", w*.5, h*.1, {size:h*.036,col:C.syn,align:"center"});
   const n = Math.min(src.length, Math.floor(t*9));
-  txt(ctx, src, w*.5, y1, {size:F, col:C.syn, align:"center"});
+  txt(ctx, src, w*.5, y1, {size:F, col:C.syn, align:"center", box:[4,w-4]});
   let num="";
   for(let i=0;i<n;i++) num += String(src.charCodeAt(i));
-  txt(ctx, num||"…", w*.5, y2, {size:Math.min(w*.028,h*.05), col:C.sem, align:"center"});
+  txt(ctx, num||"…", w*.5, y2, {size:Math.min(w*.028,h*.05), col:C.sem, align:"center", box:[4,w-4]});
   txt(ctx,"NUMBER", w*.5, y2+h*.1, {size:h*.036,col:C.sem,align:"center"});
   arrow(ctx, w*.5, y1+h*.06, w*.5, y2-h*.06, C.line, 5);
   if(st>=3){
@@ -1675,8 +1809,8 @@ ANIM.godel = (ctx,w,h,st,t)=>{
     ctx.beginPath(); ctx.arc(cx,cy,r,a0,a0+5.1); ctx.stroke();
     arrow(ctx, cx+r*Math.cos(a0+4.7), cy+r*Math.sin(a0+4.7),
                cx+r*Math.cos(a0+5.1), cy+r*Math.sin(a0+5.1), C.bad, 5);
-    txt(ctx,"a program", cx+r*1.7, cy-h*.022, {size:h*.038,col:C.ink2});
-    txt(ctx,"reading itself", cx+r*1.7, cy+h*.026, {size:h*.038,col:C.bad});
+    txt(ctx,"a program", cx+r*1.7, cy-h*.032, {size:h*.038,col:C.ink2,box:[cx+r*1.6,w-4]});
+    txt(ctx,"reading itself", cx+r*1.7, cy+h*.036, {size:h*.038,col:C.bad,box:[cx+r*1.6,w-4]});
   }
 };
 
@@ -1686,7 +1820,7 @@ ANIM.halt = (ctx,w,h,st,t)=>{
   ctx.strokeStyle=C.line; ctx.lineWidth=1.2; ctx.fillStyle=C.ground;
   rr(ctx,x,y,bw,bh,4); ctx.fill(); ctx.stroke();
   txt(ctx,"H", x+bw/2, y+bh*.38, {size:h*.08,col:C.sem,align:"center"});
-  txt(ctx,"decides halting", x+bw/2, y+bh*.76, {size:F*.85,col:C.muted,align:"center"});
+  txt(ctx,"decides halting", x+bw/2, y+bh*.76, {size:F*.85,col:C.muted,align:"center",box:[x+2,x+bw-2]});
   arrow(ctx, x-w*.22, y+bh/2, x-w*.01, y+bh/2, C.line, 5);
   txt(ctx,"P, x", x-w*.21, y+bh/2-h*.04, {size:F,col:C.syn});
   arrow(ctx, x+bw+w*.01, y+bh*.3, x+bw+w*.13, y+bh*.3, C.line, 5);
@@ -1700,7 +1834,7 @@ ANIM.halt = (ctx,w,h,st,t)=>{
     rr(ctx,dx,dy,dw,dh,4); ctx.stroke(); ctx.setLineDash([]);
     txt(ctx,"D(P)", dx+dw/2, dy+dh*.34, {size:h*.062,col:C.syn,align:"center"});
     txt(ctx,"ask H about P on P — then do the opposite", dx+dw/2, dy+dh*.74,
-        {size:F*.72,col:C.muted,align:"center"});
+        {size:F*.72,col:C.muted,align:"center",box:[dx+3,dx+dw-3]});
     arrow(ctx, dx+dw/2, y+bh+h*.01, dx+dw/2, dy-h*.01, C.line, 5);
     ctx.globalAlpha=1;
     if(st>=3){
@@ -1710,16 +1844,16 @@ ANIM.halt = (ctx,w,h,st,t)=>{
       ctx.beginPath(); ctx.arc(cx,cy,r,.6,5.6); ctx.stroke();
       arrow(ctx, cx+r*Math.cos(5.2), cy+r*Math.sin(5.2), cx+r*Math.cos(5.75), cy+r*Math.sin(5.75), C.bad,5);
       ctx.globalAlpha=1;
-      txt(ctx,"D(D)", cx, cy+h*.11, {size:F*1.15,col:C.bad,align:"center"});
-      txt(ctx,"halts ⟺ ¬halts   —   so H cannot exist", w*.58, h*.88,
-          {size:F*1.05,col:C.bad,align:"center"});
+      txt(ctx,"D(D)", cx, cy+h*.11, {size:F*1.15,col:C.bad,align:"center",box:[4,w-4]});
+      txt(ctx,"halts ⟺ ¬halts   —   so H cannot exist", w*.58, capfree(h),
+          {size:F*1.05,col:C.bad,align:"center",box:[w*.30,w-4]});
     }
   }
 };
 
 /* --- tree: exponential search --- */
 ANIM.tree = (ctx,w,h,st,t)=>{
-  const D=6, top=h*.13, H=h*.68, dy=H/D, seen=Math.min(1,t*.5);
+  const D=6, top=h*.13, H=h*.62, dy=H/D, seen=Math.min(1,t*.5);
   for(let d=0; d<D; d++){
     const n=Math.pow(2,d), nn=n*2;
     for(let i=0;i<n;i++){
@@ -1745,9 +1879,10 @@ ANIM.tree = (ctx,w,h,st,t)=>{
     ctx.fillStyle=C.sem; ctx.globalAlpha=.5+.5*p;
     ctx.beginPath(); ctx.arc(x,y,h*.011,0,7); ctx.fill();
     ctx.globalAlpha=.2; ctx.beginPath(); ctx.arc(x,y,h*.032,0,7); ctx.fill(); ctx.globalAlpha=1;
-    txt(ctx,"the one that satisfies", w*.5, h*.95, {size:h*.038,col:C.sem,align:"center"});
+    /* was h*.95 — it sat on top of the figure caption */
+    txt(ctx,"the one that satisfies", w*.5, capfree(h), {size:h*.038,col:C.sem,align:"center",box:[w*.3,w-4]});
   }
-  txt(ctx,"n = 6 → 64 leaves.   n = 100 → 10³⁰.", w*.5, h*.05, {size:h*.036,col:C.muted,align:"center"});
+  txt(ctx,"n = 6 → 64 leaves.   n = 100 → 10³⁰.", w*.5, h*.05, {size:h*.036,col:C.muted,align:"center",box:[4,w-4]});
 };
 
 /* --- energy: log-scale bars --- */
@@ -1761,11 +1896,12 @@ ANIM.energy = (ctx,w,h,st,t)=>{
   ];
   const lo=-22, hi=62, x0=w*.04, x1=w*.97, F=h*.038;
   const X = v => x0 + (x1-x0)*(v-lo)/(hi-lo);
-  const dy=h*.16, top=h*.15;
+  /* the whole chart is lifted so the decade labels clear the figure caption */
+  const dy=h*.15, top=h*.125;
   for(let e=-20;e<=60;e+=20){
     ctx.strokeStyle=C.line; ctx.globalAlpha=.6;
-    ctx.beginPath(); ctx.moveTo(X(e),top-dy*.5); ctx.lineTo(X(e),top+dy*4.55); ctx.stroke();
-    ctx.globalAlpha=1; txt(ctx,"10^"+e, X(e), top+dy*4.85, {size:F*.85,col:C.muted,align:"center"});
+    ctx.beginPath(); ctx.moveTo(X(e),top-dy*.5); ctx.lineTo(X(e),top+dy*4.5); ctx.stroke();
+    ctx.globalAlpha=1; txt(ctx,"10^"+e, X(e), top+dy*4.8, {size:F*.85,col:C.muted,align:"center",box:[2,w-2]});
   }
   rows.forEach(([v,lab,col,step],i)=>{
     if(st<step) return;
@@ -1774,7 +1910,7 @@ ANIM.energy = (ctx,w,h,st,t)=>{
     ctx.fillRect(X(lo), y, (X(v)-X(lo))*a, bh);
     ctx.globalAlpha=1; ctx.fillStyle=col;
     ctx.fillRect(X(lo)+(X(v)-X(lo))*a - 2, y, 2.6, bh);
-    txt(ctx, lab, X(lo)+3, y-F*.7, {size:F,col:col});
+    txt(ctx, lab, X(lo)+3, y-F*.7, {size:F,col:col,box:[2,w-2]});
   });
 };
 
@@ -1801,20 +1937,21 @@ ANIM.loop = (ctx,w,h,st,t)=>{
     const x=cx+R*Math.cos(a), y=cy+R*Math.sin(a);
     ctx.fillStyle=C.ground; ctx.strokeStyle=C.line; ctx.lineWidth=1.2;
     rr(ctx,x-nw/2,y-nh/2,nw,nh,3); ctx.fill(); ctx.stroke();
-    txt(ctx,lab,x,y,{size:F,col:C.ink2,align:"center"});
+    txt(ctx,lab,x,y,{size:F,col:C.ink2,align:"center",box:[x-nw/2+3,x+nw/2-3]});
   });
   if(st>=5){
     const a=ease((t-.2)*1.2); ctx.globalAlpha=a;
     arrow(ctx, w*.99, cy, cx+R+nw*.6, cy, C.sem, 6);
-    txt(ctx,"an outside check", w*.98, cy-F*1.2, {size:F,col:C.sem,align:"right"});
-    txt(ctx,"experiment · proof · person", w*.98, cy+F*1.2, {size:F*.82,col:C.muted,align:"right"});
+    const lb = cx+R+nw*.6;   /* stay clear of the node the arrow points at */
+    txt(ctx,"an outside check", w*.98, cy-F*1.2, {size:F,col:C.sem,align:"right",box:[lb,w-4]});
+    txt(ctx,"experiment · proof · person", w*.98, cy+F*1.2, {size:F*.82,col:C.muted,align:"right",box:[lb,w-4]});
     ctx.globalAlpha=1;
   }
 };
 
 /* ---------- boot ---------- */
-palette(); fit();
-slides.forEach((s,i)=>s.classList.toggle("on", i===0));
+palette(); fit(); autofit(); sizeCanvases();
+slides.forEach((s,i)=>{ s.classList.toggle("on", i===0); s.classList.toggle("gone", i!==0); });
 if(reduce) slides.forEach(s=>s._step=s._max);
 chrome(); paint(); startAnims(); tick();
 window.__deck = {show, next, prev, slides};
