@@ -4,6 +4,12 @@ A 45-minute animated lecture for undergraduate and graduate students **in any fi
 basic principles of computer science. Self-contained: one HTML file, no build step, no network access,
 no dependencies.
 
+By Christoph Kirsch — University of Salzburg, Austria, and Czech Technical University in Prague,
+Czechia. The talk is a collaborative effort with **Leoni Brand**, **Eva Jonas**, **Julius Möller** and
+**Stefan Reiß** of the Department of Psychology at the University of Salzburg, who inspired and
+encouraged its framing: address everyone affected by AI, and do it by academic grounding rather than
+by repeating the booming and the dooming. Slide 2 says the same to the room.
+
 Open `index.html` in any modern browser and press <kbd>→</kbd>.
 
 ## The argument
