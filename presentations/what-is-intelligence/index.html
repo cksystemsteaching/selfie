@@ -1,0 +1,1813 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+<body>
+<!--BEGIN-ARTIFACT-CONTENT-->
+<title>What is Intelligence?</title>
+<style>
+/* ============================================================
+   What is Intelligence? — a 45 minute animated lecture
+   Visual system: drafting table / plotter.
+   Typography encodes the thesis:
+     serif  = meaning   (semantics, truth)
+     mono   = notation  (syntax, proof)
+   ============================================================ */
+
+:root{
+  --ground:#080E18;
+  --ground-2:#0D1524;
+  --panel:#111C2E;
+  --panel-2:#16233A;
+  --ink:#E7EDF6;
+  --ink-2:#B6C4D8;
+  --muted:#8093AF;
+  --line:rgba(122,162,204,.16);
+  --grid:rgba(122,162,204,.075);
+  --syn:#E0A550;          /* syntax · finite · countable · notation */
+  --syn-soft:rgba(224,165,80,.14);
+  --sem:#5BB0C7;          /* semantics · infinite · uncountable · meaning */
+  --sem-soft:rgba(91,176,199,.14);
+  --bad:#C8607A;          /* contradiction */
+  --shadow:0 1.2cqw 4cqw rgba(0,0,0,.45);
+  --serif:"Iowan Old Style","Palatino Linotype",Palatino,"Book Antiqua","URW Palladio L",Georgia,serif;
+  --mono:"JetBrains Mono","SFMono-Regular","SF Mono","Cascadia Mono",Menlo,Consolas,"DejaVu Sans Mono",monospace;
+}
+@media (prefers-color-scheme: light){
+  :root{
+    --ground:#EFF1F3; --ground-2:#E7EAEE; --panel:#FFFFFF; --panel-2:#F5F7F9;
+    --ink:#131C2A; --ink-2:#39485C; --muted:#5D6E85;
+    --line:rgba(19,28,42,.18); --grid:rgba(19,28,42,.06);
+    --syn:#A2661A; --syn-soft:rgba(162,102,26,.10);
+    --sem:#1F6C86; --sem-soft:rgba(31,108,134,.10);
+    --bad:#A63E5A;
+    --shadow:0 .6cqw 2.4cqw rgba(19,28,42,.14);
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#080E18; --ground-2:#0D1524; --panel:#111C2E; --panel-2:#16233A;
+  --ink:#E7EDF6; --ink-2:#B6C4D8; --muted:#8093AF;
+  --line:rgba(122,162,204,.16); --grid:rgba(122,162,204,.075);
+  --syn:#E0A550; --syn-soft:rgba(224,165,80,.14);
+  --sem:#5BB0C7; --sem-soft:rgba(91,176,199,.14);
+  --bad:#C8607A;
+  --shadow:0 1.2cqw 4cqw rgba(0,0,0,.45);
+}
+:root[data-theme="light"]{
+  --ground:#EFF1F3; --ground-2:#E7EAEE; --panel:#FFFFFF; --panel-2:#F5F7F9;
+  --ink:#131C2A; --ink-2:#39485C; --muted:#5D6E85;
+  --line:rgba(19,28,42,.18); --grid:rgba(19,28,42,.06);
+  --syn:#A2661A; --syn-soft:rgba(162,102,26,.10);
+  --sem:#1F6C86; --sem-soft:rgba(31,108,134,.10);
+  --bad:#A63E5A;
+  --shadow:0 .6cqw 2.4cqw rgba(19,28,42,.14);
+}
+
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;height:100%;overflow:hidden;background:var(--ground);color:var(--ink)}
+body{font-family:var(--serif);-webkit-font-smoothing:antialiased}
+
+/* ---------- stage ---------- */
+#stage{
+  position:fixed;inset:0;display:grid;place-items:center;
+  background:
+    linear-gradient(var(--grid) 1px, transparent 1px) 0 0/ calc(var(--u)*2.5) calc(var(--u)*2.5),
+    linear-gradient(90deg, var(--grid) 1px, transparent 1px) 0 0/ calc(var(--u)*2.5) calc(var(--u)*2.5),
+    radial-gradient(120% 90% at 50% 0%, var(--ground-2) 0%, var(--ground) 62%);
+}
+#deck{
+  --u:8px;
+  position:relative;width:calc(var(--u)*100);height:calc(var(--u)*56.25);
+  outline:none;
+}
+#deck::after{ /* corner ticks: drafting frame */
+  content:"";position:absolute;inset:calc(var(--u)*1.4);pointer-events:none;
+  border:1px solid var(--line);
+  clip-path:polygon(0 0,7% 0,7% 1px,93% 1px,93% 0,100% 0,100% 12%,calc(100% - 1px) 12%,calc(100% - 1px) 88%,100% 88%,100% 100%,93% 100%,93% calc(100% - 1px),7% calc(100% - 1px),7% 100%,0 100%,0 88%,1px 88%,1px 12%,0 12%);
+}
+
+/* ---------- slides ---------- */
+.slide{
+  position:absolute;inset:0;
+  padding:calc(var(--u)*5.8) calc(var(--u)*7) calc(var(--u)*5.9);
+  display:flex;flex-direction:column;gap:calc(var(--u)*1.6);
+  opacity:0;visibility:hidden;transform:translateY(calc(var(--u)*1.1));
+  transition:opacity .42s ease,transform .42s ease,visibility .42s;
+}
+.slide.on{opacity:1;visibility:visible;transform:none}
+.slide.out{transform:translateY(calc(var(--u)*-1.1))}
+
+/* ---------- chrome ---------- */
+#rail,#foot{position:absolute;left:calc(var(--u)*4);right:calc(var(--u)*4);display:flex;align-items:center;gap:calc(var(--u)*1.4);
+  font-family:var(--mono);font-size:calc(var(--u)*1.18);letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+#rail{top:calc(var(--u)*3.1)}
+#foot{bottom:calc(var(--u)*2.6)}
+#actname{color:var(--ink-2)}
+#actname b{color:var(--sem);font-weight:400}
+#rail .sp,#foot .sp{flex:1}
+#bar{position:absolute;left:calc(var(--u)*4);right:calc(var(--u)*4);bottom:calc(var(--u)*4.9);height:calc(var(--u)*.34);
+  display:flex;gap:calc(var(--u)*.4)}
+#bar .seg{flex:1;background:var(--line);position:relative;overflow:hidden;border-radius:99px}
+#bar .seg i{position:absolute;inset:0;transform-origin:left;transform:scaleX(0);background:var(--muted);transition:transform .4s ease}
+#bar .seg.cur i{background:var(--sem)}
+#clock{font-variant-numeric:tabular-nums;color:var(--ink-2)}
+#clock.warn{color:var(--syn)}
+#clock.late{color:var(--bad)}
+#pageno{font-variant-numeric:tabular-nums}
+.nav{position:absolute;bottom:calc(var(--u)*2.1);right:calc(var(--u)*4);display:flex;gap:calc(var(--u)*.7);z-index:6}
+.nav button{
+  font-family:var(--mono);font-size:calc(var(--u)*1.15);color:var(--ink-2);background:var(--panel);
+  border:1px solid var(--line);border-radius:calc(var(--u)*.5);padding:calc(var(--u)*.5) calc(var(--u)*1);cursor:pointer;line-height:1.1}
+.nav button:hover{color:var(--ink);border-color:var(--sem)}
+.nav button:focus-visible{outline:2px solid var(--sem);outline-offset:2px}
+
+/* ---------- type scale ---------- */
+h1{font-size:calc(var(--u)*9.6);line-height:.98;margin:0;font-weight:400;letter-spacing:-.015em;text-wrap:balance}
+h2{font-size:calc(var(--u)*3.8);line-height:1.06;margin:0;font-weight:400;letter-spacing:-.01em;text-wrap:balance;max-width:22em}
+h3{font-size:calc(var(--u)*2.3);line-height:1.15;margin:0;font-weight:400;color:var(--ink)}
+p{margin:0;font-size:calc(var(--u)*1.92);line-height:1.42;color:var(--ink-2);max-width:34em}
+p.lead{font-size:calc(var(--u)*2.2);color:var(--ink);max-width:30em}
+p.sm{font-size:calc(var(--u)*1.56);max-width:40em}
+em{font-style:italic}
+strong{font-weight:400;color:var(--ink)}
+.k{color:var(--sem)}
+.j{color:var(--syn)}
+.x{color:var(--bad)}
+code,.mono{font-family:var(--mono);font-size:.88em;letter-spacing:-.01em}
+.eyebrow{font-family:var(--mono);font-size:calc(var(--u)*1.22);letter-spacing:.2em;text-transform:uppercase;color:var(--syn)}
+.eyebrow.sem{color:var(--sem)}
+ul{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:calc(var(--u)*.85)}
+li{font-size:calc(var(--u)*1.76);line-height:1.35;color:var(--ink-2);padding-left:calc(var(--u)*2.6);position:relative;max-width:36em}
+li::before{content:"—";position:absolute;left:0;color:var(--muted)}
+li.dot::before{content:"·";font-size:1.4em;line-height:.9}
+ol.steps{margin:0;padding:0;counter-reset:s;list-style:none;display:flex;flex-direction:column;gap:calc(var(--u)*.9)}
+ol.steps li{counter-increment:s;padding-left:calc(var(--u)*3.4)}
+ol.steps li::before{content:counter(s);font-family:var(--mono);font-size:calc(var(--u)*1.3);color:var(--sem);
+  border:1px solid var(--line);border-radius:99px;width:calc(var(--u)*2.3);height:calc(var(--u)*2.3);
+  display:grid;place-items:center;top:calc(var(--u)*.25)}
+
+/* ---------- layout helpers ---------- */
+.row{display:flex;flex-direction:row;gap:calc(var(--u)*4);align-items:flex-start}
+.row.mid{align-items:center}
+/* .fill sets column direction; a .fill that is also a .row must stay horizontal */
+.fill.row{flex-direction:row}
+.fill.row.mid{align-items:center}
+.grow{flex:1;min-width:0}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:calc(var(--u)*3);align-items:start}
+.three{display:grid;grid-template-columns:repeat(3,1fr);gap:calc(var(--u)*2.2);align-items:start}
+.stack{display:flex;flex-direction:column;gap:calc(var(--u)*1.15)}
+.fill{flex:1;min-height:0;display:flex;flex-direction:column;gap:calc(var(--u)*1.45)}
+.center{justify-content:center}
+.tight p{max-width:28em}
+
+.slide.habits li{font-size:calc(var(--u)*1.62);line-height:1.32;max-width:56em;padding-left:calc(var(--u)*3.1)}
+.slide.habits ol.steps{gap:calc(var(--u)*.62)}
+.slide.habits h2{font-size:calc(var(--u)*3.4)}
+
+/* denser variant for the most content-heavy slides */
+.slide.dense p{font-size:calc(var(--u)*1.72)}
+.slide.dense p.sm{font-size:calc(var(--u)*1.55)}
+.slide.dense .card p{font-size:calc(var(--u)*1.4)}
+.slide.dense .fill{gap:calc(var(--u)*1.15)}
+.slide.dense .stack{gap:calc(var(--u)*.95)}
+.slide.dense blockquote{font-size:calc(var(--u)*1.95)}
+.slide.dense .aside-cs p{font-size:calc(var(--u)*1.42)}
+.slide.dense h2{font-size:calc(var(--u)*3.55)}
+
+/* fragments */
+.f{opacity:0;transform:translateY(calc(var(--u)*.85));transition:opacity .38s ease,transform .38s ease}
+.f.shown{opacity:1;transform:none}
+
+/* ---------- components ---------- */
+.thm{
+  border-left:calc(var(--u)*.3) solid var(--syn);padding:calc(var(--u)*.2) 0 calc(var(--u)*.2) calc(var(--u)*2.2);
+}
+.thm .name{font-family:var(--mono);font-size:calc(var(--u)*1.25);letter-spacing:.16em;text-transform:uppercase;color:var(--syn);display:block;margin-bottom:calc(var(--u)*.9)}
+.thm .st{font-size:calc(var(--u)*2.1);line-height:1.3;font-style:italic;color:var(--ink);max-width:30em}
+
+.ledger{display:grid;grid-template-columns:1fr 1fr;gap:0;border:1px solid var(--line);border-radius:calc(var(--u)*.7);overflow:hidden}
+.ledger>div{padding:calc(var(--u)*1.8) calc(var(--u)*2)}
+.ledger .forbids{background:var(--syn-soft);border-right:1px solid var(--line)}
+.ledger .opens{background:var(--sem-soft)}
+.ledger h4{margin:0 0 calc(var(--u)*1.1);font-family:var(--mono);font-weight:400;
+  font-size:calc(var(--u)*1.22);letter-spacing:.16em;text-transform:uppercase}
+.ledger .forbids h4{color:var(--syn)}
+.ledger .opens h4{color:var(--sem)}
+.ledger p{font-size:calc(var(--u)*1.66);max-width:24em}
+
+.card{background:var(--panel);border:1px solid var(--line);border-radius:calc(var(--u)*.8);
+  padding:calc(var(--u)*1.7) calc(var(--u)*1.9);display:flex;flex-direction:column;gap:calc(var(--u)*.75)}
+.card .h{font-family:var(--mono);font-size:calc(var(--u)*1.2);letter-spacing:.16em;text-transform:uppercase;color:var(--sem)}
+.card.syn .h{color:var(--syn)}
+.card p{font-size:calc(var(--u)*1.52);max-width:26em}
+.card .src{font-family:var(--mono);font-size:calc(var(--u)*1.05);color:var(--muted);letter-spacing:.04em}
+
+.kpi{display:flex;flex-direction:column;gap:calc(var(--u)*.5)}
+.kpi .n{font-family:var(--mono);font-size:calc(var(--u)*3.7);line-height:1;color:var(--ink);font-variant-numeric:tabular-nums;letter-spacing:-.03em}
+.kpi .n sup{font-size:.52em}
+.kpi .l{font-size:calc(var(--u)*1.65);color:var(--muted);font-family:var(--mono);letter-spacing:.06em;text-transform:uppercase}
+
+table.t{border-collapse:collapse;font-family:var(--mono);font-size:calc(var(--u)*1.58);width:100%}
+table.t td,table.t th{padding:calc(var(--u)*.72) calc(var(--u)*1.1);text-align:left;border-bottom:1px solid var(--line);
+  font-weight:400;font-variant-numeric:tabular-nums}
+table.t th{color:var(--muted);font-size:calc(var(--u)*1.15);letter-spacing:.14em;text-transform:uppercase}
+table.t td.r{text-align:right}
+table.t tr td:first-child{color:var(--sem)}
+
+blockquote{margin:0;font-size:calc(var(--u)*2.6);line-height:1.28;font-style:italic;color:var(--ink);max-width:26em;
+  border-left:calc(var(--u)*.3) solid var(--sem);padding-left:calc(var(--u)*2.2)}
+blockquote cite{display:block;margin-top:calc(var(--u)*1.4);font-family:var(--mono);font-style:normal;
+  font-size:calc(var(--u)*1.25);letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+
+.fig{position:relative;flex:1;min-height:0;border:1px solid var(--line);border-radius:calc(var(--u)*.7);
+  background:var(--panel);overflow:hidden}
+.fill.row>.fig{align-self:stretch}
+.fig canvas{display:block;width:100%;height:100%}
+.fig .cap{position:absolute;left:calc(var(--u)*1.4);bottom:calc(var(--u)*1);font-family:var(--mono);
+  font-size:calc(var(--u)*1.1);color:var(--muted);letter-spacing:.08em}
+.fig.bare{border:0;background:none}
+
+.chips{display:flex;flex-wrap:wrap;gap:calc(var(--u)*.8)}
+.chip{font-family:var(--mono);font-size:calc(var(--u)*1.3);letter-spacing:.06em;color:var(--ink-2);
+  border:1px solid var(--line);border-radius:99px;padding:calc(var(--u)*.42) calc(var(--u)*1.1);background:var(--panel)}
+.chip.k{color:var(--sem);border-color:var(--sem)}
+.chip.j{color:var(--syn);border-color:var(--syn)}
+
+.big{font-family:var(--mono);font-size:calc(var(--u)*7);line-height:1;letter-spacing:-.04em;color:var(--sem);
+  font-variant-numeric:tabular-nums}
+.big sup{font-size:.45em}
+.huge{font-family:var(--mono);font-size:calc(var(--u)*12);line-height:.92;letter-spacing:-.05em;color:var(--ink)}
+.digits{font-family:var(--mono);font-size:calc(var(--u)*1.35);line-height:1.35;color:var(--muted);
+  word-break:break-all;max-height:calc(var(--u)*12);overflow:hidden;position:relative}
+.digits::after{content:"";position:absolute;inset:auto 0 0 0;height:45%;
+  background:linear-gradient(transparent,var(--ground))}
+
+.aside-cs{border:1px dashed var(--syn);border-radius:calc(var(--u)*.7);padding:calc(var(--u)*1.3) calc(var(--u)*1.7);
+  background:var(--syn-soft)}
+.aside-cs .h{font-family:var(--mono);font-size:calc(var(--u)*1.15);letter-spacing:.16em;text-transform:uppercase;
+  color:var(--syn);margin-bottom:calc(var(--u)*.7)}
+.aside-cs p{font-size:calc(var(--u)*1.56);max-width:44em}
+
+/* notes + overview */
+#notes{
+  position:fixed;left:0;right:0;bottom:0;max-height:42vh;overflow:auto;z-index:20;
+  background:var(--panel);border-top:1px solid var(--line);padding:1.1rem 1.4rem 1.3rem;
+  font-size:.95rem;line-height:1.5;color:var(--ink-2);display:none;box-shadow:var(--shadow)}
+#notes.on{display:block}
+#notes h5{margin:0 0 .5rem;font-family:var(--mono);font-size:.72rem;letter-spacing:.16em;text-transform:uppercase;color:var(--sem)}
+#notes p{font-size:.95rem;max-width:70em;color:var(--ink-2)}
+.notes{display:none}
+#help{position:fixed;inset:0;z-index:30;background:color-mix(in srgb,var(--ground) 92%,transparent);
+  display:none;place-items:center;padding:2rem}
+#help.on{display:grid}
+#help .box{max-width:34rem;background:var(--panel);border:1px solid var(--line);border-radius:.6rem;padding:1.6rem 1.8rem}
+#help h5{margin:0 0 1rem;font-family:var(--mono);font-size:.75rem;letter-spacing:.18em;text-transform:uppercase;color:var(--sem)}
+#help dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:.55rem 1.2rem;font-size:.92rem}
+#help dt{font-family:var(--mono);color:var(--syn)}
+#help dd{margin:0;color:var(--ink-2)}
+
+@media (prefers-reduced-motion: reduce){
+  .slide,.f,#bar .seg i{transition:none}
+  .f{opacity:1;transform:none}
+}
+</style>
+
+<div id="stage">
+<div id="deck" tabindex="0" aria-label="Presentation: What is Intelligence?">
+
+  <div id="rail" aria-hidden="true">
+    <span id="actname"></span><span class="sp"></span><span id="clock">45:00</span>
+  </div>
+  <div id="bar" aria-hidden="true"></div>
+  <div id="foot" aria-hidden="true">
+    <span>What is Intelligence?</span><span class="sp"></span><span id="pageno"></span>
+  </div>
+  <div class="nav">
+    <button id="bPrev" title="Previous (←)">←</button>
+    <button id="bNext" title="Next (→ or space)">→</button>
+    <button id="bNotes" title="Speaker notes (n)">notes</button>
+    <button id="bHelp" title="Keys (?)">?</button>
+  </div>
+
+<!-- ══════════════════ ACT 0 · PROLOGUE ══════════════════ -->
+
+<section class="slide" data-act="0" data-mins="1.2">
+  <div class="fig bare" style="position:absolute;inset:0"><canvas data-anim="ambient"></canvas></div>
+  <div class="fill center" style="position:relative">
+    <div class="row mid" style="gap:calc(var(--u)*5)">
+      <div class="stack grow">
+        <div class="eyebrow sem">A lecture in seven parts · 45 minutes</div>
+        <h1 style="font-size:calc(var(--u)*8)">What is<br>Intelligence?</h1>
+        <p class="lead f" data-step="5">Everything that follows is built from one distinction: the difference between <span class="j">a proof</span> and <span class="k">the truth</span>.</p>
+      </div>
+      <div class="stack grow" style="flex:.9">
+        <div class="card syn f" data-step="1"><span class="h">Full disclosure</span>
+          <p>This entire talk was generated by an AI.</p></div>
+        <p class="sm f" data-step="2">It also took me forty-odd years to become someone who could prompt it into existence. I could do that today. I could not have done it yesterday.</p>
+        <p class="sm f" data-step="3">Along the way I met people vastly more intelligent than I am — several of them my own students.</p>
+        <p class="f" data-step="4" style="font-size:calc(var(--u)*2.1);color:var(--ink)">So: drop the phone, drop the AI, drop the distraction — and <em>help</em> those people find you, by <span class="k">becoming who you are and no one else</span>. This talk is about that.</p>
+      </div>
+    </div>
+  </div>
+  <aside class="notes"><p>Open with the disclosure and let the laugh happen. Then the real point, delivered straight: the prompt is not the achievement — forty years of reading, building and being wrong is what made the prompt possible. The tool collapsed the last mile, not the road. Two promises for the hour: no prior computer science required, and you will leave with a definition of intelligence that applies to you, to your field, and to machines that do not exist yet.</p></aside>
+</section>
+
+<section class="slide" data-act="0" data-mins="0.85">
+  <div class="eyebrow">The question · and why we won't answer it</div>
+  <h2>"Is it intelligent?" is a <span class="j">badly posed</span> question.</h2>
+  <div class="fill">
+    <div class="two">
+      <div class="stack">
+        <p class="f" data-step="1">It asks about a hidden property of a system, in a language — English — with no precise semantics for the word <em>intelligent</em>.</p>
+        <p class="f" data-step="2">We will spend 45 minutes earning the right to ask a <span class="k">better</span> question, one that stays valid no matter what technology arrives next.</p>
+      </div>
+      <div class="stack f" data-step="3">
+        <blockquote>The question of whether machines can think is about as relevant as the question of whether submarines can swim.
+          <cite>Edsger W. Dijkstra, 1984</cite></blockquote>
+      </div>
+    </div>
+  </div>
+  <aside class="notes"><p>Dijkstra's point isn't dismissive — it's linguistic. "Swim" was coined for bodies with muscles. Submarines cross oceans; whether that is "swimming" is a question about our word, not about the submarine. Same for "think." So we replace the noun question ("is it intelligent?") with a process question, which we'll build up to.</p></aside>
+</section>
+
+<section class="slide" data-act="0" data-mins="1.15">
+  <div class="eyebrow sem">The short answer · stated now, earned later</div>
+  <h2 style="max-width:26em">Intelligence is finding the <span class="k">next language</span> — which means finding truth you cannot yet prove.</h2>
+  <div class="fill">
+    <ol class="steps">
+      <li class="f" data-step="1"><strong>Intelligence develops new formal languages</strong> — or at least new <em>properties</em>, expressible and provable in languages we already have.</li>
+      <li class="f" data-step="2"><strong>That requires finding and understanding promising unproven truth.</strong> You apprehend something as true while no proof exists; the notation is built afterwards, to hold what you already saw.</li>
+      <li class="f" data-step="3"><strong>Nothing hands you that step.</strong> No rule, no procedure, no quantity of compute derives it — a result we will <em>prove</em>, not assert. So it is a challenge for a first-year student, for a Nobel laureate, and for <span class="k">any</span> AI, equally.</li>
+    </ol>
+    <p class="sm f" data-step="4">The rest of the hour is the derivation — and the reason this is <strong>good news</strong> for everyone in this room, whatever you are studying.</p>
+  </div>
+  <aside class="notes"><p>Give the answer away immediately; the talk becomes a derivation rather than a mystery. The load-bearing word is <em>unproven</em>: intelligence lives in the gap between truth and proof, which is exactly the gap Parts II and III measure. Note the symmetry — this is not a claim that humans have special sauce, it is a claim that the step is not algorithmic for anybody.</p></aside>
+</section>
+
+<section class="slide" data-act="0" data-mins="0.65">
+  <div class="eyebrow">Route</div>
+  <h2>Seven parts.</h2>
+  <div class="fill">
+    <table class="t">
+      <tr class="f" data-step="1"><td>I</td><td>Vastness</td><td class="r" style="color:var(--muted)">why 34 bytes beat the universe</td></tr>
+      <tr class="f" data-step="2"><td>II</td><td>Infinity</td><td class="r" style="color:var(--muted)">why meanings outnumber notations</td></tr>
+      <tr class="f" data-step="3"><td>III</td><td>Self-reference</td><td class="r" style="color:var(--muted)">why proof ≠ truth</td></tr>
+      <tr class="f" data-step="4"><td>IV</td><td>Cost</td><td class="r" style="color:var(--muted)">time, space, energy</td></tr>
+      <tr class="f" data-step="5"><td>V</td><td>Everywhere</td><td class="r" style="color:var(--muted)">biology, mind, money, music</td></tr>
+      <tr class="f" data-step="6"><td>VI</td><td>Machines</td><td class="r" style="color:var(--muted)">what today's AI cannot escape</td></tr>
+      <tr class="f" data-step="7"><td>VII</td><td>Practice</td><td class="r" style="color:var(--muted)">a method with no expiry date</td></tr>
+    </table>
+    <p class="sm f" data-step="8">Four of these parts end in a theorem that sounds like bad news. All four are <span class="k">good news</span>. That reversal is the point of the lecture.</p>
+  </div>
+  <aside class="notes"><p>Signpost the arc. Parts I–IV build the machinery, V shows it is not a computer-science story, VI applies it to AI, VII hands over a method. Flag the reversal now so the "negative results" don't land as gloom: each limit is a licence.</p></aside>
+</section>
+
+<!-- ══════════════════ ACT I · VASTNESS ══════════════════ -->
+
+<section class="slide" data-act="I" data-mins="0.25">
+  <div class="eyebrow">Part I</div>
+  <h1 style="font-size:calc(var(--u)*7.4)">Vastness</h1>
+  <p class="lead f" data-step="1">Start with the smallest possible distinction and count what it can build.</p>
+  <aside class="notes"><p>Part I is arithmetic only. No theorems. The goal is a physical feeling for state space, because everything later — bugs, search, learning, AI — happens inside one.</p></aside>
+</section>
+
+<section class="slide" data-act="I" data-mins="0.75">
+  <div class="eyebrow">One bit</div>
+  <h2>A bit is <span class="k">one distinction</span>: this, not that.</h2>
+  <div class="fill row mid">
+    <div class="fig grow" style="flex:1.15"><canvas data-anim="bits"></canvas><span class="cap">state space = 2<tt>ⁿ</tt></span></div>
+    <div class="stack grow">
+      <p class="f" data-step="1">Add a bit and you don't <em>add</em> states. You <span class="j">double</span> them.</p>
+      <p class="f" data-step="2">Ten bits: a thousand states. Twenty: a million. Thirty: a billion.</p>
+      <p class="f" data-step="3">Doubling is the most underestimated operation in human reasoning — and the entire engine of computing.</p>
+    </div>
+  </div>
+  <aside class="notes"><p>Advance through the bit row and let the counter run. Emphasise: every distinction a system can make is a bit, and the *combinations* multiply. Ask the room to guess how many bits it takes to have more states than the universe has atoms. Answers usually land in the millions or billions. Then the next slide.</p></aside>
+</section>
+
+<section class="slide" data-act="I" data-mins="0.85">
+  <div class="eyebrow">Scale check</div>
+  <h2><span class="k">34 bytes</span> of memory has more states than the observable universe has atoms.</h2>
+  <div class="fill row mid">
+    <div class="stack grow">
+      <div class="kpi f" data-step="1"><span class="n">10<sup>80</sup></span><span class="l">atoms in the observable universe</span></div>
+      <div class="kpi f" data-step="2"><span class="n">2<sup>266</sup></span><span class="l">states of 266 bits ≈ 1.2 × 10<sup>80</sup></span></div>
+      <div class="kpi f" data-step="3"><span class="n">37</span><span class="l">bytes to beat every photon, ~10<sup>89</sup></span></div>
+    </div>
+    <div class="fig grow" style="flex:1.2"><canvas data-anim="ruler"></canvas><span class="cap">log scale · 1 → 10⁸⁰</span></div>
+  </div>
+  <aside class="notes"><p>266 bits — thirty-four bytes, a short sentence, one cryptographic key — already exceeds the atom count of everything we can see. This is why cryptography works at all, and it is the first hint that the spaces we build inside computers are not merely large; they are of a different order than physical reality.</p></aside>
+</section>
+
+<section class="slide" data-act="I" data-mins="0.95">
+  <div class="eyebrow">Your pocket</div>
+  <h2>A phone with 8 GB of memory has <span class="k">2<sup>68,719,476,736</sup></span> states.</h2>
+  <div class="fill">
+    <div class="two">
+      <div class="stack">
+        <p class="f" data-step="1">Written out in decimal, that number has about <strong>20.7 billion digits</strong>.</p>
+        <p class="f" data-step="2">At 3,000 digits a page: <strong>6.9 million pages</strong>. Bound into 500-page books: <strong>13,800 volumes</strong> — some 400 metres of shelf.</p>
+        <p class="f" data-step="3">That shelf does not hold the phone's states. It holds <em>the number</em> of them, written down once.</p>
+      </div>
+      <div class="stack">
+        <div class="digits f" data-step="1" data-anim="digits"></div>
+        <p class="sm f" data-step="4" style="color:var(--muted)">Every app you will ever install, every photo you will ever take, and every bug you will ever hit is one point in this space.</p>
+      </div>
+    </div>
+  </div>
+  <aside class="notes"><p>Land this slowly. The comparison people expect is "bigger than the universe." The truth is worse: the universe's atom count is a 81-digit number; the phone's state count is a 20-billion-digit number. There is no physical analogy left. We have built objects whose descriptions exceed the describable.</p></aside>
+</section>
+
+<section class="slide" data-act="I" data-mins="0.95">
+  <div class="eyebrow">The consequence</div>
+  <h2>In a space that big, <span class="j">good states and bad states look alike</span>.</h2>
+  <div class="fill row mid">
+    <div class="fig grow" style="flex:1.3"><canvas data-anim="needle"></canvas><span class="cap">tested states, lit</span></div>
+    <div class="stack grow">
+      <p class="f" data-step="1">Test a <strong>billion states per second</strong>, starting at the Big Bang, and by now you would have checked about 2<sup>88</sup> of them.</p>
+      <p class="f" data-step="2">Out of 2<sup>68,719,476,736</sup>. The fraction is not small. It is <span class="x">indistinguishable from zero</span>.</p>
+      <blockquote class="f" data-step="3" style="font-size:calc(var(--u)*2.15)">Testing shows the presence, not the absence of bugs.<cite>Edsger W. Dijkstra, 1969</cite></blockquote>
+    </div>
+  </div>
+  <aside class="notes"><p>This reframes software bugs. Bugs are not evidence of sloppy people; they are the geometry of the space. No amount of diligence lets you visit the states. So engineering cannot be exhaustive search — it must be argument, structure, and abstraction. That is the seed of Part III.</p></aside>
+</section>
+
+<section class="slide" data-act="I" data-mins="0.75">
+  <div class="eyebrow sem">Reframe · 1 of 5</div>
+  <h2>The vastness is not the problem. It is the <span class="k">inventory</span>.</h2>
+  <div class="fill center">
+    <div class="ledger f" data-step="1">
+      <div class="forbids">
+        <h4>What it forbids</h4>
+        <p>Certainty by inspection. You will never check your system exhaustively — not with more testers, not with faster machines, not ever.</p>
+      </div>
+      <div class="opens">
+        <h4>What it opens</h4>
+        <p>Every symphony not yet written, every protein not yet folded, every proof not yet found, every program not yet imagined — all of them are already in there, waiting to be addressed.</p>
+      </div>
+    </div>
+    <p class="sm f" data-step="2">The same enormity that hides your bugs is the reason novelty is inexhaustible. You cannot have one without the other.</p>
+  </div>
+  <aside class="notes"><p>First appearance of the recurring device: forbids / opens. Every limit in this talk gets this treatment. Make the trade explicit — a space small enough to audit would be a space too small to be interesting.</p></aside>
+</section>
+
+<section class="slide dense" data-act="I" data-mins="0.75">
+  <div class="eyebrow">Interlude · literature</div>
+  <h2>Borges built this space in 1941 and called it a <span class="j">library</span>.</h2>
+  <div class="fill row mid">
+    <div class="stack grow">
+      <p class="f" data-step="1">The Library of Babel holds every possible book: every truth, every refutation — and overwhelmingly, gibberish.</p>
+      <p class="f" data-step="2">Its inhabitants go mad: <strong>containing</strong> every truth is worthless without a way of <span class="k">finding</span> one.</p>
+      <p class="f" data-step="3">Modern echo: a large model already "contains" astonishing amounts of text. Containment was never the hard part.</p>
+    </div>
+    <div class="stack grow f" data-step="1">
+      <div class="card"><span class="h">Borges · 1941</span>
+        <p>410 pages, 40 lines, 80 characters, 25 symbols. The shelves hold 25<sup>1,312,000</sup> books.</p>
+        <span class="src">≈ 10<sup>1,834,097</sup> volumes</span></div>
+      <div class="card syn f" data-step="4"><span class="h">The shift</span>
+        <p>From <em>storage</em> to <em>search</em>: from having the answer somewhere to knowing it when you see it.</p></div>
+    </div>
+  </div>
+  <aside class="notes"><p>Bridge slide, and a gift to the humanities students in the room. Borges gives us the vocabulary for the AI discussion at the end: a system that contains everything, including every plausible falsehood, has moved the whole difficulty into retrieval and verification.</p></aside>
+</section>
+
+<!-- ══════════════════ ACT II · INFINITY ══════════════════ -->
+
+<section class="slide" data-act="II" data-mins="0.25">
+  <div class="eyebrow">Part II</div>
+  <h1 style="font-size:calc(var(--u)*7.4)">Infinity</h1>
+  <p class="lead f" data-step="1">Vast is still finite. Now we count things that aren't — and discover that some infinities are <span class="k">bigger</span> than others.</p>
+  <aside class="notes"><p>Warn the room: the next four slides are the only genuinely mathematical stretch of the talk, and they are the load-bearing ones. Everything after — Gödel, Turing, hallucination, alignment — is this one argument wearing different clothes.</p></aside>
+</section>
+
+<section class="slide" data-act="II" data-mins="0.65">
+  <div class="eyebrow">Counting without numbers</div>
+  <h2>Two sets are the <span class="k">same size</span> if you can pair them up.</h2>
+  <div class="fill row mid">
+    <div class="stack grow">
+      <p class="f" data-step="1">No counting needed — just a perfect pairing. Every left has exactly one right, and nothing is left over.</p>
+      <p class="f" data-step="2">So there are as many even numbers as numbers: pair <span class="mono">n</span> with <span class="mono">2n</span>. The part is as big as the whole.</p>
+      <p class="f" data-step="3">A set pairable with <span class="mono">1, 2, 3, …</span> is called <strong>countable</strong>. It can be listed.</p>
+    </div>
+    <div class="fig grow" style="flex:1.1"><canvas data-anim="pairing"></canvas><span class="cap">n ↔ 2n</span></div>
+  </div>
+  <aside class="notes"><p>Galileo noticed the paradox; Cantor turned it into a definition. Stress the operational meaning of "countable" = "can be put in a list, first, second, third." That word does all the work on the next three slides.</p></aside>
+</section>
+
+<section class="slide" data-act="II" data-mins="0.85">
+  <div class="eyebrow">Notation</div>
+  <h2>Everything we can <span class="j">write down</span> is countable.</h2>
+  <div class="fill">
+    <div class="two">
+      <div class="stack">
+        <p class="f" data-step="1">A program is a finite string of symbols. So is a proof, a specification, a sentence, a score, a formula, a prompt.</p>
+        <p class="f" data-step="2">List all strings of length 1, then length 2, then 3 … every finite text appears at some finite position.</p>
+        <p class="f" data-step="3">So: <strong>all programs that will ever exist</strong> form a countable list. Same for all proofs. Same for all sentences of English.</p>
+      </div>
+      <div class="stack">
+        <div class="fig f" data-step="2" style="min-height:calc(var(--u)*22)"><canvas data-anim="enum"></canvas><span class="cap">the enumeration of all texts</span></div>
+        <div class="aside-cs f" data-step="4"><div class="h">This has a name</div>
+          <p>Assigning a number to each piece of syntax is <em>Gödelisierung</em> — Gödel numbering. It is how a machine reads a machine, and we return to it in Part III.</p></div>
+      </div>
+    </div>
+  </div>
+  <aside class="notes"><p>Key move: notation is countable — not because notation is small, but because it is finite-and-discrete. The audience should feel this as generous: countable is already infinite, we are not being cheap. And name Gödelisierung here so it is familiar later.</p></aside>
+</section>
+
+<section class="slide" data-act="II" data-mins="0.95">
+  <div class="eyebrow sem">Meaning</div>
+  <h2>What we want to <span class="k">talk about</span> is not.</h2>
+  <div class="fill row mid">
+    <div class="stack grow">
+      <p class="f" data-step="1">Consider all infinite sequences of bits: <span class="mono">0110100011…</span> forever.</p>
+      <p class="f" data-step="2">Each one is a complete answer to an endless list of yes/no questions — a behaviour, a function, a real number, a fate.</p>
+      <p class="f" data-step="3">Claim: <strong>no list can contain them all.</strong> Not a long list. Not an infinite list. No list.</p>
+      <p class="sm f" data-step="4">Cantor's proof is three lines and it is the most consequential argument of the 20th century.</p>
+    </div>
+    <div class="fig grow" style="flex:1.25"><canvas data-anim="diagonal"></canvas><span class="cap">the diagonal</span></div>
+  </div>
+  <aside class="notes"><p>Walk the diagonal animation step by step: here is any proposed list; take the diagonal; flip every bit; the result differs from row 1 in position 1, from row 2 in position 2, from row n in position n — so it is on no row. The list was arbitrary, so every list fails.</p></aside>
+</section>
+
+<section class="slide" data-act="II" data-mins="0.85">
+  <div class="eyebrow">Theorem</div>
+  <h2>The diagonal, once and for all.</h2>
+  <div class="fill">
+    <div class="thm f" data-step="1">
+      <span class="name">Cantor · 1891</span>
+      <div class="st">For every set S, the set of all subsets of S is strictly larger than S. In particular, the real numbers cannot be listed.</div>
+    </div>
+    <div class="two f" data-step="2">
+      <div class="card syn"><span class="h">Where self-reference enters</span>
+        <p>The proof builds an object <em>from</em> the list that asks of each row: "do you contain yourself here?" — and then answers the opposite. The list is used against itself.</p></div>
+      <div class="card"><span class="h">Why 2<sup>S</sup></span>
+        <p>A subset of S is exactly one bit per element: in, or out. So subsets of the counting numbers <em>are</em> infinite bit sequences. Power set, real numbers, bit sequences — three costumes, one cardinality.</p></div>
+    </div>
+    <p class="sm f" data-step="3">Russell would turn the same trick on set theory itself in 1901: <em>the set of all sets that do not contain themselves</em>. Same diagonal, aimed at the foundations.</p>
+  </div>
+  <aside class="notes"><p>Make the pattern explicit and name it, because it recurs three more times: (1) assume a complete list; (2) build a diagonal object by asking each item about itself; (3) flip. Cantor, Russell, Gödel, Turing — one idea. Students who see the pattern once never need to memorise the theorems.</p></aside>
+</section>
+
+<section class="slide" data-act="II" data-mins="1.05">
+  <div class="eyebrow sem">The result everything hangs on</div>
+  <h2>There are <span class="k">incomparably more meanings</span> than notations.</h2>
+  <div class="fill row mid">
+    <div class="fig grow" style="flex:1.15"><canvas data-anim="gap"></canvas><span class="cap">countable notation · uncountable meaning</span></div>
+    <div class="stack grow">
+      <p class="f" data-step="1">Programs: countable. Behaviours: uncountable. So <strong>almost every behaviour has no program.</strong></p>
+      <p class="f" data-step="2">Proofs: countable. Truths about numbers: uncountable. So <strong>almost every truth has no proof.</strong></p>
+      <p class="f" data-step="3">Sentences: countable. Distinctions the world admits: uncountable. So <strong>almost everything is unsaid.</strong></p>
+      <p class="sm f" data-step="4">"Almost every" here is exact: the expressible is a vanishing sliver, of measure zero, inside the meaningful.</p>
+    </div>
+  </div>
+  <aside class="notes"><p>This is the thesis slide of the whole lecture. Say it three ways, slowly. Note that we have not yet used any logic or computability — pure counting already tells us that notation can never catch up with meaning. Gödel and Turing will only make it concrete and constructive.</p></aside>
+</section>
+
+<section class="slide" data-act="II" data-mins="0.75">
+  <div class="eyebrow sem">Reframe · 2 of 5</div>
+  <h2>Scarcity of notation is a <span class="k">job description</span>.</h2>
+  <div class="fill center">
+    <div class="ledger f" data-step="1">
+      <div class="forbids">
+        <h4>What it forbids</h4>
+        <p>A final language. No vocabulary — mathematical, legal, musical, or neural — will ever cover the space of meanings.</p>
+      </div>
+      <div class="opens">
+        <h4>What it opens</h4>
+        <p>An inexhaustible supply of things worth naming. Every new notation captures meaning that was previously unreachable — and there is always more left.</p>
+      </div>
+    </div>
+    <p class="sm f" data-step="2">Calculus, double-entry bookkeeping, staff notation, the periodic table, chemical formulae, DNA sequencing, type systems: each was a raid on the uncountable. <strong>The supply of raids never runs out.</strong></p>
+  </div>
+  <aside class="notes"><p>Turn the cardinality gap into optimism. Chaitin's version: almost all numbers are random, i.e. incompressible, i.e. nameless. That is not a wall; it is unclaimed territory, and the act of claiming it is what every discipline calls progress.</p></aside>
+</section>
+
+<!-- ══════════════════ ACT III · SELF-REFERENCE ══════════════════ -->
+
+<section class="slide" data-act="III" data-mins="0.25">
+  <div class="eyebrow">Part III</div>
+  <h1 style="font-size:calc(var(--u)*7.4)">Self-Reference</h1>
+  <p class="lead f" data-step="1">Counting told us the gap exists. Self-reference walks us to the edge of it and <span class="k">points</span>.</p>
+  <aside class="notes"><p>Part II was static — a size comparison. Part III is constructive: we will not just know that unnameable things exist, we will write down specific questions no notation can answer. The instrument is always the same: a system turned on itself.</p></aside>
+</section>
+
+<section class="slide" data-act="III" data-mins="0.9">
+  <div class="eyebrow">Syntax and semantics</div>
+  <h2>The score is <span class="j">not</span> the music.</h2>
+  <div class="fill">
+    <div class="three">
+      <div class="card syn f" data-step="1"><span class="h">Syntax · notation</span>
+        <p>Marks on paper. Finite, discrete, checkable, copyable. <span class="mono">1 + 1</span>, a staff of crotchets, <span class="mono">H₂O</span>, a line of code, this sentence.</p></div>
+      <div class="card f" data-step="2"><span class="h">Semantics · meaning</span>
+        <p>What the marks are <em>about</em>. The number two. Sound in a room. A molecule that dissolves salt. A machine's behaviour over all inputs.</p></div>
+      <div class="card f" data-step="3"><span class="h">The map</span>
+        <p>A semantics is a <em>function</em> from notation to meaning. Defining that function precisely is the founding act of every exact discipline.</p></div>
+    </div>
+    <div class="chips f" data-step="4" style="margin-top:auto">
+      <span class="chip j">Frege 1892 · Sinn / Bedeutung</span>
+      <span class="chip j">Saussure · signifier / signified</span>
+      <span class="chip j">Korzybski 1931 · the map is not the territory</span>
+      <span class="chip j">Magritte 1929 · ceci n'est pas une pipe</span>
+      <span class="chip j">Peirce · sign / object / interpretant</span>
+    </div>
+  </div>
+  <aside class="notes"><p>Use the musicians in the room. A score under-determines the performance; two conductors give you two pieces. Yet the score is what can be printed, posted, copied and criticised. Notation travels; meaning has to be reconstructed at the other end. Every discipline listed on the chips discovered this independently.</p></aside>
+</section>
+
+<section class="slide" data-act="III" data-mins="0.9">
+  <div class="eyebrow">Two kinds of language</div>
+  <h2>Natural language is <span class="j">compression</span>. Formal language is <span class="k">commitment</span>.</h2>
+  <div class="fill">
+    <div class="two">
+      <div class="stack">
+        <p class="f" data-step="1"><em>"I saw the man with the telescope."</em> Two readings, one string. English resolves it with a shared world you and I already have.</p>
+        <p class="f" data-step="2">That shared world is why English is powerful — and why it cannot be a foundation. Its semantics is <strong>us</strong>, and we differ.</p>
+        <p class="f" data-step="3">A formal language pays a price — narrowness, pedantry, effort — to buy one thing: <span class="k">a meaning that does not depend on who is reading</span>.</p>
+      </div>
+      <div class="stack">
+        <table class="t f" data-step="4">
+          <tr><th>natural</th><th>formal</th></tr>
+          <tr><td>ambiguous</td><td class="r">single-valued</td></tr>
+          <tr><td>elastic, forgiving</td><td class="r">brittle, exact</td></tr>
+          <tr><td>persuades</td><td class="r">proves</td></tr>
+          <tr><td>needs a mind</td><td class="r">needs a machine</td></tr>
+          <tr><td>learned by living</td><td class="r">defined by decree</td></tr>
+        </table>
+        <p class="sm f" data-step="5">Prompting an AI in English is negotiation. Writing a test, a type, a schema, a unit, a contract is <strong>legislation</strong>.</p>
+      </div>
+    </div>
+  </div>
+  <aside class="notes"><p>Do not let formal win a beauty contest — natural language is the more remarkable artefact. The point is division of labour: you cannot compute with a poem, and you cannot fall in love in first-order logic. Progress happens when someone moves a piece of the world from the left column to the right. The last line previews Part VII.</p></aside>
+</section>
+
+<section class="slide dense" data-act="III" data-mins="1.0">
+  <div class="eyebrow">Gödelisierung</div>
+  <h2>Give every text a <span class="k">number</span>, and notation becomes something you can <span class="k">compute with</span>.</h2>
+  <div class="fill row mid">
+    <div class="stack grow">
+      <p class="f" data-step="1">Gödel's device, 1931: encode formulas, proofs and programs as integers. Now arithmetic can talk about arithmetic.</p>
+      <p class="f" data-step="2">Every computer you have ever used is this idea in metal: <strong>code is data</strong>. A compiler eats programs. An operating system runs programs. A model is trained on programs.</p>
+      <p class="f" data-step="3">And once a system can describe systems, it can describe <span class="x">itself</span>. Self-reference is not a trick; it is the price of being expressive enough to be useful.</p>
+      <div class="aside-cs f" data-step="4"><div class="h">Aside · for the computer scientists</div>
+        <p>In <em>selfie</em>, a 12KLOC C&#42; system, a compiler compiles its own source and an emulator executes that code — including itself. Gödelisierung you can run in a terminal.</p></div>
+    </div>
+    <div class="fig grow" style="flex:.95"><canvas data-anim="godel"></canvas><span class="cap">text → number → text</span></div>
+  </div>
+  <aside class="notes"><p>Stress the ordinariness: von Neumann's stored-program architecture is Gödel numbering as hardware. Every student in the room uses self-reference daily without naming it. That is why the theorems that follow are not exotic — they are the invoice for expressiveness we all want.</p></aside>
+</section>
+
+<section class="slide" data-act="III" data-mins="1.15">
+  <div class="eyebrow">Theorem</div>
+  <h2>There are truths with <span class="x">no proof</span>.</h2>
+  <div class="fill">
+    <div class="thm f" data-step="1">
+      <span class="name">Gödel · first incompleteness · 1931</span>
+      <div class="st">Any consistent formal system rich enough to describe arithmetic contains statements that are true but not provable within it.</div>
+    </div>
+    <div class="two f" data-step="2">
+      <div class="card syn"><span class="h">How</span>
+        <p>Build, by Gödelisierung, a sentence that says: <em>"this sentence has no proof in this system."</em> If it were provable, the system proves a falsehood. So it is unprovable — and therefore true.</p></div>
+      <div class="card"><span class="h">The same diagonal</span>
+        <p>Cantor built a row not on the list. Gödel builds a truth not on the list of provable things. Adding it as a new axiom does not help: the construction simply runs again.</p></div>
+    </div>
+    <p class="lead f" data-step="3"><strong>Proof</strong> is a finite object you can check. <strong>Truth</strong> is not.<br>Proof is syntax. Truth is semantics. They are not the same size.</p>
+  </div>
+  <aside class="notes"><p>The heart of the talk. Note what is NOT claimed: no single statement is forever unknowable — you may prove it in a stronger system. What is claimed is that no system is ever finished. Also note Gödel's own reading: he took this as evidence that mathematical insight is not exhausted by any fixed mechanism.</p></aside>
+</section>
+
+<section class="slide" data-act="III" data-mins="0.8">
+  <div class="eyebrow">Theorem</div>
+  <h2>And no strong system can certify <span class="j">itself</span>.</h2>
+  <div class="fill">
+    <div class="thm f" data-step="1">
+      <span class="name">Gödel · second incompleteness · 1931</span>
+      <div class="st">Such a system cannot prove its own consistency — unless it is inconsistent, in which case it proves everything.</div>
+    </div>
+    <div class="two f" data-step="2">
+      <div class="card syn"><span class="h">Read it as engineering</span>
+        <p>A trustworthy system cannot be the source of its own trust. Confidence has to come from <em>outside</em>: a stronger theory, an experiment, an independent auditor, reality.</p></div>
+      <div class="card"><span class="h">Read it as advice</span>
+        <p>When a model explains why its own answer is correct, you have received more output from the same system — fluent, plausible, and not a certificate. Introspection is not audit.</p></div>
+    </div>
+    <p class="sm f" data-step="3">Tarski, 1936, closes the circle: no sufficiently expressive language can define <em>truth</em> for its own sentences. Truth always lives one level up.</p>
+  </div>
+  <aside class="notes"><p>This slide is where the AI section gets its backbone; plant it deliberately. Self-certification is structurally impossible, not merely difficult — so any safety story that relies on a system vouching for itself is broken before you look at the details.</p></aside>
+</section>
+
+<section class="slide" data-act="III" data-mins="1.15">
+  <div class="eyebrow">Undecidability</div>
+  <h2>Will this program ever <span class="x">stop</span>? No program can always tell.</h2>
+  <div class="fill row mid">
+    <div class="fig grow" style="flex:1.25"><canvas data-anim="halt"></canvas><span class="cap">feed the decider its own description</span></div>
+    <div class="stack grow">
+      <p class="f" data-step="1">Suppose <span class="mono">H(P,x)</span> decides, for every program and input, whether <span class="mono">P</span> halts on <span class="mono">x</span>.</p>
+      <p class="f" data-step="2">Build <span class="mono">D(P)</span>: ask <span class="mono">H</span> whether <span class="mono">P</span> halts on <span class="mono">P</span> — then do the opposite.</p>
+      <p class="f" data-step="3">Now run <span class="mono">D(D)</span>. It halts exactly if it doesn't. <span class="x">Contradiction.</span> So <span class="mono">H</span> never existed.</p>
+      <p class="sm f" data-step="4">Turing, 1936 — the same paper that defined the universal machine, and thus invented the computer. The limit and the machine arrived <strong>together</strong>.</p>
+    </div>
+  </div>
+  <aside class="notes"><p>Walk the animation: H, then the wrapper D, then the self-application. Emphasise the historical detail — Turing was answering Hilbert's decision problem in the negative, and the byproduct of the negative answer was the design of the machine on every desk. Limits are where technology comes from.</p></aside>
+</section>
+
+<section class="slide" data-act="III" data-mins="0.85">
+  <div class="eyebrow">The general case</div>
+  <h2>It is not just halting. It is <span class="x">every interesting question about meaning</span>.</h2>
+  <div class="fill">
+    <div class="thm f" data-step="1">
+      <span class="name">Rice · 1953</span>
+      <div class="st">Every non-trivial property of the behaviour of programs is undecidable. Only questions about their text are safe.</div>
+    </div>
+    <div class="two f" data-step="2">
+      <div class="card syn"><span class="h">Decidable · about syntax</span>
+        <p>How long is the code? Does it parse? Does it use this library? Are the types consistent? Does it contain a loop?</p></div>
+      <div class="card"><span class="h">Undecidable · about semantics</span>
+        <p>Is it correct? Is it equivalent to that one? Does it ever leak the key? Is it free of infinite loops? <strong>Is it safe?</strong></p></div>
+    </div>
+    <p class="sm f" data-step="3">So every practical tool — a type checker, a test suite, a linter, a model checker, a fuzzer, a proof assistant — is a deliberate <strong>approximation</strong>: sound but incomplete, or complete but unsound, or exact only within a bound. Choosing which to give up is the discipline.</p>
+  </div>
+  <aside class="notes"><p>Rice generalises Turing and is the single most useful theorem for reasoning about AI evaluation. "Is this system safe" is a semantic property of a program. There is no general decision procedure — not for a lack of cleverness, but as a matter of mathematics. Hence: bounds, approximations, institutions.</p></aside>
+</section>
+
+<section class="slide" data-act="III" data-mins="0.95">
+  <div class="eyebrow">Pattern</div>
+  <h2>One idea. Sixty years. <span class="k">Six theorems</span>.</h2>
+  <div class="fill">
+    <table class="t">
+      <tr><th>year</th><th>who</th><th>the list</th><th>the diagonal object</th></tr>
+      <tr class="f" data-step="1"><td>1891</td><td>Cantor</td><td>all real numbers</td><td class="r">a number on no row</td></tr>
+      <tr class="f" data-step="2"><td>1901</td><td>Russell</td><td>all sets</td><td class="r">the set of non-self-members</td></tr>
+      <tr class="f" data-step="3"><td>1931</td><td>Gödel</td><td>all provable sentences</td><td class="r">"I am unprovable"</td></tr>
+      <tr class="f" data-step="4"><td>1936</td><td>Tarski</td><td>all definable predicates</td><td class="r">"I am false"</td></tr>
+      <tr class="f" data-step="5"><td>1936</td><td>Turing</td><td>all decidable questions</td><td class="r">a program that defies its judge</td></tr>
+      <tr class="f" data-step="6"><td>1953</td><td>Rice</td><td>all semantic properties</td><td class="r">all of the above, at once</td></tr>
+    </table>
+    <p class="lead f" data-step="7">Assume a complete list. Ask each item about <em>itself</em>. Answer the opposite.<br><span class="k">Learn the move once and you own the century.</span></p>
+  </div>
+  <aside class="notes"><p>Give students the transferable skill: they now hold a proof technique, not six facts. Hofstadter's Gödel, Escher, Bach is the reading recommendation. If time is short, this is the slide to linger on and the previous ones to compress.</p></aside>
+</section>
+
+<section class="slide" data-act="III" data-mins="0.75">
+  <div class="eyebrow sem">Reframe · 3 of 5</div>
+  <h2>No final authority means <span class="k">no ceiling</span>.</h2>
+  <div class="fill center">
+    <div class="ledger f" data-step="1">
+      <div class="forbids">
+        <h4>What it forbids</h4>
+        <p>A machine, a method, or a person that settles all questions. No complete rulebook, no self-certifying system, no automatic correctness.</p>
+      </div>
+      <div class="opens">
+        <h4>What it opens</h4>
+        <p>Mathematics is not a finished building but an open frontier; engineering is a craft rather than a lookup; and judgement — yours — never becomes redundant.</p>
+      </div>
+    </div>
+    <blockquote class="f" data-step="2" style="font-size:calc(var(--u)*2.1)">Beware of bugs in the above code; I have only proved it correct, not tried it.
+      <cite>Donald E. Knuth, 1977</cite></blockquote>
+  </div>
+  <aside class="notes"><p>Knuth's joke is the whole lecture in one line: a proof is about a model of the world, and the world gets the final word. Proof and testing are two different approximations of truth, and a serious engineer uses both while trusting neither completely.</p></aside>
+</section>
+
+<!-- ══════════════════ ACT IV · COST ══════════════════ -->
+
+<section class="slide" data-act="IV" data-mins="0.25">
+  <div class="eyebrow">Part IV</div>
+  <h1 style="font-size:calc(var(--u)*7.4)">Cost</h1>
+  <p class="lead f" data-step="1">Suppose a question <em>is</em> decidable. You still have to pay for the answer — in <span class="k">time</span>, <span class="k">space</span>, and <span class="k">energy</span>.</p>
+  <aside class="notes"><p>Shift register: Parts II and III were about the possible. Part IV is about the affordable — and for practical purposes the boundary between "impossible" and "unaffordable" hardly matters. This is also where physics enters the talk.</p></aside>
+</section>
+
+<section class="slide" data-act="IV" data-mins="0.85">
+  <div class="eyebrow">Decidable ≠ doable</div>
+  <h2>A question with a guaranteed answer you will <span class="x">never receive</span>.</h2>
+  <div class="fill row mid">
+    <div class="stack grow">
+      <p class="f" data-step="1">Given a logical formula over 100 yes/no variables: is there an assignment making it true? Perfectly decidable — try all 2<sup>100</sup>.</p>
+      <div class="kpi f" data-step="2"><span class="n">2<sup>100</sup></span><span class="l">≈ 1.3 × 10<sup>30</sup> assignments</span></div>
+      <div class="kpi f" data-step="3"><span class="n">10<sup>13</sup> years</span><span class="l">at a billion checks per second</span></div>
+      <p class="sm f" data-step="4">Chess has ~10<sup>44</sup> legal positions; Go, ~10<sup>170</sup>. Nobody "solves" these. We <strong>navigate</strong> them — with heuristics, structure, and luck.</p>
+    </div>
+    <div class="fig grow" style="flex:1.15"><canvas data-anim="tree"></canvas><span class="cap">2ⁿ branches · one satisfying leaf</span></div>
+  </div>
+  <aside class="notes"><p>Note that modern SAT solvers routinely handle millions of variables on structured industrial instances — the exponential is a worst case, and defeating typical cases is one of engineering's great quiet victories. That is itself a hopeful data point: hardness in the worst case leaves enormous room for cleverness in practice.</p></aside>
+</section>
+
+<section class="slide" data-act="IV" data-mins="0.95">
+  <div class="eyebrow">Intractability</div>
+  <h2>Hard to <span class="j">find</span>. Easy to <span class="k">check</span>.</h2>
+  <div class="fill">
+    <div class="two">
+      <div class="stack">
+        <p class="f" data-step="1">That asymmetry has a name: <strong>NP</strong> — problems whose solutions are quick to verify even if finding them seems to need exponential search.</p>
+        <p class="f" data-step="2">Cook and Levin, 1971–73: thousands of such problems are <em>the same problem</em> in disguise. Crack one efficiently and you crack scheduling, routing, folding, packing, proving.</p>
+        <p class="f" data-step="3">Whether that is possible — <span class="mono">P = NP?</span> — is the most consequential open question in the exact sciences. Most researchers bet <span class="mono">no</span>.</p>
+      </div>
+      <div class="stack">
+        <div class="card f" data-step="4"><span class="h">The asymmetry, everywhere</span>
+          <p>Composing a symphony versus hearing it is off. Writing a proof versus reading it. Designing a protein versus assaying it. Doing the homework versus grading it.</p></div>
+        <div class="card syn f" data-step="5"><span class="h">Remember this one</span>
+          <p>Generation is expensive; verification is cheap. Every healthy division of labour — and every safe way to use an AI — is built on that gap.</p></div>
+      </div>
+    </div>
+  </div>
+  <aside class="notes"><p>This is the pivot slide for the practical advice at the end. Do not rush it. The asymmetry is what makes delegation rational: you can accept work you could not have produced, provided you can check it. When you cannot check it, delegation is faith.</p></aside>
+</section>
+
+<section class="slide" data-act="IV" data-mins="0.95">
+  <div class="eyebrow">Physics</div>
+  <h2>Computation is not abstract. It costs <span class="k">energy</span>, by law.</h2>
+  <div class="fill row mid">
+    <div class="fig grow" style="flex:1.3"><canvas data-anim="energy"></canvas><span class="cap">joules · log scale</span></div>
+    <div class="stack grow">
+      <p class="f" data-step="1">Landauer, 1961: erasing one bit at room temperature costs at least <span class="mono">kT&#8201;ln&#8201;2</span> ≈ 3 × 10<sup>-21</sup> joules. Information is physical.</p>
+      <p class="f" data-step="2">So brute-forcing our 266-bit space costs ≈ 10<sup>59</sup> J — about <strong>10<sup>15</sup> times</strong> everything the Sun will radiate in its entire lifetime.</p>
+      <p class="f" data-step="3">Meanwhile a human brain runs on <span class="k">20 watts</span>: a dim light bulb, doing what data centres cannot.</p>
+      <p class="sm f" data-step="4">Time, space, energy — three currencies for one budget. Any claim about intelligence that ignores the budget is a claim about magic.</p>
+    </div>
+  </div>
+  <aside class="notes"><p>The brain comparison is the honest hopeful note: nature found an architecture that is astoundingly cheap. That is not mysticism, it is an existence proof — dramatic efficiency gains remain available, because one implementation already achieves them. Bremermann's limit, 1962, is the general form of this ceiling.</p></aside>
+</section>
+
+<section class="slide" data-act="IV" data-mins="0.75">
+  <div class="eyebrow sem">Reframe · 4 of 5</div>
+  <h2>Hardness is <span class="k">load-bearing</span>.</h2>
+  <div class="fill center">
+    <div class="ledger f" data-step="1">
+      <div class="forbids">
+        <h4>What it forbids</h4>
+        <p>Brute force as a strategy. You cannot search your way to correctness, to a cure, or to a business plan.</p>
+      </div>
+      <div class="opens">
+        <h4>What it opens</h4>
+        <p>Every private message, every signature, every payment, every password you rely on today exists <em>because</em> some problems are hard. Difficulty is the raw material of security — and the reason abstraction, theory, and taste are worth more than compute.</p>
+      </div>
+    </div>
+    <p class="sm f" data-step="2">If exhaustive search worked, there would be no cryptography, no privacy, and — since anything findable would be found — nothing left to discover.</p>
+  </div>
+  <aside class="notes"><p>Make the point that a world where P = NP would be spectacular and also strange: mathematics automated, cryptography dead. The universe we appear to live in trades away that power for a currency called difficulty, which we then spend on privacy and on discovery.</p></aside>
+</section>
+
+<section class="slide" data-act="IV" data-mins="0.85">
+  <div class="eyebrow">Metrics</div>
+  <h2>A language without a <span class="k">metric</span> is decoration.</h2>
+  <div class="fill">
+    <div class="two">
+      <div class="stack">
+        <p class="f" data-step="1">Notation lets you say it. Semantics fixes what it means. A <strong>metric</strong> tells you whether you are getting closer.</p>
+        <p class="f" data-step="2">Running time, memory, energy, error rate, coverage, p-values, yield, latency, mortality, loss on a held-out set — every mature field runs on invented measures.</p>
+        <p class="f" data-step="3">And every metric decays the moment it becomes a target.</p>
+      </div>
+      <div class="stack">
+        <blockquote class="f" data-step="4" style="font-size:calc(var(--u)*2.2)">When a measure becomes a target, it ceases to be a good measure.
+          <cite>Goodhart's law · 1975</cite></blockquote>
+        <p class="sm f" data-step="5">Teaching to the test. Optimising engagement. Publishing to the h-index. Training to the benchmark. <strong>Same failure, four fields.</strong> A metric is a semantics for "better" — and always an approximate one.</p>
+      </div>
+    </div>
+  </div>
+  <aside class="notes"><p>Metrics complete the triple that the final definition rests on: language, semantics, metric. Goodhart is the reason the third item needs constant reinvention — every good measure is eventually gamed, which means measurement, too, is an unending process rather than a solved problem.</p></aside>
+</section>
+
+<!-- ══════════════════ ACT V · EVERYWHERE ══════════════════ -->
+
+<section class="slide" data-act="V" data-mins="0.25">
+  <div class="eyebrow">Part V</div>
+  <h1 style="font-size:calc(var(--u)*7.4)">Everywhere</h1>
+  <p class="lead f" data-step="1">None of this is about computers. Computers are just where it was <span class="k">noticed</span> first, because there the notation is forced to be exact.</p>
+  <aside class="notes"><p>Explicit invitation to the non-computer-scientists: for the next three slides the examples come from their fields. The claim is strong — state space, syntax/semantics, self-reference, intractability and metrics are field-independent structure.</p></aside>
+</section>
+
+<section class="slide" data-act="V" data-mins="0.95">
+  <div class="eyebrow">Biology</div>
+  <h2>Life was running a <span class="k">formal language</span> long before we invented one.</h2>
+  <div class="fill">
+    <div class="two">
+      <div class="stack">
+        <p class="f" data-step="1"><strong>Syntax:</strong> 3.2 billion base pairs, two bits each — about 800 megabytes. Smaller than a phone's memory; state space 4<sup>3,200,000,000</sup>.</p>
+        <p class="f" data-step="2"><strong>Semantics:</strong> the genetic code maps 64 codons onto 20 amino acids and a stop — a redundant, many-to-one interpretation function, executed by the ribosome.</p>
+        <p class="f" data-step="3"><strong>Self-reference:</strong> the genome encodes the machinery that reads the genome. Von Neumann described this architecture in 1948 — <em>five years before</em> Watson and Crick.</p>
+      </div>
+      <div class="stack">
+        <div class="card f" data-step="4"><span class="h">Intractability · Levinthal 1969</span>
+          <p>A modest protein has ~10<sup>300</sup> possible shapes. Sampling them all would outlast the universe; real proteins fold in milliseconds. Nature does not search — it <em>funnels</em>.</p></div>
+        <div class="card syn f" data-step="5"><span class="h">And where AI actually won</span>
+          <p>AlphaFold did not solve folding by exhaustion either. It learned an approximation, and its value was settled by a metric the field had already invented and by experiments it could not fake.</p></div>
+      </div>
+    </div>
+  </div>
+  <aside class="notes"><p>Evolution is the great example of progress with proof entirely absent: no organism proves it is fit, it merely survives — truth by approximation, over deep time, with a brutal metric. And Levinthal's paradox is the biological statement of "intractable yet done daily," which is the most encouraging shape a hard problem can have.</p></aside>
+</section>
+
+<section class="slide" data-act="V" data-mins="0.9">
+  <div class="eyebrow">Mind</div>
+  <h2>You navigate an unimaginable space with about <span class="j">four</span> slots of working memory.</h2>
+  <div class="fill">
+    <div class="three">
+      <div class="card f" data-step="1"><span class="h">Space · Miller 1956</span>
+        <p>Seven items, plus or minus two; later work says nearer four <em>chunks</em>. Chunking is the mind inventing notation to beat its own memory limit.</p>
+        <span class="src">86 billion neurons · ~10¹⁴ synapses</span></div>
+      <div class="card f" data-step="2"><span class="h">Time · Kahneman</span>
+        <p>Fast heuristics that are cheap and sometimes wrong; slow deliberation that is expensive and sometimes right. A biological answer to a cost problem.</p>
+        <span class="src">System 1 / System 2 · 2011</span></div>
+      <div class="card f" data-step="3"><span class="h">Language · Piaget, Harnad</span>
+        <p>Learning is <em>accommodation</em>: when the world breaks your scheme, you build a new one. And symbols only mean something if they are grounded in experience.</p>
+        <span class="src">symbol grounding · 1990</span></div>
+    </div>
+    <p class="lead f" data-step="4">Growing up is inventing better notation for a world too big to store — <span class="k">exactly the task of a discipline, run on one person</span>.</p>
+  </div>
+  <aside class="notes"><p>Bridge for psychology students: Piaget's accommodation is language invention at the scale of a child; Kuhn's paradigm shift is the same event at the scale of a science. The symbol grounding problem returns in Part VI — a model trained only on text has its symbols grounded in other symbols.</p></aside>
+</section>
+
+<section class="slide" data-act="V" data-mins="0.95">
+  <div class="eyebrow">The pattern</div>
+  <h2>Every leap in every field was a <span class="k">new notation</span>.</h2>
+  <div class="fill">
+    <table class="t">
+      <tr><th>field</th><th>notation invented</th><th>what became possible</th></tr>
+      <tr class="f" data-step="1"><td>accounting</td><td>double-entry ledger · Pacioli 1494</td><td class="r">the firm, the audit, capitalism</td></tr>
+      <tr class="f" data-step="1"><td>music</td><td>staff notation · Guido d'Arezzo c.1025</td><td class="r">polyphony, composition at scale</td></tr>
+      <tr class="f" data-step="2"><td>physics</td><td>calculus · Newton &amp; Leibniz 1670s</td><td class="r">motion, orbits, engineering</td></tr>
+      <tr class="f" data-step="2"><td>chemistry</td><td>formulae &amp; the periodic table · 1869</td><td class="r">prediction of unknown elements</td></tr>
+      <tr class="f" data-step="3"><td>medicine</td><td>diagnostic criteria, trial protocols</td><td class="r">evidence instead of authority</td></tr>
+      <tr class="f" data-step="3"><td>linguistics</td><td>generative grammar · Chomsky 1957</td><td class="r">language as a formal object</td></tr>
+      <tr class="f" data-step="4"><td>computing</td><td>Turing machines · 1936</td><td class="r">all of the above, mechanised</td></tr>
+    </table>
+    <p class="f" data-step="5" style="font-size:calc(var(--u)*1.78);color:var(--ink)">None of these was a discovery of new facts. Each was a new <em>language</em> — or a new <em>property</em> an old language could finally express. The facts followed.</p>
+  </div>
+  <aside class="notes"><p>Ask the room, out loud, for the notation of their own field, and what it made possible. Statistics, cartography, choreography, chess algebraic notation, legal statute, architectural plan, knitting patterns. The answers are always good and this is the moment the humanities students take ownership of the thesis.</p></aside>
+</section>
+
+<!-- ══════════════════ ACT VI · MACHINES ══════════════════ -->
+
+<section class="slide" data-act="VI" data-mins="0.25">
+  <div class="eyebrow">Part VI</div>
+  <h1 style="font-size:calc(var(--u)*7.4)">Machines</h1>
+  <p class="lead f" data-step="1">Now the question everyone actually came with. Today's AI is remarkable — and it is <span class="k">subject to every single thing</span> we have just established.</p>
+  <aside class="notes"><p>Tone here matters. Not debunking, not hype. These systems are among the most useful artefacts ever built. And they are computations, so the mathematics applies to them exactly as it applies to a spreadsheet.</p></aside>
+</section>
+
+<section class="slide" data-act="VI" data-mins="0.95">
+  <div class="eyebrow">What it is</div>
+  <h2>A large model is a machine trained on <span class="j">notation</span>, asked for <span class="k">meaning</span>.</h2>
+  <div class="fill">
+    <div class="two">
+      <div class="stack">
+        <p class="f" data-step="1">Mechanically: a function from a sequence of tokens to a probability distribution over the next token, fitted to an enormous corpus, then sampled.</p>
+        <p class="f" data-step="2">The training signal is <strong>syntactic</strong> — which symbol follows which. Meaning is never handed to it; it is inferred from whatever correlates with the symbols.</p>
+        <p class="f" data-step="3">That this works as well as it does is the genuine scientific surprise of our decade. It does not change what kind of object it is.</p>
+      </div>
+      <div class="stack">
+        <div class="card syn f" data-step="4"><span class="h">The three currencies, priced</span>
+          <p><strong>Space</strong> — the context window, a hard bound on what can be in view. <strong>Time</strong> — tokens per second. <strong>Energy</strong> — megawatts for weeks, against your 20 watts.</p></div>
+        <div class="card f" data-step="5"><span class="h">The state space</span>
+          <p>Billions of parameters, each many bits. The bug-hunting arithmetic of Part I applies unchanged: the space cannot be inspected, so behaviour cannot be enumerated. Only sampled.</p></div>
+      </div>
+    </div>
+  </div>
+  <aside class="notes"><p>Keep the description mechanical and unpolemical — students should leave able to explain what these systems are to a friend. The important consequence is the last one: "we tested it extensively" is Part I all over again. Testing shows presence, not absence.</p></aside>
+</section>
+
+<section class="slide dense" data-act="VI" data-mins="0.95">
+  <div class="eyebrow">The old gap, industrialised</div>
+  <h2>A hallucination is a <span class="j">proof-shaped object</span> that isn't <span class="k">true</span>.</h2>
+  <div class="fill row mid">
+    <div class="stack grow">
+      <p class="f" data-step="1">Fluency is syntax. Correctness is semantics. We built a machine of extraordinary fluency, so the gap between the two is now something you meet before breakfast.</p>
+      <p class="f" data-step="2">Not a defect to be patched away — it is the proof/truth distinction at consumer scale.</p>
+      <p class="f" data-step="3">So the durable response is not "trust it more" or "trust it less" but <strong>check it against something with a semantics</strong>: a compiler, a test, an experiment, a source, a colleague.</p>
+    </div>
+    <div class="stack grow f" data-step="4">
+      <div class="card"><span class="h">The three-way test</span>
+        <p><strong>Plausible</strong> — reads well.<br><strong>Provable</strong> — has a certificate.<br><strong>True</strong> — holds in the world.</p></div>
+      <div class="card syn f" data-step="5"><span class="h">Grounding again</span>
+        <p>Harnad, 1990: symbols defined only by other symbols never touch the world. Tools and feedback plug that hole partially, never completely.</p></div>
+    </div>
+  </div>
+  <aside class="notes"><p>Land this without cynicism: the same slide explains why retrieval, tool use, unit tests and human review help so much. They are all ways of importing an external semantics. That is the engineering response to Gödel's second theorem, and it works.</p></aside>
+</section>
+
+<section class="slide" data-act="VI" data-mins="0.95">
+  <div class="eyebrow">Self-reference · again</div>
+  <h2>The loops are already <span class="x">closed</span>.</h2>
+  <div class="fill row mid">
+    <div class="fig grow" style="flex:1.1"><canvas data-anim="loop"></canvas><span class="cap">systems judging, training, writing systems</span></div>
+    <div class="stack grow">
+      <ul>
+        <li class="f" data-step="1">Models are trained on text that models wrote — with measurable degradation when the loop tightens (<em>model collapse</em>, 2024).</li>
+        <li class="f" data-step="2">Models grade models. The judge and the candidate share the same blind spots.</li>
+        <li class="f" data-step="3">Models write the code that trains models, and agents invoke themselves.</li>
+        <li class="f" data-step="4">"Is this system safe?" is a semantic property of a program. <strong>Rice says: no general decision procedure.</strong> Not hard — impossible.</li>
+        <li class="f" data-step="5">And by Gödel's second theorem, no system this expressive can certify itself. An explanation of its own output is more output.</li>
+      </ul>
+    </div>
+  </div>
+  <aside class="notes"><p>The payoff of Part III. Every AI-safety debate that assumes a sufficiently smart system could simply verify itself is refuted by a 1931 theorem. Which is not despair — it tells you exactly where to spend effort: on external, independent, bounded checks.</p></aside>
+</section>
+
+<section class="slide" data-act="VI" data-mins="0.85">
+  <div class="eyebrow sem">What actually changed</div>
+  <h2>Generation got cheap. Verification <span class="k">did not</span>.</h2>
+  <div class="fill">
+    <div class="two f" data-step="1">
+      <div class="card syn"><span class="h">Before</span>
+        <p>Producing a draft, a proof sketch, a program, an image, a translation was expensive and therefore scarce. Scarcity did our filtering for us.</p></div>
+      <div class="card"><span class="h">Now</span>
+        <p>Production is nearly free and unbounded in volume. The filter has to be supplied deliberately — by specification, by measurement, by review.</p></div>
+    </div>
+    <p class="lead f" data-step="2">Recall the asymmetry from Part IV: <span class="j">hard to find</span>, <span class="k">easy to check</span>.<br>That is a description of a healthy relationship with a machine.</p>
+    <p class="sm f" data-step="3">Value migrates to the two ends AI does not occupy: <strong>deciding what should be true</strong> (specification) and <strong>establishing that it is</strong> (verification). Both are acts of meaning. Neither is automated by better generation — and the better generation gets, the more they are worth.</p>
+  </div>
+  <aside class="notes"><p>This is the most practically useful slide for students choosing what to learn. The advice is not "avoid AI" but "own the ends": be the person who can state precisely what is wanted and can tell whether it was delivered. Those skills appreciate as generation gets cheaper.</p></aside>
+</section>
+
+<!-- ══════════════════ ACT VII · PRACTICE ══════════════════ -->
+
+<section class="slide" data-act="VII" data-mins="0.25">
+  <div class="eyebrow">Part VII</div>
+  <h1 style="font-size:calc(var(--u)*7.4)">Practice</h1>
+  <p class="lead f" data-step="1">A method that does not care which model is current, which company leads, or what happens next year.</p>
+  <aside class="notes"><p>Signal that we are landing. Everything from here is portable: a question, six habits, one definition. If the clock is tight, the six habits and the definition are the two slides that must survive.</p></aside>
+</section>
+
+<section class="slide" data-act="VII" data-mins="0.85">
+  <div class="eyebrow">The question, replaced</div>
+  <h2>Stop asking whether it is intelligent.</h2>
+  <div class="fill">
+    <div class="two f" data-step="1">
+      <div class="card syn"><span class="h">Undecidable · unproductive</span>
+        <p>Is it intelligent? Does it truly understand? Is it conscious? Will it always behave? Each asks for a semantic verdict on a system, in a language with no semantics for the words used.</p></div>
+      <div class="card"><span class="h">Decidable · today</span>
+        <p>What language did I state my requirement in? What are its semantics? What is my metric, and how will it be gamed? What is the budget? Who checks the result, from outside?</p></div>
+    </div>
+    <p class="lead f" data-step="2">The right question is never about the machine's <em>essence</em>.<br>It is about <span class="k">your language, your semantics, your metric, your check</span>.</p>
+    <p class="sm f" data-step="3">This is why the method is future-proof: it never mentions a model, a vendor, or a year. The same five questions worked for the steam engine and the spreadsheet, and they will work for whatever arrives after transformers.</p>
+  </div>
+  <aside class="notes"><p>Explicitly answer the title of the talk's implicit promise: we are not going to define intelligence as a property because that is the badly-posed move. We define it as a process on the next slide but one — and the process question is answerable, every day, by anyone.</p></aside>
+</section>
+
+<section class="slide habits" data-act="VII" data-mins="1.4">
+  <div class="eyebrow sem">Take this with you</div>
+  <h2>Six habits with no expiry date.</h2>
+  <div class="fill">
+    <ol class="steps">
+      <li class="f" data-step="1"><strong>Name the language.</strong> State what you want in something with a semantics — a type, a schema, a unit, a test, an acceptance criterion. English negotiates; formality commits.</li>
+      <li class="f" data-step="2"><strong>Attach a metric, and name its failure.</strong> If you cannot say what "better" means, you are wandering. Then write down how the metric will be gamed — it will be.</li>
+      <li class="f" data-step="3"><strong>Delegate generation. Own verification.</strong> Accept work you could not have produced; never work you cannot check. That is the only shape delegation has ever had.</li>
+      <li class="f" data-step="4"><strong>Budget time, space, and energy.</strong> Know how big your space is and how much of it you can afford to visit. Most doomed projects were doomed arithmetically on day one.</li>
+      <li class="f" data-step="5"><strong>Break every loop from outside.</strong> Nothing certifies itself — not a model, not a company, not you. Import an independent check: an experiment, a proof, a person allowed to say no.</li>
+      <li class="f" data-step="6"><strong>Trust the unproven, then formalise it.</strong> When answers get hard to check, what is missing is a language, not more effort. Take the truth you can see but not yet prove — and build the notation that proves it.</li>
+    </ol>
+  </div>
+  <aside class="notes"><p>Read each habit and give one example from the room's own disciplines. These six are the deliverable; everything before was the derivation. Tell students to photograph this slide.</p></aside>
+</section>
+
+<section class="slide" data-act="VII" data-mins="0.85">
+  <div class="eyebrow">Precedent</div>
+  <h2>No theorem says your bridge will hold. You crossed one this morning.</h2>
+  <div class="fill">
+    <div class="two">
+      <div class="stack">
+        <p class="f" data-step="1">Aviation, medicine, and civil engineering never had decidability either. Their questions are semantic, their state spaces astronomical, their proofs unavailable.</p>
+        <p class="f" data-step="2">They became extraordinarily safe anyway — with layered approximations: standards, redundancy, staged testing, incident reporting, licensing, liability, and the freedom to say <em>not yet</em>.</p>
+        <p class="f" data-step="3">None of it is proof. All of it is <span class="k">accumulated, measured approximation</span>. It worked.</p>
+      </div>
+      <div class="stack f" data-step="4">
+        <div class="card"><span class="h">Therefore</span>
+          <p>"We cannot prove it safe" was never a reason for paralysis and never a licence for recklessness. It is the normal condition of every mature engineering discipline — and the reason those disciplines built institutions instead of theorems.</p></div>
+        <p class="sm f" data-step="5">AI is early in exactly that process. Being early is a job opening, whatever you are studying.</p>
+      </div>
+    </div>
+  </div>
+  <aside class="notes"><p>The strongest available antidote to fatalism, and it is empirical rather than rhetorical. Commercial aviation is the clearest case: an undecidable safety property, driven to a few fatalities per billion passenger-kilometres by approximation and institutions. That is the template.</p></aside>
+</section>
+
+<section class="slide" data-act="VII" data-mins="1.05">
+  <div class="eyebrow">Back to the short answer</div>
+  <h2>Every notation was invented by someone who saw a truth <span class="k">before it could be proved</span>.</h2>
+  <div class="fill">
+    <div class="two">
+      <div class="stack">
+        <p class="f" data-step="1">Fermat asserted it; Wiles proved it <strong>358 years</strong> later. Riemann's hypothesis has been assumed true, and built upon, for <strong>165 years</strong>. Mendeleev left blank cells for unseen elements. Darwin had no genetics.</p>
+        <p class="f" data-step="2">In each case the notation came <em>after</em> the conviction — and the conviction was not deduced from anything.</p>
+        <p class="f" data-step="3">Gödel makes this precise: <strong>no mechanical procedure yields the next axiom.</strong> Deciding what to hold true is not a step inside the system. It is a step to a new one.</p>
+      </div>
+      <div class="stack">
+        <div class="card f" data-step="4"><span class="h">Therefore, symmetrically</span>
+          <p>This step is not automatable — not because machines are weak, but because there is no algorithm there to automate. Scale does not help; it was never a compute problem.</p></div>
+        <div class="card syn f" data-step="5"><span class="h">The challenge for all of us</span>
+          <p>Machines are already formidable at proving <em>within</em> a language. The open frontier — for every student here and for every AI ever built — is finding promising unproven truth, and then building the language or the property that captures it.</p></div>
+      </div>
+    </div>
+  </div>
+  <aside class="notes"><p>This is the intuitive answer, now fully earned. Be careful and fair: the claim is not that machines cannot participate — they may well help, and models already propose conjectures. The claim is that no procedure guarantees the step, so it stays genuinely open work for whoever attempts it, human or machine. That is why it is the most durable skill anyone in the room can cultivate.</p></aside>
+</section>
+
+<section class="slide" data-act="VII" data-mins="1.2">
+  <div class="eyebrow sem">The definition</div>
+  <h2 style="max-width:26em">So — what is intelligence?</h2>
+  <div class="fill center">
+    <div class="thm f" data-step="1" style="border-color:var(--sem)">
+      <span class="name" style="color:var(--sem)">Working definition</span>
+      <div class="st" style="font-size:calc(var(--u)*2.34)">Intelligence is developing new formal languages — or at least new properties in existing ones — which requires finding and understanding promising <em>unproven</em> truth. New languages and properties let us ask new questions about that truth, and then answer them in proofs. Forever.</div>
+    </div>
+    <div class="two f" data-step="2">
+      <div class="card syn"><span class="h">Asking the right questions</span>
+        <p>Choosing which unproven truth is worth formalising. Not deducible, not teachable by rote — this is what advanced, graduate-level study is <em>for</em>.</p></div>
+      <div class="card"><span class="h">Developing the skills to answer</span>
+        <p>Proving, computing, measuring, building. Rigorous, cumulative, teachable — this is what an undergraduate programme gives you.</p></div>
+    </div>
+    <p class="sm f" data-step="3">Not a threshold, a score, or a possession — an activity with a direction and no terminating condition. And notice where the difficulty sits: not in the <em>proving</em>, which machines do superbly, but in the <span class="k">finding</span>, which nothing yet does reliably.</p>
+  </div>
+  <aside class="notes"><p>Deliver slowly and let it sit. Two halves, deliberately mapped onto the room: undergraduates are acquiring the skills to answer questions; graduate study is where you learn to choose the questions. Both are necessary, and the second is the part no current or future system can hand you. Test the definition against a student learning statistics, a field adopting an instrument, an evolutionary lineage, a model being fine-tuned — all satisfy it, and none of it can be obsoleted by a product launch.</p></aside>
+</section>
+
+<section class="slide" data-act="VII" data-mins="0.95">
+  <div class="eyebrow sem">Why depth still matters</div>
+  <h2>This is exactly why you study a field <span class="k">in depth</span>.</h2>
+  <div class="fill">
+    <div class="two">
+      <div class="stack">
+        <p class="f" data-step="1">Not because AI is unavailable — it is extravagantly available, and it will get better every year of your career.</p>
+        <p class="f" data-step="2">But <strong>finding and understanding promising unproven truth</strong> requires having lived inside a subject long enough to feel where it is thin, where it is wrong, and where it is about to give.</p>
+        <p class="f" data-step="3">No summary, no search, and no generated answer transfers that. It is built, slowly, and it is <span class="k">yours</span>.</p>
+      </div>
+      <div class="stack f" data-step="4">
+        <div class="card"><span class="h">And it need not be computer science</span>
+          <p>Every field has unproven truth in front of it — history, medicine, ecology, music theory, economics, law. The method in this talk is field-independent; the depth has to be specific.</p></div>
+        <p class="lead f" data-step="5" style="color:var(--ink)">Pick the field — or fields — whose unsolved problems still make you <span class="k">strangely comfortable</span>.</p>
+      </div>
+    </div>
+  </div>
+  <aside class="notes"><p>The career advice slide, and the honest answer to "why study anything if AI can do it?" Depth is the organ you find promising unproven truth with; it cannot be downloaded. End on the "strangely comfortable" line and pause — it is a better selection criterion than salary tables, and students remember it.</p></aside>
+</section>
+
+<section class="slide" data-act="VII" data-mins="0.85">
+  <div class="eyebrow sem">Reframe · 5 of 5</div>
+  <h2>Truth can only be approximated. <span class="k">The approximating never stops.</span></h2>
+  <div class="fill center">
+    <div class="ledger f" data-step="1">
+      <div class="forbids">
+        <h4>What we lost</h4>
+        <p>Completeness. Certainty. A final theory, a final language, a decision procedure for meaning, and any machine that could hand us all of it.</p>
+      </div>
+      <div class="opens">
+        <h4>What we have instead</h4>
+        <p>Work that cannot be finished, and therefore cannot be taken away: an unbounded frontier where every new notation makes yesterday's unreachable truths reachable, on every single day, forever.</p>
+      </div>
+    </div>
+    <p class="lead f" data-step="2">The halting problem, applied to progress, gives the most hopeful result in science:<br><span class="k">this computation does not terminate.</span></p>
+  </div>
+  <aside class="notes"><p>The emotional summit. Say plainly: a finishable world would be a world where curiosity has an end date. What the theorems actually deny us is redundancy. Undecidable does not mean unknowable — it means unfinishable, and unfinishable work is the only kind that never becomes obsolete.</p></aside>
+</section>
+
+<section class="slide" data-act="VII" data-mins="0.4">
+  <div class="eyebrow">Sources · and where to go next</div>
+  <h2 style="font-size:calc(var(--u)*3.4)">Further reading.</h2>
+  <div class="fill">
+    <div class="three">
+      <div class="stack">
+        <div class="card syn"><span class="h">The theorems</span>
+          <p>Cantor 1891 · Russell 1901 · Gödel 1931 · Tarski 1936 · Turing 1936 · Rice 1953 · Cook 1971 · Karp 1972 · Levin 1973</p></div>
+        <div class="card"><span class="h">Physics of computing</span>
+          <p>Shannon 1948 · Landauer 1961 · Bremermann 1962 · von Neumann, <em>Theory of Self-Reproducing Automata</em> 1966</p></div>
+      </div>
+      <div class="stack">
+        <div class="card"><span class="h">Other fields</span>
+          <p>Frege 1892 · Wittgenstein 1921 / 1953 · Korzybski 1931 · Miller 1956 · Chomsky 1957 · Wigner 1960 · Levinthal 1969 · Goodhart 1975 · Harnad 1990 · Kahneman 2011 · Jumper et al. 2021</p></div>
+        <div class="card syn"><span class="h">Read for pleasure</span>
+          <p>Borges, <em>The Library of Babel</em> 1941 · Hofstadter, <em>Gödel, Escher, Bach</em> 1979 · Dijkstra, <em>EWD</em> notes · Chaitin on randomness</p></div>
+      </div>
+      <div class="stack">
+        <div class="card"><span class="h">Hands on</span>
+          <p>Kirsch, <em>Elementary Computer Science: From Bits and Bytes to the Universality of Computing</em> — and the selfie system it is built on.</p>
+          <span class="src">github.com/cksystemsteaching/selfie</span></div>
+        <div class="card syn"><span class="h">Keys</span>
+          <p><span class="mono">→ ←</span> steps · <span class="mono">↑ ↓</span> slides · <span class="mono">n</span> notes · <span class="mono">t</span> clock · <span class="mono">d</span> theme</p></div>
+      </div>
+    </div>
+  </div>
+  <aside class="notes"><p>Leave this up during questions. If someone asks for one book, it depends who they are: Hofstadter for the curious, Borges for the humanities, the selfie book for anyone who wants to build the machinery themselves.</p></aside>
+</section>
+
+<section class="slide dense" data-act="VII" data-mins="0.85">
+  <div class="eyebrow">Close</div>
+  <h1 style="font-size:calc(var(--u)*5.5)">Notation is finite.<br>Meaning is not.<br><span class="k">Mind the gap — then go widen it.</span></h1>
+  <div class="fill center">
+    <p class="lead f" data-step="1">You are not competing with a machine at producing notation. You are the part of the loop that decides what it should <em>mean</em>, and whether it is <em>true</em>.</p>
+    <div class="aside-cs f" data-step="2"><div class="h">Aside · for the computer scientists in the room</div>
+      <p>If you want to hold self-reference in your hands: <em>selfie</em> is a 12KLOC system in which a compiler compiles itself and an emulator executes itself — plus <em>monster</em> and <em>rotor</em>, which translate real machine code into logical formulae, so you can watch syntax become semantics and then run straight into NP-completeness on your own laptop. <span class="mono">github.com/cksystemsteaching/selfie</span></p></div>
+    <p class="sm f" data-step="3" style="color:var(--muted)">Two slides left. One is a joke. One is the point.</p>
+  </div>
+  <aside class="notes"><p>Close on the audience, not on the material. The selfie pointer is deliberately marked as an aside so the ninety percent of the room who are not computer scientists do not feel it was aimed at them.</p></aside>
+</section>
+
+<section class="slide" data-act="VII" data-mins="0.85">
+  <div class="eyebrow">Penultimate</div>
+  <h2>Whatever intelligence is, <span class="k">humour is the only way</span>.</h2>
+  <div class="fill center">
+    <p class="lead f" data-step="1">For most of you, this hour has probably confirmed your conviction never to study computer science.</p>
+    <p class="lead f" data-step="2">Or the exact opposite. And who knows — some of you may now be considering a switch <em>into</em> computer science. I have seen it happen. <span style="color:var(--muted)">(With apologies to my colleagues in the other fields.)</span></p>
+    <div class="two f" data-step="3">
+      <div class="card syn"><span class="h">Outcome A</span><p>Confirmed conviction.</p></div>
+      <div class="card"><span class="h">Outcome B</span><p>Informed confusion.</p></div>
+    </div>
+    <p class="lead f" data-step="4">Regardless of which one you leave with: this is about <span class="k">becoming who you are and no one else</span>.</p>
+  </div>
+  <aside class="notes"><p>Deliver lightly, and mean the last line. The joke does real work: it gives everyone permission to have had either reaction, and then makes both reactions irrelevant to the actual message. Pause after "informed confusion" — it usually gets the biggest laugh of the hour — then land the final line quietly.</p></aside>
+</section>
+
+<section class="slide" data-act="VII" data-mins="0.75">
+  <div class="fig bare" style="position:absolute;inset:0"><canvas data-anim="ambient"></canvas></div>
+  <div class="fill center" style="position:relative">
+    <blockquote class="f" data-step="0" style="font-size:calc(var(--u)*3.6);max-width:30em;border-color:var(--syn)">
+      Denn es ist zuletzt doch nur der Geist, der jede Technik lebendig macht.
+      <cite>Johann Wolfgang von Goethe</cite>
+    </blockquote>
+    <p class="lead f" data-step="1">For in the end it is only the <span class="k">Geist</span> that brings any technique to life.</p>
+    <p class="sm f" data-step="2"><span class="k">Geist</span> — spirit, mind, meaning. For the last 45 minutes we have been calling it <strong>truth</strong>. And it is, finally, <strong>you and me</strong>.<br>
+      <span class="j">Technik</span> — technique, technology, the formal machinery. Necessary. Never sufficient. Never alive on its own.</p>
+  </div>
+  <aside class="notes"><p>Say the German first, then the translation, then stop. This is the whole talk in one sentence written long before any of the mathematics: Technik is syntax — notation, machinery, proof, the AI. Geist is semantics — truth, meaning, judgement, us. Notation is finite; meaning is not; and the part that brings the machinery to life is not the machinery. Thank the room and take questions.</p></aside>
+</section>
+
+
+
+</div>
+</div>
+
+<div id="notes" aria-live="polite"><h5>Speaker notes</h5><div id="notesBody"></div></div>
+<div id="help"><div class="box"><h5>Keys</h5>
+<dl>
+  <dt>→ · space</dt><dd>next step / slide</dd>
+  <dt>←</dt><dd>back</dd>
+  <dt>↓ · ↑</dt><dd>next / previous slide, skipping steps</dd>
+  <dt>home · end</dt><dd>first / last slide</dd>
+  <dt>n</dt><dd>speaker notes</dd>
+  <dt>t</dt><dd>start / pause the 45-minute clock</dd>
+  <dt>r</dt><dd>reset the clock</dd>
+  <dt>d</dt><dd>toggle light / dark</dd>
+  <dt>? · esc</dt><dd>this panel</dd>
+</dl></div></div>
+
+<script>
+(() => {
+"use strict";
+const $  = (s,r=document)=>r.querySelector(s);
+const $$ = (s,r=document)=>[...r.querySelectorAll(s)];
+const deck = $("#deck"), stage = $("#stage");
+const slides = $$(".slide");
+const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+/* ---------- unit fitting: 1u = deck width / 100 ---------- */
+function fit(){
+  const pad = 0.985;
+  const w = stage.clientWidth*pad, h = stage.clientHeight*pad;
+  const u = Math.min(w/100, h/56.25);
+  deck.style.setProperty("--u", u+"px");
+  sizeCanvases();
+}
+addEventListener("resize", fit);
+
+/* ---------- theme-aware palette for canvas ---------- */
+let C = {};
+function palette(){
+  const cs = getComputedStyle(deck);
+  const g = n => cs.getPropertyValue(n).trim();
+  C = { ink:g("--ink"), ink2:g("--ink-2"), muted:g("--muted"), line:g("--line"),
+        syn:g("--syn"), sem:g("--sem"), bad:g("--bad"), panel:g("--panel"),
+        ground:g("--ground"), mono:g("--mono") };
+}
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", palette);
+new MutationObserver(palette).observe(document.documentElement,{attributes:true,attributeFilter:["data-theme"]});
+
+/* ---------- steps ---------- */
+slides.forEach(s=>{
+  const steps = $$(".f",s).map(f=>+(f.dataset.step||1));
+  s._max = steps.length ? Math.max(...steps) : 0;
+  s._step = 0;
+});
+let cur = 0;
+
+function paint(){
+  const s = slides[cur];
+  $$(".f",s).forEach(f=>f.classList.toggle("shown", (+(f.dataset.step||1)) <= s._step));
+}
+function show(i, dir=1){
+  i = Math.max(0, Math.min(slides.length-1, i));
+  if(i===cur){ paint(); return; }
+  const old = slides[cur];
+  old.classList.remove("on"); old.classList.toggle("out", dir>0);
+  cur = i;
+  const s = slides[cur];
+  s.classList.remove("out"); s.classList.add("on");
+  if(s._step===0 && s._max>0 && reduce) s._step = s._max;
+  paint(); chrome(); startAnims();
+}
+function next(){
+  const s = slides[cur];
+  if(s._step < s._max && !reduce){ s._step++; paint(); return; }
+  if(cur < slides.length-1) show(cur+1,1);
+}
+function prev(){
+  const s = slides[cur];
+  if(s._step > 0 && !reduce){ s._step--; paint(); return; }
+  if(cur > 0){ const t = slides[cur-1]; t._step = t._max; show(cur-1,-1); }
+}
+
+/* ---------- chrome: acts, bar, notes, clock ---------- */
+const ACTS = [
+  ["0","Prologue"],["I","Vastness"],["II","Infinity"],["III","Self-Reference"],
+  ["IV","Cost"],["V","Everywhere"],["VI","Machines"],["VII","Practice"]
+];
+const actOf = s => s.dataset.act;
+const bar = $("#bar");
+ACTS.forEach(([id])=>{
+  const n = slides.filter(s=>actOf(s)===id).length || 1;
+  const seg = document.createElement("div");
+  seg.className = "seg"; seg.style.flex = n; seg.dataset.act = id;
+  seg.innerHTML = "<i></i>"; bar.appendChild(seg);
+});
+function chrome(){
+  const s = slides[cur], a = actOf(s);
+  const meta = ACTS.find(x=>x[0]===a) || ["",""];
+  $("#actname").innerHTML = a==="0" ? "Prologue" : `${a} <b>·</b> ${meta[1]}`;
+  $("#pageno").textContent = String(cur+1).padStart(2,"0")+" / "+slides.length;
+  $$("#bar .seg").forEach(seg=>{
+    const list = slides.filter(x=>actOf(x)===seg.dataset.act);
+    const idx = list.indexOf(s);
+    const done = slides.indexOf(list[list.length-1]) < cur;
+    seg.classList.toggle("cur", idx>=0);
+    seg.querySelector("i").style.transform =
+      "scaleX("+(done?1:(idx>=0 ? (idx+1)/list.length : 0))+")";
+  });
+  const n = $(".notes", s);
+  $("#notesBody").innerHTML = n ? n.innerHTML : "<p>—</p>";
+}
+
+/* clock: 45 minutes, with pace against data-mins */
+let t0=null, acc=0, running=false;
+const plan = slides.map(s=>+(s.dataset.mins||1));
+const cumPlan = plan.reduce((a,v)=>(a.push((a[a.length-1]||0)+v),a),[]);
+function elapsed(){ return acc + (running && t0!==null ? (performance.now()-t0)/1000 : 0); }
+function tick(){
+  const e = elapsed(), left = 45*60 - e, el = $("#clock");
+  const m = Math.floor(Math.abs(left)/60), s = Math.floor(Math.abs(left)%60);
+  el.textContent = (left<0?"-":"") + m + ":" + String(s).padStart(2,"0");
+  const target = (cumPlan[cur]||0)*60;
+  el.classList.toggle("warn", running && e > target + 60);
+  el.classList.toggle("late", running && e > target + 180);
+}
+setInterval(tick, 500);
+
+/* ---------- input ---------- */
+const KEY = {
+  ArrowRight:next, " ":next, PageDown:next, Enter:next,
+  ArrowLeft:prev, PageUp:prev, Backspace:prev,
+  ArrowDown:()=>show(cur+1,1), ArrowUp:()=>show(cur-1,-1),
+  Home:()=>show(0,-1), End:()=>show(slides.length-1,1),
+  n:()=>$("#notes").classList.toggle("on"),
+  t:()=>{ if(running){ acc=elapsed(); running=false; t0=null; } else { t0=performance.now(); running=true; } tick(); },
+  r:()=>{ acc=0; t0=running?performance.now():null; tick(); },
+  d:()=>{ const r=document.documentElement;
+          const dark = getComputedStyle(deck).getPropertyValue("--ink").trim().startsWith("#E");
+          r.dataset.theme = dark ? "light" : "dark"; },
+  "?":()=>$("#help").classList.toggle("on"),
+  Escape:()=>{ $("#help").classList.remove("on"); }
+};
+addEventListener("keydown", e=>{
+  const f = KEY[e.key];
+  if(f){ e.preventDefault(); f(); }
+}, {passive:false});
+$("#bNext").onclick = next; $("#bPrev").onclick = prev;
+$("#bNotes").onclick = ()=>$("#notes").classList.toggle("on");
+$("#bHelp").onclick  = ()=>$("#help").classList.toggle("on");
+$("#help").onclick   = ()=>$("#help").classList.remove("on");
+deck.addEventListener("click", e=>{ if(e.target.closest("button")) return;
+  const r = deck.getBoundingClientRect();
+  (e.clientX - r.left)/r.width < .22 ? prev() : next(); });
+deck.focus();
+
+/* ================= canvas animations ================= */
+const ANIM = {};
+const canvases = ()=>$$("canvas[data-anim]", slides[cur]);
+function sizeCanvases(){
+  $$("canvas[data-anim]").forEach(c=>{
+    const dpr = Math.min(2, devicePixelRatio||1);
+    const w = c.clientWidth, h = c.clientHeight;
+    if(!w||!h) return;
+    c.width = Math.round(w*dpr); c.height = Math.round(h*dpr);
+    c._dpr = dpr;
+  });
+}
+let raf=null, tStart=0;
+function startAnims(){
+  tStart = performance.now();
+  if(raf) cancelAnimationFrame(raf);
+  sizeCanvases();
+  const loop = ()=>{
+    const s = slides[cur], t = (performance.now()-tStart)/1000;
+    canvases().forEach(c=>{
+      const fn = ANIM[c.dataset.anim]; if(!fn) return;
+      const ctx = c.getContext("2d"), d = c._dpr||1;
+      ctx.setTransform(d,0,0,d,0,0);
+      ctx.clearRect(0,0,c.clientWidth,c.clientHeight);
+      ctx.globalAlpha = 1;
+      try{ fn(ctx, c.clientWidth, c.clientHeight, s._step, reduce?3:t); }
+      catch(err){ /* a bad frame must never take the deck down */ }
+    });
+    raf = requestAnimationFrame(loop);
+  };
+  loop();
+}
+
+/* helpers */
+const rnd = seed => ()=> (seed = (seed*1103515245 + 12345) & 0x7fffffff)/0x7fffffff;
+function txt(ctx, s, x, y, {size=13, col=C.muted, font=C.mono, align="left", weight=400}={}){
+  ctx.fillStyle=col; ctx.textAlign=align; ctx.textBaseline="middle";
+  ctx.font = weight+" "+size+"px "+font; ctx.fillText(s,x,y);
+}
+function rr(ctx,x,y,w,h,r){ ctx.beginPath(); ctx.moveTo(x+r,y);
+  ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r);
+  ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); }
+function arrow(ctx,x1,y1,x2,y2,col,head=6){
+  ctx.strokeStyle=col; ctx.lineWidth=1.4; ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+  const a=Math.atan2(y2-y1,x2-x1); ctx.fillStyle=col; ctx.beginPath();
+  ctx.moveTo(x2,y2); ctx.lineTo(x2-head*Math.cos(a-.4), y2-head*Math.sin(a-.4));
+  ctx.lineTo(x2-head*Math.cos(a+.4), y2-head*Math.sin(a+.4)); ctx.closePath(); ctx.fill();
+}
+const ease = t => t<0?0 : t>1?1 : 1-Math.pow(1-t,3);
+
+/* --- ambient title: drifting bits + diagonal sweep --- */
+ANIM.ambient = (ctx,w,h,st,t)=>{
+  const r = rnd(7), N = 150;
+  ctx.globalAlpha = 1;
+  for(let i=0;i<N;i++){
+    const bx = r()*w, by = r()*h, sp = .12+r()*.5, ph = r()*10;
+    const y = (by + t*sp*14) % (h+20) - 10;
+    const a = .07 + .16*(0.5+0.5*Math.sin(t*.7+ph));
+    ctx.globalAlpha = a;
+    txt(ctx, r()>.5?"1":"0", bx, y, {size: 9+r()*7, col: C.sem});
+  }
+  ctx.globalAlpha = 1;
+  // diagonal sweep
+  const cl = v => v<0?0 : v>1?1 : v;
+  const p = (t*.11)%1.6 - .3;
+  const g = ctx.createLinearGradient(0,0,w,h);
+  g.addColorStop(cl(p-.14),"transparent");
+  g.addColorStop(cl(p), C.sem);
+  g.addColorStop(cl(p+.14),"transparent");
+  ctx.globalAlpha=.13; ctx.strokeStyle=g; ctx.lineWidth=1;
+  for(let k=-1;k<2;k++){ ctx.beginPath(); ctx.moveTo(0, h*k); ctx.lineTo(w, h*(k+1)); ctx.stroke(); }
+  ctx.globalAlpha=1;
+};
+
+/* --- bits: doubling --- */
+ANIM.bits = (ctx,w,h,st,t)=>{
+  const n = [1,2,4,8,16][Math.min(4,st)];
+  const cols=Math.min(16,n), cell=Math.min(w/21, h/9), gap=cell*.26;
+  const rowW=cols*(cell+gap)-gap, x0=(w-rowW)/2, y0=h*.24;
+  for(let i=0;i<cols;i++){
+    const on = ((Math.floor(t*2.2 + i*1.7))% (i+2))%2===0;
+    const x = x0+i*(cell+gap);
+    ctx.strokeStyle=C.line; ctx.fillStyle = on ? C.sem : "transparent";
+    rr(ctx,x,y0,cell,cell,cell*.15); ctx.fill(); ctx.stroke();
+    txt(ctx, on?"1":"0", x+cell/2, y0+cell/2, {size:cell*.52, col:on?C.panel:C.muted, align:"center"});
+  }
+  txt(ctx, n+" bit"+(n>1?"s":""), w/2, y0-cell*.75, {size:h*.036, col:C.muted, align:"center"});
+  txt(ctx, "2^"+n+"  =  "+Math.pow(2,n).toLocaleString("en-US")+" states", w/2, y0+cell*1.95,
+      {size:Math.min(h*.085, w*.052), col:C.ink, align:"center"});
+  const gy=h*.87, gh=h*.28, x1=w*.13, x2=w*.87;
+  ctx.strokeStyle=C.line; ctx.lineWidth=1; ctx.beginPath(); ctx.moveTo(x1,gy); ctx.lineTo(x2,gy); ctx.stroke();
+  ctx.strokeStyle=C.syn; ctx.lineWidth=1.8; ctx.beginPath();
+  for(let i=0;i<=100;i++){
+    const f=i/100, X=x1+(x2-x1)*f, Y=gy-gh*Math.pow(f,3.2)*ease(t*1.2);
+    i?ctx.lineTo(X,Y):ctx.moveTo(X,Y);
+  }
+  ctx.stroke();
+  txt(ctx,"bits →", x2, gy+h*.045, {size:h*.032, col:C.muted, align:"right"});
+};
+
+/* --- ruler: log scale to 10^80 --- */
+ANIM.ruler = (ctx,w,h,st,t)=>{
+  const x1=w*.1, x2=w*.9, y=h*.55, MAX=80, F=h*.036;
+  ctx.strokeStyle=C.line; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(x1,y); ctx.lineTo(x2,y); ctx.stroke();
+  for(let e=0;e<=MAX;e+=10){
+    const X=x1+(x2-x1)*e/MAX;
+    ctx.beginPath(); ctx.moveTo(X,y-h*.015); ctx.lineTo(X,y+h*.015); ctx.stroke();
+    txt(ctx,"10^"+e, X, y+h*.05, {size:F*.92, col:C.muted, align:"center"});
+  }
+  const marks = [
+    [ 2, "8 bits", C.muted],
+    [10, "grains of sand on Earth", C.muted],
+    [23, "molecules in a spoonful", C.muted],
+    [80, "atoms in the universe", C.sem]
+  ];
+  marks.forEach(([e,lab,col],i)=>{
+    if(st < 1 && i<3) return;
+    const X=x1+(x2-x1)*e/MAX, up = i%2===0;
+    ctx.strokeStyle=col; ctx.setLineDash([2,3]);
+    ctx.beginPath(); ctx.moveTo(X,y); ctx.lineTo(X, up?y-h*.15:y+h*.20); ctx.stroke(); ctx.setLineDash([]);
+    txt(ctx,lab,X, up?y-h*.15-F*.8:y+h*.20+F*.8,{size:F,col,align:"center"});
+  });
+  if(st>=2){
+    const a = ease((t-0.1)*1.1), X=x1+(x2-x1)*80.07/MAX;
+    ctx.globalAlpha=a; ctx.fillStyle=C.syn;
+    ctx.beginPath(); ctx.arc(X,y,h*.014,0,7); ctx.fill();
+    txt(ctx,"266 bits", X, y-h*.33, {size:F*1.25, col:C.syn, align:"center"});
+    ctx.strokeStyle=C.syn; ctx.beginPath(); ctx.moveTo(X,y-h*.02); ctx.lineTo(X,y-h*.30); ctx.stroke();
+    ctx.globalAlpha=1;
+  }
+};
+
+/* --- needle: tested states in a huge space --- */
+ANIM.needle = (ctx,w,h,st,t)=>{
+  const r = rnd(91), n = Math.round(w*h/95);
+  for(let i=0;i<n;i++){
+    const x=6+r()*(w-12), y=6+r()*(h-12);
+    ctx.fillStyle = C.line; ctx.fillRect(x,y,1.5,1.5);
+  }
+  if(st>=1){
+    const r2 = rnd(5), k = 26;
+    for(let i=0;i<k;i++){
+      const x=6+r2()*(w-12), y=6+r2()*(h-12);
+      const a = Math.max(0, Math.min(1, t*1.3 - i*.06));
+      ctx.globalAlpha=a; ctx.fillStyle=C.sem;
+      ctx.beginPath(); ctx.arc(x,y,2.2,0,7); ctx.fill();
+      ctx.globalAlpha=a*.22; ctx.beginPath(); ctx.arc(x,y,7,0,7); ctx.fill();
+    }
+    ctx.globalAlpha=1;
+  }
+  if(st>=2){
+    const x=w*.62, y=h*.44, pulse=.5+.5*Math.sin(t*3);
+    ctx.strokeStyle=C.bad; ctx.lineWidth=1.5; ctx.globalAlpha=.5+.5*pulse;
+    ctx.beginPath(); ctx.arc(x,y,h*.03+pulse*h*.012,0,7); ctx.stroke();
+    ctx.fillStyle=C.bad; ctx.beginPath(); ctx.arc(x,y,2.6,0,7); ctx.fill();
+    ctx.globalAlpha=1;
+    txt(ctx,"a bad state, untested", x+h*.05, y, {size:h*.036, col:C.bad});
+  }
+};
+
+/* --- pairing: n <-> 2n --- */
+ANIM.pairing = (ctx,w,h,st,t)=>{
+  const N=6, y0=h*.2, dy=(h*.62)/(N-1), xa=w*.32, xb=w*.68, F=h*.055;
+  txt(ctx,"ℕ", xa, y0-h*.1, {size:F, col:C.sem, align:"center"});
+  txt(ctx,"even", xb, y0-h*.1, {size:F*.85, col:C.syn, align:"center"});
+  for(let i=0;i<N;i++){
+    const y=y0+i*dy, on = t*1.5 > i*.35;
+    txt(ctx, String(i+1), xa, y, {size:F, col:C.ink2, align:"right"});
+    txt(ctx, String(2*(i+1)), xb, y, {size:F, col:C.ink2});
+    if(on){ ctx.globalAlpha=Math.min(1,(t*1.5-i*.35));
+      arrow(ctx, xa+F*.7, y, xb-F*1.1, y, C.line, 5); ctx.globalAlpha=1; }
+  }
+  txt(ctx,"⋮", xa, y0+N*dy, {size:F,col:C.muted,align:"right"});
+  txt(ctx,"⋮", xb, y0+N*dy, {size:F,col:C.muted});
+};
+
+/* --- enum: all finite texts, listed --- */
+ANIM.enum = (ctx,w,h,st,t)=>{
+  const rows=["ε","0","1","00","01","10","11","000","001","…"];
+  const y0=h*.1, dy=(h*.82)/rows.length, F=Math.min(h*.058, w*.05);
+  rows.forEach((s,i)=>{
+    const a=Math.max(0,Math.min(1,t*2-i*.12));
+    ctx.globalAlpha=a;
+    txt(ctx,String(i+1)+".", w*.26, y0+i*dy, {size:F*.8, col:C.muted, align:"right"});
+    txt(ctx, s, w*.33, y0+i*dy, {size:F, col: i===rows.length-1?C.muted:C.sem});
+    ctx.globalAlpha=1;
+  });
+  txt(ctx,"every finite text", w*.72, h*.46, {size:F*.72, col:C.ink2, align:"center"});
+  txt(ctx,"has a number", w*.72, h*.54, {size:F*.72, col:C.ink2, align:"center"});
+};
+
+/* --- diagonal: Cantor --- */
+ANIM.diagonal = (ctx,w,h,st,t)=>{
+  const N=8, cell=Math.min(w*.052, h*.072), F=cell*.5;
+  const gw=N*cell, x0=(w-gw)/2+cell*.4, y0=h*.09;
+  const r=rnd(4242); const bits=[];
+  for(let i=0;i<N;i++){ bits.push([]); for(let j=0;j<N;j++) bits[i].push(r()>.5?1:0); }
+  for(let i=0;i<N;i++){
+    txt(ctx,"f"+(i+1), x0-cell*.35, y0+i*cell+cell/2, {size:F*.8, col:C.muted, align:"right"});
+    for(let j=0;j<N;j++){
+      const dg = i===j, lit = st>=1 && dg && t*4>j;
+      ctx.strokeStyle=C.line; ctx.beginPath();
+      ctx.rect(x0+j*cell, y0+i*cell, cell, cell); ctx.stroke();
+      if(lit){ ctx.fillStyle=C.syn; ctx.globalAlpha=.18; ctx.fill(); ctx.globalAlpha=1; }
+      txt(ctx, String(bits[i][j]), x0+j*cell+cell/2, y0+i*cell+cell/2,
+          {size:F, col: lit?C.syn:C.ink2, align:"center"});
+    }
+  }
+  if(st>=2){
+    const yD=y0+N*cell+cell*.55;
+    txt(ctx,"flip", x0-cell*.35, yD+cell/2, {size:F*.8, col:C.sem, align:"right"});
+    for(let j=0;j<N;j++){
+      const a=Math.max(0,Math.min(1,t*3-j*.18)); ctx.globalAlpha=a;
+      ctx.strokeStyle=C.sem; ctx.beginPath(); ctx.rect(x0+j*cell,yD,cell,cell); ctx.stroke();
+      ctx.fillStyle=C.sem; ctx.globalAlpha=a*.16; ctx.fill(); ctx.globalAlpha=a;
+      txt(ctx, String(1-bits[j][j]), x0+j*cell+cell/2, yD+cell/2, {size:F, col:C.sem, align:"center"});
+      ctx.globalAlpha=1;
+    }
+    if(st>=3)
+      txt(ctx,"differs from every row — so it is on no row",
+          x0+gw/2, yD+cell*1.9, {size:F*.82, col:C.sem, align:"center"});
+  }
+};
+
+/* --- gap: countable vs uncountable --- */
+ANIM.gap = (ctx,w,h,st,t)=>{
+  const xa=w*.24, xb=w*.64, bw=w*.1, y0=h*.14, H=h*.7, F=h*.038;
+  txt(ctx,"NOTATION", xa, y0-h*.07, {size:F, col:C.syn, align:"center"});
+  txt(ctx,"MEANING", xb+bw/2, y0-h*.07, {size:F, col:C.sem, align:"center"});
+  const N=11;
+  for(let i=0;i<N;i++){
+    const y=y0+H*i/(N-1), a=Math.max(0,Math.min(1,t*2-i*.07));
+    ctx.globalAlpha=a; ctx.fillStyle=C.syn;
+    ctx.beginPath(); ctx.arc(xa,y,h*.011,0,7); ctx.fill();
+    if(st>=1){ ctx.globalAlpha=a*.5; arrow(ctx,xa+h*.03,y,xb-h*.02,y0+H*(i/(N-1))*0.92+H*.04,C.line,4); }
+    ctx.globalAlpha=1;
+  }
+  ctx.globalAlpha=.85; ctx.fillStyle=C.sem; ctx.fillRect(xb,y0,bw,H); ctx.globalAlpha=1;
+  ctx.strokeStyle=C.line; ctx.strokeRect(xb,y0,bw,H);
+  if(st>=2){
+    const pulse=.55+.45*Math.sin(t*2);
+    ctx.globalAlpha=pulse;
+    txt(ctx,"everything here", xb+bw+h*.03, y0+H*.42,{size:F,col:C.sem});
+    txt(ctx,"has no name", xb+bw+h*.03, y0+H*.42+F*1.3,{size:F,col:C.sem});
+    ctx.globalAlpha=1;
+  }
+  txt(ctx,"countable · listable", xa, y0+H+h*.055, {size:F*.86, col:C.muted, align:"center"});
+  txt(ctx,"uncountable", xb+bw/2, y0+H+h*.055, {size:F*.86, col:C.muted, align:"center"});
+};
+
+/* --- decimal digit rain for the 8GB number --- */
+$$("[data-anim='digits']").forEach(el=>{
+  const r = rnd(20686623784 % 2147483647);
+  let s = "2^68719476736 = ";
+  for(let i=0;i<1400;i++) s += Math.floor(r()*10);
+  el.textContent = s + "…";
+});
+
+/* --- godel: text becomes number becomes text --- */
+ANIM.godel = (ctx,w,h,st,t)=>{
+  const src = "if (x) halt();";
+  const y1=h*.24, y2=h*.5, F=Math.min(w*.058, h*.1);
+  txt(ctx,"SYNTAX", w*.5, h*.1, {size:h*.036,col:C.syn,align:"center"});
+  const n = Math.min(src.length, Math.floor(t*9));
+  txt(ctx, src, w*.5, y1, {size:F, col:C.syn, align:"center"});
+  let num="";
+  for(let i=0;i<n;i++) num += String(src.charCodeAt(i));
+  txt(ctx, num||"…", w*.5, y2, {size:Math.min(w*.028,h*.05), col:C.sem, align:"center"});
+  txt(ctx,"NUMBER", w*.5, y2+h*.1, {size:h*.036,col:C.sem,align:"center"});
+  arrow(ctx, w*.5, y1+h*.06, w*.5, y2-h*.06, C.line, 5);
+  if(st>=3){
+    const r=Math.min(w*.06,h*.075), cx=w*.28, cy=h*.77, a0=t*1.1;
+    ctx.strokeStyle=C.bad; ctx.lineWidth=1.5;
+    ctx.beginPath(); ctx.arc(cx,cy,r,a0,a0+5.1); ctx.stroke();
+    arrow(ctx, cx+r*Math.cos(a0+4.7), cy+r*Math.sin(a0+4.7),
+               cx+r*Math.cos(a0+5.1), cy+r*Math.sin(a0+5.1), C.bad, 5);
+    txt(ctx,"a program", cx+r*1.7, cy-h*.022, {size:h*.038,col:C.ink2});
+    txt(ctx,"reading itself", cx+r*1.7, cy+h*.026, {size:h*.038,col:C.bad});
+  }
+};
+
+/* --- halt: the decider and its nemesis --- */
+ANIM.halt = (ctx,w,h,st,t)=>{
+  const bw=w*.28, bh=h*.155, x=w*.3, y=h*.13, F=h*.036;
+  ctx.strokeStyle=C.line; ctx.lineWidth=1.2; ctx.fillStyle=C.ground;
+  rr(ctx,x,y,bw,bh,4); ctx.fill(); ctx.stroke();
+  txt(ctx,"H", x+bw/2, y+bh*.38, {size:h*.08,col:C.sem,align:"center"});
+  txt(ctx,"decides halting", x+bw/2, y+bh*.76, {size:F*.85,col:C.muted,align:"center"});
+  arrow(ctx, x-w*.22, y+bh/2, x-w*.01, y+bh/2, C.line, 5);
+  txt(ctx,"P, x", x-w*.21, y+bh/2-h*.04, {size:F,col:C.syn});
+  arrow(ctx, x+bw+w*.01, y+bh*.3, x+bw+w*.13, y+bh*.3, C.line, 5);
+  arrow(ctx, x+bw+w*.01, y+bh*.75, x+bw+w*.13, y+bh*.75, C.line, 5);
+  txt(ctx,"halts", x+bw+w*.145, y+bh*.3, {size:F,col:C.muted});
+  txt(ctx,"loops", x+bw+w*.145, y+bh*.75, {size:F,col:C.muted});
+  if(st>=2){
+    const a=ease(t*1.3); ctx.globalAlpha=a;
+    const dw=bw*1.85, dx=w*.44-dw/2, dy=y+h*.35, dh=bh*1.2;
+    ctx.setLineDash([4,3]); ctx.strokeStyle=C.syn;
+    rr(ctx,dx,dy,dw,dh,4); ctx.stroke(); ctx.setLineDash([]);
+    txt(ctx,"D(P)", dx+dw/2, dy+dh*.34, {size:h*.062,col:C.syn,align:"center"});
+    txt(ctx,"ask H about P on P — then do the opposite", dx+dw/2, dy+dh*.74,
+        {size:F*.72,col:C.muted,align:"center"});
+    arrow(ctx, dx+dw/2, y+bh+h*.01, dx+dw/2, dy-h*.01, C.line, 5);
+    ctx.globalAlpha=1;
+    if(st>=3){
+      const p=.5+.5*Math.sin(t*3.2), r=h*.055;
+      const cx=dx+dw+r*1.5, cy=dy+dh*.5;
+      ctx.strokeStyle=C.bad; ctx.lineWidth=1.5; ctx.globalAlpha=.45+.55*p;
+      ctx.beginPath(); ctx.arc(cx,cy,r,.6,5.6); ctx.stroke();
+      arrow(ctx, cx+r*Math.cos(5.2), cy+r*Math.sin(5.2), cx+r*Math.cos(5.75), cy+r*Math.sin(5.75), C.bad,5);
+      ctx.globalAlpha=1;
+      txt(ctx,"D(D)", cx, cy+h*.11, {size:F*1.15,col:C.bad,align:"center"});
+      txt(ctx,"halts ⟺ ¬halts   —   so H cannot exist", w*.58, h*.88,
+          {size:F*1.05,col:C.bad,align:"center"});
+    }
+  }
+};
+
+/* --- tree: exponential search --- */
+ANIM.tree = (ctx,w,h,st,t)=>{
+  const D=6, top=h*.13, H=h*.68, dy=H/D, seen=Math.min(1,t*.5);
+  for(let d=0; d<D; d++){
+    const n=Math.pow(2,d), nn=n*2;
+    for(let i=0;i<n;i++){
+      const x=w*(i+.5)/n, y=top+d*dy;
+      for(let k=0;k<2;k++){
+        const x2=w*(2*i+k+.5)/nn, y2=top+(d+1)*dy;
+        const lit = st>=1 && d<3 && ((2*i+k)%3===0) && seen>d/8;
+        ctx.strokeStyle = lit ? C.syn : C.line;
+        ctx.globalAlpha = lit ? .85 : .45;
+        ctx.lineWidth = lit ? 1.5 : 1;
+        ctx.beginPath(); ctx.moveTo(x,y); ctx.lineTo(x2,y2); ctx.stroke();
+      }
+    }
+  }
+  ctx.globalAlpha=1; ctx.lineWidth=1;
+  const nn=Math.pow(2,D);
+  for(let i=0;i<nn;i++){
+    const x=w*(i+.5)/nn, y=top+D*dy;
+    ctx.fillStyle=C.line; ctx.fillRect(x-.8,y-.8,1.8,1.8);
+  }
+  if(st>=2){
+    const i=41, x=w*(i+.5)/nn, y=top+D*dy, p=.5+.5*Math.sin(t*2.6);
+    ctx.fillStyle=C.sem; ctx.globalAlpha=.5+.5*p;
+    ctx.beginPath(); ctx.arc(x,y,h*.011,0,7); ctx.fill();
+    ctx.globalAlpha=.2; ctx.beginPath(); ctx.arc(x,y,h*.032,0,7); ctx.fill(); ctx.globalAlpha=1;
+    txt(ctx,"the one that satisfies", w*.5, h*.95, {size:h*.038,col:C.sem,align:"center"});
+  }
+  txt(ctx,"n = 6 → 64 leaves.   n = 100 → 10³⁰.", w*.5, h*.05, {size:h*.036,col:C.muted,align:"center"});
+};
+
+/* --- energy: log-scale bars --- */
+ANIM.energy = (ctx,w,h,st,t)=>{
+  const rows=[
+    [-20.54,"erasing one bit · Landauer",  C.muted, 0],
+    [6.23, "a human brain, for one day",   C.sem,   1],
+    [13.4, "a large AI training run",      C.syn,   2],
+    [44.1, "the Sun's entire lifetime",    C.muted, 2],
+    [59.5, "brute-forcing 266 bits",       C.bad,   2]
+  ];
+  const lo=-22, hi=62, x0=w*.04, x1=w*.97, F=h*.038;
+  const X = v => x0 + (x1-x0)*(v-lo)/(hi-lo);
+  const dy=h*.16, top=h*.15;
+  for(let e=-20;e<=60;e+=20){
+    ctx.strokeStyle=C.line; ctx.globalAlpha=.6;
+    ctx.beginPath(); ctx.moveTo(X(e),top-dy*.5); ctx.lineTo(X(e),top+dy*4.55); ctx.stroke();
+    ctx.globalAlpha=1; txt(ctx,"10^"+e, X(e), top+dy*4.85, {size:F*.85,col:C.muted,align:"center"});
+  }
+  rows.forEach(([v,lab,col,step],i)=>{
+    if(st<step) return;
+    const y=top+i*dy, a=ease((t-i*.12)*1.4), bh=dy*.4;
+    ctx.fillStyle=col; ctx.globalAlpha=.2;
+    ctx.fillRect(X(lo), y, (X(v)-X(lo))*a, bh);
+    ctx.globalAlpha=1; ctx.fillStyle=col;
+    ctx.fillRect(X(lo)+(X(v)-X(lo))*a - 2, y, 2.6, bh);
+    txt(ctx, lab, X(lo)+3, y-F*.7, {size:F,col:col});
+  });
+};
+
+/* --- loop: AI self-reference, and how to break it --- */
+ANIM.loop = (ctx,w,h,st,t)=>{
+  const cx=w*.46, cy=h*.5, R=Math.min(w*.3,h*.32), F=h*.04;
+  const nw=Math.max(w*.15,52), nh=Math.max(h*.09,18);
+  const nodes=[["model",0],["output",1],["corpus",2],["training",3]];
+  const col = st>=4 ? C.bad : C.line;
+  ctx.lineWidth=1.4;
+  for(let i=0;i<4;i++){
+    const a1=-Math.PI/2 + i*Math.PI/2 + .38, a2=-Math.PI/2 + (i+1)*Math.PI/2 - .38;
+    ctx.strokeStyle=col; ctx.globalAlpha = st>=1?1:.35;
+    ctx.beginPath(); ctx.arc(cx,cy,R,a1,a2); ctx.stroke();
+    arrow(ctx, cx+R*Math.cos(a2-.1), cy+R*Math.sin(a2-.1),
+               cx+R*Math.cos(a2), cy+R*Math.sin(a2), col, 5);
+  }
+  ctx.globalAlpha=1;
+  const ap=-Math.PI/2 + (t*.8)%(Math.PI*2);
+  ctx.fillStyle = st>=4?C.bad:C.sem;
+  ctx.beginPath(); ctx.arc(cx+R*Math.cos(ap), cy+R*Math.sin(ap), h*.011,0,7); ctx.fill();
+  nodes.forEach(([lab,i])=>{
+    const a=-Math.PI/2 + i*Math.PI/2;
+    const x=cx+R*Math.cos(a), y=cy+R*Math.sin(a);
+    ctx.fillStyle=C.ground; ctx.strokeStyle=C.line; ctx.lineWidth=1.2;
+    rr(ctx,x-nw/2,y-nh/2,nw,nh,3); ctx.fill(); ctx.stroke();
+    txt(ctx,lab,x,y,{size:F,col:C.ink2,align:"center"});
+  });
+  if(st>=5){
+    const a=ease((t-.2)*1.2); ctx.globalAlpha=a;
+    arrow(ctx, w*.99, cy, cx+R+nw*.6, cy, C.sem, 6);
+    txt(ctx,"an outside check", w*.98, cy-F*1.2, {size:F,col:C.sem,align:"right"});
+    txt(ctx,"experiment · proof · person", w*.98, cy+F*1.2, {size:F*.82,col:C.muted,align:"right"});
+    ctx.globalAlpha=1;
+  }
+};
+
+/* ---------- boot ---------- */
+palette(); fit();
+slides.forEach((s,i)=>s.classList.toggle("on", i===0));
+if(reduce) slides.forEach(s=>s._step=s._max);
+chrome(); paint(); startAnims(); tick();
+window.__deck = {show, next, prev, slides};
+})();
+</script>
+<!--END-ARTIFACT-CONTENT-->
+</body>
+</html>
