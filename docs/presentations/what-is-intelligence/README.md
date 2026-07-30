@@ -10,7 +10,12 @@ Czechia. The talk is a collaborative effort with **Leoni Brand**, **Eva Jonas**,
 encouraged its framing: address everyone affected by AI, and do it by academic grounding rather than
 by repeating the booming and the dooming. Slide 2 says the same to the room.
 
-Open `index.html` in any modern browser and press <kbd>→</kbd>.
+**Give or watch the talk:** <https://selfie.cs.uni-salzburg.at/intelligence/> — or open `index.html`
+in any modern browser. Either way, press <kbd>→</kbd> to begin.
+
+This directory lives under `docs/`, which is what GitHub Pages publishes, so the deck is served as a
+live page rather than as source. A raw GitHub link will not work: raw files are sent as `text/plain`
+and the browser shows the markup.
 
 ## The argument
 
