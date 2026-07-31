@@ -49,13 +49,20 @@ two-column treatment: **what it forbids** / **what it opens**.
 | II | Infinity — countability, the diagonal twice over, meaning outnumbers notation | 17–27 | 9:06 |
 | III | Self-Reference — syntax/semantics, Gödelisierung, incompleteness, halting, Rice | 28–37 | 8:42 |
 | IV | Cost — decidable ≠ doable, NP-completeness, Landauer's energy floor | 38–43 | 4:36 |
-| V | Everywhere — biology, mind, and the notations that made every field | 44–47 | 3:03 |
-| VI | Machines — what today's AI is, where world models take it, what neither escapes | 48–53 | 3:57 |
-| VII | Practice — six habits, the definition, depth, humour, Goethe | 54–65 | 10:15 |
+| V | Everywhere — biology, the self-copying machine, mind, and the notations that made every field | 44–48 | 4:06 |
+| VI | Machines — what today's AI is, where world models take it, what neither escapes | 49–54 | 3:57 |
+| VII | Practice — six habits, the definition, depth, humour, Goethe | 55–66 | 10:15 |
 
-65 slides; the per-slide budget in `data-mins` adds up to **52:21**, and that is what the clock counts
+66 slides; the per-slide budget in `data-mins` adds up to **53:24**, and that is what the clock counts
 down — it is read off the deck at load, not written into it. Press <kbd>t</kbd> to start the clock;
 it turns amber if you are a minute behind the plan and rose if you are three behind.
+
+Part I opens with four slides on **size** before any computing happens: a map of the whole axis the
+talk lives on (small → vast → countable → uncountable), a million/billion/trillion seconds as anchors,
+the prefixes for bytes and hertz, and the two meanings of "kilo". They are there because every later
+number — 10<sup>80</sup>, 2<sup>266</sup>, a 20-billion-digit state count — is unreadable to anyone
+who has not first practised turning an exponent into a picture. The last of them also lands the
+thesis in miniature: "GB" is one notation with two meanings, and the notation does not say which.
 
 Part II states the claim once (slide 20) and then earns it slowly. Slide 21 makes the objects
 concrete — a subset of ℕ *is* an infinite answer sheet, and the figure shows the empty set, its
@@ -66,16 +73,19 @@ trailing-nines patch that most popular accounts leave out. Slide 24 hands over t
 between any two reals there is another, so there is no *next* one — together with the reason not to
 trust it: the fractions are dense too, and they can be listed. Only the diagonal separates the cases.
 
-Part I opens with four slides on **size** before any computing happens: a map of the whole axis the
-talk lives on (small → vast → countable → uncountable), a million/billion/trillion seconds as anchors,
-the prefixes for bytes and hertz, and the two meanings of "kilo". They are there because every later
-number — 10<sup>80</sup>, 2<sup>266</sup>, a 20-billion-digit state count — is unreadable to anyone
-who has not first practised turning an exponent into a picture. The last of them also lands the
-thesis in miniature: "GB" is one notation with two meanings, and the notation does not say which.
+Part V ends its biology stretch on the machine that builds itself (slide 46). The figure runs von
+Neumann's architecture as a cell runs it: one strand, a **DNA polymerase** head that duplicates it
+letter by letter without ever reading it, and a **ribosome** head that obeys the same letters three
+at a time and builds proteins — among them the polymerase and the ribosome. Both heads keep cycling
+so the process is visibly running rather than sitting finished. The point to make out loud is why
+the architecture needs *two* tools: interpret the description only and the offspring inherits
+machinery but no description, so it could never reproduce in turn; copy it only and there is a text
+with nothing to run it. Reproduction needs one string used both ways — as instructions and as inert
+data — which is this lecture's distinction, four billion years old.
 
 **Running long?** These four are self-contained and can be dropped without breaking the argument,
 buying 3:06: slide 16 (Borges), 18 (pairing ℕ ↔ evens), 25 (Cantor's theorem in general form),
-57 (bridges and aviation). Do not cut 20, 22, 23, 26, 32, 34, 58–60 — they carry the thesis.
+58 (bridges and aviation). Do not cut 20, 22, 23, 26, 32, 34, 46, 59–61 — they carry the thesis.
 
 ## Keys
 
@@ -149,7 +159,7 @@ meaning, monospace for notation.
 
 Both themes are designed; the viewer's system preference or the <kbd>d</kbd> key selects one.
 Everything is sized from a single unit (`--u` = deck width ⁄ 100) so the 16:9 stage scales to any
-projector, and all seventeen figures are drawn on canvas at whatever size they are given. Animation is
+projector, and all eighteen figures are drawn on canvas at whatever size they are given. Animation is
 suppressed under `prefers-reduced-motion`, where every build step shows at once.
 
 Two guards keep text off text on machines whose font stacks resolve differently from the author's.

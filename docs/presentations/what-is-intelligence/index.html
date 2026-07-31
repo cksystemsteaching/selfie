@@ -1090,6 +1090,20 @@ blockquote cite{display:block;margin-top:calc(var(--u)*1.4);font-family:var(--mo
   <aside class="notes"><p>Evolution is the great example of progress with proof entirely absent: no organism proves it is fit, it merely survives — truth by approximation, over deep time, with a brutal metric. And Levinthal's paradox is the biological statement of "intractable yet done daily," which is the most encouraging shape a hard problem can have.</p></aside>
 </section>
 
+<section class="slide dense" data-act="V" data-mins="1.05">
+  <div class="eyebrow">Biology · self-reference</div>
+  <h2>A copier that <span class="j">never reads</span>, and a reader that <span class="k">builds the copier</span>.</h2>
+  <div class="fill">
+    <div class="fig grow"><canvas data-anim="vonneumann"></canvas><span class="cap">von Neumann's architecture, as run by a cell</span></div>
+    <div class="three">
+      <p class="sm f" data-step="1"><strong>Copy.</strong> Polymerase walks the strand and duplicates it letter by letter, never asking what a letter means. <span class="j">Notation to notation.</span></p>
+      <p class="sm f" data-step="2"><strong>Read.</strong> The ribosome walks the same strand and obeys it — three letters to an amino acid. <span class="k">Notation to meaning.</span></p>
+      <p class="sm f" data-step="3"><strong>Close it.</strong> Among the proteins it builds are the polymerase and the ribosome. The text describes its own machinery.</p>
+    </div>
+  </div>
+  <aside class="notes"><p>Why two tools and not one is the question to put to the room, and it is the deep content of the slide: obey the description only and the offspring inherits machinery but no description, so it could never reproduce in turn; copy it only and there is a text with nothing to run it. Reproduction needs the same string used both ways — once as instructions, once as inert data. Advance the figure a step at a time and narrate the two heads separately, because the whole point is that they do different things to the same letters. The polymerase is pure syntax: it would copy nonsense just as happily, and that indifference is why it is fast and why proofreading is even possible. The ribosome is the interpreter: three letters in, one amino acid out, the genetic code as the interpretation function. Then the closing step — the proteins coming off the ribosome include the polymerase and the ribosome themselves, so the description describes its own machinery. Von Neumann derived this in 1948 from pure logic, before the double helix, and the reason he needed both a copier and a constructor is worth stating slowly: a machine that only interprets its description builds a childless child. This is the same loop as the compiler that compiles itself and the emulator that executes itself from Part III, and the same loop Gödel builds a sentence out of. If the room takes one thing from Part V, make it this: the syntax-semantics distinction is not a computer-science convention. It is load-bearing structure in something four billion years old and currently running in every cell of every person here.</p></aside>
+</section>
+
 <section class="slide" data-act="V" data-mins="0.9">
   <div class="eyebrow">Mind</div>
   <h2>You navigate an unimaginable space with about <span class="j">four</span> slots of working memory.</h2>
@@ -2236,6 +2250,94 @@ ANIM.tree = (ctx,w,h,st,t)=>{
     txt(ctx,"the one that satisfies", w*.5, capfree(h), {size:h*.038,col:C.sem,align:"center",box:[w*.3,w-4]});
   }
   txt(ctx,"n = 6 → 64 leaves.   n = 100 → 10³⁰.", w*.5, h*.05, {size:h*.036,col:C.muted,align:"center",box:[4,w-4]});
+};
+
+/* --- vonneumann: one text, two tools. The copier duplicates it without ever
+   reading it; the reader obeys it and builds both tools. The heads keep
+   cycling once their output is built, so the process is always visibly
+   running rather than sitting finished. --- */
+ANIM.vonneumann = (ctx,w,h,st,t)=>{
+  const SEQ="ATGGCATTCGATCCATGA", N=SEQ.length;
+  /* cells are wider than they are tall: this figure is given a very wide, short
+     box, and a square cell would leave the strand stranded in the middle of it */
+  const cw=Math.min(w*.046, h*.145), ch=Math.min(w*.042, h*.078);
+  const F=ch*.52, c2w=cw*.62, c2h=ch*.62;
+  const x0=(w-N*cw)/2, yT=h*.16, yM=h*.42, yO=h*.63;
+  const cxL=w*.26, cxR=w*.74, bw=w*.32, bh=ch*1.9;
+  /* the description */
+  for(let j=0;j<N;j++){
+    ctx.strokeStyle=C.line; ctx.lineWidth=1;
+    ctx.beginPath(); ctx.rect(x0+j*cw, yT-ch/2, cw, ch); ctx.stroke();
+    txt(ctx, SEQ[j], x0+j*cw+cw/2, yT, {size:F, col:C.syn, align:"center"});
+  }
+  const gene=(a,b,lab)=>{
+    const xa=x0+a*cw, xb=x0+(b+1)*cw, gy=yT-ch*.95;
+    ctx.strokeStyle=C.line; ctx.lineWidth=1;
+    ctx.beginPath(); ctx.moveTo(xa,gy+ch*.2); ctx.lineTo(xa,gy);
+    ctx.lineTo(xb,gy); ctx.lineTo(xb,gy+ch*.2); ctx.stroke();
+    txt(ctx,lab,(xa+xb)/2, gy-ch*.5, {size:F*.8, col:C.muted, align:"center", box:[2,w-2]});
+  };
+  gene(0,8,"gene: the copier"); gene(9,17,"gene: the reader");
+  const head=(frac,col)=>{
+    const j=Math.min(N-1, Math.floor(frac*N));
+    ctx.fillStyle=col; ctx.globalAlpha=.20;
+    ctx.fillRect(x0+j*cw, yT-ch/2, cw, ch); ctx.globalAlpha=1;
+    ctx.strokeStyle=col; ctx.lineWidth=1.6;
+    ctx.strokeRect(x0+j*cw, yT-ch/2, cw, ch); ctx.lineWidth=1;
+  };
+  const glow = st>=3 ? .55+.45*Math.sin(t*3) : 0;
+  const box=(cx,y,bwx,bhx,col)=>{
+    ctx.strokeStyle=col; ctx.lineWidth=1+glow;
+    rr(ctx, cx-bwx/2, y-bhx/2, bwx, bhx, bhx*.3); ctx.stroke();
+    ctx.fillStyle=col; ctx.globalAlpha=.07+glow*.10; ctx.fill(); ctx.globalAlpha=1;
+    ctx.lineWidth=1;
+  };
+  const fill=Math.min(1, Math.max(0, t*.5));
+  /* left: copying — notation to notation */
+  if(st>=1){
+    head((t*.5)%1, C.syn);
+    arrow(ctx, w/2-cw, yT+ch*.62, cxL+bw*.24, yM-bh/2-ch*.12, C.line, F*.5);
+    box(cxL, yM, bw, bh, C.syn);
+    txt(ctx,"DNA polymerase", cxL, yM-bh*.16, {size:F*1.1, col:C.syn, align:"center", box:[cxL-bw*.46, cxL+bw*.46]});
+    txt(ctx,"copies · never reads", cxL, yM+bh*.22, {size:F*.78, col:C.muted, align:"center", box:[cxL-bw*.46, cxL+bw*.46]});
+    const x2=cxL-N*c2w/2;
+    for(let j=0;j<N && j<=fill*N;j++){
+      ctx.strokeStyle=C.line; ctx.lineWidth=1;
+      ctx.beginPath(); ctx.rect(x2+j*c2w, yO-c2h/2, c2w, c2h); ctx.stroke();
+      txt(ctx,SEQ[j], x2+j*c2w+c2w/2, yO, {size:F*.66, col:C.syn, align:"center"});
+    }
+    txt(ctx,"a second description · unread", cxL, yO+c2h*2.0,
+        {size:F*.8, col:C.muted, align:"center", box:[4, w*.49]});
+  }
+  /* right: reading — notation to meaning, and the meaning is the machinery */
+  if(st>=2){
+    head((t*.5+.45)%1, C.sem);
+    arrow(ctx, w/2+cw, yT+ch*.62, cxR-bw*.24, yM-bh/2-ch*.12, C.line, F*.5);
+    box(cxR, yM, bw, bh, C.sem);
+    txt(ctx,"ribosome", cxR, yM-bh*.16, {size:F*1.1, col:C.sem, align:"center", box:[cxR-bw*.46, cxR+bw*.46]});
+    txt(ctx,"reads · builds", cxR, yM+bh*.22, {size:F*.78, col:C.muted, align:"center", box:[cxR-bw*.46, cxR+bw*.46]});
+    if(st<3){
+      const K=6, sp=c2w*1.5, bx=cxR-K*sp/2+sp/2;
+      for(let k=0;k<K && k<=fill*K;k++){
+        if(k){ ctx.strokeStyle=C.sem; ctx.lineWidth=1;
+               ctx.beginPath(); ctx.moveTo(bx+(k-1)*sp, yO); ctx.lineTo(bx+k*sp, yO); ctx.stroke(); }
+        ctx.fillStyle=C.sem; ctx.beginPath(); ctx.arc(bx+k*sp, yO, c2h*.5, 0, 7); ctx.fill();
+      }
+      txt(ctx,"amino acids · three letters at a time", cxR, yO+c2h*2.0,
+          {size:F*.8, col:C.muted, align:"center", box:[w*.51, w-4]});
+    } else {
+      const pw=w*.155, ph=ch*1.45;
+      [[cxR-w*.085,"polymerase"],[cxR+w*.085,"ribosome"]].forEach(([px,lab])=>{
+        box(px, yO, pw, ph, C.sem);
+        txt(ctx, lab, px, yO, {size:F*.8, col:C.sem, align:"center", box:[px-pw*.45, px+pw*.45]});
+      });
+      txt(ctx,"the proteins it just built", cxR, yO+ph*.92,
+          {size:F*.8, col:C.muted, align:"center", box:[w*.51, w-4]});
+    }
+  }
+  if(st>=3)
+    txt(ctx,"and those two are these two — the text describes its own machinery",
+        w/2, Math.min(h*.84, capfree(h)), {size:F*.9, col:C.sem, align:"center", box:[4,w-4]});
 };
 
 /* --- energy: log-scale bars --- */
