@@ -2,9 +2,9 @@
 
 An animated lecture for undergraduate and graduate students **in any field**, built from basic
 principles of computer science. Self-contained: one HTML file, no build step, no network access,
-no dependencies. It runs a little under fifty minutes as planned — and it is not pinned to that: the
+no dependencies. It plans out at about **fifty-five minutes** — and it is not pinned to that: the
 clock counts down whatever the per-slide budget adds up to, so slides can be added or cut without
-anything else needing to be rebalanced.
+anything else needing to be rebalanced. For a shorter slot, see the cut list below.
 
 By Christoph Kirsch — University of Salzburg, Austria, and Czech Technical University in Prague,
 Czechia. The talk is a collaborative effort with **Leoni Brand**, **Eva Jonas**, **Julius Möller** and
@@ -73,16 +73,6 @@ trailing-nines patch that most popular accounts leave out. Slide 24 hands over t
 between any two reals there is another, so there is no *next* one — together with the reason not to
 trust it: the fractions are dense too, and they can be listed. Only the diagonal separates the cases.
 
-Part VI shows rather than states. Slide 51 runs an LLM as a mechanism — context chips, a reserved
-slot for the next token, the weights, a bar chart of candidates, one sample taken, and a feedback
-path carrying the answer back round as the next question. Slide 52 draws plausible, provable and
-true as three regions: provable strictly inside true (the Gödel gap, labelled), plausible
-overlapping true and sticking out of it, and that crescent — plausible and not true — is what a
-hallucination is. Slide 53 draws the two routes to the same world: the long way through a transcript
-of it, the short way straight at it, which is the efficiency argument as a picture — and then a
-dashed border around the whole figure, because every box in it is inside the thing being modelled.
-All three used to carry that content as prose.
-
 Part III does not end on the bad news. Slide 35 turns the halting proof over: the move that produced
 the contradiction — a machine handed a description of a machine — is the identical move that produces
 the computer, and Turing published both in 1936. The figure sets three machines that each *are* their
@@ -94,19 +84,29 @@ reference is the positive force here, not the destructive one, and the two readi
 sentence. The slide also sets up Rice on the next page — a machine that can be any machine can have
 any behaviour, so there is nothing general left to decide.
 
-Part V ends its biology stretch on the machine that builds itself (slide 47), and collects on
-slide 35: one ribosome prints *any* protein because which protein is data on the strand, so a
-ribosome is `U` built out of chemistry. Turing did not invent universality — he noticed it. The figure runs von
+Part V ends its biology stretch on the machine that builds itself (slide 47). The figure runs von
 Neumann's architecture as a cell runs it: one strand, a **DNA polymerase** head that duplicates it
 letter by letter without ever interpreting it, and a **ribosome** head that *executes* the same
 letters three at a time. Interpreter is meant in its strong sense here, the sense in which a 3D
 printer is one — description in, object out, not a reading of the description — and among the
 objects it prints are the polymerase and the ribosome. Both heads keep cycling so the process is
-visibly running rather than sitting finished. The point to make out loud is why the architecture
-needs *two* tools: interpret the description only and the offspring inherits machinery but no
-description, so it could never reproduce in turn; copy it only and there is a text with nothing to
-run it. Reproduction needs one string used both ways — as instructions and as inert data — which is
-this lecture's distinction, four billion years old.
+visibly running rather than sitting finished. Two things to say out loud. Why the architecture needs
+*two* tools: interpret the description only and the offspring inherits machinery but no description,
+so it could never reproduce in turn; copy it only and there is a text with nothing to run it —
+reproduction needs one string used both ways, as instructions and as inert data, which is this
+lecture's distinction, four billion years old. And what the ribosome *is*: one machine that prints
+any protein because which protein is data on the strand, which makes it slide 35's `U` built out of
+chemistry. Turing did not invent universality. He noticed it.
+
+Part VI shows rather than states. Slide 51 runs an LLM as a mechanism — context chips, a reserved
+slot for the next token, the weights, a bar chart of candidates, one sample taken, and a feedback
+path carrying the answer back round as the next question. Slide 52 draws plausible, provable and
+true as three regions: provable strictly inside true (the Gödel gap, labelled), plausible
+overlapping true and sticking out of it, and that crescent — plausible and not true — is what a
+hallucination is. Slide 53 draws the two routes to the same world: the long way through a transcript
+of it, the short way straight at it, which is the efficiency argument as a picture — and then a
+dashed border around the whole figure, because every box in it is inside the thing being modelled.
+All three used to carry that content as prose.
 
 **Running long?** These four are self-contained and can be dropped without breaking the argument,
 buying 3:06: slide 16 (Borges), 18 (pairing ℕ ↔ evens), 25 (Cantor's theorem in general form),
@@ -165,7 +165,8 @@ Sources cited on the slides: Cantor 1891, Russell 1901, Gödel 1931, Tarski 1936
 1953, Cook 1971, Karp 1972, Levin 1973; Shannon 1948, Landauer 1961, Bremermann 1962, von Neumann
 1948/1966; Frege 1892, Wittgenstein 1921/1953, Korzybski 1931, Miller 1956, Chomsky 1957, Wigner
 1960, Levinthal 1969, Goodhart 1975, Harnad 1990, Kahneman 2011, Jumper et al. 2021; Borges 1941,
-Hofstadter 1979, Dijkstra 1969/1984, Knuth 1977; Pacioli 1494, Guido d'Arezzo c. 1025, Mendeleev 1869.
+Hofstadter 1979, Dijkstra 1969/1984, Knuth 1977, Chaitin on randomness; Pacioli 1494, Guido d'Arezzo
+c. 1025, Mendeleev 1869, Grace Hopper's nanosecond.
 
 ## For the computer scientists only
 
