@@ -901,7 +901,23 @@ blockquote cite{display:block;margin-top:calc(var(--u)*1.4);font-family:var(--mo
       <p class="sm f" data-step="4">Turing, 1936 — the same paper that defined the universal machine, and thus invented the computer. The limit and the machine arrived <strong>together</strong>.</p>
     </div>
   </div>
-  <aside class="notes"><p>Walk the animation: H, then the wrapper D, then the self-application. Emphasise the historical detail — Turing was answering Hilbert's decision problem in the negative, and the byproduct of the negative answer was the design of the machine on every desk. Limits are where technology comes from.</p></aside>
+  <aside class="notes"><p>Walk the animation: H, then the wrapper D, then the self-application. Emphasise the historical detail — Turing was answering Hilbert's decision problem in the negative, and the byproduct of the negative answer was the design of the machine on every desk. Limits are where technology comes from. Do not land the gloom: the very next slide turns the same move over and shows what it builds.</p></aside>
+</section>
+
+<section class="slide dense" data-act="III" data-mins="1.0">
+  <div class="eyebrow sem">The same move, forwards</div>
+  <h2>One machine that can be <span class="k">any machine</span>.</h2>
+  <div class="fill row mid">
+    <div class="fig grow" style="flex:1.2"><canvas data-anim="universal"></canvas><span class="cap">the job moved from the wiring to the tape</span></div>
+    <div class="stack grow">
+      <p class="f" data-step="1">A machine used to <em>be</em> its job — to sort instead of add you built a different machine. Turing's move: put the machine's description <em>on the tape</em>, as data.</p>
+      <p class="f" data-step="2">Then one machine <span class="mono">U</span> reads any description and does whatever that machine would do. That is <strong>universality</strong>: one piece of hardware, every possible behaviour, because the behaviour arrives as <span class="j">notation</span>.</p>
+      <p class="f" data-step="3">Your phone is not phone-shaped. It is <span class="mono">U</span> holding a description — which is why a new app needs no new hardware.</p>
+      <div class="card f" data-step="4"><span class="h">One sentence, read twice</span>
+        <p>Hand a decider its own description: contradiction, no <span class="mono">H</span>. Hand a machine <em>any</em> description: every program at once, one <span class="mono">U</span>. Turing published both in 1936.</p></div>
+    </div>
+  </div>
+  <aside class="notes"><p>This is the slide that stops Part III reading as a funeral. The move that produced the contradiction — a machine handed a description of a machine — is the identical move that produces the computer, and Turing made both in one paper. Say what universality actually buys, in the room's own terms: nobody in this lecture theatre owns a calculator, a typewriter, a map and a record player, because they own one object that becomes any of those when handed a description. That is not a metaphor for the theorem, it is the theorem being sold in a shop. Two things worth adding if the room is with you. First, any universal machine can simulate any other, so "computable" does not depend on which machine you picked — that is the Church-Turing thesis, and it is why this is a claim about the world rather than about one design. Second, universality is exactly what makes Rice's theorem bite on the next slide: a machine that can be any machine can have any behaviour, so there is nothing general left to decide. The gift and the limit are the same fact. Flag forward to Part V, where a ribosome turns out to be a universal constructor made of chemistry.</p></aside>
 </section>
 
 <section class="slide" data-act="III" data-mins="0.85">
@@ -1092,16 +1108,16 @@ blockquote cite{display:block;margin-top:calc(var(--u)*1.4);font-family:var(--mo
 
 <section class="slide dense" data-act="V" data-mins="1.05">
   <div class="eyebrow">Biology · self-reference</div>
-  <h2>A copier that <span class="j">never interprets</span>, and an interpreter that <span class="k">prints the copier</span>.</h2>
+  <h2>A copier that <span class="j">never interprets</span>, and an interpreter that <span class="k">prints the copier and itself</span>!</h2>
   <div class="fill">
     <div class="fig grow"><canvas data-anim="vonneumann"></canvas><span class="cap">von Neumann's architecture, as run by a cell</span></div>
     <div class="three">
       <p class="sm f" data-step="1"><strong>Copy.</strong> Polymerase walks the strand and duplicates it letter by letter, never asking what a letter means. <span class="j">Notation to notation.</span></p>
-      <p class="sm f" data-step="2"><strong>Interpret.</strong> The ribosome walks the same strand and <em>executes</em> it, three letters to an amino acid — an interpreter in the sense a <strong>3D printer</strong> is one: description in, object out. <span class="k">Notation to meaning.</span></p>
-      <p class="sm f" data-step="3"><strong>Close it.</strong> Among the objects it prints are the polymerase and the ribosome. The text describes its own machinery.</p>
+      <p class="sm f" data-step="2"><strong>Interpret.</strong> The ribosome walks the same strand and <em>executes</em> it — an interpreter in the sense a <strong>3D printer</strong> is one: description in, object out. <span class="k">Notation to meaning.</span></p>
+      <p class="sm f" data-step="3"><strong>Close it.</strong> Among the objects it prints are the polymerase and the ribosome — and one ribosome prints <em>any</em> protein, because which protein is data on the strand. That is <span class="mono">U</span> from Part III: <span class="k">universality</span>, in chemistry.</p>
     </div>
   </div>
-  <aside class="notes"><p>Why two tools and not one is the question to put to the room, and it is the deep content of the slide: obey the description only and the offspring inherits machinery but no description, so it could never reproduce in turn; copy it only and there is a text with nothing to run it. Reproduction needs the same string used both ways — once as instructions, once as inert data. Advance the figure a step at a time and narrate the two heads separately, because the whole point is that they do different things to the same letters. The polymerase is pure syntax: it would copy nonsense just as happily, and that indifference is why it is fast and why proofreading is even possible. The ribosome is the interpreter — and press the word "interpreter" in its strong sense, the sense in which a 3D printer is one. It does not read the strand and report on it; it executes the strand and a physical object comes out the other end. Three letters in, one amino acid out, the genetic code as the interpretation function, and a protein as the printed result. Then the closing step — the proteins coming off the ribosome include the polymerase and the ribosome themselves, so the description describes its own machinery. Von Neumann derived this in 1948 from pure logic, before the double helix, and the reason he needed both a copier and a constructor is worth stating slowly: a machine that only interprets its description builds a childless child. This is the same loop as the compiler that compiles itself and the emulator that executes itself from Part III, and the same loop Gödel builds a sentence out of. If the room takes one thing from Part V, make it this: the syntax-semantics distinction is not a computer-science convention. It is load-bearing structure in something four billion years old and currently running in every cell of every person here.</p></aside>
+  <aside class="notes"><p>Why two tools and not one is the question to put to the room, and it is the deep content of the slide: obey the description only and the offspring inherits machinery but no description, so it could never reproduce in turn; copy it only and there is a text with nothing to run it. Reproduction needs the same string used both ways — once as instructions, once as inert data. Advance the figure a step at a time and narrate the two heads separately, because the whole point is that they do different things to the same letters. The polymerase is pure syntax: it would copy nonsense just as happily, and that indifference is why it is fast and why proofreading is even possible. The ribosome is the interpreter — and press the word "interpreter" in its strong sense, the sense in which a 3D printer is one. It does not read the strand and report on it; it executes the strand and a physical object comes out the other end. Three letters in, one amino acid out, the genetic code as the interpretation function, and a protein as the printed result. Then the closing step — the proteins coming off the ribosome include the polymerase and the ribosome themselves, so the description describes its own machinery. Von Neumann derived this in 1948 from pure logic, before the double helix, and the reason he needed both a copier and a constructor is worth stating slowly: a machine that only interprets its description builds a childless child. This is the same loop as the compiler that compiles itself and the emulator that executes itself from Part III, and the same loop Gödel builds a sentence out of. Collect on the universal machine explicitly: one ribosome prints any protein because which protein is data on the strand, so a ribosome is U built out of chemistry. Turing did not invent universality in 1936 — he noticed it, about a billion years late. If the room takes one thing from Part V, make it this: the syntax-semantics distinction is not a computer-science convention. It is load-bearing structure in something four billion years old and currently running in every cell of every person here.</p></aside>
 </section>
 
 <section class="slide" data-act="V" data-mins="0.9">
@@ -2322,8 +2338,10 @@ ANIM.vonneumann = (ctx,w,h,st,t)=>{
     }
   }
   if(st>=3)
+    /* held to the right half: capfree() is not conservative enough to clear the
+       .cap when this figure is squeezed short by the text under it */
     txt(ctx,"and those two are these two — the text describes its own machinery",
-        w/2, Math.min(h*.84, capfree(h)), {size:F*.9, col:C.sem, align:"center", box:[4,w-4]});
+        w*.66, Math.min(h*.84, capfree(h)), {size:F*.9, col:C.sem, align:"center", box:[w*.42, w-4]});
 };
 
 /* --- energy: log-scale bars --- */
@@ -2353,6 +2371,60 @@ ANIM.energy = (ctx,w,h,st,t)=>{
     ctx.fillRect(X(lo)+(X(v)-X(lo))*a - 2, y, 2.6, bh);
     txt(ctx, lab, X(lo)+3, y-F*.7, {size:F,col:col,box:[2,w-2]});
   });
+};
+
+/* --- universal: the halting proof's move, run forwards. Three machines that
+   each *are* their job, against one machine that becomes any of them because
+   the job arrived as data — and, on the last step, its own description. --- */
+ANIM.universal = (ctx,w,h,st,t)=>{
+  const F=Math.min(w*.026, h*.046);
+  const FIXED=["ADD","SORT","PRINT"], TAPE=["ADD","SORT","PRINT","U"];
+  const OUT=["a sum","a sorted list","a printed page","whatever U would do"];
+  const k = st>=3 ? 3 : (st>=2 ? Math.floor(t/1.9)%3 : 0);
+  const strip=(x,y,ww,hh,col,fa)=>{
+    ctx.strokeStyle=col; ctx.lineWidth=1;
+    rr(ctx,x,y-hh/2,ww,hh,hh*.28); ctx.stroke();
+    ctx.fillStyle=col; ctx.globalAlpha=fa; ctx.fill(); ctx.globalAlpha=1;
+  };
+  /* the old way: the behaviour is in the wiring */
+  const lx=w*.04, lw=w*.21, bh=F*2.2;
+  txt(ctx,"one machine, one job", lx+lw/2, h*.12,
+      {size:F*.82, col:C.muted, align:"center", box:[2, w*.30]});
+  FIXED.forEach((p,i)=>{
+    const y=h*(.30+i*.21);
+    strip(lx, y, lw, bh, C.muted, .06);
+    txt(ctx, p, lx+lw/2, y, {size:F*.95, col:C.ink2, align:"center", box:[lx, lx+lw]});
+  });
+  ctx.strokeStyle=C.line; ctx.lineWidth=1; ctx.setLineDash([3,4]);
+  ctx.beginPath(); ctx.moveTo(w*.31, h*.10); ctx.lineTo(w*.31, capfree(h)-F*.4); ctx.stroke();
+  ctx.setLineDash([]);
+  /* the new way: the behaviour is on the tape */
+  const rx=w*.37, rw=w*.59;
+  txt(ctx,"one machine, every job", rx+rw/2, h*.12,
+      {size:F*.82, col:C.sem, align:"center", box:[w*.32, w-2]});
+  if(st>=1){
+    const ty=h*.30, dw=rw*.42;
+    strip(rx, ty, dw, bh, C.syn, .12);
+    txt(ctx, "<"+TAPE[k]+">", rx+dw/2, ty, {size:F*.9, col:C.syn, align:"center", box:[rx, rx+dw]});
+    strip(rx+dw, ty, rw-dw, bh, C.muted, .04);
+    txt(ctx,"input", rx+dw+(rw-dw)/2, ty, {size:F*.82, col:C.muted, align:"center", box:[rx+dw, rx+rw]});
+    /* the same slot, upgraded on the last step — stacking a second caption
+       above this one crowds the tape */
+    ctx.globalAlpha = st>=3 ? .55+.45*Math.sin(t*2.6) : 1;
+    txt(ctx, st>=3 ? "its own description, on its own tape" : "a machine, written down",
+        rx+dw/2, ty-bh*.85,
+        {size:F*.78, col: st>=3?C.bad:C.syn, align:"center", box:[w*.32, rx+rw]});
+    ctx.globalAlpha=1;
+    const uy=h*.56, uw=rw*.52;
+    arrow(ctx, rx+rw/2, ty+bh*.6, rx+rw/2, uy-F*1.65, C.line, F*.5);
+    strip(rx+rw/2-uw/2, uy, uw, F*3.0, C.sem, .10);
+    txt(ctx,"U", rx+rw/2, uy-F*.5, {size:F*1.5, col:C.sem, align:"center", box:[rx, rx+rw]});
+    txt(ctx,"reads it · becomes it", rx+rw/2, uy+F*.78,
+        {size:F*.78, col:C.muted, align:"center", box:[rx, rx+rw]});
+    const oy=h*.80;
+    arrow(ctx, rx+rw/2, uy+F*1.7, rx+rw/2, oy-F*1.15, C.line, F*.5);
+    txt(ctx, OUT[k], rx+rw/2, oy, {size:F*.95, col:C.sem, align:"center", box:[w*.32, w-2]});
+  }
 };
 
 /* --- venn: plausible, provable, true. The crescent of plausible-but-not-true
