@@ -9,7 +9,7 @@
 <title>What is Intelligence?</title>
 <style>
 /* ============================================================
-   What is Intelligence? — a 45 minute animated lecture
+   What is Intelligence? — an animated lecture
    Visual system: drafting table / plotter.
    Typography encodes the thesis:
      serif  = meaning   (semantics, truth)
@@ -308,7 +308,7 @@ blockquote cite{display:block;margin-top:calc(var(--u)*1.4);font-family:var(--mo
 <div id="deck" tabindex="0" aria-label="Presentation: What is Intelligence?">
 
   <div id="rail" aria-hidden="true">
-    <span id="actname"></span><span class="sp"></span><span id="clock">45:00</span>
+    <span id="actname"></span><span class="sp"></span><span id="clock">—</span>
   </div>
   <div id="bar" aria-hidden="true"></div>
   <div id="foot" aria-hidden="true">
@@ -328,7 +328,7 @@ blockquote cite{display:block;margin-top:calc(var(--u)*1.4);font-family:var(--mo
   <div class="fill center" style="position:relative">
     <div class="row mid" style="gap:calc(var(--u)*5)">
       <div class="stack grow">
-        <div class="eyebrow sem">A lecture in seven parts · 45 minutes</div>
+        <div class="eyebrow sem">A lecture in seven parts</div>
         <h1 style="font-size:calc(var(--u)*7.4)">What is<br>Intelligence?</h1>
         <div class="byline">
           <span class="who">Christoph Kirsch</span>
@@ -377,7 +377,7 @@ blockquote cite{display:block;margin-top:calc(var(--u)*1.4);font-family:var(--mo
     <div class="two">
       <div class="stack">
         <p class="f" data-step="1">It asks about a hidden property of a system, in a language — English — with no precise semantics for the word <em>intelligent</em>.</p>
-        <p class="f" data-step="2">We will spend 45 minutes earning the right to ask a <span class="k">better</span> question, one that stays valid no matter what technology arrives next.</p>
+        <p class="f" data-step="2">We will spend the next hour earning the right to ask a <span class="k">better</span> question, one that stays valid no matter what technology arrives next.</p>
       </div>
       <div class="stack f" data-step="3">
         <blockquote>The question of whether machines can think is about as relevant as the question of whether submarines can swim.
@@ -425,8 +425,84 @@ blockquote cite{display:block;margin-top:calc(var(--u)*1.4);font-family:var(--mo
 <section class="slide" data-act="I" data-mins="0.25">
   <div class="eyebrow">Part I</div>
   <h1 style="font-size:calc(var(--u)*7.4)">Vastness</h1>
-  <p class="lead f" data-step="1">Start with the smallest possible distinction and count what it can build.</p>
-  <aside class="notes"><p>Part I is arithmetic only. No theorems. The goal is a physical feeling for state space, because everything later — bugs, search, learning, AI — happens inside one.</p></aside>
+  <p class="lead f" data-step="1">First a feeling for size — then the smallest possible distinction, and everything it builds.</p>
+  <aside class="notes"><p>Part I is arithmetic only. No theorems. The goal is a physical feeling for state space, because everything later — bugs, search, learning, AI — happens inside one. The first four slides buy that feeling: the map, the anchors, the units, and the two meanings of "kilo". Nobody follows an argument about 10<sup>80</sup> who has not first been handed somewhere to stand.</p></aside>
+</section>
+
+<section class="slide" data-act="I" data-mins="0.95">
+  <div class="eyebrow">The map</div>
+  <h2>One line carries the whole talk: <span class="j">small</span>, <span class="j">vast</span>, then <span class="k">two sizes of endless</span>.</h2>
+  <div class="fill">
+    <div class="fig grow"><canvas data-anim="scale"></canvas><span class="cap">log scale · then off the end of every scale</span></div>
+    <div class="three">
+      <p class="sm f" data-step="1"><strong>Left.</strong> From one thing to every atom there is — the whole physical world in eighty steps, each one ten times the last.</p>
+      <p class="sm f" data-step="2"><strong>The wall.</strong> No number of steps crosses it. Infinity is not the far end of the line; it is what the line never reaches.</p>
+      <p class="sm f" data-step="3"><strong>Right.</strong> Past the wall, endlessness comes in sizes: one counts every notation, the other every meaning — and is <span class="k">strictly bigger</span>.</p>
+    </div>
+  </div>
+  <aside class="notes"><p>The itinerary of the entire lecture in one picture, and worth a slow minute. Walk the sweep left to right: everything physics has to offer sits inside those eighty decades. Then the wall — and this is the sentence to land — infinity is not a very large number, it is not on the line at all; no amount of walking gets you there, which is exactly why Part II needs an argument rather than a bigger example. Then the two boxes: countable and uncountable, drawn deliberately at different sizes. Do not prove anything here, just plant the shape. Parts I and IV are claims about the left of this line, Parts II and III about the right, and every claim in the talk is a claim about where something sits on it. Hence the next three slides: a number you cannot place is a number you cannot argue with.</p></aside>
+</section>
+
+<section class="slide" data-act="I" data-mins="0.85">
+  <div class="eyebrow">Anchors</div>
+  <h2>A million, a billion, a trillion. Three words one syllable apart — <span class="j">three different worlds</span>.</h2>
+  <div class="fill row mid">
+    <div class="stack grow">
+      <div class="kpi f" data-step="1"><span class="n">10<sup>6</sup> s</span><span class="l">a million seconds · 11½ days</span></div>
+      <div class="kpi f" data-step="2"><span class="n">10<sup>9</sup> s</span><span class="l">a billion seconds · 32 years</span></div>
+      <div class="kpi f" data-step="3"><span class="n">10<sup>12</sup> s</span><span class="l">a trillion seconds · 32,000 years</span></div>
+    </div>
+    <div class="stack grow" style="flex:1.15">
+      <p class="f" data-step="3">A million seconds ago you had not yet packed for today. A billion seconds ago you were a child, or not yet born. A trillion seconds ago somebody was painting the walls of the <strong>Chauvet cave</strong>.</p>
+      <p class="f" data-step="4">Each step is three zeros — the same three zeros, three times over. The words rhyme, so the mind files them together and treats the gaps as small. The gaps are not small. They are the subject.</p>
+      <div class="card syn f" data-step="5"><span class="h">The habit</span>
+        <p>Never accept a number you cannot picture. Find the anchor — a fortnight, a career, an ice age — or admit you are repeating the number, not reading it.</p></div>
+    </div>
+  </div>
+  <aside class="notes"><p>The single most useful slide in Part I for a non-technical room, because it is not about computers at all. Let the three seconds figures land one at a time and give the room a beat after "thirty-two thousand years" — Chauvet is roughly that old, so a trillion seconds ago is Ice Age Europe. The point is linguistic as much as numerical: million, billion and trillion are near-homophones for three quantities with nothing in common, and our intuition is built for the words, not the things. Everything later in the talk — 10<sup>80</sup>, 2<sup>266</sup>, a 20-billion-digit number — is unusable unless the room has practised converting an exponent into a picture. Ask them for their own anchors; the ones they supply are the ones they keep.</p></aside>
+</section>
+
+<section class="slide dense" data-act="I" data-mins="0.95">
+  <div class="eyebrow">Units</div>
+  <h2>Kilo, mega, giga, tera: <span class="j">the same three zeros</span>, again and again.</h2>
+  <div class="fill">
+    <table class="t">
+      <tr><th>prefix</th><th>factor</th><th>bytes · how much it holds</th><th>hertz · how often it happens</th></tr>
+      <tr class="f" data-step="1"><td>kilo</td><td>10<sup>3</sup></td><td>KB — a long paragraph</td><td>kHz — the top of human hearing, 20 kHz</td></tr>
+      <tr class="f" data-step="2"><td>mega</td><td>10<sup>6</sup></td><td>MB — a novel</td><td>MHz — the first IBM PC, 4.77 MHz, 1981</td></tr>
+      <tr class="f" data-step="3"><td>giga</td><td>10<sup>9</sup></td><td>GB — a thousand novels</td><td>GHz — this laptop; Wi-Fi at 2.4</td></tr>
+      <tr class="f" data-step="4"><td>tera</td><td>10<sup>12</sup></td><td>TB — a million novels</td><td>THz — infrared light</td></tr>
+    </table>
+    <div class="row mid">
+      <p class="sm grow f" data-step="5">A <strong>byte</strong> is eight bits — one keystroke. A <strong>hertz</strong> is one beat per second. The left column counts things, the right counts events, and the prefixes do not care which.</p>
+      <div class="card grow f" data-step="6" style="flex:1.15"><span class="h">Hold a nanosecond</span>
+        <p>At 1 GHz a beat lasts a billionth of a second, and light gets <strong>30&nbsp;cm</strong> in that time. Grace Hopper handed those 30&nbsp;cm out as lengths of wire, so a room could feel why a signal cannot cross a desk and return inside one beat.</p></div>
+    </div>
+  </div>
+  <aside class="notes"><p>Two ladders, one set of rungs. Build the table row by row and read the right-hand column aloud — hearing tops out in the kilohertz, the first PC ran in the megahertz, this machine runs in the gigahertz, and light itself is up in the terahertz. That is a thousandfold three times in one line of vocabulary. Then the byte and the hertz: an amount and a rate, sharing prefixes, which is exactly why people mix them up in the wild ("a 5G phone" is a rate, "a 256 GB phone" is an amount). The Hopper wire is the slide's keepsake and the reason to say it out loud: she gave audiences a physical object whose length was a unit of time, which is the whole method of this Part in one prop. It also plants Part IV: at these rates distance is delay, and no cleverness removes it.</p></aside>
+</section>
+
+<section class="slide dense" data-act="I" data-mins="0.85">
+  <div class="eyebrow">Two kilos</div>
+  <h2>Kilo means a thousand. In memory it means <span class="j">1,024</span>. Both are in daily use.</h2>
+  <div class="fill row mid">
+    <div class="grow" style="flex:1.15">
+      <table class="t">
+        <tr><th></th><th>base 10</th><th>base 2</th><th class="r">gap</th></tr>
+        <tr class="f" data-step="1"><td>kilo</td><td>KB = 10<sup>3</sup></td><td>KiB = 2<sup>10</sup> = 1,024</td><td class="r">+2.4%</td></tr>
+        <tr class="f" data-step="1"><td>mega</td><td>MB = 10<sup>6</sup></td><td>MiB = 2<sup>20</sup></td><td class="r">+4.9%</td></tr>
+        <tr class="f" data-step="1"><td>giga</td><td>GB = 10<sup>9</sup></td><td>GiB = 2<sup>30</sup></td><td class="r">+7.4%</td></tr>
+        <tr class="f" data-step="1"><td>tera</td><td>TB = 10<sup>12</sup></td><td>TiB = 2<sup>40</sup></td><td class="r">+10.0%</td></tr>
+      </table>
+    </div>
+    <div class="stack grow">
+      <p class="f" data-step="2">Memory is addressed with bits, so its natural steps are powers of two — and 2<sup>10</sup> lands so close to 1,000 that the prefix was simply borrowed. Every further rung widens the gap.</p>
+      <p class="f" data-step="3">Which one you were handed depends on the trade. <strong>Memory</strong> comes in powers of two; <strong>disks and networks</strong> in powers of ten — a "1 TB" drive holds 10<sup>12</sup> bytes and shows up as <span class="j">931 GiB</span>. Hertz is never base two, and neither is the kilo in kilometre.</p>
+      <div class="card f" data-step="4"><span class="h">Notice what just happened</span>
+        <p>One notation, two meanings, and nothing in the notation to tell you which you were handed. Keep hold of that. The rest of the lecture is about that gap.</p></div>
+    </div>
+  </div>
+  <aside class="notes"><p>Short, practical, and it does real work later. The 1998 IEC names — kibi, mebi, gibi, tebi — are the fix nobody adopted, so both conventions remain live and you have to know which is on the label. The lived version everybody recognises: you buy a terabyte drive and the machine reports 931 gigabytes, and no one has stolen anything; two units share one word. Note that the drift compounds — 2.4% at kilo, 10% at tera, 12.6% at peta — so it is a rounding error at the bottom of the ladder and a lawsuit at the top. The last card is the reason this slide is in a talk about intelligence rather than in a hardware course: the string "GB" does not determine its own referent, and no amount of staring at the string settles it. That is the syntax-semantics gap in miniature, met on day one, in a shop.</p></aside>
 </section>
 
 <section class="slide" data-act="I" data-mins="0.75">
@@ -1302,7 +1378,7 @@ blockquote cite{display:block;margin-top:calc(var(--u)*1.4);font-family:var(--mo
       <cite>Johann Wolfgang von Goethe</cite>
     </blockquote>
     <p class="lead f" data-step="1">For in the end it is only the <span class="k">Geist</span> that brings any technique to life.</p>
-    <p class="sm f" data-step="2"><span class="k">Geist</span> — spirit, mind, meaning. For the last 45 minutes we have been calling it <strong>truth</strong>. And it is, finally, <strong>you and me</strong>.<br>
+    <p class="sm f" data-step="2"><span class="k">Geist</span> — spirit, mind, meaning. For the last hour we have been calling it <strong>truth</strong>. And it is, finally, <strong>you and me</strong>.<br>
       <span class="j">Technik</span> — technique, technology, the formal machinery. Necessary. Never sufficient. Never alive on its own.</p>
   </div>
   <aside class="notes"><p>Say the German first, then the translation, then stop. This is the whole talk in one sentence written long before any of the mathematics: Technik is syntax — notation, machinery, proof, the AI. Geist is semantics — truth, meaning, judgement, us. Notation is finite; meaning is not; and the part that brings the machinery to life is not the machinery. Thank the room and take questions.</p></aside>
@@ -1321,7 +1397,7 @@ blockquote cite{display:block;margin-top:calc(var(--u)*1.4);font-family:var(--mo
   <dt>↓ · ↑</dt><dd>next / previous slide, skipping steps</dd>
   <dt>home · end</dt><dd>first / last slide</dd>
   <dt>n</dt><dd>speaker notes</dd>
-  <dt>t</dt><dd>start / pause the 45-minute clock</dd>
+  <dt>t</dt><dd>start / pause the clock</dd>
   <dt>r</dt><dd>reset the clock</dd>
   <dt>d</dt><dd>toggle light / dark</dd>
   <dt>? · esc</dt><dd>this panel</dd>
@@ -1469,20 +1545,23 @@ function chrome(){
   $("#notesBody").innerHTML = n ? n.innerHTML : "<p>—</p>";
 }
 
-/* clock: 45 minutes, with pace against data-mins */
+/* clock: the deck is not pinned to a fixed length. The target is whatever the
+   per-slide data-mins budget adds up to, so slides can be added or cut and the
+   clock — and the pace warnings — follow the plan instead of contradicting it. */
 let t0=null, acc=0, running=false;
 const plan = slides.map(s=>+(s.dataset.mins||1));
 const cumPlan = plan.reduce((a,v)=>(a.push((a[a.length-1]||0)+v),a),[]);
+const TOTAL = (cumPlan[cumPlan.length-1]||0)*60;
 function elapsed(){ return acc + (running && t0!==null ? (performance.now()-t0)/1000 : 0); }
 function tick(){
-  const e = elapsed(), left = 45*60 - e, el = $("#clock");
+  const e = elapsed(), left = TOTAL - e, el = $("#clock");
   const m = Math.floor(Math.abs(left)/60), s = Math.floor(Math.abs(left)%60);
   el.textContent = (left<0?"-":"") + m + ":" + String(s).padStart(2,"0");
   const target = (cumPlan[cur]||0)*60;
   el.classList.toggle("warn", running && e > target + 60);
   el.classList.toggle("late", running && e > target + 180);
 }
-setInterval(tick, 500);
+setInterval(tick, 500); tick();
 
 /* ---------- input ---------- */
 const KEY = {
@@ -1602,6 +1681,70 @@ ANIM.ambient = (ctx,w,h,st,t)=>{
   ctx.globalAlpha=1;
 };
 
+/* --- scale: the itinerary — eighty decades, a wall, then two sizes of endless.
+   The two infinities are drawn as one glyph at two sizes and two box heights;
+   the deck never says "aleph", so neither does the figure. --- */
+ANIM.scale = (ctx,w,h,st,t)=>{
+  const x1=w*.05, x2=w*.475, y=h*.46, MAX=80, F=h*.038, gate=w*.555;
+  ctx.strokeStyle=C.line; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(x1,y); ctx.lineTo(x2,y); ctx.stroke();
+  const slot=(x2-x1)*20/MAX;                /* one label per two decades of room */
+  for(let e=0;e<=MAX;e+=20){
+    const X=x1+(x2-x1)*e/MAX;
+    ctx.beginPath(); ctx.moveTo(X,y-h*.016); ctx.lineTo(X,y+h*.016); ctx.stroke();
+    txt(ctx,"10^"+e, X, y+h*.058, {size:F*.88, col:C.muted, align:"center",
+        box:[Math.max(2,X-slot*.46), Math.min(w-2,X+slot*.46)]});
+  }
+  /* the sweep: one thing, to everything there is, and back again */
+  const p=Math.min(1,(t*.3)%1.5), dx=x1+(x2-x1)*p;
+  ctx.strokeStyle=C.sem; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.moveTo(x1,y); ctx.lineTo(dx,y); ctx.stroke();
+  ctx.fillStyle=C.sem; ctx.beginPath(); ctx.arc(dx,y,h*.018,0,7); ctx.fill();
+  /* anchors: a size is only understood once it is tied to something seen.
+     Stems alternate, so two neighbouring labels never share a baseline. */
+  if(st>=1){
+    [[0,"one",-.17],[19,"grains of sand on Earth",.21],
+     [50,"atoms in the Earth",-.27],[80,"atoms in the universe",.29]]
+    .forEach(([e,lab,stem])=>{
+      const X=x1+(x2-x1)*e/MAX, up=stem<0, tip=y+h*stem;
+      ctx.strokeStyle=C.line; ctx.lineWidth=1; ctx.setLineDash([2,3]);
+      ctx.beginPath(); ctx.moveTo(X,y); ctx.lineTo(X,tip); ctx.stroke(); ctx.setLineDash([]);
+      txt(ctx,lab,X,tip+(up?-F*.85:F*.85),
+          {size:F*.92,col:C.muted,align:"center",box:[w*.005,gate-w*.012]});
+    });
+  }
+  /* the wall: the line runs out of line, and no finite step crosses */
+  if(st>=2){
+    const a=ease(t*1.1); ctx.globalAlpha=a;
+    ctx.fillStyle=C.muted;
+    for(let k=1;k<=3;k++){
+      ctx.beginPath(); ctx.arc(x2+(gate-x2)*k/4.4, y, h*.007, 0, 7); ctx.fill();
+    }
+    ctx.strokeStyle=C.line; ctx.lineWidth=1; ctx.setLineDash([2,4]);
+    ctx.beginPath(); ctx.moveTo(gate,h*.17); ctx.lineTo(gate,capfree(h)); ctx.stroke();
+    ctx.setLineDash([]);
+    txt(ctx,"no finite step crosses", gate, h*.10,
+        {size:F*.9, col:C.ink2, align:"center", box:[w*.30, w*.80]});
+    ctx.globalAlpha=1;
+  }
+  /* and past it: endlessness in two sizes — Part II proves the inequality */
+  if(st>=3){
+    const a=ease((t-.15)*1.1); ctx.globalAlpha=a;
+    [[w*.685,h*.34,h*.13,"countable","every notation",C.syn],
+     [w*.900,h*.46,h*.22,"uncountable","every meaning",C.sem]]
+    .forEach(([cx,bh,gs,l1,l2,col])=>{
+      const bw=w*.17, by=y-bh/2, bx=[cx-bw*.46, cx+bw*.46];
+      ctx.strokeStyle=col; ctx.lineWidth=1;
+      rr(ctx,cx-bw/2,by,bw,bh,h*.03); ctx.stroke();
+      txt(ctx,"∞", cx, by+bh*.34, {size:gs, col, align:"center", box:bx});
+      txt(ctx,l1, cx, by+bh*.68, {size:F*.95, col:C.ink2, align:"center", box:bx});
+      txt(ctx,l2, cx, by+bh*.86, {size:F*.85, col:C.muted, align:"center", box:bx});
+    });
+    txt(ctx,"<", w*.7925, y, {size:h*.11, col:C.ink, align:"center", box:[w*.775,w*.81]});
+    ctx.globalAlpha=1;
+  }
+};
+
 /* --- bits: doubling --- */
 ANIM.bits = (ctx,w,h,st,t)=>{
   const n = [1,2,4,8,16][Math.min(4,st)];
@@ -1644,7 +1787,7 @@ ANIM.ruler = (ctx,w,h,st,t)=>{
      spoonful" are both above the rule and used to collide on the left. */
   const marks = [
     [ 2, "8 bits",                  C.muted, -.15],
-    [10, "grains of sand on Earth", C.muted,  .19],
+    [10, "people alive today",      C.muted,  .19],
     [23, "molecules in a spoonful", C.muted, -.27],
     [80, "atoms in the universe",   C.sem,    .29]
   ];

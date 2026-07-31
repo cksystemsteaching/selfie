@@ -1,8 +1,10 @@
 # What is Intelligence?
 
-A 45-minute animated lecture for undergraduate and graduate students **in any field**, built from
-basic principles of computer science. Self-contained: one HTML file, no build step, no network access,
-no dependencies.
+An animated lecture for undergraduate and graduate students **in any field**, built from basic
+principles of computer science. Self-contained: one HTML file, no build step, no network access,
+no dependencies. It runs a little under fifty minutes as planned — and it is not pinned to that: the
+clock counts down whatever the per-slide budget adds up to, so slides can be added or cut without
+anything else needing to be rebalanced.
 
 By Christoph Kirsch — University of Salzburg, Austria, and Czech Technical University in Prague,
 Czechia. The talk is a collaborative effort with **Leoni Brand**, **Eva Jonas**, **Julius Möller** and
@@ -43,20 +45,28 @@ two-column treatment: **what it forbids** / **what it opens**.
 | Part | Title | Slides | Plan |
 |---|---|---|---|
 | 0 | Prologue — disclosure, acknowledgement, the question, the short answer up front | 1–5 | 3:51 |
-| I | Vastness — bits, exponential state spaces, why bugs are geometry | 6–12 | 5:15 |
-| II | Infinity — countability, diagonalization, meaning outnumbers notation | 13–19 | 5:21 |
-| III | Self-Reference — syntax/semantics, Gödelisierung, incompleteness, halting, Rice | 20–29 | 8:42 |
-| IV | Cost — decidable ≠ doable, NP-completeness, Landauer's energy floor | 30–35 | 4:36 |
-| V | Everywhere — biology, mind, and the notations that made every field | 36–39 | 3:03 |
-| VI | Machines — what today's AI is, where world models take it, what neither escapes | 40–45 | 3:57 |
-| VII | Practice — six habits, the definition, depth, humour, Goethe | 46–57 | 10:15 |
+| I | Vastness — orders of magnitude, units, bits, state spaces, why bugs are geometry | 6–16 | 8:51 |
+| II | Infinity — countability, diagonalization, meaning outnumbers notation | 17–23 | 5:21 |
+| III | Self-Reference — syntax/semantics, Gödelisierung, incompleteness, halting, Rice | 24–33 | 8:42 |
+| IV | Cost — decidable ≠ doable, NP-completeness, Landauer's energy floor | 34–39 | 4:36 |
+| V | Everywhere — biology, mind, and the notations that made every field | 40–43 | 3:03 |
+| VI | Machines — what today's AI is, where world models take it, what neither escapes | 44–49 | 3:57 |
+| VII | Practice — six habits, the definition, depth, humour, Goethe | 50–61 | 10:15 |
 
-57 slides; the per-slide budget in `data-mins` sums to exactly **45:00**. Press <kbd>t</kbd> to start
-the clock — it turns amber if you are a minute behind the plan and rose if you are three behind.
+61 slides; the per-slide budget in `data-mins` adds up to **48:36**, and that is what the clock counts
+down — it is read off the deck at load, not written into it. Press <kbd>t</kbd> to start the clock;
+it turns amber if you are a minute behind the plan and rose if you are three behind.
+
+Part I opens with four slides on **size** before any computing happens: a map of the whole axis the
+talk lives on (small → vast → countable → uncountable), a million/billion/trillion seconds as anchors,
+the prefixes for bytes and hertz, and the two meanings of "kilo". They are there because every later
+number — 10<sup>80</sup>, 2<sup>266</sup>, a 20-billion-digit state count — is unreadable to anyone
+who has not first practised turning an exponent into a picture. The last of them also lands the
+thesis in miniature: "GB" is one notation with two meanings, and the notation does not say which.
 
 **Running long?** These four are self-contained and can be dropped without breaking the argument,
-buying 3:06: slide 12 (Borges), 14 (pairing ℕ ↔ evens), 17 (Cantor's theorem in general form),
-49 (bridges and aviation). Do not cut 16, 18, 24, 26, 50–52 — they carry the thesis.
+buying 3:06: slide 16 (Borges), 18 (pairing ℕ ↔ evens), 21 (Cantor's theorem in general form),
+53 (bridges and aviation). Do not cut 20, 22, 28, 30, 54–56 — they carry the thesis.
 
 ## Keys
 
@@ -67,7 +77,7 @@ buying 3:06: slide 12 (Borges), 14 (pairing ℕ ↔ evens), 17 (Cantor's theorem
 | <kbd>↓</kbd> <kbd>↑</kbd> | next / previous slide, skipping build steps |
 | <kbd>home</kbd> <kbd>end</kbd> | first / last slide |
 | <kbd>n</kbd> | speaker notes (every slide has them) |
-| <kbd>t</kbd> / <kbd>r</kbd> | start-pause / reset the 45-minute clock |
+| <kbd>t</kbd> / <kbd>r</kbd> | start-pause / reset the clock |
 | <kbd>d</kbd> | light / dark |
 | <kbd>?</kbd> | key list |
 
@@ -78,6 +88,22 @@ phone with no keyboard.
 
 Every figure quoted on a slide, so it can be defended from the floor:
 
+- **A million, a billion, a trillion seconds.** 10⁶ s = 11.6 days; 10⁹ s = 31.7 years; 10¹² s =
+  31,688 years. The Chauvet cave paintings are radiocarbon-dated to roughly 32,000 years — so a
+  trillion seconds ago is, near enough, someone at work on that wall.
+- **The map.** Grains of sand on Earth ≈ 7.5 × 10¹⁸ (Gwynne's beach-sand estimate); atoms in the
+  Earth ≈ 1.3 × 10⁵⁰; atoms in the observable universe ≈ 10⁸⁰. People alive today ≈ 8.2 × 10⁹,
+  which is the 10¹⁰ mark on the Part I ruler.
+- **Prefixes.** kilo/mega/giga/tera = 10³/10⁶/10⁹/10¹². One byte holds one character, so 1 MB is a
+  500-page book of plain text — hence a novel, a thousand novels, a million novels. Hearing tops out
+  near 20 kHz; the IBM PC (1981) ran at 4.77 MHz; laptop clocks and Wi-Fi sit in the low gigahertz;
+  infrared light is terahertz.
+- **The nanosecond.** At 1 GHz one cycle is 10⁻⁹ s, in which light covers 29.98 cm — the length of
+  wire Grace Hopper handed out in lectures so an audience could hold one.
+- **Base 2 against base 10.** KiB/MiB/GiB/TiB = 2¹⁰/2²⁰/2³⁰/2⁴⁰ (IEC 60027-2, 1998). The drift over
+  the base-ten prefix compounds: +2.4%, +4.9%, +7.4%, +10.0%, and +12.6% at peta. A "1 TB" disk is
+  10¹² bytes = 931 GiB. Memory is sold in powers of two, which is why the 8 GB phone on slide 13 is
+  8 GiB exactly.
 - **266 bits > the observable universe.** 2²⁶⁶ ≈ 1.19 × 10⁸⁰; ordinary-matter atom count ≈ 10⁸⁰.
   296 bits (37 bytes) passes the ~10⁸⁹ photon count.
 - **8 GB of RAM.** 8 GiB = 68,719,476,736 bits, so 2^68,719,476,736 states — a decimal number with
@@ -114,7 +140,7 @@ meaning, monospace for notation.
 
 Both themes are designed; the viewer's system preference or the <kbd>d</kbd> key selects one.
 Everything is sized from a single unit (`--u` = deck width ⁄ 100) so the 16:9 stage scales to any
-projector, and all twelve figures are drawn on canvas at whatever size they are given. Animation is
+projector, and all thirteen figures are drawn on canvas at whatever size they are given. Animation is
 suppressed under `prefers-reduced-motion`, where every build step shows at once.
 
 Two guards keep text off text on machines whose font stacks resolve differently from the author's.
