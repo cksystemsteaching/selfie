@@ -1092,16 +1092,16 @@ blockquote cite{display:block;margin-top:calc(var(--u)*1.4);font-family:var(--mo
 
 <section class="slide dense" data-act="V" data-mins="1.05">
   <div class="eyebrow">Biology · self-reference</div>
-  <h2>A copier that <span class="j">never reads</span>, and a reader that <span class="k">builds the copier</span>.</h2>
+  <h2>A copier that <span class="j">never interprets</span>, and an interpreter that <span class="k">prints the copier</span>.</h2>
   <div class="fill">
     <div class="fig grow"><canvas data-anim="vonneumann"></canvas><span class="cap">von Neumann's architecture, as run by a cell</span></div>
     <div class="three">
       <p class="sm f" data-step="1"><strong>Copy.</strong> Polymerase walks the strand and duplicates it letter by letter, never asking what a letter means. <span class="j">Notation to notation.</span></p>
-      <p class="sm f" data-step="2"><strong>Read.</strong> The ribosome walks the same strand and obeys it — three letters to an amino acid. <span class="k">Notation to meaning.</span></p>
-      <p class="sm f" data-step="3"><strong>Close it.</strong> Among the proteins it builds are the polymerase and the ribosome. The text describes its own machinery.</p>
+      <p class="sm f" data-step="2"><strong>Interpret.</strong> The ribosome walks the same strand and <em>executes</em> it, three letters to an amino acid — an interpreter in the sense a <strong>3D printer</strong> is one: description in, object out. <span class="k">Notation to meaning.</span></p>
+      <p class="sm f" data-step="3"><strong>Close it.</strong> Among the objects it prints are the polymerase and the ribosome. The text describes its own machinery.</p>
     </div>
   </div>
-  <aside class="notes"><p>Why two tools and not one is the question to put to the room, and it is the deep content of the slide: obey the description only and the offspring inherits machinery but no description, so it could never reproduce in turn; copy it only and there is a text with nothing to run it. Reproduction needs the same string used both ways — once as instructions, once as inert data. Advance the figure a step at a time and narrate the two heads separately, because the whole point is that they do different things to the same letters. The polymerase is pure syntax: it would copy nonsense just as happily, and that indifference is why it is fast and why proofreading is even possible. The ribosome is the interpreter: three letters in, one amino acid out, the genetic code as the interpretation function. Then the closing step — the proteins coming off the ribosome include the polymerase and the ribosome themselves, so the description describes its own machinery. Von Neumann derived this in 1948 from pure logic, before the double helix, and the reason he needed both a copier and a constructor is worth stating slowly: a machine that only interprets its description builds a childless child. This is the same loop as the compiler that compiles itself and the emulator that executes itself from Part III, and the same loop Gödel builds a sentence out of. If the room takes one thing from Part V, make it this: the syntax-semantics distinction is not a computer-science convention. It is load-bearing structure in something four billion years old and currently running in every cell of every person here.</p></aside>
+  <aside class="notes"><p>Why two tools and not one is the question to put to the room, and it is the deep content of the slide: obey the description only and the offspring inherits machinery but no description, so it could never reproduce in turn; copy it only and there is a text with nothing to run it. Reproduction needs the same string used both ways — once as instructions, once as inert data. Advance the figure a step at a time and narrate the two heads separately, because the whole point is that they do different things to the same letters. The polymerase is pure syntax: it would copy nonsense just as happily, and that indifference is why it is fast and why proofreading is even possible. The ribosome is the interpreter — and press the word "interpreter" in its strong sense, the sense in which a 3D printer is one. It does not read the strand and report on it; it executes the strand and a physical object comes out the other end. Three letters in, one amino acid out, the genetic code as the interpretation function, and a protein as the printed result. Then the closing step — the proteins coming off the ribosome include the polymerase and the ribosome themselves, so the description describes its own machinery. Von Neumann derived this in 1948 from pure logic, before the double helix, and the reason he needed both a copier and a constructor is worth stating slowly: a machine that only interprets its description builds a childless child. This is the same loop as the compiler that compiles itself and the emulator that executes itself from Part III, and the same loop Gödel builds a sentence out of. If the room takes one thing from Part V, make it this: the syntax-semantics distinction is not a computer-science convention. It is load-bearing structure in something four billion years old and currently running in every cell of every person here.</p></aside>
 </section>
 
 <section class="slide" data-act="V" data-mins="0.9">
@@ -1170,15 +1170,12 @@ blockquote cite{display:block;margin-top:calc(var(--u)*1.4);font-family:var(--mo
   <div class="eyebrow">The old gap, industrialised</div>
   <h2>A hallucination is a <span class="j">proof-shaped object</span> that isn't <span class="k">true</span>.</h2>
   <div class="fill row mid">
+    <div class="fig grow" style="flex:1.15"><canvas data-anim="venn"></canvas><span class="cap">three tests · and they are not the same test</span></div>
     <div class="stack grow">
-      <p class="f" data-step="1">Fluency is syntax. Correctness is semantics. We built a machine of extraordinary fluency, so the gap between the two is now something you meet before breakfast.</p>
-      <p class="f" data-step="2">Not a defect to be patched away — it is the proof/truth distinction at consumer scale.</p>
-      <p class="f" data-step="3">So the durable response is not "trust it more" or "trust it less" but <strong>check it against something with a semantics</strong>: a compiler, a test, an experiment, a source, a colleague.</p>
-    </div>
-    <div class="stack grow f" data-step="4">
-      <div class="card"><span class="h">The three-way test</span>
-        <p><strong>Plausible</strong> — reads well.<br><strong>Provable</strong> — has a certificate.<br><strong>True</strong> — holds in the world.</p></div>
-      <div class="card syn f" data-step="5"><span class="h">Grounding again</span>
+      <p class="f" data-step="1">Fluency is syntax. Correctness is semantics. We built a machine of extraordinary fluency, so the gap between the two is something you now meet before breakfast.</p>
+      <p class="f" data-step="2">Not a defect to be patched away: it is the proof/truth distinction at consumer scale.</p>
+      <p class="f" data-step="3">So the durable response is not "trust it more" or "trust it less" but <strong>check it against something with a semantics</strong> — a compiler, a test, an experiment, a source, a colleague.</p>
+      <div class="card syn f" data-step="4"><span class="h">Grounding again</span>
         <p>Harnad, 1990: symbols defined only by other symbols never touch the world. Tools and feedback plug that hole partially, never completely.</p></div>
     </div>
   </div>
@@ -2266,7 +2263,7 @@ ANIM.vonneumann = (ctx,w,h,st,t)=>{
     ctx.lineTo(xb,gy); ctx.lineTo(xb,gy+ch*.2); ctx.stroke();
     txt(ctx,lab,(xa+xb)/2, gy-ch*.5, {size:F*.8, col:C.muted, align:"center", box:[2,w-2]});
   };
-  gene(0,8,"gene: the copier"); gene(9,17,"gene: the reader");
+  gene(0,8,"gene: the copier"); gene(9,17,"gene: the interpreter");
   const head=(frac,col)=>{
     const j=Math.min(N-1, Math.floor(frac*N));
     ctx.fillStyle=col; ctx.globalAlpha=.20;
@@ -2288,14 +2285,14 @@ ANIM.vonneumann = (ctx,w,h,st,t)=>{
     arrow(ctx, w/2-cw, yT+ch*.62, cxL+bw*.24, yM-bh/2-ch*.12, C.line, F*.5);
     box(cxL, yM, bw, bh, C.syn);
     txt(ctx,"DNA polymerase", cxL, yM-bh*.16, {size:F*1.1, col:C.syn, align:"center", box:[cxL-bw*.46, cxL+bw*.46]});
-    txt(ctx,"copies · never reads", cxL, yM+bh*.22, {size:F*.78, col:C.muted, align:"center", box:[cxL-bw*.46, cxL+bw*.46]});
+    txt(ctx,"copies · never interprets", cxL, yM+bh*.22, {size:F*.78, col:C.muted, align:"center", box:[cxL-bw*.46, cxL+bw*.46]});
     const x2=cxL-N*c2w/2;
     for(let j=0;j<N && j<=fill*N;j++){
       ctx.strokeStyle=C.line; ctx.lineWidth=1;
       ctx.beginPath(); ctx.rect(x2+j*c2w, yO-c2h/2, c2w, c2h); ctx.stroke();
       txt(ctx,SEQ[j], x2+j*c2w+c2w/2, yO, {size:F*.66, col:C.syn, align:"center"});
     }
-    txt(ctx,"a second description · unread", cxL, yO+c2h*2.0,
+    txt(ctx,"a second description · uninterpreted", cxL, yO+c2h*2.0,
         {size:F*.8, col:C.muted, align:"center", box:[4, w*.49]});
   }
   /* right: reading — notation to meaning, and the meaning is the machinery */
@@ -2304,7 +2301,7 @@ ANIM.vonneumann = (ctx,w,h,st,t)=>{
     arrow(ctx, w/2+cw, yT+ch*.62, cxR-bw*.24, yM-bh/2-ch*.12, C.line, F*.5);
     box(cxR, yM, bw, bh, C.sem);
     txt(ctx,"ribosome", cxR, yM-bh*.16, {size:F*1.1, col:C.sem, align:"center", box:[cxR-bw*.46, cxR+bw*.46]});
-    txt(ctx,"reads · builds", cxR, yM+bh*.22, {size:F*.78, col:C.muted, align:"center", box:[cxR-bw*.46, cxR+bw*.46]});
+    txt(ctx,"interprets · prints", cxR, yM+bh*.22, {size:F*.78, col:C.muted, align:"center", box:[cxR-bw*.46, cxR+bw*.46]});
     if(st<3){
       const K=6, sp=c2w*1.5, bx=cxR-K*sp/2+sp/2;
       for(let k=0;k<K && k<=fill*K;k++){
@@ -2320,7 +2317,7 @@ ANIM.vonneumann = (ctx,w,h,st,t)=>{
         box(px, yO, pw, ph, C.sem);
         txt(ctx, lab, px, yO, {size:F*.8, col:C.sem, align:"center", box:[px-pw*.45, px+pw*.45]});
       });
-      txt(ctx,"the proteins it just built", cxR, yO+ph*.92,
+      txt(ctx,"the proteins it just printed", cxR, yO+ph*.92,
           {size:F*.8, col:C.muted, align:"center", box:[w*.51, w-4]});
     }
   }
@@ -2356,6 +2353,53 @@ ANIM.energy = (ctx,w,h,st,t)=>{
     ctx.fillRect(X(lo)+(X(v)-X(lo))*a - 2, y, 2.6, bh);
     txt(ctx, lab, X(lo)+3, y-F*.7, {size:F,col:col,box:[2,w-2]});
   });
+};
+
+/* --- venn: plausible, provable, true. The crescent of plausible-but-not-true
+   is what a hallucination is. It is cut with a reversed sub-path so the nonzero
+   fill rule subtracts it — compositing would erase what is already painted. --- */
+ANIM.venn = (ctx,w,h,st,t)=>{
+  const F=Math.min(w*.030, h*.050);
+  const T=[w*.38, h*.46, w*.31, h*.32];        /* true */
+  const P=[w*.26, h*.52, w*.13, h*.155];       /* provable — clear of plausible */
+  const L=[w*.68, h*.46, w*.27, h*.27];        /* plausible */
+  const el=(E,cc)=>ctx.ellipse(E[0],E[1],E[2],E[3],0,0,Math.PI*2,!!cc);
+  const blob=(E,col,fa,sa)=>{
+    ctx.beginPath(); el(E);
+    ctx.fillStyle=col; ctx.globalAlpha=fa; ctx.fill();
+    ctx.strokeStyle=col; ctx.globalAlpha=sa; ctx.lineWidth=1.4; ctx.stroke();
+    ctx.globalAlpha=1;
+  };
+  /* true: everything that holds, whether or not anyone can show it */
+  blob(T, C.sem, .09, 1);
+  txt(ctx,"TRUE", T[0]-T[2]*.24, T[1]-T[3]*.74, {size:F, col:C.sem, align:"center", box:[4,w-4]});
+  txt(ctx,"holds in the world", T[0]-T[2]*.24, T[1]-T[3]*.74+F*1.05,
+      {size:F*.72, col:C.muted, align:"center", box:[T[0]-T[2]*.9, T[0]+T[2]*.7]});
+  /* provable: strictly smaller, and Part III already named the gap */
+  if(st>=1){
+    blob(P, C.syn, .14, 1);
+    txt(ctx,"PROVABLE", P[0], P[1]-F*.35, {size:F*.9, col:C.syn, align:"center", box:[P[0]-P[2], P[0]+P[2]]});
+    txt(ctx,"has a certificate", P[0], P[1]+F*.7,
+        {size:F*.72, col:C.muted, align:"center", box:[P[0]-P[2]*1.15, P[0]+P[2]*1.15]});
+    txt(ctx,"true · no proof", T[0]-T[2]*.28, T[1]+T[3]*.80,
+        {size:F*.75, col:C.sem, align:"center", box:[4, T[0]+T[2]]});
+  }
+  /* plausible: overlaps, and sticks out */
+  if(st>=2){
+    blob(L, C.syn, .07, .8);
+    txt(ctx,"PLAUSIBLE", L[0]+L[2]*.22, L[1]-L[3]*.72,
+        {size:F*.9, col:C.syn, align:"center", box:[T[0]+T[2]*.55, w-4]});
+    txt(ctx,"reads well", L[0]+L[2]*.22, L[1]-L[3]*.72+F*1.0,
+        {size:F*.72, col:C.muted, align:"center", box:[T[0]+T[2]*.55, w-4]});
+  }
+  /* the crescent: plausible, and not true */
+  if(st>=3){
+    ctx.beginPath(); el(L); el(T,true);
+    ctx.fillStyle=C.bad; ctx.globalAlpha=.14+.14*(.55+.45*Math.sin(t*2.4));
+    ctx.fill(); ctx.globalAlpha=1;
+    txt(ctx,"hallucination", L[0]+L[2]*.52, L[1]+L[3]*.38,
+        {size:F*.9, col:C.bad, align:"center", box:[T[0]+T[2]*.88, w-4]});
+  }
 };
 
 /* --- tokens: what an LLM mechanically is. Context in, a distribution over the

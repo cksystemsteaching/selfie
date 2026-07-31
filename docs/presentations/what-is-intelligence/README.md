@@ -75,20 +75,25 @@ trust it: the fractions are dense too, and they can be listed. Only the diagonal
 
 Part VI shows rather than states. Slide 50 runs an LLM as a mechanism — context chips, a reserved
 slot for the next token, the weights, a bar chart of candidates, one sample taken, and a feedback
-path carrying the answer back round as the next question. Slide 52 draws the two routes to the same
-world: the long way through a transcript of it, the short way straight at it — which is the
-efficiency argument as a picture — and then a dashed border around the whole figure, because every
-box in it is inside the thing being modelled. Both slides used to carry that content as prose.
+path carrying the answer back round as the next question. Slide 51 draws plausible, provable and
+true as three regions: provable strictly inside true (the Gödel gap, labelled), plausible
+overlapping true and sticking out of it, and that crescent — plausible and not true — is what a
+hallucination is. Slide 52 draws the two routes to the same world: the long way through a transcript
+of it, the short way straight at it, which is the efficiency argument as a picture — and then a
+dashed border around the whole figure, because every box in it is inside the thing being modelled.
+All three used to carry that content as prose.
 
 Part V ends its biology stretch on the machine that builds itself (slide 46). The figure runs von
 Neumann's architecture as a cell runs it: one strand, a **DNA polymerase** head that duplicates it
-letter by letter without ever reading it, and a **ribosome** head that obeys the same letters three
-at a time and builds proteins — among them the polymerase and the ribosome. Both heads keep cycling
-so the process is visibly running rather than sitting finished. The point to make out loud is why
-the architecture needs *two* tools: interpret the description only and the offspring inherits
-machinery but no description, so it could never reproduce in turn; copy it only and there is a text
-with nothing to run it. Reproduction needs one string used both ways — as instructions and as inert
-data — which is this lecture's distinction, four billion years old.
+letter by letter without ever interpreting it, and a **ribosome** head that *executes* the same
+letters three at a time. Interpreter is meant in its strong sense here, the sense in which a 3D
+printer is one — description in, object out, not a reading of the description — and among the
+objects it prints are the polymerase and the ribosome. Both heads keep cycling so the process is
+visibly running rather than sitting finished. The point to make out loud is why the architecture
+needs *two* tools: interpret the description only and the offspring inherits machinery but no
+description, so it could never reproduce in turn; copy it only and there is a text with nothing to
+run it. Reproduction needs one string used both ways — as instructions and as inert data — which is
+this lecture's distinction, four billion years old.
 
 **Running long?** These four are self-contained and can be dropped without breaking the argument,
 buying 3:06: slide 16 (Borges), 18 (pairing ℕ ↔ evens), 25 (Cantor's theorem in general form),
@@ -166,7 +171,7 @@ meaning, monospace for notation.
 
 Both themes are designed; the viewer's system preference or the <kbd>d</kbd> key selects one.
 Everything is sized from a single unit (`--u` = deck width ⁄ 100) so the 16:9 stage scales to any
-projector, and all twenty figures are drawn on canvas at whatever size they are given. Animation is
+projector, and all twenty-one figures are drawn on canvas at whatever size they are given. Animation is
 suppressed under `prefers-reduced-motion`, where every build step shows at once.
 
 Two guards keep text off text on machines whose font stacks resolve differently from the author's.
