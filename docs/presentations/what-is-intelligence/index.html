@@ -611,7 +611,7 @@ blockquote cite{display:block;margin-top:calc(var(--u)*1.4);font-family:var(--mo
   <div class="eyebrow">Part II</div>
   <h1 style="font-size:calc(var(--u)*7.4)">Infinity</h1>
   <p class="lead f" data-step="1">Vast is still finite. Now we count things that aren't — and discover that some infinities are <span class="k">bigger</span> than others.</p>
-  <aside class="notes"><p>Warn the room: the next four slides are the only genuinely mathematical stretch of the talk, and they are the load-bearing ones. Everything after — Gödel, Turing, hallucination, alignment — is this one argument wearing different clothes.</p></aside>
+  <aside class="notes"><p>Warn the room: this Part is the only genuinely mathematical stretch of the talk, and it is the load-bearing one. Two of its slides are a worked proof, run twice on two different kinds of object, and they are worth the minutes. Everything after — Gödel, Turing, hallucination, alignment — is this one argument wearing different clothes.</p></aside>
 </section>
 
 <section class="slide" data-act="II" data-mins="0.65">
@@ -660,7 +660,68 @@ blockquote cite{display:block;margin-top:calc(var(--u)*1.4);font-family:var(--mo
     </div>
     <div class="fig grow" style="flex:1.25"><canvas data-anim="diagonal"></canvas><span class="cap">the diagonal</span></div>
   </div>
-  <aside class="notes"><p>Walk the diagonal animation step by step: here is any proposed list; take the diagonal; flip every bit; the result differs from row 1 in position 1, from row 2 in position 2, from row n in position n — so it is on no row. The list was arbitrary, so every list fails.</p></aside>
+  <aside class="notes"><p>State the claim and let the figure give the shape of the argument, but do not prove it here — the next four slides run it twice, slowly, on two different kinds of object. What matters now is that the room understands what is being claimed: not "the list would be very long", but "there is no list".</p></aside>
+</section>
+
+<section class="slide dense" data-act="II" data-mins="0.9">
+  <div class="eyebrow sem">The objects</div>
+  <h2>A subset of the numbers is <span class="k">one yes-or-no answer per number</span>.</h2>
+  <div class="fill row mid">
+    <div class="stack grow">
+      <p class="f" data-step="1">Take any collection of counting numbers — the evens, the primes, just <span class="mono">{3}</span>, none of them, all of them. Each one is a <strong>subset</strong>.</p>
+      <p class="f" data-step="2">To pin one down, walk <span class="mono">1, 2, 3, …</span> and answer <em>in</em> or <em>out</em>, forever. That answer sheet is an infinite bit string, and every infinite bit string is one.</p>
+      <p class="f" data-step="3">All of them together make the <strong>power set</strong>, written 2<sup>ℕ</sup> — two choices, made ℕ times.</p>
+      <p class="sm f" data-step="4">A handful have names. Almost all are an endless coin-flip, with nothing shorter to say about them than the flips.</p>
+    </div>
+    <div class="fig grow" style="flex:1.1"><canvas data-anim="powerset"></canvas><span class="cap">subsets as answer sheets · 1 = in</span></div>
+  </div>
+  <aside class="notes"><p>The bridge slide, and the one to go slowly on: everything after this depends on the room seeing that a subset and an infinite bit string are the same object seen twice. Read the rows out — the empty set says no to everything, its opposite says yes to everything, the evens alternate, the primes have no pattern anyone can predict but do have a rule, {3} says yes exactly once. Then the last row, which has no rule and no name, and which is what nearly every subset looks like: to specify it you must transmit the answers themselves, forever. That is the first appearance of incompressibility, and it is worth naming as such if the room is technical.</p></aside>
+</section>
+
+<section class="slide dense" data-act="II" data-mins="1.05">
+  <div class="eyebrow">The proof · 1 of 2 · subsets</div>
+  <h2>Hand me a list of every subset. I will build one that is <span class="x">not on it</span>.</h2>
+  <div class="fill row mid">
+    <div class="fig grow" style="flex:1.2"><canvas data-anim="diagset"></canvas><span class="cap">● in · ○ out</span></div>
+    <div class="stack grow">
+      <p class="f" data-step="1">Suppose the subsets could be listed: <span class="mono">S1, S2, S3, …</span>, every single one of them somewhere on the list.</p>
+      <p class="f" data-step="2">Go down the <span class="j">diagonal</span> and ask each row about <em>its own number</em>. Is 1 in <span class="mono">S1</span>? Is 2 in <span class="mono">S2</span>? Is <span class="mono">n</span> in <span class="mono">Sn</span>?</p>
+      <p class="f" data-step="3">Now build <span class="mono">D</span> by answering the opposite every time: <span class="mono">D = { n : n is not in Sn }</span>. Nothing exotic — a rule anyone can apply, one number at a time.</p>
+      <p class="f" data-step="4"><span class="mono">D</span> is not <span class="mono">S1</span>: they disagree about 1. Not <span class="mono">S2</span>: they disagree about 2. Not <span class="mono">Sn</span> for any <span class="mono">n</span> whatsoever. So the list left something out — and it was <strong>any list at all</strong>.</p>
+    </div>
+  </div>
+  <aside class="notes"><p>Take a full minute. Build the grid, ring the diagonal, then construct D one column at a time out loud: "1 is in S1, so 1 stays out of D; 2 is out of S2, so 2 goes into D." Then the kill: ask the room where D is on the list. Somebody will say "further down" — that is the moment to point at row n and ask what D and Sn say about the number n. They disagree by construction, at exactly one place, and that is enough. Stress that no assumption was made about the list: it was arbitrary, so every list fails, so no list exists. Students who have seen a proof by contradiction before will recognise the shape; students who have not have just seen their first, and it is one of the good ones.</p></aside>
+</section>
+
+<section class="slide dense" data-act="II" data-mins="1.0">
+  <div class="eyebrow">The proof · 2 of 2 · numbers</div>
+  <h2>The same move, on the numbers between <span class="mono">0</span> and <span class="mono">1</span>.</h2>
+  <div class="fill row mid">
+    <div class="stack grow">
+      <p class="f" data-step="1">Suppose you could list them: <span class="mono">r1, r2, r3, …</span>, each written out as an endless decimal.</p>
+      <p class="f" data-step="2">Take the first digit of the first, the second digit of the second, the <span class="mono">n</span>-th of the <span class="mono">n</span>-th. The <span class="j">diagonal</span> again.</p>
+      <p class="f" data-step="3">Build a new number <span class="mono">x</span> by changing every one of those digits. Then <span class="mono">x</span> differs from <span class="mono">r1</span> in the first place, from <span class="mono">r2</span> in the second, from <span class="mono">rn</span> in the <span class="mono">n</span>-th — so <span class="mono">x</span> is on no row, and the list was not a list of all of them.</p>
+      <div class="card syn f" data-step="4"><span class="h">The one place it needs care</span>
+        <p>Change each digit to 5, or to 4 if it was already 5. That keeps you clear of the trailing nines: <span class="mono">0.4999…</span> and <span class="mono">0.5000…</span> are the same number written twice, and a proof that only landed on <em>that</em> would have proved nothing.</p></div>
+    </div>
+    <div class="fig grow" style="flex:1.2"><canvas data-anim="diagreal"></canvas><span class="cap">any list · and the number it missed</span></div>
+  </div>
+  <aside class="notes"><p>Run it exactly as before so the room hears the repetition — that is the teaching point, one argument in two costumes. The rows on screen are an arbitrary list, not famous constants; say so, because someone will try to recognise them. The care about trailing nines is worth the twenty seconds: it is the only crack in the proof, every serious textbook patches it, and showing the patch is what separates a proof from a slogan. If a mathematician in the room objects that this also needs the reals to have decimal expansions at all, agree — that is a construction of the reals, and it is upstream of us.</p></aside>
+</section>
+
+<section class="slide dense" data-act="II" data-mins="0.8">
+  <div class="eyebrow sem">Intuition</div>
+  <h2>Between any two numbers, however close, there is <span class="k">another</span>.</h2>
+  <div class="fill row mid">
+    <div class="fig grow"><canvas data-anim="dense"></canvas><span class="cap">halve, and halve again</span></div>
+    <div class="stack grow" style="flex:1.15">
+      <p class="f" data-step="1">Pick two reals as close together as you like. Their midpoint lies strictly between them. Now take those two — and do it again, forever.</p>
+      <p class="f" data-step="2">There is no <em>next</em> real number: nothing to step from and nothing to step to. A list is nothing but firsts and nexts, which is the wrong shape for a line with no grain.</p>
+      <div class="card f" data-step="3"><span class="h">But do not let it do the work</span>
+        <p>Density is the feeling, not the reason. The <em>fractions</em> are dense in the same way — between any two there is another — and they can still be listed, by walking a grid of numerators and denominators corner by corner. Only the diagonal tells the two cases apart.</p></div>
+    </div>
+  </div>
+  <aside class="notes"><p>This is the slide that stops the room from believing the wrong thing for the right reason. The density picture is genuinely useful — it is why the line feels full and why "next" is meaningless on it — and almost everyone who meets uncountability first meets it as this feeling. But the feeling is not the proof, and the counterexample is one they already know: the rationals are dense and countable, so density cannot be what makes the reals uncountable. If you want the room to keep one methodological habit from Part II, it is this one: when an intuition and a proof agree, check which of them you are actually relying on.</p></aside>
 </section>
 
 <section class="slide" data-act="II" data-mins="0.85">
@@ -674,8 +735,8 @@ blockquote cite{display:block;margin-top:calc(var(--u)*1.4);font-family:var(--mo
     <div class="two f" data-step="2">
       <div class="card syn"><span class="h">Where self-reference enters</span>
         <p>The proof builds an object <em>from</em> the list that asks of each row: "do you contain yourself here?" — and then answers the opposite. The list is used against itself.</p></div>
-      <div class="card"><span class="h">Why 2<sup>S</sup></span>
-        <p>A subset of S is exactly one bit per element: in, or out. So subsets of the counting numbers <em>are</em> infinite bit sequences. Power set, real numbers, bit sequences — three costumes, one cardinality.</p></div>
+      <div class="card"><span class="h">You have just seen it twice</span>
+        <p>Once on subsets, once on decimals — and it was the same proof both times, because a subset <em>is</em> an infinite bit string and so is a decimal expansion. Power set, real numbers, bit sequences: three costumes, one cardinality. The theorem says it for every S at once.</p></div>
     </div>
     <p class="sm f" data-step="3">Russell would turn the same trick on set theory itself in 1901: <em>the set of all sets that do not contain themselves</em>. Same diagonal, aimed at the foundations.</p>
   </div>
@@ -1898,6 +1959,155 @@ ANIM.diagonal = (ctx,w,h,st,t)=>{
       txt(ctx,"differs from every row — so it is on no row",
           x0+gw/2, Math.min(yD+cell*1.9, capfree(h)), {size:F*.82, col:C.sem, align:"center", box:[4,w-4]});
   }
+};
+
+/* --- powerset: subsets of the counting numbers, written as answer sheets.
+   Labels are words, not set glyphs: a mono stack that lacks U+2205 would
+   otherwise print a box in the middle of the figure. --- */
+ANIM.powerset = (ctx,w,h,st,t)=>{
+  const N=8, named=[
+    ["{ }",    ()=>0],
+    ["all",    ()=>1],
+    ["evens",  n=>n%2===0?1:0],
+    ["primes", n=>[2,3,5,7].indexOf(n)>=0?1:0],
+    ["{3}",    n=>n===3?1:0]
+  ];
+  const cell=Math.min(w*.052, h*.10), F=cell*.52, x0=w*.34, gw=N*cell;
+  /* centre the block — header row, six rows, the closing note — in the space
+     above the caption, so a wide figure does not sit high with a gap under it */
+  const y0=Math.max(h*.13, (capfree(h)-7.3*cell)/2 + cell*.62);
+  for(let j=0;j<N;j++)
+    txt(ctx,String(j+1), x0+j*cell+cell/2, y0-cell*.62, {size:F*.8, col:C.muted, align:"center"});
+  txt(ctx,"…", x0+gw+cell*.42, y0-cell*.62, {size:F*.8, col:C.muted, align:"center"});
+  const row=(i,lab,fn,col)=>{
+    const y=y0+i*cell;
+    txt(ctx,lab, x0-cell*.45, y+cell/2, {size:F*.85, col, align:"right", box:[2, x0-cell*.4]});
+    for(let j=0;j<N;j++){
+      const v=fn(j+1);
+      ctx.strokeStyle=C.line; ctx.lineWidth=1;
+      ctx.beginPath(); ctx.rect(x0+j*cell,y,cell,cell); ctx.stroke();
+      txt(ctx, String(v), x0+j*cell+cell/2, y+cell/2, {size:F, col: v?col:C.muted, align:"center"});
+    }
+    txt(ctx,"…", x0+gw+cell*.42, y+cell/2, {size:F*.8, col:C.muted, align:"center"});
+  };
+  if(st>=1) named.forEach((r,i)=>{ if(t*2.4>i) row(i, r[0], r[1], C.sem); });
+  if(st>=4){
+    const r=rnd(313), bits=[]; for(let j=0;j<N;j++) bits.push(r()>.5?1:0);
+    row(5, "no name", n=>bits[n-1], C.syn);
+    txt(ctx,"and almost every subset is this one", x0+gw/2,
+        Math.min(y0+6.7*cell, capfree(h)), {size:F*.8, col:C.syn, align:"center", box:[4,w-4]});
+  }
+};
+
+/* --- diagset: the diagonal argument on subsets. Membership is a filled or
+   hollow dot rather than a glyph, so nothing depends on the font. --- */
+ANIM.diagset = (ctx,w,h,st,t)=>{
+  const N=6, cell=Math.min(w*.075, h*.082), F=cell*.5;
+  const x0=w*.30, gw=N*cell;
+  const y0=Math.max(h*.11, (capfree(h)-9.0*cell)/2 + cell*.6);
+  const r=rnd(1337), M=[];
+  for(let i=0;i<N;i++){ M.push([]); for(let j=0;j<N;j++) M[i].push(r()>.5?1:0); }
+  const dot=(cx,cy,on,col,a=1)=>{
+    ctx.globalAlpha=a; ctx.beginPath(); ctx.arc(cx,cy,cell*.17,0,7);
+    if(on){ ctx.fillStyle=col; ctx.fill(); } else { ctx.strokeStyle=col; ctx.lineWidth=1; ctx.stroke(); }
+    ctx.globalAlpha=1;
+  };
+  for(let j=0;j<N;j++)
+    txt(ctx,String(j+1), x0+j*cell+cell/2, y0-cell*.6, {size:F*.8, col:C.muted, align:"center"});
+  for(let i=0;i<N;i++){
+    txt(ctx,"S"+(i+1), x0-cell*.4, y0+i*cell+cell/2, {size:F*.85, col:C.ink2, align:"right", box:[2,x0-cell*.35]});
+    for(let j=0;j<N;j++){
+      const lit = st>=1 && i===j && t*3>j;
+      ctx.strokeStyle=C.line; ctx.lineWidth=1;
+      ctx.beginPath(); ctx.rect(x0+j*cell, y0+i*cell, cell, cell); ctx.stroke();
+      if(lit){ ctx.fillStyle=C.syn; ctx.globalAlpha=.16; ctx.fill(); ctx.globalAlpha=1; }
+      dot(x0+j*cell+cell/2, y0+i*cell+cell/2, M[i][j], lit?C.syn:C.ink2);
+    }
+  }
+  if(st>=3){
+    const yD=y0+N*cell+cell*.5;
+    txt(ctx,"D", x0-cell*.4, yD+cell/2, {size:F*.85, col:C.sem, align:"right", box:[2,x0-cell*.35]});
+    for(let j=0;j<N;j++){
+      const a=Math.max(0,Math.min(1,t*3-j*.2));
+      ctx.globalAlpha=a; ctx.strokeStyle=C.sem; ctx.lineWidth=1;
+      ctx.beginPath(); ctx.rect(x0+j*cell,yD,cell,cell); ctx.stroke();
+      ctx.fillStyle=C.sem; ctx.globalAlpha=a*.14; ctx.fill(); ctx.globalAlpha=1;
+      dot(x0+j*cell+cell/2, yD+cell/2, 1-M[j][j], C.sem, a);
+    }
+    if(st>=4)
+      txt(ctx,"D disagrees with row n about n", x0+gw/2,
+          Math.min(yD+cell*1.8, capfree(h)), {size:F*.8, col:C.sem, align:"center", box:[4,w-4]});
+  }
+};
+
+/* --- diagreal: the same argument on decimal expansions --- */
+ANIM.diagreal = (ctx,w,h,st,t)=>{
+  const rows=[[1,4,1,5,9,2],[7,1,8,2,8,1],[2,5,5,5,5,5],
+              [3,3,3,3,3,3],[0,0,0,0,5,0],[4,1,4,2,1,3]];
+  const N=6, cell=Math.min(w*.070, h*.082), F=cell*.56, x0=w*.36;
+  const y0=Math.max(h*.11, (capfree(h)-8.9*cell)/2);
+  for(let i=0;i<N;i++){
+    txt(ctx,"r"+(i+1)+" = 0.", x0-cell*.3, y0+i*cell+cell/2,
+        {size:F*.78, col:C.ink2, align:"right", box:[2, x0-cell*.25]});
+    for(let j=0;j<N;j++){
+      const lit = st>=1 && i===j && t*3>j;
+      if(lit){ ctx.fillStyle=C.syn; ctx.globalAlpha=.16;
+               ctx.fillRect(x0+j*cell, y0+i*cell, cell, cell); ctx.globalAlpha=1; }
+      txt(ctx, String(rows[i][j]), x0+j*cell+cell/2, y0+i*cell+cell/2,
+          {size:F, col: lit?C.syn:C.ink2, align:"center"});
+    }
+    txt(ctx,"…", x0+N*cell+cell*.4, y0+i*cell+cell/2, {size:F*.8, col:C.muted, align:"center"});
+  }
+  if(st>=3){
+    const yD=y0+N*cell+cell*.55;
+    txt(ctx,"x = 0.", x0-cell*.3, yD+cell/2, {size:F*.78, col:C.sem, align:"right", box:[2, x0-cell*.25]});
+    for(let j=0;j<N;j++){
+      const a=Math.max(0,Math.min(1,t*3-j*.2)), d=rows[j][j]===5?4:5;   /* 5, or 4 if it was 5 */
+      ctx.fillStyle=C.sem; ctx.globalAlpha=a*.14;
+      ctx.fillRect(x0+j*cell,yD,cell,cell); ctx.globalAlpha=a;
+      txt(ctx, String(d), x0+j*cell+cell/2, yD+cell/2, {size:F, col:C.sem, align:"center"});
+      ctx.globalAlpha=1;
+    }
+    txt(ctx,"…", x0+N*cell+cell*.4, yD+cell/2, {size:F*.8, col:C.muted, align:"center"});
+    if(st>=4)
+      txt(ctx,"x differs from row n in place n", x0+N*cell/2,
+          Math.min(yD+cell*1.85, capfree(h)), {size:F*.8, col:C.sem, align:"center", box:[4,w-4]});
+  }
+};
+
+/* --- dense: between any two, another. Each level redraws the left half of the
+   one above at full width, so the picture never changes — which is the point. --- */
+ANIM.dense = (ctx,w,h,st,t)=>{
+  const L=3, x1=w*.10, x2=w*.90, F=h*.042, mid=(x1+x2)/2;
+  for(let i=0;i<L;i++){
+    if(i>st) break;
+    const y=h*(.22+i*.20), a=Math.max(0,Math.min(1,t*2-i*.3));
+    ctx.globalAlpha=a;
+    ctx.strokeStyle=C.line; ctx.lineWidth=1;
+    ctx.beginPath(); ctx.moveTo(x1,y); ctx.lineTo(x2,y); ctx.stroke();
+    ctx.fillStyle=C.ink2;
+    ctx.beginPath(); ctx.arc(x1,y,h*.011,0,7); ctx.fill();
+    ctx.beginPath(); ctx.arc(x2,y,h*.011,0,7); ctx.fill();
+    ctx.fillStyle=C.sem;
+    ctx.beginPath(); ctx.arc(mid,y,h*.015,0,7); ctx.fill();
+    if(i===0){
+      txt(ctx,"a", x1, y+h*.055, {size:F*.85, col:C.muted, align:"center", box:[4,w-4]});
+      txt(ctx,"b", x2, y+h*.055, {size:F*.85, col:C.muted, align:"center", box:[4,w-4]});
+      txt(ctx,"their midpoint", mid, y-h*.05, {size:F*.85, col:C.sem, align:"center", box:[4,w-4]});
+    }
+    if(i<L-1 && i<st){    /* the zoom: this level's left half becomes the next */
+      const ny=h*(.22+(i+1)*.20);
+      ctx.globalAlpha=a*.55; ctx.strokeStyle=C.muted; ctx.setLineDash([2,3]);
+      ctx.beginPath();
+      ctx.moveTo(x1, y+h*.022); ctx.lineTo(x1, ny-h*.022);
+      ctx.moveTo(mid, y+h*.022); ctx.lineTo(x2, ny-h*.022);
+      ctx.stroke(); ctx.setLineDash([]);
+    }
+    ctx.globalAlpha=1;
+  }
+  if(st>=L-1)
+    txt(ctx,"and again, forever", mid, Math.min(h*(.22+L*.20), capfree(h)),
+        {size:F*.85, col:C.muted, align:"center", box:[4,w-4]});
 };
 
 /* --- gap: countable vs uncountable --- */

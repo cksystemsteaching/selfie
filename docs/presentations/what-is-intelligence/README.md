@@ -46,16 +46,25 @@ two-column treatment: **what it forbids** / **what it opens**.
 |---|---|---|---|
 | 0 | Prologue — disclosure, acknowledgement, the question, the short answer up front | 1–5 | 3:51 |
 | I | Vastness — orders of magnitude, units, bits, state spaces, why bugs are geometry | 6–16 | 8:51 |
-| II | Infinity — countability, diagonalization, meaning outnumbers notation | 17–23 | 5:21 |
-| III | Self-Reference — syntax/semantics, Gödelisierung, incompleteness, halting, Rice | 24–33 | 8:42 |
-| IV | Cost — decidable ≠ doable, NP-completeness, Landauer's energy floor | 34–39 | 4:36 |
-| V | Everywhere — biology, mind, and the notations that made every field | 40–43 | 3:03 |
-| VI | Machines — what today's AI is, where world models take it, what neither escapes | 44–49 | 3:57 |
-| VII | Practice — six habits, the definition, depth, humour, Goethe | 50–61 | 10:15 |
+| II | Infinity — countability, the diagonal twice over, meaning outnumbers notation | 17–27 | 9:06 |
+| III | Self-Reference — syntax/semantics, Gödelisierung, incompleteness, halting, Rice | 28–37 | 8:42 |
+| IV | Cost — decidable ≠ doable, NP-completeness, Landauer's energy floor | 38–43 | 4:36 |
+| V | Everywhere — biology, mind, and the notations that made every field | 44–47 | 3:03 |
+| VI | Machines — what today's AI is, where world models take it, what neither escapes | 48–53 | 3:57 |
+| VII | Practice — six habits, the definition, depth, humour, Goethe | 54–65 | 10:15 |
 
-61 slides; the per-slide budget in `data-mins` adds up to **48:36**, and that is what the clock counts
+65 slides; the per-slide budget in `data-mins` adds up to **52:21**, and that is what the clock counts
 down — it is read off the deck at load, not written into it. Press <kbd>t</kbd> to start the clock;
 it turns amber if you are a minute behind the plan and rose if you are three behind.
+
+Part II states the claim once (slide 20) and then earns it slowly. Slide 21 makes the objects
+concrete — a subset of ℕ *is* an infinite answer sheet, and the figure shows the empty set, its
+opposite, the evens, the primes, `{3}` and one with no name at all. Slides 22 and 23 then run
+Cantor's argument twice, in full, on two different kinds of object: once on subsets, building
+`D = { n : n is not in Sn }` column by column, and once on decimal expansions, including the
+trailing-nines patch that most popular accounts leave out. Slide 24 hands over the density picture —
+between any two reals there is another, so there is no *next* one — together with the reason not to
+trust it: the fractions are dense too, and they can be listed. Only the diagonal separates the cases.
 
 Part I opens with four slides on **size** before any computing happens: a map of the whole axis the
 talk lives on (small → vast → countable → uncountable), a million/billion/trillion seconds as anchors,
@@ -65,8 +74,8 @@ who has not first practised turning an exponent into a picture. The last of them
 thesis in miniature: "GB" is one notation with two meanings, and the notation does not say which.
 
 **Running long?** These four are self-contained and can be dropped without breaking the argument,
-buying 3:06: slide 16 (Borges), 18 (pairing ℕ ↔ evens), 21 (Cantor's theorem in general form),
-53 (bridges and aviation). Do not cut 20, 22, 28, 30, 54–56 — they carry the thesis.
+buying 3:06: slide 16 (Borges), 18 (pairing ℕ ↔ evens), 25 (Cantor's theorem in general form),
+57 (bridges and aviation). Do not cut 20, 22, 23, 26, 32, 34, 58–60 — they carry the thesis.
 
 ## Keys
 
@@ -140,7 +149,7 @@ meaning, monospace for notation.
 
 Both themes are designed; the viewer's system preference or the <kbd>d</kbd> key selects one.
 Everything is sized from a single unit (`--u` = deck width ⁄ 100) so the 16:9 stage scales to any
-projector, and all thirteen figures are drawn on canvas at whatever size they are given. Animation is
+projector, and all seventeen figures are drawn on canvas at whatever size they are given. Animation is
 suppressed under `prefers-reduced-motion`, where every build step shows at once.
 
 Two guards keep text off text on machines whose font stacks resolve differently from the author's.
