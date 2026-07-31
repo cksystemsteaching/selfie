@@ -73,6 +73,13 @@ trailing-nines patch that most popular accounts leave out. Slide 24 hands over t
 between any two reals there is another, so there is no *next* one — together with the reason not to
 trust it: the fractions are dense too, and they can be listed. Only the diagonal separates the cases.
 
+Part VI shows rather than states. Slide 50 runs an LLM as a mechanism — context chips, a reserved
+slot for the next token, the weights, a bar chart of candidates, one sample taken, and a feedback
+path carrying the answer back round as the next question. Slide 52 draws the two routes to the same
+world: the long way through a transcript of it, the short way straight at it — which is the
+efficiency argument as a picture — and then a dashed border around the whole figure, because every
+box in it is inside the thing being modelled. Both slides used to carry that content as prose.
+
 Part V ends its biology stretch on the machine that builds itself (slide 46). The figure runs von
 Neumann's architecture as a cell runs it: one strand, a **DNA polymerase** head that duplicates it
 letter by letter without ever reading it, and a **ribosome** head that obeys the same letters three
@@ -159,7 +166,7 @@ meaning, monospace for notation.
 
 Both themes are designed; the viewer's system preference or the <kbd>d</kbd> key selects one.
 Everything is sized from a single unit (`--u` = deck width ⁄ 100) so the 16:9 stage scales to any
-projector, and all eighteen figures are drawn on canvas at whatever size they are given. Animation is
+projector, and all twenty figures are drawn on canvas at whatever size they are given. Animation is
 suppressed under `prefers-reduced-motion`, where every build step shows at once.
 
 Two guards keep text off text on machines whose font stacks resolve differently from the author's.
