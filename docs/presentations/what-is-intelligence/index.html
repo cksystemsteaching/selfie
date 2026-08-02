@@ -377,9 +377,10 @@ blockquote cite{display:block;margin-top:calc(var(--u)*1.4);font-family:var(--mo
     <div class="two">
       <div class="stack">
         <p class="f" data-step="1">It asks about a hidden property of a system, in a language — English — with no precise semantics for the word <em>intelligent</em>.</p>
-        <p class="f" data-step="2">We will spend the next hour earning the right to ask a <span class="k">better</span> question, one that stays valid no matter what technology arrives next.</p>
+        <p class="f" data-step="2">Psychology met this first and answered it best: you cannot measure a construct, only an <strong>operational definition</strong> of it — and the definition is never the thing. A century of psychometrics is a century of taking that gap seriously.</p>
+        <p class="f" data-step="3">We will spend the next hour earning the right to ask a <span class="k">better</span> question, one that stays valid no matter what technology arrives next.</p>
       </div>
-      <div class="stack f" data-step="3">
+      <div class="stack f" data-step="4">
         <blockquote>The question of whether machines can think is about as relevant as the question of whether submarines can swim.
           <cite>Edsger W. Dijkstra, 1984</cite></blockquote>
       </div>
@@ -936,7 +937,23 @@ blockquote cite{display:block;margin-top:calc(var(--u)*1.4);font-family:var(--mo
     </div>
     <p class="sm f" data-step="3">So every practical tool — a type checker, a test suite, a linter, a model checker, a fuzzer, a proof assistant — is a deliberate <strong>approximation</strong>: sound but incomplete, or complete but unsound, or exact only within a bound. Choosing which to give up is the discipline.</p>
   </div>
-  <aside class="notes"><p>Rice generalises Turing and is the single most useful theorem for reasoning about AI evaluation. "Is this system safe" is a semantic property of a program. There is no general decision procedure — not for a lack of cleverness, but as a matter of mathematics. Hence: bounds, approximations, institutions.</p></aside>
+  <aside class="notes"><p>Rice generalises Turing and is the single most useful theorem for reasoning about AI evaluation. "Is this system safe" is a semantic property of a program. There is no general decision procedure — not for a lack of cleverness, but as a matter of mathematics. Hence: bounds, approximations, institutions. And the next slide shows that one profession has been living with exactly this for two thousand years.</p></aside>
+</section>
+
+<section class="slide dense" data-act="III" data-mins="1.0">
+  <div class="eyebrow">Interlude · law</div>
+  <h2>No text contains its own <span class="k">application</span>.</h2>
+  <div class="fill row mid">
+    <div class="fig grow" style="flex:1.15"><canvas data-anim="penumbra"></canvas><span class="cap">Hart's core, and Hart's penumbra</span></div>
+    <div class="stack grow">
+      <p class="f" data-step="1">A statute says <span class="mono">no vehicles in the park</span>. A car, plainly. And then the arguing starts.</p>
+      <p class="f" data-step="2">Hart called the easy cases the <strong>core</strong>, the arguable ones the <span class="j">penumbra</span>. No redrafting removes it — only moves it. The words are finite; the situations are not.</p>
+      <p class="f" data-step="3">So law stops trying to settle meaning in the text and builds an <strong>institution</strong> instead: courts, appeals, precedent. Not a workaround — the only available design.</p>
+      <div class="card syn f" data-step="4"><span class="h">Gödel's other theorem</span>
+        <p>At his 1947 citizenship hearing, Einstein beside him, Gödel announced a self-referential flaw by which the Constitution could be legally turned into a dictatorship. The judge steered him off it, and nobody recorded which flaw he meant.</p></div>
+    </div>
+  </div>
+  <aside class="notes"><p>This slide is here for the lawyers, and for everybody else it is Rice's theorem with no mathematics in it. Do the vehicles bit as a show of hands — car, yes; ambulance, hesitation; bicycle, an argument; the war memorial jeep, laughter, and that is Lon Fuller's 1958 reply to Hart. The point to land: the penumbra is not sloppy drafting, and a smarter legislature does not remove it. Finite text, unbounded situations, so interpretation is structural — which is exactly the previous slide with wigs on. Then the constructive half, which matters more than the joke: law is the oldest working example of the response this whole talk recommends. It cannot decide meaning in the text, so it does not pretend to; it builds courts, appeals and precedent, an institution whose job is to approximate a semantics that no document can contain. Every field arrives here eventually. Computer science calls it code review, type checking and testing; medicine calls it trials and boards; science calls it peer review. On Gödel: the anecdote is well attested through Morgenstern's memoir, but the defect he had in mind was never recorded, so do not invent one — hand it to the room as an open question and enjoy that the man who found incompleteness in arithmetic went looking for it in a constitution.</p></aside>
 </section>
 
 <section class="slide" data-act="III" data-mins="0.95">
@@ -1069,7 +1086,7 @@ blockquote cite{display:block;margin-top:calc(var(--u)*1.4);font-family:var(--mo
       <div class="stack">
         <blockquote class="f" data-step="4" style="font-size:calc(var(--u)*2.2)">When a measure becomes a target, it ceases to be a good measure.
           <cite>Goodhart's law · 1975</cite></blockquote>
-        <p class="sm f" data-step="5">Teaching to the test. Optimising engagement. Publishing to the h-index. Training to the benchmark. <strong>Same failure, four fields.</strong> A metric is a semantics for "better" — and always an approximate one.</p>
+        <p class="sm f" data-step="5">Teaching to the test. Optimising engagement. Publishing to the h-index. Training to the benchmark. In 1989 the CAST trial found drugs that suppressed the arrhythmia and <span class="x">raised the death rate</span>. <strong>Same failure, five fields.</strong> A metric is a semantics for "better" — always approximate, and sometimes fatally so.</p>
       </div>
     </div>
   </div>
@@ -1120,6 +1137,22 @@ blockquote cite{display:block;margin-top:calc(var(--u)*1.4);font-family:var(--mo
   <aside class="notes"><p>Why two tools and not one is the question to put to the room, and it is the deep content of the slide: obey the description only and the offspring inherits machinery but no description, so it could never reproduce in turn; copy it only and there is a text with nothing to run it. Reproduction needs the same string used both ways — once as instructions, once as inert data. Advance the figure a step at a time and narrate the two heads separately, because the whole point is that they do different things to the same letters. The polymerase is pure syntax: it would copy nonsense just as happily, and that indifference is why it is fast and why proofreading is even possible. The ribosome is the interpreter — and press the word "interpreter" in its strong sense, the sense in which a 3D printer is one. It does not read the strand and report on it; it executes the strand and a physical object comes out the other end. Three letters in, one amino acid out, the genetic code as the interpretation function, and a protein as the printed result. Then the closing step — the proteins coming off the ribosome include the polymerase and the ribosome themselves, so the description describes its own machinery. Von Neumann derived this in 1948 from pure logic, before the double helix, and the reason he needed both a copier and a constructor is worth stating slowly: a machine that only interprets its description builds a childless child. This is the same loop as the compiler that compiles itself and the emulator that executes itself from Part III, and the same loop Gödel builds a sentence out of. Collect on the universal machine explicitly: one ribosome prints any protein because which protein is data on the strand, so a ribosome is U built out of chemistry. Turing did not invent universality in 1936 — he noticed it, about a billion years late. If the room takes one thing from Part V, make it this: the syntax-semantics distinction is not a computer-science convention. It is load-bearing structure in something four billion years old and currently running in every cell of every person here.</p></aside>
 </section>
 
+<section class="slide dense" data-act="V" data-mins="1.0">
+  <div class="eyebrow">Mathematics · physics · chemistry</div>
+  <h2>The postulate nobody could prove was a <span class="k">door</span>, not a wall.</h2>
+  <div class="fill row mid">
+    <div class="fig grow"><canvas data-anim="parallels"></canvas><span class="cap">one line, one point beside it · how many parallels?</span></div>
+    <div class="stack grow" style="flex:1.1">
+      <p class="f" data-step="1">Euclid's fifth: through a point beside a line there is exactly <em>one</em> parallel. For two thousand years everybody failed to prove it.</p>
+      <p class="f" data-step="2">In the 1820s Bolyai and Lobachevsky <span class="j">changed the postulate instead</span>. Many parallels, or none — nothing breaks.</p>
+      <p class="f" data-step="3">Unprovable because <strong>independent</strong>: a choice, not a fact. Gödel's shape, a century early — and the way out was a new language, not more effort.</p>
+      <div class="card syn f" data-step="4"><span class="h">And then the notation knew first</span>
+        <p>Riemann built curved-space geometry in 1854 for nothing in particular; Einstein could not have written relativity without it. Mendeleev left <em>holes</em> in his table and named elements nobody had seen. Dirac's equation had a solution nobody wanted; the positron turned up in 1932.</p></div>
+    </div>
+  </div>
+  <aside class="notes"><p>The slide for the mathematicians and the physicists, and the strongest single answer to "what is a limit good for". Walk the figure: flat, sphere, saddle — on a globe every great circle meets every other, so there are no parallels at all; on a saddle there is room for many. Nothing needs to be proved here, only seen. Then the three beats. First: unprovable did not mean false, it meant independent, which is exactly what Gödel would later show is unavoidable in any strong system — Bolyai and Lobachevsky met the phenomenon ninety years before it had a name. Second: the response that worked was not more effort at the proof, it was inventing a new language in which the question changes. That is the thesis of this talk, and it is the only slide where the room can watch it happen historically. Third, and this is the one for the physicists: Riemann built the general machinery in 1854 for no application whatsoever, and in 1915 Einstein could not have written general relativity without it. Wigner called this the unreasonable effectiveness of mathematics and did not explain it, and neither will we. If a mathematician asks about the parallel postulate versus Gödel — yes, independence from a specific axiom set is not incompleteness, and the honest statement is that they are the same shape rather than the same theorem. That is the claim on the slide.</p></aside>
+</section>
+
 <section class="slide" data-act="V" data-mins="0.9">
   <div class="eyebrow">Mind</div>
   <h2>You navigate an unimaginable space with about <span class="j">four</span> slots of working memory.</h2>
@@ -1148,6 +1181,7 @@ blockquote cite{display:block;margin-top:calc(var(--u)*1.4);font-family:var(--mo
       <tr><th>field</th><th>notation invented</th><th>what became possible</th></tr>
       <tr class="f" data-step="1"><td>accounting</td><td>double-entry ledger · Pacioli 1494</td><td class="r">the firm, the audit, capitalism</td></tr>
       <tr class="f" data-step="1"><td>music</td><td>staff notation · Guido d'Arezzo c.1025</td><td class="r">polyphony, composition at scale</td></tr>
+      <tr class="f" data-step="1"><td>painting</td><td>linear perspective · Alberti 1435</td><td class="r">depth, and a space to compose in</td></tr>
       <tr class="f" data-step="2"><td>physics</td><td>calculus · Newton &amp; Leibniz 1670s</td><td class="r">motion, orbits, engineering</td></tr>
       <tr class="f" data-step="2"><td>chemistry</td><td>formulae &amp; the periodic table · 1869</td><td class="r">prediction of unknown elements</td></tr>
       <tr class="f" data-step="3"><td>medicine</td><td>diagnostic criteria, trial protocols</td><td class="r">evidence instead of authority</td></tr>
@@ -2371,6 +2405,112 @@ ANIM.energy = (ctx,w,h,st,t)=>{
     ctx.fillRect(X(lo)+(X(v)-X(lo))*a - 2, y, 2.6, bh);
     txt(ctx, lab, X(lo)+3, y-F*.7, {size:F,col:col,box:[2,w-2]});
   });
+};
+
+/* --- penumbra: Hart's core and penumbra. Cases laid on one axis from plainly
+   in to plainly out, with the band in the middle the text does not settle. --- */
+ANIM.penumbra = (ctx,w,h,st,t)=>{
+  const F=Math.min(w*.030, h*.048);
+  const x1=w*.10, x2=w*.94, y=h*.52, bh=F*2.0;
+  /* the shaded band: neither the words' fault nor fixable by better words */
+  if(st>=2){
+    const a=Math.max(0,Math.min(1,t*1.4));
+    ctx.globalAlpha=a*.16; ctx.fillStyle=C.bad;
+    ctx.fillRect(w*.34, y-bh*2.1, w*.34, bh*4.2); ctx.globalAlpha=1;
+    ctx.strokeStyle=C.bad; ctx.globalAlpha=a*.5; ctx.setLineDash([3,4]);
+    ctx.strokeRect(w*.34, y-bh*2.1, w*.34, bh*4.2);
+    ctx.setLineDash([]); ctx.globalAlpha=1;
+    txt(ctx,"penumbra · the text does not decide", w*.51, y-bh*2.6,
+        {size:F*.88, col:C.bad, align:"center", box:[w*.16, w*.86]});
+  }
+  ctx.strokeStyle=C.line; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(x1,y); ctx.lineTo(x2,y); ctx.stroke();
+  /* the axis ends sit below the case labels, not between them */
+  txt(ctx,"plainly a vehicle", x1, y+bh*2.2, {size:F*.8, col:C.muted, align:"left", box:[4, w*.34]});
+  txt(ctx,"plainly not", x2, y+bh*2.2, {size:F*.8, col:C.muted, align:"right", box:[w*.68, w-4]});
+  /* the cases, easy ones first */
+  const CASE=[["a car",.04,0],["an ambulance",.30,1],["a bicycle",.50,1],
+              ["a skateboard",.68,1],["a memorial jeep",.86,2]];
+  CASE.forEach(([lab,p,tier],i)=>{
+    if(st<1 && i>0) return;
+    const X=x1+(x2-x1)*p, up=i%2===0, ty2=y+(up?-bh*1.15:bh*1.15);
+    const col = tier===0 ? C.ink2 : tier===2 ? C.bad : C.syn;
+    ctx.strokeStyle=col; ctx.globalAlpha=.55; ctx.setLineDash([2,3]);
+    ctx.beginPath(); ctx.moveTo(X,y); ctx.lineTo(X,ty2+(up?bh*.35:-bh*.35)); ctx.stroke();
+    ctx.setLineDash([]); ctx.globalAlpha=1;
+    ctx.fillStyle=col; ctx.beginPath(); ctx.arc(X,y,F*.2,0,7); ctx.fill();
+    txt(ctx,lab,X,ty2,{size:F*.85,col,align:"center",box:[w*.02,w*.98]});
+  });
+  if(st>=3)
+    txt(ctx,"redrafting moves this band · it never removes it", (x1+x2)/2,
+        Math.min(y+bh*3.3, capfree(h)-F*.4),
+        {size:F*.82, col:C.muted, align:"center", box:[4, w-4]});
+};
+
+/* --- parallels: one line, one point beside it, and the three answers to
+   "how many parallels?" — flat, sphere, saddle. --- */
+ANIM.parallels = (ctx,w,h,st,t)=>{
+  const F=Math.min(w*.030, h*.050);
+  const PAN=[["one","flat · Euclid",C.ink2],
+             ["none","on a sphere",C.syn],
+             ["many","on a saddle",C.sem]];
+  const gap=w*.035, pw=(w-gap*4)/3;
+  const ph=Math.min(capfree(h)*.62, pw*1.15), cy=capfree(h)*.47;
+  PAN.forEach(([n,who,col],i)=>{
+    if(i>st) return;
+    const x=gap+i*(pw+gap), a=Math.max(0,Math.min(1,t*1.6-i*.35));
+    ctx.globalAlpha=a;
+    ctx.strokeStyle=C.line; ctx.lineWidth=1;
+    rr(ctx,x,cy-ph/2,pw,ph,F*.5); ctx.stroke();
+    ctx.save(); ctx.clip();
+    const L=x+pw*.09, R=x+pw*.91, px=x+pw*.5, gy=cy+ph*.28, py=cy-ph*.16;
+    /* the given line, in every panel: straight, at the bottom, and heavier
+       than the candidates so the flat panel does not read as two of the same */
+    ctx.strokeStyle=C.ink2; ctx.lineWidth=2.4;
+    ctx.beginPath(); ctx.moveTo(L,gy); ctx.lineTo(R,gy); ctx.stroke();
+    /* candidates through the point. The whole content of the figure is
+       whether they touch that line, so nothing else needs to be accurate. */
+    ctx.strokeStyle=col; ctx.lineWidth=1.4;
+    if(i===0){
+      ctx.beginPath(); ctx.moveTo(L,py); ctx.lineTo(R,py); ctx.stroke();
+    } else if(i===1){
+      for(const s of [-1,1]){
+        const hx=px+s*pw*.30;                 /* where it meets the line */
+        ctx.beginPath();
+        ctx.moveTo(hx, gy);
+        ctx.lineTo(px-(hx-px)*.85, py-(gy-py)*.85);
+        ctx.stroke();
+      }
+      for(const s of [-1,1]){                 /* and it does meet it */
+        const hx=px+s*pw*.30, q=F*.24;
+        ctx.strokeStyle=C.bad; ctx.lineWidth=1.5;
+        ctx.beginPath();
+        ctx.moveTo(hx-q,gy-q); ctx.lineTo(hx+q,gy+q);
+        ctx.moveTo(hx+q,gy-q); ctx.lineTo(hx-q,gy+q);
+        ctx.stroke();
+        ctx.strokeStyle=col; ctx.lineWidth=1.4;
+      }
+    } else {
+      /* each one dips through the point and rises again, so none of them
+         ever reaches the line — which is what a saddle buys you */
+      for(const k of [0,.34,-.34,.68]){
+        ctx.beginPath();
+        ctx.moveTo(L, py-ph*.20+k*ph*.10);
+        ctx.quadraticCurveTo(px, py+ph*.20, R, py-ph*.20-k*ph*.10);
+        ctx.stroke();
+      }
+    }
+    ctx.fillStyle=C.ink; ctx.beginPath(); ctx.arc(px,py,F*.26,0,7); ctx.fill();
+    ctx.restore();
+    /* boxed to the panel: a label wide enough to reach the neighbour will */
+    txt(ctx,n, x+pw/2, cy-ph/2-F*.85, {size:F*1.05, col, align:"center", box:[x, x+pw]});
+    txt(ctx,who, x+pw/2, cy+ph/2+F*.95, {size:F*.74, col:C.muted, align:"center", box:[x, x+pw]});
+    ctx.globalAlpha=1;
+  });
+  if(st>=2)
+    txt(ctx,"all three are consistent · the postulate was a choice", w/2,
+        Math.min(cy+ph/2+F*2.6, capfree(h)-F*.3),
+        {size:F*.85, col:C.sem, align:"center", box:[4, w-4]});
 };
 
 /* --- universal: the halting proof's move, run forwards. Three machines that

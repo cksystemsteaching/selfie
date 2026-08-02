@@ -2,7 +2,7 @@
 
 An animated lecture for undergraduate and graduate students **in any field**, built from basic
 principles of computer science. Self-contained: one HTML file, no build step, no network access,
-no dependencies. It plans out at about **fifty-five minutes** — and it is not pinned to that: the
+no dependencies. It plans out at just under **an hour** — and it is not pinned to that: the
 clock counts down whatever the per-slide budget adds up to, so slides can be added or cut without
 anything else needing to be rebalanced. For a shorter slot, see the cut list below.
 
@@ -47,15 +47,26 @@ two-column treatment: **what it forbids** / **what it opens**.
 | 0 | Prologue — disclosure, acknowledgement, the question, the short answer up front | 1–5 | 3:51 |
 | I | Vastness — orders of magnitude, units, bits, state spaces, why bugs are geometry | 6–16 | 8:51 |
 | II | Infinity — countability, the diagonal twice over, meaning outnumbers notation | 17–27 | 9:06 |
-| III | Self-Reference — syntax/semantics, Gödelisierung, incompleteness, halting, universality, Rice | 28–38 | 9:42 |
-| IV | Cost — decidable ≠ doable, NP-completeness, Landauer's energy floor | 39–44 | 4:36 |
-| V | Everywhere — biology, the self-copying machine, mind, and the notations that made every field | 45–49 | 4:06 |
-| VI | Machines — what today's AI is, where world models take it, what neither escapes | 50–55 | 3:57 |
-| VII | Practice — six habits, the definition, depth, humour, Goethe | 56–67 | 10:15 |
+| III | Self-Reference — syntax/semantics, Gödelisierung, incompleteness, halting, universality, Rice, law | 28–39 | 10:42 |
+| IV | Cost — decidable ≠ doable, NP-completeness, Landauer's energy floor | 40–45 | 4:36 |
+| V | Everywhere — biology, the self-copying machine, geometry, mind, and the notations that made every field | 46–51 | 5:06 |
+| VI | Machines — what today's AI is, where world models take it, what neither escapes | 52–57 | 3:57 |
+| VII | Practice — six habits, the definition, depth, humour, Goethe | 58–69 | 10:15 |
 
-67 slides; the per-slide budget in `data-mins` adds up to **54:24**, and that is what the clock counts
+69 slides; the per-slide budget in `data-mins` adds up to **56:24**, and that is what the clock counts
 down — it is read off the deck at load, not written into it. Press <kbd>t</kbd> to start the clock;
 it turns amber if you are a minute behind the plan and rose if you are three behind.
+
+**Every field in the room.** The audience is undergraduates and graduates from anywhere, so no
+discipline is left as a name-check. Biology gets a worked mechanism (48). Law gets the penumbra and
+Gödel's constitutional loophole (37). Mathematics and physics get the parallel postulate, and
+chemistry rides along on the same slide, since Mendeleev's gaps and Dirac's positron are the same
+move as Riemann's geometry (49). Psychology opens the talk — operational definitions are why "is it
+intelligent?" is badly posed (3) — and gets its own slide later (50). Medicine's surrogate-endpoint
+disaster is on the metrics slide (45), art's linear perspective on the pattern table (51). The rule
+each of them follows is the one the DNA slide set: the example has to be a mechanism or a puzzle a
+non-specialist can follow in fifteen seconds, whose general lesson is the thesis of the talk. The
+specialist gets recognition; nobody else gets lost.
 
 Part I opens with four slides on **size** before any computing happens: a map of the whole axis the
 talk lives on (small → vast → countable → uncountable), a million/billion/trillion seconds as anchors,
@@ -84,7 +95,7 @@ reference is the positive force here, not the destructive one, and the two readi
 sentence. The slide also sets up Rice on the next page — a machine that can be any machine can have
 any behaviour, so there is nothing general left to decide.
 
-Part V ends its biology stretch on the machine that builds itself (slide 47). The figure runs von
+Part V closes its biology stretch on the machine that builds itself (slide 48). The figure runs von
 Neumann's architecture as a cell runs it: one strand, a **DNA polymerase** head that duplicates it
 letter by letter without ever interpreting it, and a **ribosome** head that *executes* the same
 letters three at a time. Interpreter is meant in its strong sense here, the sense in which a 3D
@@ -98,19 +109,32 @@ lecture's distinction, four billion years old. And what the ribosome *is*: one m
 any protein because which protein is data on the strand, which makes it slide 35's `U` built out of
 chemistry. Turing did not invent universality. He noticed it.
 
-Part VI shows rather than states. Slide 51 runs an LLM as a mechanism — context chips, a reserved
+Slide 49 does the same job for mathematics, physics and chemistry at once. Euclid's fifth postulate
+resisted proof for two thousand years because it was *independent* — a choice, not a fact — and
+Bolyai and Lobachevsky got out by changing it rather than proving it. The figure asks one question
+in three panels: through a point beside a line, how many parallels? One, none, or many, and the only
+thing to see is whether the candidates touch the given line. Then the payoff, which is the reason
+this slide is not a digression: Riemann built the curved-space machinery in 1854 for nothing in
+particular and Einstein could not have written relativity without it; Mendeleev left holes in his
+table and named elements nobody had seen; Dirac's equation had a solution nobody wanted and the
+positron turned up in 1932. Three times, a notation described something before anyone had seen it.
+
+Part VI shows rather than states. Slide 53 runs an LLM as a mechanism — context chips, a reserved
 slot for the next token, the weights, a bar chart of candidates, one sample taken, and a feedback
-path carrying the answer back round as the next question. Slide 52 draws plausible, provable and
+path carrying the answer back round as the next question. Slide 54 draws plausible, provable and
 true as three regions: provable strictly inside true (the Gödel gap, labelled), plausible
 overlapping true and sticking out of it, and that crescent — plausible and not true — is what a
-hallucination is. Slide 53 draws the two routes to the same world: the long way through a transcript
+hallucination is. Slide 55 draws the two routes to the same world: the long way through a transcript
 of it, the short way straight at it, which is the efficiency argument as a picture — and then a
 dashed border around the whole figure, because every box in it is inside the thing being modelled.
 All three used to carry that content as prose.
 
 **Running long?** These four are self-contained and can be dropped without breaking the argument,
 buying 3:06: slide 16 (Borges), 18 (pairing ℕ ↔ evens), 25 (Cantor's theorem in general form),
-59 (bridges and aviation). Do not cut 20, 22, 23, 26, 32, 34, 35, 47, 60–62 — they carry the thesis.
+61 (bridges and aviation). If you need another two minutes, the two field interludes — 37 (law) and
+49 (geometry) — are written to be liftable: the argument does not depend on either, and which one
+you keep should depend on who is in the room. Do not cut 20, 22, 23, 26, 32, 34, 35, 48, 62–64 —
+they carry the thesis.
 
 ## Keys
 
@@ -185,7 +209,7 @@ meaning, monospace for notation.
 
 Both themes are designed; the viewer's system preference or the <kbd>d</kbd> key selects one.
 Everything is sized from a single unit (`--u` = deck width ⁄ 100) so the 16:9 stage scales to any
-projector, and all twenty-two figures are drawn on canvas at whatever size they are given. Animation is
+projector, and all twenty-four figures are drawn on canvas at whatever size they are given. Animation is
 suppressed under `prefers-reduced-motion`, where every build step shows at once.
 
 Two guards keep text off text on machines whose font stacks resolve differently from the author's.
