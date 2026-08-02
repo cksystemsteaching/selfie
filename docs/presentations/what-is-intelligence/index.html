@@ -296,6 +296,37 @@ blockquote cite{display:block;margin-top:calc(var(--u)*1.4);font-family:var(--mo
 #help dt{font-family:var(--mono);color:var(--syn)}
 #help dd{margin:0;color:var(--ink-2)}
 
+/* ---------- print / PDF ----------
+   Same file, laid out as a stack of pages instead of one slide at a time.
+   Reachable as index.html?print in any browser, and used by make-pdf.sh.
+   Each slide keeps its own chrome because print() clones the rail and footer
+   into it — the originals are positioned against #deck, which in this mode is
+   sixty-nine pages tall. */
+#deck.printing{width:1600px;height:auto;--u0:16px}
+#deck.printing::after{display:none}
+#deck.printing > #rail,#deck.printing > #bar,#deck.printing > #foot,
+#deck.printing ~ *,.printing .nav{display:none}
+#deck.printing .slide{
+  position:relative;inset:auto;width:1600px;height:900px;
+  opacity:1;visibility:visible;transform:none;transition:none;
+  break-after:page;page-break-after:always;overflow:hidden}
+#deck.printing .slide:last-child{break-after:auto;page-break-after:auto}
+#deck.printing .f{opacity:1;transform:none;transition:none}
+#deck.printing .pchrome{position:absolute;left:calc(var(--u)*4);right:calc(var(--u)*4);
+  display:flex;align-items:center;gap:calc(var(--u)*1.4);
+  font-family:var(--mono);font-size:calc(var(--u)*1.18);letter-spacing:.14em;
+  text-transform:uppercase;color:var(--muted)}
+#deck.printing .pchrome.top{top:calc(var(--u)*3.1)}
+#deck.printing .pchrome.bot{bottom:calc(var(--u)*2.6)}
+#deck.printing .pchrome .sp{flex:1}
+#deck.printing .pchrome b{color:var(--sem);font-weight:400}
+#deck.printing .pchrome .n{color:var(--ink-2);font-variant-numeric:tabular-nums}
+@media print{
+  html,body{height:auto;overflow:visible}
+  #stage{position:static;display:block;background:var(--ground)}
+  @page{size:1600px 900px;margin:0}
+}
+
 @media (prefers-reduced-motion: reduce){
   /* .slide.on is listed explicitly: it carries its own transition, which would
      otherwise outrank a bare .slide selector here */
@@ -1526,6 +1557,7 @@ const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 /* ---------- unit fitting: 1u = deck width / 100 ---------- */
 function fit(){
+  if(deck.classList.contains("printing")) return;   /* pages, not a viewport */
   const pad = 0.985;
   const w = stage.clientWidth*pad, h = stage.clientHeight*pad;
   const u = Math.min(w/100, h/56.25);
@@ -1673,7 +1705,7 @@ function tick(){
   el.classList.toggle("warn", running && e > target + 60);
   el.classList.toggle("late", running && e > target + 180);
 }
-setInterval(tick, 500); tick();
+const clockTimer = setInterval(tick, 500); tick();
 
 /* ---------- input ---------- */
 const KEY = {
@@ -1707,8 +1739,11 @@ deck.focus();
 const ANIM = {};
 const canvases = ()=>$$("canvas[data-anim]", slides[cur]);
 function sizeCanvases(){
+  const printing = deck.classList.contains("printing");
   $$("canvas[data-anim]").forEach(c=>{
-    const dpr = Math.min(2, devicePixelRatio||1);
+    /* headless Chrome reports dpr 1, which would put the figures into the PDF
+       at about 96dpi; the deck is the only source, so pay for 2x here */
+    const dpr = printing ? 2 : Math.min(2, devicePixelRatio||1);
     const w = c.clientWidth, h = c.clientHeight;
     if(!w||!h) return;
     c.width = Math.round(w*dpr); c.height = Math.round(h*dpr);
@@ -2795,12 +2830,58 @@ ANIM.loop = (ctx,w,h,st,t)=>{
   }
 };
 
+/* ---------- print / PDF ----------
+   Lay the whole deck out as pages, every fragment shown, every figure drawn
+   once at a fixed time so the output is deterministic. make-pdf.sh drives this
+   through headless Chrome; ?print gives the same thing in a normal browser. */
+function printLayout(){
+  /* stop everything that repeats: a live timer keeps headless Chrome from
+     exiting once it has written the PDF */
+  if(raf) cancelAnimationFrame(raf);
+  clearInterval(clockTimer);
+  deck.classList.add("printing");
+  deck.classList.remove("measuring");
+  /* fit() has already written --u0 inline from the viewport, and an inline
+     property beats the stylesheet — so set the page unit here: 1600/100 */
+  deck.style.setProperty("--u0", "16px");
+  const acts = new Map(ACTS);
+  slides.forEach((s,i)=>{
+    s.classList.remove("on","out","gone");
+    s._step = s._max;
+    const a = actOf(s);
+    const top = document.createElement("div");
+    top.className = "pchrome top";
+    top.innerHTML = (a==="0" ? "Prologue" : a+" <b>·</b> "+(acts.get(a)||"")) + '<span class="sp"></span>';
+    const bot = document.createElement("div");
+    bot.className = "pchrome bot";
+    bot.innerHTML = 'What is Intelligence?<span class="n">· '+
+      String(i+1).padStart(2,"0")+" / "+slides.length+'</span><span class="sp"></span>';
+    s.append(top, bot);
+    $$(".f", s).forEach(f=>f.classList.add("shown"));
+  });
+  autofit();
+  sizeCanvases();
+  /* one deterministic frame per figure, at the time reduced motion would use */
+  $$("canvas[data-anim]").forEach(c=>{
+    const fn = ANIM[c.dataset.anim]; if(!fn) return;
+    const ctx = c.getContext("2d"), d = c._dpr||1;
+    ctx.setTransform(d,0,0,d,0,0);
+    ctx.clearRect(0,0,c.clientWidth,c.clientHeight);
+    const s = c.closest(".slide");
+    try{ fn(ctx, c.clientWidth, c.clientHeight, s ? s._max : 0, 3); }catch(err){}
+  });
+  document.documentElement.dataset.printReady = "1";
+}
+
 /* ---------- boot ---------- */
 palette(); fit(); autofit(); sizeCanvases();
 slides.forEach((s,i)=>{ s.classList.toggle("on", i===0); s.classList.toggle("gone", i!==0); });
 if(reduce) slides.forEach(s=>s._step=s._max);
 chrome(); paint(); startAnims(); tick();
-window.__deck = {show, next, prev, slides};
+window.__deck = {show, next, prev, slides, printLayout};
+const q = new URLSearchParams(location.search);
+if(q.has("theme")) document.documentElement.dataset.theme = q.get("theme");
+if(q.has("print")) printLayout();
 })();
 </script>
 <!--END-ARTIFACT-CONTENT-->

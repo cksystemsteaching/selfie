@@ -15,6 +15,14 @@ by repeating the booming and the dooming. Slide 2 says the same to the room.
 **Give or watch the talk:** <https://selfie.cs.uni-salzburg.at/intelligence/> — or open `index.html`
 in any modern browser. Either way, press <kbd>→</kbd> to begin.
 
+**Read it offline:**
+[what-is-intelligence.pdf](https://selfie.cs.uni-salzburg.at/presentations/what-is-intelligence/what-is-intelligence.pdf)
+— one page per slide, every build step shown, every figure drawn, in the light theme. It is a
+rendering of `index.html` and nothing else: `index.html?print` lays the deck out as pages in any
+browser, `./make-pdf.sh` drives headless Chrome over that, and a workflow reruns it whenever the
+deck changes on `main`, so the two cannot drift. `THEME=dark ./make-pdf.sh` gives the projector
+version. The PDF has no speaker notes — those are in the deck, on <kbd>n</kbd>.
+
 This directory lives under `docs/`, which is what GitHub Pages publishes, so the deck is served as a
 live page rather than as source. A raw GitHub link will not work: raw files are sent as `text/plain`
 and the browser shows the markup.

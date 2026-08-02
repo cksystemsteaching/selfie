@@ -1,0 +1,57 @@
+name: Keep the Intelligence Deck PDF in Sync
+
+# The PDF next to the deck is a rendering of index.html, not a separate
+# artifact, so it must never drift. Any push that touches the deck rebuilds it
+# and commits the result if it differs. Pull requests only check: they fail if
+# the committed PDF is stale, and say how to fix it.
+
+on:
+  push:
+    branches: [main]
+    paths:
+    - 'docs/presentations/what-is-intelligence/index.html'
+    - 'docs/presentations/what-is-intelligence/make-pdf.sh'
+    - '.github/workflows/deck-pdf.yml'
+  pull_request:
+    paths:
+    - 'docs/presentations/what-is-intelligence/index.html'
+    - 'docs/presentations/what-is-intelligence/make-pdf.sh'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  pdf:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Show the Chrome that will render it
+      run: google-chrome --version
+
+    - name: Render the deck
+      run: ./make-pdf.sh
+      working-directory: docs/presentations/what-is-intelligence
+
+    - name: Fail a pull request whose PDF is stale
+      if: github.event_name == 'pull_request'
+      run: |
+        if ! git diff --quiet -- docs/presentations/what-is-intelligence/what-is-intelligence.pdf; then
+          echo "::error::what-is-intelligence.pdf is out of date. Run make-pdf.sh and commit the result."
+          exit 1
+        fi
+        echo "PDF is in sync."
+
+    - name: Commit the rebuilt PDF
+      if: github.event_name != 'pull_request'
+      run: |
+        if git diff --quiet -- docs/presentations/what-is-intelligence/what-is-intelligence.pdf; then
+          echo "PDF unchanged, nothing to commit."
+          exit 0
+        fi
+        git config user.name  "github-actions[bot]"
+        git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+        git add docs/presentations/what-is-intelligence/what-is-intelligence.pdf
+        git commit -m "Rebuild the intelligence deck PDF from ${GITHUB_SHA:0:7}"
+        git push
