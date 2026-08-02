@@ -1,45 +1,54 @@
-name: Keep the Intelligence Deck PDF in Sync
+name: Keep the Presentation PDFs in Sync
 
-# The PDF next to the deck is a rendering of index.html, not a separate
+# The PDF next to each deck is a rendering of its index.html, not a separate
 # artifact, so it must never drift. Sync is tracked against the source hash in
-# what-is-intelligence.pdf.sha rather than against the PDF bytes: Chrome does
-# not render deterministically, so a byte comparison would report a change on
-# every run and commit noise forever.
+# <deck>.pdf.sha rather than against the PDF bytes: Chrome does not render
+# deterministically, so a byte comparison would report a change on every run
+# and commit noise forever.
 #
-# A pull request that changes the deck without rebuilding the PDF fails, and is
+# A pull request that changes a deck without rebuilding its PDF fails, and is
 # told what to run. A push to main rebuilds and commits it.
+#
+# One matrix entry per deck; each deck names its PDF after its directory.
+# Adding a deck means adding its directory to the matrix.
 
 on:
   push:
     branches: [main]
     paths:
-    - 'docs/presentations/what-is-intelligence/index.html'
-    - 'docs/presentations/what-is-intelligence/make-pdf.sh'
+    - 'docs/presentations/*/index.html'
+    - 'docs/presentations/*/make-pdf.sh'
     - '.github/workflows/deck-pdf.yml'
   pull_request:
     paths:
-    - 'docs/presentations/what-is-intelligence/index.html'
-    - 'docs/presentations/what-is-intelligence/make-pdf.sh'
+    - 'docs/presentations/*/index.html'
+    - 'docs/presentations/*/make-pdf.sh'
   workflow_dispatch:
 
 permissions:
   contents: write
 
-defaults:
-  run:
-    working-directory: docs/presentations/what-is-intelligence
-
 jobs:
   pdf:
     runs-on: ubuntu-latest
+    strategy:
+      # on main this job commits, so the decks are built one after another
+      # rather than racing each other to the same branch
+      max-parallel: 1
+      fail-fast: false
+      matrix:
+        deck: [what-is-intelligence, what-is-selfie]
+    defaults:
+      run:
+        working-directory: docs/presentations/${{ matrix.deck }}
     steps:
     - uses: actions/checkout@v4
 
-    # The deck asks for Palatino-class serif and JetBrains-class mono and falls
+    # The decks ask for Palatino-class serif and JetBrains-class mono and fall
     # back through a list. URW Palladio L and DejaVu Sans Mono are both in that
-    # list, so installing them lands the runner on fonts the deck was designed
+    # list, so installing them lands the runner on fonts the decks were designed
     # for instead of the generic serif.
-    - name: Fonts the deck's stack actually names
+    - name: Fonts the decks' stack actually names
       run: sudo apt-get update -qq && sudo apt-get install -y -qq fonts-urw-base35 fonts-dejavu-core
       working-directory: .
 
@@ -54,7 +63,7 @@ jobs:
     - name: Fail a pull request whose PDF is stale
       if: github.event_name == 'pull_request' && steps.check.outcome == 'failure'
       run: |
-        echo "::error::what-is-intelligence.pdf was not rebuilt for this change. Run ./make-pdf.sh and commit the PDF and its .sha."
+        echo "::error::${{ matrix.deck }}.pdf was not rebuilt for this change. Run ./make-pdf.sh and commit the PDF and its .sha."
         exit 1
 
     - name: Rebuild
@@ -66,6 +75,8 @@ jobs:
       run: |
         git config user.name  "github-actions[bot]"
         git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-        git add what-is-intelligence.pdf what-is-intelligence.pdf.sha
-        git commit -m "Rebuild the intelligence deck PDF from ${GITHUB_SHA:0:7}"
+        git add ${{ matrix.deck }}.pdf ${{ matrix.deck }}.pdf.sha
+        git commit -m "Rebuild the ${{ matrix.deck }} PDF from ${GITHUB_SHA:0:7}"
+        # an earlier matrix entry may have pushed since this job checked out
+        git pull --rebase
         git push

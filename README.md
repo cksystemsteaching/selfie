@@ -21,11 +21,12 @@ Selfie is designed as 64-bit system and requires as such a 64-bit system to run 
 
 1. Slack: Join the conversation in the #selfie channel at [cksystemsteaching.slack.com](https://join.slack.com/t/cksystemsteaching/shared_invite/zt-cp3kb9uq-ACUnAuI8DBdmULQXIjW15A)
 2. Slides: There are classroom [slides](https://selfie.cs.uni-salzburg.at/slides) that provide a comprehensive introduction to the design and implementation of selfie.
-3. Autograder: There is an [autograder](https://github.com/cksystemsteaching/selfie/blob/main/grader/README.md) with compiler and operating systems assignments.
-4. Paper: There is an [Onward! 2017 paper](https://dl.acm.org/doi/10.1145/3133850.3133857) featuring selfie.
-5. Book: There is a book based on selfie called [Elementary Computer Science: From Bits and Bytes to the Universality of Computing](https://github.com/cksystemsteaching/selfie/tree/main/book) reaching out to everyone with an interest in learning about computer science.
-6. Code: The selfie code is open source and available at [github.com/cksystemsteaching/selfie](https://github.com/cksystemsteaching/selfie)
-7. Web: The selfie homepage is at [selfie.cs.uni-salzburg.at](https://selfie.cs.uni-salzburg.at)
+3. Talk: There is a short animated [talk](https://selfie.cs.uni-salzburg.at/talk/) introducing selfie on a high level — self-compilation, self-execution, self-hosting, and why emulation and virtualization are the key to understanding operating systems. Its companion lecture [What is Intelligence?](https://selfie.cs.uni-salzburg.at/intelligence/) develops the same proof-versus-truth distinction for an audience in any field.
+4. Autograder: There is an [autograder](https://github.com/cksystemsteaching/selfie/blob/main/grader/README.md) with compiler and operating systems assignments.
+5. Paper: There is an [Onward! 2017 paper](https://dl.acm.org/doi/10.1145/3133850.3133857) featuring selfie.
+6. Book: There is a book based on selfie called [Elementary Computer Science: From Bits and Bytes to the Universality of Computing](https://github.com/cksystemsteaching/selfie/tree/main/book) reaching out to everyone with an interest in learning about computer science.
+7. Code: The selfie code is open source and available at [github.com/cksystemsteaching/selfie](https://github.com/cksystemsteaching/selfie)
+8. Web: The selfie homepage is at [selfie.cs.uni-salzburg.at](https://selfie.cs.uni-salzburg.at)
 
 ## Extras
 

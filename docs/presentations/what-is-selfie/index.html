@@ -1,0 +1,1555 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+<body>
+<!--BEGIN-ARTIFACT-CONTENT-->
+<title>What is Selfie?</title>
+<style>
+/* ============================================================
+   What is Selfie? — an animated lecture
+   Same visual system as the companion lecture on intelligence, deliberately:
+   a drafting table, and typography that encodes the distinction it teaches.
+     serif  = meaning   (semantics, what the machine does)
+     mono   = notation  (syntax, the text you can check)
+   ============================================================ */
+
+:root{
+  --ground:#080E18;
+  --ground-2:#0D1524;
+  --panel:#111C2E;
+  --panel-2:#16233A;
+  --ink:#E7EDF6;
+  --ink-2:#B6C4D8;
+  --muted:#8093AF;
+  --line:rgba(122,162,204,.16);
+  --grid:rgba(122,162,204,.075);
+  --syn:#E0A550;          /* syntax · finite · countable · notation */
+  --syn-soft:rgba(224,165,80,.14);
+  --sem:#5BB0C7;          /* semantics · infinite · uncountable · meaning */
+  --sem-soft:rgba(91,176,199,.14);
+  --bad:#C8607A;          /* contradiction */
+  --shadow:0 1.2cqw 4cqw rgba(0,0,0,.45);
+  --serif:"Iowan Old Style","Palatino Linotype",Palatino,"Book Antiqua","URW Palladio L",Georgia,serif;
+  --mono:"JetBrains Mono","SFMono-Regular","SF Mono","Cascadia Mono",Menlo,Consolas,"DejaVu Sans Mono",monospace;
+}
+@media (prefers-color-scheme: light){
+  :root{
+    --ground:#EFF1F3; --ground-2:#E7EAEE; --panel:#FFFFFF; --panel-2:#F5F7F9;
+    --ink:#131C2A; --ink-2:#39485C; --muted:#5D6E85;
+    --line:rgba(19,28,42,.18); --grid:rgba(19,28,42,.06);
+    --syn:#A2661A; --syn-soft:rgba(162,102,26,.10);
+    --sem:#1F6C86; --sem-soft:rgba(31,108,134,.10);
+    --bad:#A63E5A;
+    --shadow:0 .6cqw 2.4cqw rgba(19,28,42,.14);
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#080E18; --ground-2:#0D1524; --panel:#111C2E; --panel-2:#16233A;
+  --ink:#E7EDF6; --ink-2:#B6C4D8; --muted:#8093AF;
+  --line:rgba(122,162,204,.16); --grid:rgba(122,162,204,.075);
+  --syn:#E0A550; --syn-soft:rgba(224,165,80,.14);
+  --sem:#5BB0C7; --sem-soft:rgba(91,176,199,.14);
+  --bad:#C8607A;
+  --shadow:0 1.2cqw 4cqw rgba(0,0,0,.45);
+}
+:root[data-theme="light"]{
+  --ground:#EFF1F3; --ground-2:#E7EAEE; --panel:#FFFFFF; --panel-2:#F5F7F9;
+  --ink:#131C2A; --ink-2:#39485C; --muted:#5D6E85;
+  --line:rgba(19,28,42,.18); --grid:rgba(19,28,42,.06);
+  --syn:#A2661A; --syn-soft:rgba(162,102,26,.10);
+  --sem:#1F6C86; --sem-soft:rgba(31,108,134,.10);
+  --bad:#A63E5A;
+  --shadow:0 .6cqw 2.4cqw rgba(19,28,42,.14);
+}
+
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;height:100%;overflow:hidden;background:var(--ground);color:var(--ink)}
+body{font-family:var(--serif);-webkit-font-smoothing:antialiased}
+
+/* ---------- stage ---------- */
+#stage{
+  position:fixed;inset:0;display:grid;place-items:center;
+  background:
+    linear-gradient(var(--grid) 1px, transparent 1px) 0 0/ calc(var(--u)*2.5) calc(var(--u)*2.5),
+    linear-gradient(90deg, var(--grid) 1px, transparent 1px) 0 0/ calc(var(--u)*2.5) calc(var(--u)*2.5),
+    radial-gradient(120% 90% at 50% 0%, var(--ground-2) 0%, var(--ground) 62%);
+}
+#deck{
+  --u0:8px;          /* the deck unit, set by fit() from the viewport */
+  --u:var(--u0);
+  position:relative;width:calc(var(--u)*100);height:calc(var(--u)*56.25);
+  outline:none;
+}
+#deck::after{ /* corner ticks: drafting frame */
+  content:"";position:absolute;inset:calc(var(--u)*1.4);pointer-events:none;
+  border:1px solid var(--line);
+  clip-path:polygon(0 0,7% 0,7% 1px,93% 1px,93% 0,100% 0,100% 12%,calc(100% - 1px) 12%,calc(100% - 1px) 88%,100% 88%,100% 100%,93% 100%,93% calc(100% - 1px),7% calc(100% - 1px),7% 100%,0 100%,0 88%,1px 88%,1px 12%,0 12%);
+}
+
+/* ---------- slides ---------- */
+.slide{
+  /* --k is set per slide by autofit() when the authored content would otherwise
+     run past the bottom padding onto the progress bar and footer */
+  --u:calc(var(--u0) * var(--k, 1));
+  position:absolute;inset:0;
+  padding:calc(var(--u)*5.8) calc(var(--u)*7) calc(var(--u)*5.9);
+  display:flex;flex-direction:column;gap:calc(var(--u)*1.6);
+  opacity:0;visibility:hidden;transform:translateY(calc(var(--u)*1.1));
+  /* leaving: fade out over .18s, then hide. The zero-duration visibility
+     transition is what defers the flip until the fade has finished. */
+  transition:opacity .18s ease,transform .3s ease,visibility 0s .18s;
+}
+/* arriving: hold at opacity 0 until the outgoing slide has cleared, so the two
+   never paint over one another */
+.slide.on{opacity:1;visibility:visible;transform:none;
+  transition:opacity .3s ease .18s,transform .3s ease .18s,visibility 0s}
+.slide.out{transform:translateY(calc(var(--u)*-1.1))}
+/* belt and braces: show() stamps this on every non-current slide, so a skipped
+   or throttled transition can never leave two slides painted at once */
+.slide.gone:not(.on){visibility:hidden;transition:none}
+/* measuring pass for auto-fit: freeze motion, reveal every fragment */
+#deck.measuring .slide{transition:none;transform:none}
+#deck.measuring .f{opacity:1;transform:none;transition:none}
+
+/* ---------- chrome ---------- */
+/* z-index keeps the chrome above the slides: full-bleed canvases (the ambient
+   title/closing animation) must never draw over the rail, bar or footer. */
+#rail,#foot{position:absolute;left:calc(var(--u)*4);right:calc(var(--u)*4);display:flex;align-items:center;gap:calc(var(--u)*1.4);
+  font-family:var(--mono);font-size:calc(var(--u)*1.18);letter-spacing:.14em;text-transform:uppercase;color:var(--muted);
+  z-index:5;pointer-events:none}
+#rail{top:calc(var(--u)*3.1)}
+#foot{bottom:calc(var(--u)*2.6)}
+#actname{color:var(--ink-2)}
+#actname b{color:var(--sem);font-weight:400}
+#rail .sp,#foot .sp{flex:1}
+#bar{position:absolute;left:calc(var(--u)*4);right:calc(var(--u)*4);bottom:calc(var(--u)*4.9);height:calc(var(--u)*.34);
+  display:flex;gap:calc(var(--u)*.4);z-index:5;pointer-events:none}
+#bar .seg{flex:1;background:var(--line);position:relative;overflow:hidden;border-radius:99px}
+#bar .seg i{position:absolute;inset:0;transform-origin:left;transform:scaleX(0);background:var(--muted);transition:transform .4s ease}
+#bar .seg.cur i{background:var(--sem)}
+#clock{font-variant-numeric:tabular-nums;color:var(--ink-2)}
+#clock.warn{color:var(--syn)}
+#clock.late{color:var(--bad)}
+/* the page number sits next to the footer title: the bottom-right corner
+   belongs to the nav buttons, which used to cover it */
+#pageno{font-variant-numeric:tabular-nums;color:var(--ink-2)}
+#pageno::before{content:"·";margin-right:calc(var(--u)*1.4);color:var(--muted)}
+.nav{position:absolute;bottom:calc(var(--u)*2.1);right:calc(var(--u)*4);display:flex;gap:calc(var(--u)*.7);z-index:6}
+.nav button{
+  font-family:var(--mono);font-size:calc(var(--u)*1.15);color:var(--ink-2);background:var(--panel);
+  border:1px solid var(--line);border-radius:calc(var(--u)*.5);padding:calc(var(--u)*.5) calc(var(--u)*1);cursor:pointer;line-height:1.1}
+.nav button:hover{color:var(--ink);border-color:var(--sem)}
+.nav button:focus-visible{outline:2px solid var(--sem);outline-offset:2px}
+
+/* ---------- type scale ---------- */
+h1{font-size:calc(var(--u)*9.6);line-height:.98;margin:0;font-weight:400;letter-spacing:-.015em;text-wrap:balance}
+h2{font-size:calc(var(--u)*3.8);line-height:1.06;margin:0;font-weight:400;letter-spacing:-.01em;text-wrap:balance;max-width:22em}
+h3{font-size:calc(var(--u)*2.3);line-height:1.15;margin:0;font-weight:400;color:var(--ink)}
+p{margin:0;font-size:calc(var(--u)*1.92);line-height:1.42;color:var(--ink-2);max-width:34em}
+p.lead{font-size:calc(var(--u)*2.2);color:var(--ink);max-width:30em}
+p.sm{font-size:calc(var(--u)*1.56);max-width:40em}
+em{font-style:italic}
+strong{font-weight:400;color:var(--ink)}
+.k{color:var(--sem)}
+.j{color:var(--syn)}
+.x{color:var(--bad)}
+code,.mono{font-family:var(--mono);font-size:.88em;letter-spacing:-.01em}
+.eyebrow{font-family:var(--mono);font-size:calc(var(--u)*1.22);letter-spacing:.2em;text-transform:uppercase;color:var(--syn)}
+.eyebrow.sem{color:var(--sem)}
+ul{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:calc(var(--u)*.85)}
+li{font-size:calc(var(--u)*1.76);line-height:1.35;color:var(--ink-2);padding-left:calc(var(--u)*2.6);position:relative;max-width:36em}
+li::before{content:"—";position:absolute;left:0;color:var(--muted)}
+li.dot::before{content:"·";font-size:1.4em;line-height:.9}
+ol.steps{margin:0;padding:0;counter-reset:s;list-style:none;display:flex;flex-direction:column;gap:calc(var(--u)*.9)}
+ol.steps li{counter-increment:s;padding-left:calc(var(--u)*3.4)}
+ol.steps li::before{content:counter(s);font-family:var(--mono);font-size:calc(var(--u)*1.3);color:var(--sem);
+  border:1px solid var(--line);border-radius:99px;width:calc(var(--u)*2.3);height:calc(var(--u)*2.3);
+  display:grid;place-items:center;top:calc(var(--u)*.25)}
+
+/* ---------- layout helpers ---------- */
+.row{display:flex;flex-direction:row;gap:calc(var(--u)*4);align-items:flex-start}
+.row.mid{align-items:center}
+/* .fill sets column direction; a .fill that is also a .row must stay horizontal */
+.fill.row{flex-direction:row}
+.fill.row.mid{align-items:center}
+.grow{flex:1;min-width:0}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:calc(var(--u)*3);align-items:start}
+.three{display:grid;grid-template-columns:repeat(3,1fr);gap:calc(var(--u)*2.2);align-items:start}
+.stack{display:flex;flex-direction:column;gap:calc(var(--u)*1.15)}
+.fill{flex:1;min-height:0;display:flex;flex-direction:column;gap:calc(var(--u)*1.45)}
+.center{justify-content:center}
+.tight p{max-width:28em}
+
+.slide.habits li{font-size:calc(var(--u)*1.62);line-height:1.32;max-width:56em;padding-left:calc(var(--u)*3.1)}
+.slide.habits ol.steps{gap:calc(var(--u)*.62)}
+.slide.habits h2{font-size:calc(var(--u)*3.4)}
+
+/* denser variant for the most content-heavy slides */
+.slide.dense p{font-size:calc(var(--u)*1.72)}
+.slide.dense p.sm{font-size:calc(var(--u)*1.55)}
+.slide.dense .card p{font-size:calc(var(--u)*1.4)}
+.slide.dense .fill{gap:calc(var(--u)*1.15)}
+.slide.dense .stack{gap:calc(var(--u)*.95)}
+.slide.dense blockquote{font-size:calc(var(--u)*1.95)}
+.slide.dense .aside-cs p{font-size:calc(var(--u)*1.42)}
+.slide.dense h2{font-size:calc(var(--u)*3.55)}
+
+/* fragments */
+.f{opacity:0;transform:translateY(calc(var(--u)*.85));transition:opacity .38s ease,transform .38s ease}
+.f.shown{opacity:1;transform:none}
+
+/* ---------- components ---------- */
+.thm{
+  border-left:calc(var(--u)*.3) solid var(--syn);padding:calc(var(--u)*.2) 0 calc(var(--u)*.2) calc(var(--u)*2.2);
+}
+.thm .name{font-family:var(--mono);font-size:calc(var(--u)*1.25);letter-spacing:.16em;text-transform:uppercase;color:var(--syn);display:block;margin-bottom:calc(var(--u)*.9)}
+.thm .st{font-size:calc(var(--u)*2.1);line-height:1.3;font-style:italic;color:var(--ink);max-width:30em}
+
+.ledger{display:grid;grid-template-columns:1fr 1fr;gap:0;border:1px solid var(--line);border-radius:calc(var(--u)*.7);overflow:hidden}
+.ledger>div{padding:calc(var(--u)*1.8) calc(var(--u)*2)}
+.ledger .forbids{background:var(--syn-soft);border-right:1px solid var(--line)}
+.ledger .opens{background:var(--sem-soft)}
+.ledger h4{margin:0 0 calc(var(--u)*1.1);font-family:var(--mono);font-weight:400;
+  font-size:calc(var(--u)*1.22);letter-spacing:.16em;text-transform:uppercase}
+.ledger .forbids h4{color:var(--syn)}
+.ledger .opens h4{color:var(--sem)}
+.ledger p{font-size:calc(var(--u)*1.66);max-width:24em}
+
+.card{background:var(--panel);border:1px solid var(--line);border-radius:calc(var(--u)*.8);
+  padding:calc(var(--u)*1.7) calc(var(--u)*1.9);display:flex;flex-direction:column;gap:calc(var(--u)*.75)}
+.card .h{font-family:var(--mono);font-size:calc(var(--u)*1.2);letter-spacing:.16em;text-transform:uppercase;color:var(--sem)}
+.card.syn .h{color:var(--syn)}
+.card p{font-size:calc(var(--u)*1.52);max-width:26em}
+.card .src{font-family:var(--mono);font-size:calc(var(--u)*1.05);color:var(--muted);letter-spacing:.04em}
+
+.kpi{display:flex;flex-direction:column;gap:calc(var(--u)*.5)}
+.kpi .n{font-family:var(--mono);font-size:calc(var(--u)*3.7);line-height:1;color:var(--ink);font-variant-numeric:tabular-nums;letter-spacing:-.03em}
+.kpi .n sup{font-size:.52em}
+.kpi .l{font-size:calc(var(--u)*1.65);color:var(--muted);font-family:var(--mono);letter-spacing:.06em;text-transform:uppercase}
+
+table.t{border-collapse:collapse;font-family:var(--mono);font-size:calc(var(--u)*1.58);width:100%}
+table.t td,table.t th{padding:calc(var(--u)*.72) calc(var(--u)*1.1);text-align:left;border-bottom:1px solid var(--line);
+  font-weight:400;font-variant-numeric:tabular-nums}
+table.t th{color:var(--muted);font-size:calc(var(--u)*1.15);letter-spacing:.14em;text-transform:uppercase}
+table.t td.r{text-align:right}
+table.t tr td:first-child{color:var(--sem)}
+
+blockquote{margin:0;font-size:calc(var(--u)*2.6);line-height:1.28;font-style:italic;color:var(--ink);max-width:26em;
+  border-left:calc(var(--u)*.3) solid var(--sem);padding-left:calc(var(--u)*2.2)}
+blockquote cite{display:block;margin-top:calc(var(--u)*1.4);font-family:var(--mono);font-style:normal;
+  font-size:calc(var(--u)*1.25);letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+
+.fig{position:relative;flex:1;min-height:0;border:1px solid var(--line);border-radius:calc(var(--u)*.7);
+  background:var(--panel);overflow:hidden}
+.fill.row>.fig{align-self:stretch}
+.fig canvas{display:block;width:100%;height:100%}
+.fig .cap{position:absolute;left:calc(var(--u)*1.4);bottom:calc(var(--u)*1);font-family:var(--mono);
+  font-size:calc(var(--u)*1.1);color:var(--muted);letter-spacing:.08em}
+.fig.bare{border:0;background:none}
+
+.chips{display:flex;flex-wrap:wrap;gap:calc(var(--u)*.8)}
+.chip{font-family:var(--mono);font-size:calc(var(--u)*1.3);letter-spacing:.06em;color:var(--ink-2);
+  border:1px solid var(--line);border-radius:99px;padding:calc(var(--u)*.42) calc(var(--u)*1.1);background:var(--panel)}
+.chip.k{color:var(--sem);border-color:var(--sem)}
+.chip.j{color:var(--syn);border-color:var(--syn)}
+
+.big{font-family:var(--mono);font-size:calc(var(--u)*7);line-height:1;letter-spacing:-.04em;color:var(--sem);
+  font-variant-numeric:tabular-nums}
+.big sup{font-size:.45em}
+.huge{font-family:var(--mono);font-size:calc(var(--u)*12);line-height:.92;letter-spacing:-.05em;color:var(--ink)}
+.digits{font-family:var(--mono);font-size:calc(var(--u)*1.35);line-height:1.35;color:var(--muted);
+  word-break:break-all;max-height:calc(var(--u)*12);overflow:hidden;position:relative}
+.digits::after{content:"";position:absolute;inset:auto 0 0 0;height:45%;
+  background:linear-gradient(transparent,var(--ground))}
+
+.byline{display:flex;flex-direction:column;gap:calc(var(--u)*.42);
+  border-left:calc(var(--u)*.28) solid var(--sem);padding-left:calc(var(--u)*1.6)}
+.byline .who{font-size:calc(var(--u)*2.5);line-height:1.1;color:var(--ink)}
+.byline .aff{font-family:var(--mono);font-size:calc(var(--u)*1.26);line-height:1.42;
+  letter-spacing:.05em;color:var(--muted)}
+.byline .aff b{font-weight:400;color:var(--ink-2)}
+
+.aside-cs{border:1px dashed var(--syn);border-radius:calc(var(--u)*.7);padding:calc(var(--u)*1.3) calc(var(--u)*1.7);
+  background:var(--syn-soft)}
+.aside-cs .h{font-family:var(--mono);font-size:calc(var(--u)*1.15);letter-spacing:.16em;text-transform:uppercase;
+  color:var(--syn);margin-bottom:calc(var(--u)*.7)}
+.aside-cs p{font-size:calc(var(--u)*1.56);max-width:44em}
+
+/* notes + overview */
+#notes{
+  position:fixed;left:0;right:0;bottom:0;max-height:42vh;overflow:auto;z-index:20;
+  background:var(--panel);border-top:1px solid var(--line);padding:1.1rem 1.4rem 1.3rem;
+  font-size:.95rem;line-height:1.5;color:var(--ink-2);display:none;box-shadow:var(--shadow)}
+#notes.on{display:block}
+#notes h5{margin:0 0 .5rem;font-family:var(--mono);font-size:.72rem;letter-spacing:.16em;text-transform:uppercase;color:var(--sem)}
+#notes p{font-size:.95rem;max-width:70em;color:var(--ink-2)}
+.notes{display:none}
+#help{position:fixed;inset:0;z-index:30;background:color-mix(in srgb,var(--ground) 92%,transparent);
+  display:none;place-items:center;padding:2rem}
+#help.on{display:grid}
+#help .box{max-width:34rem;background:var(--panel);border:1px solid var(--line);border-radius:.6rem;padding:1.6rem 1.8rem}
+#help h5{margin:0 0 1rem;font-family:var(--mono);font-size:.75rem;letter-spacing:.18em;text-transform:uppercase;color:var(--sem)}
+#help dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:.55rem 1.2rem;font-size:.92rem}
+#help dt{font-family:var(--mono);color:var(--syn)}
+#help dd{margin:0;color:var(--ink-2)}
+
+/* ---------- print / PDF ----------
+   Same file, laid out as a stack of pages instead of one slide at a time.
+   Reachable as index.html?print in any browser, and used by make-pdf.sh.
+   Each slide keeps its own chrome because print() clones the rail and footer
+   into it — the originals are positioned against #deck, which in this mode is
+   sixty-nine pages tall. */
+#deck.printing{width:1600px;height:auto;--u0:16px}
+#deck.printing::after{display:none}
+#deck.printing > #rail,#deck.printing > #bar,#deck.printing > #foot,
+#deck.printing ~ *,.printing .nav{display:none}
+#deck.printing .slide{
+  position:relative;inset:auto;width:1600px;height:900px;
+  opacity:1;visibility:visible;transform:none;transition:none;
+  break-after:page;page-break-after:always;overflow:hidden}
+#deck.printing .slide:last-child{break-after:auto;page-break-after:auto}
+#deck.printing .f{opacity:1;transform:none;transition:none}
+#deck.printing .pchrome{position:absolute;left:calc(var(--u)*4);right:calc(var(--u)*4);
+  display:flex;align-items:center;gap:calc(var(--u)*1.4);
+  font-family:var(--mono);font-size:calc(var(--u)*1.18);letter-spacing:.14em;
+  text-transform:uppercase;color:var(--muted)}
+#deck.printing .pchrome.top{top:calc(var(--u)*3.1)}
+#deck.printing .pchrome.bot{bottom:calc(var(--u)*2.6)}
+#deck.printing .pchrome .sp{flex:1}
+#deck.printing .pchrome b{color:var(--sem);font-weight:400}
+#deck.printing .pchrome .n{color:var(--ink-2);font-variant-numeric:tabular-nums}
+@media print{
+  html,body{height:auto;overflow:visible}
+  #stage{position:static;display:block;background:var(--ground)}
+  @page{size:1600px 900px;margin:0}
+}
+
+@media (prefers-reduced-motion: reduce){
+  /* .slide.on is listed explicitly: it carries its own transition, which would
+     otherwise outrank a bare .slide selector here */
+  .slide,.slide.on,.f,#bar .seg i{transition:none}
+  .f{opacity:1;transform:none}
+}
+
+/* ---------- terminal ----------
+   This deck is about a system you run, so most of its evidence is a command
+   and what came back. Prompt in ochre, what you type in ink, output muted. */
+.term{background:var(--panel-2);border:1px solid var(--line);border-radius:calc(var(--u)*.7);
+  padding:calc(var(--u)*1.25) calc(var(--u)*1.6);font-family:var(--mono);
+  font-size:calc(var(--u)*1.42);line-height:1.62;color:var(--ink-2);overflow:hidden}
+.term .l{display:block;white-space:nowrap}
+.term .p{color:var(--syn)}
+.term .c{color:var(--ink)}
+.term .o{color:var(--muted)}
+.term.sm{font-size:calc(var(--u)*1.2);line-height:1.55}
+.slide.dense .term{font-size:calc(var(--u)*1.28)}
+.slide.dense .term.sm{font-size:calc(var(--u)*1.1)}
+.eyebrow.x{color:var(--bad)}
+/* the left column of every table here is a name — never break one */
+table.t td:first-child{white-space:nowrap}
+
+</style>
+<div id="stage">
+<div id="deck" tabindex="0" aria-label="Presentation: What is Selfie?">
+
+  <div id="rail" aria-hidden="true">
+    <span id="actname"></span><span class="sp"></span><span id="clock">—</span>
+  </div>
+  <div id="bar" aria-hidden="true"></div>
+  <div id="foot" aria-hidden="true">
+    <span>What is Selfie?</span><span id="pageno"></span><span class="sp"></span>
+  </div>
+  <div class="nav">
+    <button id="bPrev" title="Previous (←)">←</button>
+    <button id="bNext" title="Next (→ or space)">→</button>
+    <button id="bNotes" title="Speaker notes (n)">notes</button>
+    <button id="bHelp" title="Keys (?)">?</button>
+  </div>
+
+<!-- ══════════════════ ACT 0 · PROLOGUE ══════════════════ -->
+
+<section class="slide" data-act="0" data-mins="1.0">
+  <div class="fig bare" style="position:absolute;inset:0"><canvas data-anim="ambient"></canvas></div>
+  <div class="fill center" style="position:relative">
+    <div class="row mid" style="gap:calc(var(--u)*5)">
+      <div class="stack grow">
+        <div class="eyebrow sem">A short talk in five parts</div>
+        <h1 style="font-size:calc(var(--u)*9)">Selfie</h1>
+        <div class="byline">
+          <span class="who">Christoph Kirsch</span>
+          <span class="aff"><b>University of Salzburg</b>, Austria<br>
+            <b>Czech Technical University in Prague</b>, Czechia</span>
+        </div>
+        <p class="lead f" data-step="1">One file. <span class="mono">12,394</span> lines of C. It <span class="k">compiles itself</span>, <span class="k">executes itself</span>, and <span class="k">hosts itself</span>.</p>
+      </div>
+      <div class="stack grow" style="flex:.95">
+        <table class="t f" data-step="2">
+          <tr><th colspan="2">in the file</th></tr>
+          <tr><td>starc</td><td>a self-compiling compiler, C* to RISC-U</td></tr>
+          <tr><td>mipster</td><td>a self-executing emulator of RISC-U</td></tr>
+          <tr><td>hypster</td><td>a self-hosting hypervisor of RISC-U</td></tr>
+          <tr><td>libcstar</td><td>the library all three run on</td></tr>
+        </table>
+        <p class="f" data-step="3">No dependencies. No framework. No build system. Nothing hidden below it. You can read <em>all</em> of it — and in one semester you will have.</p>
+        <p class="sm f" data-step="4" style="color:var(--muted)"><span class="mono">→</span> advances · <span class="mono">n</span> speaker notes · <span class="mono">d</span> light or dark</p>
+      </div>
+    </div>
+  </div>
+  <aside class="notes"><p>Open at the machine, not at the philosophy. Selfie is a single C file that contains a compiler, an emulator, a hypervisor and a library, and every one of them is applied to itself. Say the size out loud and let it land — twelve thousand lines is smaller than most build configurations these days, and it is a complete path from a character of source to an instruction retiring on a processor. The promise for the next twenty-five minutes: you will see how a program can build itself, why that is the hardest idea in systems engineering, and why it is the thing worth learning even in a year when a machine will happily write your code for you.</p></aside>
+</section>
+
+<section class="slide" data-act="0" data-mins="1.15">
+  <div class="eyebrow">The whole talk, up front</div>
+  <h2>Three commands. Three kinds of <span class="k">self-reference</span>.</h2>
+  <div class="fill">
+    <div class="term f" data-step="1">
+      <span class="l"><span class="o">// the compiler compiles its own source — twice</span></span>
+      <span class="l"><span class="p">$</span> <span class="c">./selfie -c selfie.c -o selfie1.m -m 2 -c selfie.c -o selfie2.m</span></span>
+      <span class="l"><span class="p">$</span> <span class="c">diff -s selfie1.m selfie2.m</span></span>
+      <span class="l"><span class="o">  Files selfie1.m and selfie2.m are </span><span class="k">identical</span></span>
+    </div>
+    <div class="term f" data-step="2">
+      <span class="l"><span class="o">// the emulator executes its own machine code</span></span>
+      <span class="l"><span class="p">$</span> <span class="c">./selfie -c selfie.c -o selfie.m -m 2 -l selfie.m -m 1</span></span>
+    </div>
+    <div class="term f" data-step="3">
+      <span class="l"><span class="o">// the hypervisor hosts a virtual machine running the hypervisor</span></span>
+      <span class="l"><span class="p">$</span> <span class="c">./selfie -c selfie.c -o selfie.m -m 3 -l selfie.m -y 2 -l selfie.m -y 1</span></span>
+    </div>
+    <p class="lead f" data-step="4">Understand the first and you understand <span class="j">compilers</span>. The second, <span class="j">machines</span>. The third, <span class="j">operating systems</span>.</p>
+  </div>
+  <aside class="notes"><p>Put the destination on the table in the first two minutes. These are real commands; anybody in the room can run them on a laptop tonight, and the whole talk is an explanation of why each one does what it does. Read the first one slowly — selfie compiles its own source to machine code, then <em>runs</em> that machine code and has it compile the same source again, and the two results are equal bit for bit. Do not explain it yet, just let the shape of it be visible. The line at the bottom is the deal being offered: three commands, three subjects, one file.</p></aside>
+</section>
+
+<section class="slide" data-act="0" data-mins="1.0">
+  <div class="eyebrow">Why it is called selfie</div>
+  <h2>Self-reference is not a party trick. It is the <span class="k">hard part</span> of systems.</h2>
+  <div class="fill">
+    <div class="two">
+      <div class="stack">
+        <p class="f" data-step="1">Every compiler you use is written in a language that some compiler had to compile. Every kernel must schedule the code that does the scheduling, and isolate itself from the very things it isolates.</p>
+        <p class="f" data-step="2">Most courses step around that circle, because in a production system it is buried under a million lines. Then students learn the parts and never see the loop that ties them together.</p>
+        <p class="f" data-step="3">Selfie does the opposite: it makes the loop the <strong>subject</strong>, and keeps the system small enough that the loop stays visible.</p>
+      </div>
+      <div class="stack">
+        <div class="card f" data-step="4"><span class="h">The route</span>
+          <p><strong>I · The system</strong> — one file, one language, fourteen instructions.<br>
+            <strong>II · The three selves</strong> — compiling, executing and hosting yourself.<br>
+            <strong>III · Operating systems</strong> — why they are hard, and exactly where.<br>
+            <strong>IV · Proof and truth</strong> — what a machine can decide about a program.<br>
+            <strong>V · Yours</strong> — what you build, and why it still matters.</p></div>
+        <p class="sm f" data-step="5">The Selfie Project, University of Salzburg. Its stated purpose: <em>to identify and resolve self-reference in systems code, seen as the key challenge when teaching systems engineering</em> — hence the name.</p>
+      </div>
+    </div>
+  </div>
+  <aside class="notes"><p>This is the framing slide, and it is worth the minute. The claim to make explicitly: the circularity is not an artefact of a teaching toy, it is what real systems are actually made of, and it is the reason the subject has a reputation for being impenetrable. gcc is written in C++ and compiled by gcc. Linux schedules the scheduler. A hypervisor must be isolated from the machines whose isolation it provides. Every one of those is the same shape, and in a production system it is invisible because it is bootstrapped once, decades ago, by people who are no longer around to ask. Selfie's bet is that you can teach the loop directly if the system is small enough that a student can hold all of it. Then read the route.</p></aside>
+</section>
+
+<!-- ══════════════════ ACT I · THE SYSTEM ══════════════════ -->
+
+<section class="slide" data-act="I" data-mins="0.3">
+  <div class="eyebrow">Part I</div>
+  <h1 style="font-size:calc(var(--u)*7.4)">The System</h1>
+  <p class="lead f" data-step="1">One language you can learn in an afternoon. One instruction set you can learn on the bus. And a compiler that is <span class="k">smaller than most build configurations</span>.</p>
+  <aside class="notes"><p>Part I is inventory. The point of every number in it is the same: this is small enough to finish. Students who have been told that compilers and kernels are the domain of specialists need to see the size before they will believe the invitation.</p></aside>
+</section>
+
+<section class="slide" data-act="I" data-mins="0.95">
+  <div class="eyebrow">Size</div>
+  <h2>The whole system, in the numbers it prints about <span class="k">itself</span>.</h2>
+  <div class="fill row mid">
+    <div class="stack grow">
+      <div class="kpi f" data-step="1"><span class="n">12,394</span><span class="l">lines · one file · <span class="mono">selfie.c</span></span></div>
+      <div class="kpi f" data-step="2"><span class="n">661</span><span class="l">procedures · 491 global variables</span></div>
+      <div class="kpi f" data-step="3"><span class="n">43,492</span><span class="l">instructions generated for itself</span></div>
+    </div>
+    <div class="stack grow" style="flex:1.2">
+      <div class="term sm f" data-step="1">
+        <span class="l"><span class="p">$</span> <span class="c">./selfie -c selfie.c</span></span>
+        <span class="l"><span class="o">selfie compiling selfie.c to 64-bit RISC-U with 64-bit starc</span></span>
+        <span class="l"><span class="o">365784 characters read in 12394 lines and 1741 comments</span></span>
+        <span class="l"><span class="o">491 global variables, 661 procedures, 512 string literals</span></span>
+        <span class="l"><span class="o">188392 bytes generated with 43492 instructions</span></span>
+      </div>
+      <p class="f" data-step="4">A compiler, an emulator, a hypervisor and a library fit into <strong>188 kilobytes</strong> of generated code and data. That is not a limitation. It is the whole pedagogical argument: <span class="k">a system you can finish reading is a system you can actually understand</span>.</p>
+    </div>
+  </div>
+  <aside class="notes"><p>Every number on this slide is selfie reporting on selfie — the compiler counted its own source and told you. Point that out; it is the first small taste of self-application. Then make the pedagogical claim, which is the reason the system is designed this way rather than for feature coverage: an artefact you can read to the end is qualitatively different from one you can only sample. Nobody has read all of LLVM. Everybody who takes the course reads all of this.</p></aside>
+</section>
+
+<section class="slide" data-act="I" data-mins="0.95">
+  <div class="eyebrow">The language · C*</div>
+  <h2><span class="j">7 keywords.</span> One data type, and pointers to it.</h2>
+  <div class="fill row mid">
+    <div class="stack grow">
+      <div class="chips f" data-step="1">
+        <span class="chip j">uint64_t</span><span class="chip j">void</span><span class="chip j">sizeof</span>
+        <span class="chip j">if</span><span class="chip j">else</span><span class="chip j">while</span><span class="chip j">return</span>
+      </div>
+      <p class="f" data-step="2">A strict subset of C. Five statements, the usual arithmetic and comparison operators, and the unary <span class="mono">*</span> for dereferencing — hence the star in the name. LL(1), 22 symbols.</p>
+      <p class="f" data-step="3">No structs, no arrays, no bitwise operators, no floats, no types except <span class="mono">uint64_t</span> and <span class="mono">uint64_t*</span>. You will add several of those yourself as assignments.</p>
+    </div>
+    <div class="stack grow">
+      <div class="card f" data-step="4"><span class="h">And still universal</span>
+        <p>C* is Turing-complete. Anything any computer can ever compute can be written in it — clumsily, but in principle. What you learn about meaning here is <em>not</em> a scaled-down version of the real thing. It is the real thing.</p></div>
+      <div class="card syn f" data-step="5"><span class="h">Written in itself</span>
+        <p>Selfie is a C* program. The compiler that gives C* its meaning is written in the language whose meaning it gives. Hold on to that sentence — Part II is about it.</p></div>
+    </div>
+  </div>
+  <aside class="notes"><p>The subtraction is the design. Every feature left out is a feature that would have cost pages of compiler without teaching anything new, and several of them come back as assignments, which is far better than reading them. Then the two cards, which are the real content. Universality first: smallness does not cost expressiveness, so nothing here is a toy version of a serious idea. Then the circle, planted deliberately and not yet resolved: the compiler that defines what C* means is itself a C* program. If someone in the room looks uneasy at that, they have understood the talk.</p></aside>
+</section>
+
+<section class="slide dense" data-act="I" data-mins="0.95">
+  <div class="eyebrow">The machine · RISC-U</div>
+  <h2><span class="j">14 instructions.</span> A real subset of real RISC-V.</h2>
+  <div class="fill">
+    <table class="t">
+      <tr><th>group</th><th>instructions</th><th>what they do</th></tr>
+      <tr class="f" data-step="1"><td>initialize</td><td class="mono">lui · addi</td><td>get a constant into a register</td></tr>
+      <tr class="f" data-step="1"><td>memory</td><td class="mono">ld · sd</td><td>load and store a 64-bit word</td></tr>
+      <tr class="f" data-step="2"><td>arithmetic</td><td class="mono">add · sub · mul · divu · remu</td><td>the whole of computation</td></tr>
+      <tr class="f" data-step="2"><td>compare</td><td class="mono">sltu</td><td>is this one smaller?</td></tr>
+      <tr class="f" data-step="3"><td>control</td><td class="mono">beq · jal · jalr</td><td>branch, call, return</td></tr>
+      <tr class="f" data-step="3"><td>system</td><td class="mono">ecall</td><td>ask the world for something</td></tr>
+    </table>
+    <div class="row mid">
+      <p class="sm grow f" data-step="4">32 registers, a program counter, and 4GB of byte-addressed memory. That is the entire machine model — and it is not a fiction. Selfie emits <strong>ELF binaries</strong> that run on real RISC-V hardware, on QEMU, and on the official spike emulator with the pk kernel.</p>
+      <div class="card grow f" data-step="5"><span class="h">Fourteen is enough</span>
+        <p>No floating point. No vectors. No bitwise operations. Everything the compiler, the emulator and the hypervisor do — every one of those 43,492 instructions — is one of these fourteen.</p></div>
+    </div>
+  </div>
+  <aside class="notes"><p>Read the table out loud; it takes forty seconds and it is the moment the machine stops being mysterious. The honest surprise is the arithmetic row: five operations, and everything a computer has ever done is built from them plus a branch. Stress the reality check — RISC-U is a subset, not a simplification, so the binaries selfie produces are ordinary RISC-V binaries and a real board will run them. That matters to students who suspect they are being handed a simulation of a subject rather than the subject.</p></aside>
+</section>
+
+<section class="slide" data-act="I" data-mins="1.0">
+  <div class="eyebrow">The path from a character to an instruction</div>
+  <h2>Nothing in the middle is <span class="k">left out</span>.</h2>
+  <div class="fill">
+    <div class="fig grow"><canvas data-anim="pipeline"></canvas><span class="cap">selfie.c → 43,492 instructions → a running machine</span></div>
+    <div class="three">
+      <p class="sm f" data-step="1"><strong>Scanner and parser.</strong> Characters to symbols to a syntax tree that is never built — selfie generates code as it parses, in one pass, which is why it fits.</p>
+      <p class="sm f" data-step="2"><strong>Code generation and linking.</strong> Registers, the stack, procedure calls, a symbol table, and an in-memory linker. Then a disassembler to read back what it wrote.</p>
+      <p class="sm f" data-step="3"><strong>Runtime.</strong> A conservative garbage collector that even collects itself, L1 instruction and data caches, a profiler, and a debugger with replay.</p>
+    </div>
+  </div>
+  <aside class="notes"><p>The claim to defend here is completeness. It would be easy to build a teaching compiler that stops at an abstract syntax tree and hand-waves the rest; selfie goes all the way to bytes and then executes them, which is the only way the semantics of the language is ever actually pinned down. Mention the single-pass design as an engineering choice with a pedagogical payoff — there is no intermediate representation to learn before you can see how an <span class="mono">if</span> becomes a branch. And name the runtime pieces, because the garbage collector is the one students least expect: it is conservative, it can run as a library beside the mutator or inside the emulator's kernel, and it collects its own data structures.</p></aside>
+</section>
+
+<!-- ══════════════════ ACT II · THE THREE SELVES ══════════════════ -->
+
+<section class="slide" data-act="II" data-mins="0.3">
+  <div class="eyebrow">Part II</div>
+  <h1 style="font-size:calc(var(--u)*7.4)">The Three Selves</h1>
+  <p class="lead f" data-step="1">Self-compilation. Self-execution. Self-hosting. Three different loops — and each one closes for a <span class="k">different reason</span>.</p>
+  <aside class="notes"><p>Warn the room that the three are genuinely different and are routinely confused. Compiling yourself is about <em>meaning</em>. Executing yourself is about <em>machines</em>. Hosting yourself is about <em>isolation</em>. Only the third one is hard to implement, and Part III is about why.</p></aside>
+</section>
+
+<section class="slide" data-act="II" data-mins="1.0">
+  <div class="eyebrow">The problem underneath all three</div>
+  <h2>A compiler <span class="k">defines the meaning</span> of the language it is <span class="j">written in</span>.</h2>
+  <div class="fill row mid">
+    <div class="stack grow">
+      <p class="f" data-step="1">What does <span class="mono">while</span> mean? Not what the manual says. What it means is whatever the compiler <em>emits</em> — a comparison and a branch — and whatever the machine then does with those.</p>
+      <p class="f" data-step="2">So the meaning of a program is fixed by another program. And that other program is written in the same language.</p>
+      <p class="f" data-step="3">This is an English dictionary written in English. It is only paradoxical if you demand that the definitions come first. They do not: <span class="k">the machine comes first</span>, and the dictionary is bootstrapped onto it.</p>
+    </div>
+    <div class="stack grow">
+      <div class="fig f" data-step="1" style="min-height:calc(var(--u)*20)"><canvas data-anim="meaning"></canvas><span class="cap">notation → meaning</span></div>
+      <div class="card syn f" data-step="4"><span class="h">Two colours, for the whole talk</span>
+        <p><span class="j">Ochre is syntax</span> — text, code, notation, the thing you can check. <span class="k">Cyan is semantics</span> — what actually happens, the thing you cannot.</p></div>
+    </div>
+  </div>
+  <aside class="notes"><p>This is the intellectual centre of Part II and it deserves to be delivered slowly. Students arrive believing that a language is defined by a document and that the compiler implements the document. The truth is the other way round for every language anyone actually uses: the document is a description, sometimes an inaccurate one, of what an implementation does. Meaning lives in the tool. Selfie makes that literal and executable — you can read the procedure that decides what a while loop means, and it is forty lines. Then set the colour code, because it runs through the rest of the deck and through the companion lecture on intelligence: ochre for syntax, cyan for semantics, and the entire difficulty of computer science is that the second one is not determined by looking harder at the first.</p></aside>
+</section>
+
+<section class="slide" data-act="II" data-mins="1.2">
+  <div class="eyebrow sem">Self · 1 of 3</div>
+  <h2>Self-compilation: the compiler compiles its own source, and gets <span class="k">the same answer twice</span>.</h2>
+  <div class="fill row mid">
+    <div class="fig grow" style="flex:1.25"><canvas data-anim="bootstrap"></canvas><span class="cap">two roads to the same 188,392 bytes</span></div>
+    <div class="stack grow">
+      <p class="f" data-step="1"><strong>Borrow a meaning.</strong> An ordinary C compiler builds <span class="mono">selfie.c</span> once. C* is a subset of C, so this works — and it is the only outside help the system ever gets.</p>
+      <p class="f" data-step="2"><strong>Use it on itself.</strong> That binary compiles <span class="mono">selfie.c</span> to RISC-U code. Call it <span class="mono">selfie1.m</span>. Its meaning still came from the foreign compiler.</p>
+      <p class="f" data-step="3"><strong>Now close the loop.</strong> <em>Run</em> <span class="mono">selfie1.m</span> and have it compile <span class="mono">selfie.c</span> again. Call that <span class="mono">selfie2.m</span> — a compiler that was compiled by itself.</p>
+      <p class="f" data-step="4"><span class="mono">selfie1.m</span> and <span class="mono">selfie2.m</span> are <span class="k">identical</span>. Byte for byte. That equality is called a <strong>fixed point</strong>, and reaching it is the moment the system stops depending on anything outside itself.</p>
+    </div>
+  </div>
+  <aside class="notes"><p>Walk the figure one step at a time and keep the question in front of the room: where does the meaning come from at each stage? Stage one borrows it from clang or gcc. Stage two still borrows it, indirectly. Stage three does not — the compiler that produced <span class="mono">selfie2.m</span> was itself produced by starc, so the only definition of C* involved is selfie's own. That the two outputs agree bit for bit is not automatic and it is not cosmetic: it says the compiler's opinion about the meaning of its own source text is stable under self-application. If you change the code generator, this is the test that catches you, because your new compiler has to compile itself and the result has to survive being run. Students find that constraint intimidating for about a week and then discover it is the best code review they have ever had.</p></aside>
+</section>
+
+<section class="slide dense" data-act="II" data-mins="1.15">
+  <div class="eyebrow">What the fixed point does not buy</div>
+  <h2>The source does <span class="x">not</span> determine the binary.</h2>
+  <div class="fill row mid">
+    <div class="stack grow">
+      <p class="f" data-step="1">Ken Thompson, Turing Award lecture, 1984. Teach a compiler to recognise one particular program — say, the login program — and to insert a back door when it compiles it.</p>
+      <p class="f" data-step="2">Then teach it to recognise <em>itself</em>, and to reinsert both tricks whenever it compiles its own source. Now delete both tricks from the source code.</p>
+      <p class="f" data-step="3">The source is clean. Every future compiler built from that clean source carries the back door, forever, and no amount of reading finds it. <span class="x">Self-compilation is how it survives.</span></p>
+      <div class="card f" data-step="4"><span class="h">The way out is from outside</span>
+        <p>Compile the source with a <em>different</em> compiler and compare the results — diverse double-compiling, Wheeler 2005. A system cannot certify itself; the check has to come from somewhere else.</p></div>
+    </div>
+    <div class="stack grow" style="flex:.9">
+      <div class="ledger f" data-step="5">
+        <div class="forbids">
+          <h4>What the fixed point proves</h4>
+          <p>That the compiler agrees with <em>itself</em> about the meaning of its own text. A real, checkable, mechanical property.</p>
+        </div>
+        <div class="opens">
+          <h4>What it cannot prove</h4>
+          <p>That the running binary does what the source says. That gap between <span class="j">what you can check</span> and <span class="k">what is true</span> is the subject of Part IV.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+  <aside class="notes"><p>This is the slide people remember, so tell it as a story and let the trick land before you draw the moral. Thompson's point was not that compilers are untrustworthy in practice; it was that trust cannot be established by reading source, because the artefact that runs is produced by another artefact whose provenance you did not inspect. Self-compilation, which is the beautiful property in the previous slide, is exactly the mechanism that makes the attack self-sustaining. Then the constructive half, which matters more: Wheeler showed the attack is detectable if you have a second, independent compiler and compare — the check exists, but only from outside the system. Note that this is the same shape as Gödel's second theorem in the companion lecture: no sufficiently expressive system certifies itself. Students should leave with both halves — a proof of a real property, and a clear-eyed view of what that property does not cover.</p></aside>
+</section>
+
+<section class="slide" data-act="II" data-mins="1.05">
+  <div class="eyebrow sem">Self · 2 of 3</div>
+  <h2>Self-execution: an emulator that runs its own <span class="k">machine code</span>.</h2>
+  <div class="fill row mid">
+    <div class="stack grow">
+      <p class="f" data-step="1"><strong>mipster</strong> is an interpreter for RISC-U, written in C*: fetch a word, decode it, do what it says, advance the program counter. About a page of code per instruction group.</p>
+      <p class="f" data-step="2">Compile mipster with starc and you get RISC-U code for an interpreter of RISC-U code. Load it into mipster, and mipster is executing mipster.</p>
+      <p class="f" data-step="3">The inner one cannot tell. Code has no way of asking whether the processor underneath it is silicon or software — <em>unless</em> it can see a clock, which is the one thing that gives emulation away.</p>
+      <div class="card syn f" data-step="4"><span class="h">What it costs</span>
+        <p>One instruction up there is a few thousand down here. Selfie printing its usage line takes <span class="mono">85,754</span> instructions on the bare machine — and <span class="mono">222,410,917</span> when a mipster is emulating the mipster that runs it.</p></div>
+    </div>
+    <div class="fig grow" style="flex:1.05"><canvas data-anim="interp"></canvas><span class="cap">one instruction above · a few thousand below</span></div>
+  </div>
+  <aside class="notes"><p>Emulation is the easy self to explain and the one that makes the third possible, so spend the time on the indistinguishability claim rather than on the code. An emulator reproduces functionality exactly — that is what separates emulation from simulation, which only approximates behaviour — so the emulated program's every observable is identical. The only leak is time. That single caveat is worth stating precisely because it comes back in security, in side channels and in every debate about whether a program can detect that it is being analysed. Then give the numbers: two and a half thousand times slower, measured on the machine in front of you, and note that this is the honest price of an interpreter and the reason Part III exists.</p></aside>
+</section>
+
+<section class="slide" data-act="II" data-mins="1.05">
+  <div class="eyebrow sem">Self · 3 of 3</div>
+  <h2>Self-hosting: a hypervisor whose virtual machines can run <span class="k">the hypervisor</span>.</h2>
+  <div class="fill row mid">
+    <div class="fig grow"><canvas data-anim="ladder"></canvas><span class="cap">any stack of -m and -y · as long as it starts with mipster</span></div>
+    <div class="stack grow" style="flex:1.15">
+      <p class="f" data-step="1"><strong>hypster</strong> does not interpret anything. It creates virtual machines and then asks the machine below it to run them, by <strong>context switching</strong>: save these registers, load those, go.</p>
+      <p class="f" data-step="2">Its virtual machines are good enough to host all of selfie — the compiler, the emulator, and hypster itself. Stack as many as you like, in any order.</p>
+      <p class="f" data-step="3">That is what <em>self-hosting</em> means, and selfie supports it <strong>recursively</strong>, which most production hypervisors do not.</p>
+      <div class="card f" data-step="4"><span class="h">One rule</span>
+        <p>Every tower has to stand on a mipster. Context switching has to come from somewhere, and stock RISC-V hardware does not offer it in the form hypster needs — so the bottom of the stack is always an emulated machine.</p></div>
+    </div>
+  </div>
+  <aside class="notes"><p>Make the mechanism concrete, because the difference from the previous slide is the whole of Part III. mipster runs guest code by reading it and doing what it says; hypster runs guest code by handing it to the processor and getting out of the way, then taking control back when the guest faults, calls or runs out of time. Same result, completely different machinery. Then the ladder: <span class="mono">-m</span> for an emulated machine, <span class="mono">-y</span> for a virtual one, stacked arbitrarily, and selfie is one of very few systems where you can write that stack on the command line and watch it work. Recursive virtual machines were hard to implement and the reason to do it was educational — but the design that came out was cleaner than the one that came in, which is a lesson in itself.</p></aside>
+</section>
+
+<!-- ══════════════════ ACT III · OPERATING SYSTEMS ══════════════════ -->
+
+<section class="slide" data-act="III" data-mins="0.3">
+  <div class="eyebrow">Part III</div>
+  <h1 style="font-size:calc(var(--u)*6.6)">Why Operating<br>Systems Are Hard</h1>
+  <p class="lead f" data-step="1">This is the part of the talk I would keep if I only had five minutes. It is one distinction, and it is missing from almost every course on the subject.</p>
+  <aside class="notes"><p>Flag it as the centre. Students routinely finish an operating systems course able to recite paging and scheduling and still unable to say what a kernel fundamentally <em>is</em>. The reason is that they were shown the virtualized design, in which the kernel runs inside the abstraction it provides, and nobody ever named the self-reference or separated it from everything else. The next five slides do exactly that separation.</p></aside>
+</section>
+
+<section class="slide" data-act="III" data-mins="0.85">
+  <div class="eyebrow">What a kernel owes you</div>
+  <h2>Three problems. Two are ordinary. One is <span class="x">not</span>.</h2>
+  <div class="fill">
+    <div class="three">
+      <div class="card f" data-step="1"><span class="h">Isolation in space</span>
+        <p>Nobody may read or write anyone else's memory. Solved by paging: every machine sees a 4GB address space of its own, and a page table maps it onto whatever physical frames are free.</p></div>
+      <div class="card f" data-step="2"><span class="h">Isolation in time</span>
+        <p>Everybody eventually runs. Solved by a timer and a scheduler: preempt, save the registers, pick someone else, restore, go.</p></div>
+      <div class="card syn f" data-step="3"><span class="h">And the kernel itself</span>
+        <p>The code that provides isolation is also code, and it also runs on the machine. It has to be isolated from the things it isolates. <span class="x">By what?</span></p></div>
+    </div>
+    <p class="lead f" data-step="4">The first two are engineering: difficult, well understood, teachable in a fortnight. The third is <span class="k">self-reference</span> — and it is where the intuition breaks.</p>
+  </div>
+  <aside class="notes"><p>Set up the split cleanly, because everything after this depends on it. Paging and scheduling are hard work but they are not conceptually strange: they are allocation problems with a clock. The third card is a different kind of problem, and the room should feel the difference when you ask "by what?" and leave the pause. Do not answer it yet. The next three slides earn the answer by first showing an operating system that does not have the problem at all.</p></aside>
+</section>
+
+<section class="slide" data-act="III" data-mins="1.15">
+  <div class="eyebrow">The distinction</div>
+  <h2>Two ways to build <span class="k">the same operating system</span>.</h2>
+  <div class="fill">
+    <div class="fig grow"><canvas data-anim="emuvirt"></canvas></div>
+    <div class="two">
+      <p class="sm f" data-step="1"><strong>By emulation.</strong> The OS contains an interpreter. Guest instructions are read and carried out by OS code; guest code never touches the processor. Isolation is <em>free</em> — the guest has no way to reach anything, because it is only ever data being read.</p>
+      <p class="sm f" data-step="2"><strong>By virtualization.</strong> The OS sets up a page table and a timer and then lets the guest run <em>on the real processor</em>, taking control back on faults, calls and interrupts. Isolation now has to be constructed, because the guest and the kernel share the same hardware.</p>
+    </div>
+  </div>
+  <aside class="notes"><p>Give both designs equal dignity; the left one is not a strawman, it is what mipster does and it is a complete, working operating system by any functional standard. The right one is what every production kernel and hypervisor does. Point at the picture rather than talking abstractly: on the left the guest's instructions are inside the OS, being looked at; on the right they are outside it, running alongside it. That difference — whether the guest's code is data being read or code being executed — is the entire subject of this Part, and everything else follows from it.</p></aside>
+</section>
+
+<section class="slide dense" data-act="III" data-mins="1.15">
+  <div class="eyebrow sem">The claim</div>
+  <h2>An OS by emulation is <span class="k">semantically equivalent</span> to an OS by virtualization.</h2>
+  <div class="fill row mid">
+    <div class="stack grow">
+      <p class="f" data-step="1">Not similar. <strong>Equivalent</strong> — down to every bit the guest can observe. There is no experiment the guest can run that distinguishes the two, except by looking at a clock.</p>
+      <p class="f" data-step="2">Here is the evidence, on this laptop. Selfie hosted by an OS built each way, printing its usage line:</p>
+      <div class="term sm f" data-step="3">
+        <span class="l"><span class="p">$</span> <span class="c">make emu-emu</span> <span class="o">  // OS by emulation</span></span>
+        <span class="l"><span class="o">  guest: </span><span class="k">86,380</span><span class="o"> executed instructions</span></span>
+        <span class="l"><span class="p">$</span> <span class="c">make os-emu</span> <span class="o">   // OS by virtualization</span></span>
+        <span class="l"><span class="o">  guest: </span><span class="k">86,380</span><span class="o"> executed instructions</span></span>
+      </div>
+      <p class="f" data-step="4">The same guest, doing the same work, instruction for instruction. Selfie even ships a procedure called <span class="mono">mixter</span> that switches a running machine between the two <em>mid-execution</em>, and nothing notices.</p>
+    </div>
+    <div class="stack grow" style="flex:.85">
+      <div class="card f" data-step="5"><span class="h">So emulation is an executable specification</span>
+        <p>If the two are equivalent, the simple one <em>defines</em> what the complicated one must do. Build the emulated version first, and you have a running answer key for the virtualized one.</p></div>
+      <div class="card syn f" data-step="6"><span class="h">This is not just a teaching trick</span>
+        <p>It is how parts of real operating systems get tested and verified: an interpreter as the reference, and the fast implementation checked against it.</p></div>
+    </div>
+  </div>
+  <aside class="notes"><p>This is the sentence the Part exists for, so say it twice and put the evidence next to it. The two numbers are identical because they are the same computation — the guest executes exactly the instructions its program calls for, and the mechanism by which those instructions are carried out is invisible to it. The <span class="mono">mixter</span> demonstration is the strongest form of the claim: you can change the mechanism halfway through a run, and the guest's execution continues as if nothing happened, because from the guest's point of view nothing did. Then draw the consequence, which is the pedagogical payload: when two designs are semantically equivalent and one is dramatically simpler, the simple one is the specification. Teach it first, and every property you establish about it holds for the complicated one by equivalence.</p></aside>
+</section>
+
+<section class="slide" data-act="III" data-mins="1.05">
+  <div class="eyebrow">So why virtualize at all?</div>
+  <h2>For exactly one reason: <span class="k">performance</span>.</h2>
+  <div class="fill row mid">
+    <div class="fig grow" style="flex:1.25"><canvas data-anim="cost"></canvas><span class="cap">instructions on the physical machine · log scale</span></div>
+    <div class="stack grow">
+      <p class="f" data-step="1">Same guest. Same output. Same 86,380 instructions of actual work. The bill sent to the machine underneath:</p>
+      <table class="t f" data-step="2">
+        <tr><td>bare metal</td><td class="r mono">85,754</td><td class="r">×1</td></tr>
+        <tr><td>virtualized</td><td class="r mono">17,860,937</td><td class="r">×208</td></tr>
+        <tr><td>+ a VMM below</td><td class="r mono">59,492,501</td><td class="r">×694</td></tr>
+        <tr><td>emulated</td><td class="r mono">222,410,917</td><td class="r">×2,593</td></tr>
+      </table>
+      <p class="sm f" data-step="3">Virtualization wins by a factor of <strong>12</strong> here — and by much more on real work, because the cost of a context switch is fixed and gets amortised. Give the guest something substantial to do, say self-compiling, and the overhead falls from ×208 to <span class="k">×1.7</span>. Production systems get close to ×1. <em>That</em> is why the cloud exists.</p>
+    </div>
+  </div>
+  <aside class="notes"><p>The table is the argument. Every row is the same guest computation; only the mechanism differs. Emulation costs about two and a half thousand instructions per guest instruction, which is what interpretation costs; virtualization costs the price of the traps, the page faults and the timer interrupts, and nothing else, because the guest's instructions are executed by the processor at full speed. Make the amortisation point explicitly, because the ratio on this slide understates the real case badly: printing a usage line is far too little work to pay off a context switch, and once the guest does something substantial the overhead collapses toward nothing. That is precisely why every cloud on earth is built this way.</p></aside>
+</section>
+
+<section class="slide dense" data-act="III" data-mins="1.25">
+  <div class="eyebrow x">And what it costs you</div>
+  <h2>Virtualization is emulation plus <span class="x">self-reference</span>.</h2>
+  <div class="fill row mid">
+    <div class="stack grow" style="flex:1.05">
+      <p class="f" data-step="1">The kernel now runs on the same processor as its guests. To be isolated from them it must itself run in a virtual machine. <strong>And who manages that one?</strong></p>
+      <p class="f" data-step="2">That is the bootstrapping problem, and it is where the difficulty of operating systems actually lives. Real systems answer it by writing kernel code that carefully <em>never uses</em> the abstractions it provides: it must not fault, because it is what handles faults.</p>
+      <p class="f" data-step="3">What is left when you shrink that code to the minimum is a <strong>microkernel</strong> — the trusted base everything else stands on. Small enough that people have proved it correct.</p>
+      <div class="card syn f" data-step="4"><span class="h">Emulation is isolation. Virtualization is isolation <em>plus</em> self-reference.</span>
+        <p>That one line is the summary of this Part. In an emulator there is no self-reference at all: the guest is data, and data cannot escape.</p></div>
+    </div>
+    <div class="fig grow" style="flex:.95"><canvas data-anim="selfref"></canvas><span class="cap">who isolates the isolator?</span></div>
+  </div>
+  <aside class="notes"><p>Now answer the question left hanging three slides ago. The kernel must be isolated, isolation is what the kernel provides, therefore the kernel needs what the kernel provides — that is the loop, and it does not go away by being ignored. Describe how real systems bootstrap out of it: kernel code that runs with the MMU off, or in an address space it maintains by hand, doing all the work an exception handler would do before any exception can arise, and context-switching itself into and out of its guests with carefully written machine code. That is the trusted computing base, and the whole microkernel research programme is the attempt to make it small enough to trust, which eventually made it small enough to verify. Selfie cheats here deliberately and says so in its comments: it puts the microkernel functionality into the emulator, as if the hardware were smarter than it is, which isolates the bootstrapping requirement so students can see it rather than drown in it.</p></aside>
+</section>
+
+<section class="slide" data-act="III" data-mins="0.95">
+  <div class="eyebrow sem">The payoff</div>
+  <h2>Take the self-reference out. Put it back <span class="k">on purpose</span>.</h2>
+  <div class="fill center">
+    <div class="ledger f" data-step="1">
+      <div class="forbids">
+        <h4>Why the subject is hard</h4>
+        <p>Because the standard presentation shows you a kernel that lives inside the abstraction it implements, and never separates that from the ordinary problems of memory and time. Everything is tangled with everything, so nothing can be understood on its own.</p>
+      </div>
+      <div class="opens">
+        <h4>Why it stops being hard</h4>
+        <p>Build the operating system by emulation first. Now isolation is trivial and only space and time are left. Then swap in virtualization, which changes no behaviour and buys only speed — and the <em>only</em> thing that got harder is the self-reference. Now you can see it, name it, and study it alone.</p>
+      </div>
+    </div>
+    <p class="lead f" data-step="2">Two designs, one semantics, one difference. That difference is the subject — and it is the thing nobody told me when I was a student.</p>
+  </div>
+  <aside class="notes"><p>Land the method, not just the fact. Every hard system has a simple semantically equivalent twin somewhere, and finding it is a general research move rather than a classroom convenience — you strip out the mechanism you cannot yet reason about, establish everything else against the simple version, and reintroduce the mechanism as a refinement whose only obligation is to preserve behaviour. Say the personal line at the end plainly; students respond to a professor admitting which idea took him years to find, and it is true.</p></aside>
+</section>
+
+<!-- ══════════════════ ACT IV · PROOF AND TRUTH ══════════════════ -->
+
+<section class="slide" data-act="IV" data-mins="0.3">
+  <div class="eyebrow">Part IV</div>
+  <h1 style="font-size:calc(var(--u)*7.4)">Proof and Truth</h1>
+  <p class="lead f" data-step="1">Everything so far was construction. Now the other half: what can a machine <span class="k">decide</span> about a program — and what can it never decide?</p>
+  <aside class="notes"><p>Signal the change of key. Parts I to III built things; Part IV asks what can be known about the things we built. This is where selfie stops being a systems course and becomes a way into theory that students actually believe, because the theory arrives as tools they can run.</p></aside>
+</section>
+
+<section class="slide" data-act="IV" data-mins="1.1">
+  <div class="eyebrow">The gap</div>
+  <h2><span class="j">Syntax</span> you can check. <span class="k">Semantics</span> you cannot.</h2>
+  <div class="fill">
+    <div class="two">
+      <div class="card syn f" data-step="1"><span class="h">Decidable · about the text</span>
+        <p>Does it parse? How long is it? Which procedures does it call? Are the types consistent? Does it contain a loop? A compiler answers all of these, always, in finite time.</p></div>
+      <div class="card f" data-step="2"><span class="h">Undecidable · about the meaning</span>
+        <p>Does it terminate? Is it equivalent to that one? Can it divide by zero? Can it read outside its memory? <strong>Is it correct?</strong> No program decides any of these for all programs.</p></div>
+    </div>
+    <div class="thm f" data-step="3">
+      <span class="name">Rice · 1953</span>
+      <div class="st">Every non-trivial property of the <em>behaviour</em> of programs is undecidable. Only questions about their <em>text</em> are safe.</div>
+    </div>
+    <p class="sm f" data-step="4">So every tool that says anything useful about behaviour is a deliberate <strong>approximation</strong>: sound but incomplete, or complete but unsound, or exact only within a bound. Choosing which to give up <em>is</em> the discipline — and selfie ships four different choices for you to compare.</p>
+  </div>
+  <aside class="notes"><p>Rice is the most useful theorem a systems student can own, and it is one sentence. Frame it as liberating rather than depressing: it tells you in advance that there is no perfect analyser, so the interesting question is never "can we decide this" but "what approximation do we choose and what do we give up". Every real tool — the type checker, the test suite, the fuzzer, the model checker, the proof assistant — is an answer to that question. The next slide shows four of them, all built on selfie, all applying to selfie itself.</p></aside>
+</section>
+
+<section class="slide dense" data-act="IV" data-mins="1.2">
+  <div class="eyebrow sem">The extras · turning execution into logic</div>
+  <h2>Machine code in. <span class="k">Formulae</span> out. Solver next.</h2>
+  <div class="fill row mid">
+    <div class="stack grow" style="flex:1.15">
+      <table class="t">
+        <tr class="f" data-step="1"><td>monster</td><td>symbolic execution of RISC-U into SMT-LIB — satisfiable exactly when some input makes the code exit non-zero or divide by zero</td></tr>
+        <tr class="f" data-step="2"><td>beator</td><td>the same idea as bounded model checking, into BTOR2 — adds memory access outside allocated blocks</td></tr>
+        <tr class="f" data-step="3"><td>rotor</td><td>full RISC-V, not just RISC-U, into BTOR2 <em>and</em> SMT-LIB — and models that let you <em>synthesise</em> code rather than only check it</td></tr>
+        <tr class="f" data-step="4"><td>bitme</td><td>a concurrent bounded model checker over rotor's models, driving SMT solvers and binary decision diagrams</td></tr>
+        <tr class="f" data-step="5"><td>beatle</td><td>draws BTOR2 formulae as graphs, so you can look at what your program means</td></tr>
+        <tr class="f" data-step="6"><td>rotor-rust</td><td>rotor in Rust, with a browser visualiser and symbolic command-line arguments</td></tr>
+      </table>
+    </div>
+    <div class="stack grow" style="flex:.85">
+      <div class="card f" data-step="7"><span class="h">All of them are self-applicable</span>
+        <p>Each translates RISC-U or RISC-V code <em>including all of selfie and itself</em>. You can hand a symbolic execution engine its own machine code and ask a solver about it.</p></div>
+      <div class="card syn f" data-step="8"><span class="h">And then you hit the wall</span>
+        <p>The formulae are satisfiable or not — and deciding that is NP-complete. You can watch syntax become semantics and run into the limits of computation before the coffee gets cold.</p></div>
+    </div>
+  </div>
+  <aside class="notes"><p>This is the slide that recruits the theoretically minded, so do not rush the table. The move all six tools share is worth naming once, clearly: take a program, which is syntax, and its execution, which is semantics, and produce a logical formula whose satisfiability answers a semantic question exactly. That is the syntax-to-semantics bridge made mechanical. Rice has not been repealed — every one of these works within a bound, a number of instructions or a number of steps — and that bound is the approximation being chosen. Then the punchline students enjoy: the formulae go to a SAT or SMT solver, and satisfiability is the canonical NP-complete problem, so a laptop, a small C program and twenty minutes gets you to the frontier of complexity theory. And every one of these tools eats selfie, including itself.</p></aside>
+</section>
+
+<section class="slide dense" data-act="IV" data-mins="1.0">
+  <div class="eyebrow">The rest of the workshop</div>
+  <h2>Everything else that grew out of one file.</h2>
+  <div class="fill row mid">
+    <div class="fig grow"><canvas data-anim="galaxy"></canvas><span class="cap">built on selfie · applied to selfie</span></div>
+    <div class="stack grow" style="flex:1.1">
+      <p class="sm f" data-step="1"><strong>buzzr</strong> — a fuzzer that fuzzes RISC-U code including all of selfie and itself. A self-fuzzing fuzzer.</p>
+      <p class="sm f" data-step="2"><strong>babysat</strong> — a brute-force SAT solver over DIMACS CNF, so the solver at the end of the previous slide is not a black box either.</p>
+      <p class="sm f" data-step="3"><strong>boehm-gc</strong> — an O(n) collector for small blocks beside selfie's own conservative, self-collecting O(n²) one. Two garbage collectors to compare, in one system.</p>
+      <p class="sm f" data-step="4"><strong>riscv-2-x86</strong> — a self-translating binary translator: RISC-U code, including selfie and itself, into x86.</p>
+      <p class="sm f" data-step="5"><strong>machine/</strong> — bare metal. No emulator, no operating system, selfie on a real RISC-V board.</p>
+      <p class="sm f" data-step="6" style="color:var(--muted)">Plus a benchmark suite, a docker image, a browser you can run the whole thing in, and a shelf of student theses that started exactly where you are sitting.</p>
+    </div>
+  </div>
+  <aside class="notes"><p>Read this as a menu rather than a list — the message is that a single small system has become a workbench, and that every tool on it is a project somebody started as a student. Point at the recurring word: self-fuzzing, self-collecting, self-translating. It is not a gimmick; applying a tool to the system that produced it is the sharpest test it will ever get, and it finds bugs nothing else finds. Mention the theses out loud. Several of the tools named on the previous slide are Master's and PhD work, and the students in the room should know that this is a place where undergraduate curiosity turns into published systems.</p></aside>
+</section>
+
+<!-- ══════════════════ ACT V · YOURS ══════════════════ -->
+
+<section class="slide" data-act="V" data-mins="0.3">
+  <div class="eyebrow">Part V</div>
+  <h1 style="font-size:calc(var(--u)*7.4)">Yours</h1>
+  <p class="lead f" data-step="1">What you actually do in the classes — and the honest answer to the question you are all sitting there wanting to ask.</p>
+  <aside class="notes"><p>Shift to the students' own decision. Two slides of concrete work, one slide answering the AI question head-on, and a close. Keep the energy up; this is the recruiting part and it should feel like an invitation rather than a syllabus.</p></aside>
+</section>
+
+<section class="slide dense" data-act="V" data-mins="1.15">
+  <div class="eyebrow">The work</div>
+  <h2>You do not read the system. You <span class="k">change</span> it.</h2>
+  <div class="fill row mid">
+    <div class="stack grow">
+      <div class="card syn f" data-step="1"><span class="h">Compiler class</span>
+        <p>Hexadecimal literals. Bitwise and logical operators. <span class="mono">for</span> loops. Lazy evaluation. Arrays, then multidimensional arrays. Structs — declaration, then execution. Each one is a change to the scanner, the parser and the code generator at once.</p></div>
+      <div class="card f" data-step="2"><span class="h">Systems class</span>
+        <p>An assembler that parses selfie's own assembly, then assembles itself. Processes. <span class="mono">fork</span>, <span class="mono">wait</span>, <span class="mono">exit</span>. Locks. Threads. A thread-safe allocator. A Treiber stack. You are writing the operating system, not reading about one.</p></div>
+    </div>
+    <div class="stack grow" style="flex:.95">
+      <div class="card f" data-step="3"><span class="h">And one rule above all of them</span>
+        <p>Whatever you change, <span class="k">selfie must still compile itself</span>. Your new code generator has to be good enough to generate the compiler that contains it.</p></div>
+      <p class="f" data-step="4">That rule is the most demanding code reviewer you will ever have, and it never sleeps. It is also why the bugs you write teach you something instead of just costing you marks.</p>
+      <div class="term sm f" data-step="5">
+        <span class="l"><span class="p">$</span> <span class="c">./grader/self.py self-compile</span></span>
+        <span class="l"><span class="o">  grade: </span><span class="k">2</span></span>
+      </div>
+      <p class="sm f" data-step="6">The autograder is public. You grade yourself before you submit — and you will know your grade before I do.</p>
+    </div>
+  </div>
+  <aside class="notes"><p>The assignments are the product; say what makes them unusual. A feature like <span class="mono">for</span> loops or structs touches every stage of the compiler at once, so there is no way to fake it by editing one file you happen to understand. And the self-compilation rule is the thing to dwell on: your modified compiler must be capable of compiling the compiler your modification is part of, which means a subtly wrong code generator does not merely fail a test, it fails to reproduce itself. Students find this brutal and then discover it is the fairest feedback they have had. Mention the autograder honestly — it is public, it is the same one used for marking, and it removes every argument about what the grade will be.</p></aside>
+</section>
+
+<section class="slide dense" data-act="V" data-mins="1.35">
+  <div class="eyebrow sem">The question everyone is holding</div>
+  <h2>"Why learn this when a machine will <span class="j">write the code</span> for me?"</h2>
+  <div class="fill">
+    <div class="three">
+      <div class="card f" data-step="1"><span class="h">Generation got cheap. Verification did not.</span>
+        <p>Producing plausible code is now nearly free. Deciding whether it is <em>right</em> is exactly as hard as it was in 1953, and Rice's theorem does not care who wrote the program. Value moves to the two ends: saying precisely what should be true, and establishing that it is.</p></div>
+      <div class="card f" data-step="2"><span class="h">The stack did not disappear.</span>
+        <p>Every model that writes your code runs on virtualized machines, compiled by a compiler, scheduled by a kernel, on a processor executing instructions. When it is slow, or wrong, or leaking, the person who can go down there is the person who fixes it.</p></div>
+      <div class="card syn f" data-step="3"><span class="h">Depth is not downloadable.</span>
+        <p>Knowing where a field is thin, where it is wrong, and where it is about to give — that comes from having lived inside a subject. No summary transfers it. Selfie is small enough that you can live inside <em>all</em> of it.</p></div>
+    </div>
+    <p class="lead f" data-step="4">The frontier is not <span class="j">proving</span> things inside a language — machines are formidable at that. It is finding the <span class="k">truth you cannot yet prove</span>, and building the language that captures it.</p>
+    <p class="sm f" data-step="5">Which is the argument of a companion lecture, if you want the long version: <span class="mono">selfie.cs.uni-salzburg.at/intelligence</span></p>
+  </div>
+  <aside class="notes"><p>Answer it straight and without defensiveness; the question is a good one and the students asking it are not being lazy. The first card is the economics: an asymmetry between generation and verification has always existed, we have just made one side almost free, which raises the price of the other. The second is practical and lands with anyone who has debugged anything. The third is the real answer and the one to end on — depth is the organ you find promising unproven truth with, it is built slowly, and selfie is unusual in being a complete system small enough for one person to hold entirely. Point at the companion lecture for the full argument, and then move on before it turns into a seminar.</p></aside>
+</section>
+
+<section class="slide" data-act="V" data-mins="1.1">
+  <div class="fig bare" style="position:absolute;inset:0"><canvas data-anim="ambient"></canvas></div>
+  <div class="fill center" style="position:relative">
+    <div class="eyebrow sem">Take a selfie</div>
+    <h2 style="font-size:calc(var(--u)*4.2)">Fifteen minutes from now you could be running a compiler that compiles itself.</h2>
+    <div class="row f" data-step="1" style="gap:calc(var(--u)*3)">
+      <div class="term sm grow" style="flex:1.25">
+        <span class="l"><span class="p">$</span> <span class="c">git clone github.com/cksystemsteaching/selfie</span></span>
+        <span class="l"><span class="p">$</span> <span class="c">cd selfie &amp;&amp; make</span></span>
+        <span class="l"><span class="p">$</span> <span class="c">./selfie -c selfie.c -m 2 -c selfie.c</span></span>
+      </div>
+      <div class="stack grow">
+        <p class="sm">No C compiler? <span class="mono">docker run -it cksystemsteaching/selfie</span>. No terminal at all? It runs in a browser tab.</p>
+        <p class="sm">Then open <span class="mono">selfie.c</span>, find the last line before <span class="mono">exit_code</span>, and print your own name. That is assignment one, and it is genuinely how the course starts.</p>
+      </div>
+    </div>
+    <div class="three f" data-step="2">
+      <p class="sm"><strong>Book</strong> — <em>Elementary Computer Science: From Bits and Bytes to the Universality of Computing</em></p>
+      <p class="sm"><strong>Slides, autograder, assignments</strong> — all public, all in the repository</p>
+      <p class="sm"><strong>Slack</strong> — the <span class="mono">#selfie</span> channel, where the arguing happens</p>
+    </div>
+    <p class="lead f" data-step="3" style="color:var(--ink);max-width:none"><span class="mono">selfie.cs.uni-salzburg.at</span><br><span class="mono">github.com/cksystemsteaching/selfie</span></p>
+  </div>
+  <aside class="notes"><p>Close on the invitation and make it concrete enough to act on tonight. The three commands are real and the third one is self-self-compilation, which takes a couple of minutes and prints a wall of numbers about itself. The name-printing exercise is not a joke: it is the first assignment, it makes the system personally theirs, and it forces the first successful self-compile. Leave this slide up for questions. If someone asks for one thing to read, it depends who they are — the book if they want the ground up, the README if they want to start typing in the next five minutes, and the Onward! 2017 paper if they want the argument for why a system like this belongs in a curriculum at all.</p></aside>
+</section>
+
+</div>
+</div>
+
+<div id="notes" aria-live="polite"><h5>Speaker notes</h5><div id="notesBody"></div></div>
+<div id="help"><div class="box"><h5>Keys</h5>
+<dl>
+  <dt>→ · space</dt><dd>next step / slide</dd>
+  <dt>←</dt><dd>back</dd>
+  <dt>↓ · ↑</dt><dd>next / previous slide, skipping steps</dd>
+  <dt>home · end</dt><dd>first / last slide</dd>
+  <dt>n</dt><dd>speaker notes</dd>
+  <dt>t</dt><dd>start / pause the clock</dd>
+  <dt>r</dt><dd>reset the clock</dd>
+  <dt>d</dt><dd>toggle light / dark</dd>
+  <dt>? · esc</dt><dd>this panel</dd>
+</dl></div></div>
+
+<script>
+(() => {
+"use strict";
+const $  = (s,r=document)=>r.querySelector(s);
+const $$ = (s,r=document)=>[...r.querySelectorAll(s)];
+const deck = $("#deck"), stage = $("#stage");
+const slides = $$(".slide");
+const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+/* ---------- unit fitting: 1u = deck width / 100 ---------- */
+function fit(){
+  if(deck.classList.contains("printing")) return;   /* pages, not a viewport */
+  const pad = 0.985;
+  const w = stage.clientWidth*pad, h = stage.clientHeight*pad;
+  const u = Math.min(w/100, h/56.25);
+  deck.style.setProperty("--u0", u+"px");
+  sizeCanvases();
+}
+
+/* Slides are authored on a fixed 100 x 56.25 u grid, but how tall the text
+   actually runs depends on which of the fallback fonts a machine has. Where a
+   slide would overflow its bottom padding — printing over the progress bar and
+   the footer — shrink that one slide's unit until it fits. Every length in a
+   slide is a multiple of --u, so this is a pure scale: nothing re-wraps. */
+function autofit(){
+  deck.classList.add("measuring");
+  slides.forEach(s=>{
+    s.style.removeProperty("--k");
+    let k = 1;
+    /* a couple of passes: 1px borders and rules do not scale with --u, so one
+       division does not always land the slide inside its box */
+    for(let pass=0; pass<5; pass++){
+      const cs = getComputedStyle(s), r = s.getBoundingClientRect();
+      const top = r.top + parseFloat(cs.paddingTop), limit = r.bottom - parseFloat(cs.paddingBottom);
+      let bottom = top;
+      (function walk(node){               /* in-flow content only: an absolutely
+                                             positioned subtree (a full-bleed
+                                             figure, a caption) is not what sets
+                                             the height of the slide */
+        for(const e of node.children){
+          const es = getComputedStyle(e);
+          if(es.position === "absolute" || es.position === "fixed" || es.display === "none") continue;
+          const b = e.getBoundingClientRect();
+          if(b.height > .5 && b.bottom > bottom) bottom = b.bottom;
+          walk(e);
+        }
+      })(s);
+      const need = bottom - top, avail = limit - top;
+      if(need <= avail + .5) break;      /* a .fill stretches to exactly avail;
+                                            only a genuine overrun is > avail */
+      k = Math.max(.7, k * avail/need * .996);
+      s.style.setProperty("--k", k.toFixed(4));
+    }
+  });
+  deck.classList.remove("measuring");
+}
+
+let refit = null;
+addEventListener("resize", ()=>{
+  fit();
+  clearTimeout(refit);
+  refit = setTimeout(()=>{ autofit(); sizeCanvases(); }, 180);
+});
+
+/* ---------- theme-aware palette for canvas ---------- */
+let C = {};
+function palette(){
+  const cs = getComputedStyle(deck);
+  const g = n => cs.getPropertyValue(n).trim();
+  C = { ink:g("--ink"), ink2:g("--ink-2"), muted:g("--muted"), line:g("--line"),
+        syn:g("--syn"), sem:g("--sem"), bad:g("--bad"), panel:g("--panel"),
+        ground:g("--ground"), mono:g("--mono") };
+}
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", palette);
+new MutationObserver(palette).observe(document.documentElement,{attributes:true,attributeFilter:["data-theme"]});
+
+/* ---------- steps ---------- */
+slides.forEach(s=>{
+  const steps = $$(".f",s).map(f=>+(f.dataset.step||1));
+  s._max = steps.length ? Math.max(...steps) : 0;
+  s._step = 0;
+});
+let cur = 0;
+
+function paint(){
+  const s = slides[cur];
+  $$(".f",s).forEach(f=>f.classList.toggle("shown", (+(f.dataset.step||1)) <= s._step));
+}
+let hideT = null;
+function show(i, dir=1){
+  i = Math.max(0, Math.min(slides.length-1, i));
+  if(i===cur){ paint(); return; }
+  const old = slides[cur];
+  old.classList.remove("on"); old.classList.toggle("out", dir>0);
+  cur = i;
+  const s = slides[cur];
+  s.classList.remove("out", "gone"); s.classList.add("on");
+  clearTimeout(hideT);
+  hideT = setTimeout(()=>slides.forEach(x=>{ if(x!==slides[cur]) x.classList.add("gone"); }), 340);
+  if(s._step===0 && s._max>0 && reduce) s._step = s._max;
+  paint(); chrome(); startAnims();
+}
+function next(){
+  const s = slides[cur];
+  if(s._step < s._max && !reduce){ s._step++; paint(); return; }
+  if(cur < slides.length-1) show(cur+1,1);
+}
+function prev(){
+  const s = slides[cur];
+  if(s._step > 0 && !reduce){ s._step--; paint(); return; }
+  if(cur > 0){ const t = slides[cur-1]; t._step = t._max; show(cur-1,-1); }
+}
+/* ---------- chrome: acts, bar, notes, clock ---------- */
+const ACTS = [
+  ["0","Prologue"],["I","The System"],["II","The Three Selves"],
+  ["III","Operating Systems"],["IV","Proof and Truth"],["V","Yours"]
+];
+const actOf = s => s.dataset.act;
+const bar = $("#bar");
+ACTS.forEach(([id])=>{
+  const n = slides.filter(s=>actOf(s)===id).length || 1;
+  const seg = document.createElement("div");
+  seg.className = "seg"; seg.style.flex = n; seg.dataset.act = id;
+  seg.innerHTML = "<i></i>"; bar.appendChild(seg);
+});
+function chrome(){
+  const s = slides[cur], a = actOf(s);
+  const meta = ACTS.find(x=>x[0]===a) || ["",""];
+  $("#actname").innerHTML = a==="0" ? "Prologue" : `${a} <b>·</b> ${meta[1]}`;
+  $("#pageno").textContent = String(cur+1).padStart(2,"0")+" / "+slides.length;
+  $$("#bar .seg").forEach(seg=>{
+    const list = slides.filter(x=>actOf(x)===seg.dataset.act);
+    const idx = list.indexOf(s);
+    const done = slides.indexOf(list[list.length-1]) < cur;
+    seg.classList.toggle("cur", idx>=0);
+    seg.querySelector("i").style.transform =
+      "scaleX("+(done?1:(idx>=0 ? (idx+1)/list.length : 0))+")";
+  });
+  const n = $(".notes", s);
+  $("#notesBody").innerHTML = n ? n.innerHTML : "<p>—</p>";
+}
+
+/* clock: the deck is not pinned to a fixed length. The target is whatever the
+   per-slide data-mins budget adds up to, so slides can be added or cut and the
+   clock — and the pace warnings — follow the plan instead of contradicting it. */
+let t0=null, acc=0, running=false;
+const plan = slides.map(s=>+(s.dataset.mins||1));
+const cumPlan = plan.reduce((a,v)=>(a.push((a[a.length-1]||0)+v),a),[]);
+const TOTAL = (cumPlan[cumPlan.length-1]||0)*60;
+function elapsed(){ return acc + (running && t0!==null ? (performance.now()-t0)/1000 : 0); }
+function tick(){
+  const e = elapsed(), left = TOTAL - e, el = $("#clock");
+  const m = Math.floor(Math.abs(left)/60), s = Math.floor(Math.abs(left)%60);
+  el.textContent = (left<0?"-":"") + m + ":" + String(s).padStart(2,"0");
+  const target = (cumPlan[cur]||0)*60;
+  el.classList.toggle("warn", running && e > target + 60);
+  el.classList.toggle("late", running && e > target + 180);
+}
+const clockTimer = setInterval(tick, 500); tick();
+
+/* ---------- input ---------- */
+const KEY = {
+  ArrowRight:next, " ":next, PageDown:next, Enter:next,
+  ArrowLeft:prev, PageUp:prev, Backspace:prev,
+  ArrowDown:()=>show(cur+1,1), ArrowUp:()=>show(cur-1,-1),
+  Home:()=>show(0,-1), End:()=>show(slides.length-1,1),
+  n:()=>$("#notes").classList.toggle("on"),
+  t:()=>{ if(running){ acc=elapsed(); running=false; t0=null; } else { t0=performance.now(); running=true; } tick(); },
+  r:()=>{ acc=0; t0=running?performance.now():null; tick(); },
+  d:()=>{ const r=document.documentElement;
+          const dark = getComputedStyle(deck).getPropertyValue("--ink").trim().startsWith("#E");
+          r.dataset.theme = dark ? "light" : "dark"; },
+  "?":()=>$("#help").classList.toggle("on"),
+  Escape:()=>{ $("#help").classList.remove("on"); }
+};
+addEventListener("keydown", e=>{
+  const f = KEY[e.key];
+  if(f){ e.preventDefault(); f(); }
+}, {passive:false});
+$("#bNext").onclick = next; $("#bPrev").onclick = prev;
+$("#bNotes").onclick = ()=>$("#notes").classList.toggle("on");
+$("#bHelp").onclick  = ()=>$("#help").classList.toggle("on");
+$("#help").onclick   = ()=>$("#help").classList.remove("on");
+deck.addEventListener("click", e=>{ if(e.target.closest("button")) return;
+  const r = deck.getBoundingClientRect();
+  (e.clientX - r.left)/r.width < .22 ? prev() : next(); });
+deck.focus();
+
+/* ================= canvas animations ================= */
+const ANIM = {};
+const canvases = ()=>$$("canvas[data-anim]", slides[cur]);
+function sizeCanvases(){
+  const printing = deck.classList.contains("printing");
+  $$("canvas[data-anim]").forEach(c=>{
+    /* headless Chrome reports dpr 1, which would put the figures into the PDF
+       at about 96dpi; the deck is the only source, so pay for 2x here */
+    const dpr = printing ? 2 : Math.min(2, devicePixelRatio||1);
+    const w = c.clientWidth, h = c.clientHeight;
+    if(!w||!h) return;
+    c.width = Math.round(w*dpr); c.height = Math.round(h*dpr);
+    c._dpr = dpr;
+  });
+}
+let raf=null, tStart=0;
+function startAnims(){
+  tStart = performance.now();
+  if(raf) cancelAnimationFrame(raf);
+  sizeCanvases();
+  const loop = ()=>{
+    const s = slides[cur], t = (performance.now()-tStart)/1000;
+    canvases().forEach(c=>{
+      const fn = ANIM[c.dataset.anim]; if(!fn) return;
+      const ctx = c.getContext("2d"), d = c._dpr||1;
+      ctx.setTransform(d,0,0,d,0,0);
+      ctx.clearRect(0,0,c.clientWidth,c.clientHeight);
+      ctx.globalAlpha = 1;
+      try{ fn(ctx, c.clientWidth, c.clientHeight, s._step, reduce?3:t); }
+      catch(err){ /* a bad frame must never take the deck down */ }
+    });
+    raf = requestAnimationFrame(loop);
+  };
+  loop();
+}
+
+/* helpers */
+const rnd = seed => ()=> (seed = (seed*1103515245 + 12345) & 0x7fffffff)/0x7fffffff;
+/* txt(): `box:[left,right]` keeps a label inside those bounds — it shrinks the
+   type if the string is too wide, then nudges x so nothing is clipped. Every
+   caption-sized label passes box:[…] because the fallback fonts differ per
+   machine, and a label that just fits here can overrun the canvas elsewhere. */
+function txt(ctx, s, x, y, {size=13, col=C.muted, font=C.mono, align="left", weight=400, box=null}={}){
+  ctx.fillStyle=col; ctx.textAlign=align; ctx.textBaseline="middle";
+  ctx.font = weight+" "+size+"px "+font;
+  if(box){
+    const lim = box[1]-box[0];
+    let wd = ctx.measureText(s).width;
+    if(wd > lim){ size = Math.max(4, size*lim/wd); ctx.font = weight+" "+size+"px "+font; wd = ctx.measureText(s).width; }
+    const l = align==="center" ? x-wd/2 : (align==="right"||align==="end") ? x-wd : x;
+    /* if it still cannot fit, hold the right edge: box[1] is the side that is
+       usually the edge of the canvas, and running off that is the worse fault */
+    x += (wd >= lim ? box[1]-wd : Math.min(Math.max(l, box[0]), box[1]-wd)) - l;
+  }
+  ctx.fillText(s,x,y);
+}
+/* the bottom-left strip of every .fig is occupied by its permanent caption */
+const capfree = h => h*.86;
+function rr(ctx,x,y,w,h,r){ ctx.beginPath(); ctx.moveTo(x+r,y);
+  ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r);
+  ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); }
+function arrow(ctx,x1,y1,x2,y2,col,head=6){
+  ctx.strokeStyle=col; ctx.lineWidth=1.4; ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+  const a=Math.atan2(y2-y1,x2-x1); ctx.fillStyle=col; ctx.beginPath();
+  ctx.moveTo(x2,y2); ctx.lineTo(x2-head*Math.cos(a-.4), y2-head*Math.sin(a-.4));
+  ctx.lineTo(x2-head*Math.cos(a+.4), y2-head*Math.sin(a+.4)); ctx.closePath(); ctx.fill();
+}
+const ease = t => t<0?0 : t>1?1 : 1-Math.pow(1-t,3);
+
+/* --- ambient title: drifting bits + diagonal sweep --- */
+ANIM.ambient = (ctx,w,h,st,t)=>{
+  const r = rnd(7), N = 150;
+  ctx.globalAlpha = 1;
+  for(let i=0;i<N;i++){
+    const bx = r()*w, by = r()*h, sp = .12+r()*.5, ph = r()*10;
+    const y = (by + t*sp*14) % (h+20) - 10;
+    const a = .07 + .16*(0.5+0.5*Math.sin(t*.7+ph));
+    ctx.globalAlpha = a;
+    txt(ctx, r()>.5?"1":"0", bx, y, {size: 9+r()*7, col: C.sem});
+  }
+  ctx.globalAlpha = 1;
+  // diagonal sweep
+  const cl = v => v<0?0 : v>1?1 : v;
+  const p = (t*.11)%1.6 - .3;
+  const g = ctx.createLinearGradient(0,0,w,h);
+  g.addColorStop(cl(p-.14),"transparent");
+  g.addColorStop(cl(p), C.sem);
+  g.addColorStop(cl(p+.14),"transparent");
+  ctx.globalAlpha=.13; ctx.strokeStyle=g; ctx.lineWidth=1;
+  for(let k=-1;k<2;k++){ ctx.beginPath(); ctx.moveTo(0, h*k); ctx.lineTo(w, h*(k+1)); ctx.stroke(); }
+  ctx.globalAlpha=1;
+};
+
+/* --- pipeline: a character of source, all the way to an instruction --- */
+ANIM.pipeline = (ctx,w,h,st,t)=>{
+  const boxes = [["selfie.c",C.syn],["scanner",C.ink2],["parser",C.ink2],
+                 ["code generator",C.ink2],["RISC-U",C.sem]];
+  const n=boxes.length, gap=w*.026, side=w*.035;
+  const bw=(w - side*2 - gap*(n-1))/n, bh=h*.30, y=h*.24, F=Math.min(h*.055, bw*.13);
+  boxes.forEach(([lab,col],i)=>{
+    const x=side+i*(bw+gap);
+    ctx.strokeStyle=(i===0||i===n-1)?col:C.line; ctx.lineWidth=1;
+    ctx.fillStyle=C.panel; rr(ctx,x,y,bw,bh,h*.03); ctx.fill(); ctx.stroke();
+    txt(ctx,lab,x+bw/2,y+bh/2,{size:F,col,align:"center",box:[x+3,x+bw-3]});
+    if(i<n-1) arrow(ctx, x+bw+gap*.12, y+bh/2, x+bw+gap*.88, y+bh/2, C.line, gap*.28);
+  });
+  /* one symbol travelling the whole way, ochre while it is text, cyan once it
+     is code — the colour change happens where the meaning is decided. It shows
+     only in the gaps: inside a stage it would sit on top of the stage's name. */
+  const p=(t*.26)%1.25, span=w-side*2;
+  if(p<1){
+    const x=side+span*p, i=Math.floor((x-side)/(bw+gap)), inBox=(x-side)-i*(bw+gap) < bw;
+    if(!inBox){
+      const done=p>.72;
+      ctx.globalAlpha=.9; ctx.fillStyle=done?C.sem:C.syn;
+      ctx.beginPath(); ctx.arc(x, y+bh/2, h*.022, 0, 7); ctx.fill();
+      ctx.globalAlpha=.2; ctx.beginPath(); ctx.arc(x, y+bh/2, h*.05, 0, 7); ctx.fill();
+      ctx.globalAlpha=1;
+    }
+  }
+  ctx.strokeStyle=C.line; ctx.setLineDash([2,4]); ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(side, y+bh+h*.14); ctx.lineTo(w-side, y+bh+h*.14); ctx.stroke();
+  ctx.setLineDash([]);
+  txt(ctx,"and in the same file: in-memory linker · disassembler · garbage collector · L1 caches · profiler · debugger with replay",
+      w/2, Math.min(y+bh+h*.28, capfree(h)), {size:F*.82, col:C.muted, align:"center", box:[4,w-4]});
+};
+
+/* --- meaning: notation to meaning, and the arrow that lives inside the box --- */
+ANIM.meaning = (ctx,w,h,st,t)=>{
+  const bw=w*.34, bh=h*.26, y=h*.16, F=Math.min(h*.078, bw*.14);
+  const xa=w*.05, xb=w-w*.05-bw;
+  /* fillStyle has to be set immediately before each fill: txt() leaves the
+     colour of the last label behind it */
+  ctx.strokeStyle=C.syn; ctx.lineWidth=1; ctx.fillStyle=C.panel;
+  rr(ctx,xa,y,bw,bh,h*.04); ctx.fill(); ctx.stroke();
+  txt(ctx,"selfie.c",xa+bw/2,y+bh*.38,{size:F,col:C.syn,align:"center",box:[xa+F*.4,xa+bw-F*.4]});
+  txt(ctx,"text",xa+bw/2,y+bh*.72,{size:F*.72,col:C.muted,align:"center",box:[xa+F*.4,xa+bw-F*.4]});
+  ctx.strokeStyle=C.sem; ctx.fillStyle=C.panel;
+  rr(ctx,xb,y,bw,bh,h*.04); ctx.fill(); ctx.stroke();
+  txt(ctx,"what the",xb+bw/2,y+bh*.34,{size:F*.78,col:C.sem,align:"center",box:[xb+F*.4,xb+bw-F*.4]});
+  txt(ctx,"machine does",xb+bw/2,y+bh*.62,{size:F*.78,col:C.sem,align:"center",box:[xb+F*.4,xb+bw-F*.4]});
+  ctx.globalAlpha=.55+.45*Math.sin(t*1.6);
+  arrow(ctx, xa+bw+w*.02, y+bh/2, xb-w*.02, y+bh/2, C.ink2, h*.026);
+  ctx.globalAlpha=1;
+  txt(ctx,"starc",(xa+bw+xb)/2, y-h*.05, {size:F*.72,col:C.ink2,align:"center",box:[xa+bw,xb]});
+  /* the loop: the program that draws the arrow is written in the left box */
+  const cy=y+bh+h*.13;
+  ctx.strokeStyle=C.line; ctx.lineWidth=1; ctx.setLineDash([3,3]);
+  ctx.beginPath();
+  ctx.moveTo(xb+bw/2, y+bh); ctx.bezierCurveTo(xb+bw/2, cy+h*.10, xa+bw/2, cy+h*.10, xa+bw/2, y+bh);
+  ctx.stroke(); ctx.setLineDash([]);
+  txt(ctx,"and starc's own source is in there",w/2, Math.min(cy+h*.16, capfree(h)-h*.02),
+      {size:F*.62,col:C.muted,align:"center",box:[4,w-4]});
+};
+
+/* --- bootstrap: three stages, two roads, one fixed point --- */
+ANIM.bootstrap = (ctx,w,h,st,t)=>{
+  const F=Math.min(h*.045, w*.028);
+  const lx=w*.02, lw=w*.36, rx=w*.62, rw=w*.30, bh=h*.125;
+  const ys=[h*.04, h*.25, h*.46];
+  const stage=(i,left,right,label,rcol,on)=>{
+    if(!on) return;
+    const y=ys[i], a=ease(t*1.6 - i*.15);
+    ctx.globalAlpha=Math.max(.15,Math.min(1,a));
+    ctx.strokeStyle=C.line; ctx.lineWidth=1; ctx.fillStyle=C.panel;
+    rr(ctx,lx,y,lw,bh,h*.02); ctx.fill(); ctx.stroke();
+    txt(ctx,left,lx+lw/2,y+bh/2,{size:F,col:C.ink2,align:"center",box:[lx+F*.5,lx+lw-F*.5]});
+    arrow(ctx, lx+lw+w*.02, y+bh/2, rx-w*.02, y+bh/2, C.line, h*.016);
+    txt(ctx,label,(lx+lw+rx)/2, y+bh/2-h*.04,
+        {size:F*.78,col:C.muted,align:"center",box:[lx+lw+w*.01, rx-w*.01]});
+    ctx.strokeStyle=rcol; ctx.fillStyle=C.panel;
+    rr(ctx,rx,y,rw,bh,h*.02); ctx.fill(); ctx.stroke();
+    txt(ctx,right,rx+rw/2,y+bh/2,{size:F,col:rcol,align:"center",box:[rx+F*.5,rx+rw-F*.5]});
+    if(i>0){                                 /* the output above is the input here */
+      ctx.strokeStyle=C.line; ctx.setLineDash([2,3]);
+      ctx.beginPath(); ctx.moveTo(rx+rw/2, ys[i-1]+bh); ctx.lineTo(rx+rw/2, ys[i-1]+bh+h*.04);
+      ctx.lineTo(lx+lw/2, ys[i-1]+bh+h*.04); ctx.lineTo(lx+lw/2, y); ctx.stroke();
+      ctx.setLineDash([]);
+    }
+    ctx.globalAlpha=1;
+  };
+  stage(0,"selfie.c","./selfie","clang", C.ink2, st>=1);
+  stage(1,"./selfie  -c selfie.c","selfie1.m","starc", C.syn, st>=2);
+  stage(2,"selfie1.m  -c selfie.c","selfie2.m","starc, run by mipster", C.sem, st>=3);
+  if(st>=4){
+    const y=ys[2]+bh+h*.075;
+    ctx.globalAlpha=ease((t-.1)*1.4);
+    ctx.strokeStyle=C.sem; ctx.lineWidth=1.4;
+    ctx.beginPath(); ctx.moveTo(rx, y); ctx.lineTo(rx+rw, y); ctx.stroke();
+    txt(ctx,"selfie1.m = selfie2.m", rx+rw/2, y+h*.06,
+        {size:F*1.05, col:C.sem, align:"center", box:[w*.44, w-4]});
+    txt(ctx,"identical · 188,392 bytes", rx+rw/2, y+h*.135,
+        {size:F*.8, col:C.muted, align:"center", box:[w*.44, w-4]});
+    ctx.globalAlpha=1;
+  }
+};
+
+/* --- interp: one instruction up there, a few thousand down here --- */
+ANIM.interp = (ctx,w,h,st,t)=>{
+  const F=Math.min(h*.05, w*.045), N=7;
+  const cell=Math.min(w*.10, h*.13), gap=cell*.22;
+  const rowW=N*cell+(N-1)*gap, x0=(w-rowW)/2, yT=h*.14;
+  const k=Math.floor(t*.9)%N;
+  txt(ctx,"guest", x0-cell*.35, yT+cell/2, {size:F*.8, col:C.sem, align:"right", box:[2, x0-cell*.25]});
+  for(let i=0;i<N;i++){
+    const x=x0+i*(cell+gap), on=i===k;
+    ctx.strokeStyle=on?C.sem:C.line; ctx.lineWidth=1;
+    ctx.fillStyle=on?C.sem:C.panel; ctx.globalAlpha=on?.18:1;
+    rr(ctx,x,yT,cell,cell*.62,cell*.09); ctx.fill(); ctx.globalAlpha=1; ctx.stroke();
+  }
+  /* the fan: what one of those cells costs underneath */
+  const xk=x0+k*(cell+gap)+cell/2, yB=h*.62, band=w*.86, bx=(w-band)/2;
+  ctx.strokeStyle=C.line; ctx.lineWidth=1; ctx.globalAlpha=.55;
+  for(let i=0;i<=10;i++){
+    ctx.beginPath(); ctx.moveTo(xk, yT+cell*.62);
+    ctx.lineTo(bx+band*i/10, yB-h*.02); ctx.stroke();
+  }
+  ctx.globalAlpha=1;
+  txt(ctx,"host", bx-cell*.35, yB+h*.045, {size:F*.8, col:C.syn, align:"right", box:[2, bx-cell*.25]});
+  const ticks=Math.round(band/3);
+  for(let i=0;i<ticks;i++){
+    const x=bx+i*3, a=.25+.55*(0.5+0.5*Math.sin(t*5 - i*.35));
+    ctx.globalAlpha=a; ctx.fillStyle=C.syn;
+    ctx.fillRect(x, yB, 1.4, h*.09);
+  }
+  ctx.globalAlpha=1;
+  txt(ctx,"1 instruction  →  about 2,600", w/2, Math.min(yB+h*.20, capfree(h)),
+      {size:F*1.05, col:C.ink, align:"center", box:[4,w-4]});
+};
+
+/* --- ladder: -m and -y stacked, standing on an emulated machine --- */
+ANIM.ladder = (ctx,w,h,st,t)=>{
+  const rows=[
+    ["physical machine",            "",      C.muted],
+    ["mipster",                     "-m 3",  C.syn],
+    ["hypster",                     "-y 2",  C.sem],
+    ["hypster",                     "-y 1",  C.sem],
+    ["selfie",                      "",      C.ink]
+  ];
+  const n=rows.length, bh=Math.min(h*.145, (capfree(h)-h*.06)/n*.78), gap=bh*.32;
+  const total=n*bh+(n-1)*gap, y0=(capfree(h)-total)/2;
+  const F=Math.min(bh*.42, w*.045);
+  rows.forEach(([lab,opt,col],i)=>{
+    const idx=n-1-i;                       /* draw bottom-up: hardware first */
+    const y=y0+idx*(bh+gap), inset=w*.055*i;
+    const x=inset+w*.05, bw=w-2*(inset+w*.05);
+    const a=Math.min(1, Math.max(0, t*1.5-i*.28));
+    ctx.globalAlpha=a;
+    ctx.strokeStyle=col===C.muted?C.line:col; ctx.lineWidth=1; ctx.fillStyle=C.panel;
+    rr(ctx,x,y,bw,bh,bh*.16); ctx.fill(); ctx.stroke();
+    txt(ctx,lab, x+bw/2, y+bh/2, {size:F, col, align:"center", box:[x+3,x+bw-3]});
+    if(opt) txt(ctx,opt, x+bw-F*.5, y+bh/2, {size:F*.78, col:C.muted, align:"right", box:[x+bw*.5,x+bw-4]});
+    if(i>0) arrow(ctx, w*.5, y+bh+gap*.86, w*.5, y+bh+gap*.16, C.line, gap*.3);
+    ctx.globalAlpha=1;
+  });
+};
+
+/* --- emuvirt: the same operating system, built two ways.
+   Left, the guest is data being read. Right, the guest is code being run. --- */
+ANIM.emuvirt = (ctx,w,h,st,t)=>{
+  const F=Math.min(h*.055, w*.024);
+  const panel=(x0,pw,title,tcol,kind)=>{
+    const y0=h*.12, ph=capfree(h)-y0-h*.02;
+    txt(ctx,title, x0+pw/2, y0-h*.055, {size:F*1.15, col:tcol, align:"center", box:[x0,x0+pw]});
+    ctx.strokeStyle=C.line; ctx.lineWidth=1; ctx.fillStyle=C.panel;
+    rr(ctx,x0,y0,pw,ph,h*.03); ctx.fill(); ctx.stroke();
+    txt(ctx,"physical machine", x0+pw*.5, y0+ph-h*.05, {size:F*.85, col:C.muted, align:"center", box:[x0+4,x0+pw-4]});
+    if(kind==="emu"){
+      const ox=x0+pw*.09, oy=y0+h*.07, ow=pw*.82, oh=ph-h*.24;
+      ctx.strokeStyle=tcol; ctx.fillStyle=C.ground;
+      rr(ctx,ox,oy,ow,oh,h*.025); ctx.fill(); ctx.stroke();
+      txt(ctx,"OS · mipster", ox+ow/2, oy+h*.05, {size:F, col:tcol, align:"center", box:[ox+4,ox+ow-4]});
+      const gx=ox+ow*.14, gy=oy+h*.10, gw=ow*.72, gh=oh-h*.155;
+      ctx.strokeStyle=C.line; ctx.setLineDash([3,3]); ctx.fillStyle=C.panel;
+      rr(ctx,gx,gy,gw,gh,h*.02); ctx.fill(); ctx.stroke(); ctx.setLineDash([]);
+      txt(ctx,"guest", gx+gw/2, gy+gh*.36, {size:F*1.05, col:C.ink2, align:"center", box:[gx+4,gx+gw-4]});
+      txt(ctx,"read, not run", gx+gw/2, gy+gh*.66, {size:F*.85, col:C.muted, align:"center", box:[gx+4,gx+gw-4]});
+      /* the interpreter's head walking the guest */
+      const p=(t*.5)%1, hx=gx+gw*(.12+.76*p);
+      ctx.globalAlpha=.75; ctx.fillStyle=tcol;
+      ctx.beginPath(); ctx.arc(hx, gy+gh*.90, h*.013, 0, 7); ctx.fill(); ctx.globalAlpha=1;
+      txt(ctx,"interprets", ox+ow/2, oy+oh+h*.042, {size:F*.85, col:tcol, align:"center", box:[ox+4,ox+ow-4]});
+    } else {
+      const oy=y0+h*.07, oh=ph-h*.24, cw=pw*.36;
+      const ax=x0+pw*.05, bx=x0+pw*.95-cw;
+      ctx.strokeStyle=tcol; ctx.fillStyle=C.ground;
+      rr(ctx,ax,oy,cw,oh,h*.025); ctx.fill(); ctx.stroke();
+      txt(ctx,"VMM", ax+cw/2, oy+oh*.42, {size:F*1.05, col:tcol, align:"center", box:[ax+4,ax+cw-4]});
+      txt(ctx,"hypster", ax+cw/2, oy+oh*.66, {size:F*.85, col:C.muted, align:"center", box:[ax+4,ax+cw-4]});
+      ctx.strokeStyle=C.line; ctx.fillStyle=C.panel;
+      rr(ctx,bx,oy,cw,oh,h*.025); ctx.fill(); ctx.stroke();
+      txt(ctx,"guest", bx+cw/2, oy+oh*.42, {size:F*1.05, col:C.ink2, align:"center", box:[bx+4,bx+cw-4]});
+      txt(ctx,"on the CPU", bx+cw/2, oy+oh*.66, {size:F*.85, col:C.muted, align:"center", box:[bx+4,bx+cw-4]});
+      const my=oy+oh*.26, back=(t%2)<1;
+      ctx.globalAlpha=back?1:.28; arrow(ctx, ax+cw+w*.004, my, bx-w*.004, my, tcol, h*.014);
+      ctx.globalAlpha=back?.28:1; arrow(ctx, bx-w*.004, my+h*.04, ax+cw+w*.004, my+h*.04, tcol, h*.014);
+      ctx.globalAlpha=1;
+      txt(ctx,"context switch", x0+pw/2, oy+oh+h*.042, {size:F*.85, col:tcol, align:"center", box:[x0+4,x0+pw-4]});
+    }
+  };
+  const gapx=w*.045, pw=(w-gapx)/2 - w*.02;
+  panel(w*.01, pw, "by emulation", C.syn, "emu");
+  panel(w*.01+pw+gapx, pw, "by virtualization", C.sem, "virt");
+  txt(ctx,"same guest · same 86,380 instructions · same output", w/2, h*.955,
+      {size:F*.95, col:C.ink2, align:"center", box:[4,w-4]});
+};
+
+/* --- cost: what the machine underneath is billed, log scale --- */
+ANIM.cost = (ctx,w,h,st,t)=>{
+  const rows=[
+    ["bare metal",      85754,     "×1",     C.sem],
+    ["virtualized",     17860937,  "×208",   C.sem],
+    ["+ a VMM below",   59492501,  "×694",   C.ink2],
+    ["emulated",        222410917, "×2,593", C.syn]
+  ];
+  const F=Math.min(h*.062, w*.030);
+  const x0=w*.24, x1=w*.80, top=h*.16, bot=capfree(h)-h*.04;
+  const bh=Math.min(h*.115, (bot-top)/rows.length*.62);
+  const step=(bot-top-bh)/(rows.length-1);
+  const lo=Math.log10(rows[0][1]), hi=Math.log10(rows[3][1]);
+  rows.forEach(([lab,v,fac,col],i)=>{
+    const y=top+i*step, a=Math.max(0,Math.min(1,ease(t*1.3-i*.14)));
+    const full=(Math.log10(v)-lo)/(hi-lo);
+    const bw=(x1-x0)*(.055+.945*full)*a, r=Math.min(bh*.25, bw*.45);
+    txt(ctx,lab, x0-w*.015, y+bh/2, {size:F, col:C.ink2, align:"right", box:[2, x0-w*.01]});
+    ctx.fillStyle=col; ctx.globalAlpha=.30; rr(ctx,x0,y,bw,bh,r); ctx.fill();
+    ctx.globalAlpha=1; ctx.strokeStyle=col; ctx.lineWidth=1; rr(ctx,x0,y,bw,bh,r); ctx.stroke();
+    if(a>.5) txt(ctx,fac, x0+bw+w*.012, y+bh/2, {size:F*.92, col, box:[x0+bw, w-4]});
+  });
+};
+
+/* --- selfref: the kernel needs what the kernel provides --- */
+ANIM.selfref = (ctx,w,h,st,t)=>{
+  const F=Math.min(h*.06, w*.052);
+  const bw=w*.36, bh=h*.16, y=h*.14;
+  const ax=w*.05, bx=w-w*.05-bw;
+  ctx.strokeStyle=C.sem; ctx.lineWidth=1; ctx.fillStyle=C.panel;
+  rr(ctx,ax,y,bw,bh,h*.025); ctx.fill(); ctx.stroke();
+  txt(ctx,"kernel", ax+bw/2, y+bh/2, {size:F, col:C.sem, align:"center", box:[ax+3,ax+bw-3]});
+  ctx.strokeStyle=C.line; ctx.fillStyle=C.panel;
+  rr(ctx,bx,y,bw,bh,h*.025); ctx.fill(); ctx.stroke();
+  txt(ctx,"isolation", bx+bw/2, y+bh/2, {size:F, col:C.ink2, align:"center", box:[bx+3,bx+bw-3]});
+  const p=(t*.7)%2;
+  ctx.globalAlpha=p<1?1:.3; arrow(ctx, ax+bw+w*.015, y+bh*.35, bx-w*.015, y+bh*.35, C.ink2, h*.02);
+  ctx.globalAlpha=p<1?.3:1; arrow(ctx, bx-w*.015, y+bh*.75, ax+bw+w*.015, y+bh*.75, C.bad, h*.02);
+  ctx.globalAlpha=1;
+  txt(ctx,"provides", (ax+bw+bx)/2, y+bh*.16, {size:F*.68, col:C.muted, align:"center", box:[ax+bw,bx]});
+  txt(ctx,"requires", (ax+bw+bx)/2, y+bh*.95, {size:F*.68, col:C.bad, align:"center", box:[ax+bw,bx]});
+  const pulse=.45+.55*(0.5+0.5*Math.sin(t*2.4));
+  ctx.globalAlpha=pulse;
+  txt(ctx,"?", w/2, y+bh+h*.13, {size:F*1.9, col:C.bad, align:"center", box:[4,w-4]});
+  ctx.globalAlpha=1;
+  const by=y+bh+h*.26, bwid=w*.86, bxx=(w-bwid)/2, bhh=h*.20;
+  ctx.strokeStyle=C.syn; ctx.setLineDash([4,3]); ctx.fillStyle=C.panel;
+  rr(ctx,bxx,by,bwid,bhh,h*.025); ctx.fill(); ctx.stroke(); ctx.setLineDash([]);
+  txt(ctx,"microkernel · trusted computing base", w/2, by+bhh*.34,
+      {size:F*.82, col:C.syn, align:"center", box:[bxx+F,bxx+bwid-F]});
+  txt(ctx,"isolated by hand · must never fault", w/2, by+bhh*.70,
+      {size:F*.72, col:C.muted, align:"center", box:[bxx+F,bxx+bwid-F]});
+};
+
+/* --- galaxy: what one file grew into --- */
+ANIM.galaxy = (ctx,w,h,st,t)=>{
+  const cx=w/2, cy=capfree(h)*.52, R=Math.min(w*.36, capfree(h)*.38);
+  const F=Math.min(h*.05, w*.026);
+  const tools=["monster","beator","rotor","bitme","beatle","buzzr","babysat","boehm-gc","riscv-2-x86","machine/"];
+  /* the pulse: selfie reaching every tool, and every tool reaching back */
+  const ring=(t*.35)%1;
+  ctx.strokeStyle=C.line; ctx.lineWidth=1; ctx.globalAlpha=.5*(1-ring);
+  ctx.beginPath(); ctx.arc(cx,cy,R*(.25+ring*.95),0,7); ctx.stroke(); ctx.globalAlpha=1;
+  tools.forEach((lab,i)=>{
+    const a=-Math.PI/2 + i*2*Math.PI/tools.length;
+    const x=cx+Math.cos(a)*R, y=cy+Math.sin(a)*R*.86;
+    const on=Math.min(1, Math.max(0, t*1.6 - i*.13));
+    ctx.globalAlpha=on;
+    ctx.strokeStyle=C.line; ctx.setLineDash([2,3]);
+    ctx.beginPath(); ctx.moveTo(cx,cy); ctx.lineTo(x,y); ctx.stroke(); ctx.setLineDash([]);
+    const nw=Math.max(F*4.4, ctx.measureText(lab).width+F*1.4), nh=F*1.9;
+    ctx.fillStyle=C.panel; ctx.strokeStyle=C.sem; ctx.lineWidth=1;
+    rr(ctx,x-nw/2,y-nh/2,nw,nh,nh*.3); ctx.fill(); ctx.stroke();
+    txt(ctx,lab,x,y,{size:F,col:C.ink2,align:"center",box:[x-nw/2+2,x+nw/2-2]});
+    ctx.globalAlpha=1;
+  });
+  const cw=F*7.2, ch=F*2.6;
+  ctx.fillStyle=C.panel; ctx.strokeStyle=C.syn; ctx.lineWidth=1.4;
+  rr(ctx,cx-cw/2,cy-ch/2,cw,ch,ch*.28); ctx.fill(); ctx.stroke();
+  txt(ctx,"selfie.c",cx,cy,{size:F*1.25,col:C.syn,align:"center",box:[cx-cw/2+3,cx+cw/2-3]});
+};
+/* ---------- print / PDF ----------
+   Lay the whole deck out as pages, every fragment shown, every figure drawn
+   once at a fixed time so the output is deterministic. make-pdf.sh drives this
+   through headless Chrome; ?print gives the same thing in a normal browser. */
+function printLayout(){
+  /* stop everything that repeats: a live timer keeps headless Chrome from
+     exiting once it has written the PDF */
+  if(raf) cancelAnimationFrame(raf);
+  clearInterval(clockTimer);
+  deck.classList.add("printing");
+  deck.classList.remove("measuring");
+  /* fit() has already written --u0 inline from the viewport, and an inline
+     property beats the stylesheet — so set the page unit here: 1600/100 */
+  deck.style.setProperty("--u0", "16px");
+  const acts = new Map(ACTS);
+  slides.forEach((s,i)=>{
+    s.classList.remove("on","out","gone");
+    s._step = s._max;
+    const a = actOf(s);
+    const top = document.createElement("div");
+    top.className = "pchrome top";
+    top.innerHTML = (a==="0" ? "Prologue" : a+" <b>·</b> "+(acts.get(a)||"")) + '<span class="sp"></span>';
+    const bot = document.createElement("div");
+    bot.className = "pchrome bot";
+    bot.innerHTML = 'What is Selfie?<span class="n">· '+
+      String(i+1).padStart(2,"0")+" / "+slides.length+'</span><span class="sp"></span>';
+    s.append(top, bot);
+    $$(".f", s).forEach(f=>f.classList.add("shown"));
+  });
+  autofit();
+  sizeCanvases();
+  /* one deterministic frame per figure, at the time reduced motion would use */
+  $$("canvas[data-anim]").forEach(c=>{
+    const fn = ANIM[c.dataset.anim]; if(!fn) return;
+    const ctx = c.getContext("2d"), d = c._dpr||1;
+    ctx.setTransform(d,0,0,d,0,0);
+    ctx.clearRect(0,0,c.clientWidth,c.clientHeight);
+    const s = c.closest(".slide");
+    try{ fn(ctx, c.clientWidth, c.clientHeight, s ? s._max : 0, 3); }catch(err){}
+  });
+  document.documentElement.dataset.printReady = "1";
+}
+
+/* ---------- boot ---------- */
+palette(); fit(); autofit(); sizeCanvases();
+slides.forEach((s,i)=>{ s.classList.toggle("on", i===0); s.classList.toggle("gone", i!==0); });
+if(reduce) slides.forEach(s=>s._step=s._max);
+chrome(); paint(); startAnims(); tick();
+window.__deck = {show, next, prev, slides, printLayout};
+const q = new URLSearchParams(location.search);
+if(q.has("theme")) document.documentElement.dataset.theme = q.get("theme");
+if(q.has("print")) printLayout();
+})();
+</script>
+<!--END-ARTIFACT-CONTENT-->
+</body>
+</html>
