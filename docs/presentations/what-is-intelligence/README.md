@@ -207,6 +207,13 @@ and **drafting cyan for semantics** (infinite, uncountable, meaning), with madde
 the moment a contradiction lands. The typography makes the same distinction: an old-style serif for
 meaning, monospace for notation.
 
+The code is taught rather than assumed. Slide 1 names it in the two colours themselves — *proof,
+notation, syntax* in ochre, *truth, meaning, semantics* in cyan — and from there the words **proof**
+and **truth** carry their colour wherever the distinction is doing work: the short answer (4), the
+result everything hangs on (26), both Gödel slides (32, 33), the definition (63). Note that rose is
+*not* the truth colour and must not become one: the whole talk is about telling proof, truth and
+contradiction apart, so contradiction needs an ink of its own.
+
 Both themes are designed; the viewer's system preference or the <kbd>d</kbd> key selects one.
 Everything is sized from a single unit (`--u` = deck width ⁄ 100) so the 16:9 stage scales to any
 projector, and all twenty-four figures are drawn on canvas at whatever size they are given. Animation is
