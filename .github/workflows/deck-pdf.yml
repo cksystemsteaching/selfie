@@ -1,9 +1,13 @@
 name: Keep the Intelligence Deck PDF in Sync
 
 # The PDF next to the deck is a rendering of index.html, not a separate
-# artifact, so it must never drift. Any push that touches the deck rebuilds it
-# and commits the result if it differs. Pull requests only check: they fail if
-# the committed PDF is stale, and say how to fix it.
+# artifact, so it must never drift. Sync is tracked against the source hash in
+# what-is-intelligence.pdf.sha rather than against the PDF bytes: Chrome does
+# not render deterministically, so a byte comparison would report a change on
+# every run and commit noise forever.
+#
+# A pull request that changes the deck without rebuilding the PDF fails, and is
+# told what to run. A push to main rebuilds and commits it.
 
 on:
   push:
@@ -21,37 +25,47 @@ on:
 permissions:
   contents: write
 
+defaults:
+  run:
+    working-directory: docs/presentations/what-is-intelligence
+
 jobs:
   pdf:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
 
-    - name: Show the Chrome that will render it
+    # The deck asks for Palatino-class serif and JetBrains-class mono and falls
+    # back through a list. URW Palladio L and DejaVu Sans Mono are both in that
+    # list, so installing them lands the runner on fonts the deck was designed
+    # for instead of the generic serif.
+    - name: Fonts the deck's stack actually names
+      run: sudo apt-get update -qq && sudo apt-get install -y -qq fonts-urw-base35 fonts-dejavu-core
+      working-directory: .
+
+    - name: Chrome version
       run: google-chrome --version
 
-    - name: Render the deck
-      run: ./make-pdf.sh
-      working-directory: docs/presentations/what-is-intelligence
+    - name: Is the committed PDF current?
+      id: check
+      continue-on-error: true
+      run: ./make-pdf.sh --check
 
     - name: Fail a pull request whose PDF is stale
-      if: github.event_name == 'pull_request'
+      if: github.event_name == 'pull_request' && steps.check.outcome == 'failure'
       run: |
-        if ! git diff --quiet -- docs/presentations/what-is-intelligence/what-is-intelligence.pdf; then
-          echo "::error::what-is-intelligence.pdf is out of date. Run make-pdf.sh and commit the result."
-          exit 1
-        fi
-        echo "PDF is in sync."
+        echo "::error::what-is-intelligence.pdf was not rebuilt for this change. Run ./make-pdf.sh and commit the PDF and its .sha."
+        exit 1
+
+    - name: Rebuild
+      if: github.event_name != 'pull_request' && steps.check.outcome == 'failure'
+      run: ./make-pdf.sh
 
     - name: Commit the rebuilt PDF
-      if: github.event_name != 'pull_request'
+      if: github.event_name != 'pull_request' && steps.check.outcome == 'failure'
       run: |
-        if git diff --quiet -- docs/presentations/what-is-intelligence/what-is-intelligence.pdf; then
-          echo "PDF unchanged, nothing to commit."
-          exit 0
-        fi
         git config user.name  "github-actions[bot]"
         git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-        git add docs/presentations/what-is-intelligence/what-is-intelligence.pdf
+        git add what-is-intelligence.pdf what-is-intelligence.pdf.sha
         git commit -m "Rebuild the intelligence deck PDF from ${GITHUB_SHA:0:7}"
         git push

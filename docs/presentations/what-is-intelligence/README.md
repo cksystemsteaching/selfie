@@ -23,6 +23,12 @@ browser, `./make-pdf.sh` drives headless Chrome over that, and a workflow reruns
 deck changes on `main`, so the two cannot drift. `THEME=dark ./make-pdf.sh` gives the projector
 version. The PDF has no speaker notes — those are in the deck, on <kbd>n</kbd>.
 
+Sync is tracked against the source, not the output: each build records the hash of `index.html` in
+`what-is-intelligence.pdf.sha`, and `./make-pdf.sh --check` compares it. That is deliberate — Chrome
+does not render deterministically, and a Linux runner resolves the font stack differently from a
+Mac, so comparing PDF bytes would report a change on every run and commit noise forever. The hash
+answers the only question that matters: was this PDF built from the deck as it stands?
+
 This directory lives under `docs/`, which is what GitHub Pages publishes, so the deck is served as a
 live page rather than as source. A raw GitHub link will not work: raw files are sent as `text/plain`
 and the browser shows the markup.

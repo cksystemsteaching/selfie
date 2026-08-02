@@ -9,16 +9,42 @@
 #
 #   ./make-pdf.sh              light theme, the default for reading and printing
 #   THEME=dark ./make-pdf.sh   the deck as it looks on a projector
+#   ./make-pdf.sh --check      is the committed PDF current? exit 1 if not
 #
-# Kept in sync by .github/workflows/deck-pdf.yml, which reruns this whenever
-# index.html changes on main and commits the result if it differs.
+# Sync is tracked against the *source*, not the output. Two renders of the same
+# index.html do not produce the same bytes — Chrome varies its output run to
+# run, and a Linux runner resolves the font stack differently from a Mac — so
+# comparing PDFs would report a change every time and commit noise forever.
+# Instead each build records the hash of index.html in what-is-intelligence.pdf.sha
+# and --check compares that, which answers the only question worth asking:
+# was this PDF built from the deck as it stands?
 
 set -eu
 
 cd "$(dirname "$0")"
 
 OUT=what-is-intelligence.pdf
+STAMP=$OUT.sha
 THEME=${THEME:-light}
+
+sha_of() {
+  if command -v sha256sum >/dev/null 2>&1; then
+    sha256sum "$1" | cut -d' ' -f1
+  else
+    shasum -a 256 "$1" | cut -d' ' -f1
+  fi
+}
+
+SRC=$(sha_of index.html)
+
+if [ "${1:-}" = "--check" ]; then
+  if [ -f "$OUT" ] && [ -f "$STAMP" ] && [ "$(cat "$STAMP")" = "$SRC" ]; then
+    echo "make-pdf: $OUT is current"
+    exit 0
+  fi
+  echo "make-pdf: $OUT is stale — run ./make-pdf.sh and commit both it and $STAMP" >&2
+  exit 1
+fi
 
 CHROME=
 for c in \
@@ -87,3 +113,5 @@ if [ "$pages" -ne "$slides" ]; then
   echo "make-pdf: page count does not match slide count" >&2
   exit 1
 fi
+
+printf '%s\n' "$SRC" > "$STAMP"
