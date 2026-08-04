@@ -1,0 +1,22 @@
+{
+  "name": "selfie-explainer",
+  "private": true,
+  "description": "Remotion project for the selfie explainer video: the captured deck, timed to the narration",
+  "scripts": {
+    "dev": "remotion studio",
+    "render": "remotion render Explainer ../selfie-explainer.mp4 --concurrency=2"
+  },
+  "dependencies": {
+    "@remotion/cli": "^4.0.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "remotion": "^4.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.0.0",
+    "typescript": "^5.5.0"
+  },
+  "allowScripts": {
+    "esbuild@0.28.1": true
+  }
+}

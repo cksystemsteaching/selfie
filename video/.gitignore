@@ -1,0 +1,15 @@
+# Derived or large, all of it reproducible from what is committed:
+#   voice reference  -- lecture audio, not mine to redistribute; make-video.py
+#                       documents how to cut it from the source recording
+#   audio/           -- synthesized narration (make-video.py --audio-only)
+#   slides/          -- stills captured from the deck (node capture.mjs)
+#   the MP4          -- the render itself
+.venv/
+node_modules/
+voice-ref-*.wav
+remotion/public/audio/
+remotion/public/slides/
+selfie-explainer.mp4
+
+# one-slide previews rendered while iterating
+preview-*.mp4

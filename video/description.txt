@@ -1,0 +1,40 @@
+selfie in 13 minutes: a system that compiles, executes and hosts itself
+
+Selfie is a self-contained 12KLOC C implementation of a self-compiling
+compiler, a self-executing emulator, and a self-hosting hypervisor -- an
+educational platform for teaching the design and implementation of compilers,
+libraries, operating systems and virtual machine monitors, built around the
+one thing those subjects have in common and textbooks tend to step over:
+self-reference in systems code.
+
+This is a cut of the full talk. It walks the three selves -- compiling,
+executing and hosting yourself -- and then spends its middle on the
+distinction that makes operating systems hard to understand: an operating
+system built by emulation is semantically equivalent to one built by
+virtualization. The same guest executes the same 86,380 instructions either
+way. Virtualization is needed only for performance -- and it buys that
+performance by introducing self-reference, which is the bootstrapping problem,
+the trusted computing base, and the whole microkernel programme.
+
+Every number quoted is measured, and the commands that produce them are in the
+repository.
+
+The full 29-slide talk, in your browser: https://selfie.cs.uni-salzburg.at/talk
+Code, book, slides and autograder: https://github.com/cksystemsteaching/selfie
+
+Narrated with a voice cloned from the author's Compiler Construction lectures.
+
+00:00 One file
+00:37 Three commands
+01:17 The system
+02:05 What a compiler really is
+02:49 Self-compilation
+03:43 Self-execution
+04:34 Self-hosting
+05:21 Two ways to build one operating system
+06:12 They are the same operating system
+07:35 So why virtualize?
+08:29 The price is self-reference
+09:30 What you can decide about a program
+10:57 Why learn this now
+12:05 Take a selfie

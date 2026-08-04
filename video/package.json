@@ -1,0 +1,12 @@
+{
+  "name": "selfie-explainer-capture",
+  "private": true,
+  "type": "module",
+  "description": "Captures the what-is-selfie deck, one still per build step, for the explainer video",
+  "scripts": {
+    "capture": "node capture.mjs"
+  },
+  "dependencies": {
+    "puppeteer-core": "^24.0.0"
+  }
+}
