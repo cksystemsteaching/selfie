@@ -1,0 +1,219 @@
+/* Print interior stylesheet for the KDP edition, rendered by WeasyPrint.
+   Trim size: 7 x 10 in (KDP "textbook" trim), figures in color. */
+
+@page {
+  size: 7in 10in;
+  margin: 0.75in 0.625in 0.75in 0.625in;
+
+  @bottom-center {
+    content: counter(page);
+    font-family: "EB Garamond";
+    font-size: 9.5pt;
+  }
+}
+
+@page :left {
+  margin-right: 0.5in;
+  margin-left: 0.875in; /* gutter */
+
+  @top-left {
+    content: "Elementary Computer Science";
+    font-family: "EB Garamond";
+    font-style: italic;
+    font-size: 9pt;
+    color: #444;
+  }
+}
+
+@page :right {
+  margin-left: 0.875in; /* gutter */
+  margin-right: 0.5in;
+
+  @top-right {
+    content: string(chapter);
+    font-family: "EB Garamond";
+    font-style: italic;
+    font-size: 9pt;
+    color: #444;
+  }
+}
+
+@page :first {
+  @top-left { content: none; }
+  @top-right { content: none; }
+  @bottom-center { content: none; }
+}
+
+@page :blank {
+  @top-left { content: none; }
+  @top-right { content: none; }
+  @bottom-center { content: none; }
+}
+
+@page chapter-start {
+  @top-left { content: none; }
+  @top-right { content: none; }
+}
+
+html {
+  font-family: "EB Garamond";
+  font-size: 11pt;
+  line-height: 1.45;
+}
+
+body { counter-reset: chapter; }
+
+/* ---------- title ---------- */
+
+header#title-page {
+  page: chapter-start;
+  text-align: center;
+  margin-top: 2.2in;
+  page-break-after: always;
+}
+
+header#title-page h1 {
+  font-size: 27pt;
+  font-weight: normal;
+  line-height: 1.25;
+  margin: 0 0 0.4in 0;
+}
+
+header#title-page .subtitle {
+  font-size: 15pt;
+  font-style: italic;
+  margin-bottom: 0.8in;
+}
+
+header#title-page .author { font-size: 14pt; }
+
+/* ---------- headings ---------- */
+
+h1, h2, h3, h4, h5 {
+  font-weight: bold;
+  page-break-after: avoid;
+  text-align: left;
+}
+
+/* chapters: h2 in the draft */
+h2 {
+  string-set: chapter content();
+  page: chapter-start;
+  page-break-before: right;
+  font-size: 20pt;
+  font-weight: normal;
+  margin: 1.2in 0 0.5in 0;
+}
+
+h2::before {
+  display: block;
+  content: "Chapter " counter(chapter);
+  counter-increment: chapter;
+  font-size: 11pt;
+  font-style: italic;
+  letter-spacing: 0.08em;
+  margin-bottom: 0.15in;
+}
+
+/* front matter headings (acknowledgements, license) and the glossary
+   are not numbered chapters */
+h2.unnumbered::before { content: none; }
+h2.unnumbered { string-set: chapter content(); }
+
+h3 { font-size: 13.5pt; margin: 1.4em 0 0.5em 0; }
+h4 { font-size: 11.5pt; margin: 1.2em 0 0.4em 0; }
+h5 { font-size: 11pt; font-style: italic; margin: 1em 0 0.3em 0; }
+
+/* ---------- body text ---------- */
+
+p {
+  text-align: justify;
+  hyphens: auto;
+  margin: 0 0 0.55em 0;
+  orphans: 2;
+  widows: 2;
+}
+
+a { color: inherit; text-decoration: none; }
+
+blockquote {
+  margin: 0.8em 1.5em;
+  font-style: italic;
+}
+
+ul, ol { margin: 0.5em 0 0.8em 0; }
+li { margin-bottom: 0.15em; }
+
+/* ---------- code ---------- */
+
+code {
+  font-family: "JetBrains Mono";
+  font-size: 8.4pt;
+}
+
+pre {
+  background: #f5f4f0;
+  padding: 6pt 8pt;
+  margin: 0.7em 0;
+  border-radius: 3pt;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  line-height: 1.35;
+}
+
+pre code { font-size: 8.2pt; }
+
+/* monochrome-friendly token styling */
+code span.kw, code span.cf, code span.dt { font-weight: bold; }
+code span.co { color: #555; font-style: italic; }
+code span.st, code span.ch { color: #333; }
+
+/* ---------- figures ---------- */
+
+figure {
+  text-align: center;
+  page-break-inside: avoid;
+  margin: 0.9em 0;
+}
+
+figure img {
+  max-width: 100%;
+  max-height: 6.8in;
+}
+
+figcaption {
+  font-size: 9.5pt;
+  font-style: italic;
+  margin-top: 0.35em;
+}
+
+/* ---------- table of contents ---------- */
+
+#toc { page-break-before: right; }
+
+#toc ol { list-style: none; margin: 0; padding-left: 0; }
+#toc ol ol { padding-left: 1.4em; }
+
+#toc a { text-decoration: none; color: inherit; }
+
+#toc li {
+  margin-bottom: 0.25em;
+}
+
+#toc a::after {
+  content: leader(". ") " " target-counter(attr(href), page);
+}
+
+/* ---------- tables ---------- */
+
+table {
+  border-collapse: collapse;
+  margin: 0.8em auto;
+  font-size: 9.5pt;
+}
+
+th, td {
+  border: 0.5pt solid #999;
+  padding: 3pt 6pt;
+  text-align: left;
+}

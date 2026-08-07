@@ -1,0 +1,22 @@
+/* Kindle/EPUB stylesheet for the KDP edition. */
+
+body { font-family: serif; line-height: 1.5; }
+
+h1, h2, h3, h4, h5 { font-family: serif; page-break-after: avoid; }
+
+figure { text-align: center; margin: 1em 0; }
+
+figure img, p img { max-width: 100%; height: auto; }
+
+figcaption { font-size: 0.85em; font-style: italic; margin-top: 0.4em; }
+
+code { font-family: monospace; font-size: 0.85em; }
+
+pre {
+  background: #f5f4f0;
+  padding: 0.5em 0.7em;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+}
+
+blockquote { font-style: italic; margin: 1em 1.5em; }
