@@ -223,10 +223,22 @@ class Geometry:
             lengths[ekey(u, v, k)] = length
             # extent, not length: a letter loop is long but compact
             extent = math.hypot(np.ptp(pts[:, 0]), np.ptp(pts[:, 1]))
+            chord = pts[-1] - pts[0]
+            ang = math.degrees(math.atan2(chord[1], chord[0])) % 90
+            near_axis = min(ang, 90 - ang) <= 15
             if extent >= GEOM_LEN * self.d or (
-                    length >= GEOM_STRAIGHT_LEN * self.d and
+                    near_axis and length >= GEOM_STRAIGHT_LEN * self.d and
                     _is_straight(pts, 0.6 * self.w)):
                 self.marked.add(ekey(u, v, k))
+        # an isolated straightish stroke of letter size is handwriting
+        # (ascenders of l, d, k qualify as straight): geometry must be
+        # long or connect to other geometry
+        while True:
+            lone = [e for e in self.marked
+                    if lengths[e] < 0.05 * self.d and not self._touches(e)]
+            if not lone:
+                break
+            self.marked.difference_update(lone)
         if not self.marked:
             return
         # short bridges whose both ends touch geometry join it; short
@@ -247,6 +259,13 @@ class Geometry:
                 self.marked.add(e)
             elif any(touches) and terminal and lengths[e] < 3.0 * self.w:
                 self.dropped.add(e)
+
+    def _touches(self, e):
+        for n in e[:2]:
+            for a, b, kk in self.g.edges(n, keys=True):
+                if ekey(a, b, kk) != e and ekey(a, b, kk) in self.marked:
+                    return True
+        return False
 
     def edges(self):
         return [(u, v, k) for u, v, k in self.g.edges(keys=True)
@@ -369,7 +388,9 @@ class Geometry:
             eps = max(2.5, self.w * 0.9)
             idx = rdp(pts, eps)
             chord = np.hypot(*(pts[-1] - pts[0]))
-            if len(idx) <= 2 or (len(idx) <= 4 and chord > 0.9 * length):
+            if _is_straight(pts, 1.3 * self.w):
+                segments.append([pts[0].copy(), pts[-1].copy(), (u, v)])
+            elif len(idx) <= 2 or (len(idx) <= 4 and chord > 0.9 * length):
                 for a, b in zip(idx, idx[1:]):
                     segments.append([pts[a].copy(), pts[b].copy(), (u, v)])
             else:
@@ -574,6 +595,49 @@ def floating_heads(hand, all_segs, heads, barb_max, width):
             hand[sl][comp] = False
 
 
+def weld_curves(all_curves, all_segs, w):
+    """Snap curve endpoints onto nearby geometry so outlines close:
+    first to segment endpoints, then onto segment spans, then to other
+    curve endpoints."""
+    tol = 2.5 * w
+    ends = [(pts, i) for pts, _ in all_curves for i in (0, -1)]
+    seg_pts = [s[i] for s in all_segs for i in (0, 1)]
+    for pts, i in ends:
+        p = pts[i]
+        best = None
+        for q in seg_pts:
+            d = np.hypot(*(q - p))
+            if d <= tol and (best is None or d < best[0]):
+                best = (d, q)
+        if best is None:
+            for s in all_segs:
+                a, b = s[0], s[1]
+                ab = b - a
+                l2 = ab @ ab
+                if l2 == 0:
+                    continue
+                t = np.clip((p - a) @ ab / l2, 0.0, 1.0)
+                q = a + t * ab
+                d = np.hypot(*(q - p))
+                if d <= tol and (best is None or d < best[0]):
+                    best = (d, q)
+        if best is not None:
+            pts[i] = best[1]
+            continue
+        for opts, oi in ends:
+            if opts is pts:
+                continue
+            d = np.hypot(*(opts[oi] - p))
+            if d <= tol and (best is None or d < best[0]):
+                best = (d, opts[oi])
+        if best is not None:
+            mid = (p + best[1]) / 2
+            pts[i] = mid
+            for opts, oi in ends:
+                if opts is not pts and np.hypot(*(opts[oi] - best[1])) < 1e-6:
+                    opts[oi] = mid
+
+
 def beautify_layer(mask, color, shape):
     """Split a layer into geometry (crisp) and handwriting (traced)."""
     labels, n = component_masks(mask)
@@ -619,6 +683,8 @@ def beautify_layer(mask, color, shape):
 
     if all_segs:
         floating_heads(hand, all_segs, heads, BARB_LEN * diag(shape), width)
+    if all_curves:
+        weld_curves(all_curves, all_segs, width)
 
     stroke = []
     for p, q, _ in all_segs:
