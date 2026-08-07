@@ -6,8 +6,9 @@ Fourteen of the twenty-nine slides, narrated end to end: the length is set by wh
 the argument needs rather than by a target, which is why the operating-systems
 stretch runs a third of the video.
 
-**Watch:** `selfie-explainer.mp4` (not committed — see *What is and is not in git*).
-**Description and chapters:** [description.txt](description.txt), ready to paste.
+**Watch:** <https://youtu.be/aWT2jLb1MVA> — or `selfie-explainer.mp4` once you have
+built it, which is not committed (see *What is and is not in git*).
+**Description and chapters:** [description.txt](description.txt), as uploaded.
 
 The video is **not** a reimplementation of the talk. `capture.mjs` drives the deck
 itself through its own build steps in headless Chrome and writes one still per step,

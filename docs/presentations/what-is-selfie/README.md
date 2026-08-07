@@ -15,6 +15,10 @@ semantics** — to an audience that is going to go and build the machinery.
 **Give or watch the talk:** <https://selfie.cs.uni-salzburg.at/talk/> — or open `index.html` in any
 modern browser. Either way, press <kbd>→</kbd> to begin.
 
+**Watch it instead:** <https://youtu.be/aWT2jLb1MVA> — a 13-minute narrated cut of fourteen of
+these slides, in the author's voice. It is built *from this deck*, driven through these build steps
+in headless Chrome, so it shows what a projector shows; the recipe is in [video/](../../../video/).
+
 **Read it offline:**
 [what-is-selfie.pdf](https://selfie.cs.uni-salzburg.at/presentations/what-is-selfie/what-is-selfie.pdf)
 — one page per slide, every build step shown, every figure drawn, in the light theme. It is a
