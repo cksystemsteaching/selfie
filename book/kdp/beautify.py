@@ -284,8 +284,9 @@ class Geometry:
                 barbs = []
                 fars = []
                 for uu, vv, kk in self.g.edges(node, keys=True):
-                    if ekey(uu, vv, kk) == ekey(u, v, k):
-                        continue
+                    if ekey(uu, vv, kk) == ekey(u, v, k) or \
+                            ekey(uu, vv, kk) in self.marked:
+                        continue  # geometry is never an arrowhead barb
                     far = vv if uu == node else uu
                     # a barb dead-ends, or its tip rests on geometry
                     # (arrows drawn touching the box they point at)
