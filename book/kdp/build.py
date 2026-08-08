@@ -48,7 +48,8 @@ def preprocess(md, target):
         alt, src = html.escape(m.group(1), quote=True), m.group(2)
         return (f'<figure>\n<img src="{src}" alt="{alt}"/>\n'
                 f"<figcaption>{m.group(1)}</figcaption>\n</figure>")
-    md = re.sub(r'^!\[(.+?)\]\((figures-svg/[^ )]+)(?: "[^"]*")?\)$',
+    md = re.sub(r'^!\[(.+?)\]\((kdp/out/figures-outlined/[^ )]+)'
+                r'(?: "[^"]*")?\)$',
                 figure, md, flags=re.M)
 
     # the remote CC badge cannot (and should not) be fetched at build time
