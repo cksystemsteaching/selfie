@@ -630,10 +630,11 @@ def attach_heads(heads, segments, curves, w):
     return arrows, lone, segments, curves
 
 
-def arrowhead_path(tip, dirv, width):
-    """Filled head for use inside a stroked group."""
+def arrowhead_path(tip, dirv, width, color):
+    """Filled head for use inside a stroked (fill-none) group."""
     body = arrowhead(tip, dirv, width)
-    return body.replace("<path ", '<path stroke="none" ', 1)
+    return body.replace(
+        "<path ", f'<path stroke="none" fill="{PALETTE[color]}" ', 1)
 
 
 def join_collinear(segments, w):
@@ -930,8 +931,8 @@ def beautify_layer(mask, color, shape):
     for pts, w in all_curves:
         stroke.append(f'<path d="{svg_path_curves(pts, CURVE_TOL * w)}"/>')
     for shaft, tip, dirv in arrows:
-        stroke.append(f'<g class="arrow" fill="{PALETTE[color]}">{shaft}'
-                      f'{arrowhead_path(tip, dirv, width)}</g>')
+        stroke.append(f'<g class="arrow">{shaft}'
+                      f'{arrowhead_path(tip, dirv, width, color)}</g>')
     if stroke:
         out.insert(0, f'<g fill="none" stroke="{PALETTE[color]}" '
                       f'stroke-width="{width:.1f}" stroke-linecap="round" '
@@ -992,7 +993,12 @@ def text_element(text, box, color):
     if len(_plain(text)) >= 3:  # short labels size purely by height
         est = text_width(_plain(text), size)
         if est > 1.1 * bw:
-            size *= max(0.55, 1.1 * bw / est)
+            factor = 1.1 * bw / est
+            if factor < 0.45:
+                # the text cannot belong to this box (several labels
+                # were joined in transcription) — keep it hand-drawn
+                return None
+            size *= factor
     cx = (x0 + x1) / 2
     base = (y0 + y1) / 2 + 0.32 * size
     runs = []
@@ -1107,7 +1113,10 @@ def beautify(path):
                 if ix > 0 and iy > 0 and ix * iy >= 0.6 * earea:
                     claimed.append(cluster)
             if claimed:
-                texts.append(text_element(e["text"], eb, color))
+                el = text_element(e["text"], eb, color)
+                if el is None:
+                    continue
+                texts.append(el)
                 for cx0, cy0, cx1, cy1 in claimed:
                     hand[cy0:cy1, cx0:cx1] = False
                 # scraps of the same writing reaching outside the box
