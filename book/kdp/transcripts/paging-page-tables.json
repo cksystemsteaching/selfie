@@ -1,0 +1,365 @@
+[
+ {
+  "id": 1,
+  "color": "amber",
+  "bbox": [
+   398,
+   55,
+   675,
+   140
+  ],
+  "text": "page table"
+ },
+ {
+  "id": 2,
+  "color": "amber",
+  "bbox": [
+   891,
+   78,
+   1018,
+   122
+  ],
+  "text": "virtual"
+ },
+ {
+  "id": 3,
+  "color": "amber",
+  "bbox": [
+   678,
+   151,
+   859,
+   237
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 4,
+  "color": "amber",
+  "bbox": [
+   895,
+   129,
+   1011,
+   167
+  ],
+  "text": "address"
+ },
+ {
+  "id": 5,
+  "color": "amber",
+  "bbox": [
+   1120,
+   108,
+   1200,
+   138
+  ],
+  "text": "11 bits"
+ },
+ {
+  "id": 6,
+  "color": "amber",
+  "bbox": [
+   1277,
+   93,
+   1375,
+   208
+  ],
+  "text": "9 bits PTE"
+ },
+ {
+  "id": 7,
+  "color": "amber",
+  "bbox": [
+   1416,
+   107,
+   1494,
+   141
+  ],
+  "text": "12 bits"
+ },
+ {
+  "id": 8,
+  "color": "amber",
+  "bbox": [
+   1641,
+   122,
+   1718,
+   178
+  ],
+  "text": "root"
+ },
+ {
+  "id": 9,
+  "color": "amber",
+  "bbox": [
+   2405,
+   105,
+   2674,
+   196
+  ],
+  "text": "page table"
+ },
+ {
+  "id": 10,
+  "color": "amber",
+  "bbox": [
+   1120,
+   165,
+   1949,
+   326
+  ],
+  "text": "PDE byte in 4KB-page page number page directory"
+ },
+ {
+  "id": 11,
+  "color": "amber",
+  "bbox": [
+   2149,
+   163,
+   2243,
+   230
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 12,
+  "color": "amber",
+  "bbox": [
+   2279,
+   317,
+   2351,
+   386
+  ],
+  "text": "2^{11}"
+ },
+ {
+  "id": 13,
+  "color": "amber",
+  "bbox": [
+   1620,
+   344,
+   1727,
+   399
+  ],
+  "text": "16 KB"
+ },
+ {
+  "id": 14,
+  "color": "amber",
+  "bbox": [
+   1588,
+   418,
+   1828,
+   597
+  ],
+  "text": "PD (2^{11}\u00b72^{3}=2^{14})"
+ },
+ {
+  "id": 15,
+  "color": "amber",
+  "bbox": [
+   2282,
+   431,
+   2440,
+   501
+  ],
+  "text": "PDEs"
+ },
+ {
+  "id": 16,
+  "color": "amber",
+  "bbox": [
+   872,
+   770,
+   939,
+   815
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 17,
+  "color": "amber",
+  "bbox": [
+   2003,
+   764,
+   2352,
+   883
+  ],
+  "text": "tree-based"
+ },
+ {
+  "id": 18,
+  "color": "amber",
+  "bbox": [
+   832,
+   802,
+   872,
+   876
+  ],
+  "text": "2^{20}"
+ },
+ {
+  "id": 19,
+  "color": "amber",
+  "bbox": [
+   1204,
+   830,
+   1344,
+   925
+  ],
+  "text": "leaf"
+ },
+ {
+  "id": 20,
+  "color": "amber",
+  "bbox": [
+   837,
+   913,
+   986,
+   1009
+  ],
+  "text": "PTEs"
+ },
+ {
+  "id": 21,
+  "color": "amber",
+  "bbox": [
+   1182,
+   941,
+   1364,
+   1098
+  ],
+  "text": "page tables"
+ },
+ {
+  "id": 22,
+  "color": "amber",
+  "bbox": [
+   171,
+   1033,
+   277,
+   1092
+  ],
+  "text": "8 MB"
+ },
+ {
+  "id": 23,
+  "color": "amber",
+  "bbox": [
+   1504,
+   1018,
+   1552,
+   1067
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 24,
+  "color": "amber",
+  "bbox": [
+   1864,
+   1030,
+   1924,
+   1081
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 25,
+  "color": "amber",
+  "bbox": [
+   2377,
+   1033,
+   2444,
+   1086
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 26,
+  "color": "amber",
+  "bbox": [
+   90,
+   1123,
+   321,
+   1232
+  ],
+  "text": "(2^{20}\u00b72^{3}=2^{23})"
+ },
+ {
+  "id": 27,
+  "color": "amber",
+  "bbox": [
+   2597,
+   1334,
+   2633,
+   1390
+  ],
+  "text": "2^{9}"
+ },
+ {
+  "id": 28,
+  "color": "amber",
+  "bbox": [
+   2636,
+   1314,
+   2655,
+   1350
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 29,
+  "color": "amber",
+  "bbox": [
+   1191,
+   1422,
+   1298,
+   1495
+  ],
+  "text": "4KB"
+ },
+ {
+  "id": 30,
+  "color": "amber",
+  "bbox": [
+   1204,
+   1518,
+   1272,
+   1587
+  ],
+  "text": "PT"
+ },
+ {
+  "id": 31,
+  "color": "amber",
+  "bbox": [
+   2602,
+   1445,
+   2697,
+   1520
+  ],
+  "text": "PTEs"
+ },
+ {
+  "id": 32,
+  "color": "amber",
+  "bbox": [
+   1116,
+   1602,
+   1345,
+   1700
+  ],
+  "text": "(2^{9}\u00b72^{3}=2^{12})"
+ },
+ {
+  "id": 33,
+  "color": "amber",
+  "bbox": [
+   400,
+   1852,
+   692,
+   1954
+  ],
+  "text": "array-based"
+ }
+]

@@ -1,0 +1,387 @@
+[
+ {
+  "id": 1,
+  "color": "amber",
+  "bbox": [
+   1012,
+   616,
+   1298,
+   689
+  ],
+  "text": "unreachable"
+ },
+ {
+  "id": 2,
+  "color": "amber",
+  "bbox": [
+   1084,
+   716,
+   1222,
+   799
+  ],
+  "text": "memory"
+ },
+ {
+  "id": 3,
+  "color": "black",
+  "bbox": [
+   24,
+   33,
+   350,
+   115
+  ],
+  "text": "live and dead"
+ },
+ {
+  "id": 4,
+  "color": "black",
+  "bbox": [
+   1587,
+   69,
+   1702,
+   175
+  ],
+  "text": "only"
+ },
+ {
+  "id": 5,
+  "color": "black",
+  "bbox": [
+   125,
+   126,
+   206,
+   189
+  ],
+  "text": "not"
+ },
+ {
+  "id": 6,
+  "color": "black",
+  "bbox": [
+   1458,
+   96,
+   1540,
+   133
+  ],
+  "text": "can"
+ },
+ {
+  "id": 7,
+  "color": "black",
+  "bbox": [
+   36,
+   198,
+   255,
+   268
+  ],
+  "text": "computable"
+ },
+ {
+  "id": 8,
+  "color": "black",
+  "bbox": [
+   110,
+   230,
+   216,
+   337
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 9,
+  "color": "black",
+  "bbox": [
+   729,
+   226,
+   785,
+   284
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 10,
+  "color": "black",
+  "bbox": [
+   1328,
+   222,
+   1607,
+   345
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 11,
+  "color": "black",
+  "bbox": [
+   1454,
+   168,
+   1724,
+   253
+  ],
+  "text": "deallocate"
+ },
+ {
+  "id": 12,
+  "color": "black",
+  "bbox": [
+   81,
+   298,
+   102,
+   376
+  ],
+  "text": "precisely"
+ },
+ {
+  "id": 13,
+  "color": "black",
+  "bbox": [
+   217,
+   274,
+   261,
+   409
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 14,
+  "color": "black",
+  "bbox": [
+   1615,
+   274,
+   1741,
+   353
+  ],
+  "text": "unreachable"
+ },
+ {
+  "id": 15,
+  "color": "black",
+  "bbox": [
+   1236,
+   336,
+   1324,
+   455
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 16,
+  "color": "black",
+  "bbox": [
+   1477,
+   394,
+   1694,
+   520
+  ],
+  "text": "memory safely"
+ },
+ {
+  "id": 17,
+  "color": "black",
+  "bbox": [
+   1203,
+   459,
+   1236,
+   557
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 18,
+  "color": "black",
+  "bbox": [
+   1561,
+   460,
+   1596,
+   560
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 19,
+  "color": "black",
+  "bbox": [
+   1609,
+   458,
+   1661,
+   590
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 20,
+  "color": "black",
+  "bbox": [
+   489,
+   1004,
+   582,
+   1053
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 21,
+  "color": "black",
+  "bbox": [
+   1071,
+   1023,
+   1201,
+   1112
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 22,
+  "color": "black",
+  "bbox": [
+   353,
+   1091,
+   485,
+   1215
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 23,
+  "color": "black",
+  "bbox": [
+   488,
+   1049,
+   530,
+   1088
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 24,
+  "color": "black",
+  "bbox": [
+   1206,
+   1113,
+   1313,
+   1168
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 25,
+  "color": "black",
+  "bbox": [
+   222,
+   1184,
+   470,
+   1283
+  ],
+  "text": "reachable"
+ },
+ {
+  "id": 26,
+  "color": "black",
+  "bbox": [
+   1276,
+   1174,
+   1507,
+   1253
+  ],
+  "text": "reachable"
+ },
+ {
+  "id": 27,
+  "color": "black",
+  "bbox": [
+   1368,
+   1267,
+   1431,
+   1325
+  ],
+  "text": "but"
+ },
+ {
+  "id": 28,
+  "color": "black",
+  "bbox": [
+   302,
+   1288,
+   404,
+   1352
+  ],
+  "text": "and"
+ },
+ {
+  "id": 29,
+  "color": "black",
+  "bbox": [
+   1318,
+   1342,
+   1451,
+   1410
+  ],
+  "text": "dead"
+ },
+ {
+  "id": 30,
+  "color": "black",
+  "bbox": [
+   283,
+   1373,
+   411,
+   1439
+  ],
+  "text": "live"
+ },
+ {
+  "id": 31,
+  "color": "black",
+  "bbox": [
+   1081,
+   1414,
+   1759,
+   1523
+  ],
+  "text": "(potential reachable memory leak)"
+ },
+ {
+  "id": 32,
+  "color": "blue",
+  "bbox": [
+   431,
+   560,
+   611,
+   666
+  ],
+  "text": "live"
+ },
+ {
+  "id": 33,
+  "color": "blue",
+  "bbox": [
+   433,
+   702,
+   619,
+   823
+  ],
+  "text": "memory"
+ },
+ {
+  "id": 34,
+  "color": "red",
+  "bbox": [
+   959,
+   241,
+   1106,
+   330
+  ],
+  "text": "dead"
+ },
+ {
+  "id": 35,
+  "color": "red",
+  "bbox": [
+   959,
+   353,
+   1133,
+   430
+  ],
+  "text": "memory"
+ }
+]

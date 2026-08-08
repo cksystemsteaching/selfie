@@ -1,0 +1,189 @@
+[
+ {
+  "id": 1,
+  "color": "amber",
+  "bbox": [
+   779,
+   75,
+   822,
+   100
+  ],
+  "text": ">>"
+ },
+ {
+  "id": 2,
+  "color": "amber",
+  "bbox": [
+   850,
+   63,
+   996,
+   130
+  ],
+  "text": "selfie.m"
+ },
+ {
+  "id": 3,
+  "color": "amber",
+  "bbox": [
+   1111,
+   122,
+   1224,
+   194
+  ],
+  "text": "memory"
+ },
+ {
+  "id": 4,
+  "color": "amber",
+  "bbox": [
+   885,
+   310,
+   949,
+   341
+  ],
+  "text": "CPU"
+ },
+ {
+  "id": 5,
+  "color": "amber",
+  "bbox": [
+   998,
+   300,
+   1063,
+   331
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 6,
+  "color": "amber",
+  "bbox": [
+   990,
+   349,
+   1063,
+   380
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 7,
+  "color": "amber",
+  "bbox": [
+   1425,
+   614,
+   1504,
+   679
+  ],
+  "text": "OS"
+ },
+ {
+  "id": 8,
+  "color": "amber",
+  "bbox": [
+   127,
+   682,
+   269,
+   749
+  ],
+  "text": "> selfie."
+ },
+ {
+  "id": 9,
+  "color": "amber",
+  "bbox": [
+   295,
+   696,
+   320,
+   716
+  ],
+  "text": "m"
+ },
+ {
+  "id": 10,
+  "color": "amber",
+  "bbox": [
+   843,
+   646,
+   1017,
+   709
+  ],
+  "text": "exceptions"
+ },
+ {
+  "id": 11,
+  "color": "amber",
+  "bbox": [
+   455,
+   743,
+   568,
+   815
+  ],
+  "text": "memory"
+ },
+ {
+  "id": 12,
+  "color": "amber",
+  "bbox": [
+   229,
+   931,
+   293,
+   962
+  ],
+  "text": "CPU"
+ },
+ {
+  "id": 13,
+  "color": "amber",
+  "bbox": [
+   342,
+   921,
+   407,
+   952
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 14,
+  "color": "amber",
+  "bbox": [
+   334,
+   970,
+   407,
+   1001
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 15,
+  "color": "amber",
+  "bbox": [
+   118,
+   1232,
+   268,
+   1289
+  ],
+  "text": "exceptions"
+ },
+ {
+  "id": 16,
+  "color": "amber",
+  "bbox": [
+   1439,
+   1251,
+   1518,
+   1323
+  ],
+  "text": "HW"
+ },
+ {
+  "id": 17,
+  "color": "amber",
+  "bbox": [
+   265,
+   1313,
+   297,
+   1335
+  ],
+  "text": "SKIP"
+ }
+]

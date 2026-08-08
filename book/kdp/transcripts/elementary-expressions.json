@@ -1,0 +1,475 @@
+[
+ {
+  "id": 1,
+  "color": "amber",
+  "bbox": [
+   1803,
+   465,
+   1980,
+   552
+  ],
+  "text": "stack"
+ },
+ {
+  "id": 2,
+  "color": "amber",
+  "bbox": [
+   1898,
+   1514,
+   1904,
+   1650
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 3,
+  "color": "amber",
+  "bbox": [
+   1874,
+   1616,
+   1943,
+   1695
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 4,
+  "color": "black",
+  "bbox": [
+   123,
+   70,
+   357,
+   140
+  ],
+  "text": "expression"
+ },
+ {
+  "id": 5,
+  "color": "black",
+  "bbox": [
+   444,
+   40,
+   1072,
+   174
+  ],
+  "text": "term { (\"+\" | \"-\") term }"
+ },
+ {
+  "id": 6,
+  "color": "black",
+  "bbox": [
+   116,
+   136,
+   219,
+   206
+  ],
+  "text": "term"
+ },
+ {
+  "id": 7,
+  "color": "black",
+  "bbox": [
+   308,
+   123,
+   717,
+   245
+  ],
+  "text": "factor { (\"*\" | \""
+ },
+ {
+  "id": 8,
+  "color": "black",
+  "bbox": [
+   711,
+   137,
+   1024,
+   299
+  ],
+  "text": "/\") factor } ."
+ },
+ {
+  "id": 9,
+  "color": "black",
+  "bbox": [
+   115,
+   232,
+   1247,
+   356
+  ],
+  "text": "factor = literal | identifier | \"(\" expression \")\" ."
+ },
+ {
+  "id": 10,
+  "color": "black",
+  "bbox": [
+   799,
+   609,
+   929,
+   669
+  ],
+  "text": "term"
+ },
+ {
+  "id": 11,
+  "color": "black",
+  "bbox": [
+   1231,
+   664,
+   1345,
+   723
+  ],
+  "text": "\"+\""
+ },
+ {
+  "id": 12,
+  "color": "black",
+  "bbox": [
+   1781,
+   656,
+   2062,
+   724
+  ],
+  "text": "expression"
+ },
+ {
+  "id": 13,
+  "color": "black",
+  "bbox": [
+   114,
+   756,
+   417,
+   826
+  ],
+  "text": "expression"
+ },
+ {
+  "id": 14,
+  "color": "black",
+  "bbox": [
+   469,
+   767,
+   563,
+   798
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 15,
+  "color": "black",
+  "bbox": [
+   1057,
+   752,
+   1085,
+   779
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 16,
+  "color": "black",
+  "bbox": [
+   1223,
+   766,
+   1315,
+   802
+  ],
+  "text": "\"-\""
+ },
+ {
+  "id": 17,
+  "color": "black",
+  "bbox": [
+   1436,
+   724,
+   1476,
+   756
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 18,
+  "color": "black",
+  "bbox": [
+   1458,
+   797,
+   1495,
+   828
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 19,
+  "color": "black",
+  "bbox": [
+   1839,
+   756,
+   1978,
+   825
+  ],
+  "text": "term"
+ },
+ {
+  "id": 20,
+  "color": "black",
+  "bbox": [
+   1191,
+   835,
+   1315,
+   892
+  ],
+  "text": "term"
+ },
+ {
+  "id": 21,
+  "color": "black",
+  "bbox": [
+   1830,
+   872,
+   1994,
+   976
+  ],
+  "text": "factor"
+ },
+ {
+  "id": 22,
+  "color": "black",
+  "bbox": [
+   922,
+   888,
+   1077,
+   959
+  ],
+  "text": "factor"
+ },
+ {
+  "id": 23,
+  "color": "black",
+  "bbox": [
+   1218,
+   957,
+   1287,
+   992
+  ],
+  "text": "\"*\""
+ },
+ {
+  "id": 24,
+  "color": "black",
+  "bbox": [
+   283,
+   1026,
+   418,
+   1094
+  ],
+  "text": "term"
+ },
+ {
+  "id": 25,
+  "color": "black",
+  "bbox": [
+   1039,
+   1023,
+   1079,
+   1067
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 26,
+  "color": "black",
+  "bbox": [
+   1212,
+   1000,
+   1458,
+   1049
+  ],
+  "text": "\"/\""
+ },
+ {
+  "id": 27,
+  "color": "black",
+  "bbox": [
+   1750,
+   1031,
+   2048,
+   1099
+  ],
+  "text": "expression"
+ },
+ {
+  "id": 28,
+  "color": "black",
+  "bbox": [
+   479,
+   1069,
+   570,
+   1093
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 29,
+  "color": "black",
+  "bbox": [
+   1019,
+   1069,
+   1315,
+   1206
+  ],
+  "text": "\"%\" factor"
+ },
+ {
+  "id": 30,
+  "color": "black",
+  "bbox": [
+   1433,
+   1101,
+   1464,
+   1136
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 31,
+  "color": "black",
+  "bbox": [
+   1841,
+   1144,
+   1977,
+   1225
+  ],
+  "text": "term"
+ },
+ {
+  "id": 32,
+  "color": "black",
+  "bbox": [
+   916,
+   1204,
+   1067,
+   1267
+  ],
+  "text": "literal"
+ },
+ {
+  "id": 33,
+  "color": "black",
+  "bbox": [
+   284,
+   1336,
+   439,
+   1469
+  ],
+  "text": "factor"
+ },
+ {
+  "id": 34,
+  "color": "black",
+  "bbox": [
+   487,
+   1352,
+   574,
+   1383
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 35,
+  "color": "black",
+  "bbox": [
+   1008,
+   1301,
+   1205,
+   1375
+  ],
+  "text": "identifier"
+ },
+ {
+  "id": 36,
+  "color": "black",
+  "bbox": [
+   1408,
+   1337,
+   1464,
+   1437
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 37,
+  "color": "black",
+  "bbox": [
+   726,
+   1414,
+   818,
+   1489
+  ],
+  "text": "\"(\""
+ },
+ {
+  "id": 38,
+  "color": "black",
+  "bbox": [
+   1281,
+   1425,
+   1358,
+   1495
+  ],
+  "text": "\")\""
+ },
+ {
+  "id": 39,
+  "color": "black",
+  "bbox": [
+   842,
+   1495,
+   871,
+   1534
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 40,
+  "color": "black",
+  "bbox": [
+   959,
+   1473,
+   1170,
+   1533
+  ],
+  "text": "expression"
+ },
+ {
+  "id": 41,
+  "color": "orange",
+  "bbox": [
+   1417,
+   129,
+   2013,
+   260
+  ],
+  "text": "context-free grammar"
+ },
+ {
+  "id": 42,
+  "color": "orange",
+  "bbox": [
+   1634,
+   289,
+   2244,
+   427
+  ],
+  "text": "pushdown automaton"
+ },
+ {
+  "id": 43,
+  "color": "orange",
+  "bbox": [
+   563,
+   414,
+   1257,
+   564
+  ],
+  "text": "finite state machine"
+ }
+]

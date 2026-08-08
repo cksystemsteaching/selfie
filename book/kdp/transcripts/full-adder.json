@@ -1,0 +1,222 @@
+[
+ {
+  "id": 1,
+  "color": "amber",
+  "bbox": [
+   1145,
+   29,
+   1529,
+   156
+  ],
+  "text": "full adder"
+ },
+ {
+  "id": 2,
+  "color": "amber",
+  "bbox": [
+   124,
+   310,
+   273,
+   355
+  ],
+  "text": "sum"
+ },
+ {
+  "id": 3,
+  "color": "amber",
+  "bbox": [
+   842,
+   289,
+   931,
+   322
+  ],
+  "text": "sum"
+ },
+ {
+  "id": 4,
+  "color": "amber",
+  "bbox": [
+   1523,
+   279,
+   1605,
+   312
+  ],
+  "text": "sum"
+ },
+ {
+  "id": 5,
+  "color": "amber",
+  "bbox": [
+   2221,
+   312,
+   2349,
+   364
+  ],
+  "text": "addend"
+ },
+ {
+  "id": 6,
+  "color": "amber",
+  "bbox": [
+   1075,
+   333,
+   1150,
+   394
+  ],
+  "text": "half"
+ },
+ {
+  "id": 7,
+  "color": "amber",
+  "bbox": [
+   1137,
+   331,
+   1186,
+   510
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 8,
+  "color": "amber",
+  "bbox": [
+   1719,
+   330,
+   1794,
+   391
+  ],
+  "text": "half"
+ },
+ {
+  "id": 9,
+  "color": "amber",
+  "bbox": [
+   1781,
+   328,
+   1830,
+   507
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 10,
+  "color": "amber",
+  "bbox": [
+   2002,
+   341,
+   2037,
+   355
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 11,
+  "color": "amber",
+  "bbox": [
+   807,
+   451,
+   970,
+   523
+  ],
+  "text": "carry-out"
+ },
+ {
+  "id": 12,
+  "color": "amber",
+  "bbox": [
+   1066,
+   438,
+   1232,
+   507
+  ],
+  "text": "adder"
+ },
+ {
+  "id": 13,
+  "color": "amber",
+  "bbox": [
+   1468,
+   436,
+   1619,
+   523
+  ],
+  "text": "carry-out"
+ },
+ {
+  "id": 14,
+  "color": "amber",
+  "bbox": [
+   1710,
+   435,
+   1876,
+   504
+  ],
+  "text": "adder"
+ },
+ {
+  "id": 15,
+  "color": "amber",
+  "bbox": [
+   1364,
+   510,
+   1390,
+   531
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 16,
+  "color": "amber",
+  "bbox": [
+   2004,
+   494,
+   2042,
+   538
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 17,
+  "color": "amber",
+  "bbox": [
+   2221,
+   486,
+   2345,
+   541
+  ],
+  "text": "addend"
+ },
+ {
+  "id": 18,
+  "color": "amber",
+  "bbox": [
+   29,
+   646,
+   227,
+   741
+  ],
+  "text": "carry-out"
+ },
+ {
+  "id": 19,
+  "color": "amber",
+  "bbox": [
+   580,
+   651,
+   657,
+   716
+  ],
+  "text": "OR"
+ },
+ {
+  "id": 20,
+  "color": "amber",
+  "bbox": [
+   2221,
+   743,
+   2379,
+   822
+  ],
+  "text": "carry-in"
+ }
+]

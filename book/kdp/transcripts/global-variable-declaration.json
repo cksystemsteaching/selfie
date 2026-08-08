@@ -1,0 +1,596 @@
+[
+ {
+  "id": 1,
+  "color": "amber",
+  "bbox": [
+   1631,
+   166,
+   1830,
+   249
+  ],
+  "text": "compiler"
+ },
+ {
+  "id": 2,
+  "color": "amber",
+  "bbox": [
+   2298,
+   164,
+   2427,
+   243
+  ],
+  "text": "target"
+ },
+ {
+  "id": 3,
+  "color": "amber",
+  "bbox": [
+   2619,
+   232,
+   2641,
+   279
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 4,
+  "color": "amber",
+  "bbox": [
+   1965,
+   242,
+   1991,
+   285
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 5,
+  "color": "amber",
+  "bbox": [
+   2382,
+   771,
+   2555,
+   832
+  ],
+  "text": "(unused)"
+ },
+ {
+  "id": 6,
+  "color": "amber",
+  "bbox": [
+   2042,
+   836,
+   2285,
+   1004
+  ],
+  "text": "data"
+ },
+ {
+  "id": 7,
+  "color": "amber",
+  "bbox": [
+   2587,
+   819,
+   2724,
+   976
+  ],
+  "text": "gp ds gp-ds"
+ },
+ {
+  "id": 8,
+  "color": "amber",
+  "bbox": [
+   1972,
+   990,
+   1996,
+   1208
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 9,
+  "color": "amber",
+  "bbox": [
+   2375,
+   1009,
+   2555,
+   1060
+  ],
+  "text": "(unused)"
+ },
+ {
+  "id": 10,
+  "color": "amber",
+  "bbox": [
+   1505,
+   1070,
+   1662,
+   1192
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 11,
+  "color": "amber",
+  "bbox": [
+   1783,
+   1068,
+   1861,
+   1087
+  ],
+  "text": "(unused)"
+ },
+ {
+  "id": 12,
+  "color": "amber",
+  "bbox": [
+   1940,
+   1064,
+   2426,
+   1241
+  ],
+  "text": "gp literal identifier code"
+ },
+ {
+  "id": 13,
+  "color": "amber",
+  "bbox": [
+   1749,
+   1198,
+   2177,
+   1333
+  ],
+  "text": "global_ symbol_ table (unused)"
+ },
+ {
+  "id": 14,
+  "color": "amber",
+  "bbox": [
+   2367,
+   1266,
+   2536,
+   1327
+  ],
+  "text": "(unused)"
+ },
+ {
+  "id": 15,
+  "color": "amber",
+  "bbox": [
+   1654,
+   1390,
+   1781,
+   1469
+  ],
+  "text": "code"
+ },
+ {
+  "id": 16,
+  "color": "amber",
+  "bbox": [
+   1722,
+   1526,
+   1890,
+   1587
+  ],
+  "text": "(unused)"
+ },
+ {
+  "id": 17,
+  "color": "amber",
+  "bbox": [
+   1341,
+   1758,
+   1383,
+   1802
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 18,
+  "color": "black",
+  "bbox": [
+   398,
+   32,
+   541,
+   137
+  ],
+  "text": "C*"
+ },
+ {
+  "id": 19,
+  "color": "black",
+  "bbox": [
+   2238,
+   40,
+   2490,
+   121
+  ],
+  "text": "RISC-U"
+ },
+ {
+  "id": 20,
+  "color": "black",
+  "bbox": [
+   996,
+   119,
+   1153,
+   197
+  ],
+  "text": "starc"
+ },
+ {
+  "id": 21,
+  "color": "black",
+  "bbox": [
+   97,
+   373,
+   336,
+   455
+  ],
+  "text": "uint64_t"
+ },
+ {
+  "id": 22,
+  "color": "black",
+  "bbox": [
+   476,
+   378,
+   534,
+   450
+  ],
+  "text": "42"
+ },
+ {
+  "id": 23,
+  "color": "black",
+  "bbox": [
+   388,
+   404,
+   417,
+   442
+  ],
+  "text": "x"
+ },
+ {
+  "id": 24,
+  "color": "black",
+  "bbox": [
+   527,
+   449,
+   559,
+   499
+  ],
+  "text": ";"
+ },
+ {
+  "id": 25,
+  "color": "black",
+  "bbox": [
+   1407,
+   1833,
+   1810,
+   1935
+  ],
+  "text": "compile time"
+ },
+ {
+  "id": 26,
+  "color": "black",
+  "bbox": [
+   2333,
+   1823,
+   2597,
+   1910
+  ],
+  "text": "runtime"
+ },
+ {
+  "id": 27,
+  "color": "blue",
+  "bbox": [
+   2293,
+   938,
+   2336,
+   965
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 28,
+  "color": "blue",
+  "bbox": [
+   1831,
+   1756,
+   1867,
+   1797
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 29,
+  "color": "green",
+  "bbox": [
+   216,
+   451,
+   489,
+   700
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 30,
+  "color": "green",
+  "bbox": [
+   385,
+   446,
+   420,
+   484
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 31,
+  "color": "green",
+  "bbox": [
+   473,
+   450,
+   521,
+   502
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 32,
+  "color": "green",
+  "bbox": [
+   1041,
+   1758,
+   1069,
+   1801
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 33,
+  "color": "orange",
+  "bbox": [
+   1505,
+   1063,
+   1715,
+   1133
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 34,
+  "color": "red",
+  "bbox": [
+   1679,
+   295,
+   1805,
+   379
+  ],
+  "text": "stack"
+ },
+ {
+  "id": 35,
+  "color": "red",
+  "bbox": [
+   2324,
+   289,
+   2450,
+   373
+  ],
+  "text": "stack"
+ },
+ {
+  "id": 36,
+  "color": "red",
+  "bbox": [
+   1725,
+   395,
+   1759,
+   484
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 37,
+  "color": "red",
+  "bbox": [
+   2370,
+   389,
+   2404,
+   478
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 38,
+  "color": "red",
+  "bbox": [
+   2366,
+   530,
+   2404,
+   569
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 39,
+  "color": "red",
+  "bbox": [
+   2382,
+   556,
+   2391,
+   619
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 40,
+  "color": "red",
+  "bbox": [
+   1720,
+   584,
+   1758,
+   623
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 41,
+  "color": "red",
+  "bbox": [
+   1736,
+   610,
+   1746,
+   673
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 42,
+  "color": "red",
+  "bbox": [
+   2305,
+   619,
+   2443,
+   745
+  ],
+  "text": "heap"
+ },
+ {
+  "id": 43,
+  "color": "red",
+  "bbox": [
+   1655,
+   706,
+   1793,
+   832
+  ],
+  "text": "heap"
+ },
+ {
+  "id": 44,
+  "color": "red",
+  "bbox": [
+   1636,
+   869,
+   1863,
+   933
+  ],
+  "text": "symbol table"
+ },
+ {
+  "id": 45,
+  "color": "red",
+  "bbox": [
+   1899,
+   909,
+   1972,
+   1001
+  ],
+  "text": "'x'"
+ },
+ {
+  "id": 46,
+  "color": "red",
+  "bbox": [
+   2357,
+   937,
+   2403,
+   969
+  ],
+  "text": "42"
+ },
+ {
+  "id": 47,
+  "color": "red",
+  "bbox": [
+   1530,
+   979,
+   1547,
+   999
+  ],
+  "text": "0"
+ },
+ {
+  "id": 48,
+  "color": "red",
+  "bbox": [
+   1586,
+   978,
+   1601,
+   997
+  ],
+  "text": "0"
+ },
+ {
+  "id": 49,
+  "color": "red",
+  "bbox": [
+   1639,
+   977,
+   1652,
+   1000
+  ],
+  "text": "0"
+ },
+ {
+  "id": 50,
+  "color": "red",
+  "bbox": [
+   1691,
+   978,
+   1707,
+   1000
+  ],
+  "text": "0"
+ },
+ {
+  "id": 51,
+  "color": "red",
+  "bbox": [
+   1755,
+   977,
+   1769,
+   999
+  ],
+  "text": "0"
+ },
+ {
+  "id": 52,
+  "color": "red",
+  "bbox": [
+   1803,
+   979,
+   1821,
+   997
+  ],
+  "text": "0"
+ },
+ {
+  "id": 53,
+  "color": "red",
+  "bbox": [
+   1709,
+   1150,
+   1754,
+   1182
+  ],
+  "text": "42"
+ },
+ {
+  "id": 54,
+  "color": "red",
+  "bbox": [
+   2596,
+   1731,
+   2659,
+   1810
+  ],
+  "text": "SKIP"
+ }
+]

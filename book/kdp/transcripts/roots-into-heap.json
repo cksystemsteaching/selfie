@@ -1,0 +1,387 @@
+[
+ {
+  "id": 1,
+  "color": "amber",
+  "bbox": [
+   493,
+   42,
+   665,
+   135
+  ],
+  "text": "roots"
+ },
+ {
+  "id": 2,
+  "color": "amber",
+  "bbox": [
+   2016,
+   41,
+   2232,
+   154
+  ],
+  "text": "2^{32}-1"
+ },
+ {
+  "id": 3,
+  "color": "amber",
+  "bbox": [
+   1127,
+   109,
+   1301,
+   209
+  ],
+  "text": "local variables"
+ },
+ {
+  "id": 4,
+  "color": "amber",
+  "bbox": [
+   1576,
+   136,
+   1742,
+   212
+  ],
+  "text": "stack"
+ },
+ {
+  "id": 5,
+  "color": "amber",
+  "bbox": [
+   1122,
+   208,
+   1319,
+   297
+  ],
+  "text": "parameters"
+ },
+ {
+  "id": 6,
+  "color": "amber",
+  "bbox": [
+   1896,
+   239,
+   1940,
+   253
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 7,
+  "color": "amber",
+  "bbox": [
+   1899,
+   198,
+   1940,
+   210
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 8,
+  "color": "amber",
+  "bbox": [
+   1472,
+   281,
+   1569,
+   287
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 9,
+  "color": "amber",
+  "bbox": [
+   1644,
+   280,
+   1729,
+   286
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 10,
+  "color": "amber",
+  "bbox": [
+   1789,
+   278,
+   1857,
+   287
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 11,
+  "color": "amber",
+  "bbox": [
+   1883,
+   279,
+   1939,
+   288
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 12,
+  "color": "amber",
+  "bbox": [
+   2205,
+   265,
+   2349,
+   352
+  ],
+  "text": "roots"
+ },
+ {
+  "id": 13,
+  "color": "amber",
+  "bbox": [
+   607,
+   362,
+   757,
+   437
+  ],
+  "text": "CPU"
+ },
+ {
+  "id": 14,
+  "color": "amber",
+  "bbox": [
+   128,
+   422,
+   318,
+   534
+  ],
+  "text": "31"
+ },
+ {
+  "id": 15,
+  "color": "amber",
+  "bbox": [
+   1638,
+   446,
+   1718,
+   452
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 16,
+  "color": "amber",
+  "bbox": [
+   2238,
+   475,
+   2419,
+   539
+  ],
+  "text": "transitive"
+ },
+ {
+  "id": 17,
+  "color": "amber",
+  "bbox": [
+   2241,
+   549,
+   2397,
+   600
+  ],
+  "text": "closure"
+ },
+ {
+  "id": 18,
+  "color": "amber",
+  "bbox": [
+   1546,
+   562,
+   1658,
+   647
+  ],
+  "text": "hea"
+ },
+ {
+  "id": 19,
+  "color": "amber",
+  "bbox": [
+   1666,
+   613,
+   1708,
+   712
+  ],
+  "text": "p"
+ },
+ {
+  "id": 20,
+  "color": "amber",
+  "bbox": [
+   560,
+   655,
+   801,
+   806
+  ],
+  "text": "registers"
+ },
+ {
+  "id": 21,
+  "color": "amber",
+  "bbox": [
+   962,
+   640,
+   984,
+   671
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 22,
+  "color": "amber",
+  "bbox": [
+   2043,
+   664,
+   2052,
+   731
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 23,
+  "color": "amber",
+  "bbox": [
+   1319,
+   782,
+   1344,
+   803
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 24,
+  "color": "amber",
+  "bbox": [
+   1944,
+   721,
+   1972,
+   741
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 25,
+  "color": "amber",
+  "bbox": [
+   1122,
+   878,
+   1327,
+   1009
+  ],
+  "text": "global variables"
+ },
+ {
+  "id": 26,
+  "color": "amber",
+  "bbox": [
+   1535,
+   880,
+   1711,
+   976
+  ],
+  "text": "data"
+ },
+ {
+  "id": 27,
+  "color": "amber",
+  "bbox": [
+   1893,
+   887,
+   2051,
+   911
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 28,
+  "color": "amber",
+  "bbox": [
+   2133,
+   897,
+   2208,
+   955
+  ],
+  "text": "roots"
+ },
+ {
+  "id": 29,
+  "color": "amber",
+  "bbox": [
+   163,
+   961,
+   291,
+   1034
+  ],
+  "text": "0"
+ },
+ {
+  "id": 30,
+  "color": "amber",
+  "bbox": [
+   2291,
+   997,
+   2392,
+   1057
+  ],
+  "text": "roots"
+ },
+ {
+  "id": 31,
+  "color": "amber",
+  "bbox": [
+   364,
+   1425,
+   457,
+   1531
+  ],
+  "text": "(not"
+ },
+ {
+  "id": 32,
+  "color": "amber",
+  "bbox": [
+   592,
+   1438,
+   749,
+   1561
+  ],
+  "text": "selfie)"
+ },
+ {
+  "id": 33,
+  "color": "amber",
+  "bbox": [
+   2119,
+   1433,
+   2165,
+   1494
+  ],
+  "text": "0"
+ },
+ {
+  "id": 34,
+  "color": "amber",
+  "bbox": [
+   512,
+   1480,
+   553,
+   1507
+  ],
+  "text": "in"
+ },
+ {
+  "id": 35,
+  "color": "amber",
+  "bbox": [
+   1995,
+   1461,
+   2052,
+   1492
+  ],
+  "text": "SKIP"
+ }
+]

@@ -1,0 +1,189 @@
+[
+ {
+  "id": 1,
+  "color": "amber",
+  "bbox": [
+   712,
+   1045,
+   881,
+   1172
+  ],
+  "text": "ready"
+ },
+ {
+  "id": 2,
+  "color": "amber",
+  "bbox": [
+   882,
+   1117,
+   937,
+   1261
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 3,
+  "color": "black",
+  "bbox": [
+   342,
+   267,
+   423,
+   334
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 4,
+  "color": "black",
+  "bbox": [
+   440,
+   474,
+   498,
+   532
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 5,
+  "color": "black",
+  "bbox": [
+   1248,
+   626,
+   1479,
+   748
+  ],
+  "text": "unblock"
+ },
+ {
+  "id": 6,
+  "color": "black",
+  "bbox": [
+   263,
+   641,
+   382,
+   720
+  ],
+  "text": "kill"
+ },
+ {
+  "id": 7,
+  "color": "black",
+  "bbox": [
+   1137,
+   851,
+   1171,
+   907
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 8,
+  "color": "black",
+  "bbox": [
+   92,
+   1049,
+   242,
+   1151
+  ],
+  "text": "block"
+ },
+ {
+  "id": 9,
+  "color": "black",
+  "bbox": [
+   1397,
+   1043,
+   1572,
+   1143
+  ],
+  "text": "handle"
+ },
+ {
+  "id": 10,
+  "color": "black",
+  "bbox": [
+   438,
+   1295,
+   494,
+   1351
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 11,
+  "color": "black",
+  "bbox": [
+   247,
+   1460,
+   389,
+   1603
+  ],
+  "text": "yield"
+ },
+ {
+  "id": 12,
+  "color": "black",
+  "bbox": [
+   1300,
+   1477,
+   1426,
+   1557
+  ],
+  "text": "run"
+ },
+ {
+  "id": 13,
+  "color": "black",
+  "bbox": [
+   1163,
+   1684,
+   1214,
+   1774
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 14,
+  "color": "black",
+  "bbox": [
+   1247,
+   1874,
+   1318,
+   1975
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 15,
+  "color": "green",
+  "bbox": [
+   669,
+   1917,
+   961,
+   2001
+  ],
+  "text": "running"
+ },
+ {
+  "id": 16,
+  "color": "green",
+  "bbox": [
+   966,
+   1947,
+   1012,
+   2106
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 17,
+  "color": "red",
+  "bbox": [
+   708,
+   272,
+   969,
+   376
+  ],
+  "text": "blocked"
+ }
+]

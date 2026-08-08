@@ -1,0 +1,211 @@
+[
+ {
+  "id": 1,
+  "color": "amber",
+  "bbox": [
+   206,
+   71,
+   738,
+   212
+  ],
+  "text": "interpretation"
+ },
+ {
+  "id": 2,
+  "color": "amber",
+  "bbox": [
+   944,
+   74,
+   1178,
+   211
+  ],
+  "text": "storag"
+ },
+ {
+  "id": 3,
+  "color": "amber",
+  "bbox": [
+   401,
+   136,
+   449,
+   272
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 4,
+  "color": "amber",
+  "bbox": [
+   1233,
+   147,
+   1280,
+   195
+  ],
+  "text": "e"
+ },
+ {
+  "id": 5,
+  "color": "amber",
+  "bbox": [
+   1608,
+   102,
+   1966,
+   212
+  ],
+  "text": "addresses"
+ },
+ {
+  "id": 6,
+  "color": "amber",
+  "bbox": [
+   1791,
+   239,
+   1853,
+   289
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 7,
+  "color": "amber",
+  "bbox": [
+   1532,
+   523,
+   1583,
+   564
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 8,
+  "color": "amber",
+  "bbox": [
+   1925,
+   499,
+   2021,
+   598
+  ],
+  "text": "92"
+ },
+ {
+  "id": 9,
+  "color": "amber",
+  "bbox": [
+   408,
+   596,
+   465,
+   680
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 10,
+  "color": "amber",
+  "bbox": [
+   1959,
+   638,
+   1990,
+   680
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 11,
+  "color": "amber",
+  "bbox": [
+   129,
+   714,
+   608,
+   805
+  ],
+  "text": "contiguous block"
+ },
+ {
+  "id": 12,
+  "color": "amber",
+  "bbox": [
+   259,
+   769,
+   363,
+   908
+  ],
+  "text": "8"
+ },
+ {
+  "id": 13,
+  "color": "amber",
+  "bbox": [
+   1993,
+   742,
+   2116,
+   833
+  ],
+  "text": "+7"
+ },
+ {
+  "id": 14,
+  "color": "amber",
+  "bbox": [
+   168,
+   828,
+   221,
+   970
+  ],
+  "text": "of"
+ },
+ {
+  "id": 15,
+  "color": "amber",
+  "bbox": [
+   389,
+   830,
+   557,
+   980
+  ],
+  "text": "bytes"
+ },
+ {
+  "id": 16,
+  "color": "amber",
+  "bbox": [
+   928,
+   1005,
+   938,
+   1062
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 17,
+  "color": "amber",
+  "bbox": [
+   1316,
+   1005,
+   1325,
+   1066
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 18,
+  "color": "amber",
+  "bbox": [
+   1526,
+   1020,
+   1583,
+   1065
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 19,
+  "color": "amber",
+  "bbox": [
+   1902,
+   1004,
+   2020,
+   1082
+  ],
+  "text": "85"
+ }
+]

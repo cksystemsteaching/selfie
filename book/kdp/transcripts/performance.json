@@ -1,0 +1,255 @@
+[
+ {
+  "id": 1,
+  "color": "amber",
+  "bbox": [
+   1188,
+   50,
+   1282,
+   124
+  ],
+  "text": "O(n^{2})"
+ },
+ {
+  "id": 2,
+  "color": "amber",
+  "bbox": [
+   887,
+   141,
+   1013,
+   204
+  ],
+  "text": "upper"
+ },
+ {
+  "id": 3,
+  "color": "amber",
+  "bbox": [
+   887,
+   201,
+   1036,
+   274
+  ],
+  "text": "bound"
+ },
+ {
+  "id": 4,
+  "color": "black",
+  "bbox": [
+   267,
+   41,
+   299,
+   105
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 5,
+  "color": "black",
+  "bbox": [
+   40,
+   107,
+   243,
+   225
+  ],
+  "text": "time"
+ },
+ {
+  "id": 6,
+  "color": "black",
+  "bbox": [
+   32,
+   285,
+   206,
+   396
+  ],
+  "text": "space"
+ },
+ {
+  "id": 7,
+  "color": "black",
+  "bbox": [
+   1768,
+   294,
+   1858,
+   371
+  ],
+  "text": "O(n)"
+ },
+ {
+  "id": 8,
+  "color": "black",
+  "bbox": [
+   29,
+   419,
+   216,
+   544
+  ],
+  "text": "energy"
+ },
+ {
+  "id": 9,
+  "color": "black",
+  "bbox": [
+   1395,
+   520,
+   1532,
+   596
+  ],
+  "text": "lower"
+ },
+ {
+  "id": 10,
+  "color": "black",
+  "bbox": [
+   1392,
+   612,
+   1557,
+   678
+  ],
+  "text": "bound"
+ },
+ {
+  "id": 11,
+  "color": "black",
+  "bbox": [
+   922,
+   1098,
+   934,
+   1149
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 12,
+  "color": "black",
+  "bbox": [
+   919,
+   1427,
+   929,
+   1479
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 13,
+  "color": "black",
+  "bbox": [
+   899,
+   1865,
+   910,
+   1913
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 14,
+  "color": "black",
+  "bbox": [
+   1795,
+   1899,
+   1865,
+   1977
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 15,
+  "color": "black",
+  "bbox": [
+   901,
+   1927,
+   911,
+   1976
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 16,
+  "color": "black",
+  "bbox": [
+   1385,
+   1989,
+   1485,
+   2113
+  ],
+  "text": "in"
+ },
+ {
+  "id": 17,
+  "color": "black",
+  "bbox": [
+   1487,
+   1951,
+   1794,
+   2042
+  ],
+  "text": "put size"
+ },
+ {
+  "id": 18,
+  "color": "black",
+  "bbox": [
+   875,
+   2007,
+   939,
+   2070
+  ],
+  "text": "n_{0}"
+ },
+ {
+  "id": 19,
+  "color": "black",
+  "bbox": [
+   1076,
+   2041,
+   1214,
+   2194
+  ],
+  "text": "large"
+ },
+ {
+  "id": 20,
+  "color": "black",
+  "bbox": [
+   895,
+   2121,
+   1019,
+   2161
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 21,
+  "color": "black",
+  "bbox": [
+   1129,
+   2126,
+   1415,
+   2236
+  ],
+  "text": "inputs"
+ },
+ {
+  "id": 22,
+  "color": "green",
+  "bbox": [
+   1429,
+   93,
+   1564,
+   155
+  ],
+  "text": "actual"
+ },
+ {
+  "id": 23,
+  "color": "green",
+  "bbox": [
+   1418,
+   164,
+   1644,
+   236
+  ],
+  "text": "performance"
+ }
+]

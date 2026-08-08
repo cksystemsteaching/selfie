@@ -1,0 +1,321 @@
+[
+ {
+  "id": 1,
+  "color": "amber",
+  "bbox": [
+   1432,
+   33,
+   1666,
+   112
+  ],
+  "text": ">>> selfie.m"
+ },
+ {
+  "id": 2,
+  "color": "amber",
+  "bbox": [
+   1768,
+   93,
+   1881,
+   165
+  ],
+  "text": "memory"
+ },
+ {
+  "id": 3,
+  "color": "amber",
+  "bbox": [
+   1511,
+   227,
+   1720,
+   371
+  ],
+  "text": "CPU"
+ },
+ {
+  "id": 4,
+  "color": "amber",
+  "bbox": [
+   834,
+   628,
+   980,
+   695
+  ],
+  "text": "selfie.m"
+ },
+ {
+  "id": 5,
+  "color": "amber",
+  "bbox": [
+   2226,
+   560,
+   2345,
+   660
+  ],
+  "text": "OS"
+ },
+ {
+  "id": 6,
+  "color": "amber",
+  "bbox": [
+   763,
+   640,
+   806,
+   665
+  ],
+  "text": ">>"
+ },
+ {
+  "id": 7,
+  "color": "amber",
+  "bbox": [
+   1095,
+   687,
+   1208,
+   759
+  ],
+  "text": "memory"
+ },
+ {
+  "id": 8,
+  "color": "amber",
+  "bbox": [
+   838,
+   821,
+   1047,
+   965
+  ],
+  "text": "CPU"
+ },
+ {
+  "id": 9,
+  "color": "amber",
+  "bbox": [
+   1715,
+   832,
+   1844,
+   907
+  ],
+  "text": "cache"
+ },
+ {
+  "id": 10,
+  "color": "amber",
+  "bbox": [
+   1016,
+   1175,
+   1151,
+   1233
+  ],
+  "text": "cache"
+ },
+ {
+  "id": 11,
+  "color": "amber",
+  "bbox": [
+   1689,
+   1185,
+   1709,
+   1212
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 12,
+  "color": "amber",
+  "bbox": [
+   2217,
+   1165,
+   2363,
+   1244
+  ],
+  "text": "VMM"
+ },
+ {
+  "id": 13,
+  "color": "amber",
+  "bbox": [
+   111,
+   1247,
+   253,
+   1314
+  ],
+  "text": "> selfie.m"
+ },
+ {
+  "id": 14,
+  "color": "amber",
+  "bbox": [
+   279,
+   1261,
+   304,
+   1281
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 15,
+  "color": "amber",
+  "bbox": [
+   772,
+   1269,
+   814,
+   1293
+  ],
+  "text": ">>"
+ },
+ {
+  "id": 16,
+  "color": "amber",
+  "bbox": [
+   841,
+   1250,
+   971,
+   1321
+  ],
+  "text": "selfie.m"
+ },
+ {
+  "id": 17,
+  "color": "amber",
+  "bbox": [
+   1444,
+   1251,
+   1664,
+   1318
+  ],
+  "text": ">>> selfie.m"
+ },
+ {
+  "id": 18,
+  "color": "amber",
+  "bbox": [
+   439,
+   1308,
+   552,
+   1380
+  ],
+  "text": "memory"
+ },
+ {
+  "id": 19,
+  "color": "amber",
+  "bbox": [
+   1101,
+   1308,
+   1214,
+   1380
+  ],
+  "text": "memory"
+ },
+ {
+  "id": 20,
+  "color": "amber",
+  "bbox": [
+   1780,
+   1307,
+   1893,
+   1379
+  ],
+  "text": "memory"
+ },
+ {
+  "id": 21,
+  "color": "amber",
+  "bbox": [
+   182,
+   1442,
+   391,
+   1586
+  ],
+  "text": "CPU"
+ },
+ {
+  "id": 22,
+  "color": "amber",
+  "bbox": [
+   844,
+   1442,
+   1053,
+   1586
+  ],
+  "text": "CPU"
+ },
+ {
+  "id": 23,
+  "color": "amber",
+  "bbox": [
+   1523,
+   1441,
+   1732,
+   1585
+  ],
+  "text": "CPU"
+ },
+ {
+  "id": 24,
+  "color": "amber",
+  "bbox": [
+   89,
+   1797,
+   247,
+   1893
+  ],
+  "text": "exceptions"
+ },
+ {
+  "id": 25,
+  "color": "amber",
+  "bbox": [
+   488,
+   1789,
+   526,
+   1854
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 26,
+  "color": "amber",
+  "bbox": [
+   765,
+   1788,
+   971,
+   1854
+  ],
+  "text": "exceptions"
+ },
+ {
+  "id": 27,
+  "color": "amber",
+  "bbox": [
+   1109,
+   1784,
+   1149,
+   1884
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 28,
+  "color": "amber",
+  "bbox": [
+   1469,
+   1787,
+   1650,
+   1854
+  ],
+  "text": "exceptions"
+ },
+ {
+  "id": 29,
+  "color": "amber",
+  "bbox": [
+   2212,
+   1820,
+   2316,
+   1887
+  ],
+  "text": "HW"
+ }
+]

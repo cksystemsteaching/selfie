@@ -1,0 +1,266 @@
+[
+ {
+  "id": 1,
+  "color": "amber",
+  "bbox": [
+   311,
+   69,
+   866,
+   211
+  ],
+  "text": "interpretation"
+ },
+ {
+  "id": 2,
+  "color": "amber",
+  "bbox": [
+   1180,
+   51,
+   1364,
+   200
+  ],
+  "text": "storage"
+ },
+ {
+  "id": 3,
+  "color": "amber",
+  "bbox": [
+   521,
+   155,
+   574,
+   282
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 4,
+  "color": "amber",
+  "bbox": [
+   1378,
+   124,
+   1473,
+   247
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 5,
+  "color": "amber",
+  "bbox": [
+   1760,
+   109,
+   2078,
+   220
+  ],
+  "text": "addresses"
+ },
+ {
+  "id": 6,
+  "color": "amber",
+  "bbox": [
+   1940,
+   236,
+   1982,
+   290
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 7,
+  "color": "amber",
+  "bbox": [
+   542,
+   267,
+   573,
+   308
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 8,
+  "color": "amber",
+  "bbox": [
+   468,
+   326,
+   586,
+   390
+  ],
+  "text": "code"
+ },
+ {
+  "id": 9,
+  "color": "amber",
+  "bbox": [
+   430,
+   465,
+   721,
+   555
+  ],
+  "text": "instruction 0"
+ },
+ {
+  "id": 10,
+  "color": "amber",
+  "bbox": [
+   2042,
+   446,
+   2206,
+   597
+  ],
+  "text": "end of code"
+ },
+ {
+  "id": 11,
+  "color": "amber",
+  "bbox": [
+   1682,
+   487,
+   1745,
+   547
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 12,
+  "color": "amber",
+  "bbox": [
+   1941,
+   512,
+   1992,
+   521
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 13,
+  "color": "amber",
+  "bbox": [
+   436,
+   617,
+   729,
+   691
+  ],
+  "text": "instruction 1"
+ },
+ {
+  "id": 14,
+  "color": "amber",
+  "bbox": [
+   437,
+   757,
+   754,
+   839
+  ],
+  "text": "instruction 2"
+ },
+ {
+  "id": 15,
+  "color": "amber",
+  "bbox": [
+   953,
+   733,
+   985,
+   764
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 16,
+  "color": "amber",
+  "bbox": [
+   945,
+   854,
+   967,
+   890
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 17,
+  "color": "amber",
+  "bbox": [
+   989,
+   945,
+   1041,
+   1104
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 18,
+  "color": "amber",
+  "bbox": [
+   950,
+   1030,
+   974,
+   1068
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 19,
+  "color": "amber",
+  "bbox": [
+   2014,
+   997,
+   2192,
+   1125
+  ],
+  "text": "beginning of"
+ },
+ {
+  "id": 20,
+  "color": "amber",
+  "bbox": [
+   1680,
+   1066,
+   1738,
+   1110
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 21,
+  "color": "amber",
+  "bbox": [
+   2104,
+   1067,
+   2125,
+   1156
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 22,
+  "color": "amber",
+  "bbox": [
+   2041,
+   1152,
+   2159,
+   1211
+  ],
+  "text": "code"
+ },
+ {
+  "id": 23,
+  "color": "amber",
+  "bbox": [
+   471,
+   1212,
+   667,
+   1277
+  ],
+  "text": "32 bits"
+ },
+ {
+  "id": 24,
+  "color": "amber",
+  "bbox": [
+   452,
+   1289,
+   690,
+   1403
+  ],
+  "text": "(4 bytes)"
+ }
+]

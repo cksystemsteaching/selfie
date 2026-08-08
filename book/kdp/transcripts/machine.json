@@ -1,0 +1,354 @@
+[
+ {
+  "id": 1,
+  "color": "amber",
+  "bbox": [
+   494,
+   127,
+   755,
+   211
+  ],
+  "text": "RISC-U"
+ },
+ {
+  "id": 2,
+  "color": "amber",
+  "bbox": [
+   866,
+   131,
+   971,
+   219
+  ],
+  "text": "ISA"
+ },
+ {
+  "id": 3,
+  "color": "amber",
+  "bbox": [
+   1377,
+   102,
+   2024,
+   230
+  ],
+  "text": "main memory (storage)"
+ },
+ {
+  "id": 4,
+  "color": "amber",
+  "bbox": [
+   2223,
+   137,
+   2393,
+   210
+  ],
+  "text": "addresses"
+ },
+ {
+  "id": 5,
+  "color": "amber",
+  "bbox": [
+   381,
+   237,
+   1135,
+   398
+  ],
+  "text": "(von Neumann architecture)"
+ },
+ {
+  "id": 6,
+  "color": "amber",
+  "bbox": [
+   2291,
+   219,
+   2578,
+   336
+  ],
+  "text": "2^{32}-8"
+ },
+ {
+  "id": 7,
+  "color": "amber",
+  "bbox": [
+   2044,
+   276,
+   2066,
+   307
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 8,
+  "color": "amber",
+  "bbox": [
+   221,
+   538,
+   970,
+   721
+  ],
+  "text": "registers CPU registers (storage)"
+ },
+ {
+  "id": 9,
+  "color": "amber",
+  "bbox": [
+   211,
+   682,
+   333,
+   766
+  ],
+  "text": "31"
+ },
+ {
+  "id": 10,
+  "color": "amber",
+  "bbox": [
+   428,
+   659,
+   451,
+   747
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 11,
+  "color": "amber",
+  "bbox": [
+   1053,
+   752,
+   1148,
+   811
+  ],
+  "text": "load"
+ },
+ {
+  "id": 12,
+  "color": "amber",
+  "bbox": [
+   990,
+   954,
+   1040,
+   963
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 13,
+  "color": "amber",
+  "bbox": [
+   1054,
+   885,
+   1162,
+   943
+  ],
+  "text": "store"
+ },
+ {
+  "id": 14,
+  "color": "amber",
+  "bbox": [
+   1179,
+   943,
+   1234,
+   974
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 15,
+  "color": "amber",
+  "bbox": [
+   98,
+   1105,
+   1173,
+   1285
+  ],
+  "text": "(zero) 0 32 bits ir fetch"
+ },
+ {
+  "id": 16,
+  "color": "amber",
+  "bbox": [
+   1637,
+   1112,
+   1650,
+   1148
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 17,
+  "color": "amber",
+  "bbox": [
+   1184,
+   1238,
+   1231,
+   1248
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 18,
+  "color": "amber",
+  "bbox": [
+   334,
+   1313,
+   447,
+   1367
+  ],
+  "text": "pc"
+ },
+ {
+  "id": 19,
+  "color": "amber",
+  "bbox": [
+   703,
+   1315,
+   717,
+   1362
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 20,
+  "color": "amber",
+  "bbox": [
+   1040,
+   1318,
+   1130,
+   1529
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 21,
+  "color": "amber",
+  "bbox": [
+   564,
+   1410,
+   669,
+   1458
+  ],
+  "text": "64 bits"
+ },
+ {
+  "id": 22,
+  "color": "amber",
+  "bbox": [
+   652,
+   1388,
+   713,
+   1403
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 23,
+  "color": "amber",
+  "bbox": [
+   327,
+   1456,
+   438,
+   1660
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 24,
+  "color": "amber",
+  "bbox": [
+   405,
+   1440,
+   451,
+   1478
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 25,
+  "color": "amber",
+  "bbox": [
+   877,
+   1503,
+   1151,
+   1685
+  ],
+  "text": "memory bus"
+ },
+ {
+  "id": 26,
+  "color": "amber",
+  "bbox": [
+   234,
+   1676,
+   373,
+   1748
+  ],
+  "text": "CPU"
+ },
+ {
+  "id": 27,
+  "color": "amber",
+  "bbox": [
+   806,
+   1603,
+   1165,
+   1790
+  ],
+  "text": "(von Neumann bottleneck)"
+ },
+ {
+  "id": 28,
+  "color": "amber",
+  "bbox": [
+   2025,
+   1643,
+   2077,
+   1666
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 29,
+  "color": "amber",
+  "bbox": [
+   2321,
+   1640,
+   2395,
+   1649
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 30,
+  "color": "amber",
+  "bbox": [
+   2321,
+   1728,
+   2472,
+   1786
+  ],
+  "text": "0"
+ },
+ {
+  "id": 31,
+  "color": "amber",
+  "bbox": [
+   113,
+   1762,
+   492,
+   1898
+  ],
+  "text": "(ALU hidden)"
+ },
+ {
+  "id": 32,
+  "color": "amber",
+  "bbox": [
+   1584,
+   1844,
+   1736,
+   1894
+  ],
+  "text": "64 bits"
+ }
+]

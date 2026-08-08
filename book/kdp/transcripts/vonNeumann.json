@@ -1,0 +1,189 @@
+[
+ {
+  "id": 1,
+  "color": "amber",
+  "bbox": [
+   425,
+   179,
+   998,
+   309
+  ],
+  "text": "von Neumann"
+ },
+ {
+  "id": 2,
+  "color": "amber",
+  "bbox": [
+   495,
+   346,
+   964,
+   456
+  ],
+  "text": "Architecture"
+ },
+ {
+  "id": 3,
+  "color": "amber",
+  "bbox": [
+   1401,
+   824,
+   1547,
+   964
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 4,
+  "color": "amber",
+  "bbox": [
+   1760,
+   823,
+   2133,
+   971
+  ],
+  "text": "Memory"
+ },
+ {
+  "id": 5,
+  "color": "amber",
+  "bbox": [
+   564,
+   884,
+   861,
+   1033
+  ],
+  "text": "CPU"
+ },
+ {
+  "id": 6,
+  "color": "amber",
+  "bbox": [
+   1040,
+   899,
+   1113,
+   974
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 7,
+  "color": "amber",
+  "bbox": [
+   2112,
+   913,
+   2180,
+   1145
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 8,
+  "color": "amber",
+  "bbox": [
+   1047,
+   987,
+   1177,
+   1098
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 9,
+  "color": "amber",
+  "bbox": [
+   1390,
+   974,
+   1546,
+   1083
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 10,
+  "color": "amber",
+  "bbox": [
+   1268,
+   1095,
+   1308,
+   1188
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 11,
+  "color": "amber",
+  "bbox": [
+   1650,
+   1097,
+   2245,
+   1249
+  ],
+  "text": "(for code and data)"
+ },
+ {
+  "id": 12,
+  "color": "amber",
+  "bbox": [
+   1106,
+   1530,
+   1374,
+   1683
+  ],
+  "text": "memory bus"
+ },
+ {
+  "id": 13,
+  "color": "amber",
+  "bbox": [
+   1037,
+   1699,
+   1073,
+   1900
+  ],
+  "text": "("
+ },
+ {
+  "id": 14,
+  "color": "amber",
+  "bbox": [
+   1070,
+   1737,
+   1134,
+   1770
+  ],
+  "text": "von"
+ },
+ {
+  "id": 15,
+  "color": "amber",
+  "bbox": [
+   1187,
+   1712,
+   1377,
+   1776
+  ],
+  "text": "Neumann"
+ },
+ {
+  "id": 16,
+  "color": "amber",
+  "bbox": [
+   1378,
+   1700,
+   1414,
+   1925
+  ],
+  "text": ")"
+ },
+ {
+  "id": 17,
+  "color": "amber",
+  "bbox": [
+   1161,
+   1793,
+   1357,
+   1866
+  ],
+  "text": "bottleneck"
+ }
+]

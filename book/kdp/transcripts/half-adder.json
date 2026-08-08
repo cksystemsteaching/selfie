@@ -1,0 +1,134 @@
+[
+ {
+  "id": 1,
+  "color": "amber",
+  "bbox": [
+   337,
+   22,
+   358,
+   90
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 2,
+  "color": "amber",
+  "bbox": [
+   366,
+   29,
+   577,
+   85
+  ],
+  "text": "half adder"
+ },
+ {
+  "id": 3,
+  "color": "amber",
+  "bbox": [
+   405,
+   35,
+   430,
+   107
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 4,
+  "color": "amber",
+  "bbox": [
+   43,
+   217,
+   121,
+   251
+  ],
+  "text": "sum"
+ },
+ {
+  "id": 5,
+  "color": "amber",
+  "bbox": [
+   400,
+   219,
+   482,
+   258
+  ],
+  "text": "XOR"
+ },
+ {
+  "id": 6,
+  "color": "amber",
+  "bbox": [
+   524,
+   169,
+   543,
+   216
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 7,
+  "color": "amber",
+  "bbox": [
+   740,
+   186,
+   864,
+   226
+  ],
+  "text": "addend"
+ },
+ {
+  "id": 8,
+  "color": "amber",
+  "bbox": [
+   526,
+   266,
+   546,
+   310
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 9,
+  "color": "amber",
+  "bbox": [
+   28,
+   424,
+   83,
+   449
+  ],
+  "text": "carry"
+ },
+ {
+  "id": 10,
+  "color": "amber",
+  "bbox": [
+   86,
+   426,
+   122,
+   485
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 11,
+  "color": "amber",
+  "bbox": [
+   442,
+   409,
+   519,
+   448
+  ],
+  "text": "AND"
+ },
+ {
+  "id": 12,
+  "color": "amber",
+  "bbox": [
+   739,
+   421,
+   877,
+   471
+  ],
+  "text": "addend"
+ }
+]

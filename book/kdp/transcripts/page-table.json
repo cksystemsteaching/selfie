@@ -1,0 +1,607 @@
+[
+ {
+  "id": 1,
+  "color": "amber",
+  "bbox": [
+   268,
+   108,
+   407,
+   177
+  ],
+  "text": "virtual"
+ },
+ {
+  "id": 2,
+  "color": "amber",
+  "bbox": [
+   623,
+   141,
+   749,
+   185
+  ],
+  "text": "20 bits"
+ },
+ {
+  "id": 3,
+  "color": "amber",
+  "bbox": [
+   1012,
+   140,
+   1123,
+   184
+  ],
+  "text": "12 bits"
+ },
+ {
+  "id": 4,
+  "color": "amber",
+  "bbox": [
+   1525,
+   108,
+   1878,
+   210
+  ],
+  "text": "page table"
+ },
+ {
+  "id": 5,
+  "color": "amber",
+  "bbox": [
+   2180,
+   104,
+   2662,
+   253
+  ],
+  "text": "virtual memory"
+ },
+ {
+  "id": 6,
+  "color": "amber",
+  "bbox": [
+   270,
+   182,
+   413,
+   239
+  ],
+  "text": "address"
+ },
+ {
+  "id": 7,
+  "color": "amber",
+  "bbox": [
+   573,
+   211,
+   901,
+   290
+  ],
+  "text": "page number (PTE)"
+ },
+ {
+  "id": 8,
+  "color": "amber",
+  "bbox": [
+   985,
+   211,
+   1051,
+   252
+  ],
+  "text": "byte"
+ },
+ {
+  "id": 9,
+  "color": "amber",
+  "bbox": [
+   1000,
+   234,
+   1015,
+   282
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 10,
+  "color": "amber",
+  "bbox": [
+   1081,
+   233,
+   1118,
+   251
+  ],
+  "text": "in"
+ },
+ {
+  "id": 11,
+  "color": "amber",
+  "bbox": [
+   983,
+   277,
+   1142,
+   347
+  ],
+  "text": "4KB-page"
+ },
+ {
+  "id": 12,
+  "color": "amber",
+  "bbox": [
+   1850,
+   240,
+   2439,
+   385
+  ],
+  "text": "mapped"
+ },
+ {
+  "id": 13,
+  "color": "amber",
+  "bbox": [
+   694,
+   380,
+   1077,
+   511
+  ],
+  "text": "physical memory"
+ },
+ {
+  "id": 14,
+  "color": "amber",
+  "bbox": [
+   1641,
+   357,
+   1763,
+   496
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 15,
+  "color": "amber",
+  "bbox": [
+   1187,
+   474,
+   1271,
+   548
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 16,
+  "color": "amber",
+  "bbox": [
+   2277,
+   474,
+   2340,
+   483
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 17,
+  "color": "amber",
+  "bbox": [
+   1359,
+   631,
+   1523,
+   709
+  ],
+  "text": "mapping"
+ },
+ {
+  "id": 18,
+  "color": "amber",
+  "bbox": [
+   2272,
+   630,
+   2340,
+   639
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 19,
+  "color": "amber",
+  "bbox": [
+   1690,
+   770,
+   1846,
+   776
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 20,
+  "color": "amber",
+  "bbox": [
+   2009,
+   781,
+   2057,
+   811
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 21,
+  "color": "amber",
+  "bbox": [
+   2276,
+   780,
+   2404,
+   790
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 22,
+  "color": "amber",
+  "bbox": [
+   318,
+   809,
+   513,
+   926
+  ],
+  "text": "physical"
+ },
+ {
+  "id": 23,
+  "color": "amber",
+  "bbox": [
+   1975,
+   801,
+   2002,
+   843
+  ],
+  "text": "2^{20}"
+ },
+ {
+  "id": 24,
+  "color": "amber",
+  "bbox": [
+   1979,
+   865,
+   2077,
+   920
+  ],
+  "text": "PTEs"
+ },
+ {
+  "id": 25,
+  "color": "amber",
+  "bbox": [
+   2545,
+   806,
+   2621,
+   877
+  ],
+  "text": "2^{20}"
+ },
+ {
+  "id": 26,
+  "color": "amber",
+  "bbox": [
+   313,
+   950,
+   421,
+   1049
+  ],
+  "text": "page"
+ },
+ {
+  "id": 27,
+  "color": "amber",
+  "bbox": [
+   2544,
+   916,
+   2704,
+   991
+  ],
+  "text": "virtual"
+ },
+ {
+  "id": 28,
+  "color": "amber",
+  "bbox": [
+   1430,
+   993,
+   1570,
+   1058
+  ],
+  "text": "mapping"
+ },
+ {
+  "id": 29,
+  "color": "amber",
+  "bbox": [
+   1999,
+   1030,
+   2181,
+   1143
+  ],
+  "text": "mapped"
+ },
+ {
+  "id": 30,
+  "color": "amber",
+  "bbox": [
+   2566,
+   1037,
+   2678,
+   1139
+  ],
+  "text": "pages"
+ },
+ {
+  "id": 31,
+  "color": "amber",
+  "bbox": [
+   308,
+   1058,
+   488,
+   1198
+  ],
+  "text": "frames"
+ },
+ {
+  "id": 32,
+  "color": "amber",
+  "bbox": [
+   1300,
+   1056,
+   1373,
+   1191
+  ],
+  "text": "2^{12} bytes"
+ },
+ {
+  "id": 33,
+  "color": "amber",
+  "bbox": [
+   1669,
+   1107,
+   1761,
+   1142
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 34,
+  "color": "amber",
+  "bbox": [
+   1688,
+   1058,
+   1848,
+   1064
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 35,
+  "color": "amber",
+  "bbox": [
+   2289,
+   1053,
+   2340,
+   1062
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 36,
+  "color": "amber",
+  "bbox": [
+   1490,
+   1159,
+   1622,
+   1259
+  ],
+  "text": "mapping"
+ },
+ {
+  "id": 37,
+  "color": "amber",
+  "bbox": [
+   1886,
+   1132,
+   1948,
+   1144
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 38,
+  "color": "amber",
+  "bbox": [
+   2229,
+   1127,
+   2278,
+   1140
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 39,
+  "color": "amber",
+  "bbox": [
+   2275,
+   1212,
+   2340,
+   1232
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 40,
+  "color": "amber",
+  "bbox": [
+   1678,
+   1361,
+   1847,
+   1380
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 41,
+  "color": "amber",
+  "bbox": [
+   2273,
+   1379,
+   2340,
+   1388
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 42,
+  "color": "amber",
+  "bbox": [
+   715,
+   1506,
+   906,
+   1636
+  ],
+  "text": "physical"
+ },
+ {
+  "id": 43,
+  "color": "amber",
+  "bbox": [
+   1177,
+   1479,
+   1340,
+   1614
+  ],
+  "text": "physical address"
+ },
+ {
+  "id": 44,
+  "color": "amber",
+  "bbox": [
+   1668,
+   1453,
+   1778,
+   1604
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 45,
+  "color": "amber",
+  "bbox": [
+   2275,
+   1515,
+   2340,
+   1536
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 46,
+  "color": "amber",
+  "bbox": [
+   2017,
+   1537,
+   2152,
+   1604
+  ],
+  "text": "mapped"
+ },
+ {
+  "id": 47,
+  "color": "amber",
+  "bbox": [
+   749,
+   1606,
+   911,
+   1741
+  ],
+  "text": "memory storage"
+ },
+ {
+  "id": 48,
+  "color": "amber",
+  "bbox": [
+   1197,
+   1636,
+   1329,
+   1699
+  ],
+  "text": "space"
+ },
+ {
+  "id": 49,
+  "color": "amber",
+  "bbox": [
+   1680,
+   1672,
+   1844,
+   1678
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 50,
+  "color": "amber",
+  "bbox": [
+   1877,
+   1610,
+   1950,
+   1629
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 51,
+  "color": "amber",
+  "bbox": [
+   1968,
+   1610,
+   2047,
+   1623
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 52,
+  "color": "amber",
+  "bbox": [
+   2091,
+   1612,
+   2167,
+   1618
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 53,
+  "color": "amber",
+  "bbox": [
+   2191,
+   1602,
+   2259,
+   1616
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 54,
+  "color": "amber",
+  "bbox": [
+   1671,
+   1836,
+   1833,
+   1862
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 55,
+  "color": "amber",
+  "bbox": [
+   2154,
+   1875,
+   2611,
+   1979
+  ],
+  "text": "virtual address space"
+ }
+]

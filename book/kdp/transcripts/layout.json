@@ -1,0 +1,431 @@
+[
+ {
+  "id": 1,
+  "color": "amber",
+  "bbox": [
+   359,
+   135,
+   946,
+   293
+  ],
+  "text": "interpretation"
+ },
+ {
+  "id": 2,
+  "color": "amber",
+  "bbox": [
+   1302,
+   151,
+   1432,
+   196
+  ],
+  "text": "main"
+ },
+ {
+  "id": 3,
+  "color": "amber",
+  "bbox": [
+   1509,
+   108,
+   2004,
+   239
+  ],
+  "text": "memory (storage)"
+ },
+ {
+  "id": 4,
+  "color": "amber",
+  "bbox": [
+   2220,
+   120,
+   2498,
+   227
+  ],
+  "text": "addresses"
+ },
+ {
+  "id": 5,
+  "color": "amber",
+  "bbox": [
+   530,
+   203,
+   622,
+   339
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 6,
+  "color": "amber",
+  "bbox": [
+   1533,
+   292,
+   1723,
+   421
+  ],
+  "text": "stack"
+ },
+ {
+  "id": 7,
+  "color": "amber",
+  "bbox": [
+   2347,
+   262,
+   2398,
+   322
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 8,
+  "color": "amber",
+  "bbox": [
+   1803,
+   360,
+   1912,
+   513
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 9,
+  "color": "amber",
+  "bbox": [
+   524,
+   460,
+   748,
+   567
+  ],
+  "text": "stack"
+ },
+ {
+  "id": 10,
+  "color": "amber",
+  "bbox": [
+   2064,
+   476,
+   2085,
+   507
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 11,
+  "color": "amber",
+  "bbox": [
+   2455,
+   467,
+   2514,
+   565
+  ],
+  "text": "sp"
+ },
+ {
+  "id": 12,
+  "color": "amber",
+  "bbox": [
+   602,
+   541,
+   731,
+   688
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 13,
+  "color": "amber",
+  "bbox": [
+   1309,
+   511,
+   1401,
+   516
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 14,
+  "color": "amber",
+  "bbox": [
+   1464,
+   508,
+   1568,
+   514
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 15,
+  "color": "amber",
+  "bbox": [
+   1628,
+   510,
+   1772,
+   516
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 16,
+  "color": "amber",
+  "bbox": [
+   2372,
+   487,
+   2425,
+   496
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 17,
+  "color": "amber",
+  "bbox": [
+   481,
+   682,
+   588,
+   688
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 18,
+  "color": "amber",
+  "bbox": [
+   344,
+   866,
+   410,
+   875
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 19,
+  "color": "amber",
+  "bbox": [
+   457,
+   868,
+   549,
+   874
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 20,
+  "color": "amber",
+  "bbox": [
+   599,
+   879,
+   643,
+   967
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 21,
+  "color": "amber",
+  "bbox": [
+   606,
+   869,
+   712,
+   875
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 22,
+  "color": "amber",
+  "bbox": [
+   760,
+   863,
+   833,
+   872
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 23,
+  "color": "amber",
+  "bbox": [
+   1593,
+   869,
+   1640,
+   961
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 24,
+  "color": "amber",
+  "bbox": [
+   1680,
+   928,
+   1825,
+   1029
+  ],
+  "text": "heap"
+ },
+ {
+  "id": 25,
+  "color": "amber",
+  "bbox": [
+   513,
+   970,
+   697,
+   1116
+  ],
+  "text": "heap"
+ },
+ {
+  "id": 26,
+  "color": "amber",
+  "bbox": [
+   1788,
+   993,
+   1794,
+   1080
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 27,
+  "color": "amber",
+  "bbox": [
+   2372,
+   1037,
+   2613,
+   1220
+  ],
+  "text": "0x12000"
+ },
+ {
+  "id": 28,
+  "color": "amber",
+  "bbox": [
+   2372,
+   1119,
+   2711,
+   1305
+  ],
+  "text": "gp (0x11008) - bump (0x11000)"
+ },
+ {
+  "id": 29,
+  "color": "amber",
+  "bbox": [
+   514,
+   1198,
+   718,
+   1300
+  ],
+  "text": "data"
+ },
+ {
+  "id": 30,
+  "color": "amber",
+  "bbox": [
+   1169,
+   1196,
+   1178,
+   1265
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 31,
+  "color": "amber",
+  "bbox": [
+   1876,
+   1121,
+   2006,
+   1186
+  ],
+  "text": "(unused)"
+ },
+ {
+  "id": 32,
+  "color": "amber",
+  "bbox": [
+   1427,
+   1207,
+   1680,
+   1367
+  ],
+  "text": "0x12000 data"
+ },
+ {
+  "id": 33,
+  "color": "amber",
+  "bbox": [
+   530,
+   1411,
+   724,
+   1521
+  ],
+  "text": "code"
+ },
+ {
+  "id": 34,
+  "color": "amber",
+  "bbox": [
+   1871,
+   1394,
+   2017,
+   1460
+  ],
+  "text": "(unused)"
+ },
+ {
+  "id": 35,
+  "color": "amber",
+  "bbox": [
+   1518,
+   1482,
+   1731,
+   1611
+  ],
+  "text": "code"
+ },
+ {
+  "id": 36,
+  "color": "amber",
+  "bbox": [
+   1877,
+   1679,
+   2019,
+   1750
+  ],
+  "text": "(unused)"
+ },
+ {
+  "id": 37,
+  "color": "amber",
+  "bbox": [
+   2063,
+   1633,
+   2085,
+   1664
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 38,
+  "color": "amber",
+  "bbox": [
+   2372,
+   1611,
+   2681,
+   1703
+  ],
+  "text": "0x10000"
+ },
+ {
+  "id": 39,
+  "color": "amber",
+  "bbox": [
+   1495,
+   1841,
+   1673,
+   1917
+  ],
+  "text": "64 bits"
+ }
+]

@@ -1,0 +1,387 @@
+[
+ {
+  "id": 1,
+  "color": "amber",
+  "bbox": [
+   180,
+   63,
+   581,
+   161
+  ],
+  "text": "call stack"
+ },
+ {
+  "id": 2,
+  "color": "amber",
+  "bbox": [
+   975,
+   62,
+   1510,
+   162
+  ],
+  "text": "caller's call frame"
+ },
+ {
+  "id": 3,
+  "color": "amber",
+  "bbox": [
+   1552,
+   69,
+   1625,
+   107
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 4,
+  "color": "amber",
+  "bbox": [
+   1683,
+   38,
+   2032,
+   148
+  ],
+  "text": "high addresses"
+ },
+ {
+  "id": 5,
+  "color": "amber",
+  "bbox": [
+   514,
+   319,
+   768,
+   390
+  ],
+  "text": "deallocated"
+ },
+ {
+  "id": 6,
+  "color": "amber",
+  "bbox": [
+   1090,
+   319,
+   1378,
+   422
+  ],
+  "text": "temporaries"
+ },
+ {
+  "id": 7,
+  "color": "amber",
+  "bbox": [
+   34,
+   390,
+   278,
+   479
+  ],
+  "text": "allocated"
+ },
+ {
+  "id": 8,
+  "color": "amber",
+  "bbox": [
+   531,
+   394,
+   684,
+   519
+  ],
+  "text": "by caller"
+ },
+ {
+  "id": 9,
+  "color": "amber",
+  "bbox": [
+   39,
+   483,
+   228,
+   646
+  ],
+  "text": "by caller"
+ },
+ {
+  "id": 10,
+  "color": "amber",
+  "bbox": [
+   901,
+   513,
+   1058,
+   560
+  ],
+  "text": "variadic"
+ },
+ {
+  "id": 11,
+  "color": "amber",
+  "bbox": [
+   1132,
+   504,
+   1527,
+   588
+  ],
+  "text": "actual parameters"
+ },
+ {
+  "id": 12,
+  "color": "amber",
+  "bbox": [
+   160,
+   612,
+   189,
+   650
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 13,
+  "color": "amber",
+  "bbox": [
+   876,
+   600,
+   1545,
+   721
+  ],
+  "text": "non-variadic actual parameters"
+ },
+ {
+  "id": 14,
+  "color": "amber",
+  "bbox": [
+   2427,
+   709,
+   2545,
+   770
+  ],
+  "text": "callee's"
+ },
+ {
+  "id": 15,
+  "color": "amber",
+  "bbox": [
+   164,
+   773,
+   737,
+   878
+  ],
+  "text": "callee's procedure mark"
+ },
+ {
+  "id": 16,
+  "color": "amber",
+  "bbox": [
+   697,
+   732,
+   838,
+   964
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 17,
+  "color": "amber",
+  "bbox": [
+   948,
+   745,
+   1485,
+   838
+  ],
+  "text": "return address register"
+ },
+ {
+  "id": 18,
+  "color": "amber",
+  "bbox": [
+   1520,
+   779,
+   1566,
+   807
+  ],
+  "text": "ra"
+ },
+ {
+  "id": 19,
+  "color": "amber",
+  "bbox": [
+   1600,
+   727,
+   1626,
+   738
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 20,
+  "color": "amber",
+  "bbox": [
+   2089,
+   749,
+   2352,
+   839
+  ],
+  "text": "deallocated"
+ },
+ {
+  "id": 21,
+  "color": "amber",
+  "bbox": [
+   2431,
+   799,
+   2512,
+   844
+  ],
+  "text": "call"
+ },
+ {
+  "id": 22,
+  "color": "amber",
+  "bbox": [
+   920,
+   866,
+   1596,
+   964
+  ],
+  "text": "caller's frame pointer s0"
+ },
+ {
+  "id": 23,
+  "color": "amber",
+  "bbox": [
+   2139,
+   845,
+   2293,
+   1006
+  ],
+  "text": "by callee"
+ },
+ {
+  "id": 24,
+  "color": "amber",
+  "bbox": [
+   2440,
+   861,
+   2557,
+   935
+  ],
+  "text": "frame"
+ },
+ {
+  "id": 25,
+  "color": "amber",
+  "bbox": [
+   126,
+   918,
+   691,
+   1029
+  ],
+  "text": "callee's frame pointer s0"
+ },
+ {
+  "id": 26,
+  "color": "amber",
+  "bbox": [
+   808,
+   887,
+   839,
+   929
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 27,
+  "color": "amber",
+  "bbox": [
+   1714,
+   945,
+   1978,
+   1024
+  ],
+  "text": "allocated"
+ },
+ {
+  "id": 28,
+  "color": "amber",
+  "bbox": [
+   1748,
+   1038,
+   1950,
+   1201
+  ],
+  "text": "by callee"
+ },
+ {
+  "id": 29,
+  "color": "amber",
+  "bbox": [
+   1075,
+   1051,
+   1461,
+   1135
+  ],
+  "text": "local variables"
+ },
+ {
+  "id": 30,
+  "color": "amber",
+  "bbox": [
+   393,
+   1169,
+   834,
+   1282
+  ],
+  "text": "stack pointer sp"
+ },
+ {
+  "id": 31,
+  "color": "amber",
+  "bbox": [
+   227,
+   1352,
+   364,
+   1427
+  ],
+  "text": "callee"
+ },
+ {
+  "id": 32,
+  "color": "amber",
+  "bbox": [
+   511,
+   1336,
+   770,
+   1432
+  ],
+  "text": "next caller"
+ },
+ {
+  "id": 33,
+  "color": "amber",
+  "bbox": [
+   996,
+   1359,
+   1506,
+   1483
+  ],
+  "text": "next call frame"
+ },
+ {
+  "id": 34,
+  "color": "amber",
+  "bbox": [
+   425,
+   1394,
+   456,
+   1421
+  ],
+  "text": "'s"
+ },
+ {
+  "id": 35,
+  "color": "amber",
+  "bbox": [
+   1640,
+   1403,
+   2050,
+   1500
+  ],
+  "text": "low addresses"
+ }
+]

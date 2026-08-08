@@ -1,0 +1,453 @@
+[
+ {
+  "id": 1,
+  "color": "amber",
+  "bbox": [
+   2102,
+   17,
+   2460,
+   108
+  ],
+  "text": "compiler memory"
+ },
+ {
+  "id": 2,
+  "color": "amber",
+  "bbox": [
+   2493,
+   99,
+   2516,
+   130
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 3,
+  "color": "amber",
+  "bbox": [
+   2090,
+   616,
+   2189,
+   706
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 4,
+  "color": "amber",
+  "bbox": [
+   2034,
+   696,
+   2088,
+   825
+  ],
+  "text": "data"
+ },
+ {
+  "id": 5,
+  "color": "amber",
+  "bbox": [
+   2311,
+   653,
+   2527,
+   876
+  ],
+  "text": "(unused) SYM_CHARACTER (unused)"
+ },
+ {
+  "id": 6,
+  "color": "amber",
+  "bbox": [
+   2338,
+   665,
+   2434,
+   698
+  ],
+  "text": "(unused)"
+ },
+ {
+  "id": 7,
+  "color": "amber",
+  "bbox": [
+   2537,
+   675,
+   2644,
+   739
+  ],
+  "text": "gp literal"
+ },
+ {
+  "id": 8,
+  "color": "amber",
+  "bbox": [
+   2542,
+   757,
+   2652,
+   829
+  ],
+  "text": "symbol"
+ },
+ {
+  "id": 9,
+  "color": "amber",
+  "bbox": [
+   2328,
+   827,
+   2445,
+   868
+  ],
+  "text": "(unused)"
+ },
+ {
+  "id": 10,
+  "color": "amber",
+  "bbox": [
+   2220,
+   891,
+   2300,
+   937
+  ],
+  "text": "code"
+ },
+ {
+  "id": 11,
+  "color": "amber",
+  "bbox": [
+   2324,
+   979,
+   2442,
+   1029
+  ],
+  "text": "(unused)"
+ },
+ {
+  "id": 12,
+  "color": "black",
+  "bbox": [
+   1254,
+   42,
+   1411,
+   120
+  ],
+  "text": "starc"
+ },
+ {
+  "id": 13,
+  "color": "black",
+  "bbox": [
+   136,
+   130,
+   423,
+   288
+  ],
+  "text": "scanning character"
+ },
+ {
+  "id": 14,
+  "color": "black",
+  "bbox": [
+   141,
+   125,
+   232,
+   175
+  ],
+  "text": "scanning"
+ },
+ {
+  "id": 15,
+  "color": "black",
+  "bbox": [
+   140,
+   320,
+   345,
+   405
+  ],
+  "text": "literals"
+ },
+ {
+  "id": 16,
+  "color": "black",
+  "bbox": [
+   101,
+   567,
+   325,
+   693
+  ],
+  "text": "example:"
+ },
+ {
+  "id": 17,
+  "color": "black",
+  "bbox": [
+   267,
+   786,
+   360,
+   869
+  ],
+  "text": "'H'"
+ },
+ {
+  "id": 18,
+  "color": "black",
+  "bbox": [
+   1273,
+   1021,
+   1286,
+   1041
+  ],
+  "text": "\"'\""
+ },
+ {
+  "id": 19,
+  "color": "black",
+  "bbox": [
+   1078,
+   1080,
+   1182,
+   1107
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 20,
+  "color": "black",
+  "bbox": [
+   1363,
+   1072,
+   1395,
+   1117
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 21,
+  "color": "black",
+  "bbox": [
+   1492,
+   1044,
+   1726,
+   1094
+  ],
+  "text": "printable character"
+ },
+ {
+  "id": 22,
+  "color": "black",
+  "bbox": [
+   1774,
+   1079,
+   1800,
+   1102
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 23,
+  "color": "black",
+  "bbox": [
+   1987,
+   1071,
+   2011,
+   1105
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 24,
+  "color": "blue",
+  "bbox": [
+   1773,
+   944,
+   1826,
+   1067
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 25,
+  "color": "blue",
+  "bbox": [
+   1977,
+   944,
+   2026,
+   1069
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 26,
+  "color": "blue",
+  "bbox": [
+   1142,
+   1030,
+   1188,
+   1079
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 27,
+  "color": "blue",
+  "bbox": [
+   1379,
+   1032,
+   1426,
+   1099
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 28,
+  "color": "blue",
+  "bbox": [
+   1807,
+   1077,
+   1826,
+   1097
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 29,
+  "color": "green",
+  "bbox": [
+   271,
+   749,
+   305,
+   792
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 30,
+  "color": "green",
+  "bbox": [
+   355,
+   737,
+   569,
+   792
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 31,
+  "color": "green",
+  "bbox": [
+   297,
+   876,
+   336,
+   920
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 32,
+  "color": "green",
+  "bbox": [
+   2017,
+   1074,
+   2037,
+   1097
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 33,
+  "color": "red",
+  "bbox": [
+   2221,
+   123,
+   2330,
+   183
+  ],
+  "text": "stack"
+ },
+ {
+  "id": 34,
+  "color": "red",
+  "bbox": [
+   2264,
+   192,
+   2286,
+   246
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 35,
+  "color": "red",
+  "bbox": [
+   2260,
+   439,
+   2289,
+   503
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 36,
+  "color": "red",
+  "bbox": [
+   2224,
+   511,
+   2322,
+   591
+  ],
+  "text": "heap"
+ },
+ {
+  "id": 37,
+  "color": "red",
+  "bbox": [
+   2258,
+   705,
+   2278,
+   721
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 38,
+  "color": "red",
+  "bbox": [
+   2172,
+   787,
+   2424,
+   823
+  ],
+  "text": "SYM_CHARACTER"
+ },
+ {
+  "id": 39,
+  "color": "red",
+  "bbox": [
+   2257,
+   727,
+   2300,
+   752
+  ],
+  "text": "'H'"
+ },
+ {
+  "id": 40,
+  "color": "red",
+  "bbox": [
+   2034,
+   822,
+   2187,
+   841
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 41,
+  "color": "red",
+  "bbox": [
+   1188,
+   1078,
+   1206,
+   1101
+  ],
+  "text": "SKIP"
+ }
+]

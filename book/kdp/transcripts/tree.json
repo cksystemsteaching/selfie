@@ -1,0 +1,365 @@
+[
+ {
+  "id": 1,
+  "color": "amber",
+  "bbox": [
+   755,
+   32,
+   862,
+   101
+  ],
+  "text": "root"
+ },
+ {
+  "id": 2,
+  "color": "amber",
+  "bbox": [
+   871,
+   94,
+   951,
+   160
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 3,
+  "color": "amber",
+  "bbox": [
+   1045,
+   130,
+   1212,
+   194
+  ],
+  "text": "directory"
+ },
+ {
+  "id": 4,
+  "color": "amber",
+  "bbox": [
+   1284,
+   138,
+   1303,
+   159
+  ],
+  "text": "\""
+ },
+ {
+  "id": 5,
+  "color": "amber",
+  "bbox": [
+   1344,
+   138,
+   1362,
+   165
+  ],
+  "text": "\""
+ },
+ {
+  "id": 6,
+  "color": "amber",
+  "bbox": [
+   1209,
+   170,
+   1231,
+   255
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 7,
+  "color": "amber",
+  "bbox": [
+   1312,
+   163,
+   1333,
+   220
+  ],
+  "text": "p"
+ },
+ {
+  "id": 8,
+  "color": "amber",
+  "bbox": [
+   468,
+   306,
+   490,
+   365
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 9,
+  "color": "amber",
+  "bbox": [
+   496,
+   270,
+   564,
+   331
+  ],
+  "text": "path"
+ },
+ {
+  "id": 10,
+  "color": "amber",
+  "bbox": [
+   420,
+   357,
+   525,
+   446
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 11,
+  "color": "amber",
+  "bbox": [
+   621,
+   334,
+   645,
+   344
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 12,
+  "color": "amber",
+  "bbox": [
+   37,
+   470,
+   484,
+   568
+  ],
+  "text": "pathname \"/p/q\""
+ },
+ {
+  "id": 13,
+  "color": "amber",
+  "bbox": [
+   628,
+   477,
+   914,
+   596
+  ],
+  "text": "directory \"q\""
+ },
+ {
+  "id": 14,
+  "color": "amber",
+  "bbox": [
+   1470,
+   485,
+   1650,
+   550
+  ],
+  "text": "directory"
+ },
+ {
+  "id": 15,
+  "color": "amber",
+  "bbox": [
+   1659,
+   523,
+   1680,
+   600
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 16,
+  "color": "amber",
+  "bbox": [
+   1727,
+   492,
+   1746,
+   519
+  ],
+  "text": "\""
+ },
+ {
+  "id": 17,
+  "color": "amber",
+  "bbox": [
+   1747,
+   517,
+   1770,
+   554
+  ],
+  "text": "r"
+ },
+ {
+  "id": 18,
+  "color": "amber",
+  "bbox": [
+   1776,
+   492,
+   1793,
+   519
+  ],
+  "text": "\""
+ },
+ {
+  "id": 19,
+  "color": "amber",
+  "bbox": [
+   39,
+   565,
+   271,
+   677
+  ],
+  "text": "+ filename"
+ },
+ {
+  "id": 20,
+  "color": "amber",
+  "bbox": [
+   122,
+   660,
+   128,
+   763
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 21,
+  "color": "amber",
+  "bbox": [
+   113,
+   753,
+   142,
+   788
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 22,
+  "color": "amber",
+  "bbox": [
+   19,
+   814,
+   432,
+   932
+  ],
+  "text": "\"/p/q/a\" file"
+ },
+ {
+  "id": 23,
+  "color": "amber",
+  "bbox": [
+   468,
+   820,
+   524,
+   850
+  ],
+  "text": "\" \""
+ },
+ {
+  "id": 24,
+  "color": "amber",
+  "bbox": [
+   477,
+   858,
+   498,
+   884
+  ],
+  "text": "a"
+ },
+ {
+  "id": 25,
+  "color": "amber",
+  "bbox": [
+   822,
+   816,
+   994,
+   931
+  ],
+  "text": "file \"b\""
+ },
+ {
+  "id": 26,
+  "color": "amber",
+  "bbox": [
+   1192,
+   857,
+   1217,
+   886
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 27,
+  "color": "amber",
+  "bbox": [
+   1254,
+   818,
+   1411,
+   932
+  ],
+  "text": "file \"c\""
+ },
+ {
+  "id": 28,
+  "color": "amber",
+  "bbox": [
+   1692,
+   807,
+   1891,
+   919
+  ],
+  "text": "file \"d\""
+ },
+ {
+  "id": 29,
+  "color": "amber",
+  "bbox": [
+   406,
+   926,
+   445,
+   973
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 30,
+  "color": "amber",
+  "bbox": [
+   828,
+   942,
+   925,
+   1040
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 31,
+  "color": "amber",
+  "bbox": [
+   1123,
+   926,
+   1188,
+   1025
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 32,
+  "color": "amber",
+  "bbox": [
+   1577,
+   899,
+   1611,
+   932
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 33,
+  "color": "amber",
+  "bbox": [
+   975,
+   1013,
+   1119,
+   1099
+  ],
+  "text": "leaves"
+ }
+]

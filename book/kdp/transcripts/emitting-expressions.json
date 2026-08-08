@@ -1,0 +1,596 @@
+[
+ {
+  "id": 1,
+  "color": "amber",
+  "bbox": [
+   1631,
+   166,
+   1830,
+   249
+  ],
+  "text": "compiler"
+ },
+ {
+  "id": 2,
+  "color": "amber",
+  "bbox": [
+   2298,
+   164,
+   2427,
+   243
+  ],
+  "text": "target"
+ },
+ {
+  "id": 3,
+  "color": "amber",
+  "bbox": [
+   2619,
+   232,
+   2641,
+   279
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 4,
+  "color": "amber",
+  "bbox": [
+   2013,
+   372,
+   2146,
+   559
+  ],
+  "text": "ltype operator_ symbol rtype"
+ },
+ {
+  "id": 5,
+  "color": "amber",
+  "bbox": [
+   2064,
+   518,
+   2121,
+   585
+  ],
+  "text": "rtype"
+ },
+ {
+  "id": 6,
+  "color": "amber",
+  "bbox": [
+   2382,
+   771,
+   2555,
+   832
+  ],
+  "text": "(unused)"
+ },
+ {
+  "id": 7,
+  "color": "amber",
+  "bbox": [
+   2042,
+   836,
+   2160,
+   999
+  ],
+  "text": "data"
+ },
+ {
+  "id": 8,
+  "color": "amber",
+  "bbox": [
+   2587,
+   819,
+   2722,
+   976
+  ],
+  "text": "gp fds gp-ds"
+ },
+ {
+  "id": 9,
+  "color": "amber",
+  "bbox": [
+   1726,
+   990,
+   2053,
+   1157
+  ],
+  "text": "(unused)"
+ },
+ {
+  "id": 10,
+  "color": "amber",
+  "bbox": [
+   1972,
+   990,
+   1996,
+   1208
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 11,
+  "color": "amber",
+  "bbox": [
+   2375,
+   1009,
+   2555,
+   1060
+  ],
+  "text": "(unused)"
+ },
+ {
+  "id": 12,
+  "color": "amber",
+  "bbox": [
+   1490,
+   1098,
+   1515,
+   1292
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 13,
+  "color": "amber",
+  "bbox": [
+   1940,
+   1119,
+   2135,
+   1303
+  ],
+  "text": "literal identifier global_ symbol_ table"
+ },
+ {
+  "id": 14,
+  "color": "amber",
+  "bbox": [
+   2585,
+   1064,
+   2595,
+   1161
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 15,
+  "color": "amber",
+  "bbox": [
+   2299,
+   1130,
+   2426,
+   1209
+  ],
+  "text": "code"
+ },
+ {
+  "id": 16,
+  "color": "amber",
+  "bbox": [
+   2367,
+   1155,
+   2625,
+   1341
+  ],
+  "text": "(unused)"
+ },
+ {
+  "id": 17,
+  "color": "amber",
+  "bbox": [
+   1749,
+   1255,
+   1948,
+   1333
+  ],
+  "text": "(unused)"
+ },
+ {
+  "id": 18,
+  "color": "amber",
+  "bbox": [
+   2051,
+   1283,
+   2118,
+   1315
+  ],
+  "text": "symbol_ table"
+ },
+ {
+  "id": 19,
+  "color": "amber",
+  "bbox": [
+   1654,
+   1390,
+   1781,
+   1469
+  ],
+  "text": "code"
+ },
+ {
+  "id": 20,
+  "color": "amber",
+  "bbox": [
+   1722,
+   1526,
+   1890,
+   1587
+  ],
+  "text": "(unused)"
+ },
+ {
+  "id": 21,
+  "color": "amber",
+  "bbox": [
+   1559,
+   1804,
+   1604,
+   1861
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 22,
+  "color": "black",
+  "bbox": [
+   222,
+   36,
+   365,
+   141
+  ],
+  "text": "C*"
+ },
+ {
+  "id": 23,
+  "color": "black",
+  "bbox": [
+   2238,
+   40,
+   2490,
+   121
+  ],
+  "text": "RISC-U"
+ },
+ {
+  "id": 24,
+  "color": "black",
+  "bbox": [
+   924,
+   239,
+   1081,
+   317
+  ],
+  "text": "starc"
+ },
+ {
+  "id": 25,
+  "color": "black",
+  "bbox": [
+   61,
+   444,
+   136,
+   526
+  ],
+  "text": "x"
+ },
+ {
+  "id": 26,
+  "color": "black",
+  "bbox": [
+   2138,
+   1689,
+   2144,
+   1788
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 27,
+  "color": "black",
+  "bbox": [
+   1628,
+   1892,
+   2031,
+   1994
+  ],
+  "text": "compile time"
+ },
+ {
+  "id": 28,
+  "color": "black",
+  "bbox": [
+   2258,
+   1887,
+   2522,
+   1974
+  ],
+  "text": "runtime"
+ },
+ {
+  "id": 29,
+  "color": "blue",
+  "bbox": [
+   2576,
+   1158,
+   2614,
+   1219
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 30,
+  "color": "blue",
+  "bbox": [
+   2567,
+   1224,
+   2680,
+   1420
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 31,
+  "color": "blue",
+  "bbox": [
+   2052,
+   1815,
+   2088,
+   1856
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 32,
+  "color": "green",
+  "bbox": [
+   106,
+   333,
+   176,
+   444
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 33,
+  "color": "green",
+  "bbox": [
+   1261,
+   1813,
+   1290,
+   1860
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 34,
+  "color": "orange",
+  "bbox": [
+   2109,
+   1638,
+   2139,
+   1675
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 35,
+  "color": "orange",
+  "bbox": [
+   1824,
+   1812,
+   1857,
+   1855
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 36,
+  "color": "red",
+  "bbox": [
+   2324,
+   289,
+   2450,
+   373
+  ],
+  "text": "stack"
+ },
+ {
+  "id": 37,
+  "color": "red",
+  "bbox": [
+   1639,
+   392,
+   1829,
+   430
+  ],
+  "text": "UINT64_T"
+ },
+ {
+  "id": 38,
+  "color": "red",
+  "bbox": [
+   2370,
+   389,
+   2404,
+   478
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 39,
+  "color": "red",
+  "bbox": [
+   1649,
+   447,
+   1890,
+   493
+  ],
+  "text": "SYM_EQUALITY"
+ },
+ {
+  "id": 40,
+  "color": "red",
+  "bbox": [
+   1643,
+   510,
+   1808,
+   550
+  ],
+  "text": "UINT64_T"
+ },
+ {
+  "id": 41,
+  "color": "red",
+  "bbox": [
+   2366,
+   530,
+   2404,
+   569
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 42,
+  "color": "red",
+  "bbox": [
+   2382,
+   556,
+   2391,
+   619
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 43,
+  "color": "red",
+  "bbox": [
+   1720,
+   584,
+   1758,
+   623
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 44,
+  "color": "red",
+  "bbox": [
+   1736,
+   610,
+   1746,
+   673
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 45,
+  "color": "red",
+  "bbox": [
+   2305,
+   619,
+   2443,
+   745
+  ],
+  "text": "heap"
+ },
+ {
+  "id": 46,
+  "color": "red",
+  "bbox": [
+   1655,
+   706,
+   1793,
+   832
+  ],
+  "text": "heap"
+ },
+ {
+  "id": 47,
+  "color": "red",
+  "bbox": [
+   1636,
+   869,
+   1863,
+   933
+  ],
+  "text": "symbol table"
+ },
+ {
+  "id": 48,
+  "color": "red",
+  "bbox": [
+   1940,
+   909,
+   1972,
+   1001
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 49,
+  "color": "red",
+  "bbox": [
+   2357,
+   937,
+   2403,
+   969
+  ],
+  "text": "42"
+ },
+ {
+  "id": 50,
+  "color": "red",
+  "bbox": [
+   2177,
+   1374,
+   2630,
+   1501
+  ],
+  "text": "ld t0,-ds(gp)"
+ },
+ {
+  "id": 51,
+  "color": "red",
+  "bbox": [
+   2161,
+   1481,
+   2627,
+   1663
+  ],
+  "text": "addi t1, zero, 7 sub t0, t1, t0"
+ },
+ {
+  "id": 52,
+  "color": "red",
+  "bbox": [
+   2168,
+   1644,
+   2596,
+   1828
+  ],
+  "text": "addi t1, zero, 1 sltu t0, t0, t1"
+ },
+ {
+  "id": 53,
+  "color": "red",
+  "bbox": [
+   2387,
+   1638,
+   2406,
+   1686
+  ],
+  "text": "SKIP"
+ },
+ {
+  "id": 54,
+  "color": "red",
+  "bbox": [
+   2522,
+   1798,
+   2584,
+   1874
+  ],
+  "text": "SKIP"
+ }
+]
