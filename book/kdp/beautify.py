@@ -349,12 +349,16 @@ class Geometry:
                 return True
         return False
 
-    def strip_hook(self, pts):
-        """Drop a short sharply-turned tail (hand-drawn hooked arrow tip)."""
+    def strip_hook(self, pts, free=(True, True)):
+        """Drop a short sharply-turned tail (hand-drawn hooked arrow tip).
+        Hooks only exist at free ends — a sharp wiggle where a stroke
+        meets a junction is just pen noise, not an arrow tip."""
         idx = rdp(pts, max(2.5, self.w))
         if len(idx) < 3:
             return pts, None
         for end in (len(idx) - 1, 0):
+            if not free[1 if end else 0]:
+                continue
             i2, i1 = (idx[-2], idx[-1]) if end else (idx[1], idx[0])
             tail = np.hypot(*(pts[i1] - pts[i2]))
             if not (self.w * 1.5 < tail < BARB_LEN * self.d):
@@ -383,7 +387,8 @@ class Geometry:
             if length < (3.0 * self.w if terminal else 1.2 * self.w):
                 self.dropped.add(ekey(u, v, k))
                 continue
-            pts, hook = self.strip_hook(pts)
+            pts, hook = self.strip_hook(
+                pts, (self.g.degree(u) == 1, self.g.degree(v) == 1))
             if hook is not None:
                 self.heads.append(hook)
             eps = max(2.5, self.w * 0.9)
@@ -586,6 +591,10 @@ def floating_heads(hand, all_segs, heads, barb_max, width):
                 at_apex = proj > proj.max() - 0.25 * prange
                 if np.ptp(perp[at_apex]) > 3.0 * width:
                     continue  # does not converge to a point
+                at_back = proj < proj.max() - 0.6 * prange
+                if not at_back.any() or perp[at_back].max() < 1.0 * width \
+                        or perp[at_back].min() > -1.0 * width:
+                    continue  # arms must spread both ways behind the apex
                 if best is None or d < best[0]:
                     apex = tip + dirv * proj.max()
                     best = (d, seg, tip is seg[1], apex, dirv)
