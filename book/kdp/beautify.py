@@ -1092,6 +1092,8 @@ def beautify(path):
     n_text = 0
     for color, info in fig["per_color"].items():
         hand = info["hand"]
+        hand_labels, _ = ndimage.label(hand, structure=np.ones((3, 3)))
+        hand_slices = ndimage.find_objects(hand_labels)
         texts = []
         for e in transcript:
             if e["color"] != color:
@@ -1108,6 +1110,17 @@ def beautify(path):
                 texts.append(text_element(e["text"], eb, color))
                 for cx0, cy0, cx1, cy1 in claimed:
                     hand[cy0:cy1, cx0:cx1] = False
+                # scraps of the same writing reaching outside the box
+                # (descender tails cut off by geometry) go too
+                pad = 0.5 * (eb[3] - eb[1])
+                for i, sl in enumerate(hand_slices):
+                    if sl is None:
+                        continue
+                    if sl[1].start < eb[2] + pad and \
+                            eb[0] - pad < sl[1].stop and \
+                            sl[0].start < eb[3] + pad and \
+                            eb[1] - pad < sl[0].stop:
+                        hand[sl][hand_labels[sl] == i + 1] = False
                 n_text += 1
         parts.append(f'<g fill="{PALETTE[color]}">')
         parts.extend(info["parts"])
