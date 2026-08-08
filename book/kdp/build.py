@@ -24,6 +24,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 BOOK = os.path.dirname(HERE)
 OUT = os.path.join(HERE, "out")
 DRAFT = os.path.join(BOOK, "README.md")
+FONT_PATH = os.path.join(HERE, "fonts", "Caveat.ttf")
 
 TITLE = "Elementary Computer Science"
 SUBTITLE = "From Bits and Bytes to the Universality of Computing"
@@ -37,8 +38,8 @@ SPINE_PER_PAGE_IN = 0.002347  # premium color paper thickness per page
 
 def preprocess(md, target):
     """Adapt the draft markdown for the given target ('print' or 'epub')."""
-    # vector figures instead of the source PNGs
-    md = md.replace("](figures/", "](figures-svg/")
+    # vector figures with text outlined, so no reader needs the font
+    md = md.replace("](figures/", "](kdp/out/figures-outlined/")
     md = re.sub(r"\.png( \"|\))", r".svg\1", md)
 
     # pandoc's gfm reader does not produce <figure> elements, so image
@@ -75,6 +76,96 @@ def preprocess(md, target):
     # glossary is a chapter but not a numbered one
     md = md.replace("## Glossary", "## Glossary {.unnumbered}")
     return md
+
+
+# ------------------------------------------------------- text outlining
+
+TEXT_RE = re.compile(r'<text x="([\d.-]+)" y="([\d.-]+)" '
+                     r'text-anchor="middle" font-family="[^"]*" '
+                     r'font-size="([\d.]+)" fill="([^"]*)">(.*?)</text>',
+                     re.S)
+TSPAN_RE = re.compile(r'<tspan(?:\s+dy="([\d.-]+)")?'
+                      r'(?:\s+font-size="([\d.]+)")?>(.*?)</tspan>', re.S)
+
+_GLYPHS = None
+
+
+def _glyphs():
+    global _GLYPHS
+    if _GLYPHS is None:
+        from fontTools.pens.svgPathPen import SVGPathPen
+        from fontTools.ttLib import TTFont
+        font = TTFont(FONT_PATH)
+        glyphset = font.getGlyphSet()
+        cmap = font.getBestCmap()
+        upm = font["head"].unitsPerEm
+        cache = {}
+
+        def glyph(ch):
+            if ch not in cache:
+                gname = cmap.get(ord(ch))
+                if gname is None:
+                    cache[ch] = (None, 0.5 * upm)
+                else:
+                    pen = SVGPathPen(glyphset)
+                    glyphset[gname].draw(pen)
+                    cache[ch] = (pen.getCommands(), glyphset[gname].width)
+            return cache[ch]
+        _GLYPHS = (glyph, upm)
+    return _GLYPHS
+
+
+def outline_text(svg):
+    """Replace <text> elements by glyph outline paths (same font), so
+    renderers without the Caveat font still show typed labels."""
+    glyph, upm = _glyphs()
+
+    def runs_of(body):
+        if "<tspan" not in body:
+            return [(html.unescape(body), 0.0, None)]
+        return [(html.unescape(m.group(3)),
+                 float(m.group(1) or 0),
+                 float(m.group(2)) if m.group(2) else None)
+                for m in TSPAN_RE.finditer(body)]
+
+    def replace(m):
+        cx, base, size, fill, body = (float(m.group(1)), float(m.group(2)),
+                                      float(m.group(3)), m.group(4),
+                                      m.group(5))
+        runs = runs_of(body)
+        total = sum(sum(glyph(c)[1] for c in run) * (rs or size) / upm
+                    for run, _, rs in runs)
+        x = cx - total / 2
+        y = base
+        parts = [f'<g fill="{fill}">']
+        for run, dy, rs in runs:
+            s = (rs or size) / upm
+            y += dy
+            for ch in run:
+                d, adv = glyph(ch)
+                if d:
+                    parts.append(
+                        f'<path transform="translate({x:.1f} {y:.1f}) '
+                        f'scale({s:.4f} {-s:.4f})" d="{d}"/>')
+                x += adv * s
+        parts.append("</g>")
+        return "".join(parts)
+
+    return TEXT_RE.sub(replace, svg)
+
+
+def outline_figures():
+    """figures-svg/*.svg -> out/figures-outlined/*.svg with text as paths."""
+    src = os.path.join(BOOK, "figures-svg")
+    dst = os.path.join(OUT, "figures-outlined")
+    os.makedirs(dst, exist_ok=True)
+    for f in sorted(os.listdir(src)):
+        if f.endswith(".svg"):
+            with open(os.path.join(src, f)) as fh:
+                svg = fh.read()
+            with open(os.path.join(dst, f), "w") as fh:
+                fh.write(outline_text(svg))
+    print(f"figures-outlined: {len(os.listdir(dst))} figures")
 
 
 def pandoc(args, stdin):
@@ -206,6 +297,7 @@ def build_covers(pages):
 
 if __name__ == "__main__":
     os.makedirs(OUT, exist_ok=True)
+    outline_figures()
     pages = build_interior()
     build_covers(pages)
     build_epub()

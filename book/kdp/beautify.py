@@ -22,8 +22,11 @@ Usage: python3 beautify.py [figure.png ...]   (default: all figures)
 Output: book/figures-svg/<name>.svg
 """
 
+import html as html_mod
+import json
 import math
 import os
+import re
 import sys
 
 import numpy as np
@@ -39,6 +42,10 @@ from vectorize import (CANVAS, FIGURES, OUTPUT, PALETTE, classify_ink,
 # figure diagonal), or straight and at least the shorter length.
 GEOM_LEN = 0.040
 GEOM_STRAIGHT_LEN = 0.020
+
+TRANSCRIPTS = os.path.join(os.path.dirname(__file__), "transcripts")
+FONT_PATH = os.path.join(os.path.dirname(__file__), "fonts", "Caveat.ttf")
+FONT_FAMILY = "Caveat"
 
 SNAP_DEG = 7.0          # snap lines within this angle of horizontal/vertical
 CURVE_TOL = 2.2         # bezier fit tolerance, in units of stroke width
@@ -217,25 +224,30 @@ class Geometry:
 
     def mark(self):
         lengths = {}
+        extents = {}
+        straightish = {}
         for u, v, k in self.g.edges(keys=True):
             pts = edge_points(self.g, u, v, k)
             length = np.hypot(*np.diff(pts, axis=0).T).sum()
             lengths[ekey(u, v, k)] = length
             # extent, not length: a letter loop is long but compact
             extent = math.hypot(np.ptp(pts[:, 0]), np.ptp(pts[:, 1]))
+            extents[ekey(u, v, k)] = extent
             chord = pts[-1] - pts[0]
             ang = math.degrees(math.atan2(chord[1], chord[0])) % 90
             near_axis = min(ang, 90 - ang) <= 15
+            straightish[ekey(u, v, k)] = (
+                near_axis and _is_straight(pts, 1.3 * self.w))
             if extent >= GEOM_LEN * self.d or (
                     near_axis and length >= GEOM_STRAIGHT_LEN * self.d and
                     _is_straight(pts, 0.6 * self.w)):
                 self.marked.add(ekey(u, v, k))
-        # an isolated straightish stroke of letter size is handwriting
-        # (ascenders of l, d, k qualify as straight): geometry must be
-        # long or connect to other geometry
+        # isolated letter-sized strokes are handwriting: curvy ones (o, S,
+        # L, digits) up to a generous bound, straightish ones (ascenders)
+        # up to a smaller one — underlines and lone arrow shafts survive
         while True:
-            lone = [e for e in self.marked
-                    if lengths[e] < 0.05 * self.d and not self._touches(e)]
+            lone = [e for e in self.marked if not self._touches(e) and
+                    extents[e] < (0.05 if straightish[e] else 0.075) * self.d]
             if not lone:
                 break
             self.marked.difference_update(lone)
@@ -508,6 +520,148 @@ def svg_path_curves(pts, tol):
     return "".join(parts)
 
 
+def detect_rects(segments, w):
+    """Replace four segments forming an axis-aligned rectangle by a rect.
+
+    Uses the snapped coordinates: two horizontals sharing an x-span at
+    two distinct ys, plus two verticals spanning those ys at the span's
+    ends."""
+    tol = 3.0 * w
+    hs = [s for s in segments if abs(s[0][1] - s[1][1]) < 0.5]
+    vs = [s for s in segments if abs(s[0][0] - s[1][0]) < 0.5]
+    used = set()
+    rects = []
+    for i, a in enumerate(hs):
+        for b in hs[i + 1:]:
+            if id(a) in used or id(b) in used:
+                continue
+            ax0, ax1 = sorted((a[0][0], a[1][0]))
+            bx0, bx1 = sorted((b[0][0], b[1][0]))
+            if abs(ax0 - bx0) > tol or abs(ax1 - bx1) > tol:
+                continue
+            y0, y1 = sorted((a[0][1], b[0][1]))
+            if y1 - y0 < 4 * w:
+                continue
+            left = right = None
+            for v in vs:
+                if id(v) in used:
+                    continue
+                vy0, vy1 = sorted((v[0][1], v[1][1]))
+                if abs(vy0 - y0) > tol or abs(vy1 - y1) > tol:
+                    continue
+                x = v[0][0]
+                if abs(x - ax0) <= tol:
+                    left = v
+                elif abs(x - ax1) <= tol:
+                    right = v
+            if left is not None and right is not None:
+                x0, x1 = left[0][0], right[0][0]
+                rects.append((x0, y0, x1 - x0, y1 - y0))
+                used.update((id(a), id(b), id(left), id(right)))
+    return rects, [s for s in segments if id(s) not in used]
+
+
+def detect_circles(curves, w):
+    """Closed curves that fit a circle or ellipse become one."""
+    out = []
+    rest = []
+    for pts, cw in curves:
+        closed = np.hypot(*(pts[0] - pts[-1])) < 6 * w
+        if not closed or len(pts) < 24:
+            rest.append((pts, cw))
+            continue
+        c = pts.mean(axis=0)
+        rx = (np.ptp(pts[:, 0])) / 2
+        ry = (np.ptp(pts[:, 1])) / 2
+        if min(rx, ry) < 4 * w:
+            rest.append((pts, cw))
+            continue
+        # normalized radial error against the fitted ellipse
+        t = np.hypot((pts[:, 0] - c[0]) / rx, (pts[:, 1] - c[1]) / ry)
+        if np.abs(t - 1).mean() < 0.09:
+            out.append((c[0], c[1], rx, ry))
+        else:
+            rest.append((pts, cw))
+    return out, rest
+
+
+def attach_heads(heads, segments, curves, w):
+    """Pair each arrowhead with the segment or curve ending at its tip,
+    forming grouped arrow objects."""
+    arrows = []
+    lone = []
+    seg_used = set()
+    curve_used = set()
+    for tip, dirv in heads:
+        best = None
+        for s in segments:
+            if id(s) in seg_used:
+                continue
+            for end in (0, 1):
+                d = np.hypot(*(s[end] - tip))
+                if d < 3.5 * w and (best is None or d < best[0]):
+                    best = (d, "seg", s, end)
+        for cv in curves:
+            if id(cv) in curve_used:
+                continue
+            pts = cv[0]
+            for end in (0, -1):
+                d = np.hypot(*(pts[end] - tip))
+                if d < 3.5 * w and (best is None or d < best[0]):
+                    best = (d, "curve", cv, end)
+        if best is None:
+            lone.append((tip, dirv))
+        elif best[1] == "seg":
+            _, _, s, end = best
+            s[end] = tip.astype(float)
+            seg_used.add(id(s))
+            shaft = (f'<line x1="{s[0][0]:.1f}" y1="{s[0][1]:.1f}" '
+                     f'x2="{s[1][0]:.1f}" y2="{s[1][1]:.1f}"/>')
+            arrows.append((shaft, tip, dirv))
+        else:
+            _, _, cv, end = best
+            pts = cv[0]
+            pts[end] = tip
+            curve_used.add(id(cv))
+            shaft = f'<path d="{svg_path_curves(pts, CURVE_TOL * cv[1])}"/>'
+            arrows.append((shaft, tip, dirv))
+    segments = [s for s in segments if id(s) not in seg_used]
+    curves = [cv for cv in curves if id(cv) not in curve_used]
+    return arrows, lone, segments, curves
+
+
+def arrowhead_path(tip, dirv, width):
+    """Filled head for use inside a stroked group."""
+    body = arrowhead(tip, dirv, width)
+    return body.replace("<path ", '<path stroke="none" ', 1)
+
+
+def join_collinear(segments, w):
+    """Merge touching collinear axis-aligned segments (grid lines are
+    traced in pieces between junctions) into single spans."""
+    gone = set()
+    for axis in (1, 0):  # 1: horizontals share y; 0: verticals share x
+        group = [s for s in segments
+                 if abs(s[0][axis] - s[1][axis]) < 0.5 and id(s) not in gone]
+        group.sort(key=lambda s: (round(s[0][axis], 1),
+                                  min(s[0][1 - axis], s[1][1 - axis])))
+        prev = None
+        for s in group:
+            if prev is not None and \
+                    abs(s[0][axis] - prev[0][axis]) < 1.0:
+                phi = max(prev[0][1 - axis], prev[1][1 - axis])
+                plo = min(prev[0][1 - axis], prev[1][1 - axis])
+                slo = min(s[0][1 - axis], s[1][1 - axis])
+                shi = max(s[0][1 - axis], s[1][1 - axis])
+                if slo - phi <= 2.5 * w:
+                    prev[0][1 - axis] = plo
+                    prev[1][1 - axis] = max(phi, shi)
+                    gone.add(id(s))
+                    continue
+            prev = s
+    return [s for s in segments if id(s) not in gone]
+
+
 def arrowhead(tip, dirv, width):
     l = max(4.2 * width, 14.0)
     w2 = 0.42 * l
@@ -648,6 +802,63 @@ def weld_curves(all_curves, all_segs, w):
                     opts[oi] = mid
 
 
+def cluster_text(hand, width, d):
+    """Group handwriting pixels into text-line clusters.
+
+    Only letter-sized components participate; larger hand-drawn leftovers
+    stay traced. Components merge into words and lines when close
+    relative to their height, and a cluster never grows beyond a text
+    line's proportions."""
+    labels, n = ndimage.label(hand, structure=np.ones((3, 3)))
+    boxes = []
+    for sl in ndimage.find_objects(labels):
+        if sl is None:
+            continue
+        h, w = sl[0].stop - sl[0].start, sl[1].stop - sl[1].start
+        if h * w < 9 or h > 0.08 * d or w > 0.10 * d:
+            continue
+        boxes.append([sl[1].start, sl[0].start, sl[1].stop, sl[0].stop])
+    merged = True
+    while merged:
+        merged = False
+        out = []
+        for b in boxes:
+            for o in out:
+                union_w = max(o[2], b[2]) - min(o[0], b[0])
+                union_h = max(o[3], b[3]) - min(o[1], b[1])
+                if union_w <= 0.62 * d and union_h <= 0.055 * d and \
+                        _text_mergeable(b, o, width):
+                    o[0], o[1] = min(o[0], b[0]), min(o[1], b[1])
+                    o[2], o[3] = max(o[2], b[2]), max(o[3], b[3])
+                    merged = True
+                    break
+            else:
+                out.append(list(b))
+        boxes = out
+    return [b for b in boxes
+            if (b[2] - b[0]) * (b[3] - b[1]) >= 25 * width * width * 0.5]
+
+
+def _text_mergeable(a, b, width):
+    ha, hb = a[3] - a[1], b[3] - b[1]
+    gap_x = max(a[0], b[0]) - min(a[2], b[2])
+    gap_y = max(a[1], b[1]) - min(a[3], b[3])
+    ov_y = min(a[3], b[3]) - max(a[1], b[1])
+    ov_x = min(a[2], b[2]) - max(a[0], b[0])
+    # thresholds scale with the SMALLER box so a tall merged cluster
+    # cannot swallow everything in its row band
+    h = min(ha, hb)
+    # side-by-side on roughly the same line
+    if gap_x < 1.1 * h and ov_y > 0.45 * h:
+        return True
+    # a small mark stacked tightly on a bigger neighbor (quotes, i-dots,
+    # accents) — but never two full text lines
+    if min(ha, hb) < 0.6 * max(ha, hb) and gap_y < 0.4 * min(ha, hb) \
+            and ov_x > 0.3 * min(a[2] - a[0], b[2] - b[0]):
+        return True
+    return False
+
+
 def beautify_layer(mask, color, shape):
     """Split a layer into geometry (crisp) and handwriting (traced)."""
     labels, n = component_masks(mask)
@@ -696,17 +907,36 @@ def beautify_layer(mask, color, shape):
     if all_curves:
         weld_curves(all_curves, all_segs, width)
 
+    all_segs = join_collinear(all_segs, width)
+    rects, all_segs = detect_rects(all_segs, width)
+    circles, all_curves = detect_circles(all_curves, width)
+    arrows, lone_heads, all_segs, all_curves = attach_heads(
+        heads, all_segs, all_curves, width)
+
     stroke = []
+    for x, y, w, h in rects:
+        stroke.append(f'<rect x="{x:.1f}" y="{y:.1f}" '
+                      f'width="{w:.1f}" height="{h:.1f}"/>')
+    for cx, cy, rx, ry in circles:
+        if abs(rx - ry) < 0.1 * max(rx, ry):
+            r = (rx + ry) / 2
+            stroke.append(f'<circle cx="{cx:.1f}" cy="{cy:.1f}" r="{r:.1f}"/>')
+        else:
+            stroke.append(f'<ellipse cx="{cx:.1f}" cy="{cy:.1f}" '
+                          f'rx="{rx:.1f}" ry="{ry:.1f}"/>')
     for p, q, _ in all_segs:
-        stroke.append(f'<path d="M{p[0]:.1f} {p[1]:.1f} '
-                      f'L{q[0]:.1f} {q[1]:.1f}"/>')
+        stroke.append(f'<line x1="{p[0]:.1f}" y1="{p[1]:.1f}" '
+                      f'x2="{q[0]:.1f}" y2="{q[1]:.1f}"/>')
     for pts, w in all_curves:
         stroke.append(f'<path d="{svg_path_curves(pts, CURVE_TOL * w)}"/>')
+    for shaft, tip, dirv in arrows:
+        stroke.append(f'<g class="arrow" fill="{PALETTE[color]}">{shaft}'
+                      f'{arrowhead_path(tip, dirv, width)}</g>')
     if stroke:
         out.insert(0, f'<g fill="none" stroke="{PALETTE[color]}" '
                       f'stroke-width="{width:.1f}" stroke-linecap="round" '
                       f'stroke-linejoin="round">' + "".join(stroke) + "</g>")
-    for tip, dirv in heads:
+    for tip, dirv in lone_heads:
         out.append(arrowhead(tip, dirv, width))
     for cx, cy, r in dots:
         out.append(f'<circle cx="{cx:.1f}" cy="{cy:.1f}" r="{r:.1f}"/>')
@@ -723,7 +953,104 @@ def stroke_width(mask):
 
 # ---------------------------------------------------------------- driver
 
-def beautify(path):
+# ---------------------------------------------------------------- typed text
+
+_FONT = None
+
+
+def _font_metrics():
+    global _FONT
+    if _FONT is None:
+        from fontTools.ttLib import TTFont
+        f = TTFont(FONT_PATH)
+        _FONT = (f.getBestCmap(), f["hmtx"], f["head"].unitsPerEm)
+    return _FONT
+
+
+def text_width(s, size):
+    cmap, hmtx, upm = _font_metrics()
+    total = 0
+    for ch in s:
+        g = cmap.get(ord(ch))
+        total += hmtx[g][0] if g else upm * 0.5
+    return total * size / upm
+
+
+SUP_RE = re.compile(r"\^\{([^}]*)\}")
+
+
+def _plain(text):
+    return SUP_RE.sub(lambda m: m.group(1), text)
+
+
+def text_element(text, box, color):
+    """A <text> element fitted into the cluster's bounding box, with
+    ^{...} rendered as superscript tspans."""
+    x0, y0, x1, y1 = box
+    bw, bh = x1 - x0, y1 - y0
+    size = 1.2 * bh
+    if len(_plain(text)) >= 3:  # short labels size purely by height
+        est = text_width(_plain(text), size)
+        if est > 1.1 * bw:
+            size *= max(0.55, 1.1 * bw / est)
+    cx = (x0 + x1) / 2
+    base = (y0 + y1) / 2 + 0.32 * size
+    runs = []
+    pos = 0
+    for m in SUP_RE.finditer(text):
+        if m.start() > pos:
+            runs.append((text[pos:m.start()], False))
+        runs.append((m.group(1), True))
+        pos = m.end()
+    if pos < len(text):
+        runs.append((text[pos:], False))
+    esc = html_mod.escape
+    if len(runs) == 1 and not runs[0][1]:
+        body = esc(text)
+    else:
+        parts = []
+        pending_dy = 0.0
+        for run, sup in runs:
+            dy = -0.42 * size if sup else pending_dy
+            attr = f' dy="{dy:.1f}"' if dy else ""
+            if sup:
+                parts.append(f'<tspan{attr} '
+                             f'font-size="{0.62 * size:.1f}">{esc(run)}'
+                             f'</tspan>')
+                pending_dy = 0.42 * size
+            else:
+                parts.append(f"<tspan{attr}>{esc(run)}</tspan>")
+                pending_dy = 0.0
+        body = "".join(parts)
+    return (f'<text x="{cx:.1f}" y="{base:.1f}" text-anchor="middle" '
+            f'font-family="{FONT_FAMILY}" font-size="{size:.1f}" '
+            f'fill="{PALETTE[color]}">{body}</text>')
+
+
+def load_transcript(name):
+    path = os.path.join(TRANSCRIPTS, name + ".json")
+    if not os.path.exists(path):
+        return []
+    with open(path) as f:
+        entries = json.load(f)
+    return [e for e in entries
+            if e.get("text") and e["text"].strip().upper() != "SKIP"]
+
+
+def _iou(a, b):
+    ix = min(a[2], b[2]) - max(a[0], b[0])
+    iy = min(a[3], b[3]) - max(a[1], b[1])
+    if ix <= 0 or iy <= 0:
+        return 0.0
+    inter = ix * iy
+    ua = (a[2] - a[0]) * (a[3] - a[1])
+    ub = (b[2] - b[0]) * (b[3] - b[1])
+    return inter / (ua + ub - inter)
+
+
+def analyze(path):
+    """Classify a figure into panes, per-color geometry parts, remaining
+    handwriting masks and text-line clusters."""
     name = os.path.splitext(os.path.basename(path))[0]
     rgb = np.asarray(Image.open(path).convert("RGB"))
 
@@ -733,6 +1060,25 @@ def beautify(path):
         pane_mask[y0:y1, x0:x1] = True
 
     layers = classify_ink(rgb, pane_mask)
+    per_color = {}
+    for color, mask in layers.items():
+        geo_parts, hand = beautify_layer(mask, color, rgb.shape)
+        width = max(2.2, stroke_width(mask))
+        clusters = cluster_text(hand, width, diag(rgb.shape)) \
+            if hand.any() else []
+        per_color[color] = {
+            "parts": geo_parts, "hand": hand,
+            "clusters": clusters, "width": width,
+        }
+    return {"name": name, "rgb": rgb, "panes": panes,
+            "layers": layers, "per_color": per_color}
+
+
+def beautify(path):
+    fig = analyze(path)
+    name, rgb, panes = fig["name"], fig["rgb"], fig["panes"]
+    layers = fig["layers"]
+    transcript = load_transcript(name)
     x0, y0, x1, y1 = content_bbox(layers, panes, rgb.shape)
     w, h = x1 - x0, y1 - y0
 
@@ -743,16 +1089,35 @@ def beautify(path):
     ]
     for box in panes:
         parts.append(embed_pane(rgb, box))
-    for color, mask in layers.items():
-        geo_parts, hand = beautify_layer(mask, color, rgb.shape)
+    n_text = 0
+    for color, info in fig["per_color"].items():
+        hand = info["hand"]
+        texts = []
+        for e in transcript:
+            if e["color"] != color:
+                continue
+            eb = e["bbox"]
+            earea = max(1, (eb[2] - eb[0]) * (eb[3] - eb[1]))
+            claimed = []
+            for cluster in info["clusters"]:
+                ix = min(eb[2], cluster[2]) - max(eb[0], cluster[0])
+                iy = min(eb[3], cluster[3]) - max(eb[1], cluster[1])
+                if ix > 0 and iy > 0 and ix * iy >= 0.6 * earea:
+                    claimed.append(cluster)
+            if claimed:
+                texts.append(text_element(e["text"], eb, color))
+                for cx0, cy0, cx1, cy1 in claimed:
+                    hand[cy0:cy1, cx0:cx1] = False
+                n_text += 1
         parts.append(f'<g fill="{PALETTE[color]}">')
-        parts.extend(geo_parts)
+        parts.extend(info["parts"])
         if hand.any():
             parts.append('<g transform="scale(0.5)">')
             for d, tr in trace_layer(hand):
                 attr = f' transform="{tr}"' if tr else ""
                 parts.append(f'<path d="{d}"{attr}/>')
             parts.append("</g>")
+        parts.extend(texts)
         parts.append("</g>")
     parts.append("</svg>")
 
@@ -761,7 +1126,7 @@ def beautify(path):
     with open(out, "w") as f:
         f.write("\n".join(parts))
     print(f"{name}: {len(panes)} pane(s), inks {sorted(layers)}, "
-          f"{os.path.getsize(out) // 1024} KB")
+          f"{n_text} text(s), {os.path.getsize(out) // 1024} KB")
 
 
 if __name__ == "__main__":
