@@ -276,7 +276,7 @@ fn load_or_create_results(
 
     let results = File::open(&results_path)
         .context("Failed reading file.")
-        .and_then(|f| serde_json::from_reader(&f).context("Falied deserializing results file."))
+        .and_then(|f| serde_json::from_reader(&f).context("Failed deserializing results file."))
         .inspect_err(|err| {
             eprintln!(
                 "Deserialization of '{}' failed: {}",
