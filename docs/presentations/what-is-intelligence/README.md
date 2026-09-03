@@ -63,11 +63,11 @@ two-column treatment: **what it forbids** / **what it opens**.
 | II | Infinity — countability, the diagonal twice over, meaning outnumbers notation | 17–27 | 9:06 |
 | III | Self-Reference — syntax/semantics, Gödelisierung, incompleteness, halting, universality, Rice, law | 28–39 | 10:42 |
 | IV | Cost — decidable ≠ doable, NP-completeness, Landauer's energy floor | 40–45 | 4:36 |
-| V | Everywhere — biology, the self-copying machine, geometry, mind, and the notations that made every field | 46–51 | 5:06 |
+| V | Everywhere — biology, the self-copying machine, geometry, mind, and the notations that made every field | 46–51 | 5:12 |
 | VI | Machines — what today's AI is, where world models take it, what neither escapes | 52–57 | 3:57 |
 | VII | Practice — six habits, the definition, depth, humour, Goethe | 58–69 | 10:15 |
 
-69 slides; the per-slide budget in `data-mins` adds up to **56:24**, and that is what the clock counts
+69 slides; the per-slide budget in `data-mins` adds up to **56:30**, and that is what the clock counts
 down — it is read off the deck at load, not written into it. Press <kbd>t</kbd> to start the clock;
 it turns amber if you are a minute behind the plan and rose if you are three behind.
 
@@ -132,6 +132,23 @@ this slide is not a digression: Riemann built the curved-space machinery in 1854
 particular and Einstein could not have written relativity without it; Mendeleev left holes in his
 table and named elements nobody had seen; Dirac's equation had a solution nobody wanted and the
 positron turned up in 1932. Three times, a notation described something before anyone had seen it.
+
+Slide 50 is psychology's turn, and it reads the mind as a computer scientist reads any machine: bounded
+in **space** and in **time**, and getting past both the same way the rest of the talk does. The mechanism
+is a demo the room runs on itself. Thirteen letters — `F B I C I A N A S A U S B` — are shown once and
+nobody can repeat them; the same thirteen letters in the same order, shown as `FBI CIA NASA USB`,
+everybody can. Nothing on the page changed, so the difference is entirely in the reader: a chunk is a
+symbol of a language you already own, and the gain came from the meaning side. The three cards then
+name the bounds and the way out. Space: Miller's seven, Cowan's four, a hardware constant that never
+grows — but a chess master shown a real position for five seconds puts nearly every piece back and,
+shown a random board, is barely better than a beginner (Chase & Simon 1973): same registers, tens of
+thousands more patterns to point them at, which is what slide 64 means by depth. Time: Kahneman's two
+systems as a lookup against a derivation — System 1 returns a stored answer that is cheap and only
+plausible, System 2 computes one that is slow and checkable, Part IV's cost problem inside one head and
+Part VI's plausible-versus-provable split a few slides early. Way out: Piaget's accommodation, where the
+input will not fit and the language itself has to change, is the definition at the end of the talk run
+by a child; Harnad's symbol grounding is the other half and returns in Part VI. The lead lands it: the
+four slots never grow, what grows is what one slot can mean.
 
 Part VI shows rather than states. Slide 53 runs an LLM as a mechanism — context chips, a reserved
 slot for the next token, the weights, a bar chart of candidates, one sample taken, and a feedback
@@ -202,7 +219,8 @@ Every figure quoted on a slide, so it can be defended from the floor:
 Sources cited on the slides: Cantor 1891, Russell 1901, Gödel 1931, Tarski 1936, Turing 1936, Rice
 1953, Cook 1971, Karp 1972, Levin 1973; Shannon 1948, Landauer 1961, Bremermann 1962, von Neumann
 1948/1966; Frege 1892, Wittgenstein 1921/1953, Korzybski 1931, Miller 1956, Chomsky 1957, Wigner
-1960, Levinthal 1969, Goodhart 1975, Harnad 1990, Kahneman 2011, Jumper et al. 2021; Borges 1941,
+1960, Levinthal 1969, Chase & Simon 1973, Goodhart 1975, Harnad 1990, Cowan 2001, Kahneman 2011,
+Jumper et al. 2021; Borges 1941,
 Hofstadter 1979, Dijkstra 1969/1984, Knuth 1977, Chaitin on randomness; Pacioli 1494, Guido d'Arezzo
 c. 1025, Mendeleev 1869, Grace Hopper's nanosecond.
 

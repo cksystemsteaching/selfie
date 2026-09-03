@@ -1185,24 +1185,28 @@ blockquote cite{display:block;margin-top:calc(var(--u)*1.4);font-family:var(--mo
   <aside class="notes"><p>The slide for the mathematicians and the physicists, and the strongest single answer to "what is a limit good for". Walk the figure: flat, sphere, saddle — on a globe every great circle meets every other, so there are no parallels at all; on a saddle there is room for many. Nothing needs to be proved here, only seen. Then the three beats. First: unprovable did not mean false, it meant independent, which is exactly what Gödel would later show is unavoidable in any strong system — Bolyai and Lobachevsky met the phenomenon ninety years before it had a name. Second: the response that worked was not more effort at the proof, it was inventing a new language in which the question changes. That is the thesis of this talk, and it is the only slide where the room can watch it happen historically. Third, and this is the one for the physicists: Riemann built the general machinery in 1854 for no application whatsoever, and in 1915 Einstein could not have written general relativity without it. Wigner called this the unreasonable effectiveness of mathematics and did not explain it, and neither will we. If a mathematician asks about the parallel postulate versus Gödel — yes, independence from a specific axiom set is not incompleteness, and the honest statement is that they are the same shape rather than the same theorem. That is the claim on the slide.</p></aside>
 </section>
 
-<section class="slide" data-act="V" data-mins="0.9">
-  <div class="eyebrow">Mind</div>
-  <h2>You navigate an unimaginable space with about <span class="j">four</span> slots of working memory.</h2>
+<section class="slide dense" data-act="V" data-mins="1.0">
+  <div class="eyebrow">Psychology · space and time</div>
+  <h2>Working memory holds about <span class="j">four</span> things — and what counts as a thing is <span class="k">up to you</span>.</h2>
   <div class="fill">
-    <div class="three">
-      <div class="card f" data-step="1"><span class="h">Space · Miller 1956</span>
-        <p>Seven items, plus or minus two; later work says nearer four <em>chunks</em>. Chunking is the mind inventing notation to beat its own memory limit.</p>
-        <span class="src">86 billion neurons · ~10¹⁴ synapses</span></div>
-      <div class="card f" data-step="2"><span class="h">Time · Kahneman</span>
-        <p>Fast heuristics that are cheap and sometimes wrong; slow deliberation that is expensive and sometimes right. A biological answer to a cost problem.</p>
-        <span class="src">System 1 / System 2 · 2011</span></div>
-      <div class="card f" data-step="3"><span class="h">Language · Piaget, Harnad</span>
-        <p>Learning is <em>accommodation</em>: when the world breaks your scheme, you build a new one. And symbols only mean something if they are grounded in experience.</p>
-        <span class="src">symbol grounding · 1990</span></div>
+    <div class="stack" style="gap:calc(var(--u)*.7)">
+      <div class="chips f" data-step="1"><span class="chip j">F</span><span class="chip j">B</span><span class="chip j">I</span><span class="chip j">C</span><span class="chip j">I</span><span class="chip j">A</span><span class="chip j">N</span><span class="chip j">A</span><span class="chip j">S</span><span class="chip j">A</span><span class="chip j">U</span><span class="chip j">S</span><span class="chip j">B</span><span class="mono" style="align-self:center;color:var(--muted);font-size:calc(var(--u)*1.1);letter-spacing:.08em">13 items · read once, look away, repeat</span></div>
+      <div class="chips f" data-step="2"><span class="chip k">FBI</span><span class="chip k">CIA</span><span class="chip k">NASA</span><span class="chip k">USB</span><span class="mono" style="align-self:center;color:var(--muted);font-size:calc(var(--u)*1.1);letter-spacing:.08em">4 items · the same 13 letters, in the same order</span></div>
     </div>
-    <p class="lead f" data-step="4">Growing up is inventing better notation for a world too big to store — <span class="k">exactly the task of a discipline, run on one person</span>.</p>
+    <div class="three">
+      <div class="card syn f" data-step="3"><span class="h">Space bound · Miller 1956</span>
+        <p>Seven items, plus or minus two; later work says four. That number never grows. But an item is one <em>symbol</em> of a language you already own: a chess master shown a real position for five seconds puts nearly every piece back — shown a random board, barely better than a beginner.</p>
+        <span class="src">Cowan 2001 · Chase &amp; Simon 1973</span></div>
+      <div class="card syn f" data-step="4"><span class="h">Time bound · Kahneman 2011</span>
+        <p>System 1 answers from what is already stored: instant, cheap, <em>plausible</em> — and sometimes wrong. System 2 derives the answer: slow, expensive, checkable. Part IV's cost problem inside one head — a lookup against a proof.</p>
+        <span class="src">System 1 / System 2</span></div>
+      <div class="card f" data-step="5"><span class="h">Way out · Piaget, Harnad</span>
+        <p>Input fits the scheme you have? <em>Assimilate.</em> Does not fit? <em>Accommodate</em> — rebuild the scheme. A new property, or a new language: the definition this talk ends on, run by a child. And a symbol is worth only what it is <em>grounded</em> in.</p>
+        <span class="src">accommodation · symbol grounding 1990</span></div>
+    </div>
+    <p class="lead f" data-step="6">The four slots never grow. What grows is what one slot can <span class="k">mean</span> — that is what growing up is, and what a discipline is, run on one person.</p>
   </div>
-  <aside class="notes"><p>Bridge for psychology students: Piaget's accommodation is language invention at the scale of a child; Kuhn's paradigm shift is the same event at the scale of a science. The symbol grounding problem returns in Part VI — a model trained only on text has its symbols grounded in other symbols.</p></aside>
+  <aside class="notes"><p>The slide for the psychologists — and, read as a computer scientist, the mind as a machine with the two bounds every machine has: space and time. Run the demo before saying anything. Show the first row, ask the room to read it once, look away and repeat it; almost nobody can, thirteen is far past the limit. Show the second row; everybody can. Nothing on the page changed — the same thirteen letters in the same order — so the difference is entirely in the reader: whoever knows what FBI, CIA, NASA and USB are sees four things where the first row had thirteen. That is a chunk, and it is the thesis of this talk sitting in the audience's own heads: the notation is fixed and finite, what a symbol means is not, and the whole gain came from the meaning side. Anyone who does not know one of the acronyms sees three letters where you see one — the chunk is in the reader, not on the page, which is exactly the point. Then the three cards. Space: Miller's seven plus or minus two, revised down to about four by Cowan. The count is a hardware constant and never grows — on top of 86 billion neurons and around 10¹⁴ synapses, the front of the mind holds four things. But the unit is a symbol from a language you already own, and Chase and Simon's chess result is the cleanest evidence: a master shown a real game position for five seconds puts nearly every piece back, a beginner manages four or five; shown a random arrangement of the same pieces, the master is barely better than the beginner. Same registers, tens of thousands more patterns to point them at. Say it explicitly: this is what depth is, and the depth slide near the end cashes it in — depth is not a bigger memory, it is a bigger vocabulary. Time: Kahneman's two systems are, in our terms, a lookup against a derivation. System 1 returns an answer already stored — cheap, instant, and only plausible; System 2 computes one — slow, expensive, and checkable. That is Part IV's cost problem inside a single head, and it is the plausible-versus-provable split of Part VI a few slides early: a fast answer that feels right and is wrong is the same object as a hallucination. Way out: Piaget's pair. Assimilation is the case where the language you have still describes the input; accommodation is the case where it does not and the language itself has to change — a new property, or a new language, which is the definition this talk ends on, run by a child rather than by a science. Kuhn's paradigm shift is the same event at the scale of a field. Harnad supplies the other half: a symbol is worth only what it is grounded in, which returns in Part VI, where a model trained only on text has its symbols grounded in other symbols. Land the lead: nobody's slots grow; what grows is what a slot can mean, and that, run on one person, is what growing up is and what a discipline is.</p></aside>
 </section>
 
 <section class="slide" data-act="V" data-mins="0.95">
@@ -1470,7 +1474,7 @@ blockquote cite{display:block;margin-top:calc(var(--u)*1.4);font-family:var(--mo
       </div>
       <div class="stack">
         <div class="card"><span class="h">Other fields</span>
-          <p>Frege 1892 · Wittgenstein 1921 / 1953 · Korzybski 1931 · Miller 1956 · Chomsky 1957 · Wigner 1960 · Levinthal 1969 · Goodhart 1975 · Harnad 1990 · Kahneman 2011 · Jumper et al. 2021</p></div>
+          <p>Frege 1892 · Wittgenstein 1921 / 1953 · Korzybski 1931 · Miller 1956 · Chomsky 1957 · Wigner 1960 · Levinthal 1969 · Chase &amp; Simon 1973 · Goodhart 1975 · Harnad 1990 · Cowan 2001 · Kahneman 2011 · Jumper et al. 2021</p></div>
         <div class="card syn"><span class="h">Read for pleasure</span>
           <p>Borges, <em>The Library of Babel</em> 1941 · Hofstadter, <em>Gödel, Escher, Bach</em> 1979 · Dijkstra, <em>EWD</em> notes · Chaitin on randomness</p></div>
       </div>
