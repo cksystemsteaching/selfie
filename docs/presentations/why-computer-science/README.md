@@ -91,7 +91,7 @@ counts down — it is read off the deck at load, not written into it. Press <kbd
 clock; it turns amber if you are a minute behind the plan and rose if you are three behind.
 
 **Running short?** These four are self-contained and can be dropped without breaking the argument,
-buying 2:55: slide 20 (the six-theorem pattern), 24 (Landauer), 26 (the LLM mechanism, if the room
+buying 2:54: slide 20 (the six-theorem pattern), 24 (Landauer), 26 (the LLM mechanism, if the room
 already knows it), and 34 (the close with the two outcomes). Do not cut 2, 11, 12, 15, 16, 23, 30 or
 31 — they carry the claim.
 
