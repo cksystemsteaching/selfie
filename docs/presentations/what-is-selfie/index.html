@@ -350,6 +350,9 @@ blockquote cite{display:block;margin-top:calc(var(--u)*1.4);font-family:var(--mo
 .eyebrow.x{color:var(--bad)}
 /* the left column of every table here is a name — never break one */
 table.t td:first-child{white-space:nowrap}
+/* a terminal is overflow:hidden, so as a flex item it would shrink and clip
+   its last lines before autofit() could see an overrun — never let it */
+.fill>.term{flex-shrink:0}
 
 </style>
 <div id="stage">
