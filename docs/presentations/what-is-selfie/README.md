@@ -10,7 +10,9 @@ slot, see the cut list below.
 By Christoph Kirsch — University of Salzburg, Austria, and Czech Technical University in Prague,
 Czechia. It is the companion to [What is Intelligence?](../what-is-intelligence/), shares its visual
 system deliberately, and hands the same distinction — **proof versus truth**, **syntax versus
-semantics** — to an audience that is going to go and build the machinery.
+semantics** — to an audience that is going to go and build the machinery. The third deck of the set,
+[Why Computer Science?](../why-computer-science/), is the intelligence argument shortened for students
+deciding what to study, with selfie in the middle of it.
 
 **Give or watch the talk:** <https://selfie.cs.uni-salzburg.at/talk/> — or open `index.html` in any
 modern browser. Either way, press <kbd>→</kbd> to begin.

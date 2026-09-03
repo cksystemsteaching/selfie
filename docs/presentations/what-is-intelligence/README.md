@@ -10,7 +10,10 @@ By Christoph Kirsch — University of Salzburg, Austria, and Czech Technical Uni
 Czechia. The talk is a collaborative effort with **Leoni Brand**, **Eva Jonas**, **Julius Möller** and
 **Stefan Reiß** of the Department of Psychology at the University of Salzburg, who inspired and
 encouraged its framing: address everyone affected by AI, and do it by academic grounding rather than
-by repeating the booming and the dooming. Slide 2 says the same to the room.
+by repeating the booming and the dooming. Slide 2 says the same to the room. Two companion decks share
+its visual system: [What is Selfie?](../what-is-selfie/) explains the system named on the closing
+slide, and [Why Computer Science?](../why-computer-science/) is this argument shortened for students
+deciding what to study, with selfie in the middle of it.
 
 **Give or watch the talk:** <https://selfie.cs.uni-salzburg.at/intelligence/> — or open `index.html`
 in any modern browser. Either way, press <kbd>→</kbd> to begin.
