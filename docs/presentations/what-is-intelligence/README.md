@@ -12,8 +12,8 @@ Czechia. The talk is a collaborative effort with **Leoni Brand**, **Eva Jonas**,
 encouraged its framing: address everyone affected by AI, and do it by academic grounding rather than
 by repeating the booming and the dooming. Slide 2 says the same to the room. Two companion decks share
 its visual system: [What is Selfie?](../what-is-selfie/) explains the system named on the closing
-slide, and [Why Computer Science?](../why-computer-science/) is this argument shortened for students
-deciding what to study, with selfie in the middle of it.
+slide, and [What is Computer Science?](../what-is-computer-science/) is this argument shortened to a
+definition of the subject, with selfie in the middle of it as the specimen.
 
 **Give or watch the talk:** <https://selfie.cs.uni-salzburg.at/intelligence/> — or open `index.html`
 in any modern browser. Either way, press <kbd>→</kbd> to begin.

@@ -37,7 +37,7 @@ jobs:
       max-parallel: 1
       fail-fast: false
       matrix:
-        deck: [what-is-intelligence, what-is-selfie, why-computer-science]
+        deck: [what-is-intelligence, what-is-selfie, what-is-computer-science]
     defaults:
       run:
         working-directory: docs/presentations/${{ matrix.deck }}

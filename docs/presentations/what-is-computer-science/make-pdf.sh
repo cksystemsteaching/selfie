@@ -1,5 +1,5 @@
 #!/bin/sh
-# Regenerate why-computer-science.pdf from index.html.
+# Regenerate what-is-computer-science.pdf from index.html.
 #
 # The deck renders itself: index.html?print lays the slides out as a stack of
 # 1600x900 pages with every build step shown and every figure drawn once at a
@@ -15,7 +15,7 @@
 # index.html do not produce the same bytes — Chrome varies its output run to
 # run, and a Linux runner resolves the font stack differently from a Mac — so
 # comparing PDFs would report a change every time and commit noise forever.
-# Instead each build records the hash of index.html in why-computer-science.pdf.sha
+# Instead each build records the hash of index.html in what-is-computer-science.pdf.sha
 # and --check compares that, which answers the only question worth asking:
 # was this PDF built from the deck as it stands?
 
@@ -23,7 +23,7 @@ set -eu
 
 cd "$(dirname "$0")"
 
-OUT=why-computer-science.pdf
+OUT=what-is-computer-science.pdf
 STAMP=$OUT.sha
 THEME=${THEME:-light}
 
