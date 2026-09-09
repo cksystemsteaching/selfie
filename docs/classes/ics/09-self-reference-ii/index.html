@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ICS 09 · Self-Reference II</title>
+<link rel="stylesheet" href="../../deck/deck.css">
+</head>
+<body>
+<div id="stage">
+<div id="deck" tabindex="0" aria-label="Presentation: ICS 09 Self-Reference II" data-title="ICS 09 · Self-Reference II" data-figures="../../../figures/">
+
+<section class="slide" data-act="0" data-mins="1.0">
+  <div class="fig bare" style="position:absolute;inset:0"><canvas data-anim="ambient"></canvas></div>
+  <div class="fill center" style="position:relative">
+    <div class="eyebrow">Introduction to Computer Science · week 9 · station III</div>
+    <h1>Self-Reference <span class="k">II</span></h1>
+    <p class="lead">Will this program ever stop? One machine that can be any machine. And every interesting question about meaning.</p>
+  </div>
+  <aside class="notes"><p>Turing's session. The halting problem, the universal machine as the same move run forwards, Rice's theorem, and the six-theorem pattern. It ends on the positive reading: no final authority means no ceiling. Book: the Meaning chapter from The Machine, and What It Cannot Decide, to the end.</p></aside>
+</section>
+
+<section class="slide" data-act="III" data-actname="Self-Reference" data-mins="5.0">
+  <div class="eyebrow">In the terminal</div>
+  <h2>Does it <span class="k">stop</span>?</h2>
+  <div class="fill">
+    <div class="two">
+      <div class="term">
+        <span class="l o">// loop.c</span>
+        <span class="l c">uint64_t c;</span>
+        <span class="l c">uint64_t main() {</span>
+        <span class="l c">  c = 1;</span>
+        <span class="l c">  while (c != 0)</span>
+        <span class="l c">    c = c + 2;</span>
+        <span class="l c">  return c;</span>
+        <span class="l c">}</span>
+      </div>
+      <div class="stack">
+        <p class="f" data-step="1">Run it: <span class="mono">./selfie -c loop.c -m 1</span>. It has not stopped yet. Will it?</p>
+        <p class="f" data-step="2">You can reason: c is odd, adding 2 keeps it odd, and 0 is even — but the machine wraps at 2<sup>64</sup>, so does c ever become 0? Odd plus even is odd, always, and wrapping preserves parity. It never stops.</p>
+        <p class="f" data-step="3">You proved that. Could the compiler have? For this program, with effort, yes. For every program? That is today's question.</p>
+      </div>
+    </div>
+  </div>
+  <aside class="notes"><p>Start it and leave it running in a corner of the screen for the whole session, which is its own joke. The reasoning is worth doing on the board because it uses week 3's overflow: parity survives the wrap. Then the question, carefully: not this program, all programs.</p></aside>
+</section>
+
+<section class="slide" data-act="III" data-mins="8.0">
+  <div class="eyebrow">Undecidability</div>
+  <h2>Will this program ever <span class="k">stop</span>? No program can always tell.</h2>
+  <div class="fill row mid">
+    <div class="fig grow" style="flex:1.2" data-fig="halt"><span class="cap">feed the decider its own description</span></div>
+    <div class="stack grow">
+      <p class="f" data-step="1">Suppose <span class="mono">H(P, x)</span> decides, for every program and input, whether P halts on x.</p>
+      <p class="f" data-step="2">Build <span class="mono">D(P)</span>: ask H whether P halts on P — then do the opposite. A call, a conditional, a loop, a return. All in C*.</p>
+      <p class="f" data-step="3">Now run <span class="mono">D(D)</span>. It halts exactly if it doesn't. Contradiction. So H never existed.</p>
+      <p class="f" data-step="4">Turing, 1936 — the same paper that defined the universal machine, and thus invented the computer. The limit and the machine arrived together.</p>
+    </div>
+  </div>
+  <aside class="notes"><p>Walk the figure: H, then the wrapper D, then the self-application. Say out loud that D(D) is meaningful only because a program is a number, week 5. Then the diagonal: the table of H's answers, a row per program, a column per input, D walks the diagonal and flips. Emphasise the historical detail and do not land the gloom: the next slide turns the same move over.</p></aside>
+</section>
+
+<section class="slide" data-act="III" data-mins="7.0">
+  <div class="eyebrow">The same move, forwards</div>
+  <h2>One machine that can be <span class="k">any machine</span>.</h2>
+  <div class="fill row mid">
+    <div class="fig grow" style="flex:1.25" data-fig="universal"><span class="cap">the job moved from the wiring to the tape</span></div>
+    <div class="stack grow">
+      <p class="f" data-step="1">A machine used to <em>be</em> its job — to sort instead of add you built a different machine. Turing's move: put the machine's description on the tape, as data. Then one machine U reads any description and does whatever that machine would do.</p>
+      <p class="f" data-step="2">That is <strong>universality</strong>: one piece of hardware, every possible behaviour, because the behaviour arrives as notation. Your phone is not phone-shaped. It is U holding a description.</p>
+      <p class="f" data-step="3">Hand a decider its own description: contradiction, no H. Hand a machine any description: every program at once, one U. One sentence, read twice.</p>
+    </div>
+  </div>
+  <aside class="notes"><p>The slide that stops the session reading as a funeral. Say what universality buys in the room's own terms: nobody here owns a calculator, a typewriter, a map and a record player as four objects. And say that mipster is U: week 6's emulator, a page per instruction group, ran every program for the machine including selfie. Then the gift and the limit are the same fact, which the next slide needs.</p></aside>
+</section>
+
+<section class="slide" data-act="III" data-mins="7.0">
+  <div class="eyebrow">The general case</div>
+  <h2>It is not just halting. It is <span class="k">every interesting question about meaning</span>.</h2>
+  <div class="fill">
+    <div class="thm f" data-step="1"><span class="name">Rice · 1953</span><span class="st">Every non-trivial property of the behaviour of programs is undecidable. Only questions about their text are safe.</span></div>
+    <div class="two">
+      <div class="card syn f" data-step="2"><span class="h">Decidable · about syntax</span><p>How long is the code? Does it parse? Does it use this library? Are the types consistent? Does it contain a loop?</p></div>
+      <div class="card f" data-step="3"><span class="h">Undecidable · about semantics</span><p>Is it correct? Is it equivalent to that one? Does it ever divide by zero? Is it free of infinite loops? Is it safe?</p></div>
+    </div>
+    <p class="sm f" data-step="4">So every practical tool — a type checker, a test suite, a linter, a model checker, a fuzzer, a proof assistant — is a deliberate <strong>approximation</strong>: sound but incomplete, or complete but unsound, or exact only within a bound. Choosing which to give up is the discipline.</p>
+  </div>
+  <aside class="notes"><p>Rice generalises Turing and is the most useful theorem a student can own. Frame it as liberating: it tells you in advance there is no perfect analyser, so the interesting question is never can we decide this but what approximation do we choose. Last week's three terminal runs were the two columns: the error and the warning on the left, the division on the right. Week 12 builds an approximation with a stated bound.</p></aside>
+</section>
+
+<section class="slide" data-act="III" data-mins="5.0">
+  <div class="eyebrow">Interlude · law</div>
+  <h2>No text contains its own <span class="k">application</span>.</h2>
+  <div class="fill row mid">
+    <div class="fig grow" style="flex:1.2" data-fig="penumbra"><span class="cap">Hart's core, and Hart's penumbra</span></div>
+    <div class="stack grow">
+      <p class="f" data-step="1">A statute says <em>no vehicles in the park</em>. A car, plainly. And then the arguing starts: an ambulance, a bicycle, a memorial jeep. No redrafting removes the penumbra — only moves it. The words are finite; the situations are not.</p>
+      <p class="f" data-step="2">So law stops trying to settle meaning in the text and builds an institution: courts, appeals, precedent. Not a workaround — the only available design. Rice's theorem, with no mathematics in it.</p>
+    </div>
+  </div>
+  <aside class="notes"><p>Do the vehicles as a show of hands. The point to land: the penumbra is not sloppy drafting. Finite text, unbounded situations, so interpretation is structural. Law is the oldest working example of the response the whole semester recommends: an institution that approximates a semantics no document can contain. Computer science calls it code review, type checking and testing.</p></aside>
+</section>
+
+<section class="slide" data-act="III" data-mins="6.0">
+  <div class="eyebrow">Pattern</div>
+  <h2>One idea. Sixty years. <span class="k">Six theorems</span>.</h2>
+  <div class="fill">
+    <table class="t">
+      <tr><th>year</th><th>who</th><th>the list</th><th>the diagonal object</th></tr>
+      <tr class="f" data-step="1"><td>1891</td><td>Cantor</td><td>all real numbers</td><td>a number on no row</td></tr>
+      <tr class="f" data-step="1"><td>1901</td><td>Russell</td><td>all sets</td><td>the set of non-self-members</td></tr>
+      <tr class="f" data-step="2"><td>1931</td><td>Gödel</td><td>all provable sentences</td><td>"I am unprovable"</td></tr>
+      <tr class="f" data-step="2"><td>1936</td><td>Tarski</td><td>all definable predicates</td><td>"I am false"</td></tr>
+      <tr class="f" data-step="3"><td>1936</td><td>Turing</td><td>all decidable questions</td><td>a program that defies its judge</td></tr>
+      <tr class="f" data-step="3"><td>1953</td><td>Rice</td><td>all semantic properties</td><td>all of the above, at once</td></tr>
+    </table>
+    <p class="f" data-step="4">Assume a complete list. Ask each item about <em>itself</em>. Answer the opposite. Learn the move once and you own the century.</p>
+  </div>
+  <aside class="notes"><p>Give students the transferable skill: they now hold a proof technique, not six facts. It recurs twice more in this class, next week when a kernel has to isolate itself and in week 13 when a machine is asked to grade its own output.</p></aside>
+</section>
+
+<section class="slide" data-act="III" data-mins="5.0">
+  <div class="eyebrow">Reframe · 3 of 5</div>
+  <h2>No final authority means <span class="k">no ceiling</span>.</h2>
+  <div class="fill">
+    <div class="ledger">
+      <div class="forbids f" data-step="1"><h4>What it forbids</h4><p>A machine, a method, or a person that settles all questions. No complete rulebook, no self-certifying system, no automatic correctness.</p></div>
+      <div class="opens f" data-step="2"><h4>What it opens</h4><p>Mathematics is not a finished building but an open frontier; engineering is a craft rather than a lookup; and judgement — yours — never becomes redundant.</p></div>
+    </div>
+    <blockquote class="f" data-step="3">Beware of bugs in the above code; I have only proved it correct, not tried it.<cite>Donald E. Knuth, 1977</cite></blockquote>
+  </div>
+  <aside class="notes"><p>Knuth's joke is the whole session in one line: a proof is about a model of the world, and the world gets the final word. Proof and testing are two different approximations of truth, and a serious engineer uses both while trusting neither completely. Close on the program still running in the corner.</p></aside>
+</section>
+
+<section class="slide" data-act="III" data-mins="3.0">
+  <div class="eyebrow">Before next week</div>
+  <h2>Recommended exercises.</h2>
+  <div class="fill">
+    <div class="two">
+      <ol class="steps">
+        <li>Read the Meaning chapter from <em>The Machine, and What It Cannot Decide</em> to the end.</li>
+        <li>Write, in C*, the wrapper D for a hypothetical H. Then explain in one paragraph why no change to mipster could make it print "this program never halts" for all such programs.</li>
+        <li>Sort into text and behaviour: uses the keyword while; ever executes the while loop; contains the character /; ever divides by zero; is longer than 100 lines; prints the same as another program. Which can starc decide?</li>
+        <li>Name one approximation for each of: is it free of infinite loops; is it safe; is it correct. Say what each gives up.</li>
+        <li>Find the penumbra in a rule you live under — a house rule, a traffic rule, a grading rule.</li>
+      </ol>
+      <div class="card syn"><span class="h">Next week</span><p>Systems: two ways to build an operating system, why they are the same, why virtualization is used anyway, and the loop at its centre — the kernel that needs what it provides.</p></div>
+    </div>
+  </div>
+  <aside class="notes"><p>Exercise 3 is the exam's favourite; exercise 2 is the one that tests whether the diagonal has been owned.</p></aside>
+</section>
+
+</div>
+</div>
+<script src="../../deck/deck.js"></script>
+</body>
+</html>

@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ICS 07 · Uncountability</title>
+<link rel="stylesheet" href="../../deck/deck.css">
+</head>
+<body>
+<div id="stage">
+<div id="deck" tabindex="0" aria-label="Presentation: ICS 07 Uncountability" data-title="ICS 07 · Uncountability" data-figures="../../../figures/">
+
+<section class="slide" data-act="0" data-mins="1.0">
+  <div class="fig bare" style="position:absolute;inset:0"><canvas data-anim="ambient"></canvas></div>
+  <div class="fill center" style="position:relative">
+    <div class="eyebrow">Introduction to Computer Science · week 7 · station III</div>
+    <h1>Uncountability</h1>
+    <p class="lead">Vast is still finite. Now we count things that aren't — and discover that some infinities are bigger than others.</p>
+  </div>
+  <aside class="notes"><p>Warn the room: this is the only genuinely mathematical session of the semester and it is the load-bearing one. Two slides are a worked proof, run twice on two different kinds of object, and they are worth the minutes. Everything after, Gödel, Turing, hallucination, is this one argument wearing different clothes. Book: the Meaning chapter from What we want to talk about is not to The result everything hangs on.</p></aside>
+</section>
+
+<section class="slide" data-act="III" data-actname="Uncountable" data-mins="5.0">
+  <div class="eyebrow">Meaning</div>
+  <h2>What we want to talk about is <span class="x">not</span> countable.</h2>
+  <div class="fill row mid">
+    <div class="fig grow" data-fig="diagonal"><span class="cap">the diagonal</span></div>
+    <div class="stack grow">
+      <p class="f" data-step="1">Consider all infinite sequences of bits: 0110100011… forever. Each one is a complete answer to an endless list of yes/no questions — a behaviour, a function, a real number, a fate.</p>
+      <p class="f" data-step="2">Claim: <strong>no list can contain them all.</strong> Not a long list. Not an infinite list. No list.</p>
+      <p class="f" data-step="3">Cantor's proof is three lines and it is the most consequential argument of the 20th century. We run it twice, slowly.</p>
+    </div>
+  </div>
+  <aside class="notes"><p>State the claim and let the figure give the shape, but do not prove it here. What matters now is that the room understands what is being claimed: not that the list would be very long, but that there is no list.</p></aside>
+</section>
+
+<section class="slide" data-act="III" data-mins="6.0">
+  <div class="eyebrow">The objects</div>
+  <h2>A subset of the numbers is <span class="k">one yes-or-no answer per number</span>.</h2>
+  <div class="fill row mid">
+    <div class="fig grow" style="flex:1.2" data-fig="powerset"><span class="cap">subsets as answer sheets · 1 = in</span></div>
+    <div class="stack grow">
+      <p class="f" data-step="1">Take any collection of counting numbers — the evens, the primes, just {3}, none of them, all of them. Each one is a <strong>subset</strong>. To pin one down, walk 1, 2, 3, … and answer in or out, forever.</p>
+      <p class="f" data-step="2">That answer sheet is an infinite bit string, and every infinite bit string is one. All of them together make the <strong>power set</strong>, written 2<sup>ℕ</sup> — two choices, made ℕ times.</p>
+      <p class="f" data-step="3">A handful have names. Almost all are an endless coin-flip, with nothing shorter to say about them than the flips.</p>
+    </div>
+  </div>
+  <aside class="notes"><p>The bridge slide, and the one to go slowly on: everything after depends on the room seeing that a subset and an infinite bit string are the same object seen twice. Read the rows out. Then the last row, which has no rule and no name, and which is what nearly every subset looks like: to specify it you must transmit the answers themselves, forever. That is the first appearance of incompressibility, and it returns in week 13.</p></aside>
+</section>
+
+<section class="slide" data-act="III" data-mins="8.0">
+  <div class="eyebrow">The proof · 1 of 2 · subsets</div>
+  <h2>Hand me a list of every subset. I will build one that is <span class="x">not on it</span>.</h2>
+  <div class="fill row mid">
+    <div class="fig grow" style="flex:1.2" data-fig="diagset"><span class="cap">● in · ○ out</span></div>
+    <div class="stack grow">
+      <p class="f" data-step="1">Suppose the subsets could be listed: <span class="mono">S1, S2, S3, …</span>, every single one of them somewhere on the list.</p>
+      <p class="f" data-step="2">Go down the <span class="j">diagonal</span> and ask each row about <em>its own number</em>. Is 1 in S1? Is 2 in S2? Is n in Sn?</p>
+      <p class="f" data-step="3">Now build <span class="mono">D</span> by answering the opposite every time: <span class="mono">D = { n : n is not in Sn }</span>. Nothing exotic — a rule anyone can apply, one number at a time.</p>
+      <p class="f" data-step="4"><span class="mono">D</span> is not S1: they disagree about 1. Not S2: they disagree about 2. Not Sn for any n whatsoever. So the list left something out — and it was <strong>any list at all</strong>.</p>
+    </div>
+  </div>
+  <aside class="notes"><p>Take the full time. Build the grid, ring the diagonal, then construct D one column at a time out loud: 1 is in S1, so 1 stays out of D; 2 is out of S2, so 2 goes into D. Then the kill: ask where D is on the list. Somebody says further down; point at row n and ask what D and Sn say about n. They disagree by construction. Stress that no assumption was made about the list. Students who have seen a proof by contradiction recognise the shape; the others have just seen their first, and it is one of the good ones.</p></aside>
+</section>
+
+<section class="slide" data-act="III" data-mins="7.0">
+  <div class="eyebrow">The proof · 2 of 2 · numbers</div>
+  <h2>The same move, on the numbers between 0 and 1.</h2>
+  <div class="fill row mid">
+    <div class="fig grow" style="flex:1.2" data-fig="diagreal"><span class="cap">any list · and the number it missed</span></div>
+    <div class="stack grow">
+      <p class="f" data-step="1">Suppose you could list them: <span class="mono">r1, r2, r3, …</span>, each written out as an endless decimal. Take the first digit of the first, the second of the second, the n-th of the n-th. The diagonal again.</p>
+      <p class="f" data-step="2">Build a new number <span class="mono">x</span> by changing every one of those digits. Then x differs from r1 in the first place, from rn in the n-th — so x is on no row.</p>
+      <div class="card syn f" data-step="3"><span class="h">The one place it needs care</span><p>Change each digit to 5, or to 4 if it was already 5. That keeps you clear of the trailing nines: 0.4999… and 0.5000… are the same number written twice, and a proof that only landed on that would have proved nothing.</p></div>
+    </div>
+  </div>
+  <aside class="notes"><p>Run it exactly as before so the room hears the repetition; that is the teaching point, one argument in two costumes. The rows on screen are arbitrary, not famous constants; say so. The trailing-nines care is worth the twenty seconds: it is the only crack in the proof, every serious textbook patches it, and showing the patch is what separates a proof from a slogan.</p></aside>
+</section>
+
+<section class="slide" data-act="III" data-mins="5.0">
+  <div class="eyebrow">Intuition</div>
+  <h2>Between any two numbers, however close, there is <span class="k">another</span>. But do not let it do the work.</h2>
+  <div class="fill row mid">
+    <div class="fig grow" data-fig="dense"><span class="cap">halve, and halve again</span></div>
+    <div class="stack grow">
+      <p class="f" data-step="1">Pick two reals as close together as you like. Their midpoint lies strictly between them. Do it again, forever. There is no <em>next</em> real number, and a list is nothing but firsts and nexts.</p>
+      <p class="f" data-step="2">Density is the feeling, not the reason. The fractions are dense in the same way — and they can still be listed, by walking a grid of numerators and denominators corner by corner. Last week's exercise.</p>
+      <p class="f" data-step="3">Only the diagonal tells the two cases apart. When an intuition and a proof agree, check which of them you are actually relying on.</p>
+    </div>
+  </div>
+  <aside class="notes"><p>The slide that stops the room from believing the wrong thing for the right reason. The counterexample is one they did as homework: the rationals are dense and countable, so density cannot be what makes the reals uncountable. If the room keeps one methodological habit from station III, it is the last sentence.</p></aside>
+</section>
+
+<section class="slide" data-act="III" data-mins="5.0">
+  <div class="eyebrow">Theorem</div>
+  <h2>The diagonal, <span class="j">once and for all</span>.</h2>
+  <div class="fill">
+    <div class="two">
+      <div class="thm f" data-step="1"><span class="name">Cantor · 1891</span><span class="st">For every set S, the set of all subsets of S is strictly larger than S. In particular, the real numbers cannot be listed.</span></div>
+      <div class="stack">
+        <p class="f" data-step="2"><strong>Where self-reference enters.</strong> The proof builds an object from the list that asks of each row: "do you contain yourself here?" — and then answers the opposite. The list is used against itself.</p>
+        <p class="f" data-step="3"><strong>You have just seen it twice.</strong> Power set, real numbers, bit sequences: three costumes, one cardinality. Russell turned the same trick on set theory in 1901: the set of all sets that do not contain themselves.</p>
+      </div>
+    </div>
+  </div>
+  <aside class="notes"><p>Make the pattern explicit and name it, because it recurs three more times: assume a complete list; build a diagonal object by asking each item about itself; flip. Cantor, Russell, Gödel, Turing, one idea. Students who see the pattern once never need to memorise the theorems.</p></aside>
+</section>
+
+<section class="slide" data-act="III" data-mins="7.0">
+  <div class="eyebrow">The result everything hangs on</div>
+  <h2>There are incomparably more <span class="k">meanings</span> than <span class="j">notations</span>.</h2>
+  <div class="fill row mid">
+    <div class="fig grow" data-fig="gap"><span class="cap">countable notation · uncountable meaning</span></div>
+    <div class="stack grow">
+      <p class="f" data-step="1"><span class="j">Programs</span>: countable. <span class="k">Behaviours</span>: uncountable. So almost every behaviour has no program.</p>
+      <p class="f" data-step="2"><span class="j">Proofs</span>: countable. <span class="k">Truths</span> about numbers: uncountable. So almost every truth has no proof.</p>
+      <p class="f" data-step="3"><span class="j">Sentences</span>: countable. <span class="k">Distinctions</span> the world admits: uncountable. So almost everything is unsaid.</p>
+      <p class="f" data-step="4">"Almost every" here is exact: the expressible is a vanishing sliver, of measure zero, inside the meaningful.</p>
+    </div>
+  </div>
+  <aside class="notes"><p>The thesis slide of the whole semester. Say it three ways, slowly. Note that we have not yet used any logic or computability; pure counting already tells us that notation can never catch up with meaning. Gödel and Turing, next two weeks, only make it concrete and constructive.</p></aside>
+</section>
+
+<section class="slide" data-act="III" data-mins="4.0">
+  <div class="eyebrow">Reframe · 2 of 5</div>
+  <h2>Scarcity of notation is a <span class="k">job description</span>.</h2>
+  <div class="fill">
+    <div class="ledger">
+      <div class="forbids f" data-step="1"><h4>What it forbids</h4><p>A final language. No vocabulary — mathematical, legal, musical, or neural — will ever cover the space of meanings.</p></div>
+      <div class="opens f" data-step="2"><h4>What it opens</h4><p>An inexhaustible supply of things worth naming. Every new notation captures meaning that was previously unreachable — and there is always more left. Calculus, double-entry bookkeeping, staff notation, the periodic table, DNA sequencing, type systems: each was a raid on the uncountable.</p></div>
+    </div>
+    <p class="sm f" data-step="3">Chaitin's version: almost all numbers are random, that is, incompressible, that is, nameless. Not a wall — unclaimed territory, and claiming it is what every discipline calls progress. This is the first time the title of the class shows through.</p>
+  </div>
+  <aside class="notes"><p>Turn the cardinality gap into optimism, and say that this is the first glimpse of the definition in week 14: finding the next notation. Then close: next week the argument is turned on a compiler, which is a program that gives meaning to programs.</p></aside>
+</section>
+
+<section class="slide" data-act="III" data-mins="3.0">
+  <div class="eyebrow">Before next week</div>
+  <h2>Recommended exercises.</h2>
+  <div class="fill">
+    <div class="two">
+      <ol class="steps">
+        <li>Read the Meaning chapter from <em>What we want to talk about is not</em> to <em>Syntax and semantics</em>.</li>
+        <li>Make up six subsets of {1, …, 6} as answer sheets and build the diagonal D by hand. Check that it differs from every row.</li>
+        <li>Run the decimal version on a list of six decimals of your own. Then explain, in one sentence, why the fractions escape the argument.</li>
+        <li>How many programs of at most 1,000 characters are there over an alphabet of 100 symbols? How many behaviours on inputs 1 to 1,000 are there? Which number is bigger, and by how much?</li>
+        <li>Find one new notation from your own life — a recipe format, chess notation, a knitting pattern — and say what it made sayable.</li>
+      </ol>
+      <div class="card syn"><span class="h">Next week</span><p>Self-reference I: a compiler defines the meaning of the language it is written in; the fixed point, and what Ken Thompson says it cannot prove; and Gödel's two theorems, with the same diagonal.</p></div>
+    </div>
+  </div>
+  <aside class="notes"><p>Exercise 2 is the one to insist on: nobody owns the diagonal until they have built one.</p></aside>
+</section>
+
+</div>
+</div>
+<script src="../../deck/deck.js"></script>
+</body>
+</html>

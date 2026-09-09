@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ICS 10 · Systems</title>
+<link rel="stylesheet" href="../../deck/deck.css">
+</head>
+<body>
+<div id="stage">
+<div id="deck" tabindex="0" aria-label="Presentation: ICS 10 Systems" data-title="ICS 10 · Systems" data-figures="../../../figures/">
+
+<section class="slide" data-act="0" data-mins="1.0">
+  <div class="fig bare" style="position:absolute;inset:0"><canvas data-anim="ambient"></canvas></div>
+  <div class="fill center" style="position:relative">
+    <div class="eyebrow">Introduction to Computer Science · week 10 · station III</div>
+    <h1>Systems</h1>
+    <p class="lead">Two ways to build an operating system. Why they are the same. Why one is used anyway — and the loop at its centre.</p>
+  </div>
+  <aside class="notes"><p>The systems side of station III: the second incompleteness theorem as engineering. The argument is the selfie talk's Part III, compressed: two designs, the evidence that they are equivalent, the price of the faster one. Every number on this deck is selfie reporting on selfie. Book: the Computing chapter's station callouts, Emulation, Virtualization, Self-Reference.</p></aside>
+</section>
+
+<section class="slide" data-act="III" data-actname="Systems" data-mins="5.0">
+  <div class="eyebrow">Three problems</div>
+  <h2>An operating system solves three problems. <span class="k">Two are ordinary. One is not.</span></h2>
+  <div class="fill">
+    <div class="three">
+      <div class="card f" data-step="1"><span class="h">Sharing</span><p>One processor, many programs. Give each a turn — a <em>context switch</em> every few milliseconds, driven by a timer. Ordinary.</p></div>
+      <div class="card f" data-step="2"><span class="h">Memory</span><p>One memory, many programs. Give each its own addresses and translate — <em>paging</em>. Ordinary, and a lot of bookkeeping.</p></div>
+      <div class="card syn f" data-step="3"><span class="h">Isolation</span><p>None of them may touch the others, or the kernel. And the kernel must be isolated from the programs whose isolation it provides. Not ordinary. This is the loop.</p></div>
+    </div>
+    <p class="sm f" data-step="4">Self-reference is not a party trick. It is the hard part of systems, and most courses step around it because in a production kernel it is buried under a million lines. Selfie makes it the subject and keeps the system small enough that the loop stays visible.</p>
+  </div>
+  <aside name="notes" class="notes"><p>Name the three, then point at the third. The claim to make explicitly: the circularity is what real systems are made of. Linux schedules the scheduler; a hypervisor must be isolated from the machines whose isolation it provides. It is invisible in production because it was bootstrapped once, decades ago.</p></aside>
+</section>
+
+<section class="slide" data-act="III" data-mins="7.0">
+  <div class="eyebrow">Two designs</div>
+  <h2>Two ways to build the <span class="k">same</span> operating system.</h2>
+  <div class="fill row mid">
+    <div class="fig grow" style="flex:1.3" data-fig="emuvirt"><span class="cap">by emulation · by virtualization</span></div>
+    <div class="stack grow">
+      <p class="f" data-step="1"><strong>By emulation.</strong> The operating system is an interpreter. The guest's code is data being read, one instruction at a time. Isolation is free: the guest never touches the processor. No self-reference anywhere.</p>
+      <p class="f" data-step="2"><strong>By virtualization.</strong> The operating system puts the guest onto the real processor and takes it back when the timer fires or the guest asks for something. The guest runs at full speed — on the same hardware as the kernel.</p>
+      <p class="f" data-step="3">Selfie has both: <span class="mono">mipster</span> is the first, <span class="mono">hypster</span> the second.</p>
+    </div>
+  </div>
+  <aside class="notes"><p>Left and right. Make sure the room sees that on the left the guest is read and on the right the guest is run. That difference is everything on this deck.</p></aside>
+</section>
+
+<section class="slide" data-act="III" data-mins="7.0">
+  <div class="eyebrow">In the terminal</div>
+  <h2>They are <span class="k">semantically equivalent</span>. Selfie can show it rather than say it.</h2>
+  <div class="fill">
+    <div class="two">
+      <div class="term sm">
+        <span class="l"><span class="p">$</span> <span class="c">make emu-emu</span></span>
+        <span class="l o">./selfie -c selfie.c -o selfie.m -m 3 -l selfie.m -m 2 -l selfie.m -m 1</span>
+        <span class="l o">…</span>
+        <span class="l o">&gt; selfie.m: summary: 86380 executed instructions in total</span>
+        <span class="l o">./selfie: summary: 222410917 executed instructions in total</span>
+      </div>
+      <div class="term sm">
+        <span class="l"><span class="p">$</span> <span class="c">make os-emu</span></span>
+        <span class="l o">./selfie -c selfie.c -o selfie.m -m 2 -l selfie.m -y 1</span>
+        <span class="l o">…</span>
+        <span class="l o">&gt; selfie.m: summary: 86380 executed instructions in total</span>
+        <span class="l o">./selfie: summary: 17860937 executed instructions in total</span>
+      </div>
+    </div>
+    <div class="two">
+      <p class="sm f" data-step="1">Same guest: selfie printing its synopsis. Hosted by an emulator on the left, by a hypervisor on the right. The guest executes <strong>86,380 instructions</strong> both times — the same number, the same output. That is the evidence that the two designs are the same operating system.</p>
+      <p class="sm f" data-step="2">Only the bill for the machine underneath differs: 222 million instructions by emulation, 18 million by virtualization. Twelve times cheaper. That is the entire reason virtualization exists.</p>
+    </div>
+  </div>
+  <aside class="notes"><p>Run both; they take a while and the numbers appear at the end. The exact numbers move with the version of selfie, so check them before class; the point is that the guest's number is identical and the host's is not. Say plainly: virtualization is needed only for performance.</p></aside>
+</section>
+
+<section class="slide" data-act="III" data-mins="5.0">
+  <div class="eyebrow">For exactly one reason</div>
+  <h2>What the machine underneath is <span class="j">billed</span>.</h2>
+  <div class="fill row mid">
+    <div class="fig grow" style="flex:1.3" data-fig="cost"><span class="cap">instructions on the physical machine · log scale</span></div>
+    <div class="stack grow">
+      <p class="f" data-step="1">Bare metal: 85,754. Virtualized: ×208. With a hypervisor underneath as well: ×694. Emulated: ×2,593.</p>
+      <p class="f" data-step="2">And the bar chart understates the case. On real work — selfie compiling selfie — the virtualized overhead collapses to <strong>×1.72</strong>, because the guest runs on the processor and the kernel is only involved at the edges.</p>
+      <p class="f" data-step="3">That collapse is the whole economic argument for virtualization, and for the cloud.</p>
+    </div>
+  </div>
+  <aside class="notes"><p>The factor of 1.72 comes from make self-os-emu against make self-emu; quote it and say where it is measured. Emulation pays per instruction; virtualization pays per exception. That is why the ratio depends on the workload and why, on real workloads, the faster design wins by orders of magnitude.</p></aside>
+</section>
+
+<section class="slide" data-act="III" data-mins="7.0">
+  <div class="eyebrow">The price</div>
+  <h2>Virtualization is emulation plus <span class="x">self-reference</span>.</h2>
+  <div class="fill row mid">
+    <div class="fig grow" style="flex:1.2" data-fig="selfref"><span class="cap">the kernel requires what the kernel provides</span></div>
+    <div class="stack grow">
+      <p class="f" data-step="1">The kernel provides isolation. To provide it, the kernel runs on the same processor as the guests — so the kernel needs to be isolated too. From the guests. By whom?</p>
+      <p class="f" data-step="2">By itself, would be the answer, and week 8 said what that is worth. Nothing certifies itself. So real kernels do it the other way: a small piece of code, isolated by construction, that must never fault, written and checked by hand — the <strong>trusted computing base</strong>. Keeping it small is the microkernel programme.</p>
+      <p class="f" data-step="3">The certification comes from outside the loop. Same shape as Thompson's second compiler. Same theorem.</p>
+    </div>
+  </div>
+  <aside class="notes"><p>This is the slide of the session, and the reason the systems side is in a class about intelligence. The kernel that needs what it provides is Gödel's second theorem in engineering clothes, and the response is the one every station of the semester recommends: an outside check, kept as small as possible. In selfie the trusted base is hypster's exception handler and context switch.</p></aside>
+</section>
+
+<section class="slide" data-act="III" data-mins="6.0">
+  <div class="eyebrow">Self-hosting</div>
+  <h2>A hypervisor whose virtual machines can run the <span class="k">hypervisor</span>.</h2>
+  <div class="fill row mid">
+    <div class="fig grow" style="flex:1.1" data-fig="ladder"><span class="cap">hypster on hypster on mipster</span></div>
+    <div class="stack grow">
+      <div class="term sm">
+        <span class="l"><span class="p">$</span> <span class="c">./selfie -c selfie.c -o selfie.m -m 3 -l selfie.m -y 2 -l selfie.m -y 1</span></span>
+        <span class="l o">…</span>
+      </div>
+      <p class="f" data-step="1">The third command from week 1. An emulated machine hosts a hypervisor that hosts a hypervisor that hosts selfie, which prints its synopsis. Still reasonably fast, because there is only one emulator in the stack and each hypervisor adds little.</p>
+      <p class="f" data-step="2">Understand the first command and you understand compilers; the second, machines; the third, operating systems. Only the third is hard to implement, and this deck said exactly where.</p>
+    </div>
+  </div>
+  <aside class="notes"><p>Run it. Then the sentence from week 1, now earned. The systems class spends a semester making hypster do this with processes, threads and locks; here the point is that the loop closes and the machine still works.</p></aside>
+</section>
+
+<section class="slide" data-act="III" data-mins="5.0">
+  <div class="eyebrow">Bounding, not deciding</div>
+  <h2>The timer interrupt is the engineering answer to the <span class="k">halting problem</span>.</h2>
+  <div class="fill">
+    <div class="two">
+      <div class="stack">
+        <p class="f" data-step="1">Last week: no kernel can decide whether the program it is running will ever stop. This week: it does not try. Every few million instructions a timer takes the processor away, whether or not the program was about to finish, and gives it to the next one.</p>
+        <p class="f" data-step="2">Paging does the same for space: not <em>how much memory will it need</em>, which is undecidable, but <em>here is what it may have</em>, enforced.</p>
+      </div>
+      <div class="card syn f" data-step="3"><span class="h">The pattern</span><p>What a system cannot decide, it bounds. Time by the timer, space by the page table, trust by the trusted computing base. That is Rice's theorem, answered — and it is the shape of every tool in week 12.</p></div>
+    </div>
+  </div>
+  <aside class="notes"><p>The sentence that connects week 9 to week 12. A bound is an approximation with a stated limit, and an operating system is a collection of them. Say that the app that stopped responding on their phone is this slide: nobody decided it was stuck, a timer bounded how long it could hold the screen.</p></aside>
+</section>
+
+<section class="slide" data-act="III" data-mins="3.0">
+  <div class="eyebrow">Before next week</div>
+  <h2>Recommended exercises.</h2>
+  <div class="fill">
+    <div class="two">
+      <ol class="steps">
+        <li>Read the Computing chapter's opening, <em>Emulation</em>, <em>Virtualization</em>, and <em>Self-Reference</em>.</li>
+        <li>Run <span class="mono">make emu</span>, <span class="mono">make emu-emu</span>, <span class="mono">make os-emu</span>. Write down the guest's instruction count and the host's for each, and compute the factors.</li>
+        <li>Run <span class="mono">make self-emu</span> and <span class="mono">make self-os-emu</span> if your machine has the time, and compute the overhead on real work.</li>
+        <li>Say in one paragraph why an operating system by emulation has no self-reference and one by virtualization does.</li>
+        <li>Name the outside check in each of: Thompson's compiler, Gödel's second theorem, the trusted computing base.</li>
+      </ol>
+      <div class="card syn"><span class="h">Next week</span><p>Cost: a question with a guaranteed answer you will never receive; hard to find, easy to check; a SAT solver in 400 lines; and every step that forgets costs energy.</p></div>
+    </div>
+  </div>
+  <aside class="notes"><p>Exercise 5 is the one that shows whether the pattern has been seen; it comes back in week 13 with a fourth item.</p></aside>
+</section>
+
+</div>
+</div>
+<script src="../../deck/deck.js"></script>
+</body>
+</html>

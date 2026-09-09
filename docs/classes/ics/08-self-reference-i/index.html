@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ICS 08 · Self-Reference I</title>
+<link rel="stylesheet" href="../../deck/deck.css">
+</head>
+<body>
+<div id="stage">
+<div id="deck" tabindex="0" aria-label="Presentation: ICS 08 Self-Reference I" data-title="ICS 08 · Self-Reference I" data-figures="../../../figures/">
+
+<section class="slide" data-act="0" data-mins="1.0">
+  <div class="fig bare" style="position:absolute;inset:0"><canvas data-anim="ambient"></canvas></div>
+  <div class="fill center" style="position:relative">
+    <div class="eyebrow">Introduction to Computer Science · week 8 · station III</div>
+    <h1>Self-Reference <span class="k">I</span></h1>
+    <p class="lead">A compiler defines the meaning of the language it is written in. The fixed point, what it cannot prove — and Gödel.</p>
+  </div>
+  <aside class="notes"><p>Counting told us the gap exists. Self-reference walks us to the edge of it and points. This session is the compiler side: how meaning is constructed on a machine, what the fixed point proves, what Thompson says it cannot, and Gödel's two theorems as the same diagonal. Book: the Programming chapter's station callouts and the Meaning chapter from Syntax and Semantics to Trusting Trust.</p></aside>
+</section>
+
+<section class="slide" data-act="III" data-actname="Self-Reference" data-mins="6.0">
+  <div class="eyebrow">What a compiler really is</div>
+  <h2>A compiler <span class="k">defines the meaning</span> of the language it is written in.</h2>
+  <div class="fill row mid">
+    <div class="fig grow" style="flex:1.2" data-fig="meaning"><span class="cap">notation → meaning · and the arrow lives inside the box</span></div>
+    <div class="stack grow">
+      <p class="f" data-step="1">On the left, <span class="mono">selfie.c</span>: text, 365,784 characters. On the right, what the machine does when it runs. The arrow between them is <span class="mono">starc</span>, the compiler — and starc's own source code is in the left box.</p>
+      <p class="f" data-step="2">That is a dictionary written in the language it defines. In English it would be a paradox. Here it is not, and the difference is that the definition is <em>executable</em>: a machine can run the dictionary.</p>
+      <p class="f" data-step="3">Week 4 fixed meaning by decree. This is the decree, and it is a program.</p>
+    </div>
+  </div>
+  <aside class="notes"><p>The framing slide of the whole compiler side. The sentence to land is the title; the room should be able to say why it is not a paradox. Then say what the two halves of the compiler do, which the next slide draws.</p></aside>
+</section>
+
+<section class="slide" data-act="III" data-mins="7.0">
+  <div class="eyebrow">Nothing in the middle is left out</div>
+  <h2>A parse is a <span class="j">proof</span>. Code generation <span class="k">constructs</span> semantics.</h2>
+  <div class="fill">
+    <div class="fig grow" data-fig="pipeline"><span class="cap">source → scanner → parser → code generator → machine code</span></div>
+    <div class="three">
+      <p class="sm f" data-step="1"><strong>Scanner.</strong> Characters into symbols — the 22 symbols and 7 keywords of week 4. A finite state machine, one per kind of symbol.</p>
+      <p class="sm f" data-step="2"><strong>Parser.</strong> Symbols against the grammar. A successful parse is a derivation, which is a proof that the text is a C* program. It always terminates and always answers. Syntax is <em>decidable</em>.</p>
+      <p class="sm f" data-step="3"><strong>Code generator.</strong> For each construct, the RISC-U instructions that mean it: the nine lines of week 4's loop. This is where meaning is made, and it is the only place.</p>
+    </div>
+  </div>
+  <aside class="notes"><p>Walk the pipeline with the tiny program: characters, then symbols, then the parse of the while rule, then the nine instructions. The two words to plant are proof and construct: the parser proves membership in the language, the generator builds the meaning. The compiler classes spend a semester on this slide; here it is the shape.</p></aside>
+</section>
+
+<section class="slide" data-act="III" data-mins="6.0">
+  <div class="eyebrow">The fixed point</div>
+  <h2>Selfie compiles selfie and gets the same bytes twice. What does that <span class="k">prove</span>?</h2>
+  <div class="fill row mid">
+    <div class="fig grow" style="flex:1.2" data-fig="bootstrap"><span class="cap">selfie1.m = selfie2.m · 188,392 bytes</span></div>
+    <div class="stack grow">
+      <p class="f" data-step="1">Exactly one thing: that selfie <strong>agrees with itself</strong>. A compiler that consistently mistranslated one construct would reproduce the mistake perfectly, and pass.</p>
+      <p class="f" data-step="2">It does not prove that selfie is correct. It does not prove that selfie.c is what compiled selfie. The source does not determine the binary.</p>
+      <div class="term sm f" data-step="3">
+        <span class="l"><span class="p">$</span> <span class="c">make self</span></span>
+        <span class="l o">./selfie -c selfie.c -o selfie.m -s selfie.s -m 1</span>
+        <span class="l o">…</span>
+      </div>
+    </div>
+  </div>
+  <aside class="notes"><p>Two weeks ago the fixed point was a demonstration. Today it is a question. Be exact about what the identical bytes establish, because the next slide is the reason the exactness matters, and because the machines chapter needs the habit of asking what a self-check proves.</p></aside>
+</section>
+
+<section class="slide" data-act="III" data-mins="7.0">
+  <div class="eyebrow">Trusting trust · 1984</div>
+  <h2>The source does <span class="x">not</span> determine the binary.</h2>
+  <div class="fill">
+    <div class="two">
+      <div class="stack">
+        <p class="f" data-step="1">Ken Thompson's Turing award lecture. A compiler that recognises when it is compiling the login program and inserts a back door — and recognises when it is compiling a compiler, and inserts the code that does both.</p>
+        <p class="f" data-step="2">Remove the trick from the compiler's source. Recompile with the infected compiler. The back door survives, because the source is not what compiled the compiler. Every line inspected and found clean; the binary still lies.</p>
+      </div>
+      <div class="stack">
+        <blockquote class="f" data-step="3">You can't trust code that you did not totally create yourself.<cite>Ken Thompson, Reflections on Trusting Trust</cite></blockquote>
+        <div class="card syn f" data-step="4"><span class="h">The outside check</span><p>Compile the compiler with two unrelated compilers and compare the results — David Wheeler, 2005. The check that the fixed point cannot supply comes from <em>outside</em> the loop. Remember the shape.</p></div>
+      </div>
+    </div>
+  </div>
+  <aside class="notes"><p>Tell the story properly; it is the most instructive three pages ever written about self-compilation. Then Wheeler, because the response matters more than the attack: the certification comes from outside. That sentence is Gödel's second theorem in engineering clothes, and the next slides say so.</p></aside>
+</section>
+
+<section class="slide" data-act="III" data-mins="7.0">
+  <div class="eyebrow">Theorem</div>
+  <h2>There are <span class="k">truths</span> with no <span class="j">proof</span>.</h2>
+  <div class="fill">
+    <div class="two">
+      <div class="thm f" data-step="1"><span class="name">Gödel · first incompleteness · 1931</span><span class="st">Any consistent formal system rich enough to describe arithmetic contains statements that are true but not provable within it.</span></div>
+      <div class="stack">
+        <p class="f" data-step="2"><strong>How.</strong> Build, by Gödel numbering, a sentence that says: "this sentence has no proof in this system." If it were provable, the system proves a falsehood. So it is unprovable — and therefore true.</p>
+        <p class="f" data-step="3"><strong>The same diagonal.</strong> Cantor built a row not on the list. Gödel builds a truth not on the list of provable things. Adding it as a new axiom does not help: the construction simply runs again.</p>
+      </div>
+    </div>
+    <p class="f" data-step="4"><span class="j">Proof</span> is a finite object you can check. <span class="k">Truth</span> is not. Proof is syntax. Truth is semantics. They are not the same size — and week 7 already knew that. Gödel says where to look.</p>
+  </div>
+  <aside class="notes"><p>The heart of the semester. Note what is not claimed: no single statement is forever unknowable, you may prove it in a stronger system. What is claimed is that no system is ever finished. The sentence that names itself is week 5's Gödel numbering doing exactly the work it was built for.</p></aside>
+</section>
+
+<section class="slide" data-act="III" data-mins="6.0">
+  <div class="eyebrow">Theorem</div>
+  <h2>And no strong system can <span class="x">certify itself</span>.</h2>
+  <div class="fill">
+    <div class="two">
+      <div class="thm f" data-step="1"><span class="name">Gödel · second incompleteness · 1931</span><span class="st">Such a system cannot prove its own consistency — unless it is inconsistent, in which case it proves everything.</span></div>
+      <div class="stack">
+        <div class="card f" data-step="2"><span class="h">Read it as engineering</span><p>A trustworthy system cannot be the source of its own trust. Confidence has to come from <em>outside</em>: a stronger theory, an experiment, an independent compiler, reality.</p></div>
+        <div class="card syn f" data-step="3"><span class="h">Read it as advice</span><p>When a machine explains why its own answer is correct, you have received more output from the same machine — fluent, plausible, and not a certificate. Introspection is not audit.</p></div>
+      </div>
+    </div>
+    <p class="sm f" data-step="4">Tarski, 1936, closes the circle: no sufficiently expressive language can define truth for its own sentences. Truth always lives one level up.</p>
+  </div>
+  <aside class="notes"><p>This is where week 13 gets its backbone; plant it deliberately. Self-certification is structurally impossible, not merely difficult. The fixed point two slides ago is the concrete case: the compiler that agrees with itself has certified nothing, and the second compiler is the stronger system.</p></aside>
+</section>
+
+<section class="slide" data-act="III" data-mins="5.0">
+  <div class="eyebrow">In the terminal</div>
+  <h2>What the compiler <span class="j">decides</span>, and what it only <span class="k">warns</span> about.</h2>
+  <div class="fill">
+    <div class="term sm">
+      <span class="l"><span class="p">$</span> <span class="c">printf 'uint64_t main() { return 1 + ; }' &gt; bad.c; ./selfie -c bad.c</span></span>
+      <span class="l o">./selfie: syntax error in bad.c in line 1: unexpected symbol ";" found</span>
+      <span class="l"><span class="p">$</span> <span class="c">printf 'uint64_t* p; uint64_t main() { p = 42; return 0; }' &gt; warn.c; ./selfie -c warn.c</span></span>
+      <span class="l o">./selfie: warning in warn.c in line 1: type mismatch, uint64_t* expected but uint64_t found</span>
+      <span class="l"><span class="p">$</span> <span class="c">printf 'uint64_t main() { return 1 / 0; }' &gt; div.c; ./selfie -c div.c -m 1</span></span>
+      <span class="l o">./selfie: division by zero</span>
+      <span class="l o">./selfie: 64-bit mipster terminating 64-bit RISC-U binary div.c with exit code 22</span>
+    </div>
+    <div class="two">
+      <p class="sm f" data-step="1">The first is about the <em>text</em>: the parser decided it, always, in finite time. The second is about the text too — a type is a label the compiler attached — so it is decided, and only a warning because C* is permissive.</p>
+      <p class="sm f" data-step="2">The third is about <em>behaviour</em>. The compiler said nothing. The machine found it, on this run, on this input. Next week: why no compiler can ever say it in general — and why that is fine.</p>
+    </div>
+  </div>
+  <aside class="notes"><p>Run all three; the messages may differ slightly in wording, and the address of the division will be whatever it is. The point is the line between what the compiler answers and what it is silent about. It is exactly Cantor's line, and next week it gets its own theorem.</p></aside>
+</section>
+
+<section class="slide" data-act="III" data-mins="3.0">
+  <div class="eyebrow">Before next week</div>
+  <h2>Recommended exercises.</h2>
+  <div class="fill">
+    <div class="two">
+      <ol class="steps">
+        <li>Read the Meaning chapter from <em>Syntax and Semantics</em> to <em>Trusting Trust</em>, and the two station callouts in the Programming chapter.</li>
+        <li>Read Thompson's lecture. It is three pages. Write down, in one sentence, what an outside check for it looks like.</li>
+        <li>Run <span class="mono">make self-self-check</span> once more. Then state, in one sentence each, what the identical binaries prove and what they do not.</li>
+        <li>Write three C* programs: one with a syntax error, one with a type warning, one that divides by zero at runtime. Say for each whether the compiler could have known.</li>
+        <li>In your own words: why is a dictionary written in the language it defines a problem in English and not in C*?</li>
+      </ol>
+      <div class="card syn"><span class="h">Next week</span><p>Self-reference II: will this program ever stop? No program can always tell. Then the same move run forwards — one machine that can be any machine — and Rice: every interesting question about behaviour.</p></div>
+    </div>
+  </div>
+  <aside class="notes"><p>Exercise 3 is the one the exam draws on; exercise 5 is the one that shows whether the session landed.</p></aside>
+</section>
+
+</div>
+</div>
+<script src="../../deck/deck.js"></script>
+</body>
+</html>
