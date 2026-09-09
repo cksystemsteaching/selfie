@@ -22,24 +22,25 @@ The programming language C\* in which selfie is written is a tiny subset of the 
    1. [Recommended Readings 1](#recommended-readings-1)
 
 3. [Size](#size)
-   1. [Bits](#bits)
-   2. [Numbers](#numbers)
-   3. [Boolean Algebra](#boolean-algebra)
-   4. [Negative Numbers](#negative-numbers)
-   5. [Integers](#integers)
-   6. [Overflows](#overflows)
-   7. [Characters](#characters)
-   8. [Bytes](#bytes)
-   9. [Memory](#memory)
-   10. [Text](#text)
-   11. [Files](#files)
-   12. [Images](#images)
-   13. [Video](#video)
-   14. [Audio](#audio)
-   15. [Code](#code)
-   16. [Apps 1](#apps-1)
-   17. [Life 1](#life-1)
-   18. [Recommended Readings 2](#recommended-readings-2)
+   1. [Orders of Magnitude](#orders-of-magnitude)
+   2. [Bits](#bits)
+   3. [Numbers](#numbers)
+   4. [Boolean Algebra](#boolean-algebra)
+   5. [Negative Numbers](#negative-numbers)
+   6. [Integers](#integers)
+   7. [Overflows](#overflows)
+   8. [Characters](#characters)
+   9. [Bytes](#bytes)
+   10. [Memory](#memory)
+   11. [Text](#text)
+   12. [Files](#files)
+   13. [Images](#images)
+   14. [Video](#video)
+   15. [Audio](#audio)
+   16. [Code](#code)
+   17. [Apps 1](#apps-1)
+   18. [Life 1](#life-1)
+   19. [Recommended Readings 2](#recommended-readings-2)
 
 **Part II: Countable**
 
@@ -290,6 +291,10 @@ Why is all this more than just a strange game played by computer science wizards
 
 The machine and its code is universal just like organic life and its DNA. This is also the reason why understanding computer science, just like life science, takes effort. You are about to learn something that is here to stay forever. What are a few months reading and understanding this book compared to that? Here is something that may help you in the process. Students who finally understood selfie often tell me how happy they were when they finally saw how everything fits together. For some it was a life changing experience that made them even change their major to computer science!
 
+> Three commands, three theorems
+
+Here is what the three commands of selfie are going to mean by the end of this book, so that you can watch for it. Self-compilation is a *fixed point*: a compiler compiles its own source and gets the same bytes twice. That proves that the compiler agrees with itself, and the meaning chapter shows, with Gödel's second theorem and Ken Thompson's compiler, why that is the most any system can ever prove about itself. Self-execution is the *universal machine*: an emulator that runs every program written for its machine, including itself, which is Turing's machine that can be any machine, in a page of C\* per instruction group. And self-hosting is the *bootstrap problem*: a hypervisor that isolates the machines it hosts must itself be isolated from them, which is the second incompleteness theorem as engineering, and the reason operating systems are hard. Three commands you can type, and three limits you can run into. That is why selfie is the specimen of this book.
+
 > Take a Selfie!
 
 Let us personalize your copy of selfie! Load the source code `selfie.c` into your editor and scroll all the way down to the end of the file. Then, right before the line `exit_code = selfie(0);` insert the following code but with my name replaced by yours:
@@ -375,6 +380,34 @@ more examples/encoding.c
 ```
 
 The examples code is written in such a way that you should be able to understand it, at least intuitively. Lines that begin with `//` are comments ignored by the machine but still there to help you. If you feel adventurous go ahead, use your text editor, and change `examples/encoding.c` a bit. For example, replace 85 with different numbers and then run selfie again using the above command.
+
+### Orders of Magnitude
+
+Before we look at how anything is encoded in bits, let us practice reading the sizes involved, because every later claim in this book is a claim about how big something is, and a number you cannot place is a number you cannot argue with. The figure below is the map of the whole book. On the left, the small: one thing. Then eighty steps, each ten times the last, take us from one thing to every atom in the observable universe, about $10^{80}$, and that is the whole physical world in eighty decades. Then a wall, and no number of steps crosses it. Past the wall, endlessness comes in two sizes, one that counts every notation and one that counts every meaning, and the second is strictly bigger. This chapter and the next two live on the left of the wall. The meaning chapter is about what is on the right.
+
+![The axis: small, vast, then two sizes of endless](../docs/figures/scale.svg "The axis: small, vast, then two sizes of endless")
+
+> A million, a billion, a trillion
+
+Three words one syllable apart, three different worlds. A million seconds is eleven and a half days. A billion seconds is almost thirty-two years. A trillion seconds is about 31,700 years, which takes you back to someone painting the walls of the Chauvet cave. The prefixes for bytes work the same way: kilo, mega, giga, tera are a thousand, a million, a billion, a trillion. One byte holds one character, so a megabyte is a five-hundred-page book of plain text, a gigabyte is a thousand such books, and a terabyte is a million. There is a wrinkle that this book meets again and again, because it is the thesis in miniature: in memory, kilo means 1,024, not 1,000, because memory comes in powers of two, and so a "1 TB" disk holds $10^{12}$ bytes, which is only 931 gibibytes of the kind memory is measured in. GB is one notation with two meanings, and the notation does not say which.
+
+> A bit is one distinction
+
+A bit is one distinction: this, not that. Add a bit and you do not *add* states, you *double* them. Ten bits are a thousand states, twenty are a million, thirty are a billion. Doubling is the most underestimated operation in human reasoning and the entire engine of computing. The figure shows sixteen bits and the curve that the doubling draws.
+
+![Sixteen bits: 65,536 states, and the doubling curve](../docs/figures/bits.svg "Sixteen bits: 65,536 states, and the doubling curve")
+
+How many bits does it take to have more states than the universe has atoms? Students guess millions, or billions. The answer is 266, because $2^{266}$ is about $1.2 \times 10^{80}$. Thirty-four bytes of memory, which is less than this sentence, have more states than there are atoms. The figure puts that on the log scale, next to the number of people alive and the number of molecules in a spoonful of water.
+
+![A log scale to ten to the eighty, and 266 bits just past its end](../docs/figures/ruler.svg "A log scale to ten to the eighty, and 266 bits just past its end")
+
+> Testing shows presence, not absence
+
+Now apply that to a machine. The RISC-U machine of this book has 4 GB of memory, which is $2^{35}$ bits, so its state space has $2^{34,359,738,368}$ states, a number with more than ten billion decimal digits. Your phone, with 8 GB, has twice as many bits and a state space you could not write down in a lifetime. In a space that big, good states and bad states look alike, and a test run of a program visits exactly one path through it. The figure shows what a test suite does: it lights up a few dozen points in a field, and somewhere in the dark is the state that divides by zero. Testing shows presence, not absence. Keep this picture for the cost chapter, where we build a tool that shows absence, within a bound, and for the machines chapter, where you will hear that a system was tested extensively.
+
+![A state space: the states a test visits, and one bad state untested](../docs/figures/needle.svg "A state space: the states a test visits, and one bad state untested")
+
+The vastness is not the problem. It is the inventory. Everything a machine will ever do is somewhere in that space, and the rest of this chapter is about how the things we care about, numbers, text, images, code, are laid out in it.
 
 ### Bits
 
@@ -1499,6 +1532,10 @@ Everything you can write down is a finite sequence of symbols, and finite sequen
 
 Gödel, Escher, Bach told me a lesson that I still remember after reading the book thirty years ago: the importance of language and the joy that comes with it! And by language I mean *formal* language, not *natural* language like English or German. Understanding the nature of information requires formal language. Once you understand a few of those formal languages you will see their enormous power.
 
+> Station II: everything you can write down is countable
+
+This chapter is the second station on the axis of the book, and it is on the countable side of the wall. Every formal language in it, and every text written in any of them, is a finite sequence of symbols from a finite alphabet. Finite sequences can be listed, shortest first: every C\* program, every RISC-U binary, every grammar, and every sentence of this book shows up at some finite position on that list, so each has a number, and that number is its Gödel number. The meaning chapter takes it from there, to the things that cannot be listed. Here we learn the three notations themselves.
+
 > Formal languages have formal semantics
 
 That power is rooted in a key property: formal languages have *formal* semantics. Their meaning is mathematically precise which enables us to communicate, not just with mindless machines to make them do smart things without understanding anything, but also with each other, understanding everything with mathematical rigor. In fact, once you learn how to express your ideas in formal languages, which includes programming languages but not only, you will change the way you think.
@@ -2307,6 +2344,10 @@ This book is also seminal work and the de-facto standard introduction to the the
 The machine and its code is a mystery to many even though the basic principles governing its design are surprisingly simple and accessible to everyone. But simplicity is not the only reason why we dedicate a whole chapter to the topic. Knowing how a computer does its magic through mere yet extremely fast manipulation of enormous amounts of bits is the key to understanding virtually everything else in computer science, in particular the motivation of why things are done in certain ways and not others, hence the name of the field!
 
 For many years, there has been a trend towards ignoring the machine when teaching people how to code. After all, high-level programming languages are designed to abstract from the low-level details of the machine. However, not knowing what they abstract from has made coding the most casual engineering discipline among all fields of engineering. The result is not just low code quality almost everywhere but also high tolerance for that among users and decision makers. Electrical, mechanical, and civil engineers would never get away with what software engineers are allowed to do. This is surprising given that learning about the machine and how it connects to everything else takes a fraction of the time it takes to learn a high-level programming language!
+
+> Station II: a finite machine, and the universal one
+
+Two things from the axis of the book apply to everything in this chapter. First, the machine is finite. Its 32 registers and 4 GB of memory are $2^{35}$ bits, so it is a finite state machine with $2^{34,359,738,368}$ states, as the size chapter computed, and it is deterministic: the same state and the same input give the same next state, always. Second, the emulator we build for it in this chapter, `mipster`, is not just a convenience. It is one machine that runs every program written for the machine, itself included, and the meaning chapter names it: the universal machine that Turing described in 1936, and the reason nobody owns a calculator, a typewriter, a map, and a record player as four separate objects. When you reach the emulation section, you will be looking at a page of C\* per instruction group that is, in every sense that matters, that machine.
 
 > Von Neumann versus Harvard
 
@@ -4323,6 +4364,16 @@ Scanner and parser of a compiler are referred to as the *frontend* of the compil
 Code generation involves encoding machine instructions in the format that the target processor expects when decoding the instructions before executing them. A processor can be seen as interpreter of machine code with a frontend that scans the code generated by the backend of a compiler. We took the opportunity to demonstrate that by implementing encoding and decoding of machine instructions in selfie next to each other. In other words, the very backend of the selfie compiler is implemented next to the very frontend of `mipster`, the selfie emulator that implements a RISC-U processor for executing the code generated by the selfie compiler.
 
 There is one important question that we should consider before moving on. Why do we compile source code to machine code and then have a processor interpret the generated code? We could also design and implement source code interpreters avoiding compilers altogether, right? The answer is yes, we could do that and it has in fact been done for many programming languages such as Python, for example. In essence, both compilation and interpretation have numerous advantages and disadvantages. First of all, a source code interpreter requires a scanner and parser just like a compiler. The real difference is in the immediate execution of source code instead of generating machine code. A drawback of source code interpretation is that it is usually slower than compiling the code first and then executing the generated code instead. However, modern source code interpreters often have compilers built in that internally generate machine code on demand instead of interpreting source code. The javascript interpreter in your web browser does that enabling advanced web applications such as gmail. Awesome, right? Well, for our purposes here, it is important to cover both compilation and interpretation as the two fundamental techniques for creating the semantics of programming and machine languages. We nevertheless only discuss compilation of source code here and interpretation of machine code, as already done in the machine chapter.
+
+> Station III: a compiler defines the meaning of the language it is written in
+
+This is the chapter where the book's distinction becomes a program. Everything the compiler does divides cleanly along it. The scanner and the parser are about *syntax*: they decide whether a text is a C\* program, and a successful parse is a *proof* that it is, a derivation in the grammar, which is why a parser always terminates and always answers. The code generator is about *semantics*: it constructs the meaning of the program, as machine code, and the machine chapter's emulator then runs that meaning. The figure shows the whole of it in one line: the text on the left, what the machine does on the right, and the compiler in between, whose own source is in the left box.
+
+![A compiler defines the meaning of the language it is written in](../docs/figures/meaning.svg "A compiler defines the meaning of the language it is written in")
+
+Two theorems from the meaning chapter run through the chapter. Rice's theorem says that everything the compiler decides is about the text, and that every question about behavior it appears to answer, in a type warning, in a check for an undeclared identifier, is either a question about the text in disguise or an approximation. And Gödel's second theorem, in Thompson's engineering form, says what the fixed point at the end of the chapter, selfie compiling selfie and getting the same bytes, proves and does not prove. Watch for both.
+
+![The whole pipeline: nothing in the middle left out](../docs/figures/pipeline.svg "The whole pipeline: nothing in the middle left out")
 
 ### Literals
 
@@ -6472,6 +6523,14 @@ You may wonder if `gcc` can do the same. The answer is yes. Modern production co
 
 The key difference between the bootstrapping compiler, say, `gcc` and the bootstrapped compiler, here `starc` is that by default `gcc` generates code for the machine on which `gcc` runs whereas `starc` generates RISC-U machine code. On my machine, for example, `gcc` generates ARM machine code which means that, in this case, the executable `selfie`, which includes `starc`, is machine code that runs on an ARM processor. Therefore, `starc` is in this case a *cross-compiler*, that is, a compiler that generates code for a machine architecture that is different from the machine architecture on which the compiler runs. In particular, a cross-compiler generates code that does not run on the processor on which the cross-compiler runs. Cross-compilers typically target machines that are not meant for code development such as smartphones and *embedded systems* in general such as computers in cars and planes. The fact that `starc` is a cross-compiler on my machine and probably yours as well is, however, not intended but a mere consequence of `starc` generating RISC-U machine code for simplicity and educational purposes. Generating ARM machine code, for example, would be significantly more involved.
 
+> Station III: the operating system that must isolate itself
+
+This chapter is the meaning chapter's second theorem run as engineering, and it helps to know the shape of the argument before the details. There are two ways to build an operating system, and the figure draws both. By *emulation*, the operating system interprets its guest: the guest's code is data being read, so isolation comes for free and there is no self-reference anywhere. By *virtualization*, the operating system context switches its guest onto the very processor the kernel itself runs on, and that buys performance, a factor of twelve on the workload below, at a price. The kernel must now be isolated from the things whose isolation it provides. It needs what it provides, which is the loop the self-reference section of this chapter is about, and which the meaning chapter recognized as Gödel's: no system can be the source of its own trust.
+
+![Two ways to build the same operating system](../docs/figures/emuvirt.svg "Two ways to build the same operating system")
+
+The claim that carries the chapter is that the two designs are *semantically equivalent*. Selfie can demonstrate it rather than assert it: the same guest executes exactly the same 86,380 instructions whether it is hosted by emulation or by virtualization, and only the bill for the host differs. Virtualization is needed only for performance, and it buys that performance by introducing self-reference. In my experience, that one sentence is the thing whose absence stops students from ever understanding what a kernel is, because they are shown only the virtualized design, with the loop tangled into paging and scheduling and never named. So it is named here, first.
+
 > Emulation
 
 How do we run code generated by a cross-compiler like `starc`? After all, we are unlikely to have access to an actual RISC-V machine that can execute RISC-U machine code. Remember that RISC-U is a strict subset of RISC-V. Well, `selfie` not only implements `starc` but also an *emulator* of a RISC-U machine called `mipster` that can execute any RISC-U machine code such as the code generated by `starc` for `selfie.c`:
@@ -6641,6 +6700,20 @@ which generates a file called `selfie.h` which contains all of `selfie.c` with i
 The code in `encoding.c` uses procedures for printing as implemented in selfie. Those procedures are part of the `libcstar` library in selfie. However, the code could use any other procedure, and global variable, defined in `selfie.c` as well. The `libcstar` library in particular offers procedures such as `atoi` and `itoa` and many others that are also provided by standard C libraries such as the widely used `stdlib` library.
 
 Hard to believe but we have indeed reached the point where everything about programming in C\* and the selfie compiler in particular that comes to our mind has been said. It is finally time to reflect again on what we have achieved and then prepare for the final chapter.
+
+> Station III: the fixed point, and its limit
+
+You have now seen every piece of the compiler, and you have seen that the compiler is written in the language it compiles. So run the loop that the selfie chapter promised. Compile selfie with selfie, then run the result on `mipster` to compile selfie again, and compare the two binaries:
+
+```bash
+make self-self-check
+```
+
+They are identical, 188,392 bytes each, and the figure shows the three stages: `clang` producing a first selfie, that selfie producing `selfie1.m`, and `selfie1.m` producing `selfie2.m`. This is the *fixed point*, and it is the single most beautiful thing selfie does.
+
+![Self-compilation: the same answer twice](../docs/figures/bootstrap.svg "Self-compilation: the same answer twice")
+
+Now say exactly what it proves, because the meaning chapter told you. It proves that selfie agrees with itself. A compiler that consistently mistranslated one construct would reproduce the mistake perfectly and pass the check, and Thompson's compiler that inserts a back door into every compiler it compiles passes it too. The outside check that Gödel's second theorem demands is a second, independent compiler, which is what `clang` is at the first stage, and the tools of the cost chapter, which turn the compiled code into a formula and ask a solver about it. The fixed point is real. It is also exactly as limited as the theorem says, and it works.
 
 ### Apps 2
 
@@ -7339,6 +7412,10 @@ There is something important to highlight here before looking into resolving the
 The intrinsic self-reference in virtualization of physical machines manifests in a *bootstrapping problem*. A virtual machine monitor, and similarly operating system kernel, creates the ability to run multiple virtual machines on a single physical machine spatially and temporally isolated from each other. However, a VMM also needs to be isolated from the virtual machines it manages by essentially running the VMM in a virtual machine itself. That self-reference and the difficulty of bootstrapping it explains why virtualization and ultimately all universal computing systems are hard to understand.
 
 Hosting code in virtual machines essentially requires handling exceptions thrown by the hosted code during execution and a VMM is in charge of exactly that. But who is in charge of the exceptions thrown by the code that implements the VMM? In real systems, the answer is that the VMM code is carefully designed not to throw any exceptions, meaning that the VMM code logically runs in a virtual machine but avoids using the abstractions provided by that virtual machine. In essence, that requires the VMM to do all the work that exception handlers do before any reason for throwing exceptions arises. For example, the VMM should not cause any page faults but still be spatially isolated. This can be done by turning off the MMU while running VMM code and instead have the VMM code run in the physical address space of the machine but only by carefully maintaining spatial isolation. Also, all I/O functionality available in virtual machines needs to be implemented in the VMM and connected to real hardware. The VMM may use I/O functionality but not by going through exceptions. Last but not least, a VMM needs to be able to context switch itself to the virtual machines it hosts and back, which typically involves carefully crafted machine code.
+
+The figure shows the loop in its simplest form: the kernel provides isolation, and requires it. The meaning chapter has a name for the shape. A system that certifies itself is exactly what Gödel's second theorem forbids, and the engineering answer here is the same as everywhere else in this book: the certification comes from outside the loop, from a small piece of code that is isolated by construction rather than by the mechanism it implements, written and checked by hand, and kept as small as possible. That piece is the trusted computing base, and keeping it small is the microkernel programme.
+
+![Virtualization is emulation plus self-reference](../docs/figures/selfref.svg "Virtualization is emulation plus self-reference")
 
 > Trusted code base and microkernels
 
