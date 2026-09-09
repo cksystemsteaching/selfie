@@ -19,11 +19,9 @@ The programming language C\* in which selfie is written is a tiny subset of the 
 **Part I: Finite**
 
 2. [Selfie](#selfie)
-
    1. [Recommended Readings 1](#recommended-readings-1)
 
 3. [Size](#size)
-
    1. [Bits](#bits)
    2. [Numbers](#numbers)
    3. [Boolean Algebra](#boolean-algebra)
@@ -46,14 +44,12 @@ The programming language C\* in which selfie is written is a tiny subset of the 
 **Part II: Countable**
 
 4. [Notation](#notation)
-
    1. [Programming Language C\*](#programming-language-c)
    2. [RISC-U Machine Code](#risc-u-machine-code)
    3. [EBNF Grammar](#ebnf-grammar)
    4. [Recommended Readings 3](#recommended-readings-3)
 
 5. [Machine](#machine)
-
    1. [Model](#model)
    2. [Processor](#processor)
    3. [Memory](#memory)
@@ -67,7 +63,6 @@ The programming language C\* in which selfie is written is a tiny subset of the 
 **Part III: Uncountable**
 
 6. [Meaning](#meaning)
-
    1. [Counting Without Numbers](#counting-without-numbers)
    2. [What We Want to Talk About Is Not](#what-we-want-to-talk-about-is-not)
    3. [The Result Everything Hangs On](#the-result-everything-hangs-on)
@@ -80,7 +75,6 @@ The programming language C\* in which selfie is written is a tiny subset of the 
    10. [Recommended Readings 5](#recommended-readings-5)
 
 7. [Programming](#programming)
-
    1. [Literals](#literals)
    2. [Variables](#variables)
    3. [Expressions](#expressions)
@@ -95,73 +89,102 @@ The programming language C\* in which selfie is written is a tiny subset of the 
    12. [Recommended Readings 6](#recommended-readings-6)
 
 8. [Computing](#computing)
-
    1. [Virtual Machines](#virtual-machines)
    2. [Virtual Memory](#virtual-memory)
    3. [Time-Sharing](#time-sharing)
    4. [Self-Reference](#self-reference)
    5. [Concurrency](#concurrency)
    6. [Runtime Systems](#runtime-systems)
-   7. [Life 4](#life-4)
-   8. [Recommended Readings 7](#recommended-readings-7)
+   7. [Recommended Readings 7](#recommended-readings-7)
 
 **Part IV: Cost**
 
 9. [Cost](#cost)
+   1. [Decidable Is Not Doable](#decidable-is-not-doable)
+   2. [Hard to Find, Easy to Check](#hard-to-find-easy-to-check)
+   3. [Propositional Logic and SAT](#propositional-logic-and-sat)
+   4. [How Modern SAT Solvers Work](#how-modern-sat-solvers-work)
+   5. [From Machine Words to Formulas](#from-machine-words-to-formulas)
+   6. [Models of Machines](#models-of-machines)
+   7. [Every Step That Forgets Costs Energy](#every-step-that-forgets-costs-energy)
+   8. [A Language Without a Metric Is Decoration](#a-language-without-a-metric-is-decoration)
+   9. [Recommended Readings 8](#recommended-readings-8)
 
 **Part V: Machines**
 
 10. [Machines](#machines)
+   1. [What a Large Language Model Is](#what-a-large-language-model-is)
+   2. [A Hallucination Is a Proof-Shaped Object That Is Not True](#a-hallucination-is-a-proof-shaped-object-that-is-not-true)
+   3. [World Models](#world-models)
+   4. [The Loops Are Already Closed](#the-loops-are-already-closed)
+   5. [The Gate](#the-gate)
+   6. [Generation Got Cheap, Verification Did Not](#generation-got-cheap-verification-did-not)
+   7. [Recommended Readings 9](#recommended-readings-9)
 
 **Part VI: Intelligence**
 
 11. [Intelligence](#intelligence)
+   1. [Everywhere](#everywhere)
+   2. [The Question, Replaced](#the-question-replaced)
+   3. [So, What Is Intelligence?](#so-what-is-intelligence)
+   4. [Life 4](#life-4)
+   5. [Recommended Readings 10](#recommended-readings-10)
 
 12. [Glossary](#glossary)
 
 ## Introduction
 
-Computer science is a mystery to so many and yet more and more people use computers every day in one form or another. There are increasingly many people with all kinds of backgrounds other than computer science that may even code every day in one way or another. At schools, colleges, universities, and companies around the world there is hardly anyone left who is not confronted with the machine and its code. But even for people just using the machine in their hands, on their desks, and in the cloud there is often that unsatisfactory experience of not understanding what is really going on. This book will empower you to turn your smartphone, tablet, and laptop into what they are supposed to be: the most fascinating and powerful tools ever created rather than the seemingly unavoidable nightmare of so many people, amateurs and professionals alike.
+Computer science is a mystery to so many and yet more and more people use computers every day in one form or another. There are increasingly many people with all kinds of backgrounds other than computer science that may even code every day in one way or another. At schools, colleges, universities, and companies around the world there is hardly anyone left who is not confronted with the machine and its code. And now the machine talks back. But even for people just using the machine in their hands, on their desks, and in the cloud, and chatting with it, there is often that unsatisfactory experience of not understanding what is really going on. This book will empower you to turn your smartphone, tablet, and laptop into what they are supposed to be: the most fascinating and powerful tools ever created rather than the seemingly unavoidable nightmare of so many people, amateurs and professionals alike.
 
-We would like to emphasize that the book is not about how to use any particular device such as a smartphone or an office app such as Word or Excel. There are plenty of books about that. Also, the book is not just about developing code. The goal here is more ambitious than that and you will be challenged accordingly. The idea is to explain the absolute basics of computer science in order to develop a fundamental understanding of what software is and how it works in general on any hardware. Developing code is just one part of that. In fact, understanding the basics enables you to learn *any* programming language you like, not just the one we use here, ultimately allowing you to make informed decisions about computers and solve whatever computer problem comes along. The key challenge in doing so is to have you understand that everything can in principle be automated by a computer but only by breaking down the solution of a problem into the tiniest steps that a mindless machine can follow. Laying out even the most obvious parts of a solution is in fact what computer scientists do. Seeing that will make you sharpen your mind considerably and even change the way you think.
+> The question
+
+The title of this book is a question, and I am going to answer it on the first page, so that you know where we are going, and then spend the rest of the book earning the answer. Intelligence is developing new formal languages, or at least new properties in existing ones, which requires finding and understanding promising *unproven* truth. New languages and properties let us ask new questions about that truth, and then answer them in proofs. Forever. If that sounds abstract, it is, for now. By the end of the book every word in it will have a precise meaning and a runnable example, and the question everyone actually asks, whether the machines that talk are intelligent, will have been replaced by better questions that you can answer yourself.
+
+The purpose of the book, in one sentence, is a deep understanding of the basic principles of computer science, deep enough to position generative AI, and whatever comes next, properly. The principles were true before this technology arrived and will still be true after whatever replaces it. That is why they are worth a book, and why the book is not about any particular machine, product, or year.
+
+> The axis
+
+The whole argument runs along one line, and it helps to see it before we start. On the left is the small: a bit, one distinction, this rather than that. Then the vast: a few dozen bytes have more states than the universe has atoms, and your phone has incomparably more than that, so no test of a machine will ever have seen more than a vanishing fraction of what it can do. Then a wall, and past the wall, endlessness comes in two sizes. Everything you can write down, every program, proof, sentence, and model, is countable: it can be listed. What you mean by it, what a program does, what a sentence says, whether something is true, is not. There are incomparably more meanings than notations, and that single fact, proved by Georg Cantor in 1891 with an argument three lines long, is behind everything in this book: why there are truths with no proof, why no system can certify itself, why no program can decide what programs do, why some decidable questions are unaffordable anyway, and why a machine trained on notation alone can produce a perfect-looking answer that is not true. The distinction between *notation* and *meaning*, between *syntax* and *semantics*, between *proof* and *truth*, is the microscope of this book, and computer science is where it was ground most sharply, because a machine does exactly what the marks say and nothing else.
+
+We would like to emphasize that the book is not about how to use any particular device such as a smartphone or an office app such as Word or Excel, and it is not about how to prompt a chat bot. There are plenty of books about that. Also, the book is not just about developing code. The goal here is more ambitious than that and you will be challenged accordingly. The idea is to explain the absolute basics of computer science in order to develop a fundamental understanding of what software is and how it works in general on any hardware, and of what it can and cannot do, in principle and in practice. Developing code is just one part of that. In fact, understanding the basics enables you to learn *any* programming language you like, not just the one we use here, ultimately allowing you to make informed decisions about computers and solve whatever computer problem comes along. The key challenge in doing so is to have you understand that everything can in principle be automated by a computer but only by breaking down the solution of a problem into the tiniest steps that a mindless machine can follow. Laying out even the most obvious parts of a solution is in fact what computer scientists do. Seeing that will make you sharpen your mind considerably and even change the way you think.
 
 Think of this book as an introduction to *elementary computer science* similar to *elementary arithmetic* taught in primary and secondary school. The vision is to have you look at what you know about numbers, geometry, and algebra from the perspective of a mindless machine. If you know how to add two numbers, how to measure the distance between two points, and what a variable and an equation is, you have all what it takes to understand how a computer works and what software is. Developing a curriculum of elementary computer science suitable for upper secondary school and above is nevertheless still work in progress and this book is just one attempt to do so. It will take a lot more time to make elementary computer science as developed and properly taught as elementary arithmetic but it will eventually happen.
 
 While a book about elementary computer science may sound appealing it actually requires commitment to understand the material even though we tried very hard to simplify everything as much as possible. The reason is that computers and software are so expressive that it is unlikely that any other computational machine in the future will be more expressive. Anything that can be computed can be computed now, provided you have enough time, space (as in memory), and energy. That power comes with a level of complexity that is unavoidable but a lot of fun to explore. Computer science is challenging like other natural sciences. In order to study and understand it you cannot just look at software or hardware and get it. No, its true nature is too complex for that. You need tools to see what is going on, like a microscope, except that here the microscope is a particular way to think!
 
+> Selfie
+
 This book is based on the [Selfie Project](https://selfie.cs.uni-salzburg.at), an educational software system that has grown out of many years of teaching undergraduate and graduate classes in computer science. The key observation is that understanding computer science and software in particular can only be achieved by understanding how software translates all the way down to the machine and then does whatever we want it to do. Selfie shows how this works which may sound difficult but can actually be done in a systematic and well-founded fashion with a strong focus on basic principles. Understanding selfie gives you the microscope you need to understand elementary computer science.
 
 Selfie is *self-referential* software that translates software including *itself* to code that can be *run* or, as computer scientists say, *executed* by a computer. Selfie can even mimic the very computer that can execute the code of selfie. This means selfie cannot only translate itself but also execute its own translation to translate itself again and so on. By now your mind might be spinning but you at least know why selfie is called selfie.
 
-Why is the *self* so important? Because it shows how meaning is created systematically on a machine. Selfie is software written in some programming language. However, selfie also defines the meaning of that language which implies that selfie defines its own meaning. This is very similar to an English dictionary written in English. The only difference is that selfie defines meaning *formally* in such a way that a machine can run selfie and thus any software written in the language in which selfie is written. Understanding that will completely change what you think of computer science and possibly many other things in life.
+Why is the *self* so important? Because it shows how meaning is created systematically on a machine. Selfie is software written in some programming language. However, selfie also defines the meaning of that language which implies that selfie defines its own meaning. This is very similar to an English dictionary written in English. The only difference is that selfie defines meaning *formally* in such a way that a machine can run selfie and thus any software written in the language in which selfie is written. And here is the twist that makes selfie the right specimen for the question in the title. Self-reference is exactly the instrument with which Cantor, Gödel, and Turing found the limits of notation. A system that can describe itself can be turned on itself, and when it is, it shows you precisely what it cannot do. Selfie is those limits, in a form you can run in a terminal. Understanding that will completely change what you think of computer science and possibly many other things in life.
 
-After introducing selfie, we provide a preview of the kind of *language* we use later in the book. The bad news is that there are three different, in fact *formal languages* that you need to learn. The good news is that all three are widely used in practice and yet so simple that it is difficult to make them any simpler without loosing essential features or making them irrelevant in the real world. The first language is the *programming language* in which selfie is written. It is a tiny subset of the programming language C. The second language is the *machine language* in which the code that selfie translates to and executes is written. It is a tiny subset of 64-bit RISC-V. The third language is a formal language or *grammar* called EBNF for describing how code is supposed to look like. EBNF is incredibly cool because it can even describe how EBNF itself is supposed to look like. This is a beautiful example of self-reference that you can actually understand even without any further background in computer science.
+> The route
 
-At this point you should be ready to do a bit of groundwork. We begin by emphasizing the fact that everything happening on a computer, phone, or tablet is encoded in bits, and nothing else. The only reason why these machines are so powerful and in fact computationally universal is the enormous amount of bits they can store and the speed and energy efficiency at which they can manipulate these bits using nothing but elementary arithmetic and logic. This insight is key to understanding information technology and therefore emphasized throughout the book. We present examples of how every day *information* such as numbers, characters, text, files, images, video, audio, and even code and apps are all encoded in just bits. We also show how those bits are later decoded back to their original form making them accessible to humans again.
+The book has six parts, and they walk the axis from left to right. Part I is about the *finite*. After introducing selfie, we emphasize the fact that everything happening on a computer, phone, or tablet is encoded in bits, and nothing else. We present examples of how everyday *information* such as numbers, characters, text, files, images, video, audio, and even code and apps are all encoded in just bits, and we practice reading the sizes involved, because every later claim in the book is a claim about how big something is.
 
-The next topic is a simple model of a *machine* that represents the core of virtually any general-purpose computing device available today. The model is in fact a simplified version of a fully realistic 64-bit RISC-V machine. We developed the model during the course of teaching undergraduate students for two decades. The goal is to enable you to develop an intuition of how computers work on the level of bits, which may at first be quite tedious but is nevertheless intellectually straightforward and worth it. Once you get the machine everything else falls into place! And you might even be surprised how fundamentally simple the machine is. Most of the complexity of modern computing devices is due to performance optimizations which we deliberately leave out to keep things accessible. Instead we focus on developing an early intuition on what code and data is, what the difference is, and the fact that both are anyway encoded in just bits. This chapter also includes a simple model of digital memory and exposes you to fundamental properties that have direct counterparts in the real world, as it is often the case with computer science, such as where to store information and how to find it again later.
+Part II is about the *countable*, that is, about notation. There are three different, in fact *formal languages* that you need to learn. The good news is that all three are widely used in practice and yet so simple that it is difficult to make them any simpler without losing essential features. The first is the *programming language* in which selfie is written, a tiny subset of C. The second is the *machine language* in which the code that selfie translates to and executes is written, a tiny subset of 64-bit RISC-V. The third is a formal language or *grammar* called EBNF for describing how code is supposed to look like, which can even describe how EBNF itself is supposed to look like. Then comes a simple model of a *machine* that represents the core of virtually any general-purpose computing device available today, developed during two decades of teaching, and the emulator in selfie that makes it run. Once you get the machine everything else falls into place! And you might even be surprised how fundamentally simple the machine is.
 
-With the machine model in mind, you will appreciate the fact that developing software directly on the machine is possible but too cumbersome and errorprone. It is therefore time to study the notion of *programming* a computer in high-level programming languages. Similar to the machine model, we introduce our simple yet realistic programming language that we also developed during years of teaching. The idea is to walk you through each element of the language, explain what its purpose is and what it means intuitively, and then show how it translates to machine code. The challenge is to maintain two different perspectives in your mind simultaneously: the human perspective, that is, your understanding of what a language element means, and the machine's perspective, that is, what the machine actually makes of each element.
+Part III is about the *uncountable*, that is, about meaning, and it is the heart of the book. Its first chapter proves that there are incomparably more meanings than notations, and follows that fact to Gödel's truths without proof, to Turing's machine that can be any machine and the question no machine can answer, and to Rice's theorem that every interesting question about what a program does is undecidable. Then, knowing exactly what cannot be done, we build the two pieces of software that construct meaning on a machine anyway. *Programming* walks you through each element of our programming language, explains what it means intuitively, shows how it translates to machine code, and shows how the translation itself is implemented in that very language. *Computing* shows how software can create any computational platform, including the one it runs on, through *virtualization*, which is the concept behind cloud computing and another form of self-reference that is fundamental in computer science, and the one that makes operating systems hard.
 
-Here we depart from the mainstream in programming language education which typically ignores the machine's perspective, assuming that it is unnecessary and too difficult and time-consuming to understand it. While this may be true for full-fledged programming languages, we leverage the simplicity of our language and take you even further by demonstrating how the translation itself is implemented in our language. Formalizing the process of translation shows you, probably for the first time, what is actually going on when reading and understanding a non-trivial formalism. Here there are plenty of opportunities to point out fundamental questions such as how long and how much memory and energy it takes to solve a problem and whether a problem can be solved at all. The latter, for example, explains why computers sometime become unresponsive for unpredictable amounts of time driving their users mad.
+Part IV is about *cost*. Even a decidable question may have an answer you will never receive, and this part explains which questions those are, why the hard ones are all the same question in disguise, how modern solvers answer many of them anyway, and what it costs in energy, by a law of physics. It is also where the book does *formal methods* at the undergraduate level: a tool built on selfie turns a program into a logical formula, a solver finds the input that makes the program fail, and the approximation that Rice's theorem forces is visible and chosen.
 
-Even the most convenient high-level programming languages are by far not enough to enable software developers build the most complex systems ever created by humans. Like all engineers they need *tools* to do it. Software development tools are interesting because their design explains a lot about what software is. In fact, the tools define the semantics of a programming language, that is, what a program written in a programming language actually means. Thus exposing you to the design of the tools is key to showing how meaning is given to code, at least in principle. There are fascinating analogies in the real world such as the self-referential paradox that an English dictionary defines the meaning of English using English. The same is true with software development tools. They are usually written in the programming language to which they give meaning. The difference to English though is that there is no apparent paradox here. Showing how that works is our goal. You will then start asking questions about computers you would have never been able to ask before. We envision the outcome to be new insights into what is possible and what is not, enabling you to develop more confidence when it comes to assessing new but often overpromised technologies such as artificial intelligence and self-driving cars.
+Part V is about the *machines* that talk. It describes what a large language model mechanically is, in the terms of the earlier parts, and reads each part against it: the size of its state space, the notation it is trained on, the meaning it cannot reach, and the cost it pays. Nothing in it is a verdict. Everything in it is an instance of a theorem.
 
-Once you have seen the basic principles of encoding *information* in bits, running actual code on a simple yet representative *machine*, and *programming* that machine in a simple yet realistic programming language, we are ready to embark on the probably single most important achievement of computer science so far: *computing* as commodity independent of any particular hardware and available to anyone with a network connection. In other words, computing has become a utility similar to electricity and water. Cloud computing and, in the near future, edge computing creates enormous potential, just like the reliable availability of power and water. There is no need anymore to operate your own hardware other than client machines such as your smartphone. As long as you have a network connection, any form of computational platform is available to you, typically without being aware of what is involved, let alone understanding how it works. The key enabling technology is *virtualization* which is a concept whose understanding is elusive even to many computer science students. However, we developed a way to teach virtualization in simple terms accessible to anyone based on a combination of our machine model, programming language, and tool set. The idea is to demonstrate how software can create any computational platform, including the one it runs on, very efficiently. This is another form of self-reference that is fundamental in computer science. Seeing that enables you to grasp the full extent of the universality of computing.
+Part VI answers the question in the title, and shows that none of the argument was about computers.
 
-You might ask why it makes any difference if you understand computing or not. After all, most people know how to use smartphones and drive cars without understanding how they work. The reason why it makes in fact a big difference is that computing is universal in the sense that any computer can in principle do what any other computer can do, including computers that do not exist yet. Computers are universal machines that are likely able to compute, already now, everything that can ever be computed, given enough time, space, and energy. Hence knowing at least the basic principles of computing impacts virtually everything you do. Many people might say they were never good in, say, math but can still function properly in modern society. However, most people know that a million dollars is quite a bit more than a thousand dollars yet without being aware that their math education, as painful as it might have been, told them that. The computer science education provided here might be even more painful because we are only at the beginning of figuring out what should be taught and how, and what is better be left out. We all just need to try, probably fail to some extent, but then learn from our mistakes and improve.
+> Prerequisites
 
-The recent advent of chat bots and other tools based on generative AI is often seen as a challenge to higher education and modern society in general. Some even claim the end of the world as we know it is near. Yet the common narrative about the seemingly unlimited potential of generative AI is just another example of how little the nature of information is understood, or ignored for whatever reason, economical or otherwise. How can anyone remain motivated to study something instrinsically complex if machines are about to take over? Well, generative AI is no more intelligent than the user that interacts with it. It is a mirror of your own intelligence, just more polished than others, which is why so many are fascinated by it, often not realizing that they are just fascinated by themselves. If you ask the wrong question you get nothing. If you ask the right question you might get something. However, knowing what to ask is not easy. It requires not just knowledge of a subject but true understanding through real training and that is exactly what we are trying to do here.
-
-This book presents material adequate for senior high-school and freshman/sophomore college students and may be used as textbook by teachers and professors with a background in computer science. The prerequisites for following the material are an understanding of elementary arithmetic (addition, subtraction, multiplication, and division of whole numbers), elementary geometry (one- and two-dimensional shapes), and elementary algebra (variables, algebraic equations). The prerequisites are anyway revisited in the book.
+This book presents material adequate for senior high-school and freshman/sophomore college students and may be used as textbook by teachers and professors with a background in computer science. It is the textbook of a first-semester introduction to computer science, and the reference for the compiler and systems classes that follow it. The prerequisites for following the material are an understanding of elementary arithmetic (addition, subtraction, multiplication, and division of whole numbers), elementary geometry (one- and two-dimensional shapes), and elementary algebra (variables, algebraic equations). The prerequisites are anyway revisited in the book.
 
 > History and future of computing
 
-Computer science is a young field, around one hundred years old. The theoretical foundations were developed first, in the 1930s, long before digital computers became available. Some work that also influenced mathematics was done even earlier, all the way back in the 1870s. Digital computers and networks, programming languages, operating systems, and software development tools all started showing up, first in very early form in the 1950s, and then in increasingly advanced variations in the following decades. The latest technology, in particular the Internet, smartphones, and cloud computing have only been around in widely accessible form since the turn of the century. In this book, we focus on modern versions of machine architecture, programming language, operating systems and software development technology that has originally been developed in the 1960s and 1970s. The basic principles behind that technology have not changed since then. Moreover, the technology we focus on here is still widely used. At the end of the book, we take all we learned and go back in time to the 1930s and even the 1870s, closing the loop from modern computer science to the origins of computing, and from there to the future.
+Computer science is a young field, around one hundred years old. The theoretical foundations were developed first, in the 1930s, long before digital computers became available. Some work that also influenced mathematics was done even earlier, all the way back in the 1870s. Digital computers and networks, programming languages, operating systems, and software development tools all started showing up, first in very early form in the 1950s, and then in increasingly advanced variations in the following decades. The latest technology, in particular the Internet, smartphones, cloud computing, and now generative AI, has only been around in widely accessible form since the turn of the century. In this book, we focus on modern versions of machine architecture, programming language, operating systems, and software development technology that has originally been developed in the 1960s and 1970s. The basic principles behind that technology have not changed since then, and the technology is still widely used. The first edition of this book went back in time to the 1930s and the 1870s only at the very end. This edition starts there, in the third part, and keeps returning, because those results turned out to be the ones that say the most about the newest technology.
 
 > To boldly go where no one has gone before!
 
-Before we begin, let me tell you how I stayed motivated when writing this book which was probably as hard for me as it is for you to read it all the way to the end. I picked some ideal that I wanted to be. Like many teenage boys I wanted to be an astronaut when I was young. Who do you want to be? Take your pick. When you are done reading all the way to the end, just exchange your pick with the ideal of a person that actually finished this book. Making it through the selfie, language, and information chapters is going to be increasingly challenging but still relatively easy compared to what comes after that. It is like doing the groundwork necessary to become, say, a candidate for astronaut training. The machine chapter after that is what probably happens when you start your training. It is not what you expected and it is brutal. In your mind, you will curse your coach. All those technical details that do not seem to get you anywhere. Why do I have to do this anyway? But then you graduate and they put you on a moon rocket. This is the programming chapter. I hope you are smiling by now. A good sense of humor is the only way. The programming chapter is not easy to read but is less painful than the machine chapter and a lot more rewarding yet you cannot understand it without making it through the machine chapter first. When you are done with the programming chapter you made it to the moon. This is the reward! Then just rest and reflect on what you have achieved. But then the good news comes in and they put you on another rocket to the stars. This is the computing chapter. Reading and actually understanding that chapter is what you have been waiting for all your life but could not get there without first going to the moon. It takes you to a level that you could not possibly have imagined. It will give you *your very own ideas* that no one else had before. To boldly go where no one has gone before!
+Before we begin, let me tell you how I stayed motivated when writing this book which was probably as hard for me as it is for you to read it all the way to the end. I picked some ideal that I wanted to be. Like many teenage boys I wanted to be an astronaut when I was young. Who do you want to be? Take your pick. When you are done reading all the way to the end, just exchange your pick with the ideal of a person that actually finished this book. Making it through the first two parts, selfie, size, and notation, is going to be increasingly challenging but still relatively easy compared to what comes after that. It is like doing the groundwork necessary to become, say, a candidate for astronaut training. The machine chapter at the end of Part II is what probably happens when you start your training. It is not what you expected and it is brutal. In your mind, you will curse your coach. All those technical details that do not seem to get you anywhere. Why do I have to do this anyway? Then, in the meaning chapter, they show you the stars for the first time, and tell you which of them can never be reached, and why that is the good news. Then you graduate and they put you on a moon rocket. This is the programming chapter. I hope you are smiling by now. A good sense of humor is the only way. The programming chapter is not easy to read but is less painful than the machine chapter and a lot more rewarding yet you cannot understand it without making it through the machine chapter first. When you are done with the programming chapter you made it to the moon. This is the reward! Then just rest and reflect on what you have achieved. But then the good news comes in and they put you on another rocket to the stars. This is the computing chapter. Reading and actually understanding that chapter is what you have been waiting for all your life but could not get there without first going to the moon. It takes you to a level that you could not possibly have imagined. The last three parts are the journey home, with the stars behind you: what the trip cost, what the new machines can and cannot do, and what all of it means. It will give you *your very own ideas* that no one else had before. To boldly go where no one has gone before!
 
 ## Part I: Finite
 
@@ -7959,18 +7982,6 @@ Using atomic instructions for fine-grained concurrency in non-blocking and typic
 
 We have reached the end of the engineering side of the computing chapter before going into a more fundamental discussion on the universality of computing. By now, the considerable complexity of modern computing systems should have become apparent. Virtualization as well as concurrency and memory management received most of our attention. There is, of course, also considerable complexity in modern I/O management which we nevertheless ignored. The important message is that new hardware is always going to drive innovation in software, so there is always something exciting to do. But before concluding there is one more thing!
 
-### Life 4
-
-Hard to believe but we made it to the very end of this book. Understanding the universality of computing, its challenges and limits, and what it takes to make universal computing available to everyone was our high-level goal. Formalisms, compilers, emulators, operating systems, and virtual machine monitors received most of our attention, as fundamental building blocks of modern computing. We kept Turing machines out of sight until the very end, so that we can appreciate their value in deciphering what digital computing really is. Self-reference, as manifested in our selfie system, has been our guiding principle in all of that, ultimately motivated by the fact that self-reference lies at the heart of the limits but also potential of universal computing, and even mathematical reasoning in general. Let us summarize what we have seen:
-
-1. Information: everything is information, and all information can be encoded in bits. While many people know that somehow, it still makes a big difference to see how this works for important everyday artifacts such as numbers, characters, text, files, images, video, and, of course, code. Seeing that everything stored and processed by a computer is encoded in bits, and nothing else, and in particular understanding that those bits can mean whatever we want them to mean is the most important lesson here. The state of a computer is essentially a giant number that the machine manipulates into a seemingly endless sequence of numbers as the machine executes code. The numbers we see during computation can mean whatever we want. From now on, you may want to keep that in the back of your head whenever you look at a screen. Whatever you see there could come from anywhere and mean anything.
-
-2. Formalisms: computer science is all about models and formalisms. The term programming language is an unfortunate misnomer. Programming languages are formalisms with precise syntax and executable semantics that are quite different from natural languages. However, programming languages can be seen as an act of evolution of natural languages into formalisms that both humans and machines understand, the latter through the fact that programming languages are executable. There are also many other formalisms such as EBNF, for example, that enable us to talk about structure in information with mathematical precision yet without necessarily being executable. Seeing how syntax and in particular semantics of such formalisms is created and how the often intrinsic self-referentiality is resolved is key to understanding elementary computer science. Compilers and interpreters play an important role in creating meaning on a mindless machine. Modern, often highly complex software systems would not exist without them. Again, from now on, look at any new formalism and remind yourself that its meaning may not be what you think it is, but then go in there and find out what its meaning actually is.
-
-3. Computing: the universality of computing and the affordable and instant availability of universal machines is what drives computer science. There seems to be nothing those machines cannot do, despite the fundamental limits and considerable complexity of computing. Generative AI and self-driving cars are only the latest examples. The reason why we claim that there are no limits is because undecidability, and the inherent complexity involved in many computational yet decidable problems, are in fact positive rather than negative results of theoretical computer science. Whenever students come up to me and say that the problems I ask them to solve are extremely difficult or even impossible to solve, I respond that this is an important part of what makes them interesting. Undecidability of many problems is a fact but that does not mean that we cannot get arbitrarily close to approximative solutions that are better than the state of the art. Fundamental impossibility and inherent complexity are the driving forces of computer science and science in general guaranteeing unlimited potential for innovation!
-
-We conclude the book with a brief outlook. On software side, artificial intelligence receives most of the attention right now. On hardware side, it is probably quantum computing. The goals are always the same: smarter software and faster hardware. The hype is considerable, as so often in computer science, with the demand for breakthroughs seemingly having no limits, all the while modern society has not even learned to deal with the previous generation of technology. I have seen those hypes come and go, expectations and anxiety up and down, leaving knowledge of elementary computer science as the only reliable source of advice in a world of universal computing. However, as the hype fades, progress is usually made, sometimes in unforeseen ways. Generative AI is likely going to have considerable impact on science in general and modern society, but probably just as another tool, running on enormous amounts of virtualized machines. The potential of quantum computing appears to be even more speculative at this point. The challenges involved in scaling up quantum computers to sizes relevant in practice are enormous. One thing is for sure, the future of computer science has no limits in innovation, as shown a hundred years ago!
-
 ### Recommended Readings 7
 
 > Operating Systems: Principles and Practice by Thomas Anderson and Michael Dahlin
@@ -7980,5 +7991,504 @@ This is a standard textbook on operating systems that provides in-depth treatmen
 > Computer Networking: A Top-Down Approach by James Kurose
 
 We have not provided any details on computer networking. However, if you are curious about how the technology behind the Internet works, this book is for you.
+
+## Part IV: Cost
+
+Parts II and III were about the possible: what can be written down, what can be computed, what can be decided. This part is about the affordable, and for practical purposes the boundary between impossible and unaffordable hardly matters. A question with a guaranteed answer that arrives after the Sun has burnt out is, for you, a question with no answer. This is also where physics enters the book, because computation is not abstract. Every step of it happens somewhere, takes time, occupies space, and, whenever it forgets, costs energy. And it is where the tools around selfie enter, the ones that turn a program into a logical formula and hand it to a solver, because they are the place where the theory of this part meets your laptop, before the coffee gets cold.
+
+## Cost
+
+I have spent most of my career on the cost side of computing, on how long things take and how much memory and energy they need, and I have found it to be the most honest part of the subject. Decidability tells you whether an answer exists. Cost tells you whether you will ever see it. Students who have just understood the halting problem tend to believe that everything decidable is therefore fine. This chapter is here to take that belief away, gently, and to replace it with something better: an understanding of exactly which decidable questions are hard, why they are hard, why we can often answer them anyway, and what it costs in the currency that cannot be negotiated, joules.
+
+The chapter also does something the rest of the book has been promising since the meaning chapter. Rice's theorem said that every interesting question about what a program does is undecidable, and that every practical tool is therefore an approximation with a stated bound. Here we build such a tool, or rather, we run one that has already been built on top of selfie, and we watch it turn a RISC-V program into a formula, hand the formula to a solver, and come back with an input that makes the program divide by zero. That is *formal methods* at the undergraduate level: not a proof assistant, not a new logic, but the syntax-to-semantics bridge made mechanical, with the approximation visible and chosen.
+
+### Decidable Is Not Doable
+
+> A question with a guaranteed answer you will never receive
+
+Here is a question that is perfectly decidable. Given a logical formula over 100 yes-or-no variables, is there a way of setting the variables that makes the formula true? There is an obvious method that is guaranteed to answer it: try all the settings. There are $2^{100}$ of them, which is about $1.3 \times 10^{30}$. At a billion settings per second, that takes about $4 \times 10^{13}$ years, roughly three thousand times the age of the universe. The answer exists. You will not receive it. The figure shows the shape of the search: two branches per variable, and somewhere among the leaves, perhaps, one that satisfies.
+
+![Exponential search: two to the n branches and one satisfying leaf](../docs/figures/tree.svg "Exponential search: two to the n branches and one satisfying leaf")
+
+This is not an exotic situation. Chess has around $10^{44}$ legal positions, Go around $10^{170}$. Nobody solves these games. We navigate them, with heuristics, structure, and luck. The size chapter already told you what these numbers mean: they are on the finite side of the wall, but so far along the line that the difference from infinity is, for you, nil. The question of this chapter is how to tell in advance which decidable questions are like this, and what to do when yours is.
+
+> Time, space, and energy
+
+Computer scientists measure cost in three currencies. *Time* is the number of steps a computation takes, in practice the number of machine instructions, as the machine chapter counted them. *Space* is the amount of memory it needs. *Energy* is what the machine draws from the wall while doing it, and we come back to it at the end of the chapter because it is the currency with a law of physics attached. Time and space are usually measured as functions of the size $n$ of the input, and the only distinction that matters at the scale of this chapter is the one between *polynomial* and *exponential*. A method that takes $n^2$ or $n^3$ steps on an input of size $n$ is called polynomial, and $n$ can be a million before it hurts. A method that takes $2^n$ steps is exponential, and $n$ cannot be a hundred. The class of questions that some method answers in polynomial time is called *P*, for polynomial. Sorting a list, finding the shortest route on a map, checking whether a C\* program is syntactically valid, and running `mipster` for a given number of instructions are all in P. Nobody argues about whether these are affordable.
+
+### Hard to Find, Easy to Check
+
+> NP
+
+Now look at the formula question again from a different angle. Finding a satisfying setting of the variables may take forever. But *checking* one takes no time at all: plug the values in and evaluate the formula, which is a polynomial amount of work. That asymmetry has a name. *NP* is the class of questions whose yes-answers come with a *certificate* that can be checked in polynomial time, even if finding the certificate appears to need exponential search. The satisfying assignment is the certificate. A route that visits every city in a given budget is a certificate. A schedule that fits every lecture into the available rooms without conflict is a certificate. A folded protein of low enough energy is a certificate. A proof of a theorem, of a given length, is a certificate. Every question in P is also in NP, because you can check by simply solving. The question nobody has answered is whether the reverse holds: is everything that is easy to check also easy to find? That is the *P versus NP* question, and it is the most consequential open question in the exact sciences. Most researchers bet no.
+
+> Cook, Levin, Karp, and NP-completeness
+
+In 1971 Stephen Cook, and independently Leonid Levin, proved something that turned NP from a definition into a landscape. They showed that the formula question, called *satisfiability* or *SAT*, is at least as hard as every question in NP: any question in NP can be translated, in polynomial time, into a formula that is satisfiable exactly if the answer is yes. In 1972 Richard Karp showed the same for twenty-one other questions, scheduling, routing, packing, colouring, covering, among them, and by now there are thousands. A question with this property, that everything in NP translates to it, is called *NP-hard*, and if it is also in NP itself, *NP-complete*. So all of these are the same question in disguise. Crack one of them in polynomial time and you have cracked all of them, and P equals NP. Nobody has, in more than fifty years of trying.
+
+The translation is worth pausing on, because it is the theme of this book at work. Cook's proof takes an arbitrary machine that checks certificates in polynomial time and writes its entire computation down as a formula: one variable for each bit of the machine's state at each step, and clauses saying that each step follows from the previous one according to the machine's rules. A computation, which is semantics, becomes a formula, which is syntax, and the formula is satisfiable exactly if some certificate makes the machine say yes. Keep this in mind. Below we run a program that does exactly this to RISC-V code, and it is not a proof technique there, it is a tool.
+
+> The asymmetry, everywhere
+
+The gap between finding and checking is not a fact about computers. Composing a symphony versus hearing that it is off. Writing a proof versus reading it. Designing a protein versus assaying it. Doing the homework versus grading it. Writing the program versus running the test. In each case producing the object is the expensive side and checking it is the cheap side, and the two are different problems. This is the one piece of this chapter that the last chapters of the book need, so let me say it plainly. Generation is expensive. Verification is cheap. That asymmetry is what makes delegation rational: you can accept work you could not have produced yourself, provided you can check it. When you cannot check it, delegation is faith. Every healthy division of labor, and, as we see in the machines chapter, every safe way to use a machine that generates text, is built on that gap.
+
+> Hardness is load-bearing
+
+Read the result twice, as always. What it forbids is brute force as a strategy. You cannot search your way to correctness, to a cure, or to a business plan. What it opens is everything that relies on some problems being hard. Every private message, every digital signature, every payment, every password you rely on today exists because some questions are easy to check and, as far as anyone knows, hard to find. Difficulty is the raw material of security, and the reason that abstraction, theory, and taste are worth more than compute. A world in which P equals NP would be spectacular and also strange: mathematics automated, cryptography dead, and, since anything findable would be found, nothing left to discover. The universe we appear to live in trades away that power for a currency called difficulty, and then spends it on privacy and on discovery.
+
+### Propositional Logic and SAT
+
+Let us now be precise about the formula question, because the rest of the chapter runs on it. *Propositional logic* is the formal language of the Boolean algebra we met in the size chapter, with *variables* that stand for bits, and the operators *not*, *and*, and *or*. A *literal* is a variable or its negation, say $x_3$ or $\neg x_3$. A *clause* is an *or* of literals, say $x_2 \vee x_3 \vee \neg x_4$. A formula in *conjunctive normal form* (CNF) is an *and* of clauses, and every propositional formula can be brought into that form. A CNF formula is satisfied by an assignment of true or false to its variables if every clause contains at least one literal that is true. The formula is *satisfiable* if some assignment satisfies it, and *unsatisfiable* otherwise. That is all SAT is: given a CNF formula, is it satisfiable, and if so, show me an assignment.
+
+> DIMACS, and a formula by Rivest
+
+CNF formulas have a standard notation, called DIMACS after the institute that standardized it, which is so simple that it deserves to be shown. Variables are numbered from 1, a literal is a number or its negative, a clause is a line of literals ending in 0, and the header says how many variables and clauses there are. Selfie ships one such formula, in `examples/sat/rivest.cnf`:
+
+```
+c Rivest's unsatisfiable four-variable eight-clause formula
+c omitting the last clause to make the instance satisfiable
+c with -1 -2 3 and either 4 or -4
+c
+p cnf 4 7
+2 3 -4 0
+1 3 4 0
+-1 2 4 0
+-1 -2 3 0
+-2 -3 4 0
+-1 -3 -4 0
+1 -2 -4 0
+c1 2 -3 0
+```
+
+Ronald Rivest, the R in RSA, constructed an eight-clause formula over four variables that is unsatisfiable in a particularly symmetric way. A clause with three literals over four variables rules out exactly two of the sixteen possible assignments, and Rivest's eight clauses rule out sixteen different ones, so together they rule out every assignment, and removing any single clause makes the formula satisfiable. The file omits the last clause, which is left in as a comment, so the instance is satisfiable. We use it because four variables are few enough to reason about by hand and seven clauses are many enough to make a solver do something.
+
+> Babysat, the executable specification
+
+The simplest possible SAT solver enumerates all $2^n$ assignments and checks the formula for each. That is exactly what `babysat` does, a solver of about four hundred lines written in C\* on top of selfie, and it is deliberately more naive than even the most naive solver in Donald Knuth's treatment of the subject. It is not meant to be fast. It is meant to be an *executable specification* of what a SAT solver is, so that when we talk about better solvers below, there is no doubt about what they compute. Build it and run it on the formula:
+
+```bash
+make babysat
+./babysat examples/sat/rivest.cnf
+```
+
+The relevant output is:
+
+```
+./babysat: 7 clauses with 4 declared variables loaded from examples/sat/rivest.cnf
+./babysat: examples/sat/rivest.cnf is satisfiable with -1 -2 3 4
+```
+
+So $x_1$ false, $x_2$ false, $x_3$ true, $x_4$ true satisfies the formula, and if you check the seven clauses by hand you will find that it does, and that $x_4$ could equally have been false. Sixteen assignments, one of the first ones works, no problem. Now add variables. Each one doubles the work. At a hundred variables `babysat` becomes the machine that answers after the Sun. And because `babysat` is written in C\*, selfie can run it on `mipster`, which is what `make sat` does, so that even the solver is something you can watch execute instruction by instruction.
+
+> Why SAT is hard, and why solvers work anyway
+
+Nobody has found a polynomial-time algorithm for SAT, and if the standard conjecture holds nobody ever will. In the worst case, every known method examines a number of cases that grows exponentially with the number of variables. There is even a place where the hardness can be measured. Generate random formulas with three literals per clause and vary the ratio of clauses to variables. With few clauses, almost every formula is satisfiable and easy. With many clauses, almost every formula is unsatisfiable and, again, easy, because contradictions surface quickly. Near a ratio of about 4.26 clauses per variable, the formulas switch from mostly satisfiable to mostly unsatisfiable, and right there they become dramatically hard for every solver. That *phase transition*, discovered in the 1990s, is the closest thing we have to a picture of where the difficulty lives.
+
+And yet modern SAT solvers routinely handle formulas with millions of variables and clauses, arising from chip design, software verification, scheduling, and planning, in seconds. There is no contradiction. The exponential is a worst case, and the formulas that come from real problems are not random. They have structure, and the whole art of solving is exploiting it. Defeating typical cases of an intractable problem is one of engineering's great quiet victories, and it is a hopeful data point for everything in this book: hardness in the worst case leaves enormous room for cleverness in practice.
+
+### How Modern SAT Solvers Work
+
+> DPLL
+
+The first real algorithm dates from 1962 and carries the initials of Davis, Putnam, Logemann, and Loveland. DPLL improves on enumeration in two ways, and both are things a human would do. First, *unit propagation*: if a clause has all but one of its literals false under the current partial assignment, the remaining literal must be true, so set it, and repeat, because that may make other clauses unit. Second, *pure literals*: if a variable occurs only positively in the remaining clauses, set it to true, and dually. Only when neither rule applies does the solver *decide*, picking an unassigned variable and trying one value. If a clause becomes entirely false, a *conflict*, the solver *backtracks* to the most recent decision and tries the other value. That is a depth-first walk of the tree in the figure above, with unit propagation pruning whole subtrees before the walk enters them. It is exponential in the worst case and vastly better than enumeration in almost every other case.
+
+> CDCL, on Rivest's formula
+
+What modern solvers add, starting with GRASP in 1996 and Chaff in 2001, is called *conflict-driven clause learning* (CDCL), and the idea is that a conflict is information. When DPLL backtracks it forgets why it failed and may run into the same failure again in another part of the tree. A CDCL solver instead analyses the conflict, works out which of its decisions were actually responsible, and writes that down as a new clause, a *learned clause*, which is a theorem about the formula: it is implied by the original clauses and it rules out the failed combination forever. Then it jumps back, not to the last decision but to the earliest decision at which the learned clause becomes unit, which is called *non-chronological backjumping*, and continues. Let us do it by hand on Rivest's seven clauses, because it is small enough and it shows everything.
+
+Decide $x_1 = $ true. Unit propagation finds nothing yet. Decide $x_2 = $ true. Now the clause $\neg x_1 \vee \neg x_2 \vee x_3$ has two false literals, so $x_3$ must be true; and then $\neg x_2 \vee \neg x_3 \vee x_4$ forces $x_4$ true; and now $\neg x_1 \vee \neg x_3 \vee \neg x_4$ is entirely false. Conflict. Which decisions were responsible? Following the implications backwards, $x_4$ came from $x_3$ and $x_2$, $x_3$ came from $x_1$ and $x_2$, so the conflict rests on $x_1$ and $x_2$ together, and the solver learns the clause $\neg x_1 \vee \neg x_2$: if $x_1$ is true, $x_2$ cannot be. It backjumps to the point right after the decision $x_1 = $ true, where the learned clause is unit and sets $x_2 = $ false. Propagation now forces $x_4$ true from $\neg x_1 \vee x_2 \vee x_4$, then $x_3$ false from $\neg x_1 \vee \neg x_3 \vee \neg x_4$, and then $x_2 \vee x_3 \vee \neg x_4$ is entirely false. Conflict again, and this time everything traces back to the single decision $x_1 = $ true, so the solver learns the clause $\neg x_1$, one literal long: $x_1$ is false in every satisfying assignment. That is a fact about the formula that was not written in it, and it was found by failing twice.
+
+With $x_1 = $ false the solver decides $x_2 = $ true, propagates $x_4$ false from $x_1 \vee \neg x_2 \vee \neg x_4$, then $x_3$ true from $x_1 \vee x_3 \vee x_4$, and hits $\neg x_2 \vee \neg x_3 \vee x_4$ entirely false. It learns $\neg x_2$. With $x_1$ and $x_2$ both false, deciding $x_3 = $ true satisfies every remaining clause whatever $x_4$ is, and the solver reports what `babysat` reported, having examined four assignments instead of sixteen, and, more importantly, having *learned* along the way that $x_1$ and $x_2$ must be false, which is exactly the comment in the file.
+
+> The engineering around it
+
+Three more ideas make CDCL the workhorse it is, and all three are about cost. *Two watched literals* is a data structure that finds unit clauses without scanning every clause on every assignment: each clause keeps an eye on just two of its literals, and only when one of those becomes false does the solver look at the clause at all. *Variable ordering* heuristics such as VSIDS decide next on the variables that have been involved in recent conflicts, on the theory that the difficulty is concentrated there. And *restarts* throw away the current partial assignment every so often while keeping the learned clauses, so that the solver, now wiser, walks the tree in a different order. None of this changes what SAT is. All of it changes what SAT costs, and the difference is millions of variables.
+
+### From Machine Words to Formulas
+
+> Theories, and SMT
+
+A SAT solver speaks Boolean. A program speaks in 64-bit words, adds and multiplies them, and reads and writes memory. To ask a solver about a program we need a formal language that has words and memory in it, and that is what *satisfiability modulo theories* (SMT) provides. An SMT formula is a propositional formula whose atoms are statements in some *theory*: the theory of *bitvectors*, which has fixed-width words and the arithmetic and logic operations of a machine on them, and the theory of *arrays*, which has read and write operations on an indexed store, which is to say memory. SMT-LIB is the standard notation for such formulas, and Z3 and Bitwuzla are two solvers that read it. The question is the same as before: is there an assignment of values to the variables, now words and arrays, that makes the formula true?
+
+> Bit-blasting, or Cook and Levin made concrete
+
+How does a solver decide a formula about 64-bit words? The most direct way is called *bit-blasting*, and you already know how it works from the size chapter. A 64-bit word is sixty-four Boolean variables. An addition of two words is the 64-bit adder we built out of half adders and full adders, which is a circuit of *and*, *or*, and *not* gates, which is a propositional formula over the bits. A comparison is a circuit. A multiplication is a bigger circuit. Every operation of the machine on words becomes a formula over the bits of the words, using a fresh variable for each gate output, a translation named after Tseitin. Arrays are handled by adding, on demand, the axiom that reading an index you just wrote returns what you wrote, and that reading a different index returns what was there before. So an SMT formula about a machine becomes a SAT formula, only much bigger, and off it goes to CDCL. This is the construction in Cook's proof, a machine's computation written down as a formula, but here it is an engineering practice: the machine is RISC-V, the formula has a few million clauses, and the solver answers in seconds.
+
+### Models of Machines
+
+We now have everything needed to build the tool the meaning chapter promised. Take a RISC-V program. Write down, as a formula, what the machine does in one step: how the program counter changes, how each register changes, how memory changes, depending on the instruction at the program counter and on the input. Write down what a *bad* state is: the machine is about to divide by zero, or to read memory it does not own, or to exit with a non-zero code. Then ask the solver: is there an input such that, after $k$ steps, the machine is in a bad state?
+
+> Rotor
+
+That tool is called `rotor`, it is built on selfie, and it produces such models for full RISC-V code, including all of selfie and itself, in the BTOR2 notation. Rotor takes a C\* program, compiles it with selfie's compiler, and generates the model of the RISC-V machine running that binary. Try it on the smallest interesting example in the repository, a program that reads one byte of input and divides by it after subtracting 48, the ASCII code of the digit 0:
+
+```c
+uint64_t main() {
+  uint64_t  a;
+  uint64_t* x;
+
+  x = malloc(sizeof(uint64_t));
+
+  *x = 0; // touch memory
+
+  read(0, x, 1);
+
+  *x = *x - 48;
+
+  // division by zero if the input is '0' (== 48 == b00110000)
+  a = 41 + (1 / *x);
+
+  // division by zero if the input is '2' (== 50 == b00110010)
+  if (*x == 2)
+    a = 41 + (1 / 0);
+
+  if (a == 42)
+    // non-zero exit code if the input is '1' (== 49 == b00110001)
+    return 1;
+  else
+    return 0;
+}
+```
+
+Type `0` and the program divides by zero. Type `1` and it exits with code 1. Type `2` and it divides by zero on the other line. Type anything else and it exits with code 0. Now generate the model:
+
+```bash
+make rotor
+./rotor -c examples/symbolic/division-by-zero-3-35.c - 0
+```
+
+The `-` says to write the model next to the source file, and the `0` is the exit code that counts as good. Rotor reports:
+
+```
+./rotor: 15161 lines of model formulae generated
+./rotor: 237537 characters of model formulae written into examples/symbolic/division-by-zero-3-35-rotorized.btor2
+```
+
+> BTOR2: state, init, next, bad
+
+Open the file. It is a formula in the BTOR2 notation, and it is readable, because rotor comments every line. There are *sorts*, which are the types: 1-bit Booleans, 64-bit words, and arrays of words indexed by addresses. There are *states*: the program counter, the register file, the code segment, the data, heap, and stack segments of memory, the program break, the file descriptor, and one more that matters, an *input buffer* that is left uninitialized, so that the solver may choose its contents. There are *init* lines that say what each state is before the first step: the program counter is the entry point, the code segment holds the binary, the registers are zero. There are *next* lines that say what each state is after a step, as a function of the current states, and this is where the RISC-V semantics lives: every instruction the machine can execute is written down, bit-precisely, as an *if-then-else* over the instruction at the program counter. And there are twenty-four *bad* lines, each a Boolean that is true if the machine is about to do something it must not:
+
+```
+36027 bad 36026 core-0-division-by-zero ; core-0 division by zero
+38010 bad 38009 core-0-load-invalid-address ; core-0 load at invalid address
+40095 bad 40094 core-0-load-seg-fault ; core-0 load segmentation fault
+40903 bad 40902 core-0-bad-exit-code ; exit(0)
+```
+
+among illegal instructions, unaligned fetches, stores outside the segments, and unknown system calls. The whole model has a few thousand lines for this program, and the number of lines grows linearly with the size of the binary: rotor generates a model of all of selfie, forty-three thousand instructions, in the same way and in about the same time it takes to compile it. The figure shows the shape of such a model and what unrolling it means.
+
+![A BTOR2 model: state, init, next, bad, unrolled k steps](../docs/figures/btor2.svg "A BTOR2 model: state, init, next, bad, unrolled k steps")
+
+> Bounded model checking
+
+A model like this is a machine, described as a formula, that has not run yet. To run it symbolically, *unroll* it: make a copy of every state for step 0, step 1, up to step $k$, connect each copy to the next by the *next* formulas, fix step 0 by the *init* formulas, and ask the solver whether any *bad* formula can be true at any step up to $k$. The unrolled formula has size proportional to $k$ times the size of the model, and it is satisfiable exactly if there is an input on which the machine reaches a bad state within $k$ instructions. That is *bounded model checking*, and the tool that does it for rotor's models is called `bitme`, a Python program that drives Z3 or Bitwuzla, or, alternatively, its own reasoning engine based on binary decision diagrams:
+
+```bash
+tools/bitme.py -kmax 200 --use-Z3 examples/symbolic/division-by-zero-3-35-rotorized.btor2
+```
+
+Bitme walks the steps one at a time, and at each step it asks about every bad state. For the first few dozen steps the answer is no: the program is setting up its stack, calling `malloc`, calling `read`. Then, at the step at which the division instruction is fetched, the answer for `core-0-division-by-zero` is yes, and the satisfying assignment the solver returns contains the value of the uninitialized input buffer: the byte 48, the character `0`. A few steps later `core-0-bad-exit-code` becomes reachable with the input `1`. The solver *found* the failing inputs. Nobody told it to try `0`. It derived, from the formula, that among all $2^8$ possible input bytes those are the ones that reach a bad state, in the same way the CDCL example above derived that $x_1$ must be false.
+
+> What a bound buys, and what it does not
+
+Stop and compare this with testing. In the size chapter we said that a test run visits one state in a space of $2^{34,359,738,368}$, so testing shows presence, not absence. Bounded model checking, for every input, for every path, up to $k$ steps, shows *absence*: if bitme reports no bad state up to $k$, there is no input that reaches one within $k$ instructions, and that is a theorem, not an observation. What it does not show is anything about step $k+1$. The bound is the approximation. Rice's theorem said that no tool decides whether a program can divide by zero, and this tool does not: it decides whether a program can divide by zero *within k steps*, which is a question about a finite object and therefore decidable, and it pays for the answer in solver time that grows with $k$. Choosing $k$ is choosing what to give up. That is the whole of formal methods in one sentence, and the workshop around selfie is a set of such choices, each stated. Rotor also generates models with no code in them, where the code segment is left for the solver to choose, so that the solver *synthesizes* a program that reaches a given state. That is the same formula asked the other way round, and it is where the cost of this chapter meets the machines of the next.
+
+### Every Step That Forgets Costs Energy
+
+Computation is not abstract. In 1961 Rolf Landauer showed that erasing one bit of information at temperature $T$ costs at least $kT \ln 2$ of energy, where $k$ is Boltzmann's constant, which at room temperature is about $3 \times 10^{-21}$ joules. The reason is that a bit is one distinction, as the size chapter defined it, and erasing it means two possible states of the memory collapse into one, so the memory's entropy falls, and the second law of thermodynamics says that entropy cannot vanish: it leaves as heat. Information is physical. Today's transistors sit several orders of magnitude above Landauer's floor, but the floor stays where it is for any device that overwrites.
+
+> Why a search pays it
+
+A search visits a state and moves on, and moving on means that the register which held the last candidate now holds the next one. That is an overwrite, which is an erasure. Make it concrete with a counter. Just counting through the 266-bit space of the size chapter, the one with more states than the universe has atoms, flips the lowest bit $2^{266}$ times, every flip overwrites the old bit, and the counter alone costs $2^{266} \times 3 \times 10^{-21}$ joules, about $3 \times 10^{59}$. The Sun radiates about $4 \times 10^{26}$ watts for about ten billion years, roughly $10^{44}$ joules in all. So counting the states, never mind checking them, costs a few thousand trillion suns. You cannot visit the states. You cannot even count them. The figure puts the numbers on one log scale.
+
+![Joules on a log scale: from erasing one bit to brute-forcing 266 of them](../docs/figures/energy.svg "Joules on a log scale: from erasing one bit to brute-forcing 266 of them")
+
+Meanwhile a human brain runs on about 20 watts, a dim light bulb, doing things that data centres cannot. That number is the standing proof that whatever intelligence is, it can be done orders of magnitude more cheaply than we currently do it, and it comes back in the next chapter. Reversible computing lowers the Landauer bill in principle, at the price of time and of error correction, which forgets again. Time, space, energy: one budget. Any claim about intelligence that ignores it is a claim about magic.
+
+### A Language Without a Metric Is Decoration
+
+There is one more thing that a mature field needs, and it belongs here because it is the cost of knowing whether you are getting anywhere. Notation lets you say it. Semantics fixes what it means. A *metric* tells you whether you are getting closer. Running time, memory, energy, error rate, coverage, latency, yield, mortality, loss on a held-out set: every mature field runs on invented measures, and the machine chapter's performance section is nothing but the invention of a few for selfie. A metric is a semantics for the word *better*, and like every semantics it is approximate.
+
+> Goodhart's law
+
+And every metric decays the moment it becomes a target. Charles Goodhart said it in 1975: when a measure becomes a target, it ceases to be a good measure. Teaching to the test. Optimising engagement. Publishing to the h-index. Training to the benchmark. In 1989 a clinical trial found drugs that suppressed the arrhythmia they were designed to suppress, a measure everyone had agreed was the right one, and raised the death rate. Same failure, five fields. This is why the third item, measurement, needs constant reinvention, and why measurement, too, is an unending process rather than a solved problem. Whenever this book quotes a number, an instruction count, a byte count, a factor of 2,593, ask what it measures and how it would be gamed. The next chapter is about a machine whose metrics are gamed by construction.
+
+> Exercises
+
+1. Compute, on paper, how many years it takes to try $2^{60}$ assignments at a billion per second, and then at a trillion per second. Note how little the second number helps.
+2. Check by hand that `-1 -2 3 4` satisfies every clause of `rivest.cnf`, and that `-1 -2 3 -4` does too. Then add the commented-out eighth clause back in and show that no assignment satisfies all eight.
+3. Run `babysat` on a CNF file you write yourself with 5 variables. Then run it on one with 25 variables and time it. Estimate the number of variables at which it would take a day.
+4. Redo the CDCL example starting with the decision $x_4 = $ true instead of $x_1 = $ true. Which clauses does the solver learn?
+5. Write, as a CNF, the statement that a 2-bit adder produces the sum 3 from inputs 1 and 2. You will need Tseitin variables for the gate outputs.
+6. Generate the rotor model of `examples/symbolic/simple-if-else-1-35.c` and count its state, init, next, and bad lines. Then run bitme on it with a bound of 100 and report which bad states are reachable and with what input.
+7. Change the bound in the previous exercise to 20 and explain what a report of *no bad state* now means and does not mean.
+8. Using Landauer's limit, compute the minimum energy needed to erase the entire memory of an 8 GB phone once. Compare it with the energy in a phone battery, about $4 \times 10^4$ joules.
+
+### Recommended Readings 8
+
+> Introduction to the Theory of Computation by Michael Sipser
+
+The same book as in the meaning chapter, now its second half: time and space complexity, P, NP, the Cook-Levin theorem, and the reductions that make the landscape of NP-complete problems.
+
+> The Art of Computer Programming, Volume 4, Fascicle 6: Satisfiability by Donald E. Knuth
+
+Three hundred pages on SAT solving by the author of the standard encyclopedia of computer science, including the solvers `sat0` through `sat13` in increasing sophistication. `babysat` is deliberately more naive than `sat0`. If you want to write a solver that is not, start here.
+
+> Decision Procedures: An Algorithmic Point of View by Daniel Kroening and Ofer Strichman
+
+The textbook on SMT: the theories of bitvectors and arrays, bit-blasting, and how a SAT solver is combined with theory reasoning. It is written for exactly the purpose this chapter has, checking programs.
+
+> Handbook of Model Checking edited by Edmund M. Clarke, Thomas A. Henzinger, Helmut Veith, and Roderick Bloem
+
+Bounded model checking is one chapter of this. My postdoc advisor is one of the editors, and the book is where the field defines its terms.
+
+> Feynman Lectures on Computation by Richard P. Feynman
+
+Feynman's lectures cover reversible computing and the thermodynamics of computation, that is, Landauer's limit, in his own inimitable way, along with Turing machines and the theory of computation. It is the book to read if you want the physics of this chapter done properly.
+
+## Part V: Machines
+
+Now the question everyone actually came with. The machines that talk, write code, and pass exams are remarkable, and they are among the most useful artifacts ever built. They are also computations. Everything established in the first four parts of this book, on size, on notation, on meaning, and on cost, applies to them exactly as it applies to a spreadsheet, and the purpose of this part is to show where, mechanically, without a verdict. The tone matters here. This is not debunking and it is not hype. It is the same microscope, pointed at the newest specimen.
+
+## Machines
+
+The recent advent of chat bots and other tools based on generative AI is often seen as a challenge to higher education and modern society in general. Some even claim the end of the world as we know it is near. Yet the common narrative about the seemingly unlimited potential of generative AI is just another example of how little the nature of information is understood, or ignored for whatever reason, economical or otherwise. How can anyone remain motivated to study something intrinsically complex if machines are about to take over? Well, generative AI is no more intelligent than the user that interacts with it. It is a mirror of your own intelligence, just more polished than others, which is why so many are fascinated by it, often not realizing that they are just fascinated by themselves. If you ask the wrong question you get nothing. If you ask the right question you might get something. However, knowing what to ask is not easy. It requires not just knowledge of a subject but true understanding through real training, and that is exactly what this book has been trying to give you.
+
+I wrote those sentences for the first edition of this book, before the machines got as good as they are now, and I have not changed a word, because nothing in them depends on how good the machines are. This chapter explains why. It describes what a large language model mechanically is, in the terms of the earlier chapters, and then reads the four parts of the book against it: the size of its state space, the notation it is trained on, the meaning it does not have access to, and the cost it pays. Each of those readings is an instance of a theorem, never an opinion about a product, which is why the chapter will still be right when the current generation of machines has been replaced by the next.
+
+### What a Large Language Model Is
+
+> Tokens in, a distribution out, one sample, and round again
+
+The name is exact, so start with it. A *language model* is a model of *language*, that is, of notation, and *large* refers to the number of parameters, which is in the billions. Here is the whole mechanism, and the figure draws it. The input is a sequence of *tokens*, which are words or pieces of words drawn from a fixed vocabulary of some tens of thousands, and each token is, of course, a number. The sequence is called the *context*, and there is a maximum length, the *context window*, which is all the machine can see. The model is a function, computed by a fixed program, from the context to a *probability distribution over the next token*: for each of the tens of thousands of tokens in the vocabulary, a number saying how likely it is to come next. One token is then *sampled* from that distribution, appended to the context, and the whole thing runs again. That is all. When you type a question and receive an answer, this loop ran once per token of the answer, and the answer became part of the next question.
+
+![A large language model as a mechanism](../docs/figures/tokens.svg "A large language model as a mechanism")
+
+> The function, and how it was found
+
+The function from context to distribution is computed by a *neural network*, which is a program that does an enormous amount of multiplication and addition on numbers called *weights* or *parameters*, arranged in layers. The particular arrangement in today's models is called a *transformer*, and its characteristic operation, called *attention*, lets each position in the context compute which earlier positions to weigh most when predicting what comes next. I name it and do not derive it, because the derivation is not what this chapter is about; there are excellent accounts in the recommended readings. What matters here is what kind of object the network is. It is arithmetic on bits. In principle it is a C\* program, and given enough time and memory, `mipster` would run it, one RISC-U instruction at a time. It computes exactly what any Turing machine can compute, and nothing else, and the meaning chapter told you what that means.
+
+The weights are not written by anyone. They are found by *training*: the network is shown an enormous amount of text, essentially everything that could be collected, and for each position it is asked to predict the next token. When it is wrong, every weight is nudged slightly in the direction that would have made the actual next token more likely, a procedure called gradient descent, and this is repeated across trillions of tokens. The signal the machine is trained on is therefore entirely *syntactic*: which symbol follows which. Meaning is never handed to it. That it works as well as it does is the genuine surprise of the decade, and an honest scientist says so. Training as a whole is a form of *compression*: the model is a few hundred billion numbers that reproduce, approximately, the regularities of a few hundred terabytes of text, and the meaning chapter's row with no name, the subset that cannot be compressed, is the reminder that compression has a limit that is not a matter of engineering.
+
+> Everything is bits, again
+
+It cost megawatts for weeks to find the weights, and you run on twenty watts. Neither figure changes what kind of object the model is. Every one of its parameters is a number of some bits, so the size chapter applies unchanged: a model with a few hundred billion parameters is a point in a state space that cannot be inspected, and its behavior, its output on every possible context, is one of those infinite answer sheets, of which it can only ever be sampled. So when a laboratory says that a model has been tested extensively, remember the needle in the size chapter. Testing shows presence, not absence. Whatever a test suite exercised, the machine did; whatever it did not, nobody knows.
+
+### A Hallucination Is a Proof-Shaped Object That Is Not True
+
+> Plausible, provable, true
+
+Fluency is syntax. Correctness is semantics. We have built a machine of extraordinary fluency, so the gap between the two, which the meaning chapter spent its whole length on, is something you now meet before breakfast. The figure draws three regions. *True* is what holds in the world, whether or not anyone can show it. *Provable* is strictly inside true, and the gap between them is Gödel's. *Plausible*, what reads well, overlaps true and sticks out of it. The crescent that is plausible and not true is what a *hallucination* is: an answer with the shape of an answer, the tone of an answer, and the confidence of an answer, generated by a machine whose only training signal was shape, tone, and confidence.
+
+![Plausible, provable, true](../docs/figures/venn.svg "Plausible, provable, true")
+
+This is not a defect to be patched away, and it is important to see why, because the reason is a theorem and not a limitation of current engineering. A system trained on notation alone has, by construction, no access to what the notation is about. Stevan Harnad named the problem in 1990: symbols defined only in terms of other symbols never touch the world. The dictionary defines every word using other words, and if you do not already know some of them, the dictionary is useless. So the durable response to a hallucination is neither *trust it more* nor *trust it less*. It is to check the output against something that has a semantics: a compiler, a test, an experiment, a source, a measurement, a colleague. Notice that this is exactly what retrieval, tool use, unit tests, and human review are, the things that empirically help these machines most. They are all ways of importing an external semantics. That is the engineering response to Gödel's second theorem, and it works, partially, never completely, and the machine cannot supply it itself.
+
+### World Models
+
+> Predict what happens, not what is said
+
+The most serious response to the previous section, and I take it seriously, is that the next generation of machines will not be trained on text at all. A *world model* is a system that learns the state of the world, its dynamics, and the consequences of actions, by predicting what *happens* rather than what is *said*. That is an attempt at real semantics, at precisely the grounding Harnad asked for: fix the interpretation of a symbol by prediction against a world rather than by agreement with other text. The figure draws the two routes to the same world. The long way round goes through a transcript, a text, which is a lossy and wildly redundant recording of the world, so that learning from it is the expensive route. The short way goes straight at whatever wrote the transcript.
+
+![Two routes to the same world](../docs/figures/worldmodel.svg "Two routes to the same world")
+
+There is a cost argument here with commercial teeth, and it is the cost chapter's. A system that learns the dynamics directly should need far less data, compute, and energy for the same competence. On a fixed budget, efficiency is capability, so world models may well outperform language models outright, and the honest forecast is that today's architecture is unlikely to be the last. The twenty-watt brain of the cost chapter is the standing proof that the job can be done orders of magnitude more cheaply than we are doing it.
+
+> And still a finite notation, sitting inside the world it models
+
+What no architecture escapes is Parts II to IV of this book, because a model is still a finite object, a program and its parameters, sitting inside the world it models. Counting: models are countable, behaviors are not. Rice: whether this model is right is a semantic property, undecidable. Gödel: no self-certificate from inside. Cost: the state space did not shrink, only the map did. Better maps, arriving faster and cheaper, of a territory that stays uncountable, and still no map that certifies itself. The dashed border around the whole figure is there because every box in it is inside the thing being modelled. If you are asked whether world models change the definition this book ends on, the answer is no. They are an example of it.
+
+### The Loops Are Already Closed
+
+Self-reference is the guiding principle of this book, and here is where it shows up in the machines. Models are now trained on text that models wrote, and the degradation when that loop tightens has been measured and named, *model collapse*, in 2024. Models grade models, and the judge and the candidate share the same blind spots. Models write the code that trains models, and agents invoke themselves. The figure draws the loop: model, output, corpus, training, and round again.
+
+![The loops are closed](../docs/figures/loop.svg "The loops are closed")
+
+Now apply the meaning chapter. *Is this system safe?* is a semantic property of a program. Rice's theorem says there is no general decision procedure for it, not because we are not clever enough, but as a matter of mathematics. And by Gödel's second theorem, no system this expressive can certify itself: an explanation of its own output is more output, fluent, plausible, and not a certificate. Introspection is not audit. Every debate about the safety of these systems that assumes a sufficiently smart system could simply verify itself is refuted by a theorem from 1931. Which is not despair. It tells you exactly where to spend effort: on external, independent, bounded checks, which is the arrow entering the loop from outside in the figure, and which is what the whole cost chapter was about.
+
+### The Gate
+
+Let us put the argument of this chapter into one picture, because it is the picture the whole book has been drawing. You prompt a machine in English, and what comes back is plausible notation: fluent, confident, and, as this chapter has said, nothing about whether it is true. Two things can happen next. Unchecked, the answer is accepted because it reads well, and then there is no semantics anywhere in the loop. Checked, it meets a compiler, a test, a proof, a measurement, a semantics in the exact sense of the meaning chapter, and is either kept or sent back round as the next question. The figure draws the two routes, and the part drawn in the colour of meaning is the part the machine does not supply.
+
+![A generator supplies notation; the semantics has to come from somewhere else](../docs/figures/gate.svg "A generator supplies notation; the semantics has to come from somewhere else")
+
+This is not a new observation about a new machine. It is the fourth appearance of one theorem. Cantor's list needed an object built from outside it. Gödel's system needed a stronger system to certify it. Thompson's compiler needed a second, independent compiler. And the generator needs a check that it cannot be, and in every case the something from outside is a language with a semantics that somebody understands. In the terms of this book, the gate is the most concrete thing there is. Ask a machine for a C\* program. Then `./selfie -c` it: does it parse? Run it on `mipster`: does it do what you asked, on the inputs you tried? Run `rotor` and `bitme` on it: can it divide by zero, or read outside its memory, within a thousand steps, on any input? Each of those is a semantics, each is an approximation with a stated bound, and none of them is available to the machine that wrote the program, because the only semantics in the loop is the one you brought.
+
+### Generation Got Cheap, Verification Did Not
+
+Here is what actually changed, and it is the cost chapter's asymmetry at consumer scale. Before, producing a draft, a proof sketch, a program, an image, a translation was expensive and therefore scarce, and scarcity did our filtering for us. Now production is nearly free and unbounded in volume, and the filter has to be supplied deliberately, by specification, by measurement, by review. Recall from the cost chapter: hard to find, easy to check. That is a description of a healthy relationship with a machine. You may accept work you could not have produced, provided you can check it, and when you cannot check it, delegation is faith.
+
+So value migrates to the two ends the machine does not occupy: deciding what should be true, which is *specification*, and establishing that it is, which is *verification*. Both are acts of meaning. Neither is automated by better generation, and the better generation gets, the more they are worth. The practical advice that follows for a student choosing what to learn is not *avoid the machines*. It is *own the ends*: be the person who can state precisely what is wanted, in a language with a semantics, and who can tell whether it was delivered. Those skills appreciate as generation gets cheaper, and every chapter of this book was training in exactly them. The next chapter, the last, says what that makes intelligence.
+
+> Exercises
+
+1. Ask a chat bot to write a C\* program that reads a number and prints its factorial. Compile it with `./selfie -c`. If it does not compile, that is data; note why. If it does, run it on `mipster` with three inputs.
+2. Ask the same bot whether its program can divide by zero or read outside its memory. Then generate the program's rotor model and run bitme on it with a bound of 500. Compare the two answers and say which one is a certificate.
+3. Find a hallucination: ask a bot for the exact page number of a claim in a book you own, and check. Place the answer in the three regions of the figure and explain which region it fell in and why the machine could not have known.
+4. A model has 70 billion parameters of 16 bits each. How many bits is that, how many states, and how does it compare with the 8 GB phone of the size chapter?
+5. A training run consumed 20 megawatts for 90 days. Compute the joules, and compare with a human brain running for 80 years at 20 watts.
+6. Write down, in one sentence each, the four appearances of the one theorem behind the gate figure, and for each name the thing that came from outside.
+
+### Recommended Readings 9
+
+> Attention Is All You Need by Ashish Vaswani and others
+
+The 2017 paper that introduced the transformer. It is short, it is readable with the mathematics of this book plus some linear algebra, and it is the derivation this chapter deliberately skipped. Read it to see that there is nothing in the machine but arithmetic.
+
+> The Symbol Grounding Problem by Stevan Harnad
+
+The 1990 paper that names the reason a system trained on symbols alone cannot reach what the symbols are about. Everything in this chapter about hallucination and about world models is downstream of it.
+
+> AI Models Collapse When Trained on Recursively Generated Data by Ilia Shumailov and others
+
+The 2024 paper that measured what happens when the loop in the figure tightens. It is the loop of this book, run as an experiment.
+
+> A Path Towards Autonomous Machine Intelligence by Yann LeCun
+
+A 2022 position paper laying out the world-model programme by one of its most prominent advocates. Read it against the previous section and note which of the four limits it names and which it does not.
+
+> Gödel, Escher, Bach by Douglas Hofstadter
+
+The book from the first chapter, again. Its last chapters are about exactly the questions this chapter raises, written forty years before the machines that make them urgent, which is the best evidence I know that the questions are not about the machines.
+
+## Part VI: Intelligence
+
+Hard to believe but we made it to the very end of this book. The question in its title was asked in the introduction and answered there in one sentence, to be earned. The earning is done. This part collects what the earlier parts established, shows that none of it was about computers, and then says what intelligence is, in a form that does not care which machine is current, which company leads, or what happens next year.
+
+## Intelligence
+
+Let me begin the last chapter the way I began the first one, with what I remember from school. I remember being asked to prove something and being scared. I also remember, much later, the moment I understood that the fear was pointing at the most interesting thing in the room. A proof is a finite object, and you can check it. What it is a proof *of* is not finite, and you cannot. Everything in this book has been about that gap, and I have come to believe that being able to stand in it comfortably, knowing exactly where its edges are, is the closest thing to a definition of intelligence that I can defend. So this chapter is going to defend it. But first, one more tour, because the argument was never about computers, and you should see it in three other places before you see it in the definition.
+
+### Everywhere
+
+> Life was running a formal language long before we invented one
+
+Your genome is about 3.2 billion base pairs. Each base is one of four letters, so two bits, which makes the genome about 800 megabytes, roughly the size of a large app. The letters are read three at a time, and each triple, called a codon, denotes one of twenty amino acids or a stop, which is a lookup table exactly like ASCII, only older by four billion years. That is a formal language, with an alphabet, a syntax, and a semantics, and it was running before there was anyone to notice. The size chapter's thought experiment about evolution as enumeration and selection was this fact from the other side.
+
+Here is the part that belongs in this book. John von Neumann asked in the 1940s what a machine that builds copies of itself would have to look like, and he found that it needs one description used in two ways. A *copier* duplicates the description, letter by letter, without ever interpreting it. An *interpreter* reads the description and builds what it says, and among the things it builds are the copier and the interpreter. Interpret the description only, and the offspring inherits machinery but no description, so it could never reproduce in turn. Copy it only, and there is a text with nothing to run it. Reproduction needs one string used both ways, as instructions and as inert data, and that is this book's distinction, four billion years old. The figure runs the architecture as a cell runs it: one strand, a DNA polymerase head that copies it without reading it, and a ribosome head that executes the same letters three at a time.
+
+![The self-copying machine](../docs/figures/vonneumann.svg "The self-copying machine")
+
+Look at what the ribosome is. It is one machine that prints *any* protein, because which protein is data on the strand. That is the universal machine of the meaning chapter, $U$, built out of chemistry. Turing did not invent universality. He noticed it.
+
+And biology also has the cost chapter's lesson, in the strongest form I know. A modest protein has around $10^{300}$ possible shapes. Sampling them all would outlast the universe many times over, and yet real proteins fold in milliseconds, a puzzle known as Levinthal's paradox since 1969. Nature does not search. It funnels. That is *intractable yet done daily*, the most encouraging shape a hard problem can have, and the one place where the machines of the previous chapter have unambiguously won, protein structure prediction, did not win by exhaustion either. AlphaFold learned an approximation, and its value was settled by a metric the field had already invented and by experiments it could not fake. And the self-reference that selfie makes visible, a compiler compiling its own source, an emulator executing its own code, is not a party trick that computer scientists play. It is how you and I got here.
+
+> The postulate nobody could prove was a door, not a wall
+
+Euclid's fifth postulate says, in effect, that through a point beside a line there is exactly one parallel to that line. For two thousand years mathematicians tried to prove it from the other four, and failed, and the failure was the point. The postulate was *independent*: a choice, not a fact. János Bolyai and Nikolai Lobachevsky got out in the 1820s not by proving it but by changing it, and the figure asks the one question in three panels: through a point beside a line, how many parallels? One, on a flat surface. None, on a sphere. Many, on a saddle. All three geometries are consistent. The only thing to see is whether the candidates touch the given line.
+
+![Through a point beside a line: one parallel, none, or many](../docs/figures/parallels.svg "Through a point beside a line: one parallel, none, or many")
+
+The payoff is why this is not a digression. Bernhard Riemann built the machinery of curved space in 1854 for nothing in particular, and Einstein could not have written general relativity without it. Dmitri Mendeleev left holes in his table in 1869 and named elements nobody had seen. Paul Dirac's equation had a solution nobody wanted, and the positron turned up in 1932. Three times, a notation described something before anyone had seen it. That is the meaning chapter's claim, that every new notation is a raid on the uncountable, with the dates filled in.
+
+> Working memory holds about four things, and what counts as a thing is up to you
+
+Here is the same argument run on the mind, and you can run it on yourself. Read these thirteen letters once, look away, and repeat them: F B I C I A N A S A U S B. Almost nobody can. Now read them again, grouped: FBI CIA NASA USB. Everybody can. Nothing on the page changed. The same thirteen letters in the same order. The whole difference is in the reader, and the reader who does not know what NASA is sees four letters where you see one. Psychologists call the group a *chunk*, and the finding, due to George Miller in 1956 and sharpened since, is that working memory holds about four of them, a hardware constant that never grows. But a chunk is one symbol of a language you already own. A chess master shown a real position for five seconds puts nearly every piece back; shown a random board, the master is barely better than a beginner. Same four slots, tens of thousands more patterns to point them at.
+
+So the four slots never grow. What grows is what one slot can mean. That is what growing up is, and it is what a discipline is, run on one person. When the input does not fit any pattern you have, Jean Piaget called what happens next *accommodation*: the scheme itself has to change. A new property, or a new language. It is the definition this chapter ends on, run by a child, every day.
+
+> Every leap in every field was a new notation
+
+Ask anyone in any field what the notation of their field is and what it made possible, and the answers are always good. Double-entry bookkeeping, Pacioli in 1494: the firm, the audit, capitalism. Staff notation, Guido d'Arezzo around 1025: polyphony, composition at scale. Linear perspective, Alberti in 1435: depth, and a space to compose in. Calculus, Newton and Leibniz in the 1670s: motion, orbits, engineering. Chemical formulae and the periodic table, 1869: the prediction of unknown elements. Diagnostic criteria and trial protocols in medicine: evidence instead of authority. Generative grammar, Chomsky in 1957: language as a formal object. Turing machines in 1936: all of the above, mechanized. None of these was a discovery of new facts. Each was a new language, or a new property an old language could finally express. The facts followed.
+
+### The Question, Replaced
+
+> Stop asking whether it is intelligent
+
+The introduction promised a better question than the one in the title, and here it is. *Is it intelligent? Does it truly understand? Is it conscious? Will it always behave?* Each of these asks for a semantic verdict on a system, in a language, English, that has no semantics for the words used. Psychology met this problem first and answered it best: you cannot measure a construct, only an operational definition of it, and the definition is never the thing. Dijkstra put it more sharply in 1984: the question of whether machines can think is about as relevant as the question of whether submarines can swim. The word *swim* was coined for bodies with muscles. Whether what a submarine does is swimming is a question about our word, not about the submarine.
+
+So replace the noun question with questions that are decidable, today, by anyone. What language did I state my requirement in? What are its semantics? What is my metric, and how will it be gamed? What is the budget, in time, space, and energy? Who checks the result, from outside? The right question is never about the machine's essence. It is about your language, your semantics, your metric, your check. This is why the method is future-proof: it never mentions a model, a vendor, or a year. The same five questions worked for the steam engine and the spreadsheet, and they will work for whatever arrives after the machines of the previous chapter.
+
+> Six habits with no expiry date
+
+If you take one page from this book, take this one. *Name the language.* State what you want in something with a semantics: a type, a grammar, a schema, a unit, a test, an acceptance criterion. English negotiates; formality commits. *Attach a metric, and name its failure.* If you cannot say what better means, you are wandering, and once you can, write down how the metric will be gamed, because it will be. *Delegate generation, own verification.* Accept work you could not have produced; never work you cannot check. That is the only shape delegation has ever had. *Budget time, space, and energy.* Know how big your space is and how much of it you can afford to visit. Most doomed projects were doomed arithmetically on day one. *Break every loop from outside.* Nothing certifies itself, not a model, not a company, not you. Import an independent check: an experiment, a proof, a person allowed to say no. *Trust the unproven, then formalize it.* When answers get hard to check, what is missing is a language, not more effort. Take the truth you can see but not yet prove, and build the notation that proves it.
+
+> No theorem says your bridge will hold, and you crossed one this morning
+
+Aviation, medicine, and civil engineering never had decidability either. Their questions are semantic, their state spaces astronomical, their proofs unavailable. They became extraordinarily safe anyway, with layered approximations: standards, redundancy, staged testing, incident reporting, licensing, liability, and the freedom to say *not yet*. None of it is proof. All of it is accumulated, measured approximation, and it worked. Commercial aviation drove an undecidable safety property down to a few deaths per billion passenger-kilometres by approximation and institutions. So *we cannot prove it safe* was never a reason for paralysis and never a licence for recklessness. It is the normal condition of every mature engineering discipline, and the reason those disciplines built institutions instead of theorems. Software, and the machines of the previous chapter in particular, is early in exactly that process. Being early is a job opening, whatever you are studying.
+
+### So, What Is Intelligence?
+
+> Every notation was invented by someone who saw a truth before it could be proved
+
+Fermat asserted his last theorem in the margin of a book; Wiles proved it 358 years later. Riemann's hypothesis has been assumed true, and built upon, for 165 years. Mendeleev left blank cells for unseen elements. Darwin had no genetics. In each case the notation came *after* the conviction, and the conviction was not deduced from anything. Gödel makes this precise. No mechanical procedure yields the next axiom. Deciding what to hold true is not a step inside the system; it is a step to a new one. And, symmetrically, that step is not automatable, not because machines are weak, but because there is no algorithm there to automate. Scale does not help. It was never a compute problem. Be careful and fair here. The claim is not that machines cannot participate; they may well help, and they already propose conjectures. The claim is that no procedure guarantees the step, so it stays genuinely open work for whoever attempts it, human or machine.
+
+> The definition
+
+Intelligence is developing new formal languages, or at least new properties in existing ones, which requires finding and understanding promising *unproven* truth. New languages and properties let us ask new questions about that truth, and then answer them in proofs. Forever.
+
+The definition has two halves, and they map onto a university. *Developing the skills to answer* is proving, computing, measuring, building. It is rigorous, cumulative, and teachable, and it is what an undergraduate program gives you. *Choosing the questions* is deciding which unproven truth is worth formalizing. It is not deducible and not teachable by rote, and it is what advanced, graduate-level study is for. Both are necessary. Notice where the difficulty sits: not in the proving, which machines do superbly, but in the finding, which nothing yet does reliably. And notice what the definition is not: not a threshold, not a score, not a possession. It is an activity with a direction and no terminating condition. Test it against a student learning statistics, a field adopting an instrument, an evolutionary lineage inventing the codon, a model being fine-tuned. All satisfy it, and none of it can be obsoleted by a product launch.
+
+> And what is computer science
+
+Along the way this book has also earned a definition of its own subject, which the name misleads about twice: it is not about computers, and it is only sometimes a science. Computer science is the exact study of notation a machine can execute, of what can be written down, what can be computed, what can be decided, and what can be afforded, and therefore of the gap, measured precisely, between notation and meaning. Four verbs, one per part of this book. The machine is where notation is forced to be exact, so the gap was noticed here first and measured here most sharply. But the theorems hold for any notation: a statute, a genome, a score, a model. And the subject cannot be completed, not from lack of ambition, but as a consequence of its own theorems: no final language, no complete system, no self-certificate, no decision procedure for meaning.
+
+> Selfie, against the definition
+
+Read the specimen of this book against that definition, one card at a time. A language and its meaning: C\*, seven keywords, one type and pointers to it, and `starc`, which gives it a semantics, and which is written in C\*, so the dictionary is written in the language it defines. A machine: RISC-U, fourteen instructions, thirty-two registers, four gigabytes, and `mipster`, one universal machine that runs every program for it, itself included. A fixed point and its limit: selfie compiles itself and gets the same bytes twice, which proves that it agrees with itself, and Thompson says what that cannot prove. And so the workshop of tools around it, the figure, turns its execution into logic and supplies the outside checks that the fixed point cannot: a model generator, a model checker, a fuzzer, a solver, a binary translator, each applied to selfie and to itself. The only argument for selfie's size is the one the size chapter made. An artifact you can read to the end is qualitatively different from one you can only sample, because reading to the end is the only way the semantics is ever actually pinned down.
+
+![The workshop that grew out of one file](../docs/figures/galaxy.svg "The workshop that grew out of one file")
+
+> This is exactly why you study a field in depth
+
+Not because the machines are unavailable. They are extravagantly available, and they will get better every year of your career. But finding and understanding promising unproven truth requires having lived inside a subject long enough to feel where it is thin, where it is wrong, and where it is about to give. No summary, no search, and no generated answer transfers that. It is built, slowly, and it is yours. It is the four slots of working memory pointing at ten thousand patterns, and the patterns took years. And it need not be computer science. Every field has unproven truth in front of it: history, medicine, ecology, music theory, economics, law. The method in this book is field-independent; the depth has to be specific. Pick the field, or fields, whose unsolved problems still make you *strangely comfortable*. It is a better selection criterion than any salary table.
+
+> Truth can only be approximated, and the approximating never stops
+
+Read the whole book twice, one last time. What we lost: completeness, certainty, a final theory, a final language, a decision procedure for meaning, and any machine that could hand us all of it. What we have instead: work that cannot be finished, and therefore cannot be taken away. An unbounded frontier where every new notation makes yesterday's unreachable truths reachable, on every single day, forever. A finishable world would be a world where curiosity has an end date. What the theorems actually deny us is redundancy. Undecidable does not mean unknowable. It means unfinishable, and unfinishable work is the only kind that never becomes obsolete. The halting problem, applied to progress, gives the most hopeful result in science: this computation does not terminate.
+
+### Life 4
+
+Understanding the universality of computing, its challenges and limits, and what it takes to make universal computing available to everyone was the high-level goal of the first edition of this book. This edition kept all of that and asked what it was for. Self-reference, as manifested in our selfie system, has been our guiding principle in all of it, and it turned out to be the guiding principle of the answer too. Let us summarize what we have seen, along the axis.
+
+1. Size: everything is information, and all information can be encoded in bits, and a few bytes of it have more states than the universe has atoms. The state of a computer is a giant number that the machine manipulates into an endless sequence of numbers as it executes code, and those numbers can mean whatever we want. Whatever you see on a screen could come from anywhere and mean anything, and no test will ever have seen more than a vanishing fraction of what a machine can do. Testing shows presence, not absence.
+
+2. Notation: computer science is all about formalisms. Programming languages are formalisms with precise syntax and executable semantics, quite different from natural languages, and so are grammars, machine languages, and the models a solver reads. Everything written in any of them is a finite text, so it can be listed, and it is a number, so a machine can compute with it. That is what lets a compiler read a program, an emulator run one, and a system describe itself.
+
+3. Meaning: what we want to talk about, behaviors, truths, and meanings, cannot be listed. So almost every truth has no proof, no system is ever finished, no system certifies itself, no program decides what programs do, and every tool that says anything useful about meaning is an approximation with a stated bound. The machinery of this book, the compiler that defines the meaning of its own language and the operating system that isolates itself, is exactly that limited, and it works.
+
+4. Cost: decidable is not doable. Some questions have answers that arrive after the Sun has burnt out; some of those, the hard-to-find and easy-to-check ones, are the same question in thousands of disguises; and clever solvers answer many of them anyway, by exploiting structure. Turning a program into a formula and handing it to a solver is where syntax becomes semantics on your laptop, within a bound you chose. And every step that forgets costs energy, so time, space, and energy are one budget.
+
+5. Machines: the machines that talk are computations, trained on notation, asked for meaning. A hallucination is the gap of this book at consumer scale. Whatever they become, they are finite objects inside the world they model, and no such object certifies itself. Generation got cheap and verification did not, so the value migrates to the two ends the machine does not occupy, which are the two ends this book trained you for.
+
+We conclude the book with a brief outlook, as before. On the software side, artificial intelligence receives most of the attention right now. On the hardware side, it is probably quantum computing. The goals are always the same: smarter software and faster hardware. The hype is considerable, as so often in computer science, with the demand for breakthroughs seemingly having no limits, all the while modern society has not even learned to deal with the previous generation of technology. I have seen those hypes come and go, expectations and anxiety up and down, leaving knowledge of the basic principles as the only reliable source of advice in a world of universal computing. That is the purpose stated in the introduction, and I hope it has been kept: a deep understanding of the basic principles, deep enough to position generative AI, and whatever comes next, properly. As the hype fades, progress is usually made, sometimes in unforeseen ways. What does not change is the axis: small, vast, countable, uncountable, and the gap between notation and meaning that everything worth doing lives in.
+
+> Whatever intelligence is, humour is the only way
+
+For most of you, this book has probably confirmed your conviction never to study computer science. Or the exact opposite. And who knows, some of you may now be considering a switch into computer science. I have seen it happen, with apologies to my colleagues in the other fields. Outcome A: confirmed conviction. Outcome B: informed confusion. Regardless of which one you leave with, this is about becoming who you are and no one else. You are not competing with a machine at producing notation. You are the part of the loop that decides what it should mean, and whether it is true. Notation is finite. Meaning is not. Mind the gap, then go widen it.
+
+> Denn es ist zuletzt doch nur der Geist, der jede Technik lebendig macht.
+
+Goethe wrote that long before any of the mathematics in this book existed. For in the end it is only the *Geist* that brings any technique to life. *Technik* is technique, technology, the formal machinery: notation, proof, the compiler, the solver, the model. Necessary. Never sufficient. Never alive on its own. *Geist* is spirit, mind, meaning. For the whole of this book we have been calling it truth. And it is, finally, you and me.
+
+> Exercises
+
+1. Name the notation of a field other than computer science that you know well, and say what it made possible that was not possible before. Then name one thing in that field that everyone believes and nobody has proved.
+2. Take a project you are working on, in any field, and write down the five decidable questions for it: the language, its semantics, the metric, the budget, and who checks from outside.
+3. Run the three commands of the selfie chapter one last time: self-compilation, self-execution, self-hosting. For each, write one sentence saying what it proves and one saying what, by the meaning chapter, it cannot.
+4. Read the thirteen letters F B I C I A N A S A U S B to someone who has never seen them, then the four chunks, and note the difference. Then find thirteen letters that chunk for you and not for them.
+5. Pick one of the six habits and apply it, this week, to something you would otherwise have accepted on faith. Report what the check was and what it found.
+
+### Recommended Readings 10
+
+> The Library of Babel by Jorge Luis Borges
+
+A short story from 1941 about a library containing every possible book, which is to say the state space of the size chapter, walked by librarians. It says in ten pages what the first part of this book says in a hundred, and it is the book for anyone from the humanities who wants the argument without the machine.
+
+> Theory of Self-Reproducing Automata by John von Neumann
+
+Written in the 1940s and published in 1966, this is the source of the self-copying machine. Von Neumann worked out the architecture of reproduction before the structure of DNA was known, from the requirement of self-reference alone, which is the most remarkable prediction from notation that I know.
+
+> Thinking, Fast and Slow by Daniel Kahneman
+
+The two systems of the mind, a lookup and a derivation, are the cost chapter's problem inside one head, and this is the book that made them famous. Read it as a computer scientist and every chapter is about time, space, and the price of being checkable.
+
+> Selected Writings on Computing: A Personal Perspective by Edsger W. Dijkstra
+
+Dijkstra's notes, the EWDs, are the source of the submarine line and of most of the good sentences about the nature of the subject. He was wrong about some things and never boring, and he took the gap between notation and meaning more seriously than anyone in the field's first half century.
+
+> Gödel, Escher, Bach by Douglas Hofstadter
+
+Recommended in the first chapter and again in the ninth, and one more time here, because if you have finished this book you will now read it differently. It is the book this one was trying to be a runnable version of.
 
 ## Glossary
