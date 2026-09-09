@@ -1,0 +1,85 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 450" width="800" height="450" role="img" aria-label="The diagonal argument on subsets: D disagrees with row n about n">
+<title>The diagonal argument on subsets: D disagrees with row n about n</title>
+<style>svg{--ink:#131C2A;--ink-2:#39485C;--muted:#5D6E85;--line:rgba(19,28,42,.18);--syn:#A2661A;--sem:#1F6C86;--bad:#A63E5A;--panel:#FFFFFF;--ground:#EFF1F3}@media (prefers-color-scheme: dark){svg{--ink:#E7EDF6;--ink-2:#B6C4D8;--muted:#8093AF;--line:rgba(122,162,204,.16);--syn:#E0A550;--sem:#5BB0C7;--bad:#C8607A;--panel:#111C2E;--ground:#080E18}}text{font-family:"JetBrains Mono","SFMono-Regular","SF Mono","Cascadia Mono",Menlo,Consolas,"DejaVu Sans Mono",monospace}.serif{font-family:"Iowan Old Style","Palatino Linotype",Palatino,"Book Antiqua","URW Palladio L",Georgia,serif}</style>
+<text x="258.45" y="27.45" font-size="14.76" fill="var(--muted)" text-anchor="middle" dominant-baseline="central">1</text>
+<text x="295.35" y="27.45" font-size="14.76" fill="var(--muted)" text-anchor="middle" dominant-baseline="central">2</text>
+<text x="332.25" y="27.45" font-size="14.76" fill="var(--muted)" text-anchor="middle" dominant-baseline="central">3</text>
+<text x="369.15" y="27.45" font-size="14.76" fill="var(--muted)" text-anchor="middle" dominant-baseline="central">4</text>
+<text x="406.05" y="27.45" font-size="14.76" fill="var(--muted)" text-anchor="middle" dominant-baseline="central">5</text>
+<text x="442.95" y="27.45" font-size="14.76" fill="var(--muted)" text-anchor="middle" dominant-baseline="central">6</text>
+<text x="225.24" y="68.04" font-size="15.68" fill="var(--ink-2)" text-anchor="end" dominant-baseline="central">S1</text>
+<rect x="240" y="49.59" width="36.9" height="36.9" fill="none" stroke="var(--line)" stroke-width="1"/>
+<rect x="276.9" y="49.59" width="36.9" height="36.9" fill="none" stroke="var(--line)" stroke-width="1"/>
+<circle cx="295.35" cy="68.04" r="6.27" fill="var(--ink-2)"/>
+<rect x="313.8" y="49.59" width="36.9" height="36.9" fill="none" stroke="var(--line)" stroke-width="1"/>
+<circle cx="332.25" cy="68.04" r="6.27" fill="var(--ink-2)"/>
+<rect x="350.7" y="49.59" width="36.9" height="36.9" fill="none" stroke="var(--line)" stroke-width="1"/>
+<circle cx="369.15" cy="68.04" r="6.27" fill="var(--ink-2)"/>
+<rect x="387.6" y="49.59" width="36.9" height="36.9" fill="none" stroke="var(--line)" stroke-width="1"/>
+<circle cx="406.05" cy="68.04" r="6.27" fill="none" stroke="var(--ink-2)" stroke-width="1"/>
+<rect x="424.5" y="49.59" width="36.9" height="36.9" fill="none" stroke="var(--line)" stroke-width="1"/>
+<circle cx="442.95" cy="68.04" r="6.27" fill="var(--ink-2)"/>
+<text x="225.24" y="104.94" font-size="15.68" fill="var(--ink-2)" text-anchor="end" dominant-baseline="central">S2</text>
+<rect x="240" y="86.49" width="36.9" height="36.9" fill="none" stroke="var(--line)" stroke-width="1"/>
+<circle cx="258.45" cy="104.94" r="6.27" fill="var(--ink-2)"/>
+<rect x="276.9" y="86.49" width="36.9" height="36.9" fill="none" stroke="var(--line)" stroke-width="1"/>
+<rect x="313.8" y="86.49" width="36.9" height="36.9" fill="none" stroke="var(--line)" stroke-width="1"/>
+<circle cx="332.25" cy="104.94" r="6.27" fill="none" stroke="var(--ink-2)" stroke-width="1"/>
+<rect x="350.7" y="86.49" width="36.9" height="36.9" fill="none" stroke="var(--line)" stroke-width="1"/>
+<circle cx="369.15" cy="104.94" r="6.27" fill="none" stroke="var(--ink-2)" stroke-width="1"/>
+<rect x="387.6" y="86.49" width="36.9" height="36.9" fill="none" stroke="var(--line)" stroke-width="1"/>
+<circle cx="406.05" cy="104.94" r="6.27" fill="none" stroke="var(--ink-2)" stroke-width="1"/>
+<rect x="424.5" y="86.49" width="36.9" height="36.9" fill="none" stroke="var(--line)" stroke-width="1"/>
+<circle cx="442.95" cy="104.94" r="6.27" fill="none" stroke="var(--ink-2)" stroke-width="1"/>
+<text x="225.24" y="141.84" font-size="15.68" fill="var(--ink-2)" text-anchor="end" dominant-baseline="central">S3</text>
+<rect x="240" y="123.39" width="36.9" height="36.9" fill="none" stroke="var(--line)" stroke-width="1"/>
+<circle cx="258.45" cy="141.84" r="6.27" fill="none" stroke="var(--ink-2)" stroke-width="1"/>
+<rect x="276.9" y="123.39" width="36.9" height="36.9" fill="none" stroke="var(--line)" stroke-width="1"/>
+<circle cx="295.35" cy="141.84" r="6.27" fill="none" stroke="var(--ink-2)" stroke-width="1"/>
+<rect x="313.8" y="123.39" width="36.9" height="36.9" fill="none" stroke="var(--line)" stroke-width="1"/>
+<rect x="350.7" y="123.39" width="36.9" height="36.9" fill="none" stroke="var(--line)" stroke-width="1"/>
+<circle cx="369.15" cy="141.84" r="6.27" fill="var(--ink-2)"/>
+<rect x="387.6" y="123.39" width="36.9" height="36.9" fill="none" stroke="var(--line)" stroke-width="1"/>
+<circle cx="406.05" cy="141.84" r="6.27" fill="none" stroke="var(--ink-2)" stroke-width="1"/>
+<rect x="424.5" y="123.39" width="36.9" height="36.9" fill="none" stroke="var(--line)" stroke-width="1"/>
+<circle cx="442.95" cy="141.84" r="6.27" fill="none" stroke="var(--ink-2)" stroke-width="1"/>
+<text x="225.24" y="178.74" font-size="15.68" fill="var(--ink-2)" text-anchor="end" dominant-baseline="central">S4</text>
+<rect x="240" y="160.29" width="36.9" height="36.9" fill="none" stroke="var(--line)" stroke-width="1"/>
+<circle cx="258.45" cy="178.74" r="6.27" fill="none" stroke="var(--ink-2)" stroke-width="1"/>
+<rect x="276.9" y="160.29" width="36.9" height="36.9" fill="none" stroke="var(--line)" stroke-width="1"/>
+<circle cx="295.35" cy="178.74" r="6.27" fill="none" stroke="var(--ink-2)" stroke-width="1"/>
+<rect x="313.8" y="160.29" width="36.9" height="36.9" fill="none" stroke="var(--line)" stroke-width="1"/>
+<circle cx="332.25" cy="178.74" r="6.27" fill="none" stroke="var(--ink-2)" stroke-width="1"/>
+<rect x="350.7" y="160.29" width="36.9" height="36.9" fill="none" stroke="var(--line)" stroke-width="1"/>
+<rect x="387.6" y="160.29" width="36.9" height="36.9" fill="none" stroke="var(--line)" stroke-width="1"/>
+<circle cx="406.05" cy="178.74" r="6.27" fill="var(--ink-2)"/>
+<rect x="424.5" y="160.29" width="36.9" height="36.9" fill="none" stroke="var(--line)" stroke-width="1"/>
+<circle cx="442.95" cy="178.74" r="6.27" fill="none" stroke="var(--ink-2)" stroke-width="1"/>
+<text x="225.24" y="215.64" font-size="15.68" fill="var(--ink-2)" text-anchor="end" dominant-baseline="central">S5</text>
+<rect x="240" y="197.19" width="36.9" height="36.9" fill="none" stroke="var(--line)" stroke-width="1"/>
+<circle cx="258.45" cy="215.64" r="6.27" fill="var(--ink-2)"/>
+<rect x="276.9" y="197.19" width="36.9" height="36.9" fill="none" stroke="var(--line)" stroke-width="1"/>
+<circle cx="295.35" cy="215.64" r="6.27" fill="var(--ink-2)"/>
+<rect x="313.8" y="197.19" width="36.9" height="36.9" fill="none" stroke="var(--line)" stroke-width="1"/>
+<circle cx="332.25" cy="215.64" r="6.27" fill="var(--ink-2)"/>
+<rect x="350.7" y="197.19" width="36.9" height="36.9" fill="none" stroke="var(--line)" stroke-width="1"/>
+<circle cx="369.15" cy="215.64" r="6.27" fill="none" stroke="var(--ink-2)" stroke-width="1"/>
+<rect x="387.6" y="197.19" width="36.9" height="36.9" fill="none" stroke="var(--line)" stroke-width="1"/>
+<rect x="424.5" y="197.19" width="36.9" height="36.9" fill="none" stroke="var(--line)" stroke-width="1"/>
+<circle cx="442.95" cy="215.64" r="6.27" fill="var(--ink-2)"/>
+<text x="225.24" y="252.54" font-size="15.68" fill="var(--ink-2)" text-anchor="end" dominant-baseline="central">S6</text>
+<rect x="240" y="234.09" width="36.9" height="36.9" fill="none" stroke="var(--line)" stroke-width="1"/>
+<circle cx="258.45" cy="252.54" r="6.27" fill="none" stroke="var(--ink-2)" stroke-width="1"/>
+<rect x="276.9" y="234.09" width="36.9" height="36.9" fill="none" stroke="var(--line)" stroke-width="1"/>
+<circle cx="295.35" cy="252.54" r="6.27" fill="none" stroke="var(--ink-2)" stroke-width="1"/>
+<rect x="313.8" y="234.09" width="36.9" height="36.9" fill="none" stroke="var(--line)" stroke-width="1"/>
+<circle cx="332.25" cy="252.54" r="6.27" fill="var(--ink-2)"/>
+<rect x="350.7" y="234.09" width="36.9" height="36.9" fill="none" stroke="var(--line)" stroke-width="1"/>
+<circle cx="369.15" cy="252.54" r="6.27" fill="var(--ink-2)"/>
+<rect x="387.6" y="234.09" width="36.9" height="36.9" fill="none" stroke="var(--line)" stroke-width="1"/>
+<circle cx="406.05" cy="252.54" r="6.27" fill="var(--ink-2)"/>
+<rect x="424.5" y="234.09" width="36.9" height="36.9" fill="none" stroke="var(--line)" stroke-width="1"/>
+<g class="f" data-step="1"><rect x="240" y="49.59" width="36.9" height="36.9" fill="var(--syn)" fill-opacity="0.16"/><circle cx="258.45" cy="68.04" r="6.27" fill="none" stroke="var(--syn)" stroke-width="1"/><rect x="276.9" y="86.49" width="36.9" height="36.9" fill="var(--syn)" fill-opacity="0.16"/><circle cx="295.35" cy="104.94" r="6.27" fill="var(--syn)"/><rect x="313.8" y="123.39" width="36.9" height="36.9" fill="var(--syn)" fill-opacity="0.16"/><circle cx="332.25" cy="141.84" r="6.27" fill="var(--syn)"/><rect x="350.7" y="160.29" width="36.9" height="36.9" fill="var(--syn)" fill-opacity="0.16"/><circle cx="369.15" cy="178.74" r="6.27" fill="none" stroke="var(--syn)" stroke-width="1"/><rect x="387.6" y="197.19" width="36.9" height="36.9" fill="var(--syn)" fill-opacity="0.16"/><circle cx="406.05" cy="215.64" r="6.27" fill="none" stroke="var(--syn)" stroke-width="1"/><rect x="424.5" y="234.09" width="36.9" height="36.9" fill="var(--syn)" fill-opacity="0.16"/><circle cx="442.95" cy="252.54" r="6.27" fill="none" stroke="var(--syn)" stroke-width="1"/></g>
+<g class="f" data-step="2"><text x="225.24" y="307.89" font-size="15.68" fill="var(--sem)" text-anchor="end" dominant-baseline="central">D</text><rect x="240" y="289.44" width="36.9" height="36.9" fill="var(--sem)" stroke="var(--sem)" stroke-width="1" fill-opacity="0.14"/><circle cx="258.45" cy="307.89" r="6.27" fill="var(--sem)"/><rect x="276.9" y="289.44" width="36.9" height="36.9" fill="var(--sem)" stroke="var(--sem)" stroke-width="1" fill-opacity="0.14"/><circle cx="295.35" cy="307.89" r="6.27" fill="none" stroke="var(--sem)" stroke-width="1"/><rect x="313.8" y="289.44" width="36.9" height="36.9" fill="var(--sem)" stroke="var(--sem)" stroke-width="1" fill-opacity="0.14"/><circle cx="332.25" cy="307.89" r="6.27" fill="none" stroke="var(--sem)" stroke-width="1"/><rect x="350.7" y="289.44" width="36.9" height="36.9" fill="var(--sem)" stroke="var(--sem)" stroke-width="1" fill-opacity="0.14"/><circle cx="369.15" cy="307.89" r="6.27" fill="var(--sem)"/><rect x="387.6" y="289.44" width="36.9" height="36.9" fill="var(--sem)" stroke="var(--sem)" stroke-width="1" fill-opacity="0.14"/><circle cx="406.05" cy="307.89" r="6.27" fill="var(--sem)"/><rect x="424.5" y="289.44" width="36.9" height="36.9" fill="var(--sem)" stroke="var(--sem)" stroke-width="1" fill-opacity="0.14"/><circle cx="442.95" cy="307.89" r="6.27" fill="var(--sem)"/></g>
+<g class="f" data-step="3"><text x="350.7" y="355.86" font-size="14.76" fill="var(--sem)" text-anchor="middle" dominant-baseline="central">D disagrees with row n about n</text></g>
+</svg>

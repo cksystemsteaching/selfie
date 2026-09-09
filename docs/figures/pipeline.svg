@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 450" width="800" height="450" role="img" aria-label="The whole pipeline: source, scanner, parser, code generator, machine code — nothing in the middle left out">
+<title>The whole pipeline: source, scanner, parser, code generator, machine code — nothing in the middle left out</title>
+<style>svg{--ink:#131C2A;--ink-2:#39485C;--muted:#5D6E85;--line:rgba(19,28,42,.18);--syn:#A2661A;--sem:#1F6C86;--bad:#A63E5A;--panel:#FFFFFF;--ground:#EFF1F3}@media (prefers-color-scheme: dark){svg{--ink:#E7EDF6;--ink-2:#B6C4D8;--muted:#8093AF;--line:rgba(122,162,204,.16);--syn:#E0A550;--sem:#5BB0C7;--bad:#C8607A;--panel:#111C2E;--ground:#080E18}}text{font-family:"JetBrains Mono","SFMono-Regular","SF Mono","Cascadia Mono",Menlo,Consolas,"DejaVu Sans Mono",monospace}.serif{font-family:"Iowan Old Style","Palatino Linotype",Palatino,"Book Antiqua","URW Palladio L",Georgia,serif}</style>
+<rect x="28" y="108" width="132.16" height="135" fill="var(--panel)" stroke="var(--syn)" stroke-width="1" rx="13.5"/>
+<text x="94.08" y="175.5" font-size="17.18" fill="var(--syn)" text-anchor="middle" dominant-baseline="central">selfie.c</text>
+<line x1="162.66" y1="175.5" x2="178.46" y2="175.5" stroke="var(--line)" stroke-width="1.4"/><path d="M178.46 175.5 L173.1 177.77 L173.1 173.23 Z" fill="var(--line)"/>
+<rect x="180.96" y="108" width="132.16" height="135" fill="var(--panel)" stroke="var(--line)" stroke-width="1" rx="13.5"/>
+<text x="247.04" y="175.5" font-size="17.18" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central">scanner</text>
+<line x1="315.62" y1="175.5" x2="331.42" y2="175.5" stroke="var(--line)" stroke-width="1.4"/><path d="M331.42 175.5 L326.06 177.77 L326.06 173.23 Z" fill="var(--line)"/>
+<rect x="333.92" y="108" width="132.16" height="135" fill="var(--panel)" stroke="var(--line)" stroke-width="1" rx="13.5"/>
+<text x="400" y="175.5" font-size="17.18" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central">parser</text>
+<line x1="468.58" y1="175.5" x2="484.38" y2="175.5" stroke="var(--line)" stroke-width="1.4"/><path d="M484.38 175.5 L479.02 177.77 L479.02 173.23 Z" fill="var(--line)"/>
+<rect x="486.88" y="108" width="132.16" height="135" fill="var(--panel)" stroke="var(--line)" stroke-width="1" rx="13.5"/>
+<text x="552.96" y="175.5" font-size="15.02" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central">code generator</text>
+<line x1="621.54" y1="175.5" x2="637.34" y2="175.5" stroke="var(--line)" stroke-width="1.4"/><path d="M637.34 175.5 L631.98 177.77 L631.98 173.23 Z" fill="var(--line)"/>
+<rect x="639.84" y="108" width="132.16" height="135" fill="var(--panel)" stroke="var(--sem)" stroke-width="1" rx="13.5"/>
+<text x="705.92" y="175.5" font-size="17.18" fill="var(--sem)" text-anchor="middle" dominant-baseline="central">RISC-U</text>
+<line x1="28" y1="306" x2="772" y2="306" stroke="var(--line)" stroke-width="1" stroke-dasharray="2 4"/>
+<text x="400" y="342" font-size="13.74" fill="var(--muted)" text-anchor="middle" dominant-baseline="central">and in the same file: in-memory linker · disassembler · garbage collector</text>
+<text x="400" y="378" font-size="13.74" fill="var(--muted)" text-anchor="middle" dominant-baseline="central">L1 caches · profiler · debugger with replay</text>
+</svg>

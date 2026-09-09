@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 450" width="800" height="450" role="img" aria-label="A compiler defines the meaning of the language it is written in">
+<title>A compiler defines the meaning of the language it is written in</title>
+<style>svg{--ink:#131C2A;--ink-2:#39485C;--muted:#5D6E85;--line:rgba(19,28,42,.18);--syn:#A2661A;--sem:#1F6C86;--bad:#A63E5A;--panel:#FFFFFF;--ground:#EFF1F3}@media (prefers-color-scheme: dark){svg{--ink:#E7EDF6;--ink-2:#B6C4D8;--muted:#8093AF;--line:rgba(122,162,204,.16);--syn:#E0A550;--sem:#5BB0C7;--bad:#C8607A;--panel:#111C2E;--ground:#080E18}}text{font-family:"JetBrains Mono","SFMono-Regular","SF Mono","Cascadia Mono",Menlo,Consolas,"DejaVu Sans Mono",monospace}.serif{font-family:"Iowan Old Style","Palatino Linotype",Palatino,"Book Antiqua","URW Palladio L",Georgia,serif}</style>
+<rect x="40" y="72" width="272" height="117" fill="var(--panel)" stroke="var(--syn)" stroke-width="1" rx="18"/>
+<text x="176" y="116.46" font-size="35.1" fill="var(--syn)" text-anchor="middle" dominant-baseline="central">selfie.c</text>
+<text x="176" y="156.24" font-size="25.27" fill="var(--muted)" text-anchor="middle" dominant-baseline="central">text</text>
+<rect x="488" y="72" width="272" height="117" fill="var(--panel)" stroke="var(--sem)" stroke-width="1" rx="18"/>
+<text x="624" y="111.78" font-size="27.38" fill="var(--sem)" text-anchor="middle" dominant-baseline="central">what the</text>
+<text x="624" y="144.54" font-size="27.38" fill="var(--sem)" text-anchor="middle" dominant-baseline="central">machine does</text>
+<line x1="328" y1="130.5" x2="472" y2="130.5" stroke="var(--ink-2)" stroke-width="1.4"/><path d="M472 130.5 L461.22 135.06 L461.22 125.94 Z" fill="var(--ink-2)"/>
+<text x="400" y="49.5" font-size="25.27" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central">starc</text>
+<path d="M624 189 C624 292.5 176 292.5 176 189" fill="none" stroke="var(--line)" stroke-width="1" stroke-dasharray="3 3"/>
+<text x="400" y="319.5" font-size="21.76" fill="var(--muted)" text-anchor="middle" dominant-baseline="central">and starc's own source is in there</text>
+</svg>

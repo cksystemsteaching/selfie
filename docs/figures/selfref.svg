@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 450" width="800" height="450" role="img" aria-label="Virtualization is emulation plus self-reference: the kernel requires what the kernel provides">
+<title>Virtualization is emulation plus self-reference: the kernel requires what the kernel provides</title>
+<style>svg{--ink:#131C2A;--ink-2:#39485C;--muted:#5D6E85;--line:rgba(19,28,42,.18);--syn:#A2661A;--sem:#1F6C86;--bad:#A63E5A;--panel:#FFFFFF;--ground:#EFF1F3}@media (prefers-color-scheme: dark){svg{--ink:#E7EDF6;--ink-2:#B6C4D8;--muted:#8093AF;--line:rgba(122,162,204,.16);--syn:#E0A550;--sem:#5BB0C7;--bad:#C8607A;--panel:#111C2E;--ground:#080E18}}text{font-family:"JetBrains Mono","SFMono-Regular","SF Mono","Cascadia Mono",Menlo,Consolas,"DejaVu Sans Mono",monospace}.serif{font-family:"Iowan Old Style","Palatino Linotype",Palatino,"Book Antiqua","URW Palladio L",Georgia,serif}</style>
+<rect x="40" y="63" width="288" height="72" fill="var(--panel)" stroke="var(--sem)" stroke-width="1" rx="11.25"/>
+<text x="184" y="99" font-size="27" fill="var(--sem)" text-anchor="middle" dominant-baseline="central">kernel</text>
+<rect x="472" y="63" width="288" height="72" fill="var(--panel)" stroke="var(--line)" stroke-width="1" rx="11.25"/>
+<text x="616" y="99" font-size="27" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central">isolation</text>
+<line x1="340" y1="88.2" x2="460" y2="88.2" stroke="var(--ink-2)" stroke-width="1.4"/><path d="M460 88.2 L451.71 91.7 L451.71 84.7 Z" fill="var(--ink-2)"/>
+<line x1="460" y1="117" x2="340" y2="117" stroke="var(--bad)" stroke-width="1.4"/><path d="M340 117 L348.29 113.5 L348.29 120.5 Z" fill="var(--bad)"/>
+<text x="400" y="74.52" font-size="18.36" fill="var(--muted)" text-anchor="middle" dominant-baseline="central">provides</text>
+<text x="400" y="131.4" font-size="18.36" fill="var(--bad)" text-anchor="middle" dominant-baseline="central">requires</text>
+<text x="400" y="193.5" font-size="51.3" fill="var(--bad)" text-anchor="middle" dominant-baseline="central">?</text>
+<rect x="56" y="252" width="688" height="90" fill="var(--panel)" stroke="var(--syn)" stroke-width="1" rx="11.25" stroke-dasharray="4 3"/>
+<text x="400" y="282.6" font-size="22.14" fill="var(--syn)" text-anchor="middle" dominant-baseline="central">microkernel · trusted computing base</text>
+<text x="400" y="315" font-size="19.44" fill="var(--muted)" text-anchor="middle" dominant-baseline="central">isolated by hand · must never fault</text>
+</svg>

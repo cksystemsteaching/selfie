@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 450" width="800" height="450" role="img" aria-label="The counting numbers paired with the even numbers">
+<title>The counting numbers paired with the even numbers</title>
+<style>svg{--ink:#131C2A;--ink-2:#39485C;--muted:#5D6E85;--line:rgba(19,28,42,.18);--syn:#A2661A;--sem:#1F6C86;--bad:#A63E5A;--panel:#FFFFFF;--ground:#EFF1F3}@media (prefers-color-scheme: dark){svg{--ink:#E7EDF6;--ink-2:#B6C4D8;--muted:#8093AF;--line:rgba(122,162,204,.16);--syn:#E0A550;--sem:#5BB0C7;--bad:#C8607A;--panel:#111C2E;--ground:#080E18}}text{font-family:"JetBrains Mono","SFMono-Regular","SF Mono","Cascadia Mono",Menlo,Consolas,"DejaVu Sans Mono",monospace}.serif{font-family:"Iowan Old Style","Palatino Linotype",Palatino,"Book Antiqua","URW Palladio L",Georgia,serif}</style>
+<text x="256" y="45" font-size="24.75" fill="var(--sem)" text-anchor="middle" dominant-baseline="central">ℕ</text>
+<text x="544" y="45" font-size="21.04" fill="var(--syn)" text-anchor="middle" dominant-baseline="central">even</text>
+<text x="256" y="90" font-size="24.75" fill="var(--ink-2)" text-anchor="end" dominant-baseline="central">1</text>
+<text x="544" y="90" font-size="24.75" fill="var(--ink-2)" text-anchor="start" dominant-baseline="central">2</text>
+<line x1="273.32" y1="90" x2="516.77" y2="90" stroke="var(--line)" stroke-width="1.4"/><path d="M516.77 90 L512.17 91.95 L512.17 88.05 Z" fill="var(--line)"/>
+<text x="256" y="145.8" font-size="24.75" fill="var(--ink-2)" text-anchor="end" dominant-baseline="central">2</text>
+<text x="544" y="145.8" font-size="24.75" fill="var(--ink-2)" text-anchor="start" dominant-baseline="central">4</text>
+<line x1="273.32" y1="145.8" x2="516.77" y2="145.8" stroke="var(--line)" stroke-width="1.4"/><path d="M516.77 145.8 L512.17 147.75 L512.17 143.85 Z" fill="var(--line)"/>
+<text x="256" y="201.6" font-size="24.75" fill="var(--ink-2)" text-anchor="end" dominant-baseline="central">3</text>
+<text x="544" y="201.6" font-size="24.75" fill="var(--ink-2)" text-anchor="start" dominant-baseline="central">6</text>
+<line x1="273.32" y1="201.6" x2="516.77" y2="201.6" stroke="var(--line)" stroke-width="1.4"/><path d="M516.77 201.6 L512.17 203.55 L512.17 199.65 Z" fill="var(--line)"/>
+<text x="256" y="257.4" font-size="24.75" fill="var(--ink-2)" text-anchor="end" dominant-baseline="central">4</text>
+<text x="544" y="257.4" font-size="24.75" fill="var(--ink-2)" text-anchor="start" dominant-baseline="central">8</text>
+<line x1="273.32" y1="257.4" x2="516.77" y2="257.4" stroke="var(--line)" stroke-width="1.4"/><path d="M516.77 257.4 L512.17 259.35 L512.17 255.45 Z" fill="var(--line)"/>
+<text x="256" y="313.2" font-size="24.75" fill="var(--ink-2)" text-anchor="end" dominant-baseline="central">5</text>
+<text x="544" y="313.2" font-size="24.75" fill="var(--ink-2)" text-anchor="start" dominant-baseline="central">10</text>
+<line x1="273.32" y1="313.2" x2="516.77" y2="313.2" stroke="var(--line)" stroke-width="1.4"/><path d="M516.77 313.2 L512.17 315.15 L512.17 311.25 Z" fill="var(--line)"/>
+<text x="256" y="369" font-size="24.75" fill="var(--ink-2)" text-anchor="end" dominant-baseline="central">6</text>
+<text x="544" y="369" font-size="24.75" fill="var(--ink-2)" text-anchor="start" dominant-baseline="central">12</text>
+<line x1="273.32" y1="369" x2="516.77" y2="369" stroke="var(--line)" stroke-width="1.4"/><path d="M516.77 369 L512.17 370.95 L512.17 367.05 Z" fill="var(--line)"/>
+<text x="256" y="424.8" font-size="24.75" fill="var(--muted)" text-anchor="end" dominant-baseline="central">⋮</text>
+<text x="544" y="424.8" font-size="24.75" fill="var(--muted)" text-anchor="start" dominant-baseline="central">⋮</text>
+</svg>

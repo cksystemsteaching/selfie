@@ -1,0 +1,369 @@
+/* ============================================================
+   The selfie class decks — shared stylesheet
+   Visual system of the three talks: a drafting table / plotter.
+   Typography encodes the thesis the classes teach:
+     serif  = meaning   (semantics, truth, what the machine does)
+     mono   = notation  (syntax, proof, the text you can check)
+   Two accents carry the argument: ochre for notation (finite,
+   countable, proof), drafting cyan for meaning (infinite,
+   uncountable, truth); madder rose is reserved for contradiction.
+   Every length is a multiple of --u, one hundredth of the deck's
+   width, so a slide scales to any projector without re-wrapping.
+   ============================================================ */
+
+:root{
+  --ground:#080E18;
+  --ground-2:#0D1524;
+  --panel:#111C2E;
+  --panel-2:#16233A;
+  --ink:#E7EDF6;
+  --ink-2:#B6C4D8;
+  --muted:#8093AF;
+  --line:rgba(122,162,204,.16);
+  --grid:rgba(122,162,204,.075);
+  --syn:#E0A550;          /* syntax · finite · countable · notation */
+  --syn-soft:rgba(224,165,80,.14);
+  --sem:#5BB0C7;          /* semantics · infinite · uncountable · meaning */
+  --sem-soft:rgba(91,176,199,.14);
+  --bad:#C8607A;          /* contradiction */
+  --bad-soft:rgba(200,96,122,.14);
+  --shadow:0 1.2cqw 4cqw rgba(0,0,0,.45);
+  --serif:"Iowan Old Style","Palatino Linotype",Palatino,"Book Antiqua","URW Palladio L",Georgia,serif;
+  --mono:"JetBrains Mono","SFMono-Regular","SF Mono","Cascadia Mono",Menlo,Consolas,"DejaVu Sans Mono",monospace;
+}
+@media (prefers-color-scheme: light){
+  :root{
+    --ground:#EFF1F3; --ground-2:#E7EAEE; --panel:#FFFFFF; --panel-2:#F5F7F9;
+    --ink:#131C2A; --ink-2:#39485C; --muted:#5D6E85;
+    --line:rgba(19,28,42,.18); --grid:rgba(19,28,42,.06);
+    --syn:#A2661A; --syn-soft:rgba(162,102,26,.10);
+    --sem:#1F6C86; --sem-soft:rgba(31,108,134,.10);
+    --bad:#A63E5A; --bad-soft:rgba(166,62,90,.10);
+    --shadow:0 .6cqw 2.4cqw rgba(19,28,42,.14);
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#080E18; --ground-2:#0D1524; --panel:#111C2E; --panel-2:#16233A;
+  --ink:#E7EDF6; --ink-2:#B6C4D8; --muted:#8093AF;
+  --line:rgba(122,162,204,.16); --grid:rgba(122,162,204,.075);
+  --syn:#E0A550; --syn-soft:rgba(224,165,80,.14);
+  --sem:#5BB0C7; --sem-soft:rgba(91,176,199,.14);
+  --bad:#C8607A; --bad-soft:rgba(200,96,122,.14);
+  --shadow:0 1.2cqw 4cqw rgba(0,0,0,.45);
+}
+:root[data-theme="light"]{
+  --ground:#EFF1F3; --ground-2:#E7EAEE; --panel:#FFFFFF; --panel-2:#F5F7F9;
+  --ink:#131C2A; --ink-2:#39485C; --muted:#5D6E85;
+  --line:rgba(19,28,42,.18); --grid:rgba(19,28,42,.06);
+  --syn:#A2661A; --syn-soft:rgba(162,102,26,.10);
+  --sem:#1F6C86; --sem-soft:rgba(31,108,134,.10);
+  --bad:#A63E5A; --bad-soft:rgba(166,62,90,.10);
+  --shadow:0 .6cqw 2.4cqw rgba(19,28,42,.14);
+}
+
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;height:100%;overflow:hidden;background:var(--ground);color:var(--ink)}
+body{font-family:var(--serif);-webkit-font-smoothing:antialiased}
+
+/* ---------- stage ---------- */
+#stage{
+  position:fixed;inset:0;display:grid;place-items:center;
+  background:
+    linear-gradient(var(--grid) 1px, transparent 1px) 0 0/ calc(var(--u)*2.5) calc(var(--u)*2.5),
+    linear-gradient(90deg, var(--grid) 1px, transparent 1px) 0 0/ calc(var(--u)*2.5) calc(var(--u)*2.5),
+    radial-gradient(120% 90% at 50% 0%, var(--ground-2) 0%, var(--ground) 62%);
+}
+#deck{
+  --u0:8px;          /* the deck unit, set by fit() from the viewport */
+  --u:var(--u0);
+  position:relative;width:calc(var(--u)*100);height:calc(var(--u)*56.25);
+  outline:none;
+}
+#deck::after{ /* corner ticks: drafting frame */
+  content:"";position:absolute;inset:calc(var(--u)*1.4);pointer-events:none;
+  border:1px solid var(--line);
+  clip-path:polygon(0 0,7% 0,7% 1px,93% 1px,93% 0,100% 0,100% 12%,calc(100% - 1px) 12%,calc(100% - 1px) 88%,100% 88%,100% 100%,93% 100%,93% calc(100% - 1px),7% calc(100% - 1px),7% 100%,0 100%,0 88%,1px 88%,1px 12%,0 12%);
+}
+
+/* ---------- slides ---------- */
+.slide{
+  /* --k is set per slide by autofit() when the authored content would otherwise
+     run past the bottom padding onto the progress bar and footer */
+  --u:calc(var(--u0) * var(--k, 1));
+  position:absolute;inset:0;
+  padding:calc(var(--u)*5.8) calc(var(--u)*7) calc(var(--u)*5.9);
+  display:flex;flex-direction:column;gap:calc(var(--u)*1.6);
+  opacity:0;visibility:hidden;transform:translateY(calc(var(--u)*1.1));
+  /* leaving: fade out over .18s, then hide. The zero-duration visibility
+     transition is what defers the flip until the fade has finished. */
+  transition:opacity .18s ease,transform .3s ease,visibility 0s .18s;
+}
+/* arriving: hold at opacity 0 until the outgoing slide has cleared, so the two
+   never paint over one another */
+.slide.on{opacity:1;visibility:visible;transform:none;
+  transition:opacity .3s ease .18s,transform .3s ease .18s,visibility 0s}
+.slide.out{transform:translateY(calc(var(--u)*-1.1))}
+/* belt and braces: show() stamps this on every non-current slide, so a skipped
+   or throttled transition can never leave two slides painted at once */
+.slide.gone:not(.on){visibility:hidden;transition:none}
+/* measuring pass for auto-fit: freeze motion, reveal every fragment */
+#deck.measuring .slide{transition:none;transform:none}
+#deck.measuring .f{opacity:1;transform:none;transition:none}
+
+/* ---------- chrome ---------- */
+/* z-index keeps the chrome above the slides: full-bleed canvases (the ambient
+   title/closing animation) must never draw over the rail, bar or footer. */
+#rail,#foot{position:absolute;left:calc(var(--u)*4);right:calc(var(--u)*4);display:flex;align-items:center;gap:calc(var(--u)*1.4);
+  font-family:var(--mono);font-size:calc(var(--u)*1.18);letter-spacing:.14em;text-transform:uppercase;color:var(--muted);
+  z-index:5;pointer-events:none}
+#rail{top:calc(var(--u)*3.1)}
+#foot{bottom:calc(var(--u)*2.6)}
+#actname{color:var(--ink-2)}
+#actname b{color:var(--sem);font-weight:400}
+#rail .sp,#foot .sp{flex:1}
+#bar{position:absolute;left:calc(var(--u)*4);right:calc(var(--u)*4);bottom:calc(var(--u)*4.9);height:calc(var(--u)*.34);
+  display:flex;gap:calc(var(--u)*.4);z-index:5;pointer-events:none}
+#bar .seg{flex:1;background:var(--line);position:relative;overflow:hidden;border-radius:99px}
+#bar .seg i{position:absolute;inset:0;transform-origin:left;transform:scaleX(0);background:var(--muted);transition:transform .4s ease}
+#bar .seg.cur i{background:var(--sem)}
+#clock{font-variant-numeric:tabular-nums;color:var(--ink-2)}
+#clock.warn{color:var(--syn)}
+#clock.late{color:var(--bad)}
+/* the page number sits next to the footer title: the bottom-right corner
+   belongs to the nav buttons */
+#pageno{font-variant-numeric:tabular-nums;color:var(--ink-2)}
+#pageno::before{content:"·";margin-right:calc(var(--u)*1.4);color:var(--muted)}
+.nav{position:absolute;bottom:calc(var(--u)*2.1);right:calc(var(--u)*4);display:flex;gap:calc(var(--u)*.7);z-index:6}
+.nav button{
+  font-family:var(--mono);font-size:calc(var(--u)*1.15);color:var(--ink-2);background:var(--panel);
+  border:1px solid var(--line);border-radius:calc(var(--u)*.5);padding:calc(var(--u)*.5) calc(var(--u)*1);cursor:pointer;line-height:1.1}
+.nav button:hover{color:var(--ink);border-color:var(--sem)}
+.nav button:focus-visible{outline:2px solid var(--sem);outline-offset:2px}
+
+/* ---------- type scale ---------- */
+h1{font-size:calc(var(--u)*9.6);line-height:.98;margin:0;font-weight:400;letter-spacing:-.015em;text-wrap:balance}
+h2{font-size:calc(var(--u)*3.8);line-height:1.06;margin:0;font-weight:400;letter-spacing:-.01em;text-wrap:balance;max-width:22em}
+h3{font-size:calc(var(--u)*2.3);line-height:1.15;margin:0;font-weight:400;color:var(--ink)}
+p{margin:0;font-size:calc(var(--u)*1.92);line-height:1.42;color:var(--ink-2);max-width:34em}
+p.lead{font-size:calc(var(--u)*2.2);color:var(--ink);max-width:30em}
+p.sm{font-size:calc(var(--u)*1.56);max-width:40em}
+em{font-style:italic}
+strong{font-weight:400;color:var(--ink)}
+.k{color:var(--sem)}
+.j{color:var(--syn)}
+.x{color:var(--bad)}
+code,.mono{font-family:var(--mono);font-size:.88em;letter-spacing:-.01em}
+.eyebrow{font-family:var(--mono);font-size:calc(var(--u)*1.22);letter-spacing:.2em;text-transform:uppercase;color:var(--syn)}
+.eyebrow.sem{color:var(--sem)}
+.eyebrow.x{color:var(--bad)}
+ul{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:calc(var(--u)*.85)}
+li{font-size:calc(var(--u)*1.76);line-height:1.35;color:var(--ink-2);padding-left:calc(var(--u)*2.6);position:relative;max-width:36em}
+li::before{content:"—";position:absolute;left:0;color:var(--muted)}
+li.dot::before{content:"·";font-size:1.4em;line-height:.9}
+ol.steps{margin:0;padding:0;counter-reset:s;list-style:none;display:flex;flex-direction:column;gap:calc(var(--u)*.9)}
+ol.steps li{counter-increment:s;padding-left:calc(var(--u)*3.4)}
+ol.steps li::before{content:counter(s);font-family:var(--mono);font-size:calc(var(--u)*1.3);color:var(--sem);
+  border:1px solid var(--line);border-radius:99px;width:calc(var(--u)*2.3);height:calc(var(--u)*2.3);
+  display:grid;place-items:center;top:calc(var(--u)*.25)}
+
+/* ---------- layout helpers ---------- */
+.row{display:flex;flex-direction:row;gap:calc(var(--u)*4);align-items:flex-start}
+.row.mid{align-items:center}
+/* .fill sets column direction; a .fill that is also a .row must stay horizontal */
+.fill.row{flex-direction:row}
+.fill.row.mid{align-items:center}
+.grow{flex:1;min-width:0}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:calc(var(--u)*3);align-items:start}
+.three{display:grid;grid-template-columns:repeat(3,1fr);gap:calc(var(--u)*2.2);align-items:start}
+.stack{display:flex;flex-direction:column;gap:calc(var(--u)*1.15)}
+.fill{flex:1;min-height:0;display:flex;flex-direction:column;gap:calc(var(--u)*1.45)}
+.center{justify-content:center}
+.tight p{max-width:28em}
+
+.slide.habits li{font-size:calc(var(--u)*1.62);line-height:1.32;max-width:56em;padding-left:calc(var(--u)*3.1)}
+.slide.habits ol.steps{gap:calc(var(--u)*.62)}
+.slide.habits h2{font-size:calc(var(--u)*3.4)}
+
+/* denser variant for the most content-heavy slides */
+.slide.dense p{font-size:calc(var(--u)*1.72)}
+.slide.dense p.sm{font-size:calc(var(--u)*1.55)}
+.slide.dense .card p{font-size:calc(var(--u)*1.4)}
+.slide.dense .fill{gap:calc(var(--u)*1.15)}
+.slide.dense .stack{gap:calc(var(--u)*.95)}
+.slide.dense blockquote{font-size:calc(var(--u)*1.95)}
+.slide.dense .aside-cs p{font-size:calc(var(--u)*1.42)}
+.slide.dense h2{font-size:calc(var(--u)*3.55)}
+.slide.dense .term{font-size:calc(var(--u)*1.28)}
+.slide.dense .term.sm{font-size:calc(var(--u)*1.1)}
+
+/* fragments — also the <g class="f" data-step> groups inside an inlined figure */
+.f{opacity:0;transform:translateY(calc(var(--u)*.85));transition:opacity .38s ease,transform .38s ease}
+.f.shown{opacity:1;transform:none}
+
+/* ---------- components ---------- */
+.thm{
+  border-left:calc(var(--u)*.3) solid var(--syn);padding:calc(var(--u)*.2) 0 calc(var(--u)*.2) calc(var(--u)*2.2);
+}
+.thm .name{font-family:var(--mono);font-size:calc(var(--u)*1.25);letter-spacing:.16em;text-transform:uppercase;color:var(--syn);display:block;margin-bottom:calc(var(--u)*.9)}
+.thm .st{font-size:calc(var(--u)*2.1);line-height:1.3;font-style:italic;color:var(--ink);max-width:30em}
+
+.ledger{display:grid;grid-template-columns:1fr 1fr;gap:0;border:1px solid var(--line);border-radius:calc(var(--u)*.7);overflow:hidden}
+.ledger>div{padding:calc(var(--u)*1.8) calc(var(--u)*2)}
+.ledger .forbids{background:var(--syn-soft);border-right:1px solid var(--line)}
+.ledger .opens{background:var(--sem-soft)}
+.ledger h4{margin:0 0 calc(var(--u)*1.1);font-family:var(--mono);font-weight:400;
+  font-size:calc(var(--u)*1.22);letter-spacing:.16em;text-transform:uppercase}
+.ledger .forbids h4{color:var(--syn)}
+.ledger .opens h4{color:var(--sem)}
+.ledger p{font-size:calc(var(--u)*1.66);max-width:24em}
+
+.card{background:var(--panel);border:1px solid var(--line);border-radius:calc(var(--u)*.8);
+  padding:calc(var(--u)*1.7) calc(var(--u)*1.9);display:flex;flex-direction:column;gap:calc(var(--u)*.75)}
+.card .h{font-family:var(--mono);font-size:calc(var(--u)*1.2);letter-spacing:.16em;text-transform:uppercase;color:var(--sem)}
+.card.syn .h{color:var(--syn)}
+.card.bad .h{color:var(--bad)}
+.card p{font-size:calc(var(--u)*1.52);max-width:26em}
+.card .src{font-family:var(--mono);font-size:calc(var(--u)*1.05);color:var(--muted);letter-spacing:.04em}
+
+.kpi{display:flex;flex-direction:column;gap:calc(var(--u)*.5)}
+.kpi .n{font-family:var(--mono);font-size:calc(var(--u)*3.7);line-height:1;color:var(--ink);font-variant-numeric:tabular-nums;letter-spacing:-.03em}
+.kpi .n sup{font-size:.52em}
+.kpi .l{font-size:calc(var(--u)*1.65);color:var(--muted);font-family:var(--mono);letter-spacing:.06em;text-transform:uppercase}
+
+table.t{border-collapse:collapse;font-family:var(--mono);font-size:calc(var(--u)*1.58);width:100%}
+table.t td,table.t th{padding:calc(var(--u)*.72) calc(var(--u)*1.1);text-align:left;border-bottom:1px solid var(--line);
+  font-weight:400;font-variant-numeric:tabular-nums}
+table.t th{color:var(--muted);font-size:calc(var(--u)*1.15);letter-spacing:.14em;text-transform:uppercase}
+table.t td.r{text-align:right}
+table.t tr td:first-child{color:var(--sem);white-space:nowrap}
+
+blockquote{margin:0;font-size:calc(var(--u)*2.6);line-height:1.28;font-style:italic;color:var(--ink);max-width:26em;
+  border-left:calc(var(--u)*.3) solid var(--sem);padding-left:calc(var(--u)*2.2)}
+blockquote cite{display:block;margin-top:calc(var(--u)*1.4);font-family:var(--mono);font-style:normal;
+  font-size:calc(var(--u)*1.25);letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+
+/* ---------- figures ----------
+   A figure is an SVG file in docs/figures/, shared with the book. deck.js
+   fetches the file named in data-fig, strips its standalone stylesheet (the
+   deck's tokens take over, so the figure follows the theme and the d key)
+   and inlines it; <g class="f" data-step> groups inside then build like any
+   other fragment. Where fetch is not possible the figure arrives as <img>. */
+.fig{position:relative;flex:1;min-height:0;border:1px solid var(--line);border-radius:calc(var(--u)*.7);
+  background:var(--panel);overflow:hidden;display:flex;align-items:center;justify-content:center;
+  padding:calc(var(--u)*1.2) calc(var(--u)*1.4) calc(var(--u)*2.6)}
+.fill.row>.fig{align-self:stretch}
+.fig canvas{display:block;width:100%;height:100%}
+.fig svg,.fig img{display:block;width:100%;height:100%;max-height:100%}
+.fig svg text{font-family:var(--mono)}
+.fig svg .serif{font-family:var(--serif)}
+.fig .cap{position:absolute;left:calc(var(--u)*1.4);bottom:calc(var(--u)*1);font-family:var(--mono);
+  font-size:calc(var(--u)*1.1);color:var(--muted);letter-spacing:.08em}
+.fig.bare{border:0;background:none;padding:0}
+.fig.bare canvas{position:absolute;inset:0}
+
+/* ---------- terminal ----------
+   The classes are about a system you run, so much of the evidence is a
+   command and what came back. Prompt in ochre, what you type in ink, output
+   muted. */
+.term{background:var(--panel-2);border:1px solid var(--line);border-radius:calc(var(--u)*.7);
+  padding:calc(var(--u)*1.25) calc(var(--u)*1.6);font-family:var(--mono);
+  font-size:calc(var(--u)*1.42);line-height:1.62;color:var(--ink-2);overflow:hidden}
+.term .l{display:block;white-space:nowrap}
+.term .p{color:var(--syn)}
+.term .c{color:var(--ink)}
+.term .o{color:var(--muted)}
+.term.sm{font-size:calc(var(--u)*1.2);line-height:1.55}
+/* a terminal is overflow:hidden, so as a flex item it would shrink and clip
+   its last lines before autofit() could see an overrun — never let it */
+.fill>.term{flex-shrink:0}
+
+.chips{display:flex;flex-wrap:wrap;gap:calc(var(--u)*.8)}
+.chip{font-family:var(--mono);font-size:calc(var(--u)*1.3);letter-spacing:.06em;color:var(--ink-2);
+  border:1px solid var(--line);border-radius:99px;padding:calc(var(--u)*.42) calc(var(--u)*1.1);background:var(--panel)}
+.chip.k{color:var(--sem);border-color:var(--sem)}
+.chip.j{color:var(--syn);border-color:var(--syn)}
+
+.big{font-family:var(--mono);font-size:calc(var(--u)*7);line-height:1;letter-spacing:-.04em;color:var(--sem);
+  font-variant-numeric:tabular-nums}
+.big sup{font-size:.45em}
+.huge{font-family:var(--mono);font-size:calc(var(--u)*12);line-height:.92;letter-spacing:-.05em;color:var(--ink)}
+.digits{font-family:var(--mono);font-size:calc(var(--u)*1.35);line-height:1.35;color:var(--muted);
+  word-break:break-all;max-height:calc(var(--u)*12);overflow:hidden;position:relative}
+.digits::after{content:"";position:absolute;inset:auto 0 0 0;height:45%;
+  background:linear-gradient(transparent,var(--ground))}
+
+.byline{display:flex;flex-direction:column;gap:calc(var(--u)*.42);
+  border-left:calc(var(--u)*.28) solid var(--sem);padding-left:calc(var(--u)*1.6)}
+.byline .who{font-size:calc(var(--u)*2.5);line-height:1.1;color:var(--ink)}
+.byline .aff{font-family:var(--mono);font-size:calc(var(--u)*1.26);line-height:1.42;
+  letter-spacing:.05em;color:var(--muted)}
+.byline .aff b{font-weight:400;color:var(--ink-2)}
+
+.aside-cs{border:1px dashed var(--syn);border-radius:calc(var(--u)*.7);padding:calc(var(--u)*1.3) calc(var(--u)*1.7);
+  background:var(--syn-soft)}
+.aside-cs .h{font-family:var(--mono);font-size:calc(var(--u)*1.15);letter-spacing:.16em;text-transform:uppercase;
+  color:var(--syn);margin-bottom:calc(var(--u)*.7)}
+.aside-cs p{font-size:calc(var(--u)*1.56);max-width:44em}
+
+/* a station callout: where one of the six stations of the spine lands */
+.station{border:1px solid var(--sem);border-radius:calc(var(--u)*.7);padding:calc(var(--u)*1.3) calc(var(--u)*1.7);
+  background:var(--sem-soft)}
+.station .h{font-family:var(--mono);font-size:calc(var(--u)*1.15);letter-spacing:.16em;text-transform:uppercase;
+  color:var(--sem);margin-bottom:calc(var(--u)*.7)}
+.station p{font-size:calc(var(--u)*1.56);max-width:44em}
+
+/* notes + overview */
+#notes{
+  position:fixed;left:0;right:0;bottom:0;max-height:42vh;overflow:auto;z-index:20;
+  background:var(--panel);border-top:1px solid var(--line);padding:1.1rem 1.4rem 1.3rem;
+  font-size:.95rem;line-height:1.5;color:var(--ink-2);display:none;box-shadow:var(--shadow)}
+#notes.on{display:block}
+#notes h5{margin:0 0 .5rem;font-family:var(--mono);font-size:.72rem;letter-spacing:.16em;text-transform:uppercase;color:var(--sem)}
+#notes p{font-size:.95rem;max-width:70em;color:var(--ink-2)}
+.notes{display:none}
+#help{position:fixed;inset:0;z-index:30;background:color-mix(in srgb,var(--ground) 92%,transparent);
+  display:none;place-items:center;padding:2rem}
+#help.on{display:grid}
+#help .box{max-width:34rem;background:var(--panel);border:1px solid var(--line);border-radius:.6rem;padding:1.6rem 1.8rem}
+#help h5{margin:0 0 1rem;font-family:var(--mono);font-size:.75rem;letter-spacing:.18em;text-transform:uppercase;color:var(--sem)}
+#help dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:.55rem 1.2rem;font-size:.92rem}
+#help dt{font-family:var(--mono);color:var(--syn)}
+#help dd{margin:0;color:var(--ink-2)}
+
+/* ---------- print / PDF ----------
+   Same file, laid out as a stack of pages instead of one slide at a time.
+   Reachable as index.html?print in any browser, and used by make-pdf.sh.
+   Each slide keeps its own chrome because printLayout() clones the rail and
+   footer into it — the originals are positioned against #deck, which in this
+   mode is as many pages tall as the deck has slides. */
+#deck.printing{width:1600px;height:auto;--u0:16px}
+#deck.printing::after{display:none}
+#deck.printing > #rail,#deck.printing > #bar,#deck.printing > #foot,
+#deck.printing ~ *,.printing .nav{display:none}
+#deck.printing .slide{
+  position:relative;inset:auto;width:1600px;height:900px;
+  opacity:1;visibility:visible;transform:none;transition:none;
+  break-after:page;page-break-after:always;overflow:hidden}
+#deck.printing .slide:last-child{break-after:auto;page-break-after:auto}
+#deck.printing .f{opacity:1;transform:none;transition:none}
+#deck.printing .pchrome{position:absolute;left:calc(var(--u)*4);right:calc(var(--u)*4);
+  display:flex;align-items:center;gap:calc(var(--u)*1.4);
+  font-family:var(--mono);font-size:calc(var(--u)*1.18);letter-spacing:.14em;
+  text-transform:uppercase;color:var(--muted)}
+#deck.printing .pchrome.top{top:calc(var(--u)*3.1)}
+#deck.printing .pchrome.bot{bottom:calc(var(--u)*2.6)}
+#deck.printing .pchrome .sp{flex:1}
+#deck.printing .pchrome b{color:var(--sem);font-weight:400}
+#deck.printing .pchrome .n{color:var(--ink-2);font-variant-numeric:tabular-nums}
+@media print{
+  html,body{height:auto;overflow:visible}
+  #stage{position:static;display:block;background:var(--ground)}
+  @page{size:1600px 900px;margin:0}
+}
+
+@media (prefers-reduced-motion: reduce){
+  /* .slide.on is listed explicitly: it carries its own transition, which would
+     otherwise outrank a bare .slide selector here */
+  .slide,.slide.on,.f,#bar .seg i{transition:none}
+  .f{opacity:1;transform:none}
+}

@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 450" width="800" height="450" role="img" aria-label="The diagonal argument on decimal expansions: x differs from row n in place n">
+<title>The diagonal argument on decimal expansions: x differs from row n in place n</title>
+<style>svg{--ink:#131C2A;--ink-2:#39485C;--muted:#5D6E85;--line:rgba(19,28,42,.18);--syn:#A2661A;--sem:#1F6C86;--bad:#A63E5A;--panel:#FFFFFF;--ground:#EFF1F3}@media (prefers-color-scheme: dark){svg{--ink:#E7EDF6;--ink-2:#B6C4D8;--muted:#8093AF;--line:rgba(122,162,204,.16);--syn:#E0A550;--sem:#5BB0C7;--bad:#C8607A;--panel:#111C2E;--ground:#080E18}}text{font-family:"JetBrains Mono","SFMono-Regular","SF Mono","Cascadia Mono",Menlo,Consolas,"DejaVu Sans Mono",monospace}.serif{font-family:"Iowan Old Style","Palatino Linotype",Palatino,"Book Antiqua","URW Palladio L",Georgia,serif}</style>
+<text x="276.93" y="67.95" font-size="16.12" fill="var(--ink-2)" text-anchor="end" dominant-baseline="central">r1 = 0.</text>
+<text x="343.35" y="67.95" font-size="20.66" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central">4</text>
+<text x="380.25" y="67.95" font-size="20.66" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central">1</text>
+<text x="417.15" y="67.95" font-size="20.66" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central">5</text>
+<text x="454.05" y="67.95" font-size="20.66" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central">9</text>
+<text x="490.95" y="67.95" font-size="20.66" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central">2</text>
+<text x="524.16" y="67.95" font-size="16.53" fill="var(--muted)" text-anchor="middle" dominant-baseline="central">…</text>
+<text x="276.93" y="104.85" font-size="16.12" fill="var(--ink-2)" text-anchor="end" dominant-baseline="central">r2 = 0.</text>
+<text x="306.45" y="104.85" font-size="20.66" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central">7</text>
+<text x="380.25" y="104.85" font-size="20.66" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central">8</text>
+<text x="417.15" y="104.85" font-size="20.66" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central">2</text>
+<text x="454.05" y="104.85" font-size="20.66" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central">8</text>
+<text x="490.95" y="104.85" font-size="20.66" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central">1</text>
+<text x="524.16" y="104.85" font-size="16.53" fill="var(--muted)" text-anchor="middle" dominant-baseline="central">…</text>
+<text x="276.93" y="141.75" font-size="16.12" fill="var(--ink-2)" text-anchor="end" dominant-baseline="central">r3 = 0.</text>
+<text x="306.45" y="141.75" font-size="20.66" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central">2</text>
+<text x="343.35" y="141.75" font-size="20.66" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central">5</text>
+<text x="417.15" y="141.75" font-size="20.66" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central">5</text>
+<text x="454.05" y="141.75" font-size="20.66" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central">5</text>
+<text x="490.95" y="141.75" font-size="20.66" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central">5</text>
+<text x="524.16" y="141.75" font-size="16.53" fill="var(--muted)" text-anchor="middle" dominant-baseline="central">…</text>
+<text x="276.93" y="178.65" font-size="16.12" fill="var(--ink-2)" text-anchor="end" dominant-baseline="central">r4 = 0.</text>
+<text x="306.45" y="178.65" font-size="20.66" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central">3</text>
+<text x="343.35" y="178.65" font-size="20.66" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central">3</text>
+<text x="380.25" y="178.65" font-size="20.66" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central">3</text>
+<text x="454.05" y="178.65" font-size="20.66" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central">3</text>
+<text x="490.95" y="178.65" font-size="20.66" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central">3</text>
+<text x="524.16" y="178.65" font-size="16.53" fill="var(--muted)" text-anchor="middle" dominant-baseline="central">…</text>
+<text x="276.93" y="215.55" font-size="16.12" fill="var(--ink-2)" text-anchor="end" dominant-baseline="central">r5 = 0.</text>
+<text x="306.45" y="215.55" font-size="20.66" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central">0</text>
+<text x="343.35" y="215.55" font-size="20.66" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central">0</text>
+<text x="380.25" y="215.55" font-size="20.66" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central">0</text>
+<text x="417.15" y="215.55" font-size="20.66" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central">0</text>
+<text x="490.95" y="215.55" font-size="20.66" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central">0</text>
+<text x="524.16" y="215.55" font-size="16.53" fill="var(--muted)" text-anchor="middle" dominant-baseline="central">…</text>
+<text x="276.93" y="252.45" font-size="16.12" fill="var(--ink-2)" text-anchor="end" dominant-baseline="central">r6 = 0.</text>
+<text x="306.45" y="252.45" font-size="20.66" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central">4</text>
+<text x="343.35" y="252.45" font-size="20.66" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central">1</text>
+<text x="380.25" y="252.45" font-size="20.66" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central">4</text>
+<text x="417.15" y="252.45" font-size="20.66" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central">2</text>
+<text x="454.05" y="252.45" font-size="20.66" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central">1</text>
+<text x="524.16" y="252.45" font-size="16.53" fill="var(--muted)" text-anchor="middle" dominant-baseline="central">…</text>
+<g class="f" data-step="1"><rect x="288" y="49.5" width="36.9" height="36.9" fill="var(--syn)" fill-opacity="0.16"/><text x="306.45" y="67.95" font-size="20.66" fill="var(--syn)" text-anchor="middle" dominant-baseline="central">1</text><rect x="324.9" y="86.4" width="36.9" height="36.9" fill="var(--syn)" fill-opacity="0.16"/><text x="343.35" y="104.85" font-size="20.66" fill="var(--syn)" text-anchor="middle" dominant-baseline="central">1</text><rect x="361.8" y="123.3" width="36.9" height="36.9" fill="var(--syn)" fill-opacity="0.16"/><text x="380.25" y="141.75" font-size="20.66" fill="var(--syn)" text-anchor="middle" dominant-baseline="central">5</text><rect x="398.7" y="160.2" width="36.9" height="36.9" fill="var(--syn)" fill-opacity="0.16"/><text x="417.15" y="178.65" font-size="20.66" fill="var(--syn)" text-anchor="middle" dominant-baseline="central">3</text><rect x="435.6" y="197.1" width="36.9" height="36.9" fill="var(--syn)" fill-opacity="0.16"/><text x="454.05" y="215.55" font-size="20.66" fill="var(--syn)" text-anchor="middle" dominant-baseline="central">5</text><rect x="472.5" y="234" width="36.9" height="36.9" fill="var(--syn)" fill-opacity="0.16"/><text x="490.95" y="252.45" font-size="20.66" fill="var(--syn)" text-anchor="middle" dominant-baseline="central">3</text></g>
+<g class="f" data-step="2"><text x="276.93" y="309.64" font-size="16.12" fill="var(--sem)" text-anchor="end" dominant-baseline="central">x = 0.</text><rect x="288" y="291.19" width="36.9" height="36.9" fill="var(--sem)" fill-opacity="0.14"/><text x="306.45" y="309.64" font-size="20.66" fill="var(--sem)" text-anchor="middle" dominant-baseline="central">5</text><rect x="324.9" y="291.19" width="36.9" height="36.9" fill="var(--sem)" fill-opacity="0.14"/><text x="343.35" y="309.64" font-size="20.66" fill="var(--sem)" text-anchor="middle" dominant-baseline="central">5</text><rect x="361.8" y="291.19" width="36.9" height="36.9" fill="var(--sem)" fill-opacity="0.14"/><text x="380.25" y="309.64" font-size="20.66" fill="var(--sem)" text-anchor="middle" dominant-baseline="central">4</text><rect x="398.7" y="291.19" width="36.9" height="36.9" fill="var(--sem)" fill-opacity="0.14"/><text x="417.15" y="309.64" font-size="20.66" fill="var(--sem)" text-anchor="middle" dominant-baseline="central">5</text><rect x="435.6" y="291.19" width="36.9" height="36.9" fill="var(--sem)" fill-opacity="0.14"/><text x="454.05" y="309.64" font-size="20.66" fill="var(--sem)" text-anchor="middle" dominant-baseline="central">4</text><rect x="472.5" y="291.19" width="36.9" height="36.9" fill="var(--sem)" fill-opacity="0.14"/><text x="490.95" y="309.64" font-size="20.66" fill="var(--sem)" text-anchor="middle" dominant-baseline="central">5</text><text x="524.16" y="309.64" font-size="16.53" fill="var(--muted)" text-anchor="middle" dominant-baseline="central">…</text></g>
+<g class="f" data-step="3"><text x="398.7" y="359.46" font-size="16.53" fill="var(--sem)" text-anchor="middle" dominant-baseline="central">x differs from row n in place n</text></g>
+</svg>

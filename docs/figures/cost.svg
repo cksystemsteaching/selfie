@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 450" width="800" height="450" role="img" aria-label="What the machine underneath is billed: bare metal, virtualized, with a VMM below, emulated">
+<title>What the machine underneath is billed: bare metal, virtualized, with a VMM below, emulated</title>
+<style>svg{--ink:#131C2A;--ink-2:#39485C;--muted:#5D6E85;--line:rgba(19,28,42,.18);--syn:#A2661A;--sem:#1F6C86;--bad:#A63E5A;--panel:#FFFFFF;--ground:#EFF1F3}@media (prefers-color-scheme: dark){svg{--ink:#E7EDF6;--ink-2:#B6C4D8;--muted:#8093AF;--line:rgba(122,162,204,.16);--syn:#E0A550;--sem:#5BB0C7;--bad:#C8607A;--panel:#111C2E;--ground:#080E18}}text{font-family:"JetBrains Mono","SFMono-Regular","SF Mono","Cascadia Mono",Menlo,Consolas,"DejaVu Sans Mono",monospace}.serif{font-family:"Iowan Old Style","Palatino Linotype",Palatino,"Book Antiqua","URW Palladio L",Georgia,serif}</style>
+<text x="180" y="95.02" font-size="24" fill="var(--ink-2)" text-anchor="end" dominant-baseline="central">bare metal</text>
+<rect x="192" y="72" width="24.64" height="46.03" fill="var(--sem)" stroke="var(--sem)" stroke-width="1" rx="11.09" fill-opacity="0.3"/>
+<text x="226.24" y="95.02" font-size="22.08" fill="var(--sem)" text-anchor="start" dominant-baseline="central">×1</text>
+<text x="180" y="178.67" font-size="24" fill="var(--ink-2)" text-anchor="end" dominant-baseline="central">virtualized</text>
+<rect x="192" y="155.66" width="312.18" height="46.03" fill="var(--sem)" stroke="var(--sem)" stroke-width="1" rx="11.51" fill-opacity="0.3"/>
+<text x="513.78" y="178.67" font-size="22.08" fill="var(--sem)" text-anchor="start" dominant-baseline="central">×208</text>
+<text x="180" y="262.33" font-size="24" fill="var(--ink-2)" text-anchor="end" dominant-baseline="central">+ a VMM below</text>
+<rect x="192" y="239.31" width="376.98" height="46.03" fill="var(--ink-2)" stroke="var(--ink-2)" stroke-width="1" rx="11.51" fill-opacity="0.3"/>
+<text x="578.58" y="262.33" font-size="22.08" fill="var(--ink-2)" text-anchor="start" dominant-baseline="central">×694</text>
+<text x="180" y="345.98" font-size="24" fill="var(--ink-2)" text-anchor="end" dominant-baseline="central">emulated</text>
+<rect x="192" y="322.97" width="448" height="46.03" fill="var(--syn)" stroke="var(--syn)" stroke-width="1" rx="11.51" fill-opacity="0.3"/>
+<text x="649.6" y="345.98" font-size="22.08" fill="var(--syn)" text-anchor="start" dominant-baseline="central">×2,593</text>
+</svg>

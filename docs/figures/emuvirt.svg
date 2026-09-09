@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 450" width="800" height="450" role="img" aria-label="Two ways to build the same operating system: by emulation, and by virtualization">
+<title>Two ways to build the same operating system: by emulation, and by virtualization</title>
+<style>svg{--ink:#131C2A;--ink-2:#39485C;--muted:#5D6E85;--line:rgba(19,28,42,.18);--syn:#A2661A;--sem:#1F6C86;--bad:#A63E5A;--panel:#FFFFFF;--ground:#EFF1F3}@media (prefers-color-scheme: dark){svg{--ink:#E7EDF6;--ink-2:#B6C4D8;--muted:#8093AF;--line:rgba(122,162,204,.16);--syn:#E0A550;--sem:#5BB0C7;--bad:#C8607A;--panel:#111C2E;--ground:#080E18}}text{font-family:"JetBrains Mono","SFMono-Regular","SF Mono","Cascadia Mono",Menlo,Consolas,"DejaVu Sans Mono",monospace}.serif{font-family:"Iowan Old Style","Palatino Linotype",Palatino,"Book Antiqua","URW Palladio L",Georgia,serif}</style>
+<text x="191" y="29.25" font-size="22.08" fill="var(--syn)" text-anchor="middle" dominant-baseline="central">by emulation</text>
+<rect x="8" y="54" width="366" height="324" fill="var(--panel)" stroke="var(--line)" stroke-width="1" rx="13.5"/>
+<text x="191" y="355.5" font-size="16.32" fill="var(--muted)" text-anchor="middle" dominant-baseline="central">physical machine</text>
+<rect x="40.94" y="85.5" width="300.12" height="216" fill="var(--ground)" stroke="var(--syn)" stroke-width="1" rx="11.25"/>
+<text x="191" y="108" font-size="19.2" fill="var(--syn)" text-anchor="middle" dominant-baseline="central">OS · mipster</text>
+<rect x="82.96" y="130.5" width="216.09" height="146.25" fill="var(--panel)" stroke="var(--line)" stroke-width="1" rx="9" stroke-dasharray="3 3"/>
+<text x="191" y="183.15" font-size="20.16" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central">guest</text>
+<text x="191" y="227.03" font-size="16.32" fill="var(--muted)" text-anchor="middle" dominant-baseline="central">read, not run</text>
+<circle cx="191" cy="262.12" r="5.85" fill="var(--syn)" opacity="0.75"/>
+<text x="191" y="320.4" font-size="16.32" fill="var(--syn)" text-anchor="middle" dominant-baseline="central">interprets</text>
+<text x="593" y="29.25" font-size="22.08" fill="var(--sem)" text-anchor="middle" dominant-baseline="central">by virtualization</text>
+<rect x="410" y="54" width="366" height="324" fill="var(--panel)" stroke="var(--line)" stroke-width="1" rx="13.5"/>
+<text x="593" y="355.5" font-size="16.32" fill="var(--muted)" text-anchor="middle" dominant-baseline="central">physical machine</text>
+<rect x="428.3" y="85.5" width="131.76" height="216" fill="var(--ground)" stroke="var(--sem)" stroke-width="1" rx="11.25"/>
+<text x="494.18" y="176.22" font-size="20.16" fill="var(--sem)" text-anchor="middle" dominant-baseline="central">VMM</text>
+<text x="494.18" y="228.06" font-size="16.32" fill="var(--muted)" text-anchor="middle" dominant-baseline="central">hypster</text>
+<rect x="625.94" y="85.5" width="131.76" height="216" fill="var(--panel)" stroke="var(--line)" stroke-width="1" rx="11.25"/>
+<text x="691.82" y="176.22" font-size="20.16" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central">guest</text>
+<text x="691.82" y="228.06" font-size="16.32" fill="var(--muted)" text-anchor="middle" dominant-baseline="central">on the CPU</text>
+<line x1="563.26" y1="141.66" x2="622.74" y2="141.66" stroke="var(--sem)" stroke-width="1.4"/><path d="M622.74 141.66 L616.94 144.11 L616.94 139.21 Z" fill="var(--sem)"/>
+<g opacity="0.5"><line x1="622.74" y1="159.66" x2="563.26" y2="159.66" stroke="var(--sem)" stroke-width="1.4"/><path d="M563.26 159.66 L569.06 157.21 L569.06 162.11 Z" fill="var(--sem)"/></g>
+<text x="593" y="320.4" font-size="16.32" fill="var(--sem)" text-anchor="middle" dominant-baseline="central">context switch</text>
+<text x="400" y="429.75" font-size="18.24" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central">same guest · same 86,380 instructions · same output</text>
+</svg>

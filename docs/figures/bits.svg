@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 450" width="800" height="450" role="img" aria-label="Sixteen bits: 65,536 states, and the doubling curve">
+<title>Sixteen bits: 65,536 states, and the doubling curve</title>
+<style>svg{--ink:#131C2A;--ink-2:#39485C;--muted:#5D6E85;--line:rgba(19,28,42,.18);--syn:#A2661A;--sem:#1F6C86;--bad:#A63E5A;--panel:#FFFFFF;--ground:#EFF1F3}@media (prefers-color-scheme: dark){svg{--ink:#E7EDF6;--ink-2:#B6C4D8;--muted:#8093AF;--line:rgba(122,162,204,.16);--syn:#E0A550;--sem:#5BB0C7;--bad:#C8607A;--panel:#111C2E;--ground:#080E18}}text{font-family:"JetBrains Mono","SFMono-Regular","SF Mono","Cascadia Mono",Menlo,Consolas,"DejaVu Sans Mono",monospace}.serif{font-family:"Iowan Old Style","Palatino Linotype",Palatino,"Book Antiqua","URW Palladio L",Georgia,serif}</style>
+<rect x="20.95" y="108" width="38.1" height="38.1" fill="var(--sem)" stroke="var(--line)" stroke-width="1" rx="5.71"/>
+<text x="40" y="127.05" font-size="19.81" fill="var(--panel)" text-anchor="middle" dominant-baseline="central">1</text>
+<rect x="68.95" y="108" width="38.1" height="38.1" fill="var(--sem)" stroke="var(--line)" stroke-width="1" rx="5.71"/>
+<text x="88" y="127.05" font-size="19.81" fill="var(--panel)" text-anchor="middle" dominant-baseline="central">1</text>
+<rect x="116.95" y="108" width="38.1" height="38.1" fill="var(--sem)" stroke="var(--line)" stroke-width="1" rx="5.71"/>
+<text x="136" y="127.05" font-size="19.81" fill="var(--panel)" text-anchor="middle" dominant-baseline="central">1</text>
+<rect x="164.95" y="108" width="38.1" height="38.1" fill="none" stroke="var(--line)" stroke-width="1" rx="5.71"/>
+<text x="184" y="127.05" font-size="19.81" fill="var(--muted)" text-anchor="middle" dominant-baseline="central">0</text>
+<rect x="212.95" y="108" width="38.1" height="38.1" fill="none" stroke="var(--line)" stroke-width="1" rx="5.71"/>
+<text x="232" y="127.05" font-size="19.81" fill="var(--muted)" text-anchor="middle" dominant-baseline="central">0</text>
+<rect x="260.95" y="108" width="38.1" height="38.1" fill="none" stroke="var(--line)" stroke-width="1" rx="5.71"/>
+<text x="280" y="127.05" font-size="19.81" fill="var(--muted)" text-anchor="middle" dominant-baseline="central">0</text>
+<rect x="308.95" y="108" width="38.1" height="38.1" fill="var(--sem)" stroke="var(--line)" stroke-width="1" rx="5.71"/>
+<text x="328" y="127.05" font-size="19.81" fill="var(--panel)" text-anchor="middle" dominant-baseline="central">1</text>
+<rect x="356.95" y="108" width="38.1" height="38.1" fill="var(--sem)" stroke="var(--line)" stroke-width="1" rx="5.71"/>
+<text x="376" y="127.05" font-size="19.81" fill="var(--panel)" text-anchor="middle" dominant-baseline="central">1</text>
+<rect x="404.95" y="108" width="38.1" height="38.1" fill="var(--sem)" stroke="var(--line)" stroke-width="1" rx="5.71"/>
+<text x="424" y="127.05" font-size="19.81" fill="var(--panel)" text-anchor="middle" dominant-baseline="central">1</text>
+<rect x="452.95" y="108" width="38.1" height="38.1" fill="var(--sem)" stroke="var(--line)" stroke-width="1" rx="5.71"/>
+<text x="472" y="127.05" font-size="19.81" fill="var(--panel)" text-anchor="middle" dominant-baseline="central">1</text>
+<rect x="500.95" y="108" width="38.1" height="38.1" fill="none" stroke="var(--line)" stroke-width="1" rx="5.71"/>
+<text x="520" y="127.05" font-size="19.81" fill="var(--muted)" text-anchor="middle" dominant-baseline="central">0</text>
+<rect x="548.95" y="108" width="38.1" height="38.1" fill="var(--sem)" stroke="var(--line)" stroke-width="1" rx="5.71"/>
+<text x="568" y="127.05" font-size="19.81" fill="var(--panel)" text-anchor="middle" dominant-baseline="central">1</text>
+<rect x="596.95" y="108" width="38.1" height="38.1" fill="none" stroke="var(--line)" stroke-width="1" rx="5.71"/>
+<text x="616" y="127.05" font-size="19.81" fill="var(--muted)" text-anchor="middle" dominant-baseline="central">0</text>
+<rect x="644.95" y="108" width="38.1" height="38.1" fill="none" stroke="var(--line)" stroke-width="1" rx="5.71"/>
+<text x="664" y="127.05" font-size="19.81" fill="var(--muted)" text-anchor="middle" dominant-baseline="central">0</text>
+<rect x="692.95" y="108" width="38.1" height="38.1" fill="var(--sem)" stroke="var(--line)" stroke-width="1" rx="5.71"/>
+<text x="712" y="127.05" font-size="19.81" fill="var(--panel)" text-anchor="middle" dominant-baseline="central">1</text>
+<rect x="740.95" y="108" width="38.1" height="38.1" fill="none" stroke="var(--line)" stroke-width="1" rx="5.71"/>
+<text x="760" y="127.05" font-size="19.81" fill="var(--muted)" text-anchor="middle" dominant-baseline="central">0</text>
+<text x="400" y="79.43" font-size="16.2" fill="var(--muted)" text-anchor="middle" dominant-baseline="central">16 bits</text>
+<text x="400" y="182.29" font-size="38.25" fill="var(--ink)" text-anchor="middle" dominant-baseline="central">2<tspan dy="-17.21" font-size="23.71">16</tspan><tspan dy="17.21" font-size="38.25">  =  65,536 states</tspan></text>
+<line x1="104" y1="378" x2="696" y2="378" stroke="var(--line)" stroke-width="1"/>
+<path d="M104 378 L109.92 378 L115.84 378 L121.76 378 L127.68 378 L133.6 377.99 L139.52 377.99 L145.44 377.98 L151.36 377.96 L157.28 377.95 L163.2 377.93 L169.12 377.9 L175.04 377.87 L180.96 377.83 L186.88 377.78 L192.8 377.73 L198.72 377.67 L204.64 377.6 L210.56 377.52 L216.48 377.42 L222.4 377.32 L228.32 377.21 L234.24 377.08 L240.16 376.94 L246.08 376.78 L252 376.61 L257.92 376.43 L263.84 376.23 L269.76 376.01 L275.68 375.77 L281.6 375.52 L287.52 375.24 L293.44 374.95 L299.36 374.63 L305.28 374.29 L311.2 373.93 L317.12 373.55 L323.04 373.14 L328.96 372.71 L334.88 372.25 L340.8 371.77 L346.72 371.25 L352.64 370.71 L358.56 370.14 L364.48 369.54 L370.4 368.91 L376.32 368.25 L382.24 367.56 L388.16 366.83 L394.08 366.07 L400 365.27 L405.92 364.44 L411.84 363.57 L417.76 362.66 L423.68 361.71 L429.6 360.73 L435.52 359.7 L441.44 358.64 L447.36 357.53 L453.28 356.38 L459.2 355.18 L465.12 353.94 L471.04 352.66 L476.96 351.33 L482.88 349.95 L488.8 348.52 L494.72 347.05 L500.64 345.52 L506.56 343.94 L512.48 342.31 L518.4 340.63 L524.32 338.9 L530.24 337.11 L536.16 335.26 L542.08 333.36 L548 331.4 L553.92 329.38 L559.84 327.31 L565.76 325.17 L571.68 322.97 L577.6 320.71 L583.52 318.39 L589.44 316 L595.36 313.55 L601.28 311.03 L607.2 308.45 L613.12 305.79 L619.04 303.07 L624.96 300.28 L630.88 297.42 L636.8 294.49 L642.72 291.48 L648.64 288.4 L654.56 285.25 L660.48 282.02 L666.4 278.71 L672.32 275.33 L678.24 271.87 L684.16 268.32 L690.08 264.7 L696 261" fill="none" stroke="var(--syn)" stroke-width="1.8"/>
+<text x="696" y="396.9" font-size="14.4" fill="var(--muted)" text-anchor="end" dominant-baseline="central">bits →</text>
+</svg>

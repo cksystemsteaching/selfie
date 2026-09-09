@@ -1,0 +1,135 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 450" width="800" height="450" role="img" aria-label="Cantor's diagonal on bit sequences: flip the diagonal and the result is on no row">
+<title>Cantor's diagonal on bit sequences: flip the diagonal and the result is on no row</title>
+<style>svg{--ink:#131C2A;--ink-2:#39485C;--muted:#5D6E85;--line:rgba(19,28,42,.18);--syn:#A2661A;--sem:#1F6C86;--bad:#A63E5A;--panel:#FFFFFF;--ground:#EFF1F3}@media (prefers-color-scheme: dark){svg{--ink:#E7EDF6;--ink-2:#B6C4D8;--muted:#8093AF;--line:rgba(122,162,204,.16);--syn:#E0A550;--sem:#5BB0C7;--bad:#C8607A;--panel:#111C2E;--ground:#080E18}}text{font-family:"JetBrains Mono","SFMono-Regular","SF Mono","Cascadia Mono",Menlo,Consolas,"DejaVu Sans Mono",monospace}.serif{font-family:"Iowan Old Style","Palatino Linotype",Palatino,"Book Antiqua","URW Palladio L",Georgia,serif}</style>
+<text x="272.02" y="56.7" font-size="12.96" fill="var(--muted)" text-anchor="end" dominant-baseline="central">f1</text>
+<rect x="283.36" y="40.5" width="32.4" height="32.4" fill="none" stroke="var(--line)" stroke-width="1"/>
+<rect x="315.76" y="40.5" width="32.4" height="32.4" fill="none" stroke="var(--line)" stroke-width="1"/>
+<text x="331.96" y="56.7" font-size="16.2" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central">1</text>
+<rect x="348.16" y="40.5" width="32.4" height="32.4" fill="none" stroke="var(--line)" stroke-width="1"/>
+<text x="364.36" y="56.7" font-size="16.2" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central">0</text>
+<rect x="380.56" y="40.5" width="32.4" height="32.4" fill="none" stroke="var(--line)" stroke-width="1"/>
+<text x="396.76" y="56.7" font-size="16.2" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central">1</text>
+<rect x="412.96" y="40.5" width="32.4" height="32.4" fill="none" stroke="var(--line)" stroke-width="1"/>
+<text x="429.16" y="56.7" font-size="16.2" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central">1</text>
+<rect x="445.36" y="40.5" width="32.4" height="32.4" fill="none" stroke="var(--line)" stroke-width="1"/>
+<text x="461.56" y="56.7" font-size="16.2" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central">0</text>
+<rect x="477.76" y="40.5" width="32.4" height="32.4" fill="none" stroke="var(--line)" stroke-width="1"/>
+<text x="493.96" y="56.7" font-size="16.2" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central">0</text>
+<rect x="510.16" y="40.5" width="32.4" height="32.4" fill="none" stroke="var(--line)" stroke-width="1"/>
+<text x="526.36" y="56.7" font-size="16.2" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central">0</text>
+<text x="272.02" y="89.1" font-size="12.96" fill="var(--muted)" text-anchor="end" dominant-baseline="central">f2</text>
+<rect x="283.36" y="72.9" width="32.4" height="32.4" fill="none" stroke="var(--line)" stroke-width="1"/>
+<text x="299.56" y="89.1" font-size="16.2" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central">1</text>
+<rect x="315.76" y="72.9" width="32.4" height="32.4" fill="none" stroke="var(--line)" stroke-width="1"/>
+<rect x="348.16" y="72.9" width="32.4" height="32.4" fill="none" stroke="var(--line)" stroke-width="1"/>
+<text x="364.36" y="89.1" font-size="16.2" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central">1</text>
+<rect x="380.56" y="72.9" width="32.4" height="32.4" fill="none" stroke="var(--line)" stroke-width="1"/>
+<text x="396.76" y="89.1" font-size="16.2" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central">1</text>
+<rect x="412.96" y="72.9" width="32.4" height="32.4" fill="none" stroke="var(--line)" stroke-width="1"/>
+<text x="429.16" y="89.1" font-size="16.2" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central">0</text>
+<rect x="445.36" y="72.9" width="32.4" height="32.4" fill="none" stroke="var(--line)" stroke-width="1"/>
+<text x="461.56" y="89.1" font-size="16.2" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central">1</text>
+<rect x="477.76" y="72.9" width="32.4" height="32.4" fill="none" stroke="var(--line)" stroke-width="1"/>
+<text x="493.96" y="89.1" font-size="16.2" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central">1</text>
+<rect x="510.16" y="72.9" width="32.4" height="32.4" fill="none" stroke="var(--line)" stroke-width="1"/>
+<text x="526.36" y="89.1" font-size="16.2" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central">1</text>
+<text x="272.02" y="121.5" font-size="12.96" fill="var(--muted)" text-anchor="end" dominant-baseline="central">f3</text>
+<rect x="283.36" y="105.3" width="32.4" height="32.4" fill="none" stroke="var(--line)" stroke-width="1"/>
+<text x="299.56" y="121.5" font-size="16.2" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central">0</text>
+<rect x="315.76" y="105.3" width="32.4" height="32.4" fill="none" stroke="var(--line)" stroke-width="1"/>
+<text x="331.96" y="121.5" font-size="16.2" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central">1</text>
+<rect x="348.16" y="105.3" width="32.4" height="32.4" fill="none" stroke="var(--line)" stroke-width="1"/>
+<rect x="380.56" y="105.3" width="32.4" height="32.4" fill="none" stroke="var(--line)" stroke-width="1"/>
+<text x="396.76" y="121.5" font-size="16.2" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central">1</text>
+<rect x="412.96" y="105.3" width="32.4" height="32.4" fill="none" stroke="var(--line)" stroke-width="1"/>
+<text x="429.16" y="121.5" font-size="16.2" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central">0</text>
+<rect x="445.36" y="105.3" width="32.4" height="32.4" fill="none" stroke="var(--line)" stroke-width="1"/>
+<text x="461.56" y="121.5" font-size="16.2" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central">1</text>
+<rect x="477.76" y="105.3" width="32.4" height="32.4" fill="none" stroke="var(--line)" stroke-width="1"/>
+<text x="493.96" y="121.5" font-size="16.2" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central">1</text>
+<rect x="510.16" y="105.3" width="32.4" height="32.4" fill="none" stroke="var(--line)" stroke-width="1"/>
+<text x="526.36" y="121.5" font-size="16.2" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central">1</text>
+<text x="272.02" y="153.9" font-size="12.96" fill="var(--muted)" text-anchor="end" dominant-baseline="central">f4</text>
+<rect x="283.36" y="137.7" width="32.4" height="32.4" fill="none" stroke="var(--line)" stroke-width="1"/>
+<text x="299.56" y="153.9" font-size="16.2" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central">1</text>
+<rect x="315.76" y="137.7" width="32.4" height="32.4" fill="none" stroke="var(--line)" stroke-width="1"/>
+<text x="331.96" y="153.9" font-size="16.2" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central">1</text>
+<rect x="348.16" y="137.7" width="32.4" height="32.4" fill="none" stroke="var(--line)" stroke-width="1"/>
+<text x="364.36" y="153.9" font-size="16.2" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central">0</text>
+<rect x="380.56" y="137.7" width="32.4" height="32.4" fill="none" stroke="var(--line)" stroke-width="1"/>
+<rect x="412.96" y="137.7" width="32.4" height="32.4" fill="none" stroke="var(--line)" stroke-width="1"/>
+<text x="429.16" y="153.9" font-size="16.2" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central">1</text>
+<rect x="445.36" y="137.7" width="32.4" height="32.4" fill="none" stroke="var(--line)" stroke-width="1"/>
+<text x="461.56" y="153.9" font-size="16.2" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central">0</text>
+<rect x="477.76" y="137.7" width="32.4" height="32.4" fill="none" stroke="var(--line)" stroke-width="1"/>
+<text x="493.96" y="153.9" font-size="16.2" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central">0</text>
+<rect x="510.16" y="137.7" width="32.4" height="32.4" fill="none" stroke="var(--line)" stroke-width="1"/>
+<text x="526.36" y="153.9" font-size="16.2" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central">1</text>
+<text x="272.02" y="186.3" font-size="12.96" fill="var(--muted)" text-anchor="end" dominant-baseline="central">f5</text>
+<rect x="283.36" y="170.1" width="32.4" height="32.4" fill="none" stroke="var(--line)" stroke-width="1"/>
+<text x="299.56" y="186.3" font-size="16.2" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central">0</text>
+<rect x="315.76" y="170.1" width="32.4" height="32.4" fill="none" stroke="var(--line)" stroke-width="1"/>
+<text x="331.96" y="186.3" font-size="16.2" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central">1</text>
+<rect x="348.16" y="170.1" width="32.4" height="32.4" fill="none" stroke="var(--line)" stroke-width="1"/>
+<text x="364.36" y="186.3" font-size="16.2" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central">1</text>
+<rect x="380.56" y="170.1" width="32.4" height="32.4" fill="none" stroke="var(--line)" stroke-width="1"/>
+<text x="396.76" y="186.3" font-size="16.2" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central">0</text>
+<rect x="412.96" y="170.1" width="32.4" height="32.4" fill="none" stroke="var(--line)" stroke-width="1"/>
+<rect x="445.36" y="170.1" width="32.4" height="32.4" fill="none" stroke="var(--line)" stroke-width="1"/>
+<text x="461.56" y="186.3" font-size="16.2" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central">0</text>
+<rect x="477.76" y="170.1" width="32.4" height="32.4" fill="none" stroke="var(--line)" stroke-width="1"/>
+<text x="493.96" y="186.3" font-size="16.2" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central">0</text>
+<rect x="510.16" y="170.1" width="32.4" height="32.4" fill="none" stroke="var(--line)" stroke-width="1"/>
+<text x="526.36" y="186.3" font-size="16.2" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central">1</text>
+<text x="272.02" y="218.7" font-size="12.96" fill="var(--muted)" text-anchor="end" dominant-baseline="central">f6</text>
+<rect x="283.36" y="202.5" width="32.4" height="32.4" fill="none" stroke="var(--line)" stroke-width="1"/>
+<text x="299.56" y="218.7" font-size="16.2" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central">1</text>
+<rect x="315.76" y="202.5" width="32.4" height="32.4" fill="none" stroke="var(--line)" stroke-width="1"/>
+<text x="331.96" y="218.7" font-size="16.2" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central">1</text>
+<rect x="348.16" y="202.5" width="32.4" height="32.4" fill="none" stroke="var(--line)" stroke-width="1"/>
+<text x="364.36" y="218.7" font-size="16.2" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central">1</text>
+<rect x="380.56" y="202.5" width="32.4" height="32.4" fill="none" stroke="var(--line)" stroke-width="1"/>
+<text x="396.76" y="218.7" font-size="16.2" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central">0</text>
+<rect x="412.96" y="202.5" width="32.4" height="32.4" fill="none" stroke="var(--line)" stroke-width="1"/>
+<text x="429.16" y="218.7" font-size="16.2" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central">1</text>
+<rect x="445.36" y="202.5" width="32.4" height="32.4" fill="none" stroke="var(--line)" stroke-width="1"/>
+<rect x="477.76" y="202.5" width="32.4" height="32.4" fill="none" stroke="var(--line)" stroke-width="1"/>
+<text x="493.96" y="218.7" font-size="16.2" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central">0</text>
+<rect x="510.16" y="202.5" width="32.4" height="32.4" fill="none" stroke="var(--line)" stroke-width="1"/>
+<text x="526.36" y="218.7" font-size="16.2" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central">0</text>
+<text x="272.02" y="251.1" font-size="12.96" fill="var(--muted)" text-anchor="end" dominant-baseline="central">f7</text>
+<rect x="283.36" y="234.9" width="32.4" height="32.4" fill="none" stroke="var(--line)" stroke-width="1"/>
+<text x="299.56" y="251.1" font-size="16.2" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central">0</text>
+<rect x="315.76" y="234.9" width="32.4" height="32.4" fill="none" stroke="var(--line)" stroke-width="1"/>
+<text x="331.96" y="251.1" font-size="16.2" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central">1</text>
+<rect x="348.16" y="234.9" width="32.4" height="32.4" fill="none" stroke="var(--line)" stroke-width="1"/>
+<text x="364.36" y="251.1" font-size="16.2" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central">1</text>
+<rect x="380.56" y="234.9" width="32.4" height="32.4" fill="none" stroke="var(--line)" stroke-width="1"/>
+<text x="396.76" y="251.1" font-size="16.2" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central">0</text>
+<rect x="412.96" y="234.9" width="32.4" height="32.4" fill="none" stroke="var(--line)" stroke-width="1"/>
+<text x="429.16" y="251.1" font-size="16.2" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central">1</text>
+<rect x="445.36" y="234.9" width="32.4" height="32.4" fill="none" stroke="var(--line)" stroke-width="1"/>
+<text x="461.56" y="251.1" font-size="16.2" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central">1</text>
+<rect x="477.76" y="234.9" width="32.4" height="32.4" fill="none" stroke="var(--line)" stroke-width="1"/>
+<rect x="510.16" y="234.9" width="32.4" height="32.4" fill="none" stroke="var(--line)" stroke-width="1"/>
+<text x="526.36" y="251.1" font-size="16.2" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central">0</text>
+<text x="272.02" y="283.5" font-size="12.96" fill="var(--muted)" text-anchor="end" dominant-baseline="central">f8</text>
+<rect x="283.36" y="267.3" width="32.4" height="32.4" fill="none" stroke="var(--line)" stroke-width="1"/>
+<text x="299.56" y="283.5" font-size="16.2" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central">0</text>
+<rect x="315.76" y="267.3" width="32.4" height="32.4" fill="none" stroke="var(--line)" stroke-width="1"/>
+<text x="331.96" y="283.5" font-size="16.2" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central">1</text>
+<rect x="348.16" y="267.3" width="32.4" height="32.4" fill="none" stroke="var(--line)" stroke-width="1"/>
+<text x="364.36" y="283.5" font-size="16.2" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central">1</text>
+<rect x="380.56" y="267.3" width="32.4" height="32.4" fill="none" stroke="var(--line)" stroke-width="1"/>
+<text x="396.76" y="283.5" font-size="16.2" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central">1</text>
+<rect x="412.96" y="267.3" width="32.4" height="32.4" fill="none" stroke="var(--line)" stroke-width="1"/>
+<text x="429.16" y="283.5" font-size="16.2" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central">0</text>
+<rect x="445.36" y="267.3" width="32.4" height="32.4" fill="none" stroke="var(--line)" stroke-width="1"/>
+<text x="461.56" y="283.5" font-size="16.2" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central">1</text>
+<rect x="477.76" y="267.3" width="32.4" height="32.4" fill="none" stroke="var(--line)" stroke-width="1"/>
+<text x="493.96" y="283.5" font-size="16.2" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central">1</text>
+<rect x="510.16" y="267.3" width="32.4" height="32.4" fill="none" stroke="var(--line)" stroke-width="1"/>
+<g class="f" data-step="1"><rect x="283.36" y="40.5" width="32.4" height="32.4" fill="var(--syn)" fill-opacity="0.18"/><text x="299.56" y="56.7" font-size="16.2" fill="var(--syn)" text-anchor="middle" dominant-baseline="central">1</text><rect x="315.76" y="72.9" width="32.4" height="32.4" fill="var(--syn)" fill-opacity="0.18"/><text x="331.96" y="89.1" font-size="16.2" fill="var(--syn)" text-anchor="middle" dominant-baseline="central">1</text><rect x="348.16" y="105.3" width="32.4" height="32.4" fill="var(--syn)" fill-opacity="0.18"/><text x="364.36" y="121.5" font-size="16.2" fill="var(--syn)" text-anchor="middle" dominant-baseline="central">1</text><rect x="380.56" y="137.7" width="32.4" height="32.4" fill="var(--syn)" fill-opacity="0.18"/><text x="396.76" y="153.9" font-size="16.2" fill="var(--syn)" text-anchor="middle" dominant-baseline="central">1</text><rect x="412.96" y="170.1" width="32.4" height="32.4" fill="var(--syn)" fill-opacity="0.18"/><text x="429.16" y="186.3" font-size="16.2" fill="var(--syn)" text-anchor="middle" dominant-baseline="central">0</text><rect x="445.36" y="202.5" width="32.4" height="32.4" fill="var(--syn)" fill-opacity="0.18"/><text x="461.56" y="218.7" font-size="16.2" fill="var(--syn)" text-anchor="middle" dominant-baseline="central">1</text><rect x="477.76" y="234.9" width="32.4" height="32.4" fill="var(--syn)" fill-opacity="0.18"/><text x="493.96" y="251.1" font-size="16.2" fill="var(--syn)" text-anchor="middle" dominant-baseline="central">1</text><rect x="510.16" y="267.3" width="32.4" height="32.4" fill="var(--syn)" fill-opacity="0.18"/><text x="526.36" y="283.5" font-size="16.2" fill="var(--syn)" text-anchor="middle" dominant-baseline="central">1</text></g>
+<g class="f" data-step="2"><text x="272.02" y="333.72" font-size="12.96" fill="var(--sem)" text-anchor="end" dominant-baseline="central">flip</text><rect x="283.36" y="317.52" width="32.4" height="32.4" fill="var(--sem)" stroke="var(--sem)" stroke-width="1" fill-opacity="0.16"/><text x="299.56" y="333.72" font-size="16.2" fill="var(--sem)" text-anchor="middle" dominant-baseline="central">0</text><rect x="315.76" y="317.52" width="32.4" height="32.4" fill="var(--sem)" stroke="var(--sem)" stroke-width="1" fill-opacity="0.16"/><text x="331.96" y="333.72" font-size="16.2" fill="var(--sem)" text-anchor="middle" dominant-baseline="central">0</text><rect x="348.16" y="317.52" width="32.4" height="32.4" fill="var(--sem)" stroke="var(--sem)" stroke-width="1" fill-opacity="0.16"/><text x="364.36" y="333.72" font-size="16.2" fill="var(--sem)" text-anchor="middle" dominant-baseline="central">0</text><rect x="380.56" y="317.52" width="32.4" height="32.4" fill="var(--sem)" stroke="var(--sem)" stroke-width="1" fill-opacity="0.16"/><text x="396.76" y="333.72" font-size="16.2" fill="var(--sem)" text-anchor="middle" dominant-baseline="central">0</text><rect x="412.96" y="317.52" width="32.4" height="32.4" fill="var(--sem)" stroke="var(--sem)" stroke-width="1" fill-opacity="0.16"/><text x="429.16" y="333.72" font-size="16.2" fill="var(--sem)" text-anchor="middle" dominant-baseline="central">1</text><rect x="445.36" y="317.52" width="32.4" height="32.4" fill="var(--sem)" stroke="var(--sem)" stroke-width="1" fill-opacity="0.16"/><text x="461.56" y="333.72" font-size="16.2" fill="var(--sem)" text-anchor="middle" dominant-baseline="central">0</text><rect x="477.76" y="317.52" width="32.4" height="32.4" fill="var(--sem)" stroke="var(--sem)" stroke-width="1" fill-opacity="0.16"/><text x="493.96" y="333.72" font-size="16.2" fill="var(--sem)" text-anchor="middle" dominant-baseline="central">0</text><rect x="510.16" y="317.52" width="32.4" height="32.4" fill="var(--sem)" stroke="var(--sem)" stroke-width="1" fill-opacity="0.16"/><text x="526.36" y="333.72" font-size="16.2" fill="var(--sem)" text-anchor="middle" dominant-baseline="central">0</text></g>
+<g class="f" data-step="3"><text x="412.96" y="379.08" font-size="13.28" fill="var(--sem)" text-anchor="middle" dominant-baseline="central">differs from every row — so it is on no row</text></g>
+</svg>

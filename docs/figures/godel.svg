@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 450" width="800" height="450" role="img" aria-label="Give every text a number, and a program can read itself">
+<title>Give every text a number, and a program can read itself</title>
+<style>svg{--ink:#131C2A;--ink-2:#39485C;--muted:#5D6E85;--line:rgba(19,28,42,.18);--syn:#A2661A;--sem:#1F6C86;--bad:#A63E5A;--panel:#FFFFFF;--ground:#EFF1F3}@media (prefers-color-scheme: dark){svg{--ink:#E7EDF6;--ink-2:#B6C4D8;--muted:#8093AF;--line:rgba(122,162,204,.16);--syn:#E0A550;--sem:#5BB0C7;--bad:#C8607A;--panel:#111C2E;--ground:#080E18}}text{font-family:"JetBrains Mono","SFMono-Regular","SF Mono","Cascadia Mono",Menlo,Consolas,"DejaVu Sans Mono",monospace}.serif{font-family:"Iowan Old Style","Palatino Linotype",Palatino,"Book Antiqua","URW Palladio L",Georgia,serif}</style>
+<text x="400" y="45" font-size="16.2" fill="var(--syn)" text-anchor="middle" dominant-baseline="central">SYNTAX</text>
+<text x="400" y="108" font-size="45" fill="var(--syn)" text-anchor="middle" dominant-baseline="central">if (x) halt();</text>
+<text x="400" y="225" font-size="22.4" fill="var(--sem)" text-anchor="middle" dominant-baseline="central">1051023240120413210497108116404159</text>
+<text x="400" y="270" font-size="16.2" fill="var(--sem)" text-anchor="middle" dominant-baseline="central">NUMBER</text>
+<line x1="400" y1="135" x2="400" y2="198" stroke="var(--line)" stroke-width="1.4"/><path d="M400 198 L398.05 193.39 L401.95 193.39 Z" fill="var(--line)"/>
+<g class="f" data-step="1"><path d="M190.67 341.18 A33.75 33.75 0 1 1 206.47 375.34" fill="none" stroke="var(--bad)" stroke-width="1.5"/><line x1="209.44" y1="376.95" x2="206.47" y2="375.34" stroke="var(--bad)" stroke-width="1.4"/><path d="M206.47 375.34 L211.45 375.82 L209.6 379.25 Z" fill="var(--bad)"/><text x="281.38" y="332.1" font-size="17.1" fill="var(--ink-2)" text-anchor="start" dominant-baseline="central">a program</text><text x="281.38" y="362.7" font-size="17.1" fill="var(--bad)" text-anchor="start" dominant-baseline="central">reading itself</text></g>
+</svg>

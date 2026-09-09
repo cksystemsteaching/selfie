@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 450" width="800" height="450" role="img" aria-label="Notations are countable, meanings are not: almost everything has no name">
+<title>Notations are countable, meanings are not: almost everything has no name</title>
+<style>svg{--ink:#131C2A;--ink-2:#39485C;--muted:#5D6E85;--line:rgba(19,28,42,.18);--syn:#A2661A;--sem:#1F6C86;--bad:#A63E5A;--panel:#FFFFFF;--ground:#EFF1F3}@media (prefers-color-scheme: dark){svg{--ink:#E7EDF6;--ink-2:#B6C4D8;--muted:#8093AF;--line:rgba(122,162,204,.16);--syn:#E0A550;--sem:#5BB0C7;--bad:#C8607A;--panel:#111C2E;--ground:#080E18}}text{font-family:"JetBrains Mono","SFMono-Regular","SF Mono","Cascadia Mono",Menlo,Consolas,"DejaVu Sans Mono",monospace}.serif{font-family:"Iowan Old Style","Palatino Linotype",Palatino,"Book Antiqua","URW Palladio L",Georgia,serif}</style>
+<text x="192" y="31.5" font-size="17.1" fill="var(--syn)" text-anchor="middle" dominant-baseline="central">NOTATION</text>
+<text x="552" y="31.5" font-size="17.1" fill="var(--sem)" text-anchor="middle" dominant-baseline="central">MEANING</text>
+<circle cx="192" cy="63" r="4.95" fill="var(--syn)"/>
+<circle cx="192" cy="94.5" r="4.95" fill="var(--syn)"/>
+<circle cx="192" cy="126" r="4.95" fill="var(--syn)"/>
+<circle cx="192" cy="157.5" r="4.95" fill="var(--syn)"/>
+<circle cx="192" cy="189" r="4.95" fill="var(--syn)"/>
+<circle cx="192" cy="220.5" r="4.95" fill="var(--syn)"/>
+<circle cx="192" cy="252" r="4.95" fill="var(--syn)"/>
+<circle cx="192" cy="283.5" r="4.95" fill="var(--syn)"/>
+<circle cx="192" cy="315" r="4.95" fill="var(--syn)"/>
+<circle cx="192" cy="346.5" r="4.95" fill="var(--syn)"/>
+<circle cx="192" cy="378" r="4.95" fill="var(--syn)"/>
+<g class="f" data-step="1"><g opacity="0.5"><line x1="205.5" y1="63" x2="503" y2="75.6" stroke="var(--line)" stroke-width="1.4"/><path d="M503 75.6 L499.25 77 L499.38 73.89 Z" fill="var(--line)"/></g><g opacity="0.5"><line x1="205.5" y1="94.5" x2="503" y2="104.58" stroke="var(--line)" stroke-width="1.4"/><path d="M503 104.58 L499.27 106.01 L499.37 102.9 Z" fill="var(--line)"/></g><g opacity="0.5"><line x1="205.5" y1="126" x2="503" y2="133.56" stroke="var(--line)" stroke-width="1.4"/><path d="M503 133.56 L499.28 135.02 L499.36 131.91 Z" fill="var(--line)"/></g><g opacity="0.5"><line x1="205.5" y1="157.5" x2="503" y2="162.54" stroke="var(--line)" stroke-width="1.4"/><path d="M503 162.54 L499.29 164.04 L499.34 160.92 Z" fill="var(--line)"/></g><g opacity="0.5"><line x1="205.5" y1="189" x2="503" y2="191.52" stroke="var(--line)" stroke-width="1.4"/><path d="M503 191.52 L499.3 193.05 L499.33 189.93 Z" fill="var(--line)"/></g><g opacity="0.5"><line x1="205.5" y1="220.5" x2="503" y2="220.5" stroke="var(--line)" stroke-width="1.4"/><path d="M503 220.5 L499.32 222.06 L499.32 218.94 Z" fill="var(--line)"/></g><g opacity="0.5"><line x1="205.5" y1="252" x2="503" y2="249.48" stroke="var(--line)" stroke-width="1.4"/><path d="M503 249.48 L499.33 251.07 L499.3 247.95 Z" fill="var(--line)"/></g><g opacity="0.5"><line x1="205.5" y1="283.5" x2="503" y2="278.46" stroke="var(--line)" stroke-width="1.4"/><path d="M503 278.46 L499.34 280.08 L499.29 276.96 Z" fill="var(--line)"/></g><g opacity="0.5"><line x1="205.5" y1="315" x2="503" y2="307.44" stroke="var(--line)" stroke-width="1.4"/><path d="M503 307.44 L499.36 309.09 L499.28 305.98 Z" fill="var(--line)"/></g><g opacity="0.5"><line x1="205.5" y1="346.5" x2="503" y2="336.42" stroke="var(--line)" stroke-width="1.4"/><path d="M503 336.42 L499.37 338.1 L499.27 334.99 Z" fill="var(--line)"/></g><g opacity="0.5"><line x1="205.5" y1="378" x2="503" y2="365.4" stroke="var(--line)" stroke-width="1.4"/><path d="M503 365.4 L499.38 367.11 L499.25 364 Z" fill="var(--line)"/></g></g>
+<rect x="512" y="63" width="80" height="315" fill="var(--sem)" stroke="var(--line)" stroke-width="1" fill-opacity="0.85"/>
+<g class="f" data-step="2"><text x="605.5" y="195.3" font-size="17.1" fill="var(--sem)" text-anchor="start" dominant-baseline="central">everything here</text><text x="605.5" y="217.53" font-size="17.1" fill="var(--sem)" text-anchor="start" dominant-baseline="central">has no name</text></g>
+<text x="192" y="402.75" font-size="14.71" fill="var(--muted)" text-anchor="middle" dominant-baseline="central">countable · listable</text>
+<text x="552" y="402.75" font-size="14.71" fill="var(--muted)" text-anchor="middle" dominant-baseline="central">uncountable</text>
+</svg>

@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 450" width="800" height="450" role="img" aria-label="Self-hosting: hypster on hypster on mipster on the physical machine">
+<title>Self-hosting: hypster on hypster on mipster on the physical machine</title>
+<style>svg{--ink:#131C2A;--ink-2:#39485C;--muted:#5D6E85;--line:rgba(19,28,42,.18);--syn:#A2661A;--sem:#1F6C86;--bad:#A63E5A;--panel:#FFFFFF;--ground:#EFF1F3}@media (prefers-color-scheme: dark){svg{--ink:#E7EDF6;--ink-2:#B6C4D8;--muted:#8093AF;--line:rgba(122,162,204,.16);--syn:#E0A550;--sem:#5BB0C7;--bad:#C8607A;--panel:#111C2E;--ground:#080E18}}text{font-family:"JetBrains Mono","SFMono-Regular","SF Mono","Cascadia Mono",Menlo,Consolas,"DejaVu Sans Mono",monospace}.serif{font-family:"Iowan Old Style","Palatino Linotype",Palatino,"Book Antiqua","URW Palladio L",Georgia,serif}</style>
+<rect x="40" y="313.68" width="720" height="56.16" fill="var(--panel)" stroke="var(--line)" stroke-width="1" rx="8.99"/>
+<text x="400" y="341.76" font-size="23.59" fill="var(--muted)" text-anchor="middle" dominant-baseline="central">physical machine</text>
+<rect x="84" y="239.55" width="632" height="56.16" fill="var(--panel)" stroke="var(--syn)" stroke-width="1" rx="8.99"/>
+<text x="400" y="267.63" font-size="23.59" fill="var(--syn)" text-anchor="middle" dominant-baseline="central">mipster</text>
+<text x="704.21" y="267.63" font-size="18.4" fill="var(--muted)" text-anchor="end" dominant-baseline="central">-m 3</text>
+<line x1="400" y1="311.17" x2="400" y2="298.59" stroke="var(--line)" stroke-width="1.4"/><path d="M400 298.59 L402.1 303.55 L397.9 303.55 Z" fill="var(--line)"/>
+<rect x="128" y="165.42" width="544" height="56.16" fill="var(--panel)" stroke="var(--sem)" stroke-width="1" rx="8.99"/>
+<text x="400" y="193.5" font-size="23.59" fill="var(--sem)" text-anchor="middle" dominant-baseline="central">hypster</text>
+<text x="660.21" y="193.5" font-size="18.4" fill="var(--muted)" text-anchor="end" dominant-baseline="central">-y 2</text>
+<line x1="400" y1="237.04" x2="400" y2="224.46" stroke="var(--line)" stroke-width="1.4"/><path d="M400 224.46 L402.1 229.42 L397.9 229.42 Z" fill="var(--line)"/>
+<rect x="172" y="91.29" width="456" height="56.16" fill="var(--panel)" stroke="var(--sem)" stroke-width="1" rx="8.99"/>
+<text x="400" y="119.37" font-size="23.59" fill="var(--sem)" text-anchor="middle" dominant-baseline="central">hypster</text>
+<text x="616.21" y="119.37" font-size="18.4" fill="var(--muted)" text-anchor="end" dominant-baseline="central">-y 1</text>
+<line x1="400" y1="162.9" x2="400" y2="150.32" stroke="var(--line)" stroke-width="1.4"/><path d="M400 150.32 L402.1 155.29 L397.9 155.29 Z" fill="var(--line)"/>
+<rect x="216" y="17.16" width="368" height="56.16" fill="var(--panel)" stroke="var(--ink)" stroke-width="1" rx="8.99"/>
+<text x="400" y="45.24" font-size="23.59" fill="var(--ink)" text-anchor="middle" dominant-baseline="central">selfie</text>
+<line x1="400" y1="88.77" x2="400" y2="76.19" stroke="var(--line)" stroke-width="1.4"/><path d="M400 76.19 L402.1 81.16 L397.9 81.16 Z" fill="var(--line)"/>
+</svg>
