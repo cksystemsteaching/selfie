@@ -1,0 +1,256 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ICS 02 · Size</title>
+<link rel="stylesheet" href="../../deck/deck.css">
+</head>
+<body>
+<div id="stage">
+<div id="deck" tabindex="0" aria-label="Presentation: ICS 02 Size" data-title="ICS 02 · Size" data-figures="../../../figures/">
+
+<section class="slide" data-act="0" data-mins="1.0">
+  <div class="fig bare" style="position:absolute;inset:0"><canvas data-anim="ambient"></canvas></div>
+  <div class="fill center" style="position:relative">
+    <div class="eyebrow">Introduction to Computer Science · week 2 · station I</div>
+    <h1>Size</h1>
+    <p class="lead">Bits, orders of magnitude, state spaces — and why testing shows presence, not absence.</p>
+  </div>
+  <aside class="notes"><p>Station I. This session is arithmetic only, no theorems: the goal is a physical feeling for how big the spaces are that everything later happens in. Open with the synopsis line they were asked to bring, then the map, the anchors, the units, one bit, the phone, the needle, and the first of the five reframes. Book: the Size chapter's opening sections.</p></aside>
+</section>
+
+<section class="slide" data-act="0" data-mins="3.0">
+  <div class="eyebrow">Where we left off</div>
+  <h2>One line, in a formal language.</h2>
+  <div class="fill">
+    <div class="term">
+      <span class="l"><span class="p">$</span> <span class="c">./selfie</span></span>
+      <span class="l o">./selfie { -c { source } | -o binary | [ -s | -S ] assembly | -l binary } [ ( -m | -d | -r | -y ) 0-4096 ... ]</span>
+    </div>
+    <div class="two">
+      <p class="f" data-step="1">This is selfie's <strong>synopsis</strong>: a regular expression that says exactly how selfie may be invoked. Braces mean <em>any number of</em>, brackets mean <em>optional</em>, the bar means <em>or</em>. We learn to read it properly in week 4.</p>
+      <p class="f" data-step="2">For today: <span class="mono">-c selfie.c</span> compiles selfie's own source. Watch what it prints about itself.</p>
+    </div>
+    <div class="term sm f" data-step="3">
+      <span class="l"><span class="p">$</span> <span class="c">./selfie -c selfie.c</span></span>
+      <span class="l o">./selfie: selfie compiling selfie.c to 64-bit RISC-U with 64-bit starc</span>
+      <span class="l o">./selfie: 365784 characters read in 12394 lines and 1741 comments</span>
+      <span class="l o">./selfie: with 219888(60.11%) characters in 51329 actual symbols</span>
+      <span class="l o">./selfie: 491 global variables, 661 procedures, 512 string literals</span>
+      <span class="l o">./selfie: 188392 bytes generated with 43492 instructions and 14424 bytes of data</span>
+    </div>
+  </div>
+  <aside class="notes"><p>Run both commands live. The synopsis is the first formal language of the class and the whole point of showing it is that it is exact: every character of it means something, and week 4 will make them read it. Then the self-compilation profile. These are selfie's own numbers about selfie, and they are the numbers this session is going to place on a line: 365,784 characters, 12,394 lines, 43,492 instructions. Ask the room to guess whether that is a lot. It is one person's reading for a week, and that is the point of the specimen.</p></aside>
+</section>
+
+<section class="slide" data-act="I" data-actname="Size" data-mins="5.0">
+  <div class="eyebrow">The map</div>
+  <h2>One line carries the whole class: <span class="j">small</span>, <span class="j">vast</span>, then <span class="k">two sizes of endless</span>.</h2>
+  <div class="fill">
+    <div class="fig grow" data-fig="scale"><span class="cap">log scale · then off the end of every scale</span></div>
+    <div class="three">
+      <p class="sm f" data-step="1"><strong>Left.</strong> From one thing to every atom there is — the whole physical world in eighty steps, each one ten times the last.</p>
+      <p class="sm f" data-step="2"><strong>The wall.</strong> No number of steps crosses it. Infinity is not the far end of the line; it is what the line never reaches.</p>
+      <p class="sm f" data-step="3"><strong>Right.</strong> Past the wall, endlessness comes in sizes: one counts every notation, the other every meaning — and is <span class="k">strictly bigger</span>.</p>
+    </div>
+  </div>
+  <aside class="notes"><p>The itinerary of the semester in one picture, worth a slow five minutes because it comes back every week. Walk the sweep left to right: everything physics has to offer sits inside those eighty decades. Then the wall, and this is the sentence to land: infinity is not a very large number, it is not on the line at all, which is why week 7 needs an argument rather than a bigger example. Then the two boxes, countable and uncountable, deliberately different sizes. Weeks 2 to 6 and 11 are claims about the left of this line; weeks 7 to 10 about the right. Do not prove anything today.</p></aside>
+</section>
+
+<section class="slide" data-act="I" data-mins="5.0">
+  <div class="eyebrow">Anchors</div>
+  <h2>A million, a billion, a trillion. Three words one syllable apart — <span class="j">three different worlds</span>.</h2>
+  <div class="fill">
+    <div class="three">
+      <div class="kpi f" data-step="1"><span class="n">10<sup>6</sup> s</span><span class="l">a million seconds · 11½ days</span></div>
+      <div class="kpi f" data-step="2"><span class="n">10<sup>9</sup> s</span><span class="l">a billion seconds · 32 years</span></div>
+      <div class="kpi f" data-step="3"><span class="n">10<sup>12</sup> s</span><span class="l">a trillion seconds · 32,000 years</span></div>
+    </div>
+    <div class="two">
+      <p class="f" data-step="4">A million seconds ago you had not yet packed for today. A billion seconds ago you were a child, or not yet born. A trillion seconds ago somebody was painting the walls of the Chauvet cave.</p>
+      <div class="card syn f" data-step="5"><span class="h">The habit</span><p>Never accept a number you cannot picture. Find the anchor — a fortnight, a career, an ice age — or admit you are repeating the number, not reading it.</p></div>
+    </div>
+  </div>
+  <aside class="notes"><p>The most useful slide of the session for a first semester, because it is not about computers. Let the three figures land one at a time and give a beat after thirty-two thousand years. The point is linguistic as much as numerical: the words rhyme, so the mind files them together and treats the gaps as small. The gaps are the subject. Ask the room for their own anchors; the ones they supply are the ones they keep.</p></aside>
+</section>
+
+<section class="slide" data-act="I" data-mins="5.0">
+  <div class="eyebrow">Units</div>
+  <h2>Kilo, mega, giga, tera: <span class="j">the same three zeros</span>, again and again.</h2>
+  <div class="fill">
+    <table class="t">
+      <tr><th>prefix</th><th>factor</th><th>bytes · how much it holds</th><th>hertz · how often it happens</th></tr>
+      <tr class="f" data-step="1"><td>kilo</td><td>10<sup>3</sup></td><td>KB — a long paragraph</td><td>kHz — the top of human hearing, 20 kHz</td></tr>
+      <tr class="f" data-step="2"><td>mega</td><td>10<sup>6</sup></td><td>MB — a novel</td><td>MHz — the first IBM PC, 4.77 MHz, 1981</td></tr>
+      <tr class="f" data-step="3"><td>giga</td><td>10<sup>9</sup></td><td>GB — a thousand novels</td><td>GHz — this laptop; Wi-Fi at 2.4</td></tr>
+      <tr class="f" data-step="4"><td>tera</td><td>10<sup>12</sup></td><td>TB — a million novels</td><td>THz — infrared light</td></tr>
+    </table>
+    <div class="two">
+      <p class="sm f" data-step="5">A byte is eight bits — one keystroke. A hertz is one beat per second. The left column counts things, the right counts events, and the prefixes do not care which.</p>
+      <div class="card f" data-step="6"><span class="h">Hold a nanosecond</span><p>At 1 GHz a beat lasts a billionth of a second, and light gets 30 cm in that time. Grace Hopper handed those 30 cm out as lengths of wire, so a room could feel why a signal cannot cross a desk and return inside one beat.</p></div>
+    </div>
+  </div>
+  <aside class="notes"><p>Two ladders, one set of rungs. Build the table row by row and read the right-hand column aloud: hearing tops out in kilohertz, the first PC ran in megahertz, this machine runs in gigahertz, light is terahertz. Then the byte and the hertz, an amount and a rate sharing prefixes, which is exactly why people mix them up: a 5G phone is a rate, a 256 GB phone is an amount. The Hopper wire is the keepsake: a physical object whose length is a unit of time.</p></aside>
+</section>
+
+<section class="slide" data-act="I" data-mins="5.0">
+  <div class="eyebrow">Two kilos</div>
+  <h2>Kilo means a thousand. In memory it means <span class="j">1,024</span>. Both are in daily use.</h2>
+  <div class="fill">
+    <div class="two">
+      <table class="t">
+        <tr><th></th><th>base 10</th><th>base 2</th><th>gap</th></tr>
+        <tr><td>kilo</td><td>KB = 10<sup>3</sup></td><td>KiB = 2<sup>10</sup> = 1,024</td><td>+2.4%</td></tr>
+        <tr><td>mega</td><td>MB = 10<sup>6</sup></td><td>MiB = 2<sup>20</sup></td><td>+4.9%</td></tr>
+        <tr><td>giga</td><td>GB = 10<sup>9</sup></td><td>GiB = 2<sup>30</sup></td><td>+7.4%</td></tr>
+        <tr><td>tera</td><td>TB = 10<sup>12</sup></td><td>TiB = 2<sup>40</sup></td><td>+10.0%</td></tr>
+      </table>
+      <div class="stack">
+        <p class="sm f" data-step="1">Memory is addressed with bits, so its natural steps are powers of two — and 2<sup>10</sup> lands so close to 1,000 that the prefix was simply borrowed. Memory comes in powers of two; disks and networks in powers of ten. A "1 TB" drive holds 10<sup>12</sup> bytes and shows up as <strong>931 GiB</strong>.</p>
+        <div class="card syn f" data-step="2"><span class="h">Notice what just happened</span><p>One notation, two meanings, and nothing in the notation to tell you which you were handed. Keep hold of that. The rest of the semester is about that gap.</p></div>
+      </div>
+    </div>
+  </div>
+  <aside class="notes"><p>Short and practical, and it does real work later. The 1998 IEC names, kibi, mebi, gibi, are the fix nobody adopted, so both conventions are live and you have to know which is on the label. The lived version: you buy a terabyte drive and the machine reports 931 gigabytes, and nobody has stolen anything. The last card is why this slide is in this class and not in a hardware course: the string GB does not determine its own referent.</p></aside>
+</section>
+
+<section class="slide" data-act="I" data-mins="5.0">
+  <div class="eyebrow">One bit</div>
+  <h2>A bit is <span class="k">one distinction</span>: this, not that.</h2>
+  <div class="fill row mid">
+    <div class="fig grow" style="flex:1.15" data-fig="bits"><span class="cap">state space = 2<tt>ⁿ</tt></span></div>
+    <div class="stack grow">
+      <p class="f" data-step="1">Add a bit and you don't <em>add</em> states. You <span class="j">double</span> them.</p>
+      <p class="f" data-step="2">Ten bits: a thousand states. Twenty: a million. Thirty: a billion.</p>
+      <p class="f" data-step="3">Doubling is the most underestimated operation in human reasoning — and the entire engine of computing.</p>
+      <p class="f" data-step="4">How many bits does it take to have more states than the universe has atoms?</p>
+    </div>
+  </div>
+  <aside class="notes"><p>Ask the question on the last step and collect guesses before advancing. Answers land in the millions or billions. Emphasise that every distinction a system can make is a bit, and the combinations multiply. This is where the book's Size chapter starts its arithmetic, and it is the one operation every later number in the class is built from.</p></aside>
+</section>
+
+<section class="slide" data-act="I" data-mins="4.0">
+  <div class="eyebrow">Scale check</div>
+  <h2>34 bytes of memory has more states than the observable universe has atoms.</h2>
+  <div class="fill row mid">
+    <div class="fig grow" style="flex:1.3" data-fig="ruler"><span class="cap">log scale · 1 → 10⁸⁰</span></div>
+    <div class="stack grow">
+      <div class="kpi f" data-step="1"><span class="n">10<sup>80</sup></span><span class="l">atoms in the observable universe</span></div>
+      <div class="kpi f" data-step="2"><span class="n">2<sup>266</sup></span><span class="l">states of 266 bits ≈ 1.2 × 10<sup>80</sup></span></div>
+      <p class="sm f" data-step="2">37 bytes to beat every photon, about 10<sup>89</sup>.</p>
+    </div>
+  </div>
+  <aside class="notes"><p>266 bits, thirty-four bytes, a short sentence, one cryptographic key, already exceeds the atom count of everything we can see. This is why cryptography works at all, and it is the first hint that the spaces we build inside computers are not merely large: they are of a different order than physical reality.</p></aside>
+</section>
+
+<section class="slide" data-act="I" data-mins="5.0">
+  <div class="eyebrow">Your pocket · and the specimen</div>
+  <h2>A phone with 8 GB of memory has 2<sup>68,719,476,736</sup> states.</h2>
+  <div class="fill">
+    <div class="two">
+      <div class="stack">
+        <p class="f" data-step="1">Written out in decimal, that number has about <strong>20.7 billion digits</strong>. At 3,000 digits a page: 6.9 million pages. Bound into 500-page books: 13,800 volumes — some 400 metres of shelf.</p>
+        <p class="f" data-step="2">That shelf does not hold the phone's states. It holds the <em>number</em> of them, written down once.</p>
+        <p class="f" data-step="3">Every app you will ever install, every photo you will ever take, and every bug you will ever hit is one point in this space.</p>
+      </div>
+      <div class="stack">
+        <div class="card f" data-step="4"><span class="h">Selfie's machine</span><p>RISC-U has 4 GB of byte-addressed memory: 2<sup>35</sup> bits, so <strong>2<sup>34,359,738,368</sup></strong> states — a number with 10.3 billion decimal digits. Selfie, the program that runs on it, is 12,394 lines. One person can read the program to the end. Nobody can inspect the machine.</p></div>
+        <div class="digits f" data-step="5" data-anim="digits"></div>
+      </div>
+    </div>
+  </div>
+  <aside class="notes"><p>Land this slowly. The comparison people expect is bigger than the universe. The truth is worse: the atom count is an 81-digit number; the phone's state count is a 20-billion-digit number. There is no physical analogy left. Then the specimen: the machine selfie runs on is in the same class, and the program is small. That contrast, a readable program on an uninspectable machine, is the reason the class has a specimen at all. If someone asks about units, 8 GB of memory is 8 GiB, so the bit count is a round 2 to the 36.</p></aside>
+</section>
+
+<section class="slide" data-act="I" data-mins="5.0">
+  <div class="eyebrow">The consequence</div>
+  <h2>In a space that big, good states and bad states <span class="x">look alike</span>.</h2>
+  <div class="fill row mid">
+    <div class="fig grow" style="flex:1.2" data-fig="needle"><span class="cap">tested states, lit</span></div>
+    <div class="stack grow">
+      <p class="f" data-step="1">Test a <strong>billion states per second</strong>, starting at the Big Bang, and by now you would have checked about 2<sup>88</sup> of them. Out of 2<sup>68,719,476,736</sup>.</p>
+      <p class="f" data-step="2">The fraction is not small. It is indistinguishable from zero.</p>
+      <blockquote class="f" data-step="3">Testing shows the presence, not the absence of bugs.<cite>Edsger W. Dijkstra, 1969</cite></blockquote>
+    </div>
+  </div>
+  <aside class="notes"><p>This reframes software bugs for the rest of their lives. Bugs are not evidence of sloppy people; they are the geometry of the space. No amount of diligence lets you visit the states. So engineering cannot be exhaustive search: it must be argument, structure, and abstraction, which is what weeks 7 to 10 are, and, in week 12, a tool that shows absence within a bound. Plant both.</p></aside>
+</section>
+
+<section class="slide" data-act="I" data-mins="4.0">
+  <div class="eyebrow">Reframe · 1 of 5</div>
+  <h2>The vastness is not the problem. It is the <span class="k">inventory</span>.</h2>
+  <div class="fill">
+    <div class="ledger">
+      <div class="forbids f" data-step="1"><h4>What it forbids</h4><p>Certainty by inspection. You will never check your system exhaustively — not with more testers, not with faster machines, not ever.</p></div>
+      <div class="opens f" data-step="2"><h4>What it opens</h4><p>Every symphony not yet written, every protein not yet folded, every proof not yet found, every program not yet imagined — all of them are already in there, waiting to be addressed. The same enormity that hides your bugs is the reason novelty is inexhaustible.</p></div>
+    </div>
+    <p class="sm f" data-step="3">First appearance of the device that every limit in this class gets: what it forbids, and what it opens. A space small enough to audit would be a space too small to be interesting.</p>
+  </div>
+  <aside class="notes"><p>Make the trade explicit, and name the device, because it comes back four more times: for the gap between notation and meaning, for Gödel and Turing, for NP-hardness, and for the definition at the end. Students who learn to look for the second column stop hearing computer science as a list of impossibilities.</p></aside>
+</section>
+
+<section class="slide" data-act="I" data-mins="4.0">
+  <div class="eyebrow">Interlude · literature</div>
+  <h2>Borges built this space in 1941 and called it a <span class="j">library</span>.</h2>
+  <div class="fill">
+    <div class="two">
+      <div class="stack">
+        <p class="f" data-step="1">The Library of Babel holds every possible book: every truth, every refutation — and overwhelmingly, gibberish. Its inhabitants go mad: containing every truth is worthless without a way of finding one.</p>
+        <p class="f" data-step="2">Modern echo: a large language model already "contains" astonishing amounts of text. Containment was never the hard part.</p>
+      </div>
+      <div class="stack">
+        <div class="card f" data-step="3"><span class="h">Borges · 1941</span><p>410 pages, 40 lines, 80 characters, 25 symbols. The shelves hold 25<sup>1,312,000</sup> books ≈ 10<sup>1,834,097</sup> volumes.</p></div>
+        <div class="card syn f" data-step="4"><span class="h">The shift</span><p>From storage to search: from having the answer somewhere to knowing it when you see it.</p></div>
+      </div>
+    </div>
+  </div>
+  <aside class="notes"><p>Bridge slide and the recommended reading for the week: ten pages that say what this session says. It also plants the vocabulary for week 13: a system that contains everything, including every plausible falsehood, has moved the whole difficulty into retrieval and verification.</p></aside>
+</section>
+
+<section class="slide" data-act="I" data-mins="5.0">
+  <div class="eyebrow">Life · from the book</div>
+  <h2>A machine that counts through all its states would, eventually, write the Mona Lisa. It would not <span class="k">notice</span>.</h2>
+  <div class="fill">
+    <div class="two">
+      <div class="stack">
+        <p class="f" data-step="1">Write a program that treats all of memory as one integer and increments it. It enumerates every state the machine can be in. It will have turned to dust before getting anywhere — but suppose it ran.</p>
+        <p class="f" data-step="2">Once in a while, an enormous while, the state would encode Beethoven's Fifth, or the human genome. Without any intelligence whatsoever. And the machine could not <em>select</em> those states over the others.</p>
+      </div>
+      <div class="stack">
+        <p class="f" data-step="3">Evolution is that program with a selector attached: enumerate DNA by mutation, select by reproductive success. A physical process bound by physics, modelled by a computer bound by logic.</p>
+        <div class="card f" data-step="4"><span class="h">Quantities matter</span><p>Lots of time, or mutate fast. Lots of space, or be tiny. Lots of energy, or be efficient. A few more zeroes in a number make all the difference — in life and in computing.</p></div>
+      </div>
+    </div>
+  </div>
+  <aside class="notes"><p>The Life interlude of the Size chapter, and the first appearance of the two ideas that the last weeks turn into the definition: enumeration is cheap and finds everything, selection is the hard part, and both are paid for in time, space and energy. It also previews week 11 without saying so.</p></aside>
+</section>
+
+<section class="slide" data-act="I" data-mins="3.0">
+  <div class="eyebrow">Before next week</div>
+  <h2>Recommended exercises.</h2>
+  <div class="fill">
+    <div class="two">
+      <ol class="steps">
+        <li>Read the Size chapter up to <em>Numbers</em>, and Borges's <em>Library of Babel</em>.</li>
+        <li>Rerun <span class="mono">./selfie -c selfie.c</span>. Where on the map do 365,784 characters sit? And 43,492 instructions? And the machine's state count?</li>
+        <li>How many bits do you need for a thousand states? A million? Every person alive? Every atom in the Earth (about 10<sup>50</sup>)?</li>
+        <li>A "512 GB" phone: how many GiB does it report, and why?</li>
+        <li>Find three anchors of your own for a million, a billion, and a trillion — of anything.</li>
+      </ol>
+      <div class="card syn"><span class="h">Next week</span><p>Everything is bits: numbers, negative numbers, overflow, characters, text, files, images, code. The same 85 in five different notations, and what the machine makes of each.</p></div>
+    </div>
+  </div>
+  <aside class="notes"><p>Nothing is collected. Say which exercise the exam might draw on, which is all of them, and that the anchors exercise is the one that pays off longest.</p></aside>
+</section>
+
+</div>
+</div>
+<script src="../../deck/deck.js"></script>
+<script>
+/* the decimal digit rain for the 4 GB number, as in the talks */
+(()=>{ const r=(s=>()=>(s=(s*1103515245+12345)&0x7fffffff)/0x7fffffff)(10343311891%2147483647);
+  document.querySelectorAll("[data-anim='digits']").forEach(el=>{ let s="2^34359738368 = "; for(let i=0;i<1400;i++) s+=Math.floor(r()*10); el.textContent=s+"…"; }); })();
+</script>
+</body>
+</html>

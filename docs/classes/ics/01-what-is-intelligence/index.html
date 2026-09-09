@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ICS 01 · What is Intelligence?</title>
+<link rel="stylesheet" href="../../deck/deck.css">
+</head>
+<body>
+<div id="stage">
+<div id="deck" tabindex="0" aria-label="Presentation: ICS 01 What is Intelligence?" data-title="ICS 01 · What is Intelligence?" data-figures="../../../figures/">
+
+<section class="slide" data-act="0" data-mins="1.0">
+  <div class="fig bare" style="position:absolute;inset:0"><canvas data-anim="ambient"></canvas></div>
+  <div class="fill center" style="position:relative">
+    <div class="eyebrow">Introduction to Computer Science · week 1</div>
+    <h1>What is<br><span class="k">Intelligence</span>?</h1>
+    <p class="lead">A first-semester class, in fourteen weeks, that answers its title with a definition — and earns it.</p>
+    <p class="sm"><span class="j">proof · notation · syntax</span> &nbsp;·&nbsp; <span class="k">truth · meaning · semantics</span></p>
+  </div>
+  <aside class="notes"><p>This first session is the talk itself, all fifty-six minutes of it, followed by this short deck: what the class is, how it is organised, and what to do before next week. Give the talk first. It is the trailer for the whole semester, and every one of its slides comes back, slowly, in the weeks that follow. Then switch to this deck. If the room has already seen the talk, skip it and take the hour for the terminal instead.</p></aside>
+</section>
+
+<section class="slide" data-act="0" data-mins="1.5">
+  <div class="eyebrow">What this class is for</div>
+  <h2>A deep understanding of the basic principles — deep enough to <span class="k">position generative AI</span>, and whatever comes next, properly.</h2>
+  <div class="fill">
+    <div class="two">
+      <div class="stack">
+        <p class="f" data-step="1">Not how to use a device. Not how to prompt a chat bot. Not even, mainly, how to code.</p>
+        <p class="f" data-step="2">The principles were true before this technology arrived and will still be true after whatever replaces it. That is why they are worth a semester, and why nothing in this class mentions a product, a vendor, or a year.</p>
+        <p class="f" data-step="3">By the end you will be able to say, about any machine that talks, exactly what it is and exactly what it cannot be — and to check the answer yourself.</p>
+      </div>
+      <div class="stack">
+        <div class="card f" data-step="4"><span class="h">The question</span><p>Is it intelligent? — badly posed, as the talk said. We replace it with questions you can answer: what language, what semantics, what metric, what budget, who checks.</p></div>
+        <div class="card syn f" data-step="5"><span class="h">The short answer</span><p>Intelligence is developing new formal languages — or new properties in existing ones — which requires finding and understanding promising <em>unproven</em> truth. Fourteen weeks to earn it.</p></div>
+      </div>
+    </div>
+  </div>
+  <aside class="notes"><p>Say the purpose sentence out loud and mean it. Students in a first semester have been told many things about AI, mostly forecasts about a product cycle; the promise of this class is different and it is honest: whatever they will be told next year, they will have the instrument to check it. Then repeat the short answer from the talk so it is on the table from day one. Nobody is expected to understand it yet.</p></aside>
+</section>
+
+<section class="slide" data-act="0" data-mins="1.5">
+  <div class="eyebrow">The axis</div>
+  <h2>Everything in this class sits somewhere on <span class="j">one line</span>.</h2>
+  <div class="fill">
+    <div class="fig grow" data-fig="station"><span class="cap">the six stations of the semester</span></div>
+    <div class="three">
+      <p class="sm f" data-step="1"><strong>Finite.</strong> Bits, and how fast a few of them outnumber the atoms in the universe. Week 2 and 3.</p>
+      <p class="sm f" data-step="2"><strong>Countable.</strong> Everything you can write down: programs, proofs, machines — and the machine that reads them. Weeks 4 to 6.</p>
+      <p class="sm f" data-step="3"><strong>Uncountable.</strong> What you mean by it. Behaviours, truths. Cantor, Gödel, Turing, Rice — then the compiler and the operating system built anyway. Weeks 7 to 10. Then cost, machines, and the answer.</p>
+    </div>
+  </div>
+  <aside class="notes"><p>The same figure the book opens with. Walk it left to right and name the weeks. The point to land: this is not a list of topics, it is one argument, and each week is one step along it. The three parts of the line correspond to the three things a machine forces you to keep apart — how big, what is written, what is meant.</p></aside>
+</section>
+
+<section class="slide" data-act="I" data-actname="The Class" data-mins="2.0">
+  <div class="eyebrow">Fourteen weeks</div>
+  <h2>The route.</h2>
+  <div class="fill">
+    <table class="t">
+      <tr><th>wk</th><th>station</th><th>lecture</th><th>live in the terminal</th></tr>
+      <tr><td>1</td><td>—</td><td>What is Intelligence? The talk, then this</td><td class="mono">./selfie</td></tr>
+      <tr><td>2</td><td>I</td><td>Size: bits, orders of magnitude, state spaces</td><td class="mono">-c selfie.c</td></tr>
+      <tr><td>3</td><td>I</td><td>Everything is bits: numbers, text, kilo vs kibi</td><td class="mono">examples/</td></tr>
+      <tr><td>4</td><td>II</td><td>Notation: formal languages, EBNF, C* and RISC-U</td><td class="mono">-s</td></tr>
+      <tr><td>5</td><td>II</td><td>Countability: a binary is a number; the fixed point</td><td class="mono">make self-self-check</td></tr>
+      <tr><td>6</td><td>II</td><td>The machine: RISC-U, mipster as the universal machine</td><td class="mono">make emu, -d</td></tr>
+      <tr><td>7</td><td>III</td><td>Uncountability: the diagonal, twice; truths without proof</td><td>—</td></tr>
+      <tr><td>8</td><td>III</td><td>Self-reference I: the compiler, the fixed point, Gödel</td><td class="mono">make self</td></tr>
+      <tr><td>9</td><td>III</td><td>Self-reference II: halting, universality, Rice</td><td class="mono">-d on a loop</td></tr>
+      <tr><td>10</td><td>III</td><td>Systems: OS by emulation ≡ OS by virtualization</td><td class="mono">make emu-emu, os-emu</td></tr>
+      <tr><td>11</td><td>IV</td><td>Cost: P vs NP, SAT, a solver in 400 lines, Landauer</td><td class="mono">make sat</td></tr>
+      <tr><td>12</td><td>IV</td><td>Formal methods: machine code in, formula out</td><td class="mono">make rotor, bitme</td></tr>
+      <tr><td>13</td><td>V</td><td>Machines: what an LLM is; hallucination; the gate</td><td>a prompt, and a compiler</td></tr>
+      <tr><td>14</td><td>VI</td><td>What is intelligence? The definition; the exam</td><td>—</td></tr>
+    </table>
+  </div>
+  <aside class="notes"><p>Fourteen sessions of ninety minutes. Every session has something run live in a terminal, and the right-hand column is what students should rerun at home. Point out that the first three stations take ten weeks and the last three take four: the theory is the load-bearing part and it gets the time.</p></aside>
+</section>
+
+<section class="slide" data-act="I" data-mins="1.5">
+  <div class="eyebrow">The specimen</div>
+  <h2>One file, small enough to read to the end: <span class="j">selfie</span>.</h2>
+  <div class="fill row mid">
+    <div class="stack grow">
+      <p class="f" data-step="1">A compiler for a tiny subset of C, an emulator for a tiny subset of RISC-V, and a hypervisor — twelve thousand lines, one file, written in the language it compiles.</p>
+      <p class="f" data-step="2">Three commands: the compiler compiles itself, the emulator executes itself, the hypervisor hosts itself. Understand the first and you understand compilers; the second, machines; the third, operating systems.</p>
+      <p class="f" data-step="3">And a workshop of tools around it that turn a program into a logical formula and hand it to a solver — where this class meets the frontier, in week 12.</p>
+    </div>
+    <div class="term grow">
+      <span class="l"><span class="p">$</span> <span class="c">./selfie -c selfie.c -o selfie1.m -m 2 -c selfie.c -o selfie2.m</span></span>
+      <span class="l o">./selfie: selfie compiling selfie.c to 64-bit RISC-U with 64-bit starc</span>
+      <span class="l o">…</span>
+      <span class="l o">./selfie: 64-bit mipster executing 64-bit RISC-U binary selfie1.m with 2MB physical memory</span>
+      <span class="l o">selfie1.m: selfie compiling selfie.c to 64-bit RISC-U with 64-bit starc</span>
+      <span class="l o">…</span>
+      <span class="l"><span class="p">$</span> <span class="c">diff -s selfie1.m selfie2.m</span></span>
+      <span class="l o">Files selfie1.m and selfie2.m are identical</span>
+    </div>
+  </div>
+  <aside class="notes"><p>Run it. It takes a minute or two on a laptop and the room should watch the second compilation happen inside the emulator, slower than the first, and then the diff. Do not explain yet what it proves and does not prove; that is week 8. Today it is the demonstration that the whole system fits in one file that they will be reading, and that the class has a specimen and not just a subject.</p></aside>
+</section>
+
+<section class="slide" data-act="I" data-mins="1.5">
+  <div class="eyebrow">Before next week</div>
+  <h2>Install selfie, and run it <span class="k">once</span>.</h2>
+  <div class="fill">
+    <div class="two">
+      <div class="stack">
+        <ol class="steps">
+          <li>Get a terminal. Every laptop has one; if you only have a browser, the repository's README shows the cloud option.</li>
+          <li>Download selfie from <span class="mono">github.com/cksystemsteaching/selfie</span> and type <span class="mono">make</span> in its directory. You need a C compiler; the README says which.</li>
+          <li>Type <span class="mono">./selfie</span>. It answers with its synopsis, one line, in a formal language. Bring that line to week 2.</li>
+          <li>Read the introduction of the book, and the Selfie chapter, and type the two commands in it.</li>
+        </ol>
+      </div>
+      <div class="stack">
+        <div class="card f" data-step="1"><span class="h">The book</span><p><em>What is Intelligence?</em> — this class is its first six parts at talk resolution, one chapter per week or so. It is in the repository under <span class="mono">book/</span>.</p></div>
+        <div class="card syn f" data-step="2"><span class="h">Exercises</span><p>This class has no formal assignments. It has a recommended exercise list per week — reading, the commands of the session to rerun, a few paper exercises — and one thing to try on the autograder, which is how the compiler and systems classes are graded.</p></div>
+      </div>
+    </div>
+  </div>
+  <aside class="notes"><p>Be concrete about the installation because the first week is where people get lost on their machines rather than on the material. The synopsis line is the first formal language they meet, and week 2 opens with it. State the exercise policy plainly: nothing is collected, everything is recommended, and the recommended list is what the exam draws on.</p></aside>
+</section>
+
+<section class="slide" data-act="I" data-mins="1.0">
+  <div class="eyebrow">How to read this class</div>
+  <h2>Slow yourself down.</h2>
+  <div class="fill">
+    <div class="two">
+      <div class="stack">
+        <p class="f" data-step="1">Formal languages are not casual. Everything matters, even the tiniest detail, and the trick to learning them is to take steps so small they are almost painful.</p>
+        <p class="f" data-step="2">Every negative result in this class — there are five — is read twice: what it forbids, and what it opens. The second reading is the one to remember.</p>
+      </div>
+      <div class="stack">
+        <blockquote class="f" data-step="3">Whatever intelligence is, humour is the only way.<cite>the last slide of the talk, and of week 14</cite></blockquote>
+      </div>
+    </div>
+  </div>
+  <aside class="notes"><p>Close on the two reading habits. The first is the book's: slow down. The second is the talk's: every limit is a door. Then send them to the terminal.</p></aside>
+</section>
+
+</div>
+</div>
+<script src="../../deck/deck.js"></script>
+</body>
+</html>

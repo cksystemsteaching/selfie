@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ICS 03 · Everything is Bits</title>
+<link rel="stylesheet" href="../../deck/deck.css">
+</head>
+<body>
+<div id="stage">
+<div id="deck" tabindex="0" aria-label="Presentation: ICS 03 Everything is Bits" data-title="ICS 03 · Everything is Bits" data-figures="../../../figures/">
+
+<section class="slide" data-act="0" data-mins="1.0">
+  <div class="fig bare" style="position:absolute;inset:0"><canvas data-anim="ambient"></canvas></div>
+  <div class="fill center" style="position:relative">
+    <div class="eyebrow">Introduction to Computer Science · week 3 · station I</div>
+    <h1>Everything is <span class="j">bits</span>.</h1>
+    <p class="lead">Numbers, negative numbers, overflow, characters, text, files, images, code — one notation, and what the machine makes of it.</p>
+  </div>
+  <aside class="notes"><p>Still station I, still no theorems, but now the bits get meanings. The thread of the session is one number, 85, which is also the letter U, which is also minus 43, which is also an address, depending on how it is read. That is the thesis of the class in miniature and it should be said as such at the end. Book: the Size chapter from Bits to Code.</p></aside>
+</section>
+
+<section class="slide" data-act="I" data-actname="Bits" data-mins="5.0">
+  <div class="eyebrow">Binary</div>
+  <h2>85 is <span class="j">1010101</span>. Nothing else changed.</h2>
+  <div class="fill">
+    <div class="two">
+      <div class="stack">
+        <p class="f" data-step="1">Decimal: 85 = 8·10 + 5·1. Binary: 1010101 = 1·64 + 0·32 + 1·16 + 0·8 + 1·4 + 0·2 + 1·1. Same number, a different base. The value is the meaning; the digits are the notation.</p>
+        <p class="f" data-step="2">Adding works the same way in any base — carry when a column overflows its base. 1010101 + 111 = 1011100, which is 85 + 7 = 92.</p>
+        <p class="f" data-step="3">Hexadecimal groups four bits into one digit: 1010101 is 0x55. Octal groups three. Both are just shorter ways to write the same bits; the machine only ever sees the bits.</p>
+      </div>
+      <div class="stack">
+        <div class="fig grow" data-fig="7-bit-adder"><span class="cap">85 + 7 = 92, one full adder per bit</span></div>
+      </div>
+    </div>
+  </div>
+  <aside class="notes"><p>Do the addition on the board before showing the figure, carries and all. Then the figure: seven full adders, each of which is two half adders and an OR gate, each of which is a few logic gates. This is the only piece of hardware in the class and it is here to show that arithmetic is circuits, and circuits are formulas, which week 11 will use when a program becomes a formula.</p></aside>
+</section>
+
+<section class="slide" data-act="I" data-mins="5.0">
+  <div class="eyebrow">Negative numbers</div>
+  <h2>Two digits, read <span class="k">three ways</span>.</h2>
+  <div class="fill row mid">
+    <div class="fig grow" style="flex:1.1" data-fig="tens-complement"><span class="cap">encoding · unsigned · signed</span></div>
+    <div class="stack grow">
+      <p class="f" data-step="1">With two decimal digits you can encode a hundred things. Read them as 0 to 99, or read 50 to 99 as −50 to −1. Same digits. Subtraction becomes addition: 7 − 8 is 7 + 92 = 99, which is −1.</p>
+      <p class="f" data-step="2">The machine does exactly this in base two: <strong>two's complement</strong>. With 64 bits, 2<sup>64</sup> encodings, read as 0 to 2<sup>64</sup>−1 or as −2<sup>63</sup> to 2<sup>63</sup>−1. The bits do not say which.</p>
+      <p class="f" data-step="3">1010101 with seven bits is 85 unsigned — and −43 signed. Same seven bits.</p>
+    </div>
+  </div>
+  <aside class="notes"><p>The three rings are the whole idea: an encoding ring and two interpretations laid over it. Make them compute 7 minus 8 in tens complement by hand. The sentence to land is the last one on the slide, because it is the second appearance of one notation, two meanings, after last week's two kilos.</p></aside>
+</section>
+
+<section class="slide" data-act="I" data-mins="4.0">
+  <div class="eyebrow">Overflow</div>
+  <h2>Finite means the numbers <span class="x">wrap around</span>.</h2>
+  <div class="fill">
+    <div class="two">
+      <div class="stack">
+        <p class="f" data-step="1">With 64 bits, 2<sup>64</sup> − 1 plus 1 is 0. Nothing crashes; the carry out of the top bit is simply lost. That is an <strong>overflow</strong>, and the machine does not tell you.</p>
+        <p class="f" data-step="2">Signed, the same wrap makes 2<sup>63</sup> − 1 plus 1 equal to −2<sup>63</sup>: the largest positive number plus one is the most negative one.</p>
+        <p class="f" data-step="3">Every integer in every program you will ever run lives in a finite box. Most of the time nobody notices. The times somebody does are famous.</p>
+      </div>
+      <div class="term">
+        <span class="l"><span class="p">$</span> <span class="c">cat examples/overflows.c</span></span>
+        <span class="l o">// … prints UINT64_MAX + 1, INT64_MAX + 1, and what happens</span>
+        <span class="l"><span class="p">$</span> <span class="c">./selfie -c examples/overflows.c -m 1</span></span>
+        <span class="l o">…</span>
+      </div>
+    </div>
+  </div>
+  <aside class="notes"><p>Run the example live and let the room see zero come out of the largest number plus one. Overflow is the first concrete instance of finite versus unbounded, which week 9 needs when the Turing machine gets an infinite tape: our machine does not have one, and this is what that costs.</p></aside>
+</section>
+
+<section class="slide" data-act="I" data-mins="5.0">
+  <div class="eyebrow">Characters</div>
+  <h2>1010101 is also the letter <span class="j">U</span>. People in the 1960s sat down and agreed.</h2>
+  <div class="fill">
+    <div class="two">
+      <div class="stack">
+        <p class="f" data-step="1"><strong>ASCII</strong>: seven bits, 128 characters, a table agreed in 1963. 85 is U. 48 is the digit 0, 65 is A, 97 is a, 32 is a space. The digit '0' and the number 0 are different things with different codes.</p>
+        <p class="f" data-step="2"><strong>Unicode</strong> extends the table to every script, and UTF-8 encodes it in one to four bytes so that ASCII is unchanged. A byte is eight bits, a nibble four, and the figure names its ends.</p>
+      </div>
+      <div class="stack">
+        <div class="fig grow" data-fig="byte"><span class="cap">a byte: 01010101 = 85 = 'U'</span></div>
+      </div>
+    </div>
+  </div>
+  <aside class="notes"><p>A byte is 85, or U, or minus 43. Three meanings, one notation, no way to tell from the bits. Have them look up their initials in the ASCII table in the assignments directory and write them in binary. Then the byte figure: the bit order matters, most significant on the left, and this convention is the only reason two machines agree.</p></aside>
+</section>
+
+<section class="slide" data-act="I" data-mins="5.0">
+  <div class="eyebrow">Memory</div>
+  <h2>Memory is bytes with <span class="k">addresses</span>. An address is a number. So a byte can hold an address.</h2>
+  <div class="fill row mid">
+    <div class="fig grow" data-fig="memory"><span class="cap">storage and addresses</span></div>
+    <div class="fig grow" data-fig="pointers"><span class="cap">a value read as an address: a pointer</span></div>
+  </div>
+  <aside class="notes"><p>Left: the column of bytes, numbered from the lowest address up. Right: the first genuinely computer-science idea of the session. The byte at address 0 holds 85, and 85 is also an address, so it points at the byte at 85, which holds 7, which points at the byte at 7, which holds 0. A pointer is a value read as a location, and every data structure in every program is built out of exactly this. Take the minute.</p></aside>
+</section>
+
+<section class="slide" data-act="I" data-mins="5.0">
+  <div class="eyebrow">Text and files</div>
+  <h2>A string is bytes in a row, ended by a <span class="j">zero</span>. A file is a string with a name.</h2>
+  <div class="fill row mid">
+    <div class="fig grow" data-fig="string"><span class="cap">"science", NULL-terminated, at address 85</span></div>
+    <div class="stack grow">
+      <p class="f" data-step="1">Contiguous: the letters of a word one after the other. The zero byte says where it ends, which is how a machine that only sees bytes knows a word is over.</p>
+      <p class="f" data-step="2">Non-contiguous: a text is paragraphs, each contiguous, reached through pointers. A directory is names and pointers to files. A file system is a tree of directories, and a pathname is the route from the root.</p>
+      <p class="f" data-step="3">All of it is bytes at addresses. The structure is in how they are read.</p>
+    </div>
+  </div>
+  <aside class="notes"><p>The string figure is the one to dwell on, because selfie's own source code is exactly this: 365,784 bytes, each an ASCII character, in a file called selfie.c. Mention the text, directory and tree figures in the book without showing all of them; the mechanism is identical.</p></aside>
+</section>
+
+<section class="slide" data-act="I" data-mins="4.0">
+  <div class="eyebrow">Images, video, audio</div>
+  <h2>A picture is numbers in rows. A film is pictures in a row. A sound is numbers in a row.</h2>
+  <div class="fill row mid">
+    <div class="fig grow" data-fig="image"><span class="cap">an image, row-major</span></div>
+    <div class="fig grow" data-fig="audio"><span class="cap">audio, 8-bit samples</span></div>
+  </div>
+  <aside class="notes"><p>Quick, because the room believes it already; the point is only that nothing new is needed. A pixel is a few bytes, a frame is pixels in row-major order, a sample is a byte or two of amplitude, and a second of sound is forty-four thousand of them. The device does the encoding and decoding; the machine in between only ever moves bytes.</p></aside>
+</section>
+
+<section class="slide" data-act="I" data-mins="5.0">
+  <div class="eyebrow">Code</div>
+  <h2>And an <span class="k">instruction</span> is 32 bits. Code is bytes too.</h2>
+  <div class="fill row mid">
+    <div class="fig grow" data-fig="code"><span class="cap">machine code, four bytes per instruction</span></div>
+    <div class="stack grow">
+      <p class="f" data-step="1">Selfie compiles its source to 43,492 instructions of 32 bits each: 173,968 bytes of code and 14,424 bytes of data, laid out one after the other in a file.</p>
+      <p class="f" data-step="2">That file is bytes at addresses, like a text or an image. The machine reads it and does what it says. Nothing in the bytes tells you whether they are code or data; the machine chapter shows what does.</p>
+      <div class="term sm f" data-step="3">
+        <span class="l"><span class="p">$</span> <span class="c">./selfie -c examples/hello-world.c -m 1</span></span>
+        <span class="l o">./selfie: selfie compiling examples/hello-world.c to 64-bit RISC-U with 64-bit starc</span>
+        <span class="l o">…</span>
+        <span class="l o">./selfie: 64-bit mipster executing 64-bit RISC-U binary examples/hello-world.c with 1MB physical memory</span>
+        <span class="l o">Hello World!</span>
+      </div>
+    </div>
+  </div>
+  <aside class="notes"><p>Run hello world. Then say the two things this slide is for. First, code and data are the same stuff, bytes, which is the fact that makes a compiler possible, and a virus, and a machine that reads itself. Second, the file that came out of the compiler is a number, one very long one, and week 5 takes that seriously.</p></aside>
+</section>
+
+<section class="slide" data-act="I" data-mins="4.0">
+  <div class="eyebrow">One notation, many meanings</div>
+  <h2>1010101 is 85, and U, and −43, and an address, and half an instruction. <span class="k">The bits do not say which.</span></h2>
+  <div class="fill">
+    <div class="two">
+      <div class="stack">
+        <p class="f" data-step="1">Everything a machine stores is a number. Everything a number means is decided by whoever reads it, and by nothing else.</p>
+        <p class="f" data-step="2">Last week: one prefix, two meanings. This week: one byte, five. The gap between the notation and its meaning is not a defect of computers. It is what this class is about, and next week we start on the notations that pin meaning down.</p>
+      </div>
+      <div class="stack">
+        <blockquote class="f" data-step="3">Whatever you see on a screen could come from anywhere and mean anything.<cite>the book, Life 4</cite></blockquote>
+      </div>
+    </div>
+  </div>
+  <aside class="notes"><p>The thesis slide of the session. Say it plainly: the bits are the notation, the reading is the meaning, and there is no third thing in the machine that connects them. Week 4 introduces the formal languages whose job is exactly to connect them, by decree.</p></aside>
+</section>
+
+<section class="slide" data-act="I" data-mins="3.0">
+  <div class="eyebrow">Before next week</div>
+  <h2>Recommended exercises.</h2>
+  <div class="fill">
+    <div class="two">
+      <ol class="steps">
+        <li>Read the Size chapter from <em>Numbers</em> to <em>Code</em>.</li>
+        <li>Write 42, 255, and 1000 in binary and hexadecimal. Add 85 and 42 in binary with carries.</li>
+        <li>What is 1010101 as a signed 7-bit number? What is 11111111 as an unsigned and as a signed byte?</li>
+        <li>Write your first name in ASCII, in binary, and count the bits. Then in UTF-8 if it has an umlaut.</li>
+        <li>Run <span class="mono">examples/overflows.c</span> and explain each line of output.</li>
+        <li>In the pointers figure, what happens if the byte at address 0 held 7 instead of 85?</li>
+      </ol>
+      <div class="card syn"><span class="h">Next week</span><p>Notation: formal languages. EBNF, and the two languages selfie is made of — C* with seven keywords, RISC-U with fourteen instructions — read exactly.</p></div>
+    </div>
+  </div>
+  <aside class="notes"><p>The paper exercises are the ones the exam draws on; the overflow run is the one that makes the finite box real.</p></aside>
+</section>
+
+</div>
+</div>
+<script src="../../deck/deck.js"></script>
+</body>
+</html>
