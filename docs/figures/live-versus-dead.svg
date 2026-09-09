@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 560" width="700" height="560" role="img" aria-label="Live versus dead memory: the line between them is not computable, so a collector can only reclaim what is unreachable">
+<title>Live versus dead memory: the line between them is not computable, so a collector can only reclaim what is unreachable</title>
+<style>svg{--ink:#131C2A;--ink-2:#39485C;--muted:#5D6E85;--line:rgba(19,28,42,.18);--syn:#A2661A;--sem:#1F6C86;--bad:#A63E5A;--panel:#FFFFFF;--ground:#EFF1F3}@media (prefers-color-scheme: dark){svg{--ink:#E7EDF6;--ink-2:#B6C4D8;--muted:#8093AF;--line:rgba(122,162,204,.16);--syn:#E0A550;--sem:#5BB0C7;--bad:#C8607A;--panel:#111C2E;--ground:#080E18}}text{font-family:"JetBrains Mono","SFMono-Regular","SF Mono","Cascadia Mono",Menlo,Consolas,"DejaVu Sans Mono",monospace}.serif{font-family:"Iowan Old Style","Palatino Linotype",Palatino,"Book Antiqua","URW Palladio L",Georgia,serif}</style>
+<path d="M330 90 A200 200 0 0 0 330 490" fill="none" stroke="var(--sem)" stroke-width="2"/>
+<path d="M330 90 A200 200 0 0 1 330 490" fill="none" stroke="var(--bad)" stroke-width="2"/>
+<path d="M330 90 L318 115 L342 140 L318 165 L342 190 L318 215 L342 240 L318 265 L342 290 L318 315 L342 340 L318 365 L342 390 L318 415 L342 440 L318 465 L342 490" fill="none" stroke="var(--bad)" stroke-width="2.4"/>
+<text x="230" y="290" font-size="15" fill="var(--sem)" text-anchor="middle" dominant-baseline="central" class="serif">live memory</text>
+<text x="440" y="150" font-size="15" fill="var(--bad)" text-anchor="middle" dominant-baseline="central" class="serif">dead memory</text>
+<circle cx="450" cy="320" r="80" fill="none" stroke="var(--syn)" stroke-width="1.5"/>
+<text x="450" y="320" font-size="12" fill="var(--syn)" text-anchor="middle" dominant-baseline="central" class="serif">unreachable memory</text>
+<text x="20" y="40" font-size="11" fill="var(--ink-2)" text-anchor="start" dominant-baseline="central">live and dead not computable precisely</text>
+<line x1="200" y1="50" x2="320" y2="120" stroke="var(--line)" stroke-width="1"/><path d="M320 120 L315.04 119.36 L317 116 Z" fill="var(--line)"/>
+<text x="380" y="40" font-size="11" fill="var(--ink-2)" text-anchor="start" dominant-baseline="central">can only deallocate unreachable memory safely</text>
+<line x1="520" y1="50" x2="470" y2="240" stroke="var(--line)" stroke-width="1"/><path d="M470 240 L469.29 235.05 L473.06 236.04 Z" fill="var(--line)"/>
+<text x="40" y="520" font-size="11" fill="var(--ink-2)" text-anchor="start" dominant-baseline="central">reachable and live</text>
+<line x1="120" y1="510" x2="230" y2="420" stroke="var(--line)" stroke-width="1"/><path d="M230 420 L227.67 424.42 L225.2 421.41 Z" fill="var(--line)"/>
+<text x="380" y="520" font-size="11" fill="var(--ink-2)" text-anchor="start" dominant-baseline="central">reachable but dead (a reachable memory leak)</text>
+<line x1="520" y1="510" x2="440" y2="440" stroke="var(--line)" stroke-width="1"/><path d="M440 440 L444.75 441.57 L442.18 444.5 Z" fill="var(--line)"/>
+</svg>

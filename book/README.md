@@ -589,15 +589,15 @@ These formulae are known as De Morgan’s Laws, something I remember from my fir
 
 An AND operator, for example, can be constructed by two *transistors* connected in a sequence that transmits high voltage only if the input to both transistors is high voltage. A transistor is essentially just a switch and the fundamental building block of digital devices. Its miniaturization began in the late 1950s and has started the computer revolution.
 
-![A Half Adder](figures/half-adder.png "A Half Adder")
+![A Half Adder](../docs/figures/half-adder.svg "A Half Adder")
 
 The AND and XOR operators can then be arranged as logic gates to construct a so-called *half adder* in an electronic circuit which performs binary addition of two addend bits as described above.
 
-![A Full Adder](figures/full-adder.png "A Full Adder")
+![A Full Adder](../docs/figures/full-adder.svg "A Full Adder")
 
 We can then take two half adders and an OR operator as logic gate to construct a *full adder* which performs binary addition of three bits: two addend bits, like a half adder, plus a carry bit, also called *carry-in*. A full adder computes, like a half adder, a sum bit and a carry bit, also called *carry-out*, which is 1 if either or both of the carry bits of the two half adders are 1. A full adder requires, depending on technology, several dozen transistors.
 
-![A 7-bit Adder](figures/7-bit-adder.png "A 7-bit Adder")
+![A 7-bit Adder](../docs/figures/7-bit-adder.svg "A 7-bit Adder")
 
 Finally, we can take 7 full adders, one for each bit in the example of the previous section, and connect them in a chain of full adders to form a 7-bit adder where the carry-out of each full adder is fed to the carry-in of the more-significant full adder to the left of it, resembling what we do when adding two binary numbers by hand. In an actual electronic circuit, the exact same thing happens by having the involved bits travel as low and high voltage through the circuit. Now, imagine that a modern computer typically features 32-bit and even 64-bit adders which in turn require around one- to two-thousand transistors, respectively. Only the dramatic miniaturization of transistors made that possible.
 
@@ -631,7 +631,7 @@ The negative complement or *radix complement* of a number depends on the *radix*
 
 So, 93 represents -7 here.
 
-![Tens Complement](figures/tens-complement.png "Tens Complement")
+![Tens Complement](../docs/figures/tens-complement.svg "Tens Complement")
 
 In fact, instead of encoding 0 and the first 99 positive numbers from 1 to 99 in the decimal numbers 0 to 99, we only encode 0 and the first 49 positive numbers from 1 to 49 in 0 to 49, and the first 50 negative numbers from -1 to -50 in 99 to 50. Oddly, this encoding supports 49 positive numbers and 50 negative numbers, that is, exactly one more negative number which is -50, encoded by, well, 50.
 
@@ -1161,7 +1161,7 @@ Notice, for example, the very first ASCII character '/' in `selfie.c`. That char
 
 ### Bytes
 
-![A Byte](figures/byte.png "A Byte")
+![A Byte](../docs/figures/byte.svg "A Byte")
 
 A *byte* is a unit of information, abbreviated by the upper-case letter *B*, that consists of eight bits and can therefore distinguish exactly 256 different things. Why eight bits? This was far from obvious in the early days of computing. Fundamentally, what we need is to package bits into something larger because processing bits individually is just too cumbersome and too slow in particular. So, one idea is to use seven bits since they fit ASCII characters. However, seven is not a power of two but eight is! Eight bits are two times four bits which allows us to use exactly two digits in hexadecimal notation such as 0x55, for example, to denote a byte. In this case, each of the two digits is called a *nibble*.
 
@@ -1177,7 +1177,7 @@ Digital memory is fascinating because it is an extremely simple concept while be
 
 Why do we and, in fact, everyone else use byte-addressed memory? Well, it took quite some time to come to that agreement in the computer science community. An important reason is that ASCII characters stored in byte-addressed memory have unique addresses since every ASCII character fits into exactly one byte (with the MSB set to 0). Another reason is that at some point in the past many machines would access memory at the level of individual bytes. These days are mostly over but we are still using byte-addressed memory. What actually happens today when memory is accessed depends on the technology. Usually, if a machine needs to access one byte stored in memory, a whole bunch in the immediate neighborhood of that byte is transferred as well. This can be just a few but also dozens, hundreds, and even thousands of bytes, which is fine because in most scenarios, if the machine needs access to one byte, it is likely to need access to the bytes around that byte as well. Think of 64-bit integers, for example, which require eight bytes each, but there are also even larger structures such as text, for example. The speed at which memory access happens also varies, often by orders of magnitude, depending on the technology. However, the granularity and the speed of memory access is not important for us right now, so we simply assume in this chapter that bytes are accessed individually and ignore speed altogether.
 
-![Memory](figures/memory.png "Memory")
+![Memory](../docs/figures/memory.svg "Memory")
 
 Digital memory always provides two things: *storage* and an *address space*! And it is important to distinguish the two because there can be address spaces without storage but no storage without an address space. How else would you find anything? Also, the size of storage and address spaces are measured quite differently. The amount of storage is obviously measured in number of bytes. Sounds simple but there is quite a bit of potential confusion here. First of all, when we speak of storage we mean something that can store information. Whether that storage is *volatile* or *non-volatile* is of no concern to us. *Volatile memory* such as main memory looses all information when power is cut whereas *non-volatile memory* such a USB stick does not. However, the terms memory and volatile memory as well as the terms storage and non-volatile memory are often used synonymously but not here. So, please keep that in mind.
 
@@ -1195,7 +1195,7 @@ Below is a summary of the relevant prefixes. We include kilobits et cetera for l
 
 So, by now we know how storage is measured but how about address spaces? Why not simply do the same? After all, there are as many addresses as there are bytes in byte-addressed memory. The reason why they are measured differently is because address spaces do not cost anything. They are free whereas storage is not. However, addresses are not free since addresses need to be encoded and stored! The size of an address space is thus measured in the number of bits necessary to encode the highest address in binary.
 
-![Pointers](figures/pointers.png "Pointers")
+![Pointers](../docs/figures/pointers.svg "Pointers")
 
 Suppose we use eight bits, that is, one byte to encode an address in binary. In that case we speak of an 8-bit address space. Since one byte can encode the unsigned integers 0 to 255, an 8-bit address space can address 256 bytes of storage in byte-addressed memory. This is not much but there is still something absolutely awesome about that. Each byte can encode the 8-bit address of any other byte in 256 bytes of memory including its own address. For example, we could store, say, 85 as `01010101` at address 0 and, say, 7 as `00000111` at address 85, and, say, 0 as `00000000` at address 7, encoding a cycle from address 0 via address 85 to address 7 and then back to address 0. In this case, `01010101`, `00000111`, and `00000000` are interpreted as *pointers* which can be used to encode any kind of arbitrarily complex graph structure.
 
@@ -1235,7 +1235,7 @@ Let us take a closer look at how digital memory can in principle be used to stor
 
 Both ways have advantages and disadvantages. Non-contiguous storing of information is great because it gives us freedom in where to store information. However, we still need to remember where each of the eight bytes is stored which may require pointers which in turn may need to be stored as well. Contiguous storing of information is also great because we only need to remember where the first of the eight bytes is stored. However, finding enough space that fits eight bytes in a row may be hard. Think of memory where every other byte is already taken. In that case, half of memory is still available but we still cannot store eight bytes in a row. This phenomenon is called *fragmentation*. You may have heard of the problem in the context of harddrives that need to be defragmented, for example. However, any type of digital memory has that problem if information is stored contiguously. We get back to the issue in more detail in the machine and programming chapters.
 
-![Contiguous Memory](figures/contiguous.png "Contiguous Memory")
+![Contiguous Memory](../docs/figures/contiguous.svg "Contiguous Memory")
 
 There is nevertheless one advantage of contiguous storing of information that makes it worth the effort. Given the address of the first of the eight bytes in memory, say, 85 we can calculate the address of, say, the eighth byte by adding 7 to 85. In other words, we use addition of two unsigned integers or in fact a pointer (85) and an unsigned integer (7) to calculate the address of the eighth byte (92). Why is this so cool? Because it is fast! Actually it is very fast, especially compared to finding individual bytes in memory through pointers. But it is also cool because it is an application of integer addition that comes at a surprise. Addition in digital devices is probably more used for calculating memory addresses than for calculating the sum of whatever quantities. Addition therefore facilitates computation in general rather than just numerical calculations.
 
@@ -1249,11 +1249,11 @@ Text including some simple formatting such as linefeeds can be represented by a 
 
 Whichever of the three ways of storing text contiguously in memory we use, all three share the problem of finding enough contiguous space in memory. This is not a big deal for short text but for longer text it is, especially if some time later we decide to insert a new character in the middle of the text somewhere. In that case, all characters to the right of the new character need to be shifted in memory by one character to make room for the new character, if there is still room. If not, all text needs to be copied somewhere else where there is enough contiguous space for one more character! By the way, if we used paper to write down that text we had the exact same problem. How can the work involved in shifting and copying lots of characters at least be somewhat reduced?
 
-![Non-contiguous storing of text with two contiguously stored paragraphs](figures/text.png "Text")
+![Non-contiguous storing of text with two contiguously stored paragraphs](../docs/figures/text.svg "Text")
 
 Easy. We cut the text into smaller, more convenient chunks, say, into paragraphs which we then store individually, still contiguously, but as a whole separately, that is, non-contiguously in any order somewhere in memory. In order to maintain the original order of the paragraphs, we need to remember where they are in memory. This is done by pointers, one for each paragraph pointing to where it begins in memory. We then collect all pointers and store them contiguously in the original order of the paragraphs they point to. Done. Inserting a new character now affects only the involved paragraph but not the whole text. This is our first example of how to combine contiguous and non-contiguous storing of information for trading off the advantages and disadvantages of both techniques.
 
-![NULL-terminated string of ASCII characters "science" stored contiguously in memory at address 85 and above](figures/string.png "String")
+![NULL-terminated string of ASCII characters "science" stored contiguously in memory at address 85 and above](../docs/figures/string.svg "String")
 
 Before taking the next step towards how files are stored and organized, which is surprisingly easy with what we know now, we would like to clarify some important terminology. Computer scientists often call a sequence of characters a *string*, not text, especially if the string is relatively short. In writing and in particular in source code, strings are usually enclosed in double quotes such as "science", for example. In that case, "science" is called a *string literal*, that is, it is literally a string.
 
@@ -1271,11 +1271,11 @@ The other thing about filenames is that they often suggest what the *format* of 
 
 Here is a word of advice. The simpler and more widely used a format is the less likely it is that a file in that format cannot be *opened*, that is, decoded, processed, and encoded again. This is because the software that opens a file in such a format is simpler and more robust as well and therefore less likely to be buggy. So, the more critical the information is that you would like to keep in a file the simpler and more widely used the format of that file should be. I am writing this book in a text file that can be opened by almost anything! Sure, if you are dealing with sensitive information the situation is a lot more complicated than that. But in that case you should be even more motivated to keep reading.
 
-![A directory of files "a" and "b" stored contiguously in memory at address 85 and 7, respectively, and above](figures/directory.png "Directory")
+![A directory of files "a" and "b" stored contiguously in memory at address 85 and 7, respectively, and above](../docs/figures/directory.svg "Directory")
 
 The next question we need to deal with has a surprisingly simple answer that you may know but have not looked at this way. How is the name of a file and its address in memory associated with each other? The answer is by a *folder* or, equivalently, a *directory*! In fact, a folder is, from the perspective of the machine, just another file which contains, for each file "in" the folder, the name of the file as well as the address of the file in memory plus *meta* information such as the length of the file and the day and time it was created and modified, for example.
 
-![A tree of folders, subfolders, and files with the pathname "/p/q" of file "a" highlighted](figures/tree.png "Tree")
+![A tree of folders, subfolders, and files with the pathname "/p/q" of file "a" highlighted](../docs/figures/file-tree.svg "Tree")
 
 Since for the machine a folder is just a file, we can immediately create an elaborate, arbitrarily deep hierarchy of folders. Just put one folder into another, making the former a *subfolder* of the latter, and so on. Computer scientists call the structure created by folders and subfolders a *tree* which makes sense when you look at it upside down. Consequently, the folder that contains everything is called *root* while the files and empty folders are called *leaves*. The names of the folders on a *branch* or *path* from the root folder to any other folder or file constitute what is called a *pathname* with the names separated by a character that does not occur in names such as the slash `/` symbol. The special pathname "/" denotes the root directory. The name of a given folder or file plus its pathname uniquely identify it in the whole tree because there can never be two entries in any folder with the same name.
 
@@ -1333,7 +1333,7 @@ A file is a named sequence of bytes, any bytes. Text is an unnamed sequence of b
 
 By now you can probably guess what a digital *image* is? It is a sequence of bytes, right! But seriously, if we do not care about performance, that is, the amount of bytes we need to encode an image, a *bitmap* does the job perfectly. A bitmap is a rectangular grid of pixels, just like your computer screen. The color of each pixel is encoded in, say, one byte which represents an unsigned integer. Each pixel can thus have 256 different colors including black and white. This is called *color depth*. If you want more, just increase the number of bytes per pixel. Three bytes is standard today enabling more than sixteen million different colors per pixel. If you want more resolution, just increase the number of pixels in your bitmap. For example, 4K resolution is 4,096 times 2,160 pixels which is more than eight million pixels requiring, at three bytes per pixel, a bitmap of around 25.3MB. To get to the unit of MB, just calculate 4096\*2160\*3 and divide that by 1MB which is 2^20^B.
 
-![An image encoded and stored contiguously in memory in row-major](figures/image.png "Image")
+![An image encoded and stored contiguously in memory in row-major](../docs/figures/image.svg "Image")
 
 Bitmaps are stored contiguously in memory, usually in *row-major*, that is, horizontal line by horizontal line starting in the top left corner. Another choice for storing a two-dimensional structure (bitmap) in a one-dimensional medium (byte-addressed memory) is *column-major*, that is, vertical line by vertical line. To show an image stored as a bitmap in memory on screen, your machine takes one byte after the other from the bitmap in memory and sets the color of the corresponding pixel on the screen accordingly. Since there are usually millions of pixels, modern machines include special hardware, which does that so fast that the process is invisible to the human eye. Conversely, if you take a picture with your phone or in fact any digital camera, the camera sensor produces a bitmap and stores that in memory, also using special hardware.
 
@@ -1355,7 +1355,7 @@ One more thing before we continue with something that needs even more bytes than
 
 Yes, even digital *video* is just a sequence of bytes, typically a rather long sequence of bytes. On a higher level of abstraction, video is a sequence of images that are shown in rapid succession on a screen. The problem with digital video in the early days of computing was the prohibitive amount of bytes necessary to encode it while *efficient* and *effective* compression techniques were not yet available. Here, effective means that the amount of bytes is reduced to the extent that it can be managed while quality is preserved, and efficient means that encoding and decoding can still be done in *real time* so that video can be recorded and shown.
 
-![A video encoded and stored contiguously in memory frame by frame](figures/video.png "Video")
+![A video encoded and stored contiguously in memory frame by frame](../docs/figures/video.svg "Video")
 
 The key difference between video and *still* images is that video is *streaming media*. In other words, video needs to be encoded and decoded in real time at the rate at which the individual images of a video, also called *frames*, are produced. Therefore, while the size of text, images, video, and files in general is measured in number of bytes, there is another quantity that is relevant with video. It is the *frame rate* of the video measured in frames per second (fps) and in particular its *bit rate* which is measured in bits per second (bps), that is, the number of bits per second that need to be processed to handle the video in real time. The usual prefixes of bps such as kilo, mega, and giga are in base 10 which is generally the case for any *data rates* including bytes per second:
 
@@ -1374,7 +1374,7 @@ In recent years, video compression has become so effective and efficient that ev
 
 As usual, digital *audio* is yet another sequence of bytes, usually by far not as many as video of the same length but still enough to worry about. In particular, audio is streaming media, just like video, and requires encoding and decoding in real time. The difference to video is that we are not dealing with a sequence of images that are shown in rapid succession on a screen but with a sequence of *samples* that are played in rapid succession on a speaker. A sample is a binary number with a given number of bits called *bit depth*, analogous to color depth, that represents, say, a signed integer which encodes the amplitude of the audio signal at the time of taking the sample. Think of the amplitude as the distance of a microphone's or speaker's membrane, or in fact your eardrums or vocal cords, from their resting position at the time of taking the sample. This is a beautiful application of signed integers!
 
-![Audio encoded with 8-bit bit depth and stored contiguously in memory sample by sample](figures/audio.png "Audio")
+![Audio encoded with 8-bit bit depth and stored contiguously in memory sample by sample](../docs/figures/audio.svg "Audio")
 
 So, how often do we have to take a sample? In other words, the question is what an adequate *sampling rate* is, in analogy to the frame rate of video. Well, it depends on the highest frequency we would like to capture. Humans can typically hear frequencies between around 20Hz and 20kHz where Hz stands for cycles per second and is an abbreviation of *Hertz*, the name of a famous physicist. The prefixes kilo, mega, and giga in Hz are in base 10:
 
@@ -1398,7 +1398,7 @@ Everything done by a computer is encoded in bits including code. We heard that b
 
 Code exists in very different forms such as *source code* like `selfie.c` or actual *machine code*. The latter is a sequence of bytes that *instructs* a computer to perform computation with data by manipulating the bits encoding the data whereas the former is just text that still needs to be translated to machine code before it can instruct the machine to do anything. Machine code is for machines, source code is for humans. The machine chapter explains what machine code is and the programming chapter explains what source code is. For now, we focus on machine code and explain how it works intuitively.
 
-![Machine code encoded in 32 bits (4 bytes) per instruction and stored contiguously in memory instruction by instruction](figures/code.png "Code")
+![Machine code encoded in 32 bits (4 bytes) per instruction and stored contiguously in memory instruction by instruction](../docs/figures/code.svg "Code")
 
 Machine code or just code is a sequence of *machine instructions* where each instruction is encoded in four bytes, at least in our case here. There are machines that use different encodings but our choice is quite common and as good as any other for our purpose. Four bytes are 32 bits. This means we could distinguish 2^32^ different instructions in four bytes, that is, around four billion different instructions. This is way too many! A computer usually distinguishes a few dozen to a few hundred and sometimes even a few thousand instructions but not more than that. Out of the 32 bits encoding an instruction only a few bits are therefore used to encode which instruction it actually is. The remaining bits encode the *parameters* and *arguments* of an instruction which are typically addresses or just integers. For example, there is usually an instruction that makes the machine load two integers from memory, add them, and store the result back in memory. We saw that before. There are of course similar instructions for integer subtraction, multiplication, division, and remainder. The other thing these instructions do, and all instruction have that in common, is that they tell the machine where the next instruction in memory is. And that's it! Really!
 
@@ -1993,7 +1993,7 @@ Binary notation uses base 2 since it supports just 2 characters per digit or in 
 
 In sum, *conversion* between hexadecimal and binary numbers is easy, which is one of the reasons as to why hexadecimal notation is so popular in computer science. Another reason is that hexadecimal notation is significantly more *compact* than binary notation, exactly 4-times more compact to be precise. Mathematically speaking, hexadecimal is popular because base 16 is a power of base 2 (convertibility), namely, 2 to the power of factor 4 (compactness).
 
-In contrast, using decimal notation to represent binary numbers is cumbersome because base 10 is not a power of base 2. When dealing with computers, binary encoding is the reason why we are often confronted with powers of 2 such as 2, 4, 8, 16, 32, 64, 128, 256, 512, and so on, in contrast to powers of 10 such as 10, 100, 1000, et cetera. The information chapter has more on that!
+In contrast, using decimal notation to represent binary numbers is cumbersome because base 10 is not a power of base 2. When dealing with computers, binary encoding is the reason why we are often confronted with powers of 2 such as 2, 4, 8, 16, 32, 64, 128, 256, 512, and so on, in contrast to powers of 10 such as 10, 100, 1000, et cetera. The size chapter has more on that!
 
 Before we move on, let us have a quick look at the binary code `0x006282B3` of the above machine instruction spelled out in a sequence of bits:
 
@@ -2312,7 +2312,7 @@ For many years, there has been a trend towards ignoring the machine when teachin
 
 Digital devices that contain a CPU, and these are essentially all devices from a simple microcontroller in a washing machine to a large server in a data center, are instances of a so-called *von Neumann machine* or *von Neumann architecture* named after *John von Neumann* who described the model in 1945. The idea is to store all information, code and data, encoded in bits in the same memory, next to each other, that is, in the same address space and then connect a CPU to that memory with a *memory bus* that transports the bits, usually more than one at a time, between CPU and memory. Literally think of the memory bus as a bus transporting a group of bits from a specific memory address to the CPU and back. However, the memory bus is infamous for being called the *von Neumann bottleneck* since everything, code and data, needs to be transported on that bus when the machine is running.
 
-![von Neumann Architecture](figures/vonNeumann.png "von Neumann Architecture")
+![von Neumann Architecture](../docs/figures/von-neumann.svg "von Neumann Architecture")
 
 An alternative model to a von Neumann machine that addresses the von Neumann bottleneck is the *Harvard architecture* which features separate memories for code and for data connected to the CPU via separate memory buses. The advantage of the Harvard architecture over a von Neumann machine is that it can fetch code and data simultaneously since there are at least two memory buses. There is special-purpose hardware such as *graphics processing units* or *GPUs* that benefit from this feature and are in fact Harvard machines. However, these days even a von Neumann machine performs similar to a Harvard architecture by using separate *memory caches* for code and data from which the CPU can fetch code and data simultaneously as long as the information is in the caches. We nevertheless skip the details here but recommend following up with books on computer architecture if you are interested.
 
@@ -2340,7 +2340,7 @@ The ISA we use in selfie is called *RISC-U* where *U* stands for *unsigned*. The
 
 > All arithmetic and logical calculations happen in registers
 
-Before taking a closer look at individual RISC-U instructions, we first need to understand the *register model* of the machine. The RISC-U ISA features 32 general-purpose 64-bit registers and one 64-bit *program counter*, just like the 64-bit RISC-V ISA. A *register* is CPU-internal storage for exactly one machine word. RISC-U registers are addressed from 0 to 31 which is a 5-bit *address space* since 2^5^ is 32. In other words, 5 bits are enough to identify any of the 32 registers. All arithmetic and logical calculations are done in these registers by a circuit called the *Arithmetic Logic Unit* or *ALU*. A full adder, which we explained in the information chapter, is an example of an important ALU component. Note that register 0, also called `zero`, is special. It always contains the 64-bit integer value 0, even after trying to store a non-zero value in that register. The purpose of that register is to initialize other registers. We show how that works below.
+Before taking a closer look at individual RISC-U instructions, we first need to understand the *register model* of the machine. The RISC-U ISA features 32 general-purpose 64-bit registers and one 64-bit *program counter*, just like the 64-bit RISC-V ISA. A *register* is CPU-internal storage for exactly one machine word. RISC-U registers are addressed from 0 to 31 which is a 5-bit *address space* since 2^5^ is 32. In other words, 5 bits are enough to identify any of the 32 registers. All arithmetic and logical calculations are done in these registers by a circuit called the *Arithmetic Logic Unit* or *ALU*. A full adder, which we explained in the size chapter, is an example of an important ALU component. Note that register 0, also called `zero`, is special. It always contains the 64-bit integer value 0, even after trying to store a non-zero value in that register. The purpose of that register is to initialize other registers. We show how that works below.
 
 > The program counter determines which bits are interpreted as code
 
@@ -2348,9 +2348,9 @@ The *program counter* of a CPU, and they all have one, is like a register but wi
 
 > All day long: fetch, decode, execute
 
-So, what exactly does a processor do? We briefly mentioned that in the information chapter but would like to go back to that here. The only thing a processor does is *fetch* a machine word (here 32 bits) from memory at the address where the program counter points to, *decode* the machine word to figure out which instruction it actually is and what its parameters and arguments are, and finally *execute* the instruction. For this purpose, the processor maintains a hidden *instruction register* denoted `ir` that stores the currently executed instruction. Most importantly, all instructions have in common that they make the processor set the `pc` to another memory address when done. Then the processor fetches the next instruction into `ir`, as told by the current instruction, decodes it, executes it, and so on, until power is cut.
+So, what exactly does a processor do? We briefly mentioned that in the size chapter but would like to go back to that here. The only thing a processor does is *fetch* a machine word (here 32 bits) from memory at the address where the program counter points to, *decode* the machine word to figure out which instruction it actually is and what its parameters and arguments are, and finally *execute* the instruction. For this purpose, the processor maintains a hidden *instruction register* denoted `ir` that stores the currently executed instruction. Most importantly, all instructions have in common that they make the processor set the `pc` to another memory address when done. Then the processor fetches the next instruction into `ir`, as told by the current instruction, decodes it, executes it, and so on, until power is cut.
 
-![RISC-U ISA](figures/machine.png "RISC-U ISA")
+![RISC-U ISA](../docs/figures/risc-u-machine.svg "RISC-U ISA")
 
 In addition to the program counter, some instructions make the processor change either the value of one of the 32 general-purpose 64-bit registers or the value of a 64-bit machine word in memory. This means that a RISC-U processor, upon executing any instruction, changes no more than 128 bits: 64 bits of the program counter and possibly another 64 bits in a register or a machine word in memory. That's all!
 
@@ -2364,7 +2364,7 @@ Before we move on to explaining memory, we should briefly mention what a *multi-
 
 ### Memory
 
-The *memory model* of the RISC-U ISA in selfie is based on byte-addressed memory, as introduced in the information chapter. More specifically, a RISC-U machine has a 32-bit *main memory address space* with up to 4GB of byte-addressed *main memory storage* where all memory access is 64-bit *word-aligned* except when instructions are fetched which is done 32-bit *word-aligned*. This means that whenever the CPU accesses memory (load or store) it can only do so at memory addresses that are multiples of 8 bytes (64 bits) unless the CPU fetches an instruction which is done at memory addresses that are multiples of 4 bytes (32 bits). That makes sense because each instruction occupies exactly 32 bits in memory.
+The *memory model* of the RISC-U ISA in selfie is based on byte-addressed memory, as introduced in the size chapter. More specifically, a RISC-U machine has a 32-bit *main memory address space* with up to 4GB of byte-addressed *main memory storage* where all memory access is 64-bit *word-aligned* except when instructions are fetched which is done 32-bit *word-aligned*. This means that whenever the CPU accesses memory (load or store) it can only do so at memory addresses that are multiples of 8 bytes (64 bits) unless the CPU fetches an instruction which is done at memory addresses that are multiples of 4 bytes (32 bits). That makes sense because each instruction occupies exactly 32 bits in memory.
 
 Let us count how many bits a RISC-U machine can store. There are the 2112 bits of the registers and program counter plus 4\*2^30^\*8=34,359,738,368 bits of main memory which are 34,359,740,480 bits in total. This means that there are 2^34359740480^ different states in which a RISC-U machine can be which is an absolutely mind-blowing number, especially considering that your smartphone is likely to be quite similar to a RISC-U machine.
 
@@ -2398,7 +2398,7 @@ Nevertheless, it is quite educational to understand how a machine does I/O in pr
 
 So, suppose Alice says something to the White Rabbit. Until the moment in time when the sound of her voice reaches the rabbit‘s ears, the White Rabbit does not know that she says anything, given that he cannot see her speaking, of course. If he could see her, we could anyway tell the same story just using vision rather than hearing. Now, when the sound hits the rabbit‘s ears, it does so at a certain bit rate at which the bits need to be stored and processed in the rabbit's brain.
 
-Remember the information chapter, in particular how audio is encoded? Yes, of course, you do. Alright, but there is a difference between hearing and actually listening as we all know. Alice needs to get the rabbit‘s attention which takes time since the rabbit does not yet know that she started saying something. In the world of machines the duration of that time is called *latency*.
+Remember the size chapter, in particular how audio is encoded? Yes, of course, you do. Alright, but there is a difference between hearing and actually listening as we all know. Alice needs to get the rabbit‘s attention which takes time since the rabbit does not yet know that she started saying something. In the world of machines the duration of that time is called *latency*.
 
 Here is the issue with latency. If the bits arrive, say, at a rate of 1000 bits per second (1kbps) and the latency is 1 second (the rabbit is really distracted), then at least 1000 bits (1kb) need to be stored, or we say *buffered*, in the rabbit's brain before processing begins to avoid losing any information. However, if the rabbit's brain can then process the bits at a rate of at least 1kbps, no more than 1kb need to be buffered at any time. In fact, after buffering the first 1kb in the order in which the bits arrived, the buffered bits, starting with the bit that arrived first, may be overwritten with the next 1kb. In this case, the storage for the 1kb is called a *cyclic buffer*.
 
@@ -2469,7 +2469,7 @@ The relevant output should be similar to this:
 
 Selfie reports that it generated 42,224 RISC-U machine instructions as well as 13,856 bytes of data needed to run the code. Moreover, as mentioned before, selfie outputs how many instructions of each type it generated. The `addi` instruction is with 29.20% the most common instruction while the `ecall` instruction is with 0.01% the least common.
 
-In order to explain all RISC-U machine instructions we use as running example the assembly code generated for the procedure `count` introduced in the language chapter. Here is the source code again, this time with a `main` procedure that invokes `count` to count from `0` to `10000` and then return `10000`:
+In order to explain all RISC-U machine instructions we use as running example the assembly code generated for the procedure `count` introduced in the notation chapter. Here is the source code again, this time with a `main` procedure that invokes `count` to count from `0` to `10000` and then return `10000`:
 
 ```c
 int count(int n) {
@@ -2770,11 +2770,11 @@ Let us go back to the example. You might ask yourself how `addi t0,sp,16` is ini
 0x1C(~1): 0x00800293: addi t0,zero,8
 ```
 
-Since `zero == 0` is always true, the instruction effectively makes the CPU perform `t0 = 8`. How about initializing registers with negative numbers? That is possible too, for example, using `addi t0,zero,-8`. Negative numbers such as `-8` are encoded in two's complement. So, where is the catch? Well, we can only use immediate values with `addi` that fit into 12 bits including the sign bit. In other words, the immediate value can only be a signed integer value between -2^11^ and 2^11^-1. Now you know why you had to go through the information chapter and two's complement in particular. In any case, we show below how `addi` can be combined with the `lui` instruction to get larger integer values into registers.
+Since `zero == 0` is always true, the instruction effectively makes the CPU perform `t0 = 8`. How about initializing registers with negative numbers? That is possible too, for example, using `addi t0,zero,-8`. Negative numbers such as `-8` are encoded in two's complement. So, where is the catch? Well, we can only use immediate values with `addi` that fit into 12 bits including the sign bit. In other words, the immediate value can only be a signed integer value between -2^11^ and 2^11^-1. Now you know why you had to go through the size chapter and two's complement in particular. In any case, we show below how `addi` can be combined with the `lui` instruction to get larger integer values into registers.
 
 There is one important detail that we should mention here. How does the CPU add a signed 12-bit integer to a 64-bit integer in a register, even if that register just contains 0? Prior to addition, the CPU *sign-extends* the 12-bit immediate value `imm` from 12 to 64 bits. If the sign bit, that is, bit 11 of `imm` is 0, then all bits from 12 to 63 are *reset*, that is, set to 0. If the sign bit is 1, then all bits from 12 to 63 are *set*, that is, set to 1. Thus the sign-extended version of `imm` is a signed 64-bit integer that encodes exactly the same value as `imm` encodes in 12 bits. That's it!
 
-The actual addition of the 64-bit integer in a register and the sign-extended version of `imm` is then done exactly like we described it in the information chapter. Overflows beyond the MSB, that is, bit 63 are ignored. So, the `+` in `sp + 16` in the example above denotes 64-bit integer addition with *wrap-around semantics*. For example, if `sp` contains UINT64_MAX, then `sp + 16` evaluates to `15` because `UINT64_MAX + 1` is 0. Strange but true. That phenomenon has lead to many issues with code including costly bugs and is therefore important to keep in mind.
+The actual addition of the 64-bit integer in a register and the sign-extended version of `imm` is then done exactly like we described it in the size chapter. Overflows beyond the MSB, that is, bit 63 are ignored. So, the `+` in `sp + 16` in the example above denotes 64-bit integer addition with *wrap-around semantics*. For example, if `sp` contains UINT64_MAX, then `sp + 16` evaluates to `15` because `UINT64_MAX + 1` is 0. Strange but true. That phenomenon has lead to many issues with code including costly bugs and is therefore important to keep in mind.
 
 Let us explore two more important use cases of `addi`, other than just initializing registers with immediate values, taken from the running example:
 
@@ -2913,7 +2913,7 @@ Before executing the instruction, the value in `gp` is `0x11008`, just as we lef
 
 Why do we have the machine do this? Intuitively, all we do here is prepare the machine so that there is a way to find information in memory later when running a program. In short, we need a *memory layout*. Where do we store the values of global variables, local variables, actual parameters, and possibly lots of other things? Here, the `gp` register takes on an important role which is why it is initialized to a value that is never changed after that. Take a look at the following illustration of the memory layout used in selfie and many other systems, at least in principle.
 
-![Memory Layout](figures/layout.png "Memory Layout")
+![Memory Layout](../docs/figures/layout.svg "Memory Layout")
 
 First of all, memory is partitioned into two parts: *statically* allocated memory in the lower part of memory and *dynamically* allocated memory in the higher part of memory. By lower and higher we mean addresses with lower and higher values, respectively. We may also just speak of static and dynamic memory. The boundary between static and dynamic memory is initially marked by the *program break*. While the original boundary never changes, the program break may grow from lower to higher addresses during code execution. We therefore use something else to remember the original boundary: the `gp` register where `gp` stands for *global pointer*. To be exact, `gp` points to the lowest address of dynamic memory. Any address lower than that is part of static memory.
 
@@ -3159,7 +3159,7 @@ Let us take another quick look back at the above profile when self-compiling. Tu
 
 > Unsigned integer comparison is different from signed integer comparison
 
-There are two more things to discuss before moving on. Firstly, integer comparison, just like division and remainder, works differently for unsigned and signed interpretation of integers. We already mentioned an example in the information chapter. Here is another example. At first sight, the comparison `1 < -1` is obviously false but only if the operands are interpreted as signed integers. Otherwise, `1 < -1` is actually equal to `1 < UINT64_MAX` which is obviously true. Thus, as confusing it might be, `1 < -1` is actually true in C\*. However, the example does demonstrate the importance of understanding how information is encoded and operated on, which is why we show it here.
+There are two more things to discuss before moving on. Firstly, integer comparison, just like division and remainder, works differently for unsigned and signed interpretation of integers. We already mentioned an example in the size chapter. Here is another example. At first sight, the comparison `1 < -1` is obviously false but only if the operands are interpreted as signed integers. Otherwise, `1 < -1` is actually equal to `1 < UINT64_MAX` which is obviously true. Thus, as confusing it might be, `1 < -1` is actually true in C\*. However, the example does demonstrate the importance of understanding how information is encoded and operated on, which is why we show it here.
 
 Secondly, `<` and thus `sltu` are enough to implement the six integer comparison operators we mentioned above. For example, when using `sltu` to implement `<`, the comparison `a <= b` is true if the expression `1 - (b < a)` evaluates to `1`, and it is false if `1 - (b < a)` evaluates to `0`. In other words, combining `sltu` with an `addi` instruction for initializing a register with `1` and a `sub` instruction for subtracting from that register the value of `b < a` as calculated by the `sltu` instruction is enough to implement `a <= b`. Try to figure out the other five cases! The `compile_expression` procedure in `selfie.c` shows the details for you to validate your solutions. Yet keep in mind that selfie does all that for educational purposes. Dedicated machine instructions are of course faster and therefore used in production systems.
 
@@ -3702,9 +3702,9 @@ In the presence of locality, caches increase instruction throughput. However, th
 
 > Lower and upper bounds
 
-When it comes to performance there is one innovation that is incredibly useful to *predict* rather than *measure* performance and thereby minimize its dependency on hardware including any optimizations. It is called *algorithmic complexity*, also called *asymptotic complexity*. We mentioned this concept in the language chapter already. Consider the following performance graph:
+When it comes to performance there is one innovation that is incredibly useful to *predict* rather than *measure* performance and thereby minimize its dependency on hardware including any optimizations. It is called *algorithmic complexity*, also called *asymptotic complexity*. We mentioned this concept in the notation chapter already. Consider the following performance graph:
 
-![Performance](figures/performance.png "Performance")
+![Performance](../docs/figures/performance.svg "Performance")
 
 The graph shows the actual performance (y-axis) of a program running on some hardware, and inputs of increasing size (x-axis). Performance may be execution time, memory consumption, or any other metric related to the cost of running the program. Input size may be measured in bytes, for example.
 
@@ -3712,7 +3712,7 @@ What would it take to predict instead of measuring that performance? Well, we ne
 
 Once we are able to do all that we can compare programs and, in fact, the algorithms they implement in terms of their algorithmic complexity, that is, predicted performance for all inputs, independently of how they are implemented and run on just some input. This is very important! Consider the following algorithmic complexity graph:
 
-![Algorithmic Complexity](figures/complexity.png "Algorithmic Complexity")
+![Algorithmic Complexity](../docs/figures/complexity.svg "Algorithmic Complexity")
 
 It shows the most important types of algorithmic complexity which help us categorize algorithms. Here, the best is *constant* complexity denoted *O(1)* where performance is independent of input size, and the worst is *exponential* complexity denoted *O(2^n^)* where cost grows exponentially in input size. In between are *logarithmic* complexity denoted *O(log n)*, then *linear* complexity *O(n)*, and finally *square* complexity denoted *O(n^2^)*. The latter two generalize to *polynomial* complexity if the exponent may be any constant greater than zero such as *cubic* complexity denoted *O(n^3^)* and so on. Lots of other choices are possible too, including worse than exponential and in between logarithmic and linear.
 
@@ -3730,7 +3730,7 @@ The second ingredient is the Big-O and Big-Omega notation. For example, *O(n)* a
 
 However, keep in mind that the constant factors *k* in Big-O and Big-Omega notation may very well play an important role in actual performance, at least on smaller inputs. Consider the following performance graph:
 
-![Constants](figures/constants.png "Constants")
+![Constants](../docs/figures/constants.svg "Constants")
 
 Suddenly, the world seems to be upside down. Up to input sizes of *s_0*, the program with exponential complexity is in fact the fastest program while the program with constant complexity is the slowest, with all others in between. The lesson to be learned here is that if there are algorithms with different algorithmic complexity that solve the same problem, the algorithm with the best complexity may not always be the best choice. That also depends on the workload, that is, the input size that the program will be running on in practice. Nevertheless, algorithmic complexity is an important tool for abstracting code into a simple formula that captures a key property. In the programming and computing chapters we hear more about how to come up with the algorithmic complexity of an algorithm.
 
@@ -4358,7 +4358,7 @@ Note that the parenthesis `(` and `)` around the first digit are necessary since
 
 #### Modeling
 
-![Integer Literal FSM](figures/integer-literal-FSM.png "Integer Literal FSM")
+![Integer Literal FSM](../docs/figures/integer-literal-fsm.svg "Integer Literal FSM")
 
 > Finite State Machines!
 
@@ -4404,7 +4404,7 @@ A non-deterministic FSM or *non-deterministic finite automaton* (NFA) may contai
 
 Computer science professors including me nevertheless love to keep talking about this kind of theoretical material. As students we were asked to prove the equivalence in expressive power of regular expressions and finite state machines, and study the conversion algorithms and their algorithmic complexity. For some this was horror, especially since quite often little to no motivation was given in the "good" old days. Well, those days are over. You already saw plenty of motivation right here and will see how powerful things get below. If you are interested in following up consider the recommended readings. It will definitely sharpen your mind even further.
 
-Before proceeding to the third problem of how to design and implement an algorithm for our regular expression and FSM, we still need to fix a bug in the regular expression for integer literals that we saw earlier in the language chapter. Recall that the language of the regular expression above includes not just the sequence of a single digit `0` but also any sequence of characters that begins with any number of digits `0` such as `000` or `007`, for example. But it is easy to fix that:
+Before proceeding to the third problem of how to design and implement an algorithm for our regular expression and FSM, we still need to fix a bug in the regular expression for integer literals that we saw earlier in the notation chapter. Recall that the language of the regular expression above includes not just the sequence of a single digit `0` but also any sequence of characters that begins with any number of digits `0` such as `000` or `007`, for example. But it is easy to fix that:
 
 ```ebnf
 integer = "0" | non_zero_digit { digit } .
@@ -4414,7 +4414,7 @@ non_zero_digit = "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" .
 digit = "0" | non_zero_digit .
 ```
 
-![Correct Integer Literal FSM](figures/correct-integer-literal-FSM.png "Correct Integer Literal FSM")
+![Correct Integer Literal FSM](../docs/figures/correct-integer-literal-fsm.svg "Correct Integer Literal FSM")
 
 The finite state machine that matches the correct regular expression is shown above. Here, we only need to divert the state transition labelled `"0"` to a new accepting state that does not have any further state transitions. The rest stays the same. We have nevertheless not included the fix in the C\* grammar to keep it as an introductory exercise for students.
 
@@ -4422,7 +4422,7 @@ The finite state machine that matches the correct regular expression is shown ab
 
 Let us move on to the third problem of designing and implementing an algorithm for efficiently scanning integer literals in decimal notation and computing the numerical value they represent. You probably notice already that the amount of detail involved in the specification, modeling, and implementation problems not only increases inversely proportional to the level of abstraction but also seemingly exponential. Little detail in specification, more detail in modeling, and a lot of detail in implementation. Just take a look at what follows next. Abstraction really does help in managing complexity.
 
-![Scanning Integer Literals](figures/scanning-integer-literals.png "Scanning Integer Literals")
+![Scanning Integer Literals](../docs/figures/scanning-integer-literals.svg "Scanning Integer Literals")
 
 The solution to the implementation problem can be found in selfie in a procedure called `get_symbol`. That procedure does in fact implement the whole scanner of the selfie compiler. The above figure only shows the part of the procedure that scans integer literals. As example, we again use the sequence of characters `85` as input to the code shown on the left. The code itself is shown in the middle. Moreover, the state of main memory after the code finished accepting `85` is shown to the right. For reference, the (correct) regular expression and (correct) finite state machine are also there.
 
@@ -4498,7 +4498,7 @@ These bits are what is actually stored in the machine! Let us take a look at wha
 
 `13624`
 
-So, the decimal number `13624` encodes the string `"85"`. Who would have thought? Why not just use `13624` then? Good question! We could interpret `13624` as representing the decimal value `85`. In this case, syntax and semantics of integer literals would be the same. Well, there are two drawbacks doing that related to time and space. Remember the information chapter? First of all, we would need more space, that is, more bits to encode integer literals, only by a constant factor, but this could still be a problem in practice. Yet the even more important drawback would be that we could not apply standard integer arithmetic in calculations but would need to do something more complicated and likely lose time in doing so. Therefore, computing numerical values of integer literals is worth it, especially since we only need to do it once when compiling code. Before we get to that though we still need to do one more round over the code we have seen so far.
+So, the decimal number `13624` encodes the string `"85"`. Who would have thought? Why not just use `13624` then? Good question! We could interpret `13624` as representing the decimal value `85`. In this case, syntax and semantics of integer literals would be the same. Well, there are two drawbacks doing that related to time and space. Remember the size chapter? First of all, we would need more space, that is, more bits to encode integer literals, only by a constant factor, but this could still be a problem in practice. Yet the even more important drawback would be that we could not apply standard integer arithmetic in calculations but would need to do something more complicated and likely lose time in doing so. Therefore, computing numerical values of integer literals is worth it, especially since we only need to do it once when compiling code. Before we get to that though we still need to do one more round over the code we have seen so far.
 
 > Error handling: printing errors, sure, but then to exit or not to exit?
 
@@ -4512,7 +4512,7 @@ So, when exactly is the limit of scanning 20 digits reached? It is reached when 
 
 *Unsafe* memory access often results in bugs that are extremely hard to find. It happens when you allocated either too little memory, accessed memory outside of the area of allocation, or even inside of the area if you deallocated it prematurely, as we see below. The programming language C and its dialects including C\* are infamous for this problem. Millions of lines of code have been and are still being developed in these languages where unsafe memory access has contributed to bugs that resulted in high cost and even critical failures. So, why not making that impossible in your programming language? Well, computer scientists did that. A prominent example is the programming language *Java* which is referred to as a *safe* programming language in which unsafe memory access is indeed impossible. What is the catch? Performance and access to hardware. Guaranteeing memory safety is very complex and usually comes at a cost in temporal and spatial performance, and makes it more difficult or even impossible to have access to advanced hardware features. C and its dialects are *systems languages* that provide programmers with great freedom to do almost anything at the expense of memory safety. There are also more recent developments in programming languages such as the programming language *Rust* where computer scientists try to maintain the performance of C and its dialects while giving programmers the choice of safe and unsafe memory access.
 
-![Computing Numerical Values](figures/atoi.png "Computing Numerical Values")
+![Computing Numerical Values](../docs/figures/atoi.svg "Computing Numerical Values")
 
 The final step of scanning integer literals is to compute their numerical value. The above figure shows the code in the middle, its input and output on the left, here `85` and `1010101`, respectively, and the state of memory when done on the right. Given a string of digits `s`, the rather famous procedure `atoi` computes the numerical value `n` that `s` represents. The name `atoi` stands for *ASCII to integer*. There is also a procedure called `itoa` that does the opposite for printing integer values, see the selfie source code for its implementation. In essence, `atoi` encodes `s` into `n`, and `itoa` decodes `n` back to `s`.
 
@@ -4558,7 +4558,7 @@ Here are ways to deal with that. On first sight the seemingly simplest way to al
 
 #### Character Literals
 
-![Scanning Character Literals](figures/scanning-character-literals.png "Scanning Character Literals")
+![Scanning Character Literals](../docs/figures/scanning-character-literals.svg "Scanning Character Literals")
 
 Our means to perform static memory allocation is global variables. We have already seen that in the code for scanning integer literals. We use the same method for scanning character literals as shown in the above figure. Here we only need the three global variables `character`, `literal`, and `symbol`. As before the value of `character` is not shown in the state of main memory but it is there of course. Static memory allocation for scanning character literals is clearly sufficient because the length of the sequence of characters that form a character literal is fixed and the numerical value represented by a character literal is just a single byte with UTF-8 encoding.
 
@@ -4580,7 +4580,7 @@ But stack allocation comes with an important limitation. Deallocation of memory 
 
 #### String Literals
 
-![Scanning String Literals](figures/scanning-string-literals.png "Scanning String Literals")
+![Scanning String Literals](../docs/figures/scanning-string-literals.svg "Scanning String Literals")
 
 Scanning string literals is an example of how to address the problem of maintaining information that is needed elsewhere in the code, as shown in the above figure. Here we need the three global variables `character`, `string`, and `symbol`. As before the value of `character` is not shown in the state of main memory.
 
@@ -4714,7 +4714,7 @@ cstar_symbols = integer | character | string | identifier | "," | ";" | "(" | ")
 
 and then substitute all non-terminal symbols in its right-hand side with their definition until only terminal symbols remain. If that process terminates, then the language is indeed regular. Try it! The resulting rule gets quite big but it is finite.
 
-![Scanner](figures/scanner.png "Scanner")
+![Scanner](../docs/figures/scanner.svg "Scanner")
 
 The scanner for all of C\* is depicted in the above figure, in particular the full finite state machine and a sketch of its implementation in the `get_symbol` procedure. The finite state machines for integer, character, and string literals along with the finite state machine for identifiers are part of that.
 
@@ -4873,7 +4873,7 @@ factor = [ cast ] [ "-" ] [ "*" ]
 
 The procedure for parsing a `factor` is `compile_factor`. See how beautiful this is?
 
-![Parsing Literals](figures/parsing-literals.png "Parsing Literals")
+![Parsing Literals](../docs/figures/parsing-literals.svg "Parsing Literals")
 
 The above figure shows the syntactic specification of C\* literals in EBNF as well as the implementation of parsing those literals in C\*. It also shows the machine state after parsing our running example of the integer literal `85`, the character literal `'H'`, and the string literal `"Hello World!"`.
 
@@ -4970,7 +4970,7 @@ As you might guess, we ignore that in selfie and instead opt for simplicity, arg
 
 Then there are are two more procedures: `current_temporary` returns the register most recently allocated by `talloc` and `previous_temporary` returns the register second most recently allocated by `talloc`. Knowing the two most recently allocated registers is sufficient to generate code in all situations encountered by the selfie compiler. Beautiful!
 
-![Emitting Literals](figures/emitting-literals.png "Emitting Literals")
+![Emitting Literals](../docs/figures/emitting-literals.svg "Emitting Literals")
 
 We are finally ready to get to the last step in dealing with literals. The above figure shows the source code involved in generating machine code for literals. The relevant procedures are `load_integer` which emits code into `code_binary` that loads the value of an integer or character literal into a register, and `load_string` which first emits a string literal into `data_binary` and then emits code into `code_binary` that loads the address of that string literal in memory into a register.
 
@@ -5018,7 +5018,7 @@ letter = "a" | ... | "z" | "A" | ... | "Z" .
 
 We already saw what a digit is before when handling integer literals. An identifier obviously must begin with a letter followed by any number of letters, digits, and underscores `"_"`. The reason as to why identifiers must begin with a letter is simple. It allows the scanner to distinguish identifiers from integer literals upon seeing the first character! Very nice.
 
-![Scanning Identifiers](figures/scanning-identifiers.png "Scanning Identifiers")
+![Scanning Identifiers](../docs/figures/scanning-identifiers.svg "Scanning Identifiers")
 
 The finite state machine for recognizing identifiers and the implementation of the FSM in selfie is shown in the above figure. The code is part of the procedure `get_symbol` which we have seen before. As example, we use the sequence of characters `actual_id42` which is obviously a syntactically valid identifier. Similar to integer and string literals, there is a limitation in the length of identifiers given by the global variable `MAX_IDENTIFIER_LENGTH` which is set to 64 in selfie. That is plenty given that identifiers are names of variables in C\*. The same applies to procedure names which are the only other use of identifiers in C\*. Have a quick look at the C\* grammar to confirm that. Handling the syntax of identifiers is straightforward after seeing how the syntax of literals is handled.
 
@@ -5091,7 +5091,7 @@ We have already seen the definition of `type`, `cast`, and `value`. The definiti
 
 There is, however, a remaining challenge that takes some effort to solve. A global variable declaration is de facto static memory allocation in the data segment, preparing for the eventual and possibly repeated definition and use of the declared variable in possibly many places throughout the parsed program. Whenever parsing definition and use of a variable, the memory address of where its value is stored and how it is interpreted must be known. In other words, as mentioned before, whenever encountering a symbolic reference to a variable in source code, we need to be able to resolve it into a direct reference in machine code.
 
-![Global Variable Declaration](figures/global-variable-declaration.png "Global Variable Declaration")
+![Global Variable Declaration](../docs/figures/global-variable-declaration.svg "Global Variable Declaration")
 
 The above figure shows what is involved in parsing global variable declarations with optional definition of initial values. As example, we use `uint64_t x = 42;` to declare and define a global variable `x` with its value interpreted as unsigned 64-bit integer and set to the initial value `42`. The syntax of global variable declarations and definitions is specified in the rule for the start symbol `cstar` of the C\* grammar. Hence the procedure `compile_cstar` is in charge of parsing global variable declarations and definitions. It also parses procedure declarations and definitions which we ignore here. The procedure `compile_type` parses the type keyword `uint64_t` followed by an optional `*`. Upon parsing the identifier that is being declared here, the distinction between variable and procedure declaration is not yet known. A lookahead of 1 is still necessary, as mentioned before.
 
@@ -5120,7 +5120,7 @@ call   = identifier "(" [ expression { "," expression } ] ")" .
 
 In other words, we need to take another look at the procedure `compile_factor` for parsing a `factor`. The relevant part of the grammar also shows that there is a lookahead of 1 necessary to be sure that we are dealing with a global or local variable or a formal parameter, and not a procedure call.
 
-![Variable Use](figures/variable-use.png "Variable Use")
+![Variable Use](../docs/figures/variable-use.svg "Variable Use")
 
 The above figure shows how variable use is parsed and how code is generated for that. As example, we use an assignment `x = x + 7;` where only the second occurrence of `x` is relevant since it denotes the use of `x`. The first occurrence of `x` defines the value of `x` which is relevant later when we get to assignments.
 
@@ -5146,7 +5146,7 @@ Alright, once the parser has found an entry, here for `x`, in one of the two sym
 
 A symbol table is our first example of a non-trivial data structure where there is a lot to learn. An interesting observation is that compiling most aspects of programming languages does not even require symbol tables. Only when it comes to handling a context larger than, say, a line of code, up to even the whole program, finite state machines, even with stacks, reach their limits. We need something that remembers what we have seen, possibly in any order, so that we can use it properly later.
 
-![Symbol Table](figures/symbol-table.png "Symbol Table")
+![Symbol Table](../docs/figures/symbol-table.svg "Symbol Table")
 
 The idea of a symbol table is to keep track of symbols that have grammar attributes that are relevant elsewhere in the code such as their class and type as well the address in memory where the value they might represent is stored, and even the line number where they occurred in source code. A symbol table is a *database*, or more specifically, a *key-value store* that maps a "key", here a symbol, to a unique "value", here the attributes of the symbol. Whenever the parser encounters a symbol with attributes it may store the symbol with its attributes in the symbol table. Later, the parser may search the symbol table to find out about the attributes of a given symbol. The above figure shows an example of a symbol table with entries for an identifier `x` and a string literal `"Hello World!"`. Their "keys" are the strings `"x"` and `"Hello World!"`, respectively. Their "values" are the offsets relative to either the `gp` or `s0` register of where their actual values are stored in the data segment at runtime. We also store other attributes and mention some of them below.
 
@@ -5242,7 +5242,7 @@ But what if some operators have the same precedence such as `+` and `-` as well 
 
 Are there also *right-associative* operators in C\*? Yes, we discuss them as soon as we are done here. Making the `-` operator left-associative makes sense because subtraction is left-associative in elementary arithmetic, along with division and remainder. But what about operators that are actually *associative* in elementary arithmetic such as `+` and `*`? After all, expressions with addition and multiplication can be grouped in any order without an effect on the outcome, at least in elementary arithmetic. Why do we make even them left-associative in C\*, and in fact many other programming languages? Well, mixing associativity of operators with the same precedence may result in grouping conflicts. For example, how would you group the expression `x + 7 - y` if `+` was right-associative? Is it `(x + 7) - y` or `x + (7 - y)`? The former respects left-associativity of `-` but not the right-associativity of `+`, and the latter vice versa. So, left-associativity for `+` and `*` it is.
 
-![Elementary Expressions](figures/elementary-expressions.png "Elementary Expressions")
+![Elementary Expressions](../docs/figures/elementary-expressions.svg "Elementary Expressions")
 
 The above figure shows the pushdown automaton that handles the grammar of elementary expressions. Recall that a pushdown automaton is a finite state machine with a stack. The implementation of that pushdown automaton in a recursive-descent parser implicitly maintains the stack of the automaton using the call stack for procedures. In selfie, those procedures would be the parser procedures named `compile_X` that handle the grammar rules defining non-terminals `X`. For example, similar to the non-terminal `factor` implemented by the procedure `compile_factor`, the non-terminals `expression` and `term` would be implemented by procedures called `compile_expression` and `compile_term`, respectively. The interesting case where these procedures actually form a recursion is the occurrence of the grammar expression `"(" expression ")"` in the right-hand side of the grammar rule that defines the non-terminal `factor`. The procedure `compile_factor` does indeed call the procedure `compile_expression` recursively to handle that part of the rule.
 
@@ -5287,7 +5287,7 @@ In the following, we explain code generation, first for arithmetic operators, si
 
 Compiling arithmetic operators is surprisingly simple as long as there are machine instructions that match the semantics of those operators. In case of C\* and RISC-U they do. To some extent this is also true for comparison operators but only when considering all of RISC-V, not just RISC-U. We therefore look into compiling comparison operators after we are done with arithmetic operators. Among the arithmetic operators of C\*, the operators for multiplication, division, and remainder are even a bit easier to handle than the operators for addition and subtraction since the latter have different semantics depending on the type of their operands. So, for now, let us take the expression `x * 7` as example, instead of `x + 7`.
 
-![Terms](figures/emitting-terms.png "Terms")
+![Terms](../docs/figures/emitting-terms.svg "Terms")
 
 The above figure shows how the procedure `compile_term` implements the grammar rule that defines the non-terminal `term`, including emitting code. As before, the first occurrence of the non-terminal `factor` is handled by a call to the procedure `compile_factor`, followed by a `while` loop that iterates of any number of occurrences of the `*`, `/`, or `%` symbols, and another occurrence of `factor`, which again is handled by a call to `compile_factor`. Besides checking and remembering the type of each factor in local variables `ltype` and `rtype` on the call stack, where `ltype` eventually becomes the type of the parsed term and is return as grammar attribute, the code also remembers the currently parsed operator symbol in a local variable called `operator_symbol`, also on the call stack. This is important. If we just continued parsing without remembering the operator symbol, we would not know what the operator is anymore after parsing the following factor.
 
@@ -5330,7 +5330,7 @@ Before moving on there is yet another opportunity here to talk about code optimi
 
 The other reason we mention constant folding is because it beautifully shows the tradeoff between compile time and runtime. The more time we spend at compile time trying to compute as much as possible just once before generating code, the more time we may save at runtime recomputing values again and again that could have been computed just once before. While constant folding is relatively easy to do and an interesting exercise for students, other code optimization techniques can be a lot more involved but nevertheless explore the same tradeoff.
 
-![Arithmetic](figures/emitting-arithmetic.png "Arithmetic")
+![Arithmetic](../docs/figures/emitting-arithmetic.svg "Arithmetic")
 
 Compiling arithmetic expressions with operators for addition and subtraction works the same way as compiling terms with operators for multiplication, division, and remainder. Code generation just uses the `add` and `sub` instructions for the operators `+` and `-`, respectively. The above figure shows how the procedure `compile_arithmetic` implements the grammar rule that defines the non-terminal `arithmetic`, including emitting code.
 
@@ -5380,7 +5380,7 @@ Do exactly the same in this exercise, and it will work! There is no need to use 
 
 C\* features operators for comparing unsigned integer values, see the grammar rule that defines the non-terminal `expression`. The syntax of relational expressions is defined in that rule because all involved comparison operators have lower precedence than any of the arithmetic operators in C\*. For example, the expression `x - 1 < 7` is semantically equivalent to the expression `(x - 1) < 7`, not the expression `x - (1 < 7)`.
 
-![Expressions](figures/emitting-expressions.png "Expressions")
+![Expressions](../docs/figures/emitting-expressions.svg "Expressions")
 
 The above figure shows how the procedure `compile_expression` works for the operators `==` and `<`, not showing the code for the other comparison operators. Refer to the source code for those. The occurrence of a comparison operator in an expression is optional and thus implemented by a conditional statement that checks if a comparison operator is present or not. In terms of semantics, the first thing we should note is that all comparison operators must evaluate to either `0` or `1`, nothing else, indicating that the comparison evaluated to false or true, respectively.
 
@@ -5478,7 +5478,7 @@ An assignment turns the value to which an expression evaluates, called *rvalue*,
 
 This takes us to the issue of order of evaluation which is rather sensitive, similar to expressions. Since the addresses of variables and formal parameters in memory are not affected by assignments, the order of evaluating left- and right-hand sides of variable assignments has no effect on the outcome. For simplicity, we therefore decided generating the code that computes the address of the lvalue in an assignment before generating the code that computes the rvalue, followed by generating a single `sd` instruction that completes the actual assignment.
 
-![Assignments](figures/emitting-assignments.png "Assignments")
+![Assignments](../docs/figures/emitting-assignments.svg "Assignments")
 
 The above figure shows how variable assignments are compiled in the procedure `compile_assignment` using our example `x = x + 7`. The code that handles the full C\* grammar of assignments is not shown. Because of the lookahead for distinguishing variable assignments from procedure calls, `compile_assignment` is invoked with the variable in the left-hand side of the assignment, here `x`, already parsed. In this case, the address of the value of the variable in memory at runtime is determined by searching the global and local symbol tables for the variable, similar to occurrences of variables in expressions. In particular, we determine if the address is calculated relative to the `gp` or `s0` register using `get_scope` and remember that in a local variable called `base`, and we determine the involved offset using `get_address` and remember that in a local variable called `offset`.
 
@@ -5534,7 +5534,7 @@ The reason why we raise the issue here is because we would like to reuse in the 
 
 The key to making that work are the temporary registers used in code generation. After compiling an expression with the procedure `compile_expression`, we need to be sure that the value to which the expression evaluates at runtime is stored in the register returned by the procedure `current_temporary`. Only then, we can be sure where to find that value. In the procedure `compile_assignment`, we already exploited that property when identifying the register that holds the value to which the right-hand side of an assignment evaluates. In contrast, after compiling a statement with the procedure `compile_statement`, we need to be sure that no temporary registers are allocated, which is an invariant on temporary registers we mentioned earlier already that needs to hold in between any two statements. Our choice of how we use temporary registers is arguably the simplest way that enables compositional code generation. Other, more efficient choices are possible but too complex for our purpose.
 
-![While Loops](figures/emitting-while-loops.png "While Loops")
+![While Loops](../docs/figures/emitting-while-loops.svg "While Loops")
 
 The above figure shows the code of the procedure `compile_while` for compiling `while` loops with a single-statement loop body. Our example of a `while` loop is shown on the left and the code generated for the example is shown on the right. In order to focus on the generated code, we omit the details on the compile-time and runtime machine states. Notice that the code generated for the expression `x < 7` and the assignment `x = x + 7` appears exactly as before when we compiled both in isolation. Well, there is a tiny but irrelevant notational difference. We use the actual value `-16` as offset for loading and storing the value of `x`, as generated by the selfie compiler for a program in which `x` is the only global variable.
 
@@ -5601,7 +5601,7 @@ else
 
 In short, the `if` statement increments the value of `x` by `7` if the value of `x` is less than `7`. Otherwise, it decrements the value of `x` by `7`. Again, the example reuses the expression `x < 7` and the assignment `x = x + 7` that appeared as examples before. Compositional parsing and code generation is just as important here as it is with `while` loops.
 
-![If Statements](figures/emitting-if-statements.png "If Statements")
+![If Statements](../docs/figures/emitting-if-statements.svg "If Statements")
 
 The above figure shows the code of the procedure `compile_if` for compiling `if` statements with a single-statement `if` body and a single-statement `else` body. Our example of an `if` statement is shown on the left and the code generated for the example is shown on the right. In order to focus on the generated code, we again omit the details on the compile-time and runtime machine states. Also, the code generated for the expression `x < 7` and the assignment `x = x + 7` appears exactly as before when we compiled both in isolation. We again use the actual value `-16` as offset for loading and storing the value of `x`, as generated by the selfie compiler for a program in which `x` is the only global variable.
 
@@ -5685,7 +5685,7 @@ Similar to procedure calls, we distinguish the control flow involved in a return
 
 > Implementation by example
 
-Our first example shows the arguably simplest use of procedures, which does not involve any local variables and parameters, and in fact only one explicit procedure call. The example is inspired by the `factorial` procedures introduced in the language chapter:
+Our first example shows the arguably simplest use of procedures, which does not involve any local variables and parameters, and in fact only one explicit procedure call. The example is inspired by the `factorial` procedures introduced in the notation chapter:
 
 ```c
 uint64_t f = 1;
@@ -5803,7 +5803,7 @@ The target address of the `jal` instruction for the procedure call is the first 
 
 This brings us to the second invariant we need which is on the code generated for procedure calls: the value of the stack pointer `sp` from right before and after executing the code generated for a procedure call is the same. Again, this is important! The invariant implies that the memory allocated on the call stack for executing a procedure call and the procedure body of the callee is deallocated after the execution of the call is done, not less, and also not more. If actual parameters are involved, guaranteeing that the invariant still holds gets even more complicated, as we see below.
 
-![Call Frame](figures/call-frame.png "Call Frame")
+![Call Frame](../docs/figures/call-frame.svg "Call Frame")
 
 Before we continue, take a look at the above figure which provides an overview of the full memory layout created on the call stack by code generated for procedures. Right in the middle, you can already spot where the value of the return address register `ra` is saved. The rest including all terminology is explained below.
 
@@ -6013,7 +6013,7 @@ There is one more thing. How do we know the total number of actual parameters in
 0x1E0(~15): jalr zero,0(ra) // return from main
 ```
 
-The code of the prologue and epilogue that saves and restores the frame pointer `s0` is still redundant here because `main` still does not access any formal parameters and local variables. The code generated for the procedure call to `factorial` is in line of what we saw above. By now, we are done with code generation for data-flow semantics, at least on the level of source code. There is, however, an additional issue on the level of machine code. Consider the following version which repeats the recursive implementation of `factorial` without the use of any global variables from the language chapter:
+The code of the prologue and epilogue that saves and restores the frame pointer `s0` is still redundant here because `main` still does not access any formal parameters and local variables. The code generated for the procedure call to `factorial` is in line of what we saw above. By now, we are done with code generation for data-flow semantics, at least on the level of source code. There is, however, an additional issue on the level of machine code. Consider the following version which repeats the recursive implementation of `factorial` without the use of any global variables from the notation chapter:
 
 ```c
 uint64_t factorial(uint64_t n) {
@@ -6982,13 +6982,9 @@ Networked virtualization is the key enabling technology for turning computing in
 
 Networked virtualization makes computing feel light and volatile like air flowing in space enabling what is commonly known as *cloud computing*. The idea is to provide virtualized computing resources that not only include CPU time and memory but also non-volatile storage. It is like, well, computing in the cloud. Most modern applications rely on cloud computing. Your phone, tablet, and laptop are only a means to connect to the cloud which often does most of the work. Only when connectivity and privacy is an issue, computing shifts back to your devices. Cloud computing frees people from operating their own hardware and software. Instead, everything becomes just a service. I still remember the times before cloud computing, when I wasted countless hours on maintaining my setup, doing backups, and so on. I believe that the first time I was willing to pay for anything other than hardware was cloud computing, not software. Even paid apps only became acceptable because of the service they gave me access to. But all convenience aside, there is something more important than cloud computing.
 
-> Universality of computing and computability
+> Universality of computing and computability, revisited
 
-Virtualization, as in computing as utility and cloud computing, makes computing widely accessible, technically and economically. In fact, virtualization provides arguably the technically and in particular economically most relevant platforms for computing. Yet two important questions remain, the first being:
-
-1. Universality of computing: can my computer, physical or virtual, in principle compute what any other computer can compute? More precisely, can any program written in any programming or machine language be translated into a program written in the machine language supported by my computer such that the translated program computes exactly the same as the original program? If yes, my computer might deserve to be called *computationally universal*. However, given that there are infinitely many programming and machine languages, how can we ever show that? Well, we cannot. But what we can do is postulate that one particular machine model is computationally universal and then check for each new language that comes along if an emulator of the universal machine model can be implemented in the new language. If yes, the new language may also be considered computationally universal. The machine model that is commonly used for this purpose is called a *Universal Turing Machine* which can simulate, as in execute, any given Turing machine. A Universal Turing Machine is an infinite-memory abstraction of virtual machines, machine emulators, and even physical machines, while a given Turing machine corresponds to a program, that is, hosted, emulated, or executed code. A programming or machine language in which an emulator of a Universal Turing Machine can be implemented is considered computationally universal or *Turing complete*. However, a Universal Turing Machine is only assumed but not shown to be computationally universal. In other words, *universality of computing* must not be confused with *computability*, that is, the second question.
-
-2. Computability: what can in principle be computed and what not? A common misunderstanding is to believe that whatever Turing machines can compute is all that can be computed. For that to be true, all existing and all future Turing-complete programming and machine languages must also be *Turing-equivalent*, that is, can express everything a Universal Turing Machine can do, certainly not less, but also not more. In other words, a Turing-complete language is Turing-equivalent if, for any program written in that language, there is a Turing machine that computes exactly the same as the program. Ever since the introduction of Turing machines, computer scientists suspect that all Turing-complete programming and machine languages are also Turing-equivalent, famously known as the *Church-Turing thesis*. And yes, the almost 100 years that have passed since then have seen many Turing-complete programming and machine languages and none that is not Turing-equivalent. As a result, Turing-completeness appears to be justified as sufficient condition for being computationally universal, which has lead computer scientists to assume that everything Turing machines can compute is *computable*, and everything else is *not computable*. However, this is still just a conjecture and there is no proof! If you are interested in computability, check the recommended readings at the end of this chapter. Either way, important to us here is that the machine models we introduced are all practically relevant instances of Universal Turing Machines and as such explain what universality of computing is.
+Virtualization, as in computing as utility and cloud computing, makes computing widely accessible, technically and economically. In fact, virtualization provides arguably the technically and in particular economically most relevant platforms for computing. The two fundamental questions behind it, whether my computer, physical or virtual, can in principle compute what any other computer can compute, and what can be computed at all, were answered in the meaning chapter: a machine that can run an emulator of the universal Turing machine is computationally universal, and, by the Church-Turing thesis, nothing computes more. What that means here is worth saying once more in the terms of this chapter. The `mipster` emulator is a bounded-memory instance of the universal machine that interprets code itself. The `hypster` virtual machine monitor is the same universal machine by different means: it context switches to the machine it runs on to execute code on its behalf. Both host any program written for RISC-U, including selfie, and neither can decide, by Rice's theorem, anything interesting about what the program it hosts will do. What they can do is *bound* it, in space by paging and in time by the timer interrupt, and isolate it, which is what the rest of this chapter is about.
 
 > Back to the basics: assembler
 
@@ -7086,7 +7082,7 @@ Translating 32-bit virtual to physical addresses involves replacing the 20-bit p
 
 Paging allows mapping individual pages to individual frames anywhere in physical memory. The order in which frames appear in physical memory is irrelevant. Moreover, there is no external fragmentation among frames in physical memory since they are all the same size. Thus any choice of frames is as good as any other. In selfie, the procedure that allocates frames is called `palloc` which implements a simple bump pointer allocator over the available physical memory. There is also a procedure called `pfree` which we nevertheless left empty to have room for future exercises. So, for now allocated frames are never deallocated in selfie.
 
-![Page Table](figures/page-table.png "Page Table")
+![Page Table](../docs/figures/page-table.svg "Page Table")
 
 > Page table
 
@@ -7104,7 +7100,7 @@ Modern systems may implement on-demand paging for all segments of virtual memory
 
 Many programs exhibit spatial locality in the sense that they tend to focus on accessing memory only in specific areas before moving on to focus on accessing memory in other areas. In particular, code tends to focus on executing instructions that are located close to each other in the code segment. Moreover, code tends to focus on accessing data that is located close to each other, at least in the heap and stack segments. The choice of 4KB-pages turns out to be a sweet spot in size that keeps the number of page faults occurring in fast succession low. A translation lookaside buffer leverages spatial locality by caching page table entries for faster address translation, combined with instruction and data caches that leverage locality by caching actual memory content for overall faster memory access. Larger page sizes may improve performance even more but may also introduce more internal fragmentation.
 
-![Paging Page Tables](figures/paging-page-tables.png "Paging Page Tables")
+![Paging Page Tables](../docs/figures/paging-page-tables.svg "Paging Page Tables")
 
 > Paging page tables
 
@@ -7304,7 +7300,7 @@ Most importantly, the procedure `mipster_switch` always eventually returns after
 
 But what if executing the hosted code never causes an exception to be thrown? Well, in order to guarantee eventual preemption, without any cooperation of the hosted code, real systems require actual hardware to make it happen. Before giving up control of the physical machine, a *timer*, which is real hardware, is programmed to go off after a given time has elapsed and *interrupt* the processor by setting the program counter to a given address that refers to system code. Which address that is must be programmed as well. Remember, the only control we have over what a processor executes is the program counter, nothing else. In `mipster`, we simulate a real timer interrupt by counting the number of executed instructions and throw a timer exception when `timeout` many instructions have been executed. The procedure `handle_timer` handles the timer exception. While this sounds easy, and it is, the actual consequences of preemption at any time increase complexity significantly, as soon as virtual machines start communicating. Preemptive systems are nevertheless worth the effort. The fact that you can kill apps on your phone or laptops as you please, even or especially when those apps are unresponsive, is only possible because of preemption. Your system is always eventually in charge, provided of course that the system itself is not buggy. In other words, preemption is a key component in isolating the system from whatever code it hosts and executes.
 
-![Traffic Light Model](figures/traffic-light-model.png "Traffic Light Model")
+![Traffic Light Model](../docs/figures/traffic-light-model.svg "Traffic Light Model")
 
 > Traffic light model
 
@@ -7424,7 +7420,7 @@ make emu-emu
 
 In this scenario, there are two machine contexts, one for running `OS` on `HW`, and one for running selfie without console arguments on `OS`.
 
-![Emulating OS](figures/emu-emu.png "Emulating OS")
+![Emulating OS](../docs/figures/emu-emu.svg "Emulating OS")
 
 In the selfie output, the former context is referred to as `> selfie.m` and the latter as `>> selfie.m`. There is no self-reference in this scenario which means that no exception dispatching and no machine context caching is necessary, even with what could be called *recursive* emulation, as long as there is no virtualization involved. The second scenario is similar to the first scenario except that `OS` is implemented by `hypster`:
 
@@ -7434,7 +7430,7 @@ make os-emu
 
 In this scenario, there are three machine contexts, again one for running `OS` on `HW` and one for hosting selfie without console arguments on `OS`, and a third context that caches the context hosting selfie, for running on `HW`.
 
-![Virtualizing OS](figures/os-emu.png "Virtualizing OS")
+![Virtualizing OS](../docs/figures/os-emu.svg "Virtualizing OS")
 
 In the selfie output, the contexts are referred to as in the first scenario. The cached context appears in the output of `mipster`, also referred to as `>> selfie.m`, whereas the hosted context appears in the output of `hypster`. Exceptions thrown by the cached context are dispatched to `hypster` for handling the exceptions in the hosted context. The third scenario is similar to the second scenario except that there is another `hypster` instance called `VMM` running in between `OS` and `HW` for demonstrating recursive virtualization:
 
@@ -7444,7 +7440,7 @@ make os-vmm-emu
 
 In this scenario, there are five machine contexts, one for running `VMM` on `HW`, one for hosting `OS` on `VMM`, and again one for hosting selfie without console arguments on `OS`, and two contexts that cache the contexts hosting `OS` on `VMM` and selfie, for running both on `HW`.
 
-![VMM Hosting Virtualizing OS](figures/os-vmm-emu.png "VMM Hosting Virtualizing OS")
+![VMM Hosting Virtualizing OS](../docs/figures/os-vmm-emu.svg "VMM Hosting Virtualizing OS")
 
 In the selfie output, the contexts are referred to as in the second scenario. Both cached contexts again appear in the output of `mipster` whereas the hosted contexts appear in the output of their hosting `hypster` instances. Exceptions thrown by the cached contexts are dispatched directly to their hosting `hypster` instances for handling the exceptions in the hosted contexts. By now, you should finally be able understand all selfie output we have seen so far.
 
@@ -7679,7 +7675,7 @@ In addition to dynamic code management, there is also a need for *automatic memo
 
 Memory safety is critically important for handling large amounts of data, especially if data is handled by large amounts of code from different sources such as complex libraries written by others. In fact, the proliferation of libraries in modern programming languages and their extensive use in modern software would not be possible without automatic memory management and garbage collectors in particular. However, memory management will always remain a challenge as it cannot be fully automated. In the end, programmers need to determine which memory can be reused. Automatic memory management only helps in making memory determined as reusable by programmers actually reusable in a safe manner. In my experience, this is something many programmers and computer science students do not know, so let us take a look at that.
 
-![Live versus Dead Memory](figures/live-versus-dead.png "Live versus Dead Memory")
+![Live versus Dead Memory](../docs/figures/live-versus-dead.svg "Live versus Dead Memory")
 
 > Live versus dead memory
 
@@ -7691,7 +7687,7 @@ Stack allocation with procedure calls solves the problem by forcing deallocation
 
 Most automatic memory management, in particular garbage collectors, computes unreachability, directly or indirectly by computing reachability, and then deallocates unreachable memory. Stack allocation is also considered automatic memory management yet without computing but instead assuming unreachability from scoping on programming language level. However, a common misunderstanding is that garbage collectors and other automatic memory management solve the problem of reusing memory. This is not true. There is still programmer intervention required, namely, reachable but dead memory needs to be made unreachable. Only then automatic memory management is able to reuse memory. In other words, the question of life and death, so to speak, still needs to be answered and cannot be automated in general.
 
-![Roots into Heap](figures/roots-into-heap.png "Roots into Heap")
+![Roots into Heap](../docs/figures/roots-into-heap.svg "Roots into Heap")
 
 > Roots into the heap
 
@@ -7980,7 +7976,7 @@ The goal of the exercise is to implement a Treiber Stack in selfie using `lr.d` 
 
 Using atomic instructions for fine-grained concurrency in non-blocking and typically lock-free code has enabled significant improvements in performance and scalability of modern multi-threaded systems. This is an important development as modern hardware tends to get faster only by adding more parallelism in the form of more processors with more cores while individual processing elements seem to have gotten close to the maximum of what is physically possible. However, even parallelism will eventually reach its limits as the limiting factor is the speed of accessing shared memory, that is, the von Neumann bottleneck. The only way out appears to be special-purpose hardware based on models other than the von Neumann architecture. Examples are *graphics processing units* (GPUs) and even quantum computers.
 
-We have reached the end of the engineering side of the computing chapter before going into a more fundamental discussion on the universality of computing. By now, the considerable complexity of modern computing systems should have become apparent. Virtualization as well as concurrency and memory management received most of our attention. There is, of course, also considerable complexity in modern I/O management which we nevertheless ignored. The important message is that new hardware is always going to drive innovation in software, so there is always something exciting to do. But before concluding there is one more thing!
+We have reached the end of the computing chapter, and with it the end of the machinery of this book. The fundamental discussion of what all of it can and cannot compute came first, in the meaning chapter, and what it costs comes next. By now, the considerable complexity of modern computing systems should have become apparent. Virtualization as well as concurrency and memory management received most of our attention. There is, of course, also considerable complexity in modern I/O management which we nevertheless ignored. The important message is that new hardware is always going to drive innovation in software, so there is always something exciting to do. But before concluding there is one more thing!
 
 ### Recommended Readings 7
 

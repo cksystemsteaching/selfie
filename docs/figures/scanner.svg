@@ -1,0 +1,111 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 900" width="900" height="900" role="img" aria-label="The scanner: from the start state, one transition per class of symbol, with loops on identifiers and integers">
+<title>The scanner: from the start state, one transition per class of symbol, with loops on identifiers and integers</title>
+<style>svg{--ink:#131C2A;--ink-2:#39485C;--muted:#5D6E85;--line:rgba(19,28,42,.18);--syn:#A2661A;--sem:#1F6C86;--bad:#A63E5A;--panel:#FFFFFF;--ground:#EFF1F3}@media (prefers-color-scheme: dark){svg{--ink:#E7EDF6;--ink-2:#B6C4D8;--muted:#8093AF;--line:rgba(122,162,204,.16);--syn:#E0A550;--sem:#5BB0C7;--bad:#C8607A;--panel:#111C2E;--ground:#080E18}}text{font-family:"JetBrains Mono","SFMono-Regular","SF Mono","Cascadia Mono",Menlo,Consolas,"DejaVu Sans Mono",monospace}.serif{font-family:"Iowan Old Style","Palatino Linotype",Palatino,"Book Antiqua","URW Palladio L",Georgia,serif}</style>
+<text x="450" y="30" font-size="15" fill="var(--ink)" text-anchor="middle" dominant-baseline="central" class="serif">get_symbol: the scanner's finite state machine</text>
+<circle cx="90" cy="460" r="7" fill="var(--syn)"/>
+<line x1="40" y1="460" x2="81" y2="460" stroke="var(--ink-2)" stroke-width="1.2"/><path d="M81 460 L75.47 462.34 L75.47 457.66 Z" fill="var(--ink-2)"/>
+<path d="M97 460 C300 460 330 70 551 70" fill="none" stroke="var(--line)" stroke-width="1.1"/>
+<line x1="546" y1="70" x2="552" y2="70" stroke="var(--ink-2)" stroke-width="1.1"/><path d="M552 70 L547.39 71.95 L547.39 68.05 Z" fill="var(--ink-2)"/>
+<circle cx="560" cy="70" r="5.5" fill="var(--sem)"/>
+<text x="310" y="61" font-size="10" fill="var(--muted)" text-anchor="middle" dominant-baseline="central">letter</text>
+<text x="576" y="70" font-size="11.5" fill="var(--ink-2)" text-anchor="start" dominant-baseline="central">identifier</text>
+<path d="M564 65 C600 40 600 100 564 75" fill="none" stroke="var(--line)" stroke-width="1.1"/>
+<text x="700" y="84" font-size="9.5" fill="var(--muted)" text-anchor="middle" dominant-baseline="central">letter | digit | "_"</text>
+<path d="M97 460 C300 460 330 107.37 551 107.37" fill="none" stroke="var(--line)" stroke-width="1.1"/>
+<line x1="546" y1="107.37" x2="552" y2="107.37" stroke="var(--ink-2)" stroke-width="1.1"/><path d="M552 107.37 L547.39 109.32 L547.39 105.42 Z" fill="var(--ink-2)"/>
+<circle cx="560" cy="107.37" r="5.5" fill="var(--sem)"/>
+<text x="310" y="98.37" font-size="10" fill="var(--muted)" text-anchor="middle" dominant-baseline="central">digit</text>
+<text x="576" y="107.37" font-size="11.5" fill="var(--ink-2)" text-anchor="start" dominant-baseline="central">integer_literal</text>
+<path d="M564 102.37 C600 77.37 600 137.37 564 112.37" fill="none" stroke="var(--line)" stroke-width="1.1"/>
+<text x="700" y="121.37" font-size="9.5" fill="var(--muted)" text-anchor="middle" dominant-baseline="central">digit</text>
+<path d="M97 460 C300 460 330 144.74 551 144.74" fill="none" stroke="var(--line)" stroke-width="1.1"/>
+<line x1="546" y1="144.74" x2="552" y2="144.74" stroke="var(--ink-2)" stroke-width="1.1"/><path d="M552 144.74 L547.39 146.68 L547.39 142.79 Z" fill="var(--ink-2)"/>
+<circle cx="560" cy="144.74" r="5.5" fill="var(--sem)"/>
+<text x="310" y="135.74" font-size="10" fill="var(--muted)" text-anchor="middle" dominant-baseline="central">' printable '</text>
+<text x="576" y="144.74" font-size="11.5" fill="var(--ink-2)" text-anchor="start" dominant-baseline="central">character_literal</text>
+<path d="M97 460 C300 460 330 182.11 551 182.11" fill="none" stroke="var(--line)" stroke-width="1.1"/>
+<line x1="546" y1="182.11" x2="552" y2="182.11" stroke="var(--ink-2)" stroke-width="1.1"/><path d="M552 182.11 L547.39 184.05 L547.39 180.16 Z" fill="var(--ink-2)"/>
+<circle cx="560" cy="182.11" r="5.5" fill="var(--sem)"/>
+<text x="310" y="173.11" font-size="10" fill="var(--muted)" text-anchor="middle" dominant-baseline="central">" { printable } "</text>
+<text x="576" y="182.11" font-size="11.5" fill="var(--ink-2)" text-anchor="start" dominant-baseline="central">string_literal</text>
+<path d="M97 460 C300 460 330 219.47 551 219.47" fill="none" stroke="var(--line)" stroke-width="1.1"/>
+<line x1="546" y1="219.47" x2="552" y2="219.47" stroke="var(--ink-2)" stroke-width="1.1"/><path d="M552 219.47 L547.39 221.42 L547.39 217.53 Z" fill="var(--ink-2)"/>
+<circle cx="560" cy="219.47" r="5.5" fill="var(--sem)"/>
+<text x="310" y="210.47" font-size="10" fill="var(--muted)" text-anchor="middle" dominant-baseline="central">","</text>
+<text x="576" y="219.47" font-size="11.5" fill="var(--ink-2)" text-anchor="start" dominant-baseline="central">,</text>
+<path d="M97 460 C300 460 330 256.84 551 256.84" fill="none" stroke="var(--line)" stroke-width="1.1"/>
+<line x1="546" y1="256.84" x2="552" y2="256.84" stroke="var(--ink-2)" stroke-width="1.1"/><path d="M552 256.84 L547.39 258.79 L547.39 254.9 Z" fill="var(--ink-2)"/>
+<circle cx="560" cy="256.84" r="5.5" fill="var(--sem)"/>
+<text x="310" y="247.84" font-size="10" fill="var(--muted)" text-anchor="middle" dominant-baseline="central">";"</text>
+<text x="576" y="256.84" font-size="11.5" fill="var(--ink-2)" text-anchor="start" dominant-baseline="central">;</text>
+<path d="M97 460 C300 460 330 294.21 551 294.21" fill="none" stroke="var(--line)" stroke-width="1.1"/>
+<line x1="546" y1="294.21" x2="552" y2="294.21" stroke="var(--ink-2)" stroke-width="1.1"/><path d="M552 294.21 L547.39 296.16 L547.39 292.26 Z" fill="var(--ink-2)"/>
+<circle cx="560" cy="294.21" r="5.5" fill="var(--sem)"/>
+<text x="310" y="285.21" font-size="10" fill="var(--muted)" text-anchor="middle" dominant-baseline="central">"("</text>
+<text x="576" y="294.21" font-size="11.5" fill="var(--ink-2)" text-anchor="start" dominant-baseline="central">(</text>
+<path d="M97 460 C300 460 330 331.58 551 331.58" fill="none" stroke="var(--line)" stroke-width="1.1"/>
+<line x1="546" y1="331.58" x2="552" y2="331.58" stroke="var(--ink-2)" stroke-width="1.1"/><path d="M552 331.58 L547.39 333.53 L547.39 329.63 Z" fill="var(--ink-2)"/>
+<circle cx="560" cy="331.58" r="5.5" fill="var(--sem)"/>
+<text x="310" y="322.58" font-size="10" fill="var(--muted)" text-anchor="middle" dominant-baseline="central">")"</text>
+<text x="576" y="331.58" font-size="11.5" fill="var(--ink-2)" text-anchor="start" dominant-baseline="central">)</text>
+<path d="M97 460 C300 460 330 368.95 551 368.95" fill="none" stroke="var(--line)" stroke-width="1.1"/>
+<line x1="546" y1="368.95" x2="552" y2="368.95" stroke="var(--ink-2)" stroke-width="1.1"/><path d="M552 368.95 L547.39 370.89 L547.39 367 Z" fill="var(--ink-2)"/>
+<circle cx="560" cy="368.95" r="5.5" fill="var(--sem)"/>
+<text x="310" y="359.95" font-size="10" fill="var(--muted)" text-anchor="middle" dominant-baseline="central">"{"</text>
+<text x="576" y="368.95" font-size="11.5" fill="var(--ink-2)" text-anchor="start" dominant-baseline="central">{</text>
+<path d="M97 460 C300 460 330 406.32 551 406.32" fill="none" stroke="var(--line)" stroke-width="1.1"/>
+<line x1="546" y1="406.32" x2="552" y2="406.32" stroke="var(--ink-2)" stroke-width="1.1"/><path d="M552 406.32 L547.39 408.26 L547.39 404.37 Z" fill="var(--ink-2)"/>
+<circle cx="560" cy="406.32" r="5.5" fill="var(--sem)"/>
+<text x="310" y="397.32" font-size="10" fill="var(--muted)" text-anchor="middle" dominant-baseline="central">"}"</text>
+<text x="576" y="406.32" font-size="11.5" fill="var(--ink-2)" text-anchor="start" dominant-baseline="central">}</text>
+<path d="M97 460 C300 460 330 443.68 551 443.68" fill="none" stroke="var(--line)" stroke-width="1.1"/>
+<line x1="546" y1="443.68" x2="552" y2="443.68" stroke="var(--ink-2)" stroke-width="1.1"/><path d="M552 443.68 L547.39 445.63 L547.39 441.74 Z" fill="var(--ink-2)"/>
+<circle cx="560" cy="443.68" r="5.5" fill="var(--sem)"/>
+<text x="310" y="434.68" font-size="10" fill="var(--muted)" text-anchor="middle" dominant-baseline="central">"+"</text>
+<text x="576" y="443.68" font-size="11.5" fill="var(--ink-2)" text-anchor="start" dominant-baseline="central">+</text>
+<path d="M97 460 C300 460 330 481.05 551 481.05" fill="none" stroke="var(--line)" stroke-width="1.1"/>
+<line x1="546" y1="481.05" x2="552" y2="481.05" stroke="var(--ink-2)" stroke-width="1.1"/><path d="M552 481.05 L547.39 483 L547.39 479.11 Z" fill="var(--ink-2)"/>
+<circle cx="560" cy="481.05" r="5.5" fill="var(--sem)"/>
+<text x="310" y="472.05" font-size="10" fill="var(--muted)" text-anchor="middle" dominant-baseline="central">"-"</text>
+<text x="576" y="481.05" font-size="11.5" fill="var(--ink-2)" text-anchor="start" dominant-baseline="central">-</text>
+<path d="M97 460 C300 460 330 518.42 551 518.42" fill="none" stroke="var(--line)" stroke-width="1.1"/>
+<line x1="546" y1="518.42" x2="552" y2="518.42" stroke="var(--ink-2)" stroke-width="1.1"/><path d="M552 518.42 L547.39 520.37 L547.39 516.47 Z" fill="var(--ink-2)"/>
+<circle cx="560" cy="518.42" r="5.5" fill="var(--sem)"/>
+<text x="310" y="509.42" font-size="10" fill="var(--muted)" text-anchor="middle" dominant-baseline="central">"*"</text>
+<text x="576" y="518.42" font-size="11.5" fill="var(--ink-2)" text-anchor="start" dominant-baseline="central">*</text>
+<path d="M97 460 C300 460 330 555.79 551 555.79" fill="none" stroke="var(--line)" stroke-width="1.1"/>
+<line x1="546" y1="555.79" x2="552" y2="555.79" stroke="var(--ink-2)" stroke-width="1.1"/><path d="M552 555.79 L547.39 557.74 L547.39 553.84 Z" fill="var(--ink-2)"/>
+<circle cx="560" cy="555.79" r="5.5" fill="var(--sem)"/>
+<text x="310" y="546.79" font-size="10" fill="var(--muted)" text-anchor="middle" dominant-baseline="central">"/"</text>
+<text x="576" y="555.79" font-size="11.5" fill="var(--ink-2)" text-anchor="start" dominant-baseline="central">/</text>
+<path d="M97 460 C300 460 330 593.16 551 593.16" fill="none" stroke="var(--line)" stroke-width="1.1"/>
+<line x1="546" y1="593.16" x2="552" y2="593.16" stroke="var(--ink-2)" stroke-width="1.1"/><path d="M552 593.16 L547.39 595.1 L547.39 591.21 Z" fill="var(--ink-2)"/>
+<circle cx="560" cy="593.16" r="5.5" fill="var(--sem)"/>
+<text x="310" y="584.16" font-size="10" fill="var(--muted)" text-anchor="middle" dominant-baseline="central">"%"</text>
+<text x="576" y="593.16" font-size="11.5" fill="var(--ink-2)" text-anchor="start" dominant-baseline="central">%</text>
+<path d="M97 460 C300 460 330 630.53 551 630.53" fill="none" stroke="var(--line)" stroke-width="1.1"/>
+<line x1="546" y1="630.53" x2="552" y2="630.53" stroke="var(--ink-2)" stroke-width="1.1"/><path d="M552 630.53 L547.39 632.47 L547.39 628.58 Z" fill="var(--ink-2)"/>
+<circle cx="560" cy="630.53" r="5.5" fill="var(--sem)"/>
+<text x="310" y="621.53" font-size="10" fill="var(--muted)" text-anchor="middle" dominant-baseline="central">"="</text>
+<text x="576" y="630.53" font-size="11.5" fill="var(--ink-2)" text-anchor="start" dominant-baseline="central">=   then "=" → ==</text>
+<path d="M97 460 C300 460 330 667.89 551 667.89" fill="none" stroke="var(--line)" stroke-width="1.1"/>
+<line x1="546" y1="667.89" x2="552" y2="667.89" stroke="var(--ink-2)" stroke-width="1.1"/><path d="M552 667.89 L547.39 669.84 L547.39 665.95 Z" fill="var(--ink-2)"/>
+<circle cx="560" cy="667.89" r="5.5" fill="var(--sem)"/>
+<text x="310" y="658.89" font-size="10" fill="var(--muted)" text-anchor="middle" dominant-baseline="central">"!"</text>
+<text x="576" y="667.89" font-size="11.5" fill="var(--ink-2)" text-anchor="start" dominant-baseline="central">!   then "=" → !=</text>
+<path d="M97 460 C300 460 330 705.26 551 705.26" fill="none" stroke="var(--line)" stroke-width="1.1"/>
+<line x1="546" y1="705.26" x2="552" y2="705.26" stroke="var(--ink-2)" stroke-width="1.1"/><path d="M552 705.26 L547.39 707.21 L547.39 703.32 Z" fill="var(--ink-2)"/>
+<circle cx="560" cy="705.26" r="5.5" fill="var(--sem)"/>
+<text x="310" y="696.26" font-size="10" fill="var(--muted)" text-anchor="middle" dominant-baseline="central">"&lt;"</text>
+<text x="576" y="705.26" font-size="11.5" fill="var(--ink-2)" text-anchor="start" dominant-baseline="central">&lt;   then "=" → &lt;=</text>
+<path d="M97 460 C300 460 330 742.63 551 742.63" fill="none" stroke="var(--line)" stroke-width="1.1"/>
+<line x1="546" y1="742.63" x2="552" y2="742.63" stroke="var(--ink-2)" stroke-width="1.1"/><path d="M552 742.63 L547.39 744.58 L547.39 740.68 Z" fill="var(--ink-2)"/>
+<circle cx="560" cy="742.63" r="5.5" fill="var(--sem)"/>
+<text x="310" y="733.63" font-size="10" fill="var(--muted)" text-anchor="middle" dominant-baseline="central">"&gt;"</text>
+<text x="576" y="742.63" font-size="11.5" fill="var(--ink-2)" text-anchor="start" dominant-baseline="central">&gt;   then "=" → &gt;=</text>
+<path d="M97 460 C300 460 330 780 551 780" fill="none" stroke="var(--line)" stroke-width="1.1"/>
+<line x1="546" y1="780" x2="552" y2="780" stroke="var(--ink-2)" stroke-width="1.1"/><path d="M552 780 L547.39 781.95 L547.39 778.05 Z" fill="var(--ink-2)"/>
+<circle cx="560" cy="780" r="5.5" fill="var(--sem)"/>
+<text x="310" y="771" font-size="10" fill="var(--muted)" text-anchor="middle" dominant-baseline="central">"."</text>
+<text x="576" y="780" font-size="11.5" fill="var(--ink-2)" text-anchor="start" dominant-baseline="central">...  (three dots)</text>
+</svg>

@@ -63,29 +63,29 @@ Ported from the talks (the talks themselves keep their canvas originals):
 | `cost` | selfie 19 | what emulation and virtualization cost | book ch. 7; SE 3, 6 |
 | `selfref` | selfie 20 | virtualization is emulation plus self-reference | book ch. 7; ICS 10; SE 6 |
 
-New for the book's technical chapters and the CC and SE decks (drawn as the chapters and
-decks are written; this list is the plan):
+Drawn new for the book's technical chapters and the CC and SE decks, replacing the 51 hand-drawn
+figures of the first edition:
 
 | Figure | Shows | Used by |
 |---|---|---|
-| `adder` | half adder, full adder, a 7-bit adder | book ch. 2 |
-| `complement` | tens complement, two's complement | book ch. 2 |
-| `byte` | a byte, its bits, its meanings | book ch. 2; ICS 3 |
-| `memory` | memory as a numbered sequence of bytes | book ch. 2, 4; ICS 3 |
-| `text` | a string in memory, terminated | book ch. 2 |
-| `vonneumann-machine` | the von Neumann architecture with RISC-U's registers | book ch. 4; ICS 6; SE 2 |
-| `layout` | the memory layout of a RISC-U program | book ch. 4, 6; CC 5; SE 4 |
-| `scanner` | the scanner's finite state machines | book ch. 6; CC 2 |
-| `fsm-literal` | the integer-literal FSM, correct and incorrect | book ch. 6; CC 2 |
-| `symbol-table` | the symbol table | book ch. 6; CC 4 |
-| `expressions` | emitting expressions, terms, literals | book ch. 6; CC 5 |
-| `statements` | emitting assignments, if, while | book ch. 6; CC 6 |
+| `half-adder`, `full-adder`, `7-bit-adder` | adders, from gates to a 7-bit chain | book ch. 2 |
+| `tens-complement` | two digits read as encoding, unsigned, signed | book ch. 2 |
+| `byte`, `memory`, `pointers`, `contiguous` | bytes, addresses, pointers, blocks | book ch. 2; ICS 3 |
+| `text`, `string`, `directory`, `file-tree` | text, strings, directories, paths in memory | book ch. 2 |
+| `image`, `video`, `audio`, `code` | media and code as bytes | book ch. 2; ICS 3 |
+| `von-neumann`, `risc-u-machine`, `layout` | the architecture, the RISC-U machine, a program's memory layout | book ch. 4, 6; ICS 6; CC 5; SE 2, 4 |
+| `performance`, `complexity`, `constants` | measured performance, asymptotic complexity, small inputs | book ch. 4, 8; SE 11 |
+| `integer-literal-fsm`, `correct-integer-literal-fsm` | the integer-literal FSMs | book ch. 6; CC 2 |
+| `scanning-integer-literals`, `atoi`, `scanning-character-literals`, `scanning-string-literals`, `scanning-identifiers`, `scanner` | the scanner: FSM, code sketch, compiler memory | book ch. 6; CC 2 |
+| `parsing-literals`, `emitting-literals`, `global-variable-declaration`, `variable-use`, `symbol-table` | parsing and emitting, the symbol table | book ch. 6; CC 3, 4, 5 |
+| `elementary-expressions`, `emitting-terms`, `emitting-arithmetic`, `emitting-expressions`, `emitting-assignments`, `emitting-while-loops`, `emitting-if-statements` | code generation, one construct at a time | book ch. 6; CC 5, 6 |
 | `call-frame` | a call frame on the stack | book ch. 6; CC 7 |
-| `pointers` | pointers into memory | book ch. 6; CC 5 |
-| `page-table` | paging and page tables | book ch. 7; SE 4 |
-| `contexts` | machine contexts and context switching | book ch. 7; SE 5 |
-| `live-dead` | live versus dead objects, roots into the heap | book ch. 7; SE 9 |
-| `sat` | a CNF, DPLL on it, one conflict and one learned clause | book ch. 8; CC 11 |
-| `bitblast` | a bitvector operation as a circuit as a formula | book ch. 8; CC 12 |
+| `page-table`, `paging-page-tables` | paging, array- and tree-based page tables | book ch. 7; SE 4 |
+| `traffic-light-model` | process states | book ch. 7; SE 5 |
+| `emu-emu`, `os-emu`, `os-vmm-emu` | an OS by emulation, by virtualization, under a VMM | book ch. 7; SE 6 |
+| `live-versus-dead`, `roots-into-heap` | garbage collection | book ch. 7; SE 9 |
 | `btor2` | a BTOR2 model: state, init, next, bad, unrolled k steps | book ch. 8; ICS 12; CC 10; SE 10 |
-| `station` | the six stations on the axis, for chapter openings | book, every chapter; all week-1 decks |
+| `station` | the six stations on the axis | book, part openings; week-1 decks |
+
+Still to draw when a deck needs them: `sat` (DPLL and CDCL on Rivest's formula) and `bitblast` (a
+word operation as a circuit as a formula), both for CC 11 and 12.

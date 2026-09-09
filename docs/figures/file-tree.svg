@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 420" width="800" height="420" role="img" aria-label="A tree of directories and files, with the pathname /p/q/a of file a highlighted">
+<title>A tree of directories and files, with the pathname /p/q/a of file a highlighted</title>
+<style>svg{--ink:#131C2A;--ink-2:#39485C;--muted:#5D6E85;--line:rgba(19,28,42,.18);--syn:#A2661A;--sem:#1F6C86;--bad:#A63E5A;--panel:#FFFFFF;--ground:#EFF1F3}@media (prefers-color-scheme: dark){svg{--ink:#E7EDF6;--ink-2:#B6C4D8;--muted:#8093AF;--line:rgba(122,162,204,.16);--syn:#E0A550;--sem:#5BB0C7;--bad:#C8607A;--panel:#111C2E;--ground:#080E18}}text{font-family:"JetBrains Mono","SFMono-Regular","SF Mono","Cascadia Mono",Menlo,Consolas,"DejaVu Sans Mono",monospace}.serif{font-family:"Iowan Old Style","Palatino Linotype",Palatino,"Book Antiqua","URW Palladio L",Georgia,serif}</style>
+<line x1="400" y1="80" x2="240" y2="210" stroke="var(--line)" stroke-width="1.2"/>
+<line x1="400" y1="80" x2="560" y2="210" stroke="var(--line)" stroke-width="1.2"/>
+<line x1="240" y1="210" x2="140" y2="340" stroke="var(--line)" stroke-width="1.2"/>
+<line x1="240" y1="210" x2="340" y2="340" stroke="var(--line)" stroke-width="1.2"/>
+<line x1="560" y1="210" x2="460" y2="340" stroke="var(--line)" stroke-width="1.2"/>
+<line x1="560" y1="210" x2="660" y2="340" stroke="var(--line)" stroke-width="1.2"/>
+<circle cx="400" cy="80" r="5" fill="var(--syn)"/>
+<text x="412" y="78" font-size="13" fill="var(--ink-2)" text-anchor="start" dominant-baseline="central" class="serif">directory "p"</text>
+<circle cx="240" cy="210" r="5" fill="var(--syn)"/>
+<text x="252" y="208" font-size="13" fill="var(--ink-2)" text-anchor="start" dominant-baseline="central" class="serif">directory "q"</text>
+<circle cx="560" cy="210" r="5" fill="var(--syn)"/>
+<text x="572" y="208" font-size="13" fill="var(--ink-2)" text-anchor="start" dominant-baseline="central" class="serif">directory "r"</text>
+<circle cx="140" cy="340" r="5" fill="var(--sem)"/>
+<text x="152" y="358" font-size="13" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central" class="serif">file "a"</text>
+<circle cx="340" cy="340" r="5" fill="var(--sem)"/>
+<text x="352" y="358" font-size="13" fill="var(--ink-2)" text-anchor="start" dominant-baseline="central" class="serif">file "b"</text>
+<circle cx="460" cy="340" r="5" fill="var(--sem)"/>
+<text x="472" y="358" font-size="13" fill="var(--ink-2)" text-anchor="start" dominant-baseline="central" class="serif">file "c"</text>
+<circle cx="660" cy="340" r="5" fill="var(--sem)"/>
+<text x="672" y="358" font-size="13" fill="var(--ink-2)" text-anchor="start" dominant-baseline="central" class="serif">file "d"</text>
+<text x="400" y="40" font-size="13" fill="var(--muted)" text-anchor="middle" dominant-baseline="central" class="serif">root</text>
+<line x1="400" y1="52" x2="400" y2="70" stroke="var(--line)" stroke-width="1"/><path d="M400 70 L398.05 65.39 L401.95 65.39 Z" fill="var(--line)"/>
+<path d="M388 92 L252 198" fill="none" stroke="var(--sem)" stroke-width="2.4" opacity="0.6"/>
+<path d="M228 222 L152 328" fill="none" stroke="var(--sem)" stroke-width="2.4" opacity="0.6"/>
+<text x="300" y="120" font-size="13" fill="var(--sem)" text-anchor="end" dominant-baseline="central" class="serif">path "/p/q"</text>
+<text x="40" y="300" font-size="13" fill="var(--sem)" text-anchor="start" dominant-baseline="central" class="serif">pathname "/p/q/a"</text>
+<text x="400" y="400" font-size="13" fill="var(--muted)" text-anchor="middle" dominant-baseline="central" class="serif">leaves</text>
+<line x1="360" y1="395" x2="180" y2="360" stroke="var(--line)" stroke-width="1" stroke-dasharray="2 3"/>
+<line x1="440" y1="395" x2="640" y2="360" stroke="var(--line)" stroke-width="1" stroke-dasharray="2 3"/>
+</svg>

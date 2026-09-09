@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 300" width="880" height="300" role="img" aria-label="The six stations of the book on its axis: small, vast, countable, uncountable">
+<title>The six stations of the book on its axis: small, vast, countable, uncountable</title>
+<style>svg{--ink:#131C2A;--ink-2:#39485C;--muted:#5D6E85;--line:rgba(19,28,42,.18);--syn:#A2661A;--sem:#1F6C86;--bad:#A63E5A;--panel:#FFFFFF;--ground:#EFF1F3}@media (prefers-color-scheme: dark){svg{--ink:#E7EDF6;--ink-2:#B6C4D8;--muted:#8093AF;--line:rgba(122,162,204,.16);--syn:#E0A550;--sem:#5BB0C7;--bad:#C8607A;--panel:#111C2E;--ground:#080E18}}text{font-family:"JetBrains Mono","SFMono-Regular","SF Mono","Cascadia Mono",Menlo,Consolas,"DejaVu Sans Mono",monospace}.serif{font-family:"Iowan Old Style","Palatino Linotype",Palatino,"Book Antiqua","URW Palladio L",Georgia,serif}</style>
+<line x1="44" y1="140" x2="418" y2="140" stroke="var(--syn)" stroke-width="2"/>
+<line x1="418" y1="140" x2="478" y2="140" stroke="var(--line)" stroke-width="1" stroke-dasharray="2 4"/>
+<line x1="488" y1="80" x2="488" y2="200" stroke="var(--line)" stroke-width="1" stroke-dasharray="2 4"/>
+<line x1="488" y1="140" x2="840" y2="140" stroke="var(--sem)" stroke-width="2"/>
+<text x="44" y="110" font-size="11" fill="var(--syn)" text-anchor="middle" dominant-baseline="central">SMALL</text>
+<text x="418" y="110" font-size="11" fill="var(--syn)" text-anchor="middle" dominant-baseline="central">VAST</text>
+<text x="600" y="110" font-size="11" fill="var(--sem)" text-anchor="middle" dominant-baseline="central">COUNTABLE</text>
+<text x="800" y="110" font-size="11" fill="var(--sem)" text-anchor="middle" dominant-baseline="central">UNCOUNTABLE</text>
+<circle cx="84" cy="140" r="5" fill="var(--syn)"/>
+<text x="84" y="162" font-size="11" fill="var(--syn)" text-anchor="middle" dominant-baseline="central">I</text>
+<text x="84" y="182" font-size="12" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central" class="serif">Size</text>
+<circle cx="378" cy="140" r="5" fill="var(--syn)"/>
+<text x="378" y="162" font-size="11" fill="var(--syn)" text-anchor="middle" dominant-baseline="central">IV</text>
+<text x="378" y="182" font-size="12" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central" class="serif">Cost</text>
+<circle cx="600" cy="140" r="5" fill="var(--sem)"/>
+<text x="600" y="162" font-size="11" fill="var(--sem)" text-anchor="middle" dominant-baseline="central">II</text>
+<text x="600" y="182" font-size="12" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central" class="serif">Notation</text>
+<circle cx="690" cy="140" r="5" fill="var(--sem)"/>
+<text x="690" y="162" font-size="11" fill="var(--sem)" text-anchor="middle" dominant-baseline="central">V</text>
+<text x="690" y="182" font-size="12" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central" class="serif">Machines</text>
+<circle cx="800" cy="140" r="5" fill="var(--sem)"/>
+<text x="800" y="162" font-size="11" fill="var(--sem)" text-anchor="middle" dominant-baseline="central">III</text>
+<text x="800" y="182" font-size="12" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central" class="serif">Meaning</text>
+<circle cx="860" cy="140" r="5" fill="var(--sem)"/>
+<text x="860" y="162" font-size="11" fill="var(--sem)" text-anchor="middle" dominant-baseline="central">VI</text>
+<text x="860" y="182" font-size="12" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central" class="serif">Intelligence</text>
+<text x="440" y="270" font-size="11" fill="var(--muted)" text-anchor="middle" dominant-baseline="central" class="serif">the six stations of this book, on its one axis</text>
+</svg>

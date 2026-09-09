@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 400" width="800" height="400" role="img" aria-label="The von Neumann architecture: a CPU and one memory for code and data, joined by a bus">
+<title>The von Neumann architecture: a CPU and one memory for code and data, joined by a bus</title>
+<style>svg{--ink:#131C2A;--ink-2:#39485C;--muted:#5D6E85;--line:rgba(19,28,42,.18);--syn:#A2661A;--sem:#1F6C86;--bad:#A63E5A;--panel:#FFFFFF;--ground:#EFF1F3}@media (prefers-color-scheme: dark){svg{--ink:#E7EDF6;--ink-2:#B6C4D8;--muted:#8093AF;--line:rgba(122,162,204,.16);--syn:#E0A550;--sem:#5BB0C7;--bad:#C8607A;--panel:#111C2E;--ground:#080E18}}text{font-family:"JetBrains Mono","SFMono-Regular","SF Mono","Cascadia Mono",Menlo,Consolas,"DejaVu Sans Mono",monospace}.serif{font-family:"Iowan Old Style","Palatino Linotype",Palatino,"Book Antiqua","URW Palladio L",Georgia,serif}</style>
+<text x="130" y="60" font-size="17" fill="var(--syn)" text-anchor="middle" dominant-baseline="central" class="serif">von Neumann architecture</text>
+<rect x="60" y="150" width="220" height="140" fill="none" stroke="var(--syn)" stroke-width="1.2"/>
+<text x="170" y="220" font-size="22" fill="var(--ink)" text-anchor="middle" dominant-baseline="central">CPU</text>
+<rect x="480" y="60" width="260" height="300" fill="none" stroke="var(--syn)" stroke-width="1.2"/>
+<text x="610" y="190" font-size="22" fill="var(--ink)" text-anchor="middle" dominant-baseline="central">Memory</text>
+<text x="610" y="222" font-size="13" fill="var(--muted)" text-anchor="middle" dominant-baseline="central" class="serif">(for code and data)</text>
+<line x1="290" y1="205" x2="470" y2="205" stroke="var(--ink-2)" stroke-width="1.6"/><path d="M470 205 L462.63 208.12 L462.63 201.88 Z" fill="var(--ink-2)"/>
+<line x1="470" y1="235" x2="290" y2="235" stroke="var(--ink-2)" stroke-width="1.6"/><path d="M290 235 L297.37 231.88 L297.37 238.12 Z" fill="var(--ink-2)"/>
+<line x1="380" y1="320" x2="380" y2="250" stroke="var(--line)" stroke-width="1"/><path d="M380 250 L381.95 254.61 L378.05 254.61 Z" fill="var(--line)"/>
+<text x="380" y="340" font-size="13" fill="var(--muted)" text-anchor="middle" dominant-baseline="central" class="serif">memory bus</text>
+<text x="380" y="358" font-size="12" fill="var(--muted)" text-anchor="middle" dominant-baseline="central" class="serif">(von Neumann bottleneck)</text>
+</svg>
