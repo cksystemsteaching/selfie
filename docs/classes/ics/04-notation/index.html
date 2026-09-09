@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ICS 04 · Notation</title>
+<link rel="stylesheet" href="../../deck/deck.css">
+</head>
+<body>
+<div id="stage">
+<div id="deck" tabindex="0" aria-label="Presentation: ICS 04 Notation" data-title="ICS 04 · Notation" data-figures="../../../figures/">
+
+<section class="slide" data-act="0" data-mins="1.0">
+  <div class="fig bare" style="position:absolute;inset:0"><canvas data-anim="ambient"></canvas></div>
+  <div class="fill center" style="position:relative">
+    <div class="eyebrow">Introduction to Computer Science · week 4 · station II</div>
+    <h1>Notation</h1>
+    <p class="lead">Formal languages, and the three that selfie is made of: EBNF, C*, and RISC-U.</p>
+  </div>
+  <aside class="notes"><p>Station II, the countable side of the wall. Last week one byte had five meanings and nothing in the bits said which. This week we meet the languages whose whole job is to fix the meaning by decree. Book: the Notation chapter. Keep the terminal open with the tiny program on this deck's later slides.</p></aside>
+</section>
+
+<section class="slide" data-act="II" data-actname="Notation" data-mins="5.0">
+  <div class="eyebrow">Syntax and semantics</div>
+  <h2>The score is not the music.</h2>
+  <div class="fill">
+    <div class="two">
+      <div class="card syn f" data-step="1"><span class="h">Syntax · notation</span><p>Marks on paper. Finite, discrete, checkable, copyable. <span class="mono">1 + 1</span>, a staff of crotchets, H₂O, a line of code, this sentence.</p></div>
+      <div class="card f" data-step="2"><span class="h">Semantics · meaning</span><p>What the marks are <em>about</em>. The number two. Sound in a room. A molecule that dissolves salt. A machine's behaviour over all inputs.</p></div>
+    </div>
+    <p class="f" data-step="3">A <strong>semantics</strong> is a function from notation to meaning. Defining that function precisely is the founding act of every exact discipline — and computer science is where it was done most sharply, because a machine does exactly what the marks say and nothing else.</p>
+    <div class="chips f" data-step="4"><span class="chip">Frege 1892 · Sinn / Bedeutung</span><span class="chip">Saussure · signifier / signified</span><span class="chip">Korzybski 1931 · the map is not the territory</span><span class="chip">Magritte 1929 · ceci n'est pas une pipe</span></div>
+  </div>
+  <aside class="notes"><p>Use the musicians in the room. A score under-determines the performance, two conductors give you two pieces, yet the score is what can be printed, copied and criticised. Notation travels; meaning has to be reconstructed at the other end. The chips are there to say that every discipline found this independently and gave it its own names; ours are syntax and semantics, and ours come with a machine.</p></aside>
+</section>
+
+<section class="slide" data-act="II" data-mins="5.0">
+  <div class="eyebrow">Two kinds of language</div>
+  <h2>Natural language is <span class="k">compression</span>. Formal language is <span class="j">commitment</span>.</h2>
+  <div class="fill">
+    <div class="two">
+      <div class="stack">
+        <p class="f" data-step="1">"I saw the man with the telescope." Two readings, one string. English resolves it with a shared world you and I already have. That shared world is why English is powerful — and why it cannot be a foundation. Its semantics is <em>us</em>, and we differ.</p>
+        <p class="f" data-step="2">A formal language pays a price — narrowness, pedantry, effort — to buy one thing: a meaning that does not depend on who is reading.</p>
+      </div>
+      <table class="t f" data-step="3">
+        <tr><th>natural</th><th>formal</th></tr>
+        <tr><td>ambiguous</td><td>single-valued</td></tr>
+        <tr><td>elastic, forgiving</td><td>brittle, exact</td></tr>
+        <tr><td>persuades</td><td>proves</td></tr>
+        <tr><td>needs a mind</td><td>needs a machine</td></tr>
+        <tr><td>learned by living</td><td>defined by decree</td></tr>
+      </table>
+    </div>
+    <p class="sm f" data-step="4">Prompting an AI in English is negotiation. Writing a test, a type, a schema, a unit, a contract is legislation.</p>
+  </div>
+  <aside class="notes"><p>Do not let formal win a beauty contest; natural language is the more remarkable artefact. The point is division of labour: you cannot compute with a poem, and you cannot fall in love in first-order logic. Progress happens when someone moves a piece of the world from the left column to the right. The last line previews week 13.</p></aside>
+</section>
+
+<section class="slide" data-act="II" data-mins="5.0">
+  <div class="eyebrow">The notation for notation</div>
+  <h2>EBNF says what code may <span class="j">look like</span>. It can even say what EBNF looks like.</h2>
+  <div class="fill">
+    <div class="two">
+      <div class="term">
+        <span class="l c">integer = digit { digit } .</span>
+        <span class="l c">digit   = "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" .</span>
+        <span class="l o"></span>
+        <span class="l c">while   = "while" "(" expression ")"</span>
+        <span class="l c">            ( statement | "{" { statement } "}" ) .</span>
+      </div>
+      <div class="stack">
+        <p class="f" data-step="1"><span class="mono">=</span> defines. <span class="mono">|</span> is <em>or</em>. <span class="mono">{ }</span> is <em>any number of</em>, including none. <span class="mono">[ ]</span> is <em>optional</em>. <span class="mono">( )</span> groups. Quotes hold the literal characters. A full stop ends the rule.</p>
+        <p class="f" data-step="2">So an integer is a digit followed by any number of digits: 0, 42, 007. A while statement is the word, a parenthesised expression, and either one statement or a braced block of them.</p>
+        <p class="f" data-step="3">The synopsis of week 2 was this notation's cousin, a <strong>regular expression</strong>: braces, brackets, bars, and nothing else.</p>
+      </div>
+    </div>
+  </div>
+  <aside class="notes"><p>Read the rules aloud as sentences; that is the skill. Then the self-reference the book is proud of: EBNF can describe its own syntax in six lines, and students can understand that without any further background. Have them derive 007 from the integer rule step by step — it is allowed, and next week's compiler will reject it anyway, which is the first hint that grammar is not the whole story.</p></aside>
+</section>
+
+<section class="slide" data-act="II" data-mins="6.0">
+  <div class="eyebrow">C*</div>
+  <h2>7 keywords. 22 symbols. One data type, and pointers to it.</h2>
+  <div class="fill">
+    <div class="two">
+      <div class="stack">
+        <div class="chips f" data-step="1"><span class="chip j">uint64_t</span><span class="chip j">void</span><span class="chip j">sizeof</span><span class="chip j">if</span><span class="chip j">else</span><span class="chip j">while</span><span class="chip j">return</span></div>
+        <p class="sm f" data-step="2">Five statements: assignment, while, if-else, procedure call, return. Arithmetic <span class="mono">+ − * / %</span>, comparison <span class="mono">== != &lt; &gt; &lt;= &gt;=</span>, the <span class="mono">*</span> that reads a pointer — hence the star in the name. No other types, no arrays, no Boolean operators.</p>
+        <p class="sm f" data-step="3">It is a real subset of C: any C compiler compiles C*. And it is enough to write a compiler for itself, an emulator, and a hypervisor, which is the only argument for its size.</p>
+      </div>
+      <div class="term">
+        <span class="l o">// tiny.c</span>
+        <span class="l c">uint64_t c;</span>
+        <span class="l o"></span>
+        <span class="l c">uint64_t main() {</span>
+        <span class="l c">  c = 0;</span>
+        <span class="l o"></span>
+        <span class="l c">  while (c &lt; 7)</span>
+        <span class="l c">    c = c + 1;</span>
+        <span class="l o"></span>
+        <span class="l c">  return c;</span>
+        <span class="l c">}</span>
+      </div>
+    </div>
+  </div>
+  <aside class="notes"><p>The program on the right is the running example for the rest of the session and for week 6. Walk it against the grammar: a global variable declaration, a procedure, an assignment, a while with a comparison in it, a return. Every token is one of the 22 symbols or 7 keywords. Ask what it computes — seven — and note that nothing on this slide told the machine that; the grammar only says the text is well-formed.</p></aside>
+</section>
+
+<section class="slide" data-act="II" data-mins="6.0">
+  <div class="eyebrow">RISC-U</div>
+  <h2>14 instructions. 32 registers. 4 GB of memory. A real subset of real RISC-V.</h2>
+  <div class="fill">
+    <table class="t">
+      <tr><th>group</th><th>instruction</th><th>what it does</th></tr>
+      <tr class="f" data-step="1"><td>initialise</td><td>lui rd,imm · addi rd,rs1,imm</td><td>put a number into a register</td></tr>
+      <tr class="f" data-step="2"><td>memory</td><td>ld rd,imm(rs1) · sd rs2,imm(rs1)</td><td>load a word from memory, store one</td></tr>
+      <tr class="f" data-step="3"><td>arithmetic</td><td>add · sub · mul · divu · remu</td><td>rd = rs1 ∘ rs2, unsigned</td></tr>
+      <tr class="f" data-step="4"><td>comparison</td><td>sltu rd,rs1,rs2</td><td>rd = 1 if rs1 &lt; rs2, else 0</td></tr>
+      <tr class="f" data-step="5"><td>control</td><td>beq rs1,rs2,imm · jal rd,imm · jalr rd,imm(rs1)</td><td>branch if equal, jump and link, jump to a register</td></tr>
+      <tr class="f" data-step="6"><td>system</td><td>ecall</td><td>ask the operating system for something</td></tr>
+    </table>
+    <p class="sm f" data-step="7">Every instruction is 32 bits. Every one of them also does <span class="mono">pc = pc + 4</span>, or says where <span class="mono">pc</span> goes instead. That is the entire machine language, and the machine chapter gives each line its exact meaning.</p>
+  </div>
+  <aside class="notes"><p>Fourteen lines, and students should be able to say what each does by the end of week 6. Today only the shape: registers are named boxes, memory is the column from week 3, an instruction moves a number from one to another or does arithmetic or decides where to continue. The pc is the one register the machine reads without being asked, and it is the seed of everything about code and data in week 6.</p></aside>
+</section>
+
+<section class="slide" data-act="II" data-mins="6.0">
+  <div class="eyebrow">Three notations, one meaning</div>
+  <h2>What the compiler makes of the <span class="j">while</span> loop.</h2>
+  <div class="fill">
+    <div class="term sm">
+      <span class="l"><span class="p">$</span> <span class="c">./selfie -c tiny.c -S tiny.s</span></span>
+      <span class="l o">./selfie: 432 bytes generated with 104 instructions and 16 bytes of data</span>
+      <span class="l"><span class="p">$</span> <span class="c">cat tiny.s</span></span>
+      <span class="l o">…</span>
+      <span class="l o">0x158(~6): 0xFF01B283: ld t0,-16(gp)        // c</span>
+      <span class="l o">0x15C(~6): 0x00700313: addi t1,zero,7       // 7</span>
+      <span class="l o">0x160(~6): 0x0062B2B3: sltu t0,t0,t1        // c &lt; 7 ?</span>
+      <span class="l o">0x164(~6): 0x00028C63: beq t0,zero,6[0x17C]  // if not, leave the loop</span>
+      <span class="l o">0x168(~7): 0xFF01B283: ld t0,-16(gp)        // c</span>
+      <span class="l o">0x16C(~7): 0x00100313: addi t1,zero,1       // 1</span>
+      <span class="l o">0x170(~7): 0x006282B3: add t0,t0,t1         // c + 1</span>
+      <span class="l o">0x174(~7): 0xFE51B823: sd t0,-16(gp)        // c = …</span>
+      <span class="l o">0x178(~9): 0xFE1FF06F: jal zero,-8[0x158]   // back to the condition</span>
+    </div>
+    <div class="three">
+      <p class="sm f" data-step="1"><strong>Source.</strong> <span class="mono">while (c &lt; 7) c = c + 1;</span> — for you.</p>
+      <p class="sm f" data-step="2"><strong>Assembly.</strong> Nine instructions with names — for the person reading the machine.</p>
+      <p class="sm f" data-step="3"><strong>Bits.</strong> <span class="mono">0xFF01B283</span> and eight more words — the only thing the machine sees. Three notations. One meaning. The last one is the one that runs.</p>
+    </div>
+  </div>
+  <aside class="notes"><p>Generate it live. Then read the nine lines as a sentence: load c, load 7, compare, leave if not less, load c, load 1, add, store, go back. Point at the hexadecimal column: that is the program, the rest is annotation for humans. And point at the source line numbers in the tildes: the compiler kept the connection between the notations, which is what a debugger uses. Week 6 executes exactly these lines one at a time.</p></aside>
+</section>
+
+<section class="slide" data-act="II" data-mins="6.0">
+  <div class="eyebrow">What a machine can check</div>
+  <h2>A finite machine decides a <span class="j">regular</span> language. A stack decides a context-free one.</h2>
+  <div class="fill row mid">
+    <div class="fig grow" data-fig="correct-integer-literal-fsm"><span class="cap">integer literals without leading zeros</span></div>
+    <div class="stack grow">
+      <p class="f" data-step="1">A <strong>finite state machine</strong> reads one character at a time and remembers only which circle it is in. That is enough to check integers, identifiers, and the whole synopsis — anything a regular expression describes.</p>
+      <p class="f" data-step="2">It is not enough for parentheses: to check that every <span class="mono">(</span> has its <span class="mono">)</span> you must count without bound, and a finite machine cannot. Add a <strong>stack</strong> and you can: expressions, statements, procedures, all of C*, all of EBNF itself.</p>
+      <p class="f" data-step="3">Regular inside context-free inside … — the sizes of notation form a ladder, and week 9 says where the ladder ends.</p>
+    </div>
+  </div>
+  <aside class="notes"><p>Run the FSM on 007 and on 42 by finger. Then the parentheses argument, which is the first proof-shaped thing in the class and worth doing properly: whatever number of states the machine has, feed it more opening parentheses than that and two different depths land in the same state, so it cannot tell them apart. That is why the compiler in week 8 has a stack, and why the machine of week 6 has one too.</p></aside>
+</section>
+
+<section class="slide" data-act="II" data-mins="4.0">
+  <div class="eyebrow">Station II</div>
+  <h2>Everything on this deck is a <span class="j">finite sequence of symbols</span>. Hold that thought.</h2>
+  <div class="fill">
+    <div class="two">
+      <div class="stack">
+        <p class="f" data-step="1">A grammar is a finite text. A program is a finite text. The binary the compiler produced is a finite sequence of bytes. The machine language is a table with fourteen rows.</p>
+        <p class="f" data-step="2">Finite things from a finite alphabet can be <em>listed</em>: all of length one, then two, then three. Next week we do the listing, and it turns out that every program that will ever be written has a number — and that a compiler and an emulator are just arithmetic on those numbers.</p>
+      </div>
+      <div class="card syn f" data-step="3"><span class="h">The gap, so far</span><p>Week 2: one prefix, two meanings. Week 3: one byte, five. Week 4: three notations, one meaning, fixed by decree. The decree is a program, and it is written in one of the three notations. That loop is the subject of week 8.</p></div>
+    </div>
+  </div>
+  <aside class="notes"><p>Close by naming the station. The point to plant for next week: finite and discrete means listable, and listable means numbered. Do not say countable yet; let them arrive at the word.</p></aside>
+</section>
+
+<section class="slide" data-act="II" data-mins="3.0">
+  <div class="eyebrow">Before next week</div>
+  <h2>Recommended exercises.</h2>
+  <div class="fill">
+    <div class="two">
+      <ol class="steps">
+        <li>Read the Notation chapter: C*, RISC-U, EBNF.</li>
+        <li>Write the EBNF rule for a C* character literal, and for a string literal. Check against <span class="mono">grammar.md</span>.</li>
+        <li>Derive <span class="mono">c = c + 1;</span> from the grammar, rule by rule, starting at <span class="mono">statement</span>.</li>
+        <li>Type <span class="mono">tiny.c</span>, compile it with <span class="mono">-S</span>, and find the nine instructions of the loop. Change 7 to 700 and see which bits change.</li>
+        <li>Write a regular expression for the dates of this course, and an EBNF grammar for nested parentheses. Which of the two needs the stack?</li>
+      </ol>
+      <div class="card syn"><span class="h">Next week</span><p>Countability: everything you can write down can be listed, so every program has a number — and a binary is one number, 188,392 bytes long. The compiler compiles itself and gets the same number twice.</p></div>
+    </div>
+  </div>
+  <aside class="notes"><p>Exercise 3 is the one that teaches grammar reading; exercise 4 is the one that teaches that bits are the program.</p></aside>
+</section>
+
+</div>
+</div>
+<script src="../../deck/deck.js"></script>
+</body>
+</html>

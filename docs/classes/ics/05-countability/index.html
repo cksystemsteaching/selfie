@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ICS 05 · Countability</title>
+<link rel="stylesheet" href="../../deck/deck.css">
+</head>
+<body>
+<div id="stage">
+<div id="deck" tabindex="0" aria-label="Presentation: ICS 05 Countability" data-title="ICS 05 · Countability" data-figures="../../../figures/">
+
+<section class="slide" data-act="0" data-mins="1.0">
+  <div class="fig bare" style="position:absolute;inset:0"><canvas data-anim="ambient"></canvas></div>
+  <div class="fill center" style="position:relative">
+    <div class="eyebrow">Introduction to Computer Science · week 5 · station II</div>
+    <h1>Countability</h1>
+    <p class="lead">Everything you can write down can be listed. So a program is a number — and a compiler is arithmetic.</p>
+  </div>
+  <aside class="notes"><p>The first genuinely mathematical session, and a short piece of mathematics: pairing, listing, numbering. Then it turns back into engineering immediately, because a binary is a number and selfie writes one. End with the fixed point run live. Book: the first half of the Meaning chapter, up to Give every text a number, and the Selfie chapter's three commands.</p></aside>
+</section>
+
+<section class="slide" data-act="II" data-actname="Countable" data-mins="6.0">
+  <div class="eyebrow">Counting without numbers</div>
+  <h2>Two sets are the same size if you can <span class="k">pair them up</span>.</h2>
+  <div class="fill row mid">
+    <div class="fig grow" data-fig="pairing"><span class="cap">n ↔ 2n</span></div>
+    <div class="stack grow">
+      <p class="f" data-step="1">No counting needed — just a perfect pairing. Every left has exactly one right, and nothing is left over. That is how you know your two hands have the same number of fingers without counting.</p>
+      <p class="f" data-step="2">So there are as many even numbers as numbers: pair n with 2n. The part is as big as the whole. Galileo found this disturbing in 1638. Cantor made it the definition.</p>
+      <p class="f" data-step="3">A set pairable with 1, 2, 3, … is called <strong>countable</strong>. It can be <em>listed</em>: first, second, third, and every element at some finite position.</p>
+    </div>
+  </div>
+  <aside class="notes"><p>Stress the operational meaning of countable: can be put in a list. That word does all the work of the next three weeks. Let the room feel the evens paradox for a moment and then resolve it by fiat: this is the definition, and the only one that survives infinity.</p></aside>
+</section>
+
+<section class="slide" data-act="II" data-mins="6.0">
+  <div class="eyebrow">Notation</div>
+  <h2>Everything we can write down is <span class="j">countable</span>.</h2>
+  <div class="fill row mid">
+    <div class="fig grow" data-fig="enum"><span class="cap">the enumeration of all texts</span></div>
+    <div class="stack grow">
+      <p class="f" data-step="1">A program is a finite string of symbols. So is a proof, a specification, a sentence, a grammar, a score, a formula, a prompt.</p>
+      <p class="f" data-step="2">List all strings of length 0, then length 1, then 2, then 3 … Every finite text appears at some finite position.</p>
+      <p class="f" data-step="3">So all C* programs that will ever exist form a countable list. Same for all RISC-U binaries. Same for all proofs. Same for all sentences of English.</p>
+      <p class="f" data-step="4">This is not saying notation is small. Countable is already infinite. It is saying notation is finite-and-discrete, and finite things line up.</p>
+    </div>
+  </div>
+  <aside class="notes"><p>Key move: not because notation is small but because it is finite and discrete. The audience should feel this as generous. Ask where selfie.c is on the list: somewhere past the strings of length 365,783, at a finite position, with a number nobody will ever write down. That is fine. It has one.</p></aside>
+</section>
+
+<section class="slide" data-act="II" data-mins="6.0">
+  <div class="eyebrow">Gödelisierung</div>
+  <h2>Give every text a <span class="j">number</span>, and notation becomes something you can <span class="k">compute with</span>.</h2>
+  <div class="fill row mid">
+    <div class="fig grow" data-fig="godel"><span class="cap">text → number → text</span></div>
+    <div class="stack grow">
+      <p class="f" data-step="1">If every text has a position on the list, every text has a number. The simplest version you already know: write the ASCII codes one after the other. A text is a very long integer.</p>
+      <p class="f" data-step="2">Gödel used this in 1931 to make arithmetic talk about arithmetic. The method carries his name: Gödel numbering.</p>
+      <p class="f" data-step="3">Once notation is a number, a program can read a program, run a program — and, once a program can read programs, read <em>itself</em>. Every computer you have ever used is this idea in metal: <strong>code is data</strong>.</p>
+    </div>
+  </div>
+  <aside class="notes"><p>Stress the ordinariness: von Neumann's stored-program architecture is Gödel numbering as hardware. Every student in the room uses self-reference daily without naming it. That is why the theorems in weeks 7 to 9 are not exotic; they are the invoice for expressiveness we all want.</p></aside>
+</section>
+
+<section class="slide" data-act="II" data-mins="6.0">
+  <div class="eyebrow">In the terminal</div>
+  <h2>A binary is <span class="j">one number</span>, 188,392 bytes long.</h2>
+  <div class="fill">
+    <div class="term">
+      <span class="l"><span class="p">$</span> <span class="c">./selfie -c selfie.c -o selfie.m</span></span>
+      <span class="l o">./selfie: 188392 bytes generated with 43492 instructions and 14424 bytes of data</span>
+      <span class="l o">./selfie: 188392 bytes with 43492 instructions and 14424 bytes of data written into selfie.m</span>
+      <span class="l"><span class="p">$</span> <span class="c">od -A d -t x1 selfie.m | head -2</span></span>
+      <span class="l o">0000000 7f 45 4c 46 02 01 01 00 00 00 00 00 00 00 00 00</span>
+      <span class="l o">0000016 02 00 f3 00 01 00 00 00 00 00 01 00 00 00 00 00</span>
+      <span class="l"><span class="p">$</span> <span class="c">./selfie -l selfie.m -m 1</span></span>
+      <span class="l o">./selfie: 188392 bytes with 43492 instructions and 14424 bytes of data loaded from selfie.m</span>
+      <span class="l o">selfie.m { -c { source } | -o binary | [ -s | -S ] assembly | -l binary } [ ( -m | -d | -r | -y ) 0-4096 ... ]</span>
+    </div>
+    <div class="two">
+      <p class="sm f" data-step="1">The <span class="mono">-o</span> option writes the number to a file. The first four bytes, 7f 45 4c 46, spell ELF: the file format every Linux program uses, so this number runs on real RISC-V hardware too.</p>
+      <p class="sm f" data-step="2">The <span class="mono">-l</span> option reads the number back and the <span class="mono">-m</span> option runs it — on an emulated machine, inside selfie. The program that just printed the synopsis is a number that selfie computed from a text that is selfie.</p>
+    </div>
+  </div>
+  <aside class="notes"><p>Run all three. The od line is the moment to say that a file is a number: here are its first sixteen digits in base 256. The last command is self-execution, which week 6 explains; today it only shows that the number does what the text said.</p></aside>
+</section>
+
+<section class="slide" data-act="II" data-mins="7.0">
+  <div class="eyebrow">The fixed point</div>
+  <h2>The compiler compiles its own source, and gets the <span class="k">same number twice</span>.</h2>
+  <div class="fill row mid">
+    <div class="fig grow" style="flex:1.2" data-fig="bootstrap"><span class="cap">selfie1.m = selfie2.m</span></div>
+    <div class="stack grow">
+      <div class="term sm">
+        <span class="l"><span class="p">$</span> <span class="c">make self-self-check</span></span>
+        <span class="l o">./selfie -c selfie.c -o selfie1.m -s selfie1.s -m 2 -c selfie.c -o selfie2.m -s selfie2.s</span>
+        <span class="l o">…</span>
+        <span class="l o">diff -q selfie1.m selfie2.m</span>
+        <span class="l o">diff -q selfie1.s selfie2.s</span>
+      </div>
+      <p class="f" data-step="1">Stage one: a C compiler you did not write produces a selfie. Stage two: that selfie compiles selfie.c into selfie1.m. Stage three: selfie1.m, running on the emulator, compiles selfie.c into selfie2.m.</p>
+      <p class="f" data-step="2">selfie1.m and selfie2.m are identical: 188,392 bytes, the same number. The compiler agrees with itself. What that does <em>not</em> prove is the subject of week 8.</p>
+    </div>
+  </div>
+  <aside class="notes"><p>Run it, and let it take its minute; the room should see the second compilation happen inside the emulator, slower. The diff prints nothing, which is the point. Say clearly what it proves, self-agreement, and refuse to say more: a compiler that consistently mistranslated one construct would pass this check. Week 8 has Thompson's compiler for that. Today it is the first fixed point they have seen, and it is real.</p></aside>
+</section>
+
+<section class="slide" data-act="II" data-mins="5.0">
+  <div class="eyebrow">Code is data</div>
+  <h2>A compiler eats programs. An emulator runs programs. A model is trained on programs. And once a system can describe systems, it can describe <span class="j">itself</span>.</h2>
+  <div class="fill">
+    <div class="two">
+      <div class="stack">
+        <p class="f" data-step="1">Nothing on this deck needed anything but the fact that texts are numbers. The compiler is a function from one number, selfie.c, to another, selfie.m. The emulator is a function from a number and an input to what the number does.</p>
+        <p class="f" data-step="2">Self-reference is not a trick. It is the price of being expressive enough to be useful — and the instrument with which, in two weeks, we find exactly where expressiveness ends.</p>
+      </div>
+      <div class="card syn f" data-step="3"><span class="h">Aside · what a number can be</span><p>The same 188,392 bytes are a program to the emulator, data to the compiler that wrote them, and, next week, the tape of a universal machine. Nothing in the bytes says which. You have heard this before.</p></div>
+    </div>
+  </div>
+  <aside class="notes"><p>The thesis of the station. Take the second paragraph slowly: the machine that reads itself is what makes it possible to ask a machine about machines, and that is both the compiler of week 8 and the halting problem of week 9.</p></aside>
+</section>
+
+<section class="slide" data-act="II" data-mins="4.0">
+  <div class="eyebrow">Preview</div>
+  <h2>What we want to <span class="k">talk about</span> is not countable.</h2>
+  <div class="fill">
+    <div class="two">
+      <div class="stack">
+        <p class="f" data-step="1">Programs: countable. What a program <em>does</em> — its answer on every input, an infinite sheet of yes and no — is that countable?</p>
+        <p class="f" data-step="2">Week 7 proves that it is not, with an argument three lines long that is the most consequential of the twentieth century. Week 6 first builds the machine that runs the programs, so that we know exactly what a behaviour is.</p>
+      </div>
+      <div class="stack">
+        <div class="fig grow" data-fig="scale"><span class="cap">we are here: just left of the wall</span></div>
+      </div>
+    </div>
+  </div>
+  <aside class="notes"><p>Point at the map. This week we reached the right edge of the countable box. Leave the question open; it is the one that week 7 answers.</p></aside>
+</section>
+
+<section class="slide" data-act="II" data-mins="3.0">
+  <div class="eyebrow">Before next week</div>
+  <h2>Recommended exercises.</h2>
+  <div class="fill">
+    <div class="two">
+      <ol class="steps">
+        <li>Read the Meaning chapter up to <em>Give every text a number</em>, and the Selfie chapter's three commands.</li>
+        <li>Write down the first sixteen strings over {0, 1} in the order of the enumeration. Where is 1011? What is at position 100?</li>
+        <li>Gödel-number the string <span class="mono">c = 7;</span> by writing its ASCII codes one after the other. Then decode 99611032611032555559.</li>
+        <li>Run <span class="mono">make self-self-check</span> and time it. Roughly how many instructions did the emulator execute? The output tells you.</li>
+        <li>Pair the natural numbers with the integers, negative ones included. Then with the fractions, if you dare.</li>
+      </ol>
+      <div class="card syn"><span class="h">Next week</span><p>The machine: RISC-U, code and data in one memory, the emulator that runs every program written for it — including itself.</p></div>
+    </div>
+  </div>
+  <aside class="notes"><p>Exercise 5 is the bridge to week 7: the fractions are countable, and the walk through the grid is worth having seen before the diagonal.</p></aside>
+</section>
+
+</div>
+</div>
+<script src="../../deck/deck.js"></script>
+</body>
+</html>
