@@ -1,4 +1,4 @@
-# What is Intelligence? From Bits and Bytes to Truth and Proof
+# What is Intelligence? Discovering Unproven Truth
 
 ### by Christoph Kirsch
 
@@ -139,7 +139,7 @@ Computer science is a mystery to so many and yet more and more people use comput
 
 > The question
 
-The title of this book is a question, and I am going to answer it on the first page, so that you know where we are going, and then spend the rest of the book earning the answer. Intelligence is developing new formal languages, or at least new properties in existing ones, which requires finding and understanding promising *unproven* truth. New languages and properties let us ask new questions about that truth, and then answer them in proofs. Forever. If that sounds abstract, it is, for now. By the end of the book every word in it will have a precise meaning and a runnable example, and the question everyone actually asks, whether the machines that talk are intelligent, will have been replaced by better questions that you can answer yourself.
+The title of this book is a question, and I am going to answer it on the first page, so that you know where we are going, and then spend the rest of the book earning the answer. Intelligence is developing new formal languages, or at least new properties in existing ones, which requires discovering and understanding promising *unproven* truth. New languages and properties let us ask new questions about that truth, and then answer them in proofs. Forever. If that sounds abstract, it is, for now. By the end of the book every word in it will have a precise meaning and a runnable example, and the question everyone actually asks, whether the machines that talk are intelligent, will have been replaced by better questions that you can answer yourself.
 
 The purpose of the book, in one sentence, is a deep understanding of the basic principles of computer science, deep enough to position generative AI, and whatever comes next, properly. The principles were true before this technology arrived and will still be true after whatever replaces it. That is why they are worth a book, and why the book is not about any particular machine, product, or year.
 
@@ -8488,7 +8488,7 @@ Fermat asserted his last theorem in the margin of a book; Wiles proved it 358 ye
 
 > The definition
 
-Intelligence is developing new formal languages, or at least new properties in existing ones, which requires finding and understanding promising *unproven* truth. New languages and properties let us ask new questions about that truth, and then answer them in proofs. Forever.
+Intelligence is developing new formal languages, or at least new properties in existing ones, which requires discovering and understanding promising *unproven* truth. New languages and properties let us ask new questions about that truth, and then answer them in proofs. Forever.
 
 The definition has two halves, and they map onto a university. *Developing the skills to answer* is proving, computing, measuring, building. It is rigorous, cumulative, and teachable, and it is what an undergraduate program gives you. *Choosing the questions* is deciding which unproven truth is worth formalizing. It is not deducible and not teachable by rote, and it is what advanced, graduate-level study is for. Both are necessary. Notice where the difficulty sits: not in the proving, which machines do superbly, but in the finding, which nothing yet does reliably. And notice what the definition is not: not a threshold, not a score, not a possession. It is an activity with a direction and no terminating condition. Test it against a student learning statistics, a field adopting an instrument, an evolutionary lineage inventing the codon, a model being fine-tuned. All satisfy it, and none of it can be obsoleted by a product launch.
 
@@ -8504,7 +8504,7 @@ Read the specimen of this book against that definition, one card at a time. A la
 
 > This is exactly why you study a field in depth
 
-Not because the machines are unavailable. They are extravagantly available, and they will get better every year of your career. But finding and understanding promising unproven truth requires having lived inside a subject long enough to feel where it is thin, where it is wrong, and where it is about to give. No summary, no search, and no generated answer transfers that. It is built, slowly, and it is yours. It is the four slots of working memory pointing at ten thousand patterns, and the patterns took years. And it need not be computer science. Every field has unproven truth in front of it: history, medicine, ecology, music theory, economics, law. The method in this book is field-independent; the depth has to be specific. Pick the field, or fields, whose unsolved problems still make you *strangely comfortable*. It is a better selection criterion than any salary table.
+Not because the machines are unavailable. They are extravagantly available, and they will get better every year of your career. But discovering and understanding promising unproven truth requires having lived inside a subject long enough to feel where it is thin, where it is wrong, and where it is about to give. No summary, no search, and no generated answer transfers that. It is built, slowly, and it is yours. It is the four slots of working memory pointing at ten thousand patterns, and the patterns took years. And it need not be computer science. Every field has unproven truth in front of it: history, medicine, ecology, music theory, economics, law. The method in this book is field-independent; the depth has to be specific. Pick the field, or fields, whose unsolved problems still make you *strangely comfortable*. It is a better selection criterion than any salary table.
 
 > Truth can only be approximated, and the approximating never stops
 

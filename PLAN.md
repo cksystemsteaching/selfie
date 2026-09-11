@@ -21,7 +21,7 @@ system, a language model — runs into Cantor, Gödel, Turing and Rice. Every on
 read twice: **what it forbids** and **what it opens**. The answer to the title:
 
 > Intelligence is developing new formal languages — or at least new properties in existing
-> ones — which requires finding and understanding promising *unproven* truth.
+> ones — which requires discovering and understanding promising *unproven* truth.
 
 The purpose, stated early in every talk and in the book's introduction: a deep understanding
 of the basic principles of computer science, deep enough to position generative AI, and
@@ -44,7 +44,7 @@ repository's extras.
 | III | **Meaning** (uncountable) | Cantor's diagonal on subsets and on behaviours; meanings outnumber notations; truths without proof; Gödel I & II; halting; universality; Rice | A compiler defines the meaning of the language it is written in; self-compilation as fixed point; trusting trust; mipster as universal machine; hypster and the bootstrap problem; what starc can and cannot decide | No final language, no self-certificate, no decision procedure for meaning / no ceiling |
 | IV | **Cost** (decidable ≠ doable) | P, NP, NP-completeness, Cook–Levin; why SAT is hard and why solvers work anyway; SMT; bounded model checking; Landauer | rotor turns RISC-V code into a BTOR2/SMT-LIB formula; bitme unrolls it k steps and asks a solver; babysat is the executable specification of a SAT solver | Brute force as a strategy / cryptography, and room for cleverness |
 | V | **Machines** (AI) | What an LLM mechanically is; hallucination as plausible-and-not-true; world models as a bid for semantics; the loops are closed; generation cheap, verification not | The verification gate: compiler, test, model checker, measurement — every tool of station IV read as the outside check a generator cannot supply | No self-verifying system / value at the two ends: specification and verification |
-| VI | **Intelligence** (practice) | The definition; depth as the organ for finding unproven truth; six habits; metrics and Goodhart | Selfie read against the definition: a language and its meaning, a machine, a fixed point and its limit, a workshop of outside checks | — |
+| VI | **Intelligence** (practice) | The definition; depth as the organ for discovering unproven truth; six habits; metrics and Goodhart | Selfie read against the definition: a language and its meaning, a machine, a fixed point and its limit, a workshop of outside checks | — |
 
 Every class visits all six stations. ICS visits them at the level of the talk with selfie
 run live. CC dwells in station III from the compiler side and does station IV in full. SE
@@ -52,7 +52,7 @@ dwells in station III from the systems side and does station IV applied.
 
 ## 3. The book
 
-**Title:** *What is Intelligence?* — subtitle to be chosen (see open questions), e.g.
+**Title:** *What is Intelligence? Discovering Unproven Truth* — the subtitle is the second half of the definition; earlier candidates were e.g.
 *From Bits and Bytes to Truth and Proof*.
 
 **What stays:** the tone (first person, slow yourself down, the Lego brick factory, the
@@ -363,9 +363,6 @@ to the class index.
 
 ## 11. Still open
 
-- The subtitle. Candidates: *From Bits and Bytes to Truth and Proof*; *Elementary Computer
-  Science from Finite Bits to Infinite Meaning*; *Notation, Meaning, and the Gap Between*.
-  The book currently carries no subtitle.
 - The bitme demonstration in ICS 12, CC 12 and SE 10, and the Cost chapter: verified with
   `--use-bitwuzla` on 2026-09-11 (division by zero at step 76 with input '0', again at step
   89 with '2', the flagged exit(0) at step 106 with byte 12); Z3 and the BVDD engine were

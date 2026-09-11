@@ -45,7 +45,7 @@ enough to describe itself.
 It answers its own title like this:
 
 > Intelligence is developing new formal languages — or at least new properties in existing ones —
-> which requires finding and understanding promising **unproven** truth. New languages and properties
+> which requires discovering and understanding promising **unproven** truth. New languages and properties
 > let us ask new questions about that truth, and then answer them in proofs. Forever.
 
 Which splits into the two halves of a university education: *developing the skills to answer*
