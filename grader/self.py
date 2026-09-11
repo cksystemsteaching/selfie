@@ -379,6 +379,17 @@ def read_property_file(path):
     return props
 
 
+def bitme_solver_flag():
+    # the solver the decks use, if installed; bitme's own default otherwise
+    for module, flag in [('bitwuzla', '--use-bitwuzla'), ('z3', '--use-Z3')]:
+        try:
+            __import__(module)
+            return flag
+        except ImportError:
+            pass
+    return ''
+
+
 def check_rotor_model(directory, memory_safety_only) -> List[Check]:
     program = directory + '/program.c'
     model = directory + '/program-rotorized.btor2'
@@ -419,10 +430,11 @@ def check_rotor_model(directory, memory_safety_only) -> List[Check]:
                 return False, 'bitme found an input reaching ' + bad + ' within the bound'
             return True, ''
 
-    bitme = './tools/bitme.py -kmax {} {} {}'.format(bound, '-analyzor' if verdict == 'reachable' else '', model)
+    bitme = './tools/bitme.py {} -kmax {} {} {}'.format(bitme_solver_flag(), bound, '-analyzor' if verdict == 'reachable' else '', model)
 
     return check_execution('true', 'property.txt names a bad state, a bound, and a verdict',
                            success_criteria=property_file_is_valid, mandatory=True) + \
+        check_execution('make rotor', 'rotor builds', mandatory=True, timeout=120) + \
         check_execution('./selfie -c {}'.format(program), 'program compiles') + \
         check_execution('./selfie -c {} -m 128 < /dev/null'.format(program), 'program runs on mipster',
                         success_criteria=lambda code, out: (True, '')) + \
