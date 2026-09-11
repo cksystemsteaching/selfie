@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SE 12 · Universality for Systems</title>
+<link rel="stylesheet" href="../../deck/deck.css">
+</head>
+<body>
+<div id="stage">
+<div id="deck" tabindex="0" aria-label="Presentation: SE 12 Universality for Systems" data-title="SE 12 · Universality for Systems" data-figures="../../../figures/">
+
+<section class="slide" data-act="0" data-mins="1.0">
+  <div class="fig bare" style="position:absolute;inset:0"><canvas data-anim="ambient"></canvas></div>
+  <div class="fill center" style="position:relative">
+    <div class="eyebrow">Systems Engineering · week 12 · station III</div>
+    <h1>Universality for <span class="k">Systems</span></h1>
+    <p class="lead">The universal machine, the halting problem, Rice on schedulers, and deadlock detection as the approximation a kernel can afford.</p>
+  </div>
+  <aside class="notes"><p>The theory week, placed late on purpose: every theorem here was met in the code first. Now the theorems are stated properly and the kernel's answers to them are collected in one place. Book: Intelligence chapter's halting and Rice sections; Computing chapter's blocking and deadlocks callout.</p></aside>
+</section>
+
+<section class="slide" data-act="III" data-actname="Limits" data-mins="7.0">
+  <div class="eyebrow">The universal machine</div>
+  <h2>Mipster is one program that becomes every program. That is why a kernel <span class="x">exists</span>.</h2>
+  <div class="fill">
+    <div class="two">
+      <div class="stack">
+        <p class="f" data-step="1">Turing, 1936: one machine, handed the description of any other, does what that one does. The emulator of week 3 is that machine, and the program it is handed is data. A universal machine cannot be specialised to safe programs only, because it must accept every description.</p>
+        <p class="f" data-step="2">So the machine will run programs that loop, that address memory they do not own, that never yield. Nothing can screen them out in advance, and something has to deal with them at run time. That something is the kernel. Operating systems are what universality makes necessary.</p>
+      </div>
+      <div class="card syn f" data-step="3"><span class="h">The point of the week</span><p>The kernel is not a collection of workarounds for badly written programs. It is the run-time consequence of three theorems about what cannot be known at design time. Each theorem, each consequence, on the next slides.</p></div>
+    </div>
+  </div>
+  <aside class="notes"><p>The framing. Students have built the kernel; now say why it had to exist. Universality is the gift and the reason there is something to govern.</p></aside>
+</section>
+
+<section class="slide" data-act="III" data-mins="8.0">
+  <div class="eyebrow">Halting</div>
+  <h2>No program decides whether another program stops. The proof is a <span class="k">process</span> that asks about itself.</h2>
+  <div class="fill row mid">
+    <div class="fig grow" style="flex:1.1" data-fig="halt"><span class="cap">the halting construction: a program that halts iff it does not</span></div>
+    <div class="stack grow">
+      <p class="f" data-step="1">Suppose <em>H</em> decides halting. Build <em>D</em>: run <em>H</em> on its own input, and loop if <em>H</em> says halt, halt if it says loop. Run <em>D</em> on <em>D</em>. Either answer contradicts itself. Cantor's diagonal, on programs; Gödel's sentence, on machines. Self-reference, the guiding principle of the book, does the work.</p>
+      <p class="f" data-step="2">The kernel's answer, week 5: do not decide, bound. The timer interrupt is a proof-free guarantee that every context yields, bought by preempting the ones that would not. What a scheduler knows about a program's future is exactly nothing, and the design is consistent with that.</p>
+      <p class="f" data-step="3">Fork, week 7, is the construction made literal: a process that runs a copy of itself and asks the copy a question. The kernel copes because the copy is isolated, and isolation is what stops self-reference from becoming a contradiction.</p>
+    </div>
+  </div>
+  <aside class="notes"><p>The construction on the figure, then two systems readings: the timer, and fork as the diagonal. The last point is a nice one: isolation is how a system tolerates self-reference without paradox.</p></aside>
+</section>
+
+<section class="slide" data-act="III" data-mins="8.0">
+  <div class="eyebrow">Rice</div>
+  <h2>Every non-trivial property of what a program <span class="x">does</span> is undecidable. Here is the kernel's list.</h2>
+  <div class="fill">
+    <table class="t">
+      <tr><th>the kernel would like to know</th><th>a property of</th><th>what it does instead</th></tr>
+      <tr class="f" data-step="1"><td>will this process yield?</td><td>behaviour</td><td>timer interrupt · week 5</td></tr>
+      <tr class="f" data-step="1"><td>how long will this job run?</td><td>behaviour</td><td>a policy, round robin · week 5</td></tr>
+      <tr class="f" data-step="2"><td>will this process touch that page?</td><td>behaviour</td><td>page faults on demand · week 4</td></tr>
+      <tr class="f" data-step="2"><td>will this block be used again?</td><td>behaviour</td><td>reachability · week 9</td></tr>
+      <tr class="f" data-step="3"><td>will these threads deadlock?</td><td>behaviour</td><td>detect the cycle when it exists · today</td></tr>
+      <tr class="f" data-step="3"><td>is this program safe to run?</td><td>behaviour</td><td>isolate it, and bound it · every week</td></tr>
+      <tr class="f" data-step="4"><td>has this process called exit?</td><td>the door</td><td>decided, exactly · week 7</td></tr>
+    </table>
+    <p class="sm f" data-step="4">The last row is the pattern: what happens at the interface is syntax, recorded and decidable. What happens inside is semantics, and Rice says the kernel may not know it. Every mechanism in the class sits in the right-hand column.</p>
+  </div>
+  <aside class="notes"><p>The table is the summary of the class. Read it row by row and ask the room which week supplied the right-hand column before revealing it. The last row shows the boundary: interface facts are decidable, behaviour facts are not.</p></aside>
+</section>
+
+<section class="slide" data-act="III" data-mins="8.0">
+  <div class="eyebrow">Deadlock</div>
+  <h2>Prevention is undecidable. Detection is a <span class="j">cycle</span> in a graph.</h2>
+  <div class="fill">
+    <div class="two">
+      <div class="stack">
+        <p class="f" data-step="1">Four conditions, all necessary: mutual exclusion, hold and wait, no preemption of held resources, and a circular wait. Break any one by design and deadlock is impossible. Ordering all locks breaks the fourth; that is the discipline most kernels adopt, and it is a proof obligation on the programmer, not the machine.</p>
+        <p class="f" data-step="2">Whether an arbitrary program <em>will</em> deadlock is a behaviour property: Rice. Whether the system <em>is</em> deadlocked now is a fact about the current state: a cycle in the waits-for graph, blocked contexts as nodes, held locks as edges. Linear time. The kernel checks the present because it cannot see the future.</p>
+      </div>
+      <div class="card syn f" data-step="3"><span class="h">Then what?</span><p>Detection tells you a cycle exists. Recovery is killing a process in it, which is the halting problem's answer once more: preempt what cannot be reasoned with. Or do what most systems do, and let the user notice. Detection is an approximation the kernel can afford; prevention is a proof it cannot make.</p></div>
+    </div>
+  </div>
+  <aside class="notes"><p>Coffman's conditions, then the decidability split, which is the same split as liveness versus reachability last time. Week 8's blocked contexts are the graph. Recovery by killing is the timer again.</p></aside>
+</section>
+
+<section class="slide" data-act="III" data-mins="5.0">
+  <div class="eyebrow">Gödel, once more</div>
+  <h2>A kernel cannot verify its own isolation. Neither can anything <span class="x">else</span> that is expressive enough.</h2>
+  <div class="fill">
+    <div class="two">
+      <div class="stack">
+        <p class="f" data-step="1">Week 6 said it for hypster: isolation comes from a ground the kernel does not control, hardware privilege or a smaller kernel beneath. Gödel's second theorem, run as a system. The trusted computing base is the axiom set, and the verified kernels of the world are proofs relative to it.</p>
+        <p class="f" data-step="2">The same theorem applies to any system that is universal, including the ones that next week will run as processes under your kernel. A system cannot certify itself; the certificate has to come from outside, from something smaller, that somebody understands.</p>
+      </div>
+      <div class="card f" data-step="3"><span class="h">Next week</span><p>Agents as processes. A generator produces programs; a kernel runs them under isolation and bounds. Sandboxing is virtualization, and the gate is everything this class built.</p></div>
+    </div>
+  </div>
+  <aside class="notes"><p>Collect the three theorems and their kernel answers, and plant next week: the newest untrusted program is generated, and the kernel's tools are the ones that apply.</p></aside>
+</section>
+
+</div>
+</div>
+<script src="../../deck/deck.js"></script>
+</body>
+</html>

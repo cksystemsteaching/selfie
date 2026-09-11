@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SE 14 · What is a System?</title>
+<link rel="stylesheet" href="../../deck/deck.css">
+</head>
+<body>
+<div id="stage">
+<div id="deck" tabindex="0" aria-label="Presentation: SE 14 What is a System?" data-title="SE 14 · What is a System?" data-figures="../../../figures/">
+
+<section class="slide" data-act="0" data-mins="1.0">
+  <div class="fig bare" style="position:absolute;inset:0"><canvas data-anim="ambient"></canvas></div>
+  <div class="fill center" style="position:relative">
+    <div class="eyebrow">Systems Engineering · week 14 · station VI</div>
+    <h1>What is a <span class="k">System</span>?</h1>
+    <p class="lead">The three sentences, earned. The definition. The field.</p>
+  </div>
+  <aside class="notes"><p>The closing session. The three sentences of week 1 mapped onto the weeks, then the book's definition of intelligence and what a systems engineer does in its terms. Book: Intelligence chapter.</p></aside>
+</section>
+
+<section class="slide" data-act="VI" data-actname="Definition" data-mins="10.0">
+  <div class="eyebrow">The sentences, earned</div>
+  <h2>Isolation is the <span class="k">semantic</span> problem. Virtualization buys performance with <span class="x">self-reference</span>. What a kernel cannot decide, it <span class="j">bounds</span>.</h2>
+  <div class="fill">
+    <div class="three">
+      <div class="card syn f" data-step="1"><span class="h">Isolation</span><p>Weeks 2 to 4 and 7 to 9. Give each program the illusion of the whole machine: the door, translated addresses, a context of its own. A process is a meaning the kernel constructs, and threads are what happens when the construction is shared.</p></div>
+      <div class="card f" data-step="2"><span class="h">Self-reference</span><p>Weeks 3 and 6. An OS by emulation equals one by virtualization; the difference is a factor of twelve and the kernel needing what it provides. Gödel II as an operating system; the TCB as its axioms.</p></div>
+      <div class="card f" data-step="3"><span class="h">Bounds</span><p>Weeks 5, 9 to 12. The timer for halting, reachability for liveness, cycle detection for deadlock, the model checker's <em>k</em> for Rice, the profile for the budget. Every mechanism a chosen approximation, named.</p></div>
+    </div>
+    <p class="sm f" data-step="4">A system, then: a construction of isolated meanings on one universal machine, held together by a small trusted ground and a set of bounds that stand in for what no program can decide.</p>
+  </div>
+  <aside class="notes"><p>Map every week onto one of the three sentences; the students should be able to reproduce the mapping. The final sentence is the class's definition of a system, and it is built from the book's vocabulary.</p></aside>
+</section>
+
+<section class="slide" data-act="VI" data-mins="7.0">
+  <div class="eyebrow">The axis</div>
+  <h2>Where a systems engineer stands.</h2>
+  <div class="fill row mid">
+    <div class="fig grow" style="flex:1.3" data-fig="station"><span class="cap">the six stations; this class dwelt in III and worked in IV</span></div>
+    <div class="stack grow">
+      <p class="f" data-step="1">Station III is home: the universal machine, the theorems about what it cannot know about itself, and the kernel as their run-time consequence. Station IV is the workshop: the model checker for the properties, the profiler for the budget, physics for the floor.</p>
+      <p class="f" data-step="2">The compiler class stands one station earlier, where notation becomes meaning. The introduction class walks the whole line. The three classes are one argument: proof against truth, and the gap between, which is where engineering lives.</p>
+    </div>
+  </div>
+  <aside class="notes"><p>Place the class on the shared map. Say once more that the three classes are one book.</p></aside>
+</section>
+
+<section class="slide" data-act="VI" data-mins="8.0">
+  <div class="eyebrow">Intelligence</div>
+  <h2>Developing new languages, or new properties in existing ones, by finding and understanding promising <span class="x">unproven</span> truth.</h2>
+  <div class="fill">
+    <div class="two">
+      <div class="stack">
+        <p class="f" data-step="1">The book's definition. Every notation was invented by someone who saw a truth before it could be proved: Turing's machine before there were computers, the process before there were kernels, the page before there was hardware to walk it.</p>
+        <p class="f" data-step="2">Systems engineering, against the definition: the properties are isolation, liveness, progress, safety, each a new property in the language of the machine, each seen as true of good systems before anyone could prove it of one. The proofs came later, bounded, and the field advances by inventing the next property to want.</p>
+      </div>
+      <div class="card syn f" data-step="3"><span class="h">And the machines</span><p>A generator produces notation in existing languages. It does not find unproven truth, because truth is a property of meaning and it has none. That is not a limitation of this year's model; it is the definition. The person who states the next property, and checks it, is doing the thing.</p></div>
+    </div>
+  </div>
+  <aside class="notes"><p>The definition, and the class held against it. The card is the book's positioning of generative AI, stated once and calmly.</p></aside>
+</section>
+
+<section class="slide" data-act="VI" data-mins="6.0">
+  <div class="eyebrow">Beyond the class</div>
+  <h2>What to read, what to build, what to measure.</h2>
+  <div class="fill">
+    <div class="three">
+      <div class="card f" data-step="1"><span class="h">Read</span><p>Anderson and Dahlin for the kernels that are not selfie. The seL4 papers for a proof relative to a TCB. Herlihy and Shavit for the interleavings this class only counted. The book's Recommended Readings, all ten.</p></div>
+      <div class="card f" data-step="2"><span class="h">Build</span><p>A hypster in real supervisor mode on real RISC-V. A collector that does not stop the world. A model of two contexts in rotor, which nobody has done yet, and which would let week 10 see week 8.</p></div>
+      <div class="card syn f" data-step="3"><span class="h">Measure</span><p>Everything, and change the metric before it decays. The profile is the start of the argument. Twenty watts is the standing challenge.</p></div>
+    </div>
+    <p class="sm f" data-step="4">Thank you. Keep your selfie; it is the machine, the kernel, and the proof of both, in twelve thousand lines you have read.</p>
+  </div>
+  <aside class="notes"><p>Close with the three directions and the line count. The rotor-with-concurrency item is a real open project and a real thesis topic.</p></aside>
+</section>
+
+</div>
+</div>
+<script src="../../deck/deck.js"></script>
+</body>
+</html>

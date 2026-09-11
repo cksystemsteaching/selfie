@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Systems Engineering</title>
+<style>
+:root{--ground:#080E18;--panel:#111C2E;--ink:#E7EDF6;--ink-2:#B6C4D8;--muted:#8093AF;--line:rgba(122,162,204,.16);--syn:#E0A550;--sem:#5BB0C7;
+  --serif:"Iowan Old Style","Palatino Linotype",Palatino,"Book Antiqua","URW Palladio L",Georgia,serif;--mono:"JetBrains Mono","SFMono-Regular","SF Mono",Menlo,Consolas,"DejaVu Sans Mono",monospace}
+@media (prefers-color-scheme: light){:root{--ground:#EFF1F3;--panel:#FFFFFF;--ink:#131C2A;--ink-2:#39485C;--muted:#5D6E85;--line:rgba(19,28,42,.18);--syn:#A2661A;--sem:#1F6C86}}
+body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--serif);font-size:17px;line-height:1.5}
+.page{max-width:860px;margin:0 auto;padding:56px 28px 80px}
+.eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.2em;text-transform:uppercase;color:var(--syn)}
+h1{font-weight:400;font-size:40px;line-height:1.1;margin:8px 0 12px}
+p{color:var(--ink-2);max-width:66ch}
+a{color:var(--sem);text-decoration:none}
+table{border-collapse:collapse;width:100%;margin:28px 0;font-size:15px}
+th{font-family:var(--mono);font-weight:500;font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);text-align:left;padding:8px 12px;border-bottom:1px solid var(--line)}
+td{padding:9px 12px;border-top:1px solid var(--line);vertical-align:top;color:var(--ink-2)}
+td.k{font-family:var(--mono);font-size:13px;color:var(--syn);white-space:nowrap}
+td.a{font-family:var(--mono);font-size:12.5px;white-space:nowrap}
+td a{color:var(--ink)}
+.small{font-family:var(--mono);font-size:12px;color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="page">
+<div class="eyebrow">selfie · classes · fifth semester · 14 × 90 min</div>
+<h1>Systems Engineering</h1>
+<p>Isolation is the semantic problem of systems. Virtualization buys performance by introducing self-reference. What a kernel cannot decide, it bounds. Fourteen sessions that build hypster, the hypervisor in <a href="https://github.com/cksystemsteaching/selfie">selfie</a>, into an operating system with processes, threads and locks, and turn a model checker on the result. Week 1 follows the <a href="../../presentations/what-is-selfie/">selfie talk</a>; the book is <a href="https://github.com/cksystemsteaching/selfie/blob/main/book/README.md"><em>What is Intelligence?</em></a>, whose Computing chapter is this class. The purpose, shared with the companion classes, is a deep understanding of basic computer science principles, deep enough to position generative AI and whatever comes next properly.</p>
+<table>
+<tr><th>wk</th><th>station</th><th>deck</th><th>assignment</th><th>pdf</th></tr>
+<tr><td class="k">1</td><td class="k">spine</td><td><a href="01-what-is-selfie/">What is Selfie?</a></td><td class="a">print-your-name</td><td class="small"><a href="01-what-is-selfie/01-what-is-selfie.pdf">pdf</a></td></tr>
+<tr><td class="k">2</td><td class="k">II</td><td><a href="02-the-machine-again/">The Machine, Again</a></td><td class="a">assembler-parser</td><td class="small"><a href="02-the-machine-again/02-the-machine-again.pdf">pdf</a></td></tr>
+<tr><td class="k">3</td><td class="k">III</td><td><a href="03-emulation/">Emulation</a></td><td class="a">self-assembler</td><td class="small"><a href="03-emulation/03-emulation.pdf">pdf</a></td></tr>
+<tr><td class="k">4</td><td class="k">III</td><td><a href="04-virtual-memory/">Virtual Memory</a></td><td class="a"></td><td class="small"><a href="04-virtual-memory/04-virtual-memory.pdf">pdf</a></td></tr>
+<tr><td class="k">5</td><td class="k">III</td><td><a href="05-time-sharing/">Time-Sharing</a></td><td class="a">processes</td><td class="small"><a href="05-time-sharing/05-time-sharing.pdf">pdf</a></td></tr>
+<tr><td class="k">6</td><td class="k">III</td><td><a href="06-self-hosting/">Self-Hosting</a></td><td class="a">fork-wait</td><td class="small"><a href="06-self-hosting/06-self-hosting.pdf">pdf</a></td></tr>
+<tr><td class="k">7</td><td class="k">III</td><td><a href="07-processes/">Processes</a></td><td class="a">fork-wait-exit</td><td class="small"><a href="07-processes/07-processes.pdf">pdf</a></td></tr>
+<tr><td class="k">8</td><td class="k">III</td><td><a href="08-concurrency/">Concurrency</a></td><td class="a">lock, threads</td><td class="small"><a href="08-concurrency/08-concurrency.pdf">pdf</a></td></tr>
+<tr><td class="k">9</td><td class="k">III</td><td><a href="09-runtime-systems/">Runtime Systems</a></td><td class="a">threadsafe-malloc</td><td class="small"><a href="09-runtime-systems/09-runtime-systems.pdf">pdf</a></td></tr>
+<tr><td class="k">10</td><td class="k">IV</td><td><a href="10-verifying-systems-code/">Verifying Systems Code</a></td><td class="a">treiber-stack, rotor-bounds</td><td class="small"><a href="10-verifying-systems-code/10-verifying-systems-code.pdf">pdf</a></td></tr>
+<tr><td class="k">11</td><td class="k">IV</td><td><a href="11-cost/">Cost</a></td><td class="a"></td><td class="small"><a href="11-cost/11-cost.pdf">pdf</a></td></tr>
+<tr><td class="k">12</td><td class="k">III</td><td><a href="12-universality/">Universality for Systems</a></td><td class="a"></td><td class="small"><a href="12-universality/12-universality.pdf">pdf</a></td></tr>
+<tr><td class="k">13</td><td class="k">V</td><td><a href="13-agents-as-processes/">Agents as Processes</a></td><td class="a"></td><td class="small"><a href="13-agents-as-processes/13-agents-as-processes.pdf">pdf</a></td></tr>
+<tr><td class="k">14</td><td class="k">VI</td><td><a href="14-what-is-a-system/">What is a System?</a></td><td class="a"></td><td class="small"><a href="14-what-is-a-system/14-what-is-a-system.pdf">pdf</a></td></tr>
+</table>
+<p class="small">Assignments are autograded; see <a href="https://github.com/cksystemsteaching/selfie/blob/main/assignments/systems-assignments.md">assignments/systems-assignments.md</a> and the <a href="https://github.com/cksystemsteaching/selfie/blob/main/grader/README.md">grader</a>. Companion classes: <a href="../ics/">Introduction to Computer Science</a> and <a href="../cc/">Compiler Construction</a>. Decks: arrows or space to advance, <span class="k">p</span> for presenter notes, <span class="k">?print</span> for the printable version.</p>
+</div>
+</body>
+</html>
