@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CC 10 · Semantics as a Formula</title>
+<link rel="stylesheet" href="../../deck/deck.css">
+</head>
+<body>
+<div id="stage">
+<div id="deck" tabindex="0" aria-label="Presentation: CC 10 Semantics as a Formula" data-title="CC 10 · Semantics as a Formula" data-figures="../../../figures/">
+
+<section class="slide" data-act="0" data-mins="1.0">
+  <div class="fig bare" style="position:absolute;inset:0"><canvas data-anim="ambient"></canvas></div>
+  <div class="fill center" style="position:relative">
+    <div class="eyebrow">Compiler Construction · week 10 · station IV</div>
+    <h1>Semantics as a <span class="k">Formula</span></h1>
+    <p class="lead">Rotor: a bit-precise model of RISC-V in BTOR2. A compiler run backwards, into logic.</p>
+  </div>
+  <aside class="notes"><p>Station IV begins. The compiler turned text into machine code; rotor turns machine code into a formula that says what the machine does. State, init, next, bad. This week is the model; next week the solver; the week after, the two together on the students' own extensions. Book: the Cost chapter's Models of Machines. Assignment: array-multidimensional.</p></aside>
+</section>
+
+<section class="slide" data-act="IV" data-actname="Formula" data-mins="6.0">
+  <div class="eyebrow">The idea</div>
+  <h2>A machine step is a function from state to state. A function on bits is a <span class="j">formula</span>.</h2>
+  <div class="fill">
+    <div class="two">
+      <div class="stack">
+        <p class="f" data-step="1">The machine's state is the pc, 32 registers and memory: bits. One step reads the instruction at the pc and computes the next state: a function on bits. Every function on finitely many bits is a Boolean formula — the adder of the introduction class is a circuit is a formula.</p>
+        <p class="f" data-step="2">So write the step down: <span class="mono">next(state) = if instruction is addi then … else if ld then … else …</span> — one big if-then-else over the fourteen instructions, bit-precise, sixty-four bits wide. That is the semantics of RISC-U as an object a solver can read.</p>
+      </div>
+      <div class="card syn f" data-step="3"><span class="h">The bridge</span><p>The compiler defined C*'s meaning by translating to RISC-U. Rotor defines RISC-U's meaning by translating to logic. Together: the meaning of a C* program as a formula, with the compiler's output as the intermediate. Syntax became semantics, mechanically.</p></div>
+    </div>
+  </div>
+  <aside class="notes"><p>The whole idea in three sentences: the emulator is a step function, a step function on bits is a formula, and a formula is something a solver can answer questions about. Everything else on the deck is the notation for writing that formula down.</p></aside>
+</section>
+
+<section class="slide" data-act="IV" data-mins="8.0">
+  <div class="eyebrow">In the terminal</div>
+  <h2>Rotor eats a C* program and writes the machine that runs it.</h2>
+  <div class="fill">
+    <div class="two">
+      <div class="term sm">
+        <span class="l"><span class="p">$</span> <span class="c">make rotor</span></span>
+        <span class="l o">cc … --include selfie.h tools/rotor.c -o rotor</span>
+        <span class="l"><span class="p">$</span> <span class="c">./rotor -c examples/symbolic/division-by-zero-3-35.c - 0</span></span>
+        <span class="l o">./rotor: 15161 lines of model formulae generated</span>
+        <span class="l o">./rotor: 237537 characters written into examples/symbolic/division-by-zero-3-35-rotorized.btor2</span>
+        <span class="l"><span class="p">$</span> <span class="c">./rotor -c selfie.c - 0</span></span>
+        <span class="l o">./rotor: … lines of model formulae generated, in about the time it takes to compile</span>
+      </div>
+      <div class="stack">
+        <p class="f" data-step="1">Rotor is built on selfie: it uses starc to compile the program and then generates the model of the machine with that binary loaded. Fifteen thousand lines for fifteen lines of C, because most of the model is the machine, not the program.</p>
+        <p class="f" data-step="2">Linear in the size of the binary: rotor models all of selfie, forty-three thousand instructions, the same way. And it models gcc's RISC-V binaries too, including compressed instructions, because it models the machine and not the compiler.</p>
+      </div>
+    </div>
+  </div>
+  <aside class="notes"><p>Run it on the example and on selfie.c. The second takes a moment and produces a model of the whole system, which is the point: the method scales linearly because a model is a transcription, not an analysis. Analysis is the solver's job.</p></aside>
+</section>
+
+<section class="slide" data-act="IV" data-mins="8.0">
+  <div class="eyebrow">BTOR2</div>
+  <h2>Sorts, constants, states, init, next, bad. <span class="k">Every line commented.</span></h2>
+  <div class="fill row mid">
+    <div class="fig grow" style="flex:1.3" data-fig="btor2"><span class="cap">a model, and what unrolling it means</span></div>
+    <div class="stack grow">
+      <div class="term sm">
+        <span class="l o">1 sort bitvec 1 ; Boolean</span>
+        <span class="l o">5 sort bitvec 64 ; 64-bit double word</span>
+        <span class="l o">191 state 5 core-0-pc ; program counter</span>
+        <span class="l o">192 init 5 191 190 ; initializing pc</span>
+        <span class="l o">150 state 71 input-buffer ; uninitialized input buffer</span>
+        <span class="l o">20070 next 5 191 20064 ; program counter</span>
+        <span class="l o">36027 bad 36026 core-0-division-by-zero</span>
+      </div>
+      <p class="sm f" data-step="1">Each line has a number, an operator, a sort, and arguments that are earlier lines: a directed acyclic graph of formulas. <span class="mono">state</span> declares a variable that persists across steps; <span class="mono">init</span> fixes it at step 0; <span class="mono">next</span> says what it is one step later; <span class="mono">bad</span> names a Boolean that must never be true. The input buffer has no <span class="mono">init</span>: the solver chooses it.</p>
+    </div>
+  </div>
+  <aside class="notes"><p>Open the file and walk one thread: the pc's state line, its init, and its next, which is an ite chain over the decoded instruction. Then the bad lines, twenty-four of them. The uninitialised input is the trick that turns one execution into all executions, and it should be said as such.</p></aside>
+</section>
+
+<section class="slide" data-act="IV" data-mins="7.0">
+  <div class="eyebrow">Reading the model</div>
+  <h2>How <span class="mono">next</span> for the program counter is built.</h2>
+  <div class="fill">
+    <div class="two">
+      <div class="stack">
+        <p class="f" data-step="1">Fetch: read the 32-bit word at the pc from the code segment array. Decode: slice out the opcode, funct3, registers, immediate — the decoder of week 5 as slice and concat operations. Then, for each instruction, the new pc: <span class="mono">pc + 4</span> for most, <span class="mono">pc + imm</span> for a taken branch or a jump, the register value for <span class="mono">jalr</span>.</p>
+        <p class="f" data-step="2">All of it combined by <span class="mono">ite</span>: if the instruction is beq and the registers are equal then this else that. The same chain for every register and for memory, where a store is a <span class="mono">write</span> into an array and a load a <span class="mono">read</span> from it.</p>
+      </div>
+      <div class="card syn f" data-step="3"><span class="h">Compare with mipster</span><p>The emulator's <span class="mono">execute</span> is an if-else chain over the same decoded fields, doing the same arithmetic on concrete values. Rotor's <span class="mono">next</span> is the same chain over symbolic ones. Two transcriptions of one semantics, from one file, and the assignment in week 12 is to use one against the other.</p></div>
+    </div>
+  </div>
+  <aside class="notes"><p>The correspondence between mipster and rotor is the thing to land: the same decoder, the same case analysis, one on numbers and one on formulas. Show the two side by side in the sources if the room is with you. Then say what the twenty-four bad properties are and that they are the machine's, not the program's.</p></aside>
+</section>
+
+<section class="slide" data-act="IV" data-mins="5.0">
+  <div class="eyebrow">Unrolling</div>
+  <h2>k copies of the state, chained by <span class="mono">next</span>: a formula that is <span class="k">satisfiable</span> exactly if a bad state is reachable within k steps.</h2>
+  <div class="fill">
+    <div class="two">
+      <div class="stack">
+        <p class="f" data-step="1">Make a copy of every state for steps 0 to k. Constrain step 0 by <span class="mono">init</span>, each step by <span class="mono">next</span> of the previous, and ask whether any <span class="mono">bad</span> can be true at any step. Size: k times the model. Satisfying assignment: the input that does it.</p>
+        <p class="f" data-step="2">That formula goes to a solver next week. Its variables are bits and words and arrays; its size is millions of clauses; and its question is the canonical hard problem.</p>
+      </div>
+      <div class="card f" data-step="3"><span class="h">Two other uses</span><p>Leave the code segment uninitialised as well, and the solver <em>synthesises</em> a program that reaches a state. Model two binaries side by side and ask whether their outputs can differ: <em>equivalence checking</em>, which is what a compiler test would like to be.</p></div>
+    </div>
+  </div>
+  <aside class="notes"><p>Unrolling is bounded model checking, and the figure has it. Mention synthesis and equivalence as what the same formula can do when asked differently; they are not assignments, but they are where rotor's research goes and a student may want to follow.</p></aside>
+</section>
+
+<section class="slide" data-act="IV" data-mins="7.0">
+  <div class="eyebrow">Assignment</div>
+  <h2><span class="mono">array-multidimensional</span>.</h2>
+  <div class="fill">
+    <div class="two">
+      <div class="stack">
+        <ol class="steps">
+          <li><strong>Specify.</strong> Declarations <span class="mono">type identifier [ n ] [ m ]</span> and accesses <span class="mono">a[i][j]</span>, any number of dimensions.</li>
+          <li><strong>Semantics.</strong> Row-major: the address of <span class="mono">a[i][j]</span> is the base plus 8 · (i · m + j). The symbol table entry must record every dimension. Decide it, write it down.</li>
+          <li><strong>Generate.</strong> One multiply and add per dimension, temporaries allocated and freed per index expression. The assertions on temporaries again.</li>
+          <li><span class="mono">./grader/self.py array-multidimensional</span>, <span class="mono">self-compile</span>, and a two-dimensional array somewhere in selfie.c.</li>
+        </ol>
+      </div>
+      <div class="card syn"><span class="h">Keep the test program</span><p>Write a small C* program that exercises your arrays, with an index that can go out of bounds on some input. You will hand it to rotor in two weeks.</p></div>
+    </div>
+  </div>
+  <aside class="notes"><p>The third array assignment, and the request to keep a test program: it is the input to rotor-check in week 12, and a student who writes it now with a deliberate out-of-bounds case will see the solver find the input.</p></aside>
+</section>
+
+</div>
+</div>
+<script src="../../deck/deck.js"></script>
+</body>
+</html>
