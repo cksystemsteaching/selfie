@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Compiler Construction</title>
+<style>
+:root{--ground:#080E18;--panel:#111C2E;--ink:#E7EDF6;--ink-2:#B6C4D8;--muted:#8093AF;--line:rgba(122,162,204,.16);--syn:#E0A550;--sem:#5BB0C7;
+  --serif:"Iowan Old Style","Palatino Linotype",Palatino,"Book Antiqua","URW Palladio L",Georgia,serif;--mono:"JetBrains Mono","SFMono-Regular","SF Mono",Menlo,Consolas,"DejaVu Sans Mono",monospace}
+@media (prefers-color-scheme: light){:root{--ground:#EFF1F3;--panel:#FFFFFF;--ink:#131C2A;--ink-2:#39485C;--muted:#5D6E85;--line:rgba(19,28,42,.18);--syn:#A2661A;--sem:#1F6C86}}
+body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--serif);font-size:17px;line-height:1.5}
+.page{max-width:860px;margin:0 auto;padding:56px 28px 80px}
+.eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.2em;text-transform:uppercase;color:var(--syn)}
+h1{font-weight:400;font-size:40px;line-height:1.1;margin:8px 0 12px}
+p{color:var(--ink-2);max-width:66ch}
+a{color:var(--sem);text-decoration:none}
+table{border-collapse:collapse;width:100%;margin:28px 0;font-size:15px}
+th{font-family:var(--mono);font-weight:500;font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);text-align:left;padding:8px 12px;border-bottom:1px solid var(--line)}
+td{padding:9px 12px;border-top:1px solid var(--line);vertical-align:top;color:var(--ink-2)}
+td.k{font-family:var(--mono);font-size:13px;color:var(--syn);white-space:nowrap}
+td.a{font-family:var(--mono);font-size:12.5px;white-space:nowrap}
+td a{color:var(--ink)}
+.small{font-family:var(--mono);font-size:12px;color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="page">
+<div class="eyebrow">selfie · classes · fourth semester · 14 × 135 min</div>
+<h1>Compiler Construction</h1>
+<p>A compiler is a proof system for syntax and a constructor of semantics, and every semantic question it seems to answer is a chosen approximation. Fourteen sessions that build starc, the compiler in <a href="https://github.com/cksystemsteaching/selfie">selfie</a>, extension by extension, and end with the program as a formula and a solver. Week 1 follows the <a href="../../presentations/what-is-selfie/">selfie talk</a>. Press → to begin a deck, n for the notes, t for the clock, d for the theme.</p>
+<table>
+<tr><th>wk</th><th>station</th><th>deck</th><th>assignment</th><th>pdf</th></tr>
+<tr><td class="k">1</td><td class="k">spine</td><td><a href="01-what-is-selfie/">What is Selfie?</a></td><td class="a">print-your-name</td><td class="small"><a href="01-what-is-selfie/01-what-is-selfie.pdf">pdf</a></td></tr>
+<tr><td class="k">2</td><td class="k">I, II</td><td><a href="02-the-scanner/">The Scanner</a></td><td class="a">hex-literal</td><td class="small"><a href="02-the-scanner/02-the-scanner.pdf">pdf</a></td></tr>
+<tr><td class="k">3</td><td class="k">II</td><td><a href="03-the-parser/">The Parser</a></td><td class="a"></td><td class="small"><a href="03-the-parser/03-the-parser.pdf">pdf</a></td></tr>
+<tr><td class="k">4</td><td class="k">III</td><td><a href="04-symbols-and-types/">Symbols and Types</a></td><td class="a">bitwise-shift-compilation</td><td class="small"><a href="04-symbols-and-types/04-symbols-and-types.pdf">pdf</a></td></tr>
+<tr><td class="k">5</td><td class="k">II</td><td><a href="05-expressions/">Expressions</a></td><td class="a">bitwise-shift-execution</td><td class="small"><a href="05-expressions/05-expressions.pdf">pdf</a></td></tr>
+<tr><td class="k">6</td><td class="k">III</td><td><a href="06-statements/">Statements</a></td><td class="a">bitwise-and-or-not, logical-and-or-not</td><td class="small"><a href="06-statements/06-statements.pdf">pdf</a></td></tr>
+<tr><td class="k">7</td><td class="k">III</td><td><a href="07-procedures/">Procedures</a></td><td class="a">for-loop, lazy-evaluation</td><td class="small"><a href="07-procedures/07-procedures.pdf">pdf</a></td></tr>
+<tr><td class="k">8</td><td class="k">III</td><td><a href="08-self-compilation/">Self-Compilation</a></td><td class="a">array-access</td><td class="small"><a href="08-self-compilation/08-self-compilation.pdf">pdf</a></td></tr>
+<tr><td class="k">9</td><td class="k">III</td><td><a href="09-optimisation/">Optimisation and Rice</a></td><td class="a">array-allocation</td><td class="small"><a href="09-optimisation/09-optimisation.pdf">pdf</a></td></tr>
+<tr><td class="k">10</td><td class="k">IV</td><td><a href="10-semantics-as-a-formula/">Semantics as a Formula</a></td><td class="a">array-multidimensional</td><td class="small"><a href="10-semantics-as-a-formula/10-semantics-as-a-formula.pdf">pdf</a></td></tr>
+<tr><td class="k">11</td><td class="k">IV</td><td><a href="11-sat/">SAT</a></td><td class="a">struct-declaration</td><td class="small"><a href="11-sat/11-sat.pdf">pdf</a></td></tr>
+<tr><td class="k">12</td><td class="k">IV</td><td><a href="12-bounded-model-checking/">Bounded Model Checking</a></td><td class="a">struct-execution, rotor-check</td><td class="small"><a href="12-bounded-model-checking/12-bounded-model-checking.pdf">pdf</a></td></tr>
+<tr><td class="k">13</td><td class="k">V</td><td><a href="13-generated-code/">Generated Code</a></td><td class="a"></td><td class="small"><a href="13-generated-code/13-generated-code.pdf">pdf</a></td></tr>
+<tr><td class="k">14</td><td class="k">VI</td><td><a href="14-what-is-a-compiler/">What is a Compiler?</a></td><td class="a"></td><td class="small"><a href="14-what-is-a-compiler/14-what-is-a-compiler.pdf">pdf</a></td></tr>
+</table>
+<p class="small">Assignments are autograded; see <a href="https://github.com/cksystemsteaching/selfie/blob/main/assignments/compiler-assignments.md">assignments/compiler-assignments.md</a> and the <a href="https://github.com/cksystemsteaching/selfie/blob/main/grader/README.md">grader</a>. Companion classes: <a href="../ics/">Introduction to Computer Science</a> and <a href="../se/">Systems Engineering</a>.</p>
+</div>
+</body>
+</html>

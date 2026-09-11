@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CC 12 · Bounded Model Checking</title>
+<link rel="stylesheet" href="../../deck/deck.css">
+</head>
+<body>
+<div id="stage">
+<div id="deck" tabindex="0" aria-label="Presentation: CC 12 Bounded Model Checking" data-title="CC 12 · Bounded Model Checking" data-figures="../../../figures/">
+
+<section class="slide" data-act="0" data-mins="1.0">
+  <div class="fig bare" style="position:absolute;inset:0"><canvas data-anim="ambient"></canvas></div>
+  <div class="fill center" style="position:relative">
+    <div class="eyebrow">Compiler Construction · week 12 · station IV</div>
+    <h1>Bounded Model Checking</h1>
+    <p class="lead">SMT: bitvectors and arrays by bit-blasting. Bitme: the model of week 10 unrolled and handed to the solver of week 11 — and your own extension checked.</p>
+  </div>
+  <aside class="notes"><p>The two halves of station IV meet: the formula and the solver. Bit-blasting as Cook-Levin made concrete, the theories of words and memory, bitme run live, what a bound buys, and the assignment where students check their own compiler extension. Book: the Cost chapter from From Machine Words to Formulas to What a Bound Buys. Assignments: struct-execution and rotor-check.</p></aside>
+</section>
+
+<section class="slide" data-act="IV" data-actname="SMT" data-mins="8.0">
+  <div class="eyebrow">Theories</div>
+  <h2>A SAT solver speaks bits. A program speaks <span class="j">words</span> and <span class="j">memory</span>. Bit-blasting connects them.</h2>
+  <div class="fill">
+    <div class="fig grow" data-fig="bitblast"><span class="cap">a word operation · a circuit · a formula</span></div>
+    <div class="two">
+      <p class="sm f" data-step="1"><strong>Satisfiability modulo theories.</strong> A propositional skeleton whose atoms are statements in a theory: bitvectors, with the machine's operations on fixed-width words; arrays, with read and write on an indexed store. SMT-LIB is the notation; Z3 and Bitwuzla read it, and BTOR2 too.</p>
+      <p class="sm f" data-step="2"><strong>Bit-blasting.</strong> A 64-bit word is sixty-four variables; an addition is the adder circuit; every gate is three or four clauses with a fresh variable (Tseitin). Arrays get their axioms on demand. The SMT formula becomes a SAT formula, much bigger, and CDCL runs on it. Cook's construction, as engineering.</p>
+    </div>
+  </div>
+  <aside class="notes"><p>The figure is the bridge: word, circuit, clauses. Say that the adder from the introduction class is literally the thing being blasted, and that arrays are handled lazily because instantiating the axiom for every pair of indices would be quadratic. The solvers are black boxes with a stated interface here; the compiler class does not open them further.</p></aside>
+</section>
+
+<section class="slide" data-act="IV" data-mins="9.0">
+  <div class="eyebrow">In the terminal</div>
+  <h2>Bitme: unroll, ask, and read the <span class="k">input</span> off the satisfying assignment.</h2>
+  <div class="fill">
+    <div class="term sm">
+      <span class="l"><span class="p">$</span> <span class="c">./rotor -c examples/symbolic/division-by-zero-3-35.c - 0</span></span>
+      <span class="l"><span class="p">$</span> <span class="c">tools/bitme.py -kmax 120 --use-bitwuzla examples/symbolic/division-by-zero-3-35-rotorized.btor2</span></span>
+      <span class="l o">bitme bounded model checking: -kmin 0 -kmax 120</span>
+      <span class="l o">0: initializing · 1: transitioning · … · k: transitioning</span>
+      <span class="l o">k: core-0-division-by-zero — satisfiable · input-buffer[0] = 48 ('0')</span>
+      <span class="l o">k+n: core-0-bad-exit-code — satisfiable · input-buffer[0] = 49 ('1')</span>
+    </div>
+    <div class="two">
+      <p class="sm f" data-step="1">Bitme walks the steps and, at each, asks the solver about every bad state. Dozens of steps of no while the program sets up its stack and calls malloc and read. Then, at the step where the division instruction is fetched, yes — and the assignment of the uninitialised input buffer is the failing input. Nobody told it to try '0'.</p>
+      <p class="sm f" data-step="2">The output format and the step numbers move with the versions of rotor and bitme; check before class. The shape does not move: a bad state, a step, an input. And the same run on the students' own extensions is the assignment.</p>
+    </div>
+  </div>
+  <aside class="notes"><p>Run it with whichever backend is installed; bitwuzla is the intended one for bitvectors and is markedly faster than Z3 on the division. Let it scroll. Then the sentence: the solver derived the input from the formula, the way CDCL derived that x1 must be false last week.</p></aside>
+</section>
+
+<section class="slide" data-act="IV" data-mins="7.0">
+  <div class="eyebrow">What a bound buys</div>
+  <h2>A <span class="x">no</span> up to k is a <span class="k">theorem</span>. It says nothing about k + 1.</h2>
+  <div class="fill">
+    <div class="two">
+      <div class="card syn f" data-step="1"><span class="h">Testing · and the grader</span><p>One input per run. Shows presence. The grader's few hundred programs are a few hundred points in the space of week 2 of the introduction class.</p></div>
+      <div class="card f" data-step="2"><span class="h">Bounded model checking</span><p>Every input, every path, up to k steps. Shows absence, within the bound, as a theorem. Pays in solver time that grows with k, and says nothing beyond it.</p></div>
+    </div>
+    <p class="f" data-step="3">Rice forbade deciding whether a program divides by zero. This decides whether it does so within k steps — a question about a finite object. Choosing k is choosing what to give up: the sound-but-incomplete corner of week 9's table, with the incompleteness made explicit as a number.</p>
+    <p class="sm f" data-step="4">Everything in the workshop around selfie is such a choice: rotor and bitme within a bound, the type checker for one property, buzzr complete about the crashes it happens to see. Each stated. Each applied to selfie itself.</p>
+  </div>
+  <aside class="notes"><p>The theorem of the session and the closing of the theory of the class. Put testing and checking side by side and say that a compiler engineer uses both: the grader for the many, the checker for the one thing that must not happen.</p></aside>
+</section>
+
+<section class="slide" data-act="IV" data-mins="8.0">
+  <div class="eyebrow">Assignment</div>
+  <h2><span class="mono">rotor-check</span>: verify your own extension.</h2>
+  <div class="fill">
+    <div class="two">
+      <div class="stack">
+        <ol class="steps">
+          <li><strong>A test program.</strong> In C*, using your extension — the for loop, arrays, lazy evaluation, structs — with one input on which it misbehaves: an out-of-bounds index, a division by zero, a wrong exit code, reachable only for some input byte.</li>
+          <li><strong>A property.</strong> State which of rotor's bad states the misbehaviour is, and the bound within which it is reachable.</li>
+          <li><strong>The run.</strong> Compile the program with <em>your</em> selfie, generate its rotor model, run bitme with your bound. Submit the program, the property, the bound, and the input the solver found.</li>
+          <li><strong>The check.</strong> The grader recompiles your program with your selfie, regenerates the model, runs bitme to your bound, and compares the verdict and the input.</li>
+        </ol>
+      </div>
+      <div class="stack">
+        <div class="card syn"><span class="h">And struct-execution</span><p>The other half of the capstone: field access <span class="mono">p-&gt;f</span> as a load or store at the pointer plus the field's offset, types from the entry, the assertions on temporaries. Then use a struct in selfie.c — for the symbol table, if you dare — and self-compile.</p></div>
+        <p class="sm">Rules as always: selfie.c and the grammar; no warnings; self-compile passes. For rotor-check the submission is a directory with the program and a one-page note.</p>
+      </div>
+    </div>
+  </div>
+  <aside class="notes"><p>Two assignments, and rotor-check is the new one. The grader target runs rotor and bitme on the submitted program under the submitted compiler and compares; the exact flags are in the assignment file. The point is that the students turn the tool on their own code, and see the input come back.</p></aside>
+</section>
+
+</div>
+</div>
+<script src="../../deck/deck.js"></script>
+</body>
+</html>

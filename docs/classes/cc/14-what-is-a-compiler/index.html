@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CC 14 · What is a Compiler?</title>
+<link rel="stylesheet" href="../../deck/deck.css">
+</head>
+<body>
+<div id="stage">
+<div id="deck" tabindex="0" aria-label="Presentation: CC 14 What is a Compiler?" data-title="CC 14 · What is a Compiler?" data-figures="../../../figures/">
+
+<section class="slide" data-act="0" data-mins="1.0">
+  <div class="fig bare" style="position:absolute;inset:0"><canvas data-anim="ambient"></canvas></div>
+  <div class="fill center" style="position:relative">
+    <div class="eyebrow">Compiler Construction · week 14 · station VI</div>
+    <h1>What is a <span class="k">Compiler</span>?</h1>
+    <p class="lead">The sentence of week 1, earned. The definition of the subject. And where a compiler class leaves you.</p>
+  </div>
+  <aside class="notes"><p>The last session: collect the semester into the one sentence, read selfie against the definition of computer science, and say what the class was for. Leave time for the capstone review. Book: the Intelligence chapter.</p></aside>
+</section>
+
+<section class="slide" data-act="VI" data-actname="Definition" data-mins="8.0">
+  <div class="eyebrow">The sentence, earned</div>
+  <h2>A compiler is a <span class="j">proof system</span> for syntax and a <span class="k">constructor</span> of semantics — and every semantic question it seems to answer is a chosen approximation.</h2>
+  <div class="fill">
+    <div class="three">
+      <div class="card syn f" data-step="1"><span class="h">Proof system</span><p>Weeks 2–4. The scanner decides a regular language, the parser a context-free one, and a parse is a derivation, which is a proof. The symbol table and the types are attributes of the text; checking them is proof checking. All of it terminates, all of it answers.</p></div>
+      <div class="card f" data-step="2"><span class="h">Constructor</span><p>Weeks 5–8. Each rule's meaning built from its parts' meanings: literals, terms, statements, procedures, compositionally, into RISC-U, into a number. Assignment and while made the language universal — and the compiler blind to behaviour.</p></div>
+      <div class="card f" data-step="3"><span class="h">Approximation</span><p>Weeks 9–12. Every optimisation a syntactic stand-in for a semantic fact; every check sound or complete, never both; and the best anyone can do: the program as a formula, a solver, a bound. Applied to the compiler itself.</p></div>
+    </div>
+  </div>
+  <aside class="notes"><p>Read the sentence and map every week onto one of its three parts. That is the summary of the class, and the students should be able to reproduce it.</p></aside>
+</section>
+
+<section class="slide" data-act="VI" data-mins="6.0">
+  <div class="eyebrow">And the subject</div>
+  <h2>So — what is <span class="j">computer science</span>?</h2>
+  <div class="fill row mid">
+    <div class="stack grow">
+      <div class="thm f" data-step="1"><span class="name">Working definition</span><span class="st">Computer science is the exact study of notation a machine can execute — what can be written down, what can be computed, what can be decided, and what can be afforded — and therefore of the gap, measured precisely, between notation and meaning.</span></div>
+      <p class="sm f" data-step="2">Four verbs, and a compiler class touched every one: written down is the grammar, computed is the code generator, decided is the parser and the type checker, afforded is the solver. The gap is what the fixed point cannot close and the bound cannot cross.</p>
+    </div>
+    <div class="fig grow" style="flex:1.1" data-fig="galaxy"><span class="cap">the specimen, and the workshop around it</span></div>
+  </div>
+  <aside class="notes"><p>The definition from the introduction class, read from the compiler side. Then the specimen: a language and its meaning, a machine, a fixed point and its limit, and the workshop of outside checks, every one of which was a student project once.</p></aside>
+</section>
+
+<section class="slide" data-act="VI" data-mins="6.0">
+  <div class="eyebrow">Intelligence</div>
+  <h2>Finding and understanding promising <span class="k">unproven truth</span> — then building the notation that proves it.</h2>
+  <div class="fill">
+    <div class="two">
+      <div class="stack">
+        <p class="f" data-step="1">Every extension you wrote this semester began with a grammar rule: a small new notation, decided before it was implemented, checked by a machine after. That is the definition of the introduction class at the scale of a homework, and it is what a language designer does at the scale of a career.</p>
+        <p class="f" data-step="2">Machines are formidable at the second half — proving, generating, compiling. The first half, deciding what the notation should be and what it should mean, is not a step inside any system. It is the step to a new one, and nothing hands it to you.</p>
+      </div>
+      <div class="card syn f" data-step="3"><span class="h">Where this leaves you</span><p>You can read a language definition and know what it commits to. You can read a compiler and know which of its answers are proofs and which are guesses. You can hand a program to a solver and read the answer. Those three do not depreciate.</p></div>
+    </div>
+  </div>
+  <aside class="notes"><p>The definition of intelligence, at the compiler's scale: a new grammar rule is a new formal language in miniature. Then the honest career remark: the skills of this class are the ones that appreciate as generation gets cheaper.</p></aside>
+</section>
+
+<section class="slide" data-act="VI" data-mins="5.0">
+  <div class="eyebrow">Beyond the class</div>
+  <h2>The workshop is open.</h2>
+  <div class="fill">
+    <div class="two">
+      <div class="stack">
+        <p class="f" data-step="1">Rotor's synthesis models let a solver write RISC-V code. Its equivalence models let it check that starc's output and gcc's compute the same thing. Bitme's decision diagrams are a research project. The systems class takes hypster where this class took starc.</p>
+        <p class="f" data-step="2">Several tools on the galaxy figure are Master's and PhD work that started as a semester assignment. If a week of this class made you strangely comfortable, that is the selection criterion.</p>
+      </div>
+      <blockquote class="f" data-step="3">Beware of bugs in the above code; I have only proved it correct, not tried it.<cite>Donald E. Knuth, 1977 — and every compiler engineer since</cite></blockquote>
+    </div>
+  </div>
+  <aside class="notes"><p>The invitation, and the capstone review. Then Knuth, because a compiler class should end on the reminder that proof and testing are two approximations of truth and an engineer uses both while trusting neither completely.</p></aside>
+</section>
+
+</div>
+</div>
+<script src="../../deck/deck.js"></script>
+</body>
+</html>

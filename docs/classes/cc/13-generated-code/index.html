@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CC 13 · Generated Code</title>
+<link rel="stylesheet" href="../../deck/deck.css">
+</head>
+<body>
+<div id="stage">
+<div id="deck" tabindex="0" aria-label="Presentation: CC 13 Generated Code" data-title="CC 13 · Generated Code" data-figures="../../../figures/">
+
+<section class="slide" data-act="0" data-mins="1.0">
+  <div class="fig bare" style="position:absolute;inset:0"><canvas data-anim="ambient"></canvas></div>
+  <div class="fill center" style="position:relative">
+    <div class="eyebrow">Compiler Construction · week 13 · station V</div>
+    <h1>Generated Code</h1>
+    <p class="lead">What a large language model is; a generated program as notation; the compiler, the test and the model checker as the gate.</p>
+  </div>
+  <aside class="notes"><p>The machines week, for a compiler class: a generated program is a piece of notation like any other, and this class has spent a semester building the three things it can be checked against. Book: the Machines chapter. No new assignment; the capstone continues.</p></aside>
+</section>
+
+<section class="slide" data-act="V" data-actname="Machines" data-mins="7.0">
+  <div class="eyebrow">What it is</div>
+  <h2>A large language model is a machine trained on <span class="j">notation</span>, asked for <span class="k">meaning</span>.</h2>
+  <div class="fill row mid">
+    <div class="fig grow" style="flex:1.4" data-fig="tokens"><span class="cap">tokens in · a distribution over the next one out · then a sample</span></div>
+    <div class="stack grow">
+      <p class="f" data-step="1">Context in, a probability for every next token out, one sampled and appended. Trained on text by predicting the next token: a purely syntactic signal. Meaning never handed to it.</p>
+      <p class="f" data-step="2">It is arithmetic on bits — in principle a C* program, which mipster would run. It computes what a Turing machine computes, and week 8 said what that means about self-certification.</p>
+      <p class="f" data-step="3">Its behaviour on every context is one of week 7's infinite sheets. Only sampled, never enumerated. Testing shows presence.</p>
+    </div>
+  </div>
+  <aside class="notes"><p>Mechanical and unpolemical. A compiler class should notice that a language model is, among other things, a scanner and a parser that were never written: it learned a distribution over token sequences, and whether that sequence is a C* program is a question it cannot decide, but starc can.</p></aside>
+</section>
+
+<section class="slide" data-act="V" data-mins="7.0">
+  <div class="eyebrow">Hallucination</div>
+  <h2>A hallucination is a <span class="j">proof-shaped object</span> that isn't <span class="k">true</span>.</h2>
+  <div class="fill row mid">
+    <div class="fig grow" style="flex:1.2" data-fig="venn"><span class="cap">plausible · provable · true</span></div>
+    <div class="stack grow">
+      <p class="f" data-step="1">Fluency is syntax. Correctness is semantics. A generated program can be perfectly fluent C — indented, idiomatic, commented — and not parse as C*, or parse and divide by zero, or run and compute the wrong thing. Three tests, and they are not the same test.</p>
+      <p class="f" data-step="2">Not a defect to patch away: the gap of week 7 at consumer scale. The response is the same as everywhere in this class: check the notation against a semantics you own.</p>
+    </div>
+  </div>
+  <aside class="notes"><p>The three regions map onto the three checks of the next slide. Say that the same reasoning is why retrieval, tool use and unit tests help these systems: they import an external semantics, which the machine cannot supply.</p></aside>
+</section>
+
+<section class="slide" data-act="V" data-mins="10.0">
+  <div class="eyebrow">The gate · in this class</div>
+  <h2>Ask a machine for a C* program. Then <span class="k">starc</span>, <span class="k">mipster</span>, <span class="k">rotor</span>.</h2>
+  <div class="fill">
+    <div class="two">
+      <div class="term sm">
+        <span class="l"><span class="p">$</span> <span class="c">./selfie -c generated.c</span></span>
+        <span class="l o">./selfie: syntax error in generated.c in line 3: unexpected symbol "[" found</span>
+        <span class="l o">// … after asking again for C*, not C:</span>
+        <span class="l"><span class="p">$</span> <span class="c">./selfie -c generated.c -m 1 7</span></span>
+        <span class="l o">5040</span>
+        <span class="l"><span class="p">$</span> <span class="c">./rotor -c generated.c - 0 &amp;&amp; tools/bitme.py -kmax 1000 generated-rotorized.btor2</span></span>
+        <span class="l o">… core-0-division-by-zero — satisfiable · input 0</span>
+      </div>
+      <div class="stack">
+        <p class="f" data-step="1"><strong>Does it parse?</strong> The compiler decides, always. Usually not on the first try: the machine produces C fluently, and C* is not C.</p>
+        <p class="f" data-step="2"><strong>Does it do what was asked?</strong> Run it on the inputs you thought of. Presence, not absence.</p>
+        <p class="f" data-step="3"><strong>Can it fail?</strong> Within a thousand steps, on any input: rotor and bitme. Absence, within the bound. None of the three is available to the machine that wrote the program, because the only semantics in the loop is the one you brought.</p>
+      </div>
+    </div>
+  </div>
+  <aside class="notes"><p>Do it live in front of the room with a real chat bot and a real program; the first compile almost always fails on something C* lacks, and that is itself the lesson. Then mipster on a couple of inputs, then rotor. The three checks are the three things this class built, and the point is that the machine cannot run any of them on its own output with any authority.</p></aside>
+</section>
+
+<section class="slide" data-act="V" data-mins="6.0">
+  <div class="eyebrow">The fourth appearance</div>
+  <h2>A generator supplies notation. The semantics has to come from <span class="k">somewhere else</span>.</h2>
+  <div class="fill row mid">
+    <div class="fig grow" style="flex:1.4" data-fig="gate"><span class="cap">what the machine supplies · and what it does not</span></div>
+    <div class="stack grow">
+      <p class="f" data-step="1">Cantor's list needed an object built from outside it. Gödel's system needed a stronger one. Thompson's compiler needed a second compiler. The generator needs a check it cannot be. One theorem, four costumes, and this class met all four.</p>
+      <p class="f" data-step="2">Models grading models, models trained on model output, agents invoking themselves: the loops are closed, and week 8 said what no loop establishes about itself. Spend the effort on the outside check.</p>
+    </div>
+  </div>
+  <aside class="notes"><p>The figure and the list. A compiler class has a particular right to this slide: it built the gate. Say so.</p></aside>
+</section>
+
+<section class="slide" data-act="V" data-mins="5.0">
+  <div class="eyebrow">What changed</div>
+  <h2>Generation got <span class="j">cheap</span>. Verification did <span class="k">not</span>. This class was about verification.</h2>
+  <div class="fill">
+    <div class="two">
+      <div class="stack">
+        <p class="f" data-step="1">Week 11: hard to find, easy to check. That is a description of a healthy relationship with a machine: accept work you could not have produced, provided you can check it. When you cannot, delegation is faith.</p>
+        <p class="f" data-step="2">Value migrates to the two ends the machine does not occupy: stating what should be true, and establishing that it is. A grammar, a type, a test, a bad state and a bound. Every one of those is something you wrote this semester.</p>
+      </div>
+      <div class="card syn f" data-step="3"><span class="h">For the capstone</span><p>Use a machine to draft struct-execution if you like. Then run the three checks, and note in your submission which of them found what. That note is worth more than the draft.</p></div>
+    </div>
+  </div>
+  <aside class="notes"><p>The practical advice, in the class's own terms. The card is a real permission and a real requirement: the draft may be generated, the checks may not be skipped, and the report on what the checks found is what is graded.</p></aside>
+</section>
+
+</div>
+</div>
+<script src="../../deck/deck.js"></script>
+</body>
+</html>

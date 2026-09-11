@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CC 11 · SAT</title>
+<link rel="stylesheet" href="../../deck/deck.css">
+</head>
+<body>
+<div id="stage">
+<div id="deck" tabindex="0" aria-label="Presentation: CC 11 SAT" data-title="CC 11 · SAT" data-figures="../../../figures/">
+
+<section class="slide" data-act="0" data-mins="1.0">
+  <div class="fig bare" style="position:absolute;inset:0"><canvas data-anim="ambient"></canvas></div>
+  <div class="fill center" style="position:relative">
+    <div class="eyebrow">Compiler Construction · week 11 · station IV</div>
+    <h1>SAT</h1>
+    <p class="lead">NP-completeness, Cook and Levin through circuits, why SAT is hard, and how modern solvers answer it anyway: DPLL, CDCL, and babysat as the executable specification.</p>
+  </div>
+  <aside class="notes"><p>The solver session, in full: the theory of NP in an hour and the algorithms in the next. Nobody implements a solver in this class; babysat is there so the box is not opaque, and the worked example on Rivest's formula is the one to do by hand. Book: the Cost chapter from Decidable Is Not Doable to How Modern SAT Solvers Work. Assignment: struct-declaration.</p></aside>
+</section>
+
+<section class="slide" data-act="IV" data-actname="SAT" data-mins="7.0">
+  <div class="eyebrow">Decidable ≠ doable</div>
+  <h2>P, NP, and the <span class="k">asymmetry</span> between finding and checking.</h2>
+  <div class="fill row mid">
+    <div class="fig grow" style="flex:1.1" data-fig="tree"><span class="cap">2ⁿ branches · one satisfying leaf</span></div>
+    <div class="stack grow">
+      <p class="f" data-step="1"><strong>P</strong>: questions some method answers in time polynomial in the input size. Parsing, sorting, running mipster for k steps. Affordable.</p>
+      <p class="f" data-step="2"><strong>NP</strong>: questions whose yes-answers come with a certificate checkable in polynomial time. A satisfying assignment. A colouring of the register graph. A schedule. Finding may take 2<sup>n</sup>; checking is a loop over the clauses.</p>
+      <p class="f" data-step="3">P ⊆ NP, obviously. Whether P = NP is the open question of the exact sciences. Most researchers bet no, and this class is built on that bet.</p>
+    </div>
+  </div>
+  <aside class="notes"><p>Definitions, briskly, with the register allocation of week 9 as the compiler's own example. The certificate is the notion to land: a proof that is easy to check and hard to find, which is the shape of everything in station IV and of the machines in week 13.</p></aside>
+</section>
+
+<section class="slide" data-act="IV" data-mins="8.0">
+  <div class="eyebrow">Cook and Levin · 1971–73</div>
+  <h2>SAT is <span class="k">NP-complete</span>: every question in NP is a formula in disguise.</h2>
+  <div class="fill">
+    <div class="two">
+      <div class="stack">
+        <p class="f" data-step="1">Take any polynomial-time checker — a machine that reads a question and a certificate and says yes or no in p(n) steps. Its whole computation fits in p(n) states of p(n) bits. Write one variable per bit per step, and clauses saying each step follows from the last by the machine's rules — <em>next</em>, as a formula, p(n) times.</p>
+        <p class="f" data-step="2">The result is satisfiable exactly if some certificate makes the checker say yes. Finding the certificate is now solving SAT. So SAT is at least as hard as everything in NP: <strong>NP-hard</strong>, and in NP itself, so <strong>NP-complete</strong>.</p>
+      </div>
+      <div class="stack">
+        <div class="card syn f" data-step="3"><span class="h">You saw this last week</span><p>Cook's construction is rotor's unrolling. A machine's computation written down as a formula, one copy of the state per step. The proof technique of 1971 is the tool of week 10, and the class has already run it.</p></div>
+        <p class="sm f" data-step="4">Karp, 1972: twenty-one more problems, by reduction to and from SAT. By now thousands. Crack one, crack all.</p>
+      </div>
+    </div>
+  </div>
+  <aside class="notes"><p>Do the reduction at the level of ideas, and then point at rotor: the room has seen the construction in the terminal. That identification is the reason this class does station IV in full: the compiler's own tools are the theory's own proof.</p></aside>
+</section>
+
+<section class="slide" data-act="IV" data-mins="6.0">
+  <div class="eyebrow">Why SAT is hard, and why solvers work</div>
+  <h2>The exponential is a <span class="x">worst case</span>. Real formulas have <span class="k">structure</span>.</h2>
+  <div class="fill">
+    <div class="two">
+      <div class="stack">
+        <p class="f" data-step="1">Random 3-SAT: below about 4.26 clauses per variable almost everything is satisfiable and easy; above, almost everything is unsatisfiable and easy; at the threshold, hard for every solver ever built. That phase transition is the closest thing to a picture of where the difficulty lives.</p>
+        <p class="f" data-step="2">Formulas from chips, schedules and programs are not random. They have long implication chains, small backdoors, symmetries. Modern solvers handle millions of variables on them in seconds, and it is one of engineering's great quiet victories.</p>
+      </div>
+      <div class="card f" data-step="3"><span class="h">Hardness is load-bearing</span><p>If SAT were easy, every certificate would be findable: every key, every signature, every password. Difficulty is the raw material of security and the reason abstraction and taste beat compute. The universe we live in trades that power for privacy and discovery.</p></div>
+    </div>
+  </div>
+  <aside class="notes"><p>The phase transition is worth a sketch on the board. Then the reframe: the compiler students should hear that cryptography rests on exactly the hardness that makes their register allocator approximate.</p></aside>
+</section>
+
+<section class="slide" data-act="IV" data-mins="7.0">
+  <div class="eyebrow">Babysat</div>
+  <h2>The executable specification: try true, try false, <span class="k">prune</span> when a clause is already lost.</h2>
+  <div class="fill">
+    <div class="two">
+      <div class="term sm">
+        <span class="l c">uint64_t babysat(uint64_t depth) {</span>
+        <span class="l c">  if (depth == number_of_sat_variables)</span>
+        <span class="l c">    return SAT;</span>
+        <span class="l c">  *(sat_assignment + depth) = TRUE;</span>
+        <span class="l c">  if (instance_may_be_true(depth))</span>
+        <span class="l c">    if (babysat(depth + 1) == SAT) return SAT;</span>
+        <span class="l c">  *(sat_assignment + depth) = FALSE;</span>
+        <span class="l c">  if (instance_may_be_true(depth))</span>
+        <span class="l c">    if (babysat(depth + 1) == SAT) return SAT;</span>
+        <span class="l c">  return UNSAT;</span>
+        <span class="l c">}</span>
+      </div>
+      <div class="stack">
+        <p class="f" data-step="1">Recursion over the variables in order. Set the next one true; if no clause is already false under the partial assignment, recurse. Then false, the same. If both fail, backtrack. <span class="mono">instance_may_be_true</span> is a loop over the clauses; a clause may still be true if some literal is true or unassigned.</p>
+        <p class="f" data-step="2">Four hundred lines in C*, with a DIMACS parser, on top of selfie, so mipster runs it. It is what a SAT solver <em>is</em>, with the search tree of the first slide walked depth-first and pruned at dead branches. Everything below is what makes that walk short.</p>
+        <div class="term sm f" data-step="3">
+          <span class="l"><span class="p">$</span> <span class="c">make sat</span></span>
+          <span class="l o">./babysat: examples/sat/rivest.cnf is satisfiable with -1 -2 3 4</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <aside class="notes"><p>Read babysat.c together; it is short. Note that it already prunes: a clause with all literals false under the partial assignment cuts the subtree, which is the seed of unit propagation. Then run it, and run it on mipster, so the solver is seen as a program on the machine of the class.</p></aside>
+</section>
+
+<section class="slide" data-act="IV" data-mins="6.0">
+  <div class="eyebrow">DPLL · 1962</div>
+  <h2>Propagate what is forced. Decide only when nothing is.</h2>
+  <div class="fill">
+    <div class="two">
+      <div class="stack">
+        <p class="f" data-step="1"><strong>Unit propagation.</strong> A clause with all but one literal false forces the last one. Set it, and repeat, because that may make other clauses unit. A human does this without thinking; babysat does not do it at all.</p>
+        <p class="f" data-step="2"><strong>Pure literals.</strong> A variable occurring only positively can be set true harmlessly; dually for negative.</p>
+        <p class="f" data-step="3"><strong>Decide, backtrack.</strong> Only when neither applies, pick a variable and try a value; on conflict, go back to the last decision and try the other. Depth-first search with the subtrees that propagation kills never entered.</p>
+      </div>
+      <div class="card syn f" data-step="4"><span class="h">What it forgets</span><p>DPLL backtracks to the most recent decision, whether or not that decision caused the conflict, and may run into the same conflict again elsewhere. It does not learn. That is the gap between 1962 and 1996.</p></div>
+    </div>
+  </div>
+  <aside class="notes"><p>Three rules, and the card says what CDCL adds. Have the room propagate on Rivest's formula after x1 = T, x2 = T by hand: C4 forces x3, C5 forces x4, C6 is violated. That is the next slide's first branch.</p></aside>
+</section>
+
+<section class="slide" data-act="IV" data-mins="9.0">
+  <div class="eyebrow">CDCL · on Rivest's formula</div>
+  <h2>A conflict is <span class="k">information</span>. Write down why, and never fail that way again.</h2>
+  <div class="fill row mid">
+    <div class="fig grow" style="flex:1.4" data-fig="sat"><span class="cap">decide · propagate · conflict · learn · backjump</span></div>
+    <div class="stack grow">
+      <p class="f" data-step="1">Decide x1 = T, then x2 = T; propagation forces x3 and x4 and C6 dies. Trace the conflict back: x4 came from x3 and x2, x3 from x1 and x2. The decisions responsible are x1 and x2. <strong>Learn</strong> ¬x1 ∨ ¬x2, a clause implied by the formula.</p>
+      <p class="f" data-step="2">Backjump to right after x1 = T, where the learned clause is unit: x2 = F. Propagate: x4 = T, x3 = F, C1 dies. Everything traces to x1 alone. Learn ¬x1. Level 0: x1 = F.</p>
+      <p class="f" data-step="3">Decide x2 = T: x4 = F, x3 = T, C5 dies. Learn ¬x2. Then x2 = F, x3 = T satisfies everything with x4 free. Four assignments, three learned clauses — and the learned clauses are theorems: x1 and x2 are false in every model, which is the comment in the file.</p>
+    </div>
+  </div>
+  <aside class="notes"><p>Take the full time and do it on the board with the figure as the check. The three things to name: the implication graph, the learned clause as a resolvent, and non-chronological backjumping. Then the engineering, one sentence each: two watched literals, VSIDS, restarts. GRASP 1996, Chaff 2001, and every solver since.</p></aside>
+</section>
+
+<section class="slide" data-act="IV" data-mins="8.0">
+  <div class="eyebrow">Assignment</div>
+  <h2><span class="mono">struct-declaration</span>.</h2>
+  <div class="fill">
+    <div class="two">
+      <div class="stack">
+        <ol class="steps">
+          <li><strong>Specify.</strong> Extend the grammar with <span class="mono">struct</span> declarations: a name, a braced list of fields with types, and the type <span class="mono">struct name *</span> for pointers to them.</li>
+          <li><strong>Represent.</strong> The symbol table needs a new class of entry: a struct with its list of fields, each with a type and an offset. Fields are laid out in declaration order, eight bytes each.</li>
+          <li><strong>Check.</strong> Declaring a variable of a struct pointer type, and the type checking of week 4 extended to the new types. No access yet; that is next week.</li>
+          <li><span class="mono">./grader/self.py struct-declaration</span> and <span class="mono">self-compile</span>.</li>
+        </ol>
+      </div>
+      <div class="card syn"><span class="h">Why structs last</span><p>They are the one extension that changes the symbol table's shape rather than adding an entry, and the one that selfie itself would most benefit from: its own symbol table entries are hand-laid-out words with getter procedures, because C* has no structs. Next week you will be able to write the table you have been reading all semester.</p></div>
+    </div>
+  </div>
+  <aside class="notes"><p>The struct pair is the capstone assignment. This week only declarations and the symbol table representation; access and code generation next week. Point at how selfie fakes structs today, with allocate_line and getters, as the motivation.</p></aside>
+</section>
+
+</div>
+</div>
+<script src="../../deck/deck.js"></script>
+</body>
+</html>
