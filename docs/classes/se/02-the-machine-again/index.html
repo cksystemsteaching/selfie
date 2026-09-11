@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SE 02 · The Machine, Again</title>
+<link rel="stylesheet" href="../../deck/deck.css">
+</head>
+<body>
+<div id="stage">
+<div id="deck" tabindex="0" aria-label="Presentation: SE 02 The Machine, Again" data-title="SE 02 · The Machine, Again" data-figures="../../../figures/">
+
+<section class="slide" data-act="0" data-mins="1.0">
+  <div class="fig bare" style="position:absolute;inset:0"><canvas data-anim="ambient"></canvas></div>
+  <div class="fill center" style="position:relative">
+    <div class="eyebrow">Systems Engineering · week 2 · station II</div>
+    <h1>The Machine, <span class="k">Again</span></h1>
+    <p class="lead">Privilege, exceptions, system calls, machine contexts — and the assembler as a regular language.</p>
+  </div>
+  <aside class="notes"><p>The machine as a kernel sees it: not the fourteen instructions but the boundary around them. Exceptions, the one instruction that crosses the boundary, and the record the kernel keeps of a machine, the context. Then the assembler assignment, which is the loop back to the machine via a bit of compiler frontend. Book: the Machine chapter's Instructions and Emulation, and the Computing chapter's Back to the Basics.</p></aside>
+</section>
+
+<section class="slide" data-act="II" data-actname="Machine" data-mins="7.0">
+  <div class="eyebrow">The state</div>
+  <h2>Everything a kernel manages is on this figure.</h2>
+  <div class="fill row mid">
+    <div class="fig grow" style="flex:1.2" data-fig="risc-u-machine"><span class="cap">registers, pc, ir, 4 GB of memory</span></div>
+    <div class="stack grow">
+      <p class="f" data-step="1">32 registers, a program counter, and 2<sup>32</sup> bytes: the whole state. Deterministic: the next state is a function of this one and the input. Finite: 2<sup>35</sup> bits, which the introduction class placed on its axis.</p>
+      <p class="f" data-step="2">A kernel's job is to give many programs the illusion that each owns this figure. It does that by saving and restoring the registers, and by translating the addresses. Everything else is bookkeeping around those two acts.</p>
+      <p class="f" data-step="3">And it does that on this same machine, with these same registers. Hold that thought until week 6.</p>
+    </div>
+  </div>
+  <aside class="notes"><p>Recall the machine in one slide, and add the kernel's reading of it: the state is what gets saved, restored and translated. The last sentence is the loop, planted early.</p></aside>
+</section>
+
+<section class="slide" data-act="II" data-mins="7.0">
+  <div class="eyebrow">Privilege and exceptions</div>
+  <h2>Two modes. The machine stops and hands control <span class="k">up</span> whenever a program does what it may not.</h2>
+  <div class="fill">
+    <div class="two">
+      <div class="stack">
+        <p class="f" data-step="1">Real RISC-V has privilege levels: user mode, where a program runs, and supervisor mode, where the kernel does. Certain instructions and certain memory are supervisor-only. RISC-U has no mode bits; selfie models the boundary in the emulator instead, which is exactly why emulation is the executable specification of the kernel.</p>
+        <p class="f" data-step="2">An <strong>exception</strong> is the machine stopping the program and jumping to the kernel's handler: division by zero, an access to memory the program does not own, an illegal instruction, a page fault, a timer. The program's state is intact; the kernel decides what happens next.</p>
+      </div>
+      <div class="card syn f" data-step="3"><span class="h">The one instruction that asks</span><p><span class="mono">ecall</span> is an exception the program raises on purpose, with a request in <span class="mono">a7</span> and arguments in <span class="mono">a0</span>–<span class="mono">a3</span>: exit, read, write, open, more memory. It is the whole interface between a program and the world, and the reason isolation is possible at all: everything a program cannot be trusted to do goes through one door.</p></div>
+    </div>
+  </div>
+  <aside class="notes"><p>Say that selfie models privilege by construction: mipster is the supervisor, the guest is the user, and the emulator's exception handling is the kernel. Then the door: one instruction, one register with the request number, and the systems class is about what stands behind the door.</p></aside>
+</section>
+
+<section class="slide" data-act="II" data-mins="7.0">
+  <div class="eyebrow">Machine contexts</div>
+  <h2>A context is the machine, <span class="j">written down</span>.</h2>
+  <div class="fill">
+    <div class="two">
+      <div class="stack">
+        <p class="f" data-step="1">Selfie keeps a <strong>machine context</strong> for every machine it emulates or hosts: the registers, the pc, the page table, the program break, the code and data, the exception that stopped it and why, the parent context. Search for the term in <span class="mono">selfie.c</span>; it is a list of words on the heap with getters and setters, because C* has no structs.</p>
+        <p class="f" data-step="2">To run a context, mipster loads its registers and pc and starts interpreting. To stop it, it saves them back. That is a <strong>context switch</strong>, and it is the same operation whether the machine is emulated or virtualized: only who executes the instructions in between differs.</p>
+      </div>
+      <div class="term sm f" data-step="3">
+        <span class="l o">// selfie.c, machine contexts</span>
+        <span class="l c">uint64_t* create_context(uint64_t* parent, uint64_t* vctxt);</span>
+        <span class="l c">void save_context(uint64_t* context);</span>
+        <span class="l c">void restore_context(uint64_t* context);</span>
+        <span class="l c">uint64_t* mipster(uint64_t* to_context, uint64_t timeout);</span>
+        <span class="l c">uint64_t* hypster(uint64_t* to_context, uint64_t timeout);</span>
+      </div>
+    </div>
+  </div>
+  <aside class="notes"><p>The data structure of the class. Open selfie.c at the machine context section and read the fields. Then the two procedures with the same signature, mipster and hypster: same interface, run a context until it stops or times out, return the context that stopped. That symmetry is the thesis of the class in the type signatures.</p></aside>
+</section>
+
+<section class="slide" data-act="II" data-mins="6.0">
+  <div class="eyebrow">Notation, once more</div>
+  <h2>RISC-U assembly is a <span class="j">regular language</span>. So its parser is a finite state machine.</h2>
+  <div class="fill">
+    <div class="two">
+      <div class="term sm">
+        <span class="l o">// selfie -c tiny.c -s tiny.s</span>
+        <span class="l c">ld t0,-16(gp)</span>
+        <span class="l c">addi t1,zero,7</span>
+        <span class="l c">sltu t0,t0,t1</span>
+        <span class="l c">beq t0,zero,6</span>
+        <span class="l c">…</span>
+        <span class="l c">jal zero,-8</span>
+      </div>
+      <div class="stack">
+        <p class="f" data-step="1">One instruction per line: a mnemonic, then registers and an immediate in a fixed pattern per format. No nesting, no parentheses to match except the one pair in <span class="mono">imm(rs1)</span>, no recursion. A single EBNF rule describes it, so a scanner is enough; no pushdown automaton needed.</p>
+        <p class="f" data-step="2">Assembling is the machine chapter's encoding, reversed from the disassembler: read the line, encode the instruction, emit the word. Selfie already has the encoders; the assembler reuses them.</p>
+      </div>
+    </div>
+    <p class="sm f" data-step="3">Which is the assignment: a loop back to the machine via a bit of compiler frontend, so that by week 4 the machine is familiar enough to virtualize.</p>
+  </div>
+  <aside class="notes"><p>The regularity claim is the week's theory: write the grammar and see that it substitutes into one rule. The compiler class spends two weeks on scanner and parser; here the point is that assembly was designed so that the scanner is the parser.</p></aside>
+</section>
+
+<section class="slide" data-act="II" data-mins="8.0">
+  <div class="eyebrow">Assignment</div>
+  <h2><span class="mono">assembler-parser</span>: option <span class="mono">-a</span>, and a regular grammar.</h2>
+  <div class="fill">
+    <div class="two">
+      <div class="stack">
+        <ol class="steps">
+          <li><strong>Specify.</strong> Design a regular EBNF grammar for RISC-U assembly as selfie prints it with <span class="mono">-s</span>: mnemonics, registers, immediates, the parentheses of loads and stores, and whitespace.</li>
+          <li><strong>Model.</strong> A finite state machine for it, drawn before coding. Which characters distinguish the formats?</li>
+          <li><strong>Implement.</strong> Extend selfie with option <span class="mono">-a</span> followed by an assembly file: scan and parse it, report syntax errors, and, for now, generate nothing.</li>
+          <li><span class="mono">./grader/self.py assembler-parser</span>; look at what it tests. Next week: code generation, and self-assembly.</li>
+        </ol>
+      </div>
+      <div class="card syn"><span class="h">Reuse</span><p>Selfie's scanner has <span class="mono">get_character</span>, identifier and integer scanning, and the register names; its emulator has the decoders and the disassembler. An assembler is mostly plumbing between things that exist. Take your time designing the grammar; the plumbing is quick afterwards.</p></div>
+    </div>
+  </div>
+  <aside class="notes"><p>Introduce it and start it in the room. The grammar is the deliverable this week; a student who writes the parser first usually writes a context-free one and wonders why. Point at the disassembler output as the exact language to accept.</p></aside>
+</section>
+
+</div>
+</div>
+<script src="../../deck/deck.js"></script>
+</body>
+</html>

@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SE 01 · What is Selfie?</title>
+<link rel="stylesheet" href="../../deck/deck.css">
+</head>
+<body>
+<div id="stage">
+<div id="deck" tabindex="0" aria-label="Presentation: SE 01 What is Selfie?" data-title="SE 01 · What is Selfie?" data-figures="../../../figures/">
+
+<section class="slide" data-act="0" data-mins="1.0">
+  <div class="fig bare" style="position:absolute;inset:0"><canvas data-anim="ambient"></canvas></div>
+  <div class="fill center" style="position:relative">
+    <div class="eyebrow">Systems Engineering · week 1</div>
+    <h1>What is <span class="k">Selfie</span>?</h1>
+    <p class="lead">The talk, then the spine of the semester in an hour — weighted to the third command.</p>
+  </div>
+  <aside class="notes"><p>Give the selfie talk first, all of it, because its Part III is the thesis of this class. Then this deck: the spine, pointed at systems, and the logistics. Book: the Introduction, the Selfie chapter, and the Computing chapter's opening callout.</p></aside>
+</section>
+
+<section class="slide" data-act="0" data-mins="2.0">
+  <div class="eyebrow">What this class is for</div>
+  <h2>Isolation is the <span class="k">semantic</span> problem of systems. Virtualization buys performance by introducing <span class="x">self-reference</span>. What a kernel cannot decide, it <span class="j">bounds</span>.</h2>
+  <div class="fill">
+    <div class="two">
+      <div class="stack">
+        <p class="f" data-step="1">Three sentences, and the class is their derivation. Fourteen weeks of building hypster, the hypervisor in selfie, into an operating system with processes, threads and locks, and at each step asking which of the three the code you wrote belongs to.</p>
+        <p class="f" data-step="2">The purpose is the one shared with the companion classes: a deep understanding of the basic principles, deep enough to position generative AI, and whatever comes next, properly. A kernel is where a system meets things it cannot trust, and that is the shape of the newest problem too.</p>
+      </div>
+      <div class="stack">
+        <div class="card syn f" data-step="3"><span class="h">The assignments</span><p>Ten autograded extensions of selfie: an assembler, processes, fork and wait, locks, threads, a thread-safe malloc, a lock-free stack. Plus one new one in week 10: state a memory-safety property for a piece of your systems code and let a model checker find the input that breaks it.</p></div>
+        <div class="card f" data-step="4"><span class="h">The book</span><p><em>What is Intelligence?</em> — the Computing chapter is this class; the Meaning and Cost chapters are its theory. Read the Introduction and the Selfie chapter this week.</p></div>
+      </div>
+    </div>
+  </div>
+  <aside class="notes"><p>Three sentences instead of one, because the systems side has three ideas that the compiler side folds into one. Then the logistics: the assignments in the assignments directory, the autograder, commit links, and the rule that every extension keeps self-hosting working.</p></aside>
+</section>
+
+<section class="slide" data-act="I" data-actname="The Spine" data-mins="4.0">
+  <div class="eyebrow">The axis</div>
+  <h2>One line carries the semester.</h2>
+  <div class="fill">
+    <div class="fig grow" data-fig="station"><span class="cap">the six stations, and where a systems class dwells</span></div>
+    <div class="three">
+      <p class="sm f" data-step="1"><strong>Countable.</strong> The machine, its privilege levels and exceptions, the assembler as a regular language. Weeks 2 and 3: everything still decidable.</p>
+      <p class="sm f" data-step="2"><strong>Uncountable.</strong> Isolation. Memory, time, and the kernel that must isolate itself. Weeks 4 to 9: paging, scheduling, self-hosting, processes, threads, garbage collection — and Gödel, Turing and Rice at each of them.</p>
+      <p class="sm f" data-step="3"><strong>Cost.</strong> Verifying systems code with a solver, and the price of everything in caches, cycles and joules. Weeks 10 and 11. Then universality for systems, agents as processes, and the definition.</p>
+    </div>
+  </div>
+  <aside class="notes"><p>The map with the weeks. The systems class dwells in station III from the systems side, which is why its middle is the long part, and does station IV applied rather than in full.</p></aside>
+</section>
+
+<section class="slide" data-act="I" data-mins="6.0">
+  <div class="eyebrow">Three commands, three theorems</div>
+  <h2>Understand the third and you understand <span class="k">operating systems</span>.</h2>
+  <div class="fill">
+    <div class="term sm">
+      <span class="l"><span class="p">$</span> <span class="c">./selfie -c selfie.c -o selfie1.m -m 2 -c selfie.c -o selfie2.m &amp;&amp; diff -s selfie1.m selfie2.m</span></span>
+      <span class="l"><span class="p">$</span> <span class="c">./selfie -c selfie.c -o selfie.m -m 2 -l selfie.m -m 1</span></span>
+      <span class="l"><span class="p">$</span> <span class="c">./selfie -c selfie.c -o selfie.m -m 3 -l selfie.m -y 2 -l selfie.m -y 1</span></span>
+    </div>
+    <div class="three">
+      <div class="card f" data-step="1"><span class="h">Self-compilation · a fixed point</span><p>The compiler class. Here only its lesson: a system that agrees with itself has certified nothing, and the outside check is the rule.</p></div>
+      <div class="card f" data-step="2"><span class="h">Self-execution · the universal machine</span><p>An emulator that runs every program for its machine, itself included. The operating system by emulation, and the executable specification of the one by virtualization.</p></div>
+      <div class="card syn f" data-step="3"><span class="h">Self-hosting · the bootstrap problem</span><p>A hypervisor whose virtual machines can run the hypervisor. The kernel must be isolated from the things whose isolation it provides. Gödel's second theorem, run as an operating system. This class.</p></div>
+    </div>
+  </div>
+  <aside class="notes"><p>The talk's three commands; this class is the third. Run it once more and say that every assignment adds something to hypster that has to survive this command: the hypervisor hosting the hypervisor hosting selfie.</p></aside>
+</section>
+
+<section class="slide" data-act="I" data-mins="6.0">
+  <div class="eyebrow">The thesis</div>
+  <h2>An OS by emulation is <span class="k">semantically equivalent</span> to an OS by virtualization.</h2>
+  <div class="fill row mid">
+    <div class="fig grow" style="flex:1.3" data-fig="emuvirt"><span class="cap">two ways to build one operating system</span></div>
+    <div class="stack grow">
+      <p class="f" data-step="1">By emulation the guest is read; by virtualization the guest is run, on the same processor as the kernel. Same guest, same 86,380 instructions, same output. Only the bill for the host differs: ×2,593 against ×208.</p>
+      <p class="f" data-step="2">So virtualization is needed only for performance, and it buys that performance by introducing self-reference: the kernel needs what it provides. Weeks 4 to 6 build up to that sentence and week 6 lands it.</p>
+      <p class="f" data-step="3">In my experience this is the one thing whose absence stops students from ever understanding what a kernel is. Most courses show only the virtualized design, with the loop tangled into paging and scheduling and never named. Here it is named first.</p>
+    </div>
+  </div>
+  <aside class="notes"><p>The talk's Part III in one slide, stated as the thesis of the class. Do not argue it yet; weeks 4 to 6 do. The numbers are selfie's own and come back in week 3.</p></aside>
+</section>
+
+<section class="slide" data-act="I" data-mins="4.0">
+  <div class="eyebrow">Fourteen weeks</div>
+  <h2>The route.</h2>
+  <div class="fill">
+    <table class="t">
+      <tr><th>wk</th><th>lecture</th><th>assignment</th></tr>
+      <tr><td>2</td><td>The machine again: privilege, exceptions, system calls; the assembler</td><td class="mono">assembler-parser</td></tr>
+      <tr><td>3</td><td>Emulation: mipster as universal machine; the price of interpretation</td><td class="mono">self-assembler</td></tr>
+      <tr><td>4</td><td>Virtual memory: paging; virtual as notation, physical as meaning</td><td class="mono">—</td></tr>
+      <tr><td>5</td><td>Time-sharing: the timer interrupt as the answer to halting; scheduling</td><td class="mono">processes</td></tr>
+      <tr><td>6</td><td>Self-hosting: hypster; the bootstrap problem as Gödel II; the TCB</td><td class="mono">fork-wait</td></tr>
+      <tr><td>7</td><td>Processes: fork, wait, exit; a process is a virtual machine</td><td class="mono">fork-wait-exit</td></tr>
+      <tr><td>8</td><td>Concurrency: threads, locks, lr/sc; interleavings as state space</td><td class="mono">lock, threads</td></tr>
+      <tr><td>9</td><td>Runtime systems: malloc, garbage collection; liveness by reachability</td><td class="mono">threadsafe-malloc</td></tr>
+      <tr><td>10</td><td>Verifying systems code: rotor, bounded model checking</td><td class="mono">treiber-stack, rotor-bounds</td></tr>
+      <tr><td>11</td><td>Cost: caches, performance, energy; Landauer; Goodhart</td><td class="mono">—</td></tr>
+      <tr><td>12</td><td>Universality for systems: halting, Rice on schedulers, deadlock</td><td class="mono">—</td></tr>
+      <tr><td>13</td><td>Agents as processes: sandboxing is virtualization; the gate</td><td class="mono">—</td></tr>
+      <tr><td>14</td><td>What a system is; the definition</td><td class="mono">—</td></tr>
+    </table>
+  </div>
+  <aside class="notes"><p>Fourteen sessions of ninety minutes, assignments introduced in the room. Note the two-week runs: processes and fork span three weeks, and the two rotor-related assignments sit in week 10.</p></aside>
+</section>
+
+<section class="slide" data-act="I" data-mins="2.0">
+  <div class="eyebrow">This week</div>
+  <h2>Take a selfie.</h2>
+  <div class="fill">
+    <div class="two">
+      <ol class="steps">
+        <li>Install selfie, run the three commands, and set up the grader: private clone, upstream, commit links.</li>
+        <li>Do <span class="mono">print-your-name</span>, prefixed like every other status message, and check it with the grader.</li>
+        <li>Run <span class="mono">make emu</span>, <span class="mono">make emu-emu</span> and <span class="mono">make os-emu</span>, and write down the guest's and the host's instruction counts for each.</li>
+        <li>Read the Introduction, the Selfie chapter, and the Computing chapter's opening callout.</li>
+      </ol>
+      <div class="card syn"><span class="h">Next week</span><p>The machine again, from the kernel's side: privilege, exceptions, system calls, machine contexts — and the assembler, which is your first assignment and a regular language.</p></div>
+    </div>
+  </div>
+  <aside class="notes"><p>Exercise 3 is the one that makes the thesis of the class real before it is argued.</p></aside>
+</section>
+
+</div>
+</div>
+<script src="../../deck/deck.js"></script>
+</body>
+</html>

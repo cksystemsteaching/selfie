@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SE 03 · Emulation</title>
+<link rel="stylesheet" href="../../deck/deck.css">
+</head>
+<body>
+<div id="stage">
+<div id="deck" tabindex="0" aria-label="Presentation: SE 03 Emulation" data-title="SE 03 · Emulation" data-figures="../../../figures/">
+
+<section class="slide" data-act="0" data-mins="1.0">
+  <div class="fig bare" style="position:absolute;inset:0"><canvas data-anim="ambient"></canvas></div>
+  <div class="fill center" style="position:relative">
+    <div class="eyebrow">Systems Engineering · week 3 · station III</div>
+    <h1>Emulation</h1>
+    <p class="lead">Mipster as the universal machine, the price of interpretation, and self-execution.</p>
+  </div>
+  <aside class="notes"><p>The emulator, read as an operating system: it is one, by emulation, and it is the universal machine of the introduction class. The cost of that design, the factor of 2,593, is what the rest of the class is willing to pay self-reference to avoid. Book: the Machine chapter's Emulation and the Computing chapter's opening.</p></aside>
+</section>
+
+<section class="slide" data-act="III" data-actname="Emulation" data-mins="7.0">
+  <div class="eyebrow">The loop</div>
+  <h2>Fetch, decode, execute, repeat. A page of C* per instruction group — and it runs <span class="k">every</span> program for the machine.</h2>
+  <div class="fill">
+    <div class="two">
+      <div class="term sm">
+        <span class="l o">// mipster's core, in spirit</span>
+        <span class="l c">while (1) {</span>
+        <span class="l c">  fetch();     // ir = memory[pc]</span>
+        <span class="l c">  decode();    // opcode, registers, immediate</span>
+        <span class="l c">  execute();   // one of fourteen cases</span>
+        <span class="l c">  // exceptions and timeouts stop the loop</span>
+        <span class="l c">}</span>
+      </div>
+      <div class="stack">
+        <p class="f" data-step="1">The machine chapter's cycle as a program. The guest's code is data in the host's memory, read one word at a time and never executed by the host's processor. Fourteen cases in <span class="mono">execute</span>, each a few lines of arithmetic on the context's registers.</p>
+        <p class="f" data-step="2">This is Turing's universal machine: one program that becomes any program when handed its description. The introduction class proved it universal; this class runs it.</p>
+        <p class="f" data-step="3">And it is an operating system: the guest cannot touch anything the emulator does not hand it. Isolation for free. No self-reference anywhere.</p>
+      </div>
+    </div>
+  </div>
+  <aside class="notes"><p>Read mipster in selfie.c against the sketch: the loop, the fetch, the decode into globals, the execute switch, and the two ways out, an exception or a timeout. Then the two claims: universal, and an operating system, both because the guest is read rather than run.</p></aside>
+</section>
+
+<section class="slide" data-act="III" data-mins="7.0">
+  <div class="eyebrow">In the terminal</div>
+  <h2>Self-execution: the emulator runs its own machine code.</h2>
+  <div class="fill row mid">
+    <div class="fig grow" style="flex:1.2" data-fig="interp"><span class="cap">one guest instruction, about 2,600 on the host</span></div>
+    <div class="stack grow">
+      <div class="term sm">
+        <span class="l"><span class="p">$</span> <span class="c">make emu</span></span>
+        <span class="l o">./selfie: summary: 85754 executed instructions in total</span>
+        <span class="l"><span class="p">$</span> <span class="c">make emu-emu</span></span>
+        <span class="l o">&gt; selfie.m: summary: 86380 executed instructions in total</span>
+        <span class="l o">./selfie: summary: 222410917 executed instructions in total</span>
+      </div>
+      <p class="f" data-step="1">Selfie printing its synopsis costs 85,754 instructions bare-metal. Hosted by mipster inside mipster it costs the guest 86,380 and the host 222 million: a factor of 2,593, one per level.</p>
+      <p class="f" data-step="2">The guest cannot tell. Same output, same instruction count give or take the boot level, which selfie tells it deliberately. Emulation is semantically transparent and computationally expensive, and that sentence is the whole motivation for the next three weeks.</p>
+    </div>
+  </div>
+  <aside class="notes"><p>Run both. The guest's number is the one to underline: 86,380, the same whether it is hosted by an emulator or, in week 6, by a hypervisor. The host's number is the bill, and it is what virtualization exists to cut.</p></aside>
+</section>
+
+<section class="slide" data-act="III" data-mins="6.0">
+  <div class="eyebrow">What the bill buys</div>
+  <h2>Emulation is <span class="k">isolation</span>. Everything the guest does is a read in the host.</h2>
+  <div class="fill">
+    <div class="three">
+      <div class="card f" data-step="1"><span class="h">Space</span><p>The guest's memory is an array in the host's heap. An address the guest computes is an index the emulator checks. Out of range: an exception, handled by the emulator, never by the hardware. Spatial isolation by construction.</p></div>
+      <div class="card f" data-step="2"><span class="h">Time</span><p>The emulator counts instructions and can stop after any number of them. A guest that loops forever costs the host exactly the instructions the host chooses to spend. Temporal isolation by construction.</p></div>
+      <div class="card syn f" data-step="3"><span class="h">Trust</span><p>Nothing the guest does reaches the host's processor. The host's own isolation is never at stake. And that is the property that virtualization gives up, on purpose, for a factor of twelve.</p></div>
+    </div>
+    <p class="sm f" data-step="4">Emulation as the <em>executable specification</em> of virtualization: whatever hypster does must be indistinguishable to the guest from what mipster does. Week 6 shows that it is.</p>
+  </div>
+  <aside class="notes"><p>The three properties, and the observation that the emulator gets them by construction because the guest is data. The specification remark is the book's and it is the method of the class: every design decision in hypster is checked against mipster's behaviour.</p></aside>
+</section>
+
+<section class="slide" data-act="III" data-mins="5.0">
+  <div class="eyebrow">Station III</div>
+  <h2>A universal machine can run any machine — so nothing general about the machines it runs can be <span class="x">decided</span>.</h2>
+  <div class="fill">
+    <div class="two">
+      <div class="stack">
+        <p class="f" data-step="1">The gift and the limit are the same fact. Because mipster runs every program, it cannot know whether the program it is running will stop, or divide by zero, or read outside its memory, before it happens. Rice's theorem, on the emulator.</p>
+        <p class="f" data-step="2">So it does not try to know. It counts instructions and stops after a timeout; it checks each address as it is used; it catches the division when it occurs. Bounding, not deciding — the third sentence of week 1, and the design principle of every kernel.</p>
+      </div>
+      <div class="card syn f" data-step="3"><span class="h">Next weeks</span><p>Space: give each guest its own addresses and translate them, week 4. Time: the timer and the scheduler, week 5. Then run the guest on the real processor and see what breaks, week 6.</p></div>
+    </div>
+  </div>
+  <aside class="notes"><p>Place the emulator on the axis: universal, hence Rice, hence bounding. This is where the theory of the introduction class becomes the design principle of the systems class.</p></aside>
+</section>
+
+<section class="slide" data-act="III" data-mins="8.0">
+  <div class="eyebrow">Assignment</div>
+  <h2><span class="mono">self-assembler</span>: generate code, and assemble selfie's own assembly.</h2>
+  <div class="fill">
+    <div class="two">
+      <div class="stack">
+        <ol class="steps">
+          <li>Extend last week's parser with code generation: for each parsed instruction, encode it with selfie's own <span class="mono">encode_X</span> procedures and emit the word into the code binary, as the compiler does.</li>
+          <li>Handle the data segment as the assembly file presents it, and the entry point, so that the result is a loadable binary.</li>
+          <li><strong>Self-assemble.</strong> <span class="mono">./selfie -c selfie.c -s selfie.s</span>, then <span class="mono">./selfie -a selfie.s -o selfie.m</span>, and compare with <span class="mono">./selfie -c selfie.c -o selfie.m</span>. Identical bytes: a fixed point of your own.</li>
+          <li><span class="mono">./grader/self.py self-assembler</span>.</li>
+        </ol>
+      </div>
+      <div class="card syn"><span class="h">What the fixed point proves</span><p>That the assembler agrees with the compiler's backend and the disassembler, on the one input that is all of selfie. Not that it is correct — the compiler class spends a week on why. Keep the assembler; week 10 hands it to a model checker.</p></div>
+    </div>
+  </div>
+  <aside class="notes"><p>The second half of the assembler. Self-assembly is a fixed point, and say what it proves and does not, briefly, because the systems class inherits that lesson from the talk. The assembler is one of the two candidate routines for rotor-bounds in week 10.</p></aside>
+</section>
+
+</div>
+</div>
+<script src="../../deck/deck.js"></script>
+</body>
+</html>
