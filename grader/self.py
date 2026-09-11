@@ -13,6 +13,7 @@ selfie.cs.uni-salzburg.at
 This is the automatic grader of the selfie system.
 """
 
+import re
 import sys
 from typing import Callable, Optional, List, Set, Tuple, Any
 from lib.functional import flatmap
@@ -360,6 +361,84 @@ def check_treiber_stack() -> List[Check]:
 
 
 assignment_bootstrapping = Assignment('bootstrapping', 'General', '', '', check_bootstrapping)
+def read_property_file(path):
+    # bad, bound, verdict, input: one per line, in this order
+    props = {}
+    try:
+        with open(path) as f:
+            for line in f:
+                if ':' in line:
+                    key, value = line.split(':', 1)
+                    props[key.strip()] = value.strip()
+    except OSError:
+        return None
+    if 'bad' not in props or 'bound' not in props or 'verdict' not in props:
+        return None
+    if not props['bound'].isdigit() or props['verdict'] not in ['reachable', 'unreachable']:
+        return None
+    return props
+
+
+def check_rotor_model(directory, memory_safety_only) -> List[Check]:
+    program = directory + '/program.c'
+    model = directory + '/program-rotorized.btor2'
+    prop = read_property_file(directory + '/property.txt')
+    bad = prop['bad'] if prop else 'undefined'
+    bound = int(prop['bound']) if prop else 0
+    verdict = prop['verdict'] if prop else 'undefined'
+
+    def property_file_is_valid(code, out):
+        if prop is None:
+            return False, 'property.txt is missing or malformed: needs bad:, bound: (a number), verdict: (reachable or unreachable), input:'
+        if memory_safety_only and not any(x in bad for x in ['seg-fault', 'invalid-address', 'brk']):
+            return False, bad + ' is not a memory-safety property'
+        return True, ''
+
+    def bad_state_is_in_model(code, out):
+        try:
+            with open(model) as f:
+                return (bad in f.read()), bad + ' is not a bad state of the generated model'
+        except OSError:
+            return False, 'model was not generated'
+
+    def bitme_confirms_verdict(code, out):
+        out = out.replace('\r', '\n')
+        if verdict == 'reachable':
+            m = re.search(r'analyzor#step=(\d+)\nanalyzor#bad=(\S+)', out)
+            if m is None:
+                return False, 'bitme found no input reaching ' + bad + ' within ' + str(bound) + ' steps'
+            if m.group(2) != bad:
+                return False, 'bitme reached ' + m.group(2) + ' before ' + bad
+            if int(m.group(1)) > bound:
+                return False, bad + ' is reached at step ' + m.group(1) + ', beyond the bound ' + str(bound)
+            return True, ''
+        else:
+            if 'reached kmax' not in out:
+                return False, 'bitme did not reach the bound'
+            if re.search(r'\nv+\n[^\n]*' + re.escape(bad), out):
+                return False, 'bitme found an input reaching ' + bad + ' within the bound'
+            return True, ''
+
+    bitme = './tools/bitme.py -kmax {} {} {}'.format(bound, '-analyzor' if verdict == 'reachable' else '', model)
+
+    return check_execution('true', 'property.txt names a bad state, a bound, and a verdict',
+                           success_criteria=property_file_is_valid, mandatory=True) + \
+        check_execution('./selfie -c {}'.format(program), 'program compiles') + \
+        check_execution('./selfie -c {} -m 128 < /dev/null'.format(program), 'program runs on mipster',
+                        success_criteria=lambda code, out: (True, '')) + \
+        check_execution('./rotor -c {} - 0'.format(program), 'rotor generates the model', mandatory=True, timeout=60) + \
+        check_execution('true', 'the named bad state is in the model', success_criteria=bad_state_is_in_model, mandatory=True) + \
+        check_execution(bitme, 'bitme confirms the verdict within the bound', success_criteria=bitme_confirms_verdict, timeout=600)
+
+
+def check_rotor_check() -> List[Check]:
+    return check_rotor_model('assignments/rotor-check', memory_safety_only=False)
+
+
+def check_rotor_bounds() -> List[Check]:
+    return check_rotor_model('assignments/rotor-bounds', memory_safety_only=True)
+
+
 assignment_self_compile = Assignment('self-compile', 'General', '', '', check_self_compilation)
 
 
@@ -436,6 +515,13 @@ assignment_treiber_stack = Assignment('treiber-stack', 'Systems', 'treiber-stack
            REPO_BLOB_BASE_URI + 'grader/systems-assignments.md#assignment-treiber-stack',
            check_treiber_stack, parent = assignment_threadsafe_malloc)
 
+assignment_rotor_check = Assignment('rotor-check', 'Compiler', '',
+           REPO_BLOB_BASE_URI + 'grader/compiler-assignments.md#assignment-rotor-check',
+           check_rotor_check)
+assignment_rotor_bounds = Assignment('rotor-bounds', 'Systems', '',
+           REPO_BLOB_BASE_URI + 'grader/systems-assignments.md#assignment-rotor-bounds',
+           check_rotor_bounds)
+
 assignments: List[Assignment] = [
     assignment_print_your_name,
     assignment_hex_literal,
@@ -450,6 +536,7 @@ assignments: List[Assignment] = [
     assignment_multidimensional_array,
     assignment_struct_declaration,
     assignment_struct_execution,
+    assignment_rotor_check,
     assignment_assembler_parser,
     assignment_self_assemblation,
     assignment_processes,
@@ -458,7 +545,8 @@ assignments: List[Assignment] = [
     assignment_lock,
     assignment_threads,
     assignment_threadsafe_malloc,
-    assignment_treiber_stack
+    assignment_treiber_stack,
+    assignment_rotor_bounds
 ]
 
 

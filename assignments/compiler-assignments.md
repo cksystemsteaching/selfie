@@ -152,3 +152,22 @@ Implement support of and code generation for `struct` access in C\*.
 - Use the `struct-execution` target in the grader to determine your grade.
 
 
+## Assignment `rotor-check`:
+
+Turn a model checker on your own language extension. Rotor generates a BTOR2 model of a RISC-U binary; bitme checks, for every input and every path up to a bound, whether a bad state is reachable, and if so reports the input that reaches it.
+
+- Write a C\* program **assignments/rotor-check/program.c** that exercises one of your extensions (a `for` loop, array access, a struct) and reads at least one byte of input with `read`. Keep it small: a few dozen instructions per iteration, so that the solver finishes.
+- Write **assignments/rotor-check/property.txt** with exactly these four lines, in this order:
+
+```
+bad: <name of a bad state in the model, for example core-0-division-by-zero>
+bound: <number of steps, for example 80>
+verdict: <reachable or unreachable>
+input: <the input bitme found, or none>
+```
+
+- Generate the model with `./rotor -c assignments/rotor-check/program.c - 0` and run `tools/bitme.py -kmax <bound> assignments/rotor-check/program-rotorized.btor2`. Do not commit the model; the grader regenerates it under your compiler.
+- Do not modify any files other than **selfie.c**, **grammar.md**, and the two files above.
+- Use the `rotor-check` target in the grader to determine your grade. It compiles and runs your program, regenerates the model, checks that the named bad state exists in it, and runs bitme with your bound: a *reachable* verdict must be confirmed by a satisfying assignment within the bound, an *unreachable* one by bitme reaching the bound without one. bitme needs a solver; see the [grader README](../grader/README.md).
+
+**Hint**: `./rotor` prints the names of all bad states it generates. Start with the program from the lecture, `examples/symbolic/division-by-zero-3-35.c`, and change one thing at a time.

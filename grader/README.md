@@ -4,6 +4,8 @@
 
 In order to use the autograder [install](../README.md) selfie first.
 
+The two model-checking assignments, `rotor-check` and `rotor-bounds`, also need `rotor` (`make rotor`) and a solver for `tools/bitme.py`: install the `bitwuzla` Python package (`pip install bitwuzla`), or `z3-solver`, and check that `tools/bitme.py` runs on one of the models in `examples/symbolic`. Their bitme check is not mandatory, so the rest of the grade is computed without a solver, but it does not pass without one.
+
 ## Running the Autograder
 
 The autograder reports grades in the range from 2 to 5 where 2 is the best and 4 is the worst passing grade, and 5 is failed. Grade 1 is reserved for submitting solutions that autograde to 2 but also match the code quality and conventions of selfie as detailed below.

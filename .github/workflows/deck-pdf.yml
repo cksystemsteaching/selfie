@@ -9,8 +9,10 @@ name: Keep the Presentation PDFs in Sync
 # A pull request that changes a deck without rebuilding its PDF fails, and is
 # told what to run. A push to main rebuilds and commits it.
 #
-# One matrix entry per deck; each deck names its PDF after its directory.
-# Adding a deck means adding its directory to the matrix.
+# One matrix entry per talk; each talk names its PDF after its directory.
+# Adding a talk means adding its directory to the matrix. The class decks
+# under docs/classes/<class>/<deck>/ are found by globbing in a second job,
+# since there are forty-two of them and they share an engine and figures.
 
 on:
   push:
@@ -18,11 +20,19 @@ on:
     paths:
     - 'docs/presentations/*/index.html'
     - 'docs/presentations/*/make-pdf.sh'
+    - 'docs/classes/*/*/index.html'
+    - 'docs/classes/deck/*'
+    - 'docs/classes/make-pdf.sh'
+    - 'docs/figures/*.svg'
     - '.github/workflows/deck-pdf.yml'
   pull_request:
     paths:
     - 'docs/presentations/*/index.html'
     - 'docs/presentations/*/make-pdf.sh'
+    - 'docs/classes/*/*/index.html'
+    - 'docs/classes/deck/*'
+    - 'docs/classes/make-pdf.sh'
+    - 'docs/figures/*.svg'
   workflow_dispatch:
 
 permissions:
@@ -78,5 +88,53 @@ jobs:
         git add ${{ matrix.deck }}.pdf ${{ matrix.deck }}.pdf.sha
         git commit -m "Rebuild the ${{ matrix.deck }} PDF from ${GITHUB_SHA:0:7}"
         # an earlier matrix entry may have pushed since this job checked out
+        git pull --rebase
+        git push
+
+  class-decks:
+    # after the talks, since on main both jobs commit to the same branch
+    needs: pdf
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        ref: ${{ github.event_name == 'pull_request' && github.head_ref || github.ref_name }}
+
+    - name: Fonts the decks' stack actually names
+      run: sudo apt-get update -qq && sudo apt-get install -y -qq fonts-urw-base35 fonts-dejavu-core
+
+    - name: Chrome version
+      run: google-chrome --version
+
+    - name: Which class decks are stale?
+      id: check
+      run: |
+        stale=""
+        for f in docs/classes/*/[0-9]*/index.html; do
+          deck=${f#docs/classes/}; deck=${deck%/index.html}
+          docs/classes/make-pdf.sh "$deck" --check || stale="$stale $deck"
+        done
+        echo "stale=$stale" >> "$GITHUB_OUTPUT"
+        echo "stale:$stale"
+
+    - name: Fail a pull request whose class PDFs are stale
+      if: github.event_name == 'pull_request' && steps.check.outputs.stale != ''
+      run: |
+        echo "::error::stale class PDFs:${{ steps.check.outputs.stale }}. Run docs/classes/make-pdf.sh <class>/<deck> for each and commit the PDF and its .sha."
+        exit 1
+
+    - name: Rebuild the stale decks
+      if: github.event_name != 'pull_request' && steps.check.outputs.stale != ''
+      run: |
+        for deck in ${{ steps.check.outputs.stale }}; do docs/classes/make-pdf.sh "$deck"; done
+
+    - name: Commit the rebuilt PDFs
+      if: github.event_name != 'pull_request' && steps.check.outputs.stale != ''
+      run: |
+        git config user.name  "github-actions[bot]"
+        git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+        git add docs/classes/*/*/*.pdf docs/classes/*/*/*.pdf.sha
+        git commit -m "Rebuild the stale class deck PDFs from ${GITHUB_SHA:0:7}"
         git pull --rebase
         git push

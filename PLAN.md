@@ -365,14 +365,27 @@ to the class index.
 
 - The subtitle. Candidates: *From Bits and Bytes to Truth and Proof*; *Elementary Computer
   Science from Finite Bits to Infinite Meaning*; *Notation, Meaning, and the Gap Between*.
-- `rotor-bounds`: which routine — the assembler the students just wrote, or `malloc`. The
-  assembler makes the assignment self-contained; `malloc` makes it about the runtime.
-- Whether rotor needs small extensions for the two assignments (a property flag, a bound
-  flag with a clean exit code) so the grader has something stable to read.
-- The exam for ICS: the question bank follows the new weeks; not part of this effort unless
-  wanted.
-- The class index pages and the `/slides/` redirect: where the three class indexes live and
-  what they say.
+  The book currently carries no subtitle.
+- The bitme demonstration in ICS 12, CC 12 and SE 10, and the Cost chapter: the
+  division-by-zero example is checked with `--use-bitwuzla`; Z3 and the BVDD engine stall on
+  the division step. The decks say "check before class" and avoid step numbers. Verify the
+  verdict on the class machine, and pin the bound the decks quote once it is known.
+- The two rotor grader targets run bitme with a 600-second timeout and a solver the grader
+  machine has to provide; the bitme check is not mandatory so that the rest of the grade
+  computes without one. Whether rotor needs a stable exit code or a property flag beyond
+  what `-analyzor` prints remains to be seen after the first semester of submissions.
+- The exam for ICS: the question bank follows the new weeks; not part of this effort.
+- The `/slides/` redirect now points at the class index; the old Keynote slides are no longer
+  linked from anywhere.
+
+## 13. Status
+
+Everything in the build order is done on the `intelligence` branch: framing, engine and
+figures, the book's new and edited chapters, the ICS, CC and SE decks with PDFs and index
+pages, the class landing page, the three assignment files with `rotor-check` and
+`rotor-bounds` and their grader targets, the PDF workflow extended to the class decks, the
+README's Support section, and the redirect. What remains is what section 11 lists, and a read
+of everything by its author.
 
 ## 12. Build order
 

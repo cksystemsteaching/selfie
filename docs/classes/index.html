@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Selfie Classes</title>
+<style>
+:root{--ground:#080E18;--panel:#111C2E;--ink:#E7EDF6;--ink-2:#B6C4D8;--muted:#8093AF;--line:rgba(122,162,204,.16);--syn:#E0A550;--sem:#5BB0C7;
+  --serif:"Iowan Old Style","Palatino Linotype",Palatino,"Book Antiqua","URW Palladio L",Georgia,serif;--mono:"JetBrains Mono","SFMono-Regular","SF Mono",Menlo,Consolas,"DejaVu Sans Mono",monospace}
+@media (prefers-color-scheme: light){:root{--ground:#EFF1F3;--panel:#FFFFFF;--ink:#131C2A;--ink-2:#39485C;--muted:#5D6E85;--line:rgba(19,28,42,.18);--syn:#A2661A;--sem:#1F6C86}}
+body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--serif);font-size:17px;line-height:1.5}
+.page{max-width:860px;margin:0 auto;padding:56px 28px 80px}
+.eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.2em;text-transform:uppercase;color:var(--syn)}
+h1{font-weight:400;font-size:40px;line-height:1.1;margin:8px 0 12px}
+p{color:var(--ink-2);max-width:66ch}
+a{color:var(--sem);text-decoration:none}
+table{border-collapse:collapse;width:100%;margin:28px 0;font-size:15px}
+th{font-family:var(--mono);font-weight:500;font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);text-align:left;padding:8px 12px;border-bottom:1px solid var(--line)}
+td{padding:9px 12px;border-top:1px solid var(--line);vertical-align:top;color:var(--ink-2)}
+td.k{font-family:var(--mono);font-size:13px;color:var(--syn);white-space:nowrap}
+td.a{font-family:var(--mono);font-size:12.5px;white-space:nowrap}
+td a{color:var(--ink)}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px;margin:28px 0}
+.card{border:1px solid var(--line);background:var(--panel);border-radius:6px;padding:18px 20px}
+.card .k{font-family:var(--mono);font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--syn)}
+.card h2{font-weight:400;font-size:22px;margin:6px 0 8px}
+.card h2 a{color:var(--ink)}
+.card p{font-size:15px;margin:0}
+.small{font-family:var(--mono);font-size:12px;color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="page">
+<div class="eyebrow">selfie · classes</div>
+<h1>Three classes, one book</h1>
+<p>An introduction to computer science, a compiler class and a systems class, all three built on <a href="https://github.com/cksystemsteaching/selfie">selfie</a> and all three telling one story: proof against truth, along one axis from the small to the vast to the countable to the uncountable, with Cantor, Gödel, Turing and Rice met in each. The purpose is a deep understanding of basic computer science principles, deep enough to position generative AI, and whatever comes next, properly. The book is <a href="https://github.com/cksystemsteaching/selfie/blob/main/book/README.md"><em>What is Intelligence?</em></a>; each class opens with one of the three <a href="../presentations/">talks</a>.</p>
+<div class="cards">
+<div class="card"><div class="k">first semester · 14 × 90 min</div><h2><a href="ics/">Introduction to Computer Science</a></h2><p>The book at talk resolution: size, notation, meaning, the machine, self-reference, cost, formal methods, machines, and the definition. No formal assignments; recommended exercises every week.</p></div>
+<div class="card"><div class="k">fourth semester · 14 × 135 min</div><h2><a href="cc/">Compiler Construction</a></h2><p>A compiler is a proof system for syntax and a constructor of semantics, and every semantic question it seems to answer is a chosen approximation. Build starc, extension by extension, and turn a model checker on the result.</p></div>
+<div class="card"><div class="k">fifth semester · 14 × 90 min</div><h2><a href="se/">Systems Engineering</a></h2><p>Isolation is the semantic problem; virtualization buys performance with self-reference; what a kernel cannot decide, it bounds. Build hypster into an operating system with processes, threads and locks.</p></div>
+</div>
+<table>
+<tr><th>station</th><th>the axis</th><th>ics</th><th>cc</th><th>se</th></tr>
+<tr><td class="k">I</td><td>Size: small, vast, and the two sizes of endless</td><td class="a">2, 3</td><td class="a">2</td><td class="a">—</td></tr>
+<tr><td class="k">II</td><td>Notation: formal languages and the machine, everything countable</td><td class="a">4, 5, 6</td><td class="a">2, 3, 5</td><td class="a">2</td></tr>
+<tr><td class="k">III</td><td>Meaning: uncountability, self-reference, universality, Rice</td><td class="a">7, 8, 9, 10</td><td class="a">4, 6, 7, 8, 9</td><td class="a">3 to 9, 12</td></tr>
+<tr><td class="k">IV</td><td>Cost: intractability, SAT, models of machines, energy</td><td class="a">11, 12</td><td class="a">10, 11, 12</td><td class="a">10, 11</td></tr>
+<tr><td class="k">V</td><td>Machines: what a generator is, the loops, the gate</td><td class="a">13</td><td class="a">13</td><td class="a">13</td></tr>
+<tr><td class="k">VI</td><td>Intelligence: the definition</td><td class="a">14</td><td class="a">14</td><td class="a">14</td></tr>
+</table>
+<p class="small">Each deck opens in the browser; press → to begin, n for the speaker notes, t for the clock, d for the theme. The PDF next to each deck is a rendering of it with every build step shown. The figures are shared between the decks and the book and live in <a href="https://github.com/cksystemsteaching/selfie/tree/main/docs/figures">docs/figures</a>. Assignments: <a href="https://github.com/cksystemsteaching/selfie/blob/main/assignments/introductory-assignments.md">introductory</a>, <a href="https://github.com/cksystemsteaching/selfie/blob/main/assignments/compiler-assignments.md">compiler</a>, <a href="https://github.com/cksystemsteaching/selfie/blob/main/assignments/systems-assignments.md">systems</a>; the <a href="https://github.com/cksystemsteaching/selfie/blob/main/grader/README.md">autograder</a> grades the last two.</p>
+</div>
+</body>
+</html>
