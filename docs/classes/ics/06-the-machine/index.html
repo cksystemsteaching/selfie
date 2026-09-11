@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ICS 06 · The Machine</title>
+<link rel="stylesheet" href="../../deck/deck.css">
+</head>
+<body>
+<div id="stage">
+<div id="deck" tabindex="0" aria-label="Presentation: ICS 06 The Machine" data-title="ICS 06 · The Machine" data-figures="../../../figures/">
+
+<section class="slide" data-act="0" data-mins="1.0">
+  <div class="fig bare" style="position:absolute;inset:0"><canvas data-anim="ambient"></canvas></div>
+  <div class="fill center" style="position:relative">
+    <div class="eyebrow">Introduction to Computer Science · week 6 · station II</div>
+    <h1>The Machine</h1>
+    <p class="lead">Code and data in one memory, a processor that does one thing at a time — and an emulator that runs every program written for it, itself included.</p>
+  </div>
+  <aside class="notes"><p>The brutal week, as the book says: all those technical details. Keep it concrete and keep the terminal open: the tiny program from week 4, traced instruction by instruction. The reward at the end is the universal machine, which week 9 needs. Book: the Machine chapter, Model to Emulation, at talk resolution.</p></aside>
+</section>
+
+<section class="slide" data-act="II" data-actname="Machine" data-mins="6.0">
+  <div class="eyebrow">Von Neumann · 1945</div>
+  <h2>One memory for <span class="j">code</span> and <span class="j">data</span>. One processor. One bus between them.</h2>
+  <div class="fill row mid">
+    <div class="fig grow" data-fig="von-neumann"><span class="cap">the von Neumann architecture</span></div>
+    <div class="stack grow">
+      <p class="f" data-step="1">The processor fetches an instruction from memory, executes it, and fetches the next. Instructions and the data they work on live in the same memory, as bytes, which week 3 already told you: nothing in the bytes says which is which.</p>
+      <p class="f" data-step="2">What says which is the <strong>program counter</strong>: a register holding the address of the next instruction. Whatever the pc points at is code, by definition, because it is about to be executed.</p>
+      <p class="f" data-step="3">Every phone, laptop and server is this picture. Most of what is added is speed.</p>
+    </div>
+  </div>
+  <aside class="notes"><p>Say that this is Gödel numbering as hardware, week 5: code in the same memory as data is what makes a compiler able to write a program and an emulator able to read one. The bottleneck label is why memory caches exist; mention it and move on.</p></aside>
+</section>
+
+<section class="slide" data-act="II" data-mins="7.0">
+  <div class="eyebrow">RISC-U</div>
+  <h2>32 registers, an instruction register, a program counter, and 4 GB of bytes.</h2>
+  <div class="fill row mid">
+    <div class="fig grow" style="flex:1.2" data-fig="risc-u-machine"><span class="cap">the whole machine state</span></div>
+    <div class="stack grow">
+      <p class="f" data-step="1"><strong>Registers</strong>: 32 boxes of 64 bits, the processor's own scratch space. Register <span class="mono">zero</span> is always 0. Selfie uses eighteen: <span class="mono">sp</span> for the stack, <span class="mono">gp</span> for globals, <span class="mono">t0</span>–<span class="mono">t6</span> as temporaries, <span class="mono">a0</span>–<span class="mono">a7</span> for arguments and results, <span class="mono">ra</span> for return addresses.</p>
+      <p class="f" data-step="2"><strong>Memory</strong>: 2<sup>32</sup> bytes, addressed 0 to 2<sup>32</sup>−1, read and written eight bytes at a time.</p>
+      <p class="f" data-step="3"><strong>The cycle</strong>: fetch the 32 bits at <span class="mono">pc</span> into <span class="mono">ir</span>, decode them, execute them, and set <span class="mono">pc</span> to the next instruction — usually <span class="mono">pc + 4</span>.</p>
+    </div>
+  </div>
+  <aside class="notes"><p>The whole state of the machine is on this slide: 32 times 64 bits, plus pc and ir, plus 2 to the 35 bits of memory. That is the state space of week 2, and it is worth saying so: the machine is exactly the finite state machine whose size we computed, and every instruction is one step from one state to the next, deterministically.</p></aside>
+</section>
+
+<section class="slide" data-act="II" data-mins="6.0">
+  <div class="eyebrow">Layout</div>
+  <h2>Where a program's bytes go: <span class="j">code</span>, <span class="j">data</span>, <span class="j">heap</span>, <span class="j">stack</span>.</h2>
+  <div class="fill row mid">
+    <div class="fig grow" style="flex:1.2" data-fig="layout"><span class="cap">the memory layout of a RISC-U program</span></div>
+    <div class="stack grow">
+      <p class="f" data-step="1">Code at the bottom, from address 0x10000: the instructions. Then the data: the global variables, such as week 4's <span class="mono">c</span>, addressed relative to <span class="mono">gp</span>.</p>
+      <p class="f" data-step="2">Then the heap, growing upwards, for memory a program asks for while it runs. And the stack at the top, growing downwards, for procedure calls and their local variables, addressed relative to <span class="mono">sp</span>.</p>
+      <p class="f" data-step="3">The <span class="mono">-16(gp)</span> in week 4's loop is now readable: the global variable <span class="mono">c</span> lives sixteen bytes below the global pointer.</p>
+    </div>
+  </div>
+  <aside class="notes"><p>Show the -16(gp) from the assembly and point at the data segment. The layout is what the compiler and the emulator agree on, and it is the reason a binary is not just a number but a number with an agreed shape, the ELF header from week 5.</p></aside>
+</section>
+
+<section class="slide" data-act="II" data-mins="8.0">
+  <div class="eyebrow">In the terminal</div>
+  <h2>One instruction at a time.</h2>
+  <div class="fill">
+    <div class="term sm">
+      <span class="l"><span class="p">$</span> <span class="c">./selfie -c tiny.c -d 1</span></span>
+      <span class="l o">…</span>
+      <span class="l o">tiny.c: pc==0x10158(~6): ld t0,-16(gp): gp==0x11010,mem[0x11000]==0 |- t0==0(0x0) -&gt; t0==0(0x0)</span>
+      <span class="l o">tiny.c: pc==0x1015C(~6): addi t1,zero,7: zero==0(0x0) |- t1==0(0x0) -&gt; t1==7(0x7)</span>
+      <span class="l o">tiny.c: pc==0x10160(~6): sltu t0,t0,t1: t0==0(0x0),t1==7(0x7) |- t0==0(0x0) -&gt; t0==1(0x1)</span>
+      <span class="l o">tiny.c: pc==0x10164(~6): beq t0,zero,6: t0==1(0x1),zero==0(0x0) |- pc==0x10164 -&gt; pc==0x10168</span>
+      <span class="l o">…</span>
+      <span class="l o">tiny.c: 64-bit mipster terminating 64-bit RISC-U binary tiny.c with exit code 7</span>
+      <span class="l o">tiny.c: summary: 107 executed instructions in total</span>
+    </div>
+    <div class="two">
+      <p class="sm f" data-step="1">Each line: where the pc is, which source line that came from, the instruction, what the registers held before the bar, and what changed after the arrow. The machine's whole life is lines like this. There are 107 of them for the tiny program, and 85,754 for selfie printing its synopsis.</p>
+      <p class="sm f" data-step="2">Read the four lines as a sentence: load c into t0, put 7 into t1, is t0 less than t1, and if so do not branch. The loop condition, decided by the machine in four steps, with no idea what a loop is.</p>
+    </div>
+  </div>
+  <aside class="notes"><p>Run it live and scroll; the addresses in the trace are the assembly addresses plus 0x10000 because that is where code is loaded. Then read the four lines aloud. This is the slide where the machine stops being a mystery: every step is a line, every line is arithmetic on named boxes, and the meaning of the program is nothing but the sequence of them.</p></aside>
+</section>
+
+<section class="slide" data-act="II" data-mins="6.0">
+  <div class="eyebrow">System calls</div>
+  <h2>The one instruction that asks for <span class="k">help</span>: <span class="mono">ecall</span>.</h2>
+  <div class="fill">
+    <div class="two">
+      <div class="stack">
+        <p class="f" data-step="1">Thirteen instructions move numbers around. The fourteenth stops the machine and hands control to whoever is running it, with a request number in <span class="mono">a7</span>: exit, read, write, open, more memory please.</p>
+        <p class="f" data-step="2">That is how a program prints, reads a file, or ends. It cannot do any of it itself; it asks. Whoever answers is the operating system — and in selfie, that is the emulator, or, in week 10, a hypervisor.</p>
+      </div>
+      <div class="card syn f" data-step="3"><span class="h">Exceptions</span><p>An <span class="mono">ecall</span> is a request. A division by zero, or an access to memory the program does not own, is the same mechanism uninvited: the machine stops and hands control up. Week 8's third run ended exactly this way, and week 10 builds an operating system out of nothing but handling these.</p></div>
+    </div>
+  </div>
+  <aside class="notes"><p>The boundary between a program and the world is one instruction, and that is the whole reason isolation is possible. Everything the program cannot be trusted to do goes through it. Plant that for week 10.</p></aside>
+</section>
+
+<section class="slide" data-act="II" data-mins="8.0">
+  <div class="eyebrow">Emulation</div>
+  <h2>Self-execution: an emulator that runs its <span class="k">own</span> machine code.</h2>
+  <div class="fill row mid">
+    <div class="fig grow" style="flex:1.2" data-fig="interp"><span class="cap">one guest instruction, about 2,600 on the host</span></div>
+    <div class="stack grow">
+      <div class="term sm">
+        <span class="l"><span class="p">$</span> <span class="c">./selfie -c selfie.c -o selfie.m -m 2 -l selfie.m -m 1</span></span>
+        <span class="l o">…</span>
+        <span class="l o">&gt; selfie.m { -c { source } | -o binary | … }</span>
+      </div>
+      <p class="f" data-step="1"><span class="mono">mipster</span> is a page of C* per group of instructions: fetch, decode, do what the table of week 4 says, repeat. It is the machine, written down.</p>
+      <p class="f" data-step="2">So it can run any RISC-U program — including selfie, which contains mipster, which then runs selfie. The second command of week 1. Slower by a factor of about 2,600 per level, and semantically identical.</p>
+    </div>
+  </div>
+  <aside class="notes"><p>Run it and let the room hear the slowness. Then the sentence to land: the emulator is one program that runs every program written for its machine, itself included. Next week's counting session will call that the universal machine, and week 9 will show it is Turing's.</p></aside>
+</section>
+
+<section class="slide" data-act="II" data-mins="5.0">
+  <div class="eyebrow">Station II</div>
+  <h2>Deterministic, finite, and <span class="k">universal</span>.</h2>
+  <div class="fill">
+    <div class="three">
+      <div class="card f" data-step="1"><span class="h">Deterministic</span><p>Same state, same input, same next state, always. The 107 lines of the trace are the same every time you run them. A computer never does anything you did not, in the end, tell it to.</p></div>
+      <div class="card f" data-step="2"><span class="h">Finite</span><p>2<sup>35</sup> bits of memory, so 2<sup>34,359,738,368</sup> states. Big enough that we pretend it is unbounded — and week 9 says exactly what that pretence buys and costs.</p></div>
+      <div class="card syn f" data-step="3"><span class="h">Universal</span><p>Fourteen instructions are enough to run any program that any computer can run, given enough time and memory. Everything you have ever seen a computer do can be done by this machine, more slowly.</p></div>
+    </div>
+    <p class="sm f" data-step="4">You have now seen the whole of it: bits, a table of fourteen lines, and a loop that reads the table. Everything else in computing is software.</p>
+  </div>
+  <aside class="notes"><p>Close on the three words, and on the last sentence, which is the book's: once you get the machine, everything else falls into place. Universal is the one to underline; it is the reason a first-semester class can claim to be about all of computing.</p></aside>
+</section>
+
+<section class="slide" data-act="II" data-mins="3.0">
+  <div class="eyebrow">Before next week</div>
+  <h2>Recommended exercises.</h2>
+  <div class="fill">
+    <div class="two">
+      <ol class="steps">
+        <li>Read the Machine chapter: Model, Processor, Memory, Instructions, Emulation.</li>
+        <li>Trace <span class="mono">tiny.c</span> with <span class="mono">-d 1</span> and find the nine loop instructions executing seven times. How many lines does the loop take in total?</li>
+        <li>For each of the fourteen instructions, write one sentence saying what it does, without looking.</li>
+        <li>Where in memory does <span class="mono">c</span> live? Find its address in the trace, and find the store that writes 7 into it.</li>
+        <li>Run self-execution and time it against running selfie directly. Estimate the factor.</li>
+      </ol>
+      <div class="card syn"><span class="h">Next week</span><p>Uncountability: the diagonal, twice. Programs are countable; what programs do is not. The result everything else hangs on.</p></div>
+    </div>
+  </div>
+  <aside class="notes"><p>Exercise 3 is the one the compiler and systems classes assume; exercise 2 is the one that makes the machine real.</p></aside>
+</section>
+
+</div>
+</div>
+<script src="../../deck/deck.js"></script>
+</body>
+</html>

@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ICS 11 · Cost</title>
+<link rel="stylesheet" href="../../deck/deck.css">
+</head>
+<body>
+<div id="stage">
+<div id="deck" tabindex="0" aria-label="Presentation: ICS 11 Cost" data-title="ICS 11 · Cost" data-figures="../../../figures/">
+
+<section class="slide" data-act="0" data-mins="1.0">
+  <div class="fig bare" style="position:absolute;inset:0"><canvas data-anim="ambient"></canvas></div>
+  <div class="fill center" style="position:relative">
+    <div class="eyebrow">Introduction to Computer Science · week 11 · station IV</div>
+    <h1>Cost</h1>
+    <p class="lead">Suppose a question is decidable. You still have to pay for the answer — in time, space, and energy.</p>
+  </div>
+  <aside class="notes"><p>Shift register: stations II and III were about the possible. Station IV is about the affordable, and for practical purposes the boundary between impossible and unaffordable hardly matters. This is also where physics enters, and where a SAT solver is run live. Book: the Cost chapter up to Models of Machines.</p></aside>
+</section>
+
+<section class="slide" data-act="IV" data-actname="Cost" data-mins="6.0">
+  <div class="eyebrow">Decidable ≠ doable</div>
+  <h2>A question with a guaranteed answer you will <span class="x">never receive</span>.</h2>
+  <div class="fill row mid">
+    <div class="fig grow" style="flex:1.2" data-fig="tree"><span class="cap">2ⁿ branches · one satisfying leaf</span></div>
+    <div class="stack grow">
+      <p class="f" data-step="1">Given a logical formula over 100 yes/no variables: is there an assignment making it true? Perfectly decidable — try all 2<sup>100</sup>.</p>
+      <div class="kpi f" data-step="2"><span class="n">2<sup>100</sup> ≈ 1.3 × 10<sup>30</sup></span><span class="l">assignments · 10<sup>13</sup> years at a billion checks per second</span></div>
+      <p class="f" data-step="3">Chess has about 10<sup>44</sup> legal positions; Go, 10<sup>170</sup>. Nobody solves these. We navigate them — with heuristics, structure, and luck.</p>
+    </div>
+  </div>
+  <aside class="notes"><p>Week 9 said what cannot be computed; this says what cannot be afforded, and the room should feel that the second matters as much. Note already here that modern solvers handle millions of variables on structured instances; the exponential is a worst case. That is the hopeful half and it comes back in three slides.</p></aside>
+</section>
+
+<section class="slide" data-act="IV" data-mins="5.0">
+  <div class="eyebrow">Three currencies</div>
+  <h2>Time, space, energy — and the only distinction that matters: <span class="j">polynomial</span> or <span class="x">exponential</span>.</h2>
+  <div class="fill row mid">
+    <div class="fig grow" style="flex:1.2" data-fig="complexity"><span class="cap">cost against input size</span></div>
+    <div class="stack grow">
+      <p class="f" data-step="1"><strong>Time</strong> is instructions, as the emulator counts them. <strong>Space</strong> is memory. <strong>Energy</strong> is what the wall delivers, and it has a law of physics attached — last slides.</p>
+      <p class="f" data-step="2">A method that takes n<sup>2</sup> steps on an input of size n is polynomial; n can be a million before it hurts. A method that takes 2<sup>n</sup> is exponential; n cannot be a hundred.</p>
+      <p class="f" data-step="3">The questions some method answers in polynomial time form the class <strong>P</strong>. Sorting, routing, checking that a text is a C* program, running mipster for k steps: nobody argues about whether these are affordable.</p>
+    </div>
+  </div>
+  <aside class="notes"><p>Keep it to the one distinction. The curves are the book's complexity figure; do not do big-O properly, just point at where 2 to the n leaves the picture. P is named so that NP can be, next.</p></aside>
+</section>
+
+<section class="slide" data-act="IV" data-mins="7.0">
+  <div class="eyebrow">Intractability</div>
+  <h2><span class="j">Hard to find</span>. <span class="k">Easy to check</span>.</h2>
+  <div class="fill">
+    <div class="two">
+      <div class="stack">
+        <p class="f" data-step="1">That asymmetry has a name: <strong>NP</strong> — problems whose solutions are quick to verify even if finding them seems to need exponential search. The satisfying assignment is the certificate; plug it in and check.</p>
+        <p class="f" data-step="2">Cook and Levin, 1971–73: thousands of such problems are the same problem in disguise. Crack one efficiently and you crack scheduling, routing, folding, packing, proving. Whether that is possible — <strong>P = NP?</strong> — is the most consequential open question in the exact sciences. Most researchers bet no.</p>
+      </div>
+      <div class="stack">
+        <div class="card f" data-step="3"><span class="h">The asymmetry, everywhere</span><p>Writing a proof versus reading it. Designing a protein versus assaying it. Writing the program versus running the test. Doing the homework versus grading it.</p></div>
+        <div class="card syn f" data-step="4"><span class="h">Remember this one</span><p>Generation is expensive; verification is cheap. Every healthy division of labour — and every safe way to use an AI — is built on that gap.</p></div>
+      </div>
+    </div>
+  </div>
+  <aside class="notes"><p>The pivot slide for week 13. Do not rush it. The asymmetry is what makes delegation rational: you can accept work you could not have produced, provided you can check it. When you cannot check it, delegation is faith.</p></aside>
+</section>
+
+<section class="slide" data-act="IV" data-mins="8.0">
+  <div class="eyebrow">In the terminal</div>
+  <h2>A SAT solver in <span class="j">400 lines</span>.</h2>
+  <div class="fill">
+    <div class="two">
+      <div class="term sm">
+        <span class="l"><span class="p">$</span> <span class="c">cat examples/sat/rivest.cnf</span></span>
+        <span class="l o">p cnf 4 7</span>
+        <span class="l o">2 3 -4 0</span>
+        <span class="l o">1 3 4 0</span>
+        <span class="l o">-1 2 4 0</span>
+        <span class="l o">-1 -2 3 0</span>
+        <span class="l o">-2 -3 4 0</span>
+        <span class="l o">-1 -3 -4 0</span>
+        <span class="l o">1 -2 -4 0</span>
+        <span class="l"><span class="p">$</span> <span class="c">make sat</span></span>
+        <span class="l o">./babysat: 7 clauses with 4 declared variables loaded from examples/sat/rivest.cnf</span>
+        <span class="l o">./babysat: examples/sat/rivest.cnf is satisfiable with -1 -2 3 4</span>
+      </div>
+      <div class="stack">
+        <p class="f" data-step="1">A formula in <strong>conjunctive normal form</strong>: variables 1 to 4, a minus sign for <em>not</em>, each line an <em>or</em> of its literals, the whole thing an <em>and</em> of lines. Is there a way to set the four variables that makes every line true?</p>
+        <p class="f" data-step="2"><span class="mono">babysat</span> tries all 2<sup>4</sup> = 16 assignments and finds one: x1 false, x2 false, x3 true, x4 true. Written in C*, on top of selfie, so mipster can run the solver too.</p>
+        <p class="f" data-step="3">It is not meant to be fast. It is the executable definition of what a SAT solver is. Add variables and each one doubles the work; at a hundred it is the machine that answers after the Sun.</p>
+      </div>
+    </div>
+  </div>
+  <aside class="notes"><p>Run it. Then check the answer by hand against two of the clauses so the room sees what satisfiable means. Then say what real solvers do differently, next slide, and that Rivest's formula with its eighth clause back in is unsatisfiable, which babysat would also find, after trying all sixteen.</p></aside>
+</section>
+
+<section class="slide" data-act="IV" data-mins="6.0">
+  <div class="eyebrow">Why SAT is hard, and why solvers work anyway</div>
+  <h2>The exponential is a <span class="x">worst case</span>. Real formulas have <span class="k">structure</span>.</h2>
+  <div class="fill">
+    <div class="two">
+      <div class="stack">
+        <p class="f" data-step="1">Nobody has a polynomial algorithm for SAT, and if the standard conjecture holds nobody will. Random formulas near 4.26 clauses per variable are hard for every solver ever built.</p>
+        <p class="f" data-step="2">And yet modern solvers handle formulas with millions of variables from chip design, scheduling and software checking in seconds. The formulas that come from real problems are not random.</p>
+      </div>
+      <div class="stack">
+        <div class="card f" data-step="3"><span class="h">What a modern solver does</span><p>Propagate what is forced. Decide only when nothing is. When a decision fails, work out <em>why</em> and write it down as a new clause — a theorem about the formula — so the same failure never recurs. Restart, wiser.</p></div>
+        <p class="sm f" data-step="4">On Rivest's formula that learns, after two failures, that x1 must be false, and after one more that x2 must be false — which is the comment in the file. Four assignments examined instead of sixteen.</p>
+      </div>
+    </div>
+  </div>
+  <aside class="notes"><p>The book works the example by hand; here just the idea. Defeating typical cases of an intractable problem is one of engineering's great quiet victories, and it is the hopeful data point for the whole semester: hardness in the worst case leaves enormous room for cleverness. Next week those solvers get handed a machine.</p></aside>
+</section>
+
+<section class="slide" data-act="IV" data-mins="7.0">
+  <div class="eyebrow">Physics</div>
+  <h2>Computation is not abstract. Every step that forgets <span class="x">costs energy</span>.</h2>
+  <div class="fill row mid">
+    <div class="fig grow" style="flex:1.2" data-fig="energy"><span class="cap">joules · log scale</span></div>
+    <div class="stack grow">
+      <p class="f" data-step="1">Landauer, 1961: erasing one bit at room temperature costs at least kT ln 2 ≈ 3 × 10<sup>−21</sup> joules — because erasing is irreversible: two states become one, and the lost distinction leaves as heat.</p>
+      <p class="f" data-step="2">A search moves on, and moving on is erasing. Just <em>counting</em> through week 2's 266-bit space flips the lowest bit 2<sup>266</sup> times: about 10<sup>59</sup> joules, 10<sup>15</sup> times everything the Sun will ever radiate. You cannot even count the states.</p>
+      <p class="f" data-step="3">Meanwhile a human brain runs on <strong>20 watts</strong>. Time, space, energy: one budget. Any claim about intelligence that ignores it is a claim about magic.</p>
+    </div>
+  </div>
+  <aside class="notes"><p>Four beats: why erasure costs anything, why a search pays it, the counter, and the brain. The floor is not a fact about silicon; today's transistors sit orders of magnitude above it and it stays where it is for any device that overwrites. The 20 watts come back in week 13 as the proof that the job can be done far more cheaply than we do it.</p></aside>
+</section>
+
+<section class="slide" data-act="IV" data-mins="5.0">
+  <div class="eyebrow">Reframe · 4 of 5</div>
+  <h2>Hardness is <span class="k">load-bearing</span>.</h2>
+  <div class="fill">
+    <div class="ledger">
+      <div class="forbids f" data-step="1"><h4>What it forbids</h4><p>Brute force as a strategy. You cannot search your way to correctness, to a cure, or to a business plan.</p></div>
+      <div class="opens f" data-step="2"><h4>What it opens</h4><p>Every private message, every signature, every payment, every password you rely on today exists because some problems are hard. Difficulty is the raw material of security — and the reason abstraction, theory, and taste are worth more than compute.</p></div>
+    </div>
+    <p class="sm f" data-step="3">A world where P = NP would be spectacular and also strange: mathematics automated, cryptography dead, and, since anything findable would be found, nothing left to discover.</p>
+  </div>
+  <aside class="notes"><p>The universe we appear to live in trades away that power for a currency called difficulty, which we then spend on privacy and on discovery. Then the metric remark if there is time: a language without a metric is decoration, and every metric decays when it becomes a target. Goodhart is in the book.</p></aside>
+</section>
+
+<section class="slide" data-act="IV" data-mins="3.0">
+  <div class="eyebrow">Before next week</div>
+  <h2>Recommended exercises.</h2>
+  <div class="fill">
+    <div class="two">
+      <ol class="steps">
+        <li>Read the Cost chapter up to <em>Models of Machines</em>.</li>
+        <li>Check by hand that −1 −2 3 4 satisfies every clause of <span class="mono">rivest.cnf</span>. Add the eighth clause <span class="mono">1 2 -3 0</span> back and show that nothing satisfies all eight.</li>
+        <li>Write a CNF file of your own with five variables and run <span class="mono">babysat</span> on it. Then one with twenty-five, and time it.</li>
+        <li>How many years to try 2<sup>60</sup> assignments at a billion per second? At a trillion?</li>
+        <li>Compute the minimum energy to erase 8 GB once, by Landauer, and compare it with a phone battery, about 4 × 10<sup>4</sup> joules.</li>
+      </ol>
+      <div class="card syn"><span class="h">Next week</span><p>Formal methods: machine code in, formula out, solver next. A tool built on selfie turns a program into a formula, and the solver finds the input that makes it divide by zero — within a bound.</p></div>
+    </div>
+  </div>
+  <aside class="notes"><p>Exercise 2 is the one to insist on; exercise 5 is the one that makes energy real.</p></aside>
+</section>
+
+</div>
+</div>
+<script src="../../deck/deck.js"></script>
+</body>
+</html>
