@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SE 05 · Time-Sharing</title>
+<link rel="stylesheet" href="../../deck/deck.css">
+</head>
+<body>
+<div id="stage">
+<div id="deck" tabindex="0" aria-label="Presentation: SE 05 Time-Sharing" data-title="SE 05 · Time-Sharing" data-figures="../../../figures/">
+
+<section class="slide" data-act="0" data-mins="1.0">
+  <div class="fig bare" style="position:absolute;inset:0"><canvas data-anim="ambient"></canvas></div>
+  <div class="fill center" style="position:relative">
+    <div class="eyebrow">Systems Engineering · week 5 · station III</div>
+    <h1>Time-<span class="k">Sharing</span></h1>
+    <p class="lead">The timer interrupt is the kernel's answer to the halting problem. Scheduling is what it cannot answer.</p>
+  </div>
+  <aside class="notes"><p>Temporal isolation. A guest may not stop; the kernel cannot know; so the kernel stops it. Then what the kernel does with the time it has taken back, and why optimal scheduling is out of reach for a reason from the Cost chapter. Book: Computing, Time-Sharing; Intelligence chapter's halting section for the theorem.</p></aside>
+</section>
+
+<section class="slide" data-act="III" data-actname="Time" data-mins="7.0">
+  <div class="eyebrow">The theorem in the kernel</div>
+  <h2>Will this program give the processor back? <span class="x">Undecidable</span>. So take it back.</h2>
+  <div class="fill row mid">
+    <div class="fig grow" style="flex:1.1" data-fig="halt"><span class="cap">the halting construction, from the introduction class</span></div>
+    <div class="stack grow">
+      <p class="f" data-step="1">Cooperative multitasking asks each program to yield. A program that never does takes the machine with it, and no kernel can screen programs for that in advance: Turing, 1936, on the scheduler.</p>
+      <p class="f" data-step="2">Preemptive multitasking does not ask. A hardware timer raises an exception after a fixed number of cycles, whatever the program is doing; the kernel saves the context and runs another. The halting problem is not solved; it is made irrelevant by a bound.</p>
+      <p class="f" data-step="3">Every kernel principle in this class has this shape: what cannot be decided is bounded. The timer is the purest instance.</p>
+    </div>
+  </div>
+  <aside class="notes"><p>The halting construction, and then the kernel's reaction to it. Cooperative versus preemptive is the decide-versus-bound distinction in disguise. Say that this is not a workaround; it is the only design consistent with the theorem.</p></aside>
+</section>
+
+<section class="slide" data-act="III" data-mins="7.0">
+  <div class="eyebrow">In selfie</div>
+  <h2>A timeout is a number of instructions. Mipster counts down and <span class="k">returns</span>.</h2>
+  <div class="fill">
+    <div class="two">
+      <div class="term sm">
+        <span class="l o">// selfie.c, the shape of it</span>
+        <span class="l c">uint64_t* mipster(uint64_t* to_context, uint64_t timeout) {</span>
+        <span class="l c">  restore_context(to_context);</span>
+        <span class="l c">  run_until_exception(timeout);  // TIMER is an exception</span>
+        <span class="l c">  save_context(to_context);</span>
+        <span class="l c">  return to_context;              // whoever called decides</span>
+        <span class="l c">}</span>
+      </div>
+      <div class="stack">
+        <p class="f" data-step="1">The emulator's loop from week 3 with one more exit: after <span class="mono">timeout</span> instructions it raises a timer exception and returns the context, exactly as it would on a system call or a page fault. The caller, the kernel, looks at why the machine stopped and decides.</p>
+        <p class="f" data-step="2">The kernel in selfie is a loop around this call: pick a context, run it for a slice, handle what stopped it, pick again. That loop is the operating system by emulation. Every process, every thread you write this semester is an entry in its list.</p>
+      </div>
+    </div>
+    <div class="term sm f" data-step="3">
+      <span class="l"><span class="p">$</span> <span class="c">make os-emu</span></span>
+      <span class="l o">./selfie:          166 syscalls, 529 page faults, 1898 timer interrupts</span>
+    </div>
+  </div>
+  <aside class="notes"><p>Read the real mipster and the kernel loop that calls it. The signature is the point: run a context for a bounded time, return it with the reason. Then run make os-emu and point at the timer interrupt count: 1,898 preemptions in a run that the guest did not notice.</p></aside>
+</section>
+
+<section class="slide" data-act="III" data-mins="7.0">
+  <div class="eyebrow">Process states</div>
+  <h2>Running, ready, blocked. A machine context is always in exactly one.</h2>
+  <div class="fill row mid">
+    <div class="fig grow" style="flex:1.1" data-fig="traffic-light-model"><span class="cap">the three states and the events that move a context between them</span></div>
+    <div class="stack grow">
+      <p class="f" data-step="1"><strong>Running</strong>: its registers are in the processor. <strong>Ready</strong>: saved, waiting for a slice. <strong>Blocked</strong>: saved, waiting for something else — input, a child, a lock. The timer moves running to ready; a system call that must wait moves running to blocked; the awaited event moves blocked to ready.</p>
+      <p class="f" data-step="2">A finite state machine, per context, from the notation chapter. The kernel's whole knowledge of a program is which of three states it is in and a few kilobytes of saved registers. It knows nothing about what the program is doing, by Rice, and needs to know nothing.</p>
+    </div>
+  </div>
+  <aside class="notes"><p>The traffic light. Insist on the last point: the kernel is a finite state machine per context because that is all it can know. Blocked becomes important in week 7 with wait and in week 8 with locks.</p></aside>
+</section>
+
+<section class="slide" data-act="III" data-mins="7.0">
+  <div class="eyebrow">Scheduling</div>
+  <h2>Which ready context runs next? Fair is easy. Optimal is <span class="x">NP-hard</span>.</h2>
+  <div class="fill">
+    <div class="three">
+      <div class="card f" data-step="1"><span class="h">Round robin</span><p>A queue; the timer moves the running context to the back. Every context gets a slice every <em>n</em> slices. Fair, simple, and what selfie does. It optimises nothing.</p></div>
+      <div class="card f" data-step="2"><span class="h">Priorities, deadlines</span><p>Real schedulers weigh interactivity, deadlines, fairness across users, energy. Each is a policy; each can be gamed; each is a bound on something that cannot be decided.</p></div>
+      <div class="card syn f" data-step="3"><span class="h">The limit</span><p>Given jobs with lengths and deadlines and several processors, finding a schedule that meets every deadline is NP-hard: the Cost chapter's station, in the kernel. Even if the kernel knew every job's length, which by Rice it cannot, it could not afford to schedule them optimally.</p></div>
+    </div>
+    <p class="sm f" data-step="4">Two limits, one design: the scheduler does not know and could not compute. So it is a policy, chosen by people, adjusted by measurement. Week 11 measures.</p>
+  </div>
+  <aside class="notes"><p>Fair versus optimal. Multiprocessor scheduling with deadlines is NP-hard; do not prove it, place it. The doubly bounded scheduler: undecidable inputs and intractable optimisation, hence a policy. This is the first time the class touches station IV, and it says why real kernels are full of heuristics.</p></aside>
+</section>
+
+<section class="slide" data-act="III" data-mins="8.0">
+  <div class="eyebrow">Assignment</div>
+  <h2><span class="mono">processes</span>: run several instances of the same program, time-shared.</h2>
+  <div class="fill">
+    <div class="two">
+      <div class="stack">
+        <ol class="steps">
+          <li>Extend selfie so that <span class="mono">-m</span> can run <em>n</em> instances of the loaded program as separate machine contexts with separate memory, round-robin scheduled by the kernel loop with a timeout you choose.</li>
+          <li>Each instance prints something that identifies it, so that the interleaving is visible on the terminal. Make the slice small enough that the interleaving shows.</li>
+          <li>Check that no instance can see another's memory, and that the total instruction count is the sum of the instances'.</li>
+          <li><span class="mono">./grader/self.py processes</span>.</li>
+        </ol>
+      </div>
+      <div class="card syn"><span class="h">Reuse</span><p><span class="mono">create_context</span>, <span class="mono">load</span>, the kernel loop, and mipster with a timeout are all there. The assignment is to arrange them into a list of contexts and a scheduler. Look at how the existing code handles a context that exits, and keep the case of one instance behaving exactly as before.</p></div>
+    </div>
+  </div>
+  <aside class="notes"><p>The first real systems assignment. Start the design in the room: a list of contexts, a current pointer, the queue discipline, and what happens when one exits. Next week self-hosting; week 7 fork and wait build on this.</p></aside>
+</section>
+
+</div>
+</div>
+<script src="../../deck/deck.js"></script>
+</body>
+</html>

@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SE 04 · Virtual Memory</title>
+<link rel="stylesheet" href="../../deck/deck.css">
+</head>
+<body>
+<div id="stage">
+<div id="deck" tabindex="0" aria-label="Presentation: SE 04 Virtual Memory" data-title="SE 04 · Virtual Memory" data-figures="../../../figures/">
+
+<section class="slide" data-act="0" data-mins="1.0">
+  <div class="fig bare" style="position:absolute;inset:0"><canvas data-anim="ambient"></canvas></div>
+  <div class="fill center" style="position:relative">
+    <div class="eyebrow">Systems Engineering · week 4 · station III</div>
+    <h1>Virtual <span class="k">Memory</span></h1>
+    <p class="lead">Paging: the virtual address is notation, the physical address is its meaning.</p>
+  </div>
+  <aside class="notes"><p>Spatial isolation. Every guest believes it owns the 4 GB of week 2; the kernel translates. The chapter's paging section, read with the Meaning chapter's vocabulary: an address space is a notation, and the page table is the interpreter. Book: Computing, Virtual Memory.</p></aside>
+</section>
+
+<section class="slide" data-act="III" data-actname="Space" data-mins="7.0">
+  <div class="eyebrow">The problem</div>
+  <h2>Two programs, one memory, both compiled to start at address <span class="mono">0x10000</span>.</h2>
+  <div class="fill row mid">
+    <div class="fig grow" style="flex:1.1" data-fig="layout"><span class="cap">a program's memory layout: code, data, heap, stack</span></div>
+    <div class="stack grow">
+      <p class="f" data-step="1">The compiler lays out every program the same way, and the machine has one memory. So either the second program is relocated, which means rewriting its addresses, or every address a program uses is a name that the kernel resolves at run time.</p>
+      <p class="f" data-step="2">The second is virtual memory. The program's addresses are <em>virtual</em>: notation. The addresses the memory chip sees are <em>physical</em>: meaning. The mapping from one to the other is owned by the kernel, and a program that cannot name a physical address cannot touch another program's memory.</p>
+      <p class="f" data-step="3">Isolation as a translation problem. The Meaning chapter's semantics, applied to addresses.</p>
+    </div>
+  </div>
+  <aside class="notes"><p>The layout from the compiler class, then the collision. Relocation versus translation; the answer everyone took. Then say it in the vocabulary of the book: virtual is syntax, physical is semantics, and the kernel interprets.</p></aside>
+</section>
+
+<section class="slide" data-act="III" data-mins="8.0">
+  <div class="eyebrow">Paging</div>
+  <h2>Pages to frames: translate the top bits, keep the bottom twelve.</h2>
+  <div class="fill row mid">
+    <div class="fig grow" style="flex:1.2" data-fig="page-table"><span class="cap">a virtual address splits into page number and offset; the page table maps pages to frames</span></div>
+    <div class="stack grow">
+      <p class="f" data-step="1">Cut both address spaces into 4 KB blocks: <em>pages</em> on the virtual side, <em>frames</em> on the physical. A 32-bit address is a 20-bit page number and a 12-bit offset. Translate the page number through a table; copy the offset unchanged. That is the whole mechanism.</p>
+      <p class="f" data-step="2">A million pages means a million entries: 4 or 8 MB per table if flat, which selfie accepts for simplicity. Real systems use a tree so that untouched regions cost nothing, and a cache, the TLB, so that the tree is rarely walked.</p>
+      <p class="f" data-step="3">In selfie, <span class="mono">tlb</span> is the procedure that translates, and the emulator calls it on every load, store and fetch. Find it; it is a few lines.</p>
+    </div>
+  </div>
+  <aside class="notes"><p>The figure carries it. Do the arithmetic once: 2^32 bytes, 2^12 per page, 2^20 pages. Then the two engineering answers to a million entries, trees and caches, which the Cost week comes back to.</p></aside>
+</section>
+
+<section class="slide" data-act="III" data-mins="7.0">
+  <div class="eyebrow">Page faults</div>
+  <h2>Nothing is mapped until it is touched. The first touch is an <span class="k">exception</span>.</h2>
+  <div class="fill">
+    <div class="two">
+      <div class="stack">
+        <p class="f" data-step="1">A new machine context has an empty page table. Its first fetch is a <em>page fault</em>: the translation fails, the machine stops, the kernel takes over, allocates a frame, writes the entry, and lets the machine retry. On-demand paging: creating a machine costs nothing until it runs.</p>
+        <p class="f" data-step="2">The same exception distinguishes a legitimate first touch from an error. A fault in the heap below the program break, or in the stack, gets a frame. A fault anywhere else is a segmentation fault, and the kernel decides what to do with a program that did that: in selfie, it stops it.</p>
+      </div>
+      <div class="term sm f" data-step="3">
+        <span class="l"><span class="p">$</span> <span class="c">./selfie -c selfie.c -m 1</span></span>
+        <span class="l o">./selfie: selfie.c exiting with exit code 0</span>
+        <span class="l o">./selfie: summary: 85754 executed instructions in total</span>
+        <span class="l o">./selfie:          14 syscalls, 1 page faults, 0 timer interrupts</span>
+        <span class="l o">./selfie: … memory: 1MB mapped by 265 pages …</span>
+      </div>
+    </div>
+  </div>
+  <aside class="notes"><p>Run it. The emulator's profile already says how many faults; explain why a program with 265 mapped pages reported one fault, and then check the emulator: selfie maps pages on the first access in the emulator's load and store paths, and counts only the ones that go through the exception. The numbers on the slide are from the class machine; check before class.</p></aside>
+</section>
+
+<section class="slide" data-act="III" data-mins="6.0">
+  <div class="eyebrow">Table or tree</div>
+  <h2>The same map, two data structures, one meaning.</h2>
+  <div class="fill row mid">
+    <div class="fig grow" style="flex:1.3" data-fig="paging-page-tables"><span class="cap">a flat page table and a two-level tree, mapping the same pages</span></div>
+    <div class="stack grow">
+      <p class="f" data-step="1">Flat: one array, one lookup, a million entries whether used or not. Tree: a directory of tables, two lookups, only the touched regions allocated. Both denote the same function from pages to frames.</p>
+      <p class="f" data-step="2">Same meaning, different cost: the pattern of the Cost chapter, seen for the first time in this class. The kernel chooses the notation; the program observes only the meaning. Which is exactly what makes the choice free.</p>
+    </div>
+  </div>
+  <aside class="notes"><p>A short one. The point is not the tree; it is that the guest cannot observe which one the kernel uses, so the kernel is free to optimise. Isolation buys the kernel freedom, not only the guest safety.</p></aside>
+</section>
+
+<section class="slide" data-act="III" data-mins="5.0">
+  <div class="eyebrow">Where the loop starts</div>
+  <h2>Who translates the kernel's <span class="x">own</span> addresses?</h2>
+  <div class="fill">
+    <div class="two">
+      <div class="stack">
+        <p class="f" data-step="1">In mipster, nobody has to: the emulator is a program with its own memory, the guest's memory is an array inside it, and translation is index arithmetic. No self-reference.</p>
+        <p class="f" data-step="2">On real hardware, the kernel runs on the same processor with the same address translation switched on. So the page table that maps the kernel must itself be mapped, and the code that writes page tables runs through one. The bootstrap problem of week 6, in its spatial form.</p>
+      </div>
+      <div class="card syn f" data-step="3"><span class="h">This week</span><p>Read <span class="mono">tlb</span>, <span class="mono">map_page</span> and the page fault handling in mipster. No new assignment: finish <span class="mono">self-assembler</span>. Next week time: the timer interrupt, and why it is the kernel's answer to the halting problem.</p></div>
+    </div>
+  </div>
+  <aside class="notes"><p>Plant the loop in its spatial form. Do not resolve it; week 6 does. Two-week runs on the assembler are deliberate: the self-assembly fixed point takes people longer than the parser.</p></aside>
+</section>
+
+</div>
+</div>
+<script src="../../deck/deck.js"></script>
+</body>
+</html>

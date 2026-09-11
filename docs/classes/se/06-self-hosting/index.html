@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SE 06 · Self-Hosting</title>
+<link rel="stylesheet" href="../../deck/deck.css">
+</head>
+<body>
+<div id="stage">
+<div id="deck" tabindex="0" aria-label="Presentation: SE 06 Self-Hosting" data-title="SE 06 · Self-Hosting" data-figures="../../../figures/">
+
+<section class="slide" data-act="0" data-mins="1.0">
+  <div class="fig bare" style="position:absolute;inset:0"><canvas data-anim="ambient"></canvas></div>
+  <div class="fill center" style="position:relative">
+    <div class="eyebrow">Systems Engineering · week 6 · station III</div>
+    <h1>Self-<span class="k">Hosting</span></h1>
+    <p class="lead">Hypster. Emulation equals virtualization. The bootstrap problem is Gödel's second theorem, and the trusted computing base is its axiom.</p>
+  </div>
+  <aside class="notes"><p>The thesis week. Three weeks of emulator; now run the guest on the real processor and watch what the kernel needs from itself. Book: Computing, the Isolation and self-reference, Functional equivalence, and Emulation is isolation callouts; Intelligence chapter's Gödel section.</p></aside>
+</section>
+
+<section class="slide" data-act="III" data-actname="Self" data-mins="8.0">
+  <div class="eyebrow">Virtualization</div>
+  <h2>Run the guest's instructions on the host's processor. Trap only what crosses the <span class="k">boundary</span>.</h2>
+  <div class="fill row mid">
+    <div class="fig grow" style="flex:1.3" data-fig="emuvirt"><span class="cap">an OS by emulation reads the guest; an OS by virtualization runs it</span></div>
+    <div class="stack grow">
+      <p class="f" data-step="1">Hypster does what mipster does with one change: instead of interpreting the guest's instructions, it maps the guest's context onto the processor and lets the processor execute them. Adds, loads, branches: native speed. System calls, page faults, the timer: exceptions that come back to hypster, which handles them exactly as mipster would.</p>
+      <p class="f" data-step="2">Same signature as mipster, same contexts, same handlers. The guest cannot tell which one hosts it: same output, same 86,380 instructions. Emulation and virtualization are semantically equivalent, and the emulator is the executable specification.</p>
+    </div>
+  </div>
+  <aside class="notes"><p>The equivalence, now argued: hypster and mipster are two implementations of one interface, and the guest observes only the interface. Read the two procedures side by side in selfie.c; the difference is a handful of lines around who executes.</p></aside>
+</section>
+
+<section class="slide" data-act="III" data-mins="7.0">
+  <div class="eyebrow">The bill</div>
+  <h2>×2,593 versus ×208. Performance is the <span class="j">only</span> reason.</h2>
+  <div class="fill row mid">
+    <div class="fig grow" style="flex:1.2" data-fig="cost"><span class="cap">host instructions per guest instruction, emulated and virtualized</span></div>
+    <div class="stack grow">
+      <div class="term sm">
+        <span class="l"><span class="p">$</span> <span class="c">make os-emu</span></span>
+        <span class="l o">&gt; selfie.m: summary: 86380 executed instructions in total</span>
+        <span class="l o">./selfie: summary: 17939214 executed instructions in total</span>
+      </div>
+      <p class="f" data-step="1">Hypster on mipster: the guest still 86,380, the host 18 million instead of 222. The factor that remains is the cost of the exceptions and the context switches, not of the instructions. On real hardware it is a few percent.</p>
+      <p class="f" data-step="2">Nothing else changed. Not the isolation the guest gets, not the output, not the semantics. Virtualization is an optimisation of emulation, and every optimisation in this book must preserve meaning. So what does it cost, if not meaning?</p>
+    </div>
+  </div>
+  <aside class="notes"><p>Run it. The numbers are selfie's on the class machine; check before class. Then the question that the next slide answers: an optimisation preserves meaning, so what did we pay?</p></aside>
+</section>
+
+<section class="slide" data-act="III" data-mins="8.0">
+  <div class="eyebrow">Self-reference</div>
+  <h2>The kernel now runs on the machine it isolates. It needs the isolation it <span class="x">provides</span>.</h2>
+  <div class="fill row mid">
+    <div class="fig grow" style="flex:1.2" data-fig="selfref"><span class="cap">virtualization is emulation plus self-reference</span></div>
+    <div class="stack grow">
+      <p class="f" data-step="1">In mipster the guest is data; the host's processor and memory are never at stake. In hypster the guest runs on the host's processor, in the host's memory, translated by the host's page tables. Who protects the page tables? The page tables. Who stops a guest that ignores the timer? The timer, if the guest could not switch it off.</p>
+      <p class="f" data-step="2">So the kernel must be isolated from the very things whose isolation it provides: its memory mapped by a table only it can write, its code in a mode only it can enter, its timer set by an instruction only it can execute. The privilege levels of week 2 exist for this and nothing else.</p>
+      <p class="f" data-step="3">That is the price: self-reference. And self-reference, this book has said three times, is where every limit lives.</p>
+    </div>
+  </div>
+  <aside class="notes"><p>The centre of the class. Say it slowly. The kernel is a program on the same machine; hardware privilege is what breaks the circle, and it has to be trusted, not proven, because it is the ground the proof would stand on.</p></aside>
+</section>
+
+<section class="slide" data-act="III" data-mins="7.0">
+  <div class="eyebrow">Bootstrap</div>
+  <h2>Hypervisor on hypervisor on emulator. Somebody has to be <span class="k">first</span>.</h2>
+  <div class="fill row mid">
+    <div class="fig grow" style="flex:1.2" data-fig="ladder"><span class="cap">self-hosting: each level virtualizes the one above, and the bottom is emulated</span></div>
+    <div class="stack grow">
+      <div class="term sm">
+        <span class="l"><span class="p">$</span> <span class="c">./selfie -c selfie.c -o selfie.m -m 3 -l selfie.m -y 2 -l selfie.m -y 1</span></span>
+      </div>
+      <p class="f" data-step="1">Hypster hosting hypster hosting selfie: each level asks the level below to create a context and run it; requests fall through to the bottom, where mipster, an emulator, actually executes. The ladder stands on something that does not stand on itself.</p>
+      <p class="f" data-step="2">Gödel's second theorem in a kernel: a system cannot establish its own consistency from inside. A kernel cannot establish its own isolation from inside. Both need a ground outside the system. For the kernel it is hardware privilege, or an emulator, or a smaller kernel underneath.</p>
+    </div>
+  </div>
+  <aside class="notes"><p>The third command, finally explained. Trace one system call down the ladder. Then Gödel II, stated as what the ladder shows: no level isolates itself; the bottom is trusted.</p></aside>
+</section>
+
+<section class="slide" data-act="III" data-mins="5.0">
+  <div class="eyebrow">Trusted computing base</div>
+  <h2>What you cannot prove, you <span class="j">name</span>. The TCB is the axiom set of a system.</h2>
+  <div class="fill">
+    <div class="two">
+      <div class="stack">
+        <p class="f" data-step="1">The <strong>trusted computing base</strong> is everything a system's isolation depends on but cannot itself check: the hardware's privilege mechanism, the bottom of the ladder, the code that switches contexts. Engineering does not eliminate it; it makes it small, and names it.</p>
+        <p class="f" data-step="2">Selfie's TCB is mipster: a few hundred lines that read the guest. seL4, the verified microkernel, has a TCB of about ten thousand lines and a proof of everything above it — a proof that assumes the hardware. There is always an assumed hardware. Axioms, not proven; chosen.</p>
+      </div>
+      <div class="card syn f" data-step="3"><span class="h">Assignment · <span class="mono">fork-wait</span></span><p>Add <span class="mono">fork</span> and <span class="mono">wait</span> as system calls: a process that creates a copy of itself, and a parent that blocks until a child exits. Design this week; week 7 is about what a process is, and finishes it with <span class="mono">exit</span>. <span class="mono">./grader/self.py fork-wait</span> when it runs.</p></div>
+    </div>
+  </div>
+  <aside class="notes"><p>Close the theory with the engineering answer: the TCB as the axiom set, small and named. Then hand out fork-wait, which spans two weeks; the design is the hard part and next week's lecture is its theory.</p></aside>
+</section>
+
+</div>
+</div>
+<script src="../../deck/deck.js"></script>
+</body>
+</html>

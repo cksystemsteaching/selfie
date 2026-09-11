@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SE 07 · Processes</title>
+<link rel="stylesheet" href="../../deck/deck.css">
+</head>
+<body>
+<div id="stage">
+<div id="deck" tabindex="0" aria-label="Presentation: SE 07 Processes" data-title="SE 07 · Processes" data-figures="../../../figures/">
+
+<section class="slide" data-act="0" data-mins="1.0">
+  <div class="fig bare" style="position:absolute;inset:0"><canvas data-anim="ambient"></canvas></div>
+  <div class="fill center" style="position:relative">
+    <div class="eyebrow">Systems Engineering · week 7 · station III</div>
+    <h1>Processes</h1>
+    <p class="lead">Fork, wait, exit. A process is a virtual machine with a name.</p>
+  </div>
+  <aside class="notes"><p>The abstraction that everyone uses and nobody defines: a process. Defined here as a machine context plus a system-call interface plus a parent. The three calls that make a tree of them, and the two decidability remarks that come with wait. Book: Computing, Time-Sharing, the process versus thread callout and the fork examples.</p></aside>
+</section>
+
+<section class="slide" data-act="III" data-actname="Processes" data-mins="7.0">
+  <div class="eyebrow">Definition</div>
+  <h2>A process is a machine context that believes it owns the machine, plus one door.</h2>
+  <div class="fill">
+    <div class="three">
+      <div class="card f" data-step="1"><span class="h">Its own machine</span><p>Registers, pc, a 4 GB address space translated by its own page table, a slice of time. Weeks 2 to 5 built each of these. The process sees the machine of week 2 and nothing else.</p></div>
+      <div class="card f" data-step="2"><span class="h">One door</span><p><span class="mono">ecall</span>: exit, read, write, open, brk, and from this week fork and wait. Everything a process can do to the world goes through the door, and the kernel decides on the other side. Isolation is the door being the only opening.</p></div>
+      <div class="card syn f" data-step="3"><span class="h">A parent</span><p>Every process but the first was created by another one, and remains its child until it exits and is waited for. The tree of processes is the kernel's only record of who is responsible for whom.</p></div>
+    </div>
+    <p class="sm f" data-step="4">Which is the same thing as a virtual machine, at a different granularity: a process shares the file system and the kernel with its siblings; a virtual machine shares only the hardware. The book calls both machine contexts because they are.</p>
+  </div>
+  <aside class="notes"><p>The definition in three cards, then the observation that a process and a VM are the same data structure with different sharing. Selfie makes that literal.</p></aside>
+</section>
+
+<section class="slide" data-act="III" data-mins="8.0">
+  <div class="eyebrow">Fork</div>
+  <h2>One call, two returns. The copy is the <span class="k">whole</span> machine.</h2>
+  <div class="fill">
+    <div class="two">
+      <div class="term sm">
+        <span class="l c">pid = fork();</span>
+        <span class="l c">if (pid == 0) {</span>
+        <span class="l c">  // child: pid is 0</span>
+        <span class="l c">  exit(42);</span>
+        <span class="l c">} else {</span>
+        <span class="l c">  // parent: pid is the child's</span>
+        <span class="l c">  wait(&amp;status);   // blocks until the child exits</span>
+        <span class="l c">}</span>
+      </div>
+      <div class="stack">
+        <p class="f" data-step="1"><span class="mono">fork</span> creates a new context that is a copy of the caller: same code, same data, same heap and stack, same pc. It returns in both. The only difference between them is the return value, and everything a parent and child do differently descends from that one bit.</p>
+        <p class="f" data-step="2">In selfie: create a context, copy the page table's mapped pages into fresh frames, copy the registers, set <span class="mono">a0</span> to 0 in the child and to the child's id in the parent, put both on the ready queue. Real kernels copy lazily, on the first write, which is another notation for the same meaning.</p>
+      </div>
+    </div>
+    <p class="sm f" data-step="3">A virtual machine snapshot, at process granularity. The compiler class's fixed point was one program producing itself; fork is one machine producing itself. Self-reference again, harmless here because the copy is isolated.</p>
+  </div>
+  <aside class="notes"><p>The book's fork example. Walk through the copy in selfie's terms: context, pages, registers, one register differs. Copy-on-write as notation versus meaning, briefly.</p></aside>
+</section>
+
+<section class="slide" data-act="III" data-mins="7.0">
+  <div class="eyebrow">Wait and exit</div>
+  <h2><span class="mono">wait</span> blocks. Blocked is a state the kernel can <span class="j">see</span>.</h2>
+  <div class="fill row mid">
+    <div class="fig grow" style="flex:1" data-fig="traffic-light-model"><span class="cap">wait moves the parent to blocked; the child's exit moves it back to ready</span></div>
+    <div class="stack grow">
+      <p class="f" data-step="1"><span class="mono">exit</span> ends a context and records its status; <span class="mono">wait</span> blocks the caller until some child has exited, then returns that status. The parent is not polling; the kernel moves it to blocked, gives its slices to others, and moves it back when the child's exit arrives.</p>
+      <p class="f" data-step="2">The kernel cannot know whether a program will exit. It can know, exactly, whether a program has called <span class="mono">exit</span>: the door records it. Decidable facts about processes are facts about the door, and only those. Rice, drawn as a line around the interface.</p>
+      <p class="f" data-step="3">A parent waiting on a child that waits on the parent: both blocked, forever, and the kernel cannot see it unless it looks for cycles. Deadlock, week 8's problem, first met here.</p>
+    </div>
+  </div>
+  <aside class="notes"><p>Blocked as visible state, versus running-forever as invisible. The line around the interface is a useful picture: the kernel decides on system calls, never on behaviour. Then plant deadlock.</p></aside>
+</section>
+
+<section class="slide" data-act="III" data-mins="6.0">
+  <div class="eyebrow">Under the hood</div>
+  <h2>Copying a process costs pages. Creating one costs <span class="k">nothing</span>.</h2>
+  <div class="fill">
+    <div class="two">
+      <div class="stack">
+        <p class="f" data-step="1">A machine context is a few kilobytes. Creating an empty one is instantaneous, and paging fills it on demand. So a process is cheap until it touches memory, which is why real systems can run thousands.</p>
+        <p class="f" data-step="2">Fork copies mapped pages: the cost is proportional to what the parent touched, not to its address space. On real hardware copy-on-write defers even that, and the child pays only for the pages it changes.</p>
+      </div>
+      <div class="card f" data-step="3"><span class="h">Measure it</span><p>In your <span class="mono">fork-wait</span> implementation, count the pages copied per fork, and compare against the profile's page-fault count. Which pages of selfie itself does a fork of selfie copy? The Cost week will want the number.</p></div>
+    </div>
+  </div>
+  <aside class="notes"><p>A short costing slide. The book's remark that contexts are kilobytes and creation is near-instant; on-demand paging from week 4 is what makes it so.</p></aside>
+</section>
+
+<section class="slide" data-act="III" data-mins="8.0">
+  <div class="eyebrow">Assignment</div>
+  <h2><span class="mono">fork-wait-exit</span>: finish the process tree.</h2>
+  <div class="fill">
+    <div class="two">
+      <div class="stack">
+        <ol class="steps">
+          <li>Complete <span class="mono">fork</span> from last week: a child context with copied pages and registers, both on the ready queue, return values 0 and the child's id.</li>
+          <li><span class="mono">wait</span> blocks the parent until a child exits, then returns the child's exit status through the pointer argument. Design what happens if there is no child.</li>
+          <li><span class="mono">exit</span> records the status, frees the context, and wakes a blocked parent if there is one. What if the parent exits first? Decide, and document the decision.</li>
+          <li>Test with the book's fork examples; <span class="mono">./grader/self.py fork-wait</span> and <span class="mono">./grader/self.py fork-wait-exit</span>.</li>
+        </ol>
+      </div>
+      <div class="card syn"><span class="h">Look ahead</span><p>Keep the blocked state explicit and separate from ready; week 8 reuses it for locks, and week 9 asks what memory a process that exited leaves behind. Orphans and zombies are not exotic: they are what a tree of contexts does when the door records exits and nothing else.</p></div>
+    </div>
+  </div>
+  <aside class="notes"><p>Finish fork-wait and add exit. The design questions, no child and parent-exits-first, are the actual assignment; the code is a page. Next week threads, which share what processes copy.</p></aside>
+</section>
+
+</div>
+</div>
+<script src="../../deck/deck.js"></script>
+</body>
+</html>
