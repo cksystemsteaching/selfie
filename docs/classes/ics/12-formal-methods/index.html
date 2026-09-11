@@ -114,18 +114,22 @@
   <h2>The solver <span class="k">finds</span> the failing input. Nobody told it to try '0'.</h2>
   <div class="fill">
     <div class="term sm">
-      <span class="l"><span class="p">$</span> <span class="c">tools/bitme.py -kmax 120 examples/symbolic/division-by-zero-3-35-rotorized.btor2</span></span>
+      <span class="l"><span class="p">$</span> <span class="c">tools/bitme.py -kmax 120 --use-bitwuzla examples/symbolic/division-by-zero-3-35-rotorized.btor2</span></span>
       <span class="l o">bitme bounded model checking: -kmin 0 -kmax 120</span>
-      <span class="l o">0: initializing … 1: transitioning … 2: transitioning …</span>
-      <span class="l o">… core-0-division-by-zero: SAT with input 48 ('0')</span>
-      <span class="l o">… core-0-bad-exit-code: SAT with input 49 ('1')</span>
+      <span class="l o">0: initializing · 1: transitioning · … · 75: transitioning</span>
+      <span class="l o">76: core-0-division-by-zero</span>
+      <span class="l o">76: vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv</span>
+      <span class="l o">76: 150 state 71 input-buffer ; uninitialized input buffer</span>
+      <span class="l o">76: state150-76 = (store … #b0 #b00110000)      ← byte 48, the character '0'</span>
+      <span class="l o">89: core-0-division-by-zero … #b00110010          ← byte 50, '2': the second division</span>
+      <span class="l o">106: core-0-bad-exit-code … #b00001100            ← byte 12: exit(0), the flagged exit</span>
     </div>
     <div class="two">
       <p class="sm f" data-step="1">Bitme walks the steps one at a time and asks about every bad state at each. For the first few dozen the answer is no: the program is setting up its stack, calling <span class="mono">malloc</span>, calling <span class="mono">read</span>. Then the division instruction is fetched, and the answer for division by zero is yes — with the input that does it, derived from the formula.</p>
       <p class="sm f" data-step="2">Among all 256 possible input bytes, the solver found the one that reaches the bad state, the way last week's solver found that x1 must be false: not by trying them, by reasoning. And it did it for a compiled RISC-V binary, not for the C.</p>
     </div>
   </div>
-  <aside class="notes"><p>Run it and let the steps scroll; the output is verbose and the step at which the division becomes reachable depends on the version of rotor, so check the number before class and say it. The sentence to land is the title. Then the second input, 1, for the bad exit code a few steps later.</p></aside>
+  <aside class="notes"><p>Run it and let the steps scroll; the output is verbose; with bitwuzla the division becomes reachable at step 76 with the input byte 48, the second division at step 89 with '2', and the exit(0) property at step 106 with byte 12. The steps move with the versions of rotor and bitme, so check them before class and say them. The sentence to land is the title. Then the third input, 12, for the flagged exit a few steps later.</p></aside>
 </section>
 
 <section class="slide" data-act="IV" data-mins="6.0">

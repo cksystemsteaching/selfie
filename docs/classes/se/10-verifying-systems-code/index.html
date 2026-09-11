@@ -63,11 +63,16 @@
     <div class="term sm">
       <span class="l"><span class="p">$</span> <span class="c">tools/bitme.py -kmax 120 --use-bitwuzla examples/symbolic/division-by-zero-3-35-rotorized.btor2</span></span>
       <span class="l o">bitme bounded model checking: -kmin 0 -kmax 120</span>
-      <span class="l o">0: initializing · 1: transitioning · … · k: transitioning</span>
-      <span class="l o">k: core-0-division-by-zero — satisfiable · input-buffer[0] = 48 ('0')</span>
+      <span class="l o">0: initializing · 1: transitioning · … · 75: transitioning</span>
+      <span class="l o">76: core-0-division-by-zero</span>
+      <span class="l o">76: vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv</span>
+      <span class="l o">76: 150 state 71 input-buffer ; uninitialized input buffer</span>
+      <span class="l o">76: state150-76 = (store … #b0 #b00110000)      ← byte 48, the character '0'</span>
+      <span class="l o">89: core-0-division-by-zero … #b00110010          ← byte 50, '2': the second division</span>
+      <span class="l o">106: core-0-bad-exit-code … #b00001100            ← byte 12: exit(0), the flagged exit</span>
     </div>
     <div class="two">
-      <p class="sm f" data-step="1">Step by step, every bad state is asked. Dozens of steps of no while the program sets up its stack and calls read. Then, at the step where the division is fetched, yes, and the solver hands back the byte that gets there: the character zero. A failing input, derived, not guessed. Step numbers and format move with the tools; the shape does not. Check before class.</p>
+      <p class="sm f" data-step="1">Step by step, every bad state is asked. Seventy-five steps of no while the program sets up its stack and calls read. Then, at step 76, where the division is fetched, yes, and the solver hands back the byte that gets there: the character zero. A failing input, derived, not guessed. Step numbers and format move with the tools; the shape does not. Check before class.</p>
       <p class="sm f" data-step="2">The same run on a segmentation fault looks identical, with a different bad state and an input that computes a bad address. That is the point for a systems engineer: the exceptions your kernel handles are the properties the model checker searches for, and the search is exhaustive up to the bound.</p>
     </div>
   </div>

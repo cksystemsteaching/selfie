@@ -366,10 +366,11 @@ to the class index.
 - The subtitle. Candidates: *From Bits and Bytes to Truth and Proof*; *Elementary Computer
   Science from Finite Bits to Infinite Meaning*; *Notation, Meaning, and the Gap Between*.
   The book currently carries no subtitle.
-- The bitme demonstration in ICS 12, CC 12 and SE 10, and the Cost chapter: the
-  division-by-zero example is checked with `--use-bitwuzla`; Z3 and the BVDD engine stall on
-  the division step. The decks say "check before class" and avoid step numbers. Verify the
-  verdict on the class machine, and pin the bound the decks quote once it is known.
+- The bitme demonstration in ICS 12, CC 12 and SE 10, and the Cost chapter: verified with
+  `--use-bitwuzla` on 2026-09-11 (division by zero at step 76 with input '0', again at step
+  89 with '2', the flagged exit(0) at step 106 with byte 12); Z3 and the BVDD engine were
+  killed on the division step after minutes. The decks quote these steps and say they move
+  with the tool versions; recheck before class.
 - The two rotor grader targets run bitme with a 600-second timeout and a solver the grader
   machine has to provide; the bitme check is not mandatory so that the rest of the grade
   computes without one. Whether rotor needs a stable exit code or a property flag beyond

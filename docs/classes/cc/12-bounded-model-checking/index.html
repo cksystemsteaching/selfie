@@ -41,13 +41,17 @@
       <span class="l"><span class="p">$</span> <span class="c">./rotor -c examples/symbolic/division-by-zero-3-35.c - 0</span></span>
       <span class="l"><span class="p">$</span> <span class="c">tools/bitme.py -kmax 120 --use-bitwuzla examples/symbolic/division-by-zero-3-35-rotorized.btor2</span></span>
       <span class="l o">bitme bounded model checking: -kmin 0 -kmax 120</span>
-      <span class="l o">0: initializing · 1: transitioning · … · k: transitioning</span>
-      <span class="l o">k: core-0-division-by-zero — satisfiable · input-buffer[0] = 48 ('0')</span>
-      <span class="l o">k+n: core-0-bad-exit-code — satisfiable · input-buffer[0] = 49 ('1')</span>
+      <span class="l o">0: initializing · 1: transitioning · … · 75: transitioning</span>
+      <span class="l o">76: core-0-division-by-zero</span>
+      <span class="l o">76: vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv</span>
+      <span class="l o">76: 150 state 71 input-buffer ; uninitialized input buffer</span>
+      <span class="l o">76: state150-76 = (store … #b0 #b00110000)      ← byte 48, the character '0'</span>
+      <span class="l o">89: core-0-division-by-zero … #b00110010          ← byte 50, '2': the second division</span>
+      <span class="l o">106: core-0-bad-exit-code … #b00001100            ← byte 12: exit(0), the flagged exit</span>
     </div>
     <div class="two">
-      <p class="sm f" data-step="1">Bitme walks the steps and, at each, asks the solver about every bad state. Dozens of steps of no while the program sets up its stack and calls malloc and read. Then, at the step where the division instruction is fetched, yes — and the assignment of the uninitialised input buffer is the failing input. Nobody told it to try '0'.</p>
-      <p class="sm f" data-step="2">The output format and the step numbers move with the versions of rotor and bitme; check before class. The shape does not move: a bad state, a step, an input. And the same run on the students' own extensions is the assignment.</p>
+      <p class="sm f" data-step="1">Bitme walks the steps and, at each, asks the solver about every bad state. Seventy-five steps of no while the program sets up its stack and calls malloc and read. Then, at step 76, where the division instruction is fetched, yes — and the assignment of the uninitialised input buffer is the failing input. Nobody told it to try '0'.</p>
+      <p class="sm f" data-step="2">The step numbers move with the versions of rotor and bitme; check before class. The shape does not move: a bad state, a step, an input. And the same run on the students' own extensions is the assignment.</p>
     </div>
   </div>
   <aside class="notes"><p>Run it with whichever backend is installed; bitwuzla is the intended one for bitvectors and is markedly faster than Z3 on the division. Let it scroll. Then the sentence: the solver derived the input from the formula, the way CDCL derived that x1 must be false last week.</p></aside>
