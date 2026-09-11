@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CC 01 · What is Selfie?</title>
+<link rel="stylesheet" href="../../deck/deck.css">
+</head>
+<body>
+<div id="stage">
+<div id="deck" tabindex="0" aria-label="Presentation: CC 01 What is Selfie?" data-title="CC 01 · What is Selfie?" data-figures="../../../figures/">
+
+<section class="slide" data-act="0" data-mins="1.0">
+  <div class="fig bare" style="position:absolute;inset:0"><canvas data-anim="ambient"></canvas></div>
+  <div class="fill center" style="position:relative">
+    <div class="eyebrow">Compiler Construction · week 1</div>
+    <h1>What is <span class="k">Selfie</span>?</h1>
+    <p class="lead">The talk, then the spine of the semester in an hour: the axis, the three theorems, and the definition a compiler class earns.</p>
+  </div>
+  <aside class="notes"><p>Give the selfie talk first, twenty-seven minutes, and the intelligence talk's cut list if the room has not seen it. Then this deck: the spine of the class, which is the introduction class compressed to an hour and pointed at compilers, and the logistics. Everything here is claimed and earned later. Book: the Introduction, the Selfie chapter, and the two station callouts of the Programming chapter.</p></aside>
+</section>
+
+<section class="slide" data-act="0" data-mins="2.0">
+  <div class="eyebrow">What this class is for</div>
+  <h2>A compiler is a <span class="j">proof system</span> for syntax and a <span class="k">constructor</span> of semantics — and every semantic question it seems to answer is a chosen approximation.</h2>
+  <div class="fill">
+    <div class="two">
+      <div class="stack">
+        <p class="f" data-step="1">That sentence is the class. Fourteen weeks of building starc, the compiler in selfie, extension by extension, and at each step asking which of the three parts of the sentence the code you just wrote belongs to.</p>
+        <p class="f" data-step="2">The purpose is the same as in the companion classes: a deep understanding of the basic principles, deep enough to position generative AI, and whatever comes next, properly. A compiler is where notation meets meaning most exactly, so it is the best place to learn what a machine that produces notation can and cannot do.</p>
+      </div>
+      <div class="stack">
+        <div class="card syn f" data-step="3"><span class="h">The assignments</span><p>Twelve autograded extensions of selfie, from hexadecimal literals to structs, one per week from week 2. Plus one new one in week 12: verify your own extension with a model checker.</p></div>
+        <div class="card f" data-step="4"><span class="h">The book</span><p><em>What is Intelligence?</em> — the Programming chapter is this class; the Meaning and Cost chapters are its theory. Read the Introduction and the Selfie chapter this week.</p></div>
+      </div>
+    </div>
+  </div>
+  <aside class="notes"><p>State the sentence, and say that every week returns to it. Then the logistics: the assignments are the ones in the repository's assignments directory, graded by the autograder, submitted as commit links, and the compiler is written in the language it compiles, so every extension must survive self-compilation.</p></aside>
+</section>
+
+<section class="slide" data-act="I" data-actname="The Spine" data-mins="4.0">
+  <div class="eyebrow">The axis</div>
+  <h2>One line carries the semester.</h2>
+  <div class="fill">
+    <div class="fig grow" data-fig="station"><span class="cap">the six stations, and where a compiler class dwells</span></div>
+    <div class="three">
+      <p class="sm f" data-step="1"><strong>Finite, countable.</strong> Bits, and everything you can write down: programs, grammars, binaries. Weeks 2 to 5 live here — scanner, parser, code generator — and they never leave the decidable.</p>
+      <p class="sm f" data-step="2"><strong>Uncountable.</strong> What programs mean. Weeks 6 to 9 — statements, procedures, self-compilation, optimisation — are where the compiler constructs meaning and where Gödel, Turing and Rice say what it cannot decide about it.</p>
+      <p class="sm f" data-step="3"><strong>Cost.</strong> Weeks 10 to 12 turn the compiler's output into a formula, hand it to a solver, and meet NP-completeness. Then a week on generated code, and the definition.</p>
+    </div>
+  </div>
+  <aside class="notes"><p>Walk the figure and name the weeks. The compiler class dwells in station III from the compiler side and does station IV in full; that is its place on the map and the reason its middle weeks are the theory-heavy ones.</p></aside>
+</section>
+
+<section class="slide" data-act="I" data-mins="5.0">
+  <div class="eyebrow">Three commands, three theorems</div>
+  <h2>Understand the first and you understand <span class="k">compilers</span>.</h2>
+  <div class="fill">
+    <div class="term sm">
+      <span class="l"><span class="p">$</span> <span class="c">./selfie -c selfie.c -o selfie1.m -m 2 -c selfie.c -o selfie2.m &amp;&amp; diff -s selfie1.m selfie2.m</span></span>
+      <span class="l o">Files selfie1.m and selfie2.m are identical</span>
+      <span class="l"><span class="p">$</span> <span class="c">./selfie -c selfie.c -o selfie.m -m 2 -l selfie.m -m 1</span></span>
+      <span class="l"><span class="p">$</span> <span class="c">./selfie -c selfie.c -o selfie.m -m 3 -l selfie.m -y 2 -l selfie.m -y 1</span></span>
+    </div>
+    <div class="three">
+      <div class="card syn f" data-step="1"><span class="h">Self-compilation · a fixed point</span><p>The compiler compiles its own source and gets the same bytes twice. Gödel's self-reference, runnable. It proves self-agreement — and week 8 says what it cannot prove.</p></div>
+      <div class="card f" data-step="2"><span class="h">Self-execution · the universal machine</span><p>An emulator that runs every program for its machine, itself included. Turing's move, forwards. The target of every instruction you will emit.</p></div>
+      <div class="card f" data-step="3"><span class="h">Self-hosting · the bootstrap problem</span><p>A hypervisor that must isolate itself from the machines it isolates. The systems class. Here, only the reminder that the loop is the subject.</p></div>
+    </div>
+  </div>
+  <aside class="notes"><p>The talk's three commands with the theorems attached. In this class the first one is the whole subject: every assignment changes starc, and every change has to survive the round trip through the emulator and come out byte-identical. That is the fixed point as a grading criterion.</p></aside>
+</section>
+
+<section class="slide" data-act="I" data-mins="5.0">
+  <div class="eyebrow">The three theorems, briefly</div>
+  <h2>Cantor, Gödel, Rice — what a compiler class needs from each.</h2>
+  <div class="fill">
+    <div class="three">
+      <div class="card f" data-step="1"><span class="h">Cantor · 1891</span><p>Programs are countable; behaviours are not. So almost every behaviour has no program, and no analysis of programs can list what they do. Semantic analysis is approximation, by counting alone.</p></div>
+      <div class="card f" data-step="2"><span class="h">Gödel · 1931</span><p>No strong system certifies itself. A compiler that agrees with itself has certified nothing; the outside check is a second compiler, or a solver. Week 8, with Thompson.</p></div>
+      <div class="card syn f" data-step="3"><span class="h">Rice · 1953</span><p>Every non-trivial property of behaviour is undecidable; only questions about the text are safe. Type checking is about the text. Dead code is about behaviour. Week 4 and week 9.</p></div>
+    </div>
+    <p class="sm f" data-step="4">All three are one move: assume a complete list, ask each item about itself, answer the opposite. The introduction class proves them; here they are the constraints the compiler is built under.</p>
+  </div>
+  <aside class="notes"><p>Do not prove anything; point at the Meaning chapter. The purpose of the slide is that from week 2 on, whenever a design decision in starc is discussed, one of these three names can be said and the room knows why.</p></aside>
+</section>
+
+<section class="slide" data-act="I" data-mins="4.0">
+  <div class="eyebrow">The system</div>
+  <h2>Nothing in the middle is left out.</h2>
+  <div class="fill">
+    <div class="fig grow" data-fig="pipeline"><span class="cap">selfie.c → scanner → parser → code generator → RISC-U</span></div>
+    <div class="two">
+      <p class="sm f" data-step="1">Twelve thousand lines, one file: the compiler starc, the emulator mipster, the hypervisor hypster, and a small library. The compiler is about four thousand of those lines and you will read all of them.</p>
+      <p class="sm f" data-step="2">C*: 7 keywords, 22 symbols, LL(1), one type and pointers to it. RISC-U: 14 instructions, 32 registers, 4 GB. Small enough to hold in one head, which is the only argument for the size.</p>
+    </div>
+  </div>
+  <aside class="notes"><p>The pipeline is the syllabus: scanner in week 2, parser in week 3, symbol table in week 4, code generation from week 5. Say that the grammar and the instruction set are in grammar.md and riscu.md and that every assignment starts by extending one of them before touching the code.</p></aside>
+</section>
+
+<section class="slide" data-act="I" data-mins="4.0">
+  <div class="eyebrow">Fourteen weeks</div>
+  <h2>The route.</h2>
+  <div class="fill">
+    <table class="t">
+      <tr><th>wk</th><th>lecture</th><th>assignment</th></tr>
+      <tr><td>2</td><td>Regular languages, FSMs, the scanner</td><td class="mono">hex-literal</td></tr>
+      <tr><td>3</td><td>Context-free grammars, LL(1), recursive descent: a parse is a proof</td><td class="mono">—</td></tr>
+      <tr><td>4</td><td>Symbol table, types: type checking is proof checking</td><td class="mono">bitwise-shift-compilation</td></tr>
+      <tr><td>5</td><td>Code generation for expressions; instruction encoding is Gödel numbering</td><td class="mono">bitwise-shift-execution</td></tr>
+      <tr><td>6</td><td>Statements: while + assignment is universal</td><td class="mono">bitwise-and-or-not, logical-and-or-not</td></tr>
+      <tr><td>7</td><td>Procedures, calling convention, recursion; where halting lives</td><td class="mono">for-loop, lazy-evaluation</td></tr>
+      <tr><td>8</td><td>Self-compilation: the fixed point, trusting trust</td><td class="mono">array-access</td></tr>
+      <tr><td>9</td><td>Optimisation and Rice; register allocation is NP-hard</td><td class="mono">array-allocation</td></tr>
+      <tr><td>10</td><td>Semantics as a formula: rotor, BTOR2</td><td class="mono">array-multidimensional</td></tr>
+      <tr><td>11</td><td>SAT: NP-completeness, DPLL, CDCL, babysat</td><td class="mono">struct-declaration</td></tr>
+      <tr><td>12</td><td>SMT, bounded model checking with bitme</td><td class="mono">struct-execution, rotor-check</td></tr>
+      <tr><td>13</td><td>Generated code and the gate</td><td class="mono">—</td></tr>
+      <tr><td>14</td><td>What a compiler is; the definition</td><td class="mono">—</td></tr>
+    </table>
+  </div>
+  <aside class="notes"><p>Fourteen sessions of 135 minutes: lecture, then the assignment introduced and started in the room. Point out that the assignments are cumulative — every extension has to keep every earlier one working and keep self-compiling — and that print-your-name is due this week as the warm-up.</p></aside>
+</section>
+
+<section class="slide" data-act="I" data-mins="2.0">
+  <div class="eyebrow">This week</div>
+  <h2>Take a selfie.</h2>
+  <div class="fill">
+    <div class="two">
+      <ol class="steps">
+        <li>Install selfie, run the three commands, and read the grader's README: private clone, upstream, commit links.</li>
+        <li>Do <span class="mono">print-your-name</span>: make selfie print your name right after initialisation, prefixed like every other status message. Part of the assignment is finding out where.</li>
+        <li>Check your grade with <span class="mono">./grader/self.py print-your-name</span>, and that <span class="mono">self-compile</span> still passes.</li>
+        <li>Read the Introduction, the Selfie chapter, and the Programming chapter's opening callout.</li>
+      </ol>
+      <div class="card syn"><span class="h">Next week</span><p>The scanner: characters into symbols, one finite state machine per kind of symbol, and your first extension of the grammar — hexadecimal integer literals.</p></div>
+    </div>
+  </div>
+  <aside class="notes"><p>Nothing more this week. The point of print-your-name is that it forces the setup: git, the grader, the round trip. Everyone should have a grade 2 on it before week 2.</p></aside>
+</section>
+
+</div>
+</div>
+<script src="../../deck/deck.js"></script>
+</body>
+</html>
