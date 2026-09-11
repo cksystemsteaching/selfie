@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SE 09 · Runtime Systems</title>
+<link rel="stylesheet" href="../../deck/deck.css">
+</head>
+<body>
+<div id="stage">
+<div id="deck" tabindex="0" aria-label="Presentation: SE 09 Runtime Systems" data-title="SE 09 · Runtime Systems" data-figures="../../../figures/">
+
+<section class="slide" data-act="0" data-mins="1.0">
+  <div class="fig bare" style="position:absolute;inset:0"><canvas data-anim="ambient"></canvas></div>
+  <div class="fill center" style="position:relative">
+    <div class="eyebrow">Systems Engineering · week 9 · station III</div>
+    <h1>Runtime <span class="k">Systems</span></h1>
+    <p class="lead">Malloc, garbage collection. Liveness is undecidable, so collectors compute reachability instead.</p>
+  </div>
+  <aside class="notes"><p>The part of the operating system that lives inside the process: the allocator and the collector. One theorem, Rice on liveness, and the engineering answer to it, reachability as a decidable over-approximation. Book: Computing, Runtime Systems.</p></aside>
+</section>
+
+<section class="slide" data-act="III" data-actname="Runtime" data-mins="7.0">
+  <div class="eyebrow">Malloc</div>
+  <h2>Selfie's <span class="mono">malloc</span> is a bump pointer. Freeing memory makes everything harder.</h2>
+  <div class="fill">
+    <div class="two">
+      <div class="term sm">
+        <span class="l o">// emit_malloc, in spirit</span>
+        <span class="l c">uint64_t* malloc(uint64_t size) {</span>
+        <span class="l c">  uint64_t* block = _bump;     // read</span>
+        <span class="l c">  _bump = _bump + size;        // modify, write</span>
+        <span class="l c">  if (_bump &gt; brk) brk(_bump); // ask the kernel for pages</span>
+        <span class="l c">  return block;</span>
+        <span class="l c">}</span>
+      </div>
+      <div class="stack">
+        <p class="f" data-step="1">A global pointer that moves up. Allocation is constant time, memory is never reused, and the heap grows until the kernel refuses. Selfie's own compiler runs on this and never frees a byte; for a compiler that is fine.</p>
+        <p class="f" data-step="2">Add <span class="mono">free</span> and you need a free list, a fit policy, coalescing against fragmentation, and metadata per block: the book's tour from first-fit to slab allocators. Every design is a different notation for the same meaning, a function from requests to disjoint blocks, with a different cost profile.</p>
+        <p class="f" data-step="3">And the read-modify-write of <span class="mono">_bump</span> is last week's race. Two threads can receive the same block. That is the assignment.</p>
+      </div>
+    </div>
+  </div>
+  <aside class="notes"><p>The bump pointer, its virtue and its two problems: no reuse and no thread safety. The allocator zoo in one sentence; the book has the details and this class does not implement them.</p></aside>
+</section>
+
+<section class="slide" data-act="III" data-mins="7.0">
+  <div class="eyebrow">The theorem</div>
+  <h2>Will this block be used again? <span class="x">Undecidable</span>. Can it be reached? <span class="j">Decidable</span>.</h2>
+  <div class="fill row mid">
+    <div class="fig grow" style="flex:1.1" data-fig="live-versus-dead"><span class="cap">live memory may be used again; dead memory will not be; unreachable memory cannot be</span></div>
+    <div class="stack grow">
+      <p class="f" data-step="1">A block is <strong>live</strong> if the program will use it again and <strong>dead</strong> if it will not. Whether a program will ever use a given address is a property of its future behaviour: Rice, exactly. No collector decides liveness.</p>
+      <p class="f" data-step="2">A block is <strong>reachable</strong> if some chain of pointers leads to it from a variable. Reachability is a property of the current state, computed by a graph traversal in time linear in the heap. Unreachable implies dead; the converse fails, and the difference is the memory a collector keeps although it is dead.</p>
+      <p class="f" data-step="3">So every garbage collector computes the decidable over-approximation of the undecidable property. Safe, never precise. The design principle of the class again: bound what you cannot decide.</p>
+    </div>
+  </div>
+  <aside class="notes"><p>The cleanest Rice application in the class. Live is about the future, reachable is about the present. The collector is sound, keeps dead memory, and leaks are what it cannot see: memory that is reachable and dead.</p></aside>
+</section>
+
+<section class="slide" data-act="III" data-mins="7.0">
+  <div class="eyebrow">Roots and tracing</div>
+  <h2>Start from the variables. Follow every word that looks like a pointer.</h2>
+  <div class="fill row mid">
+    <div class="fig grow" style="flex:1.2" data-fig="roots-into-heap"><span class="cap">roots in the data and stack segments; the heap reached from them</span></div>
+    <div class="stack grow">
+      <p class="f" data-step="1">The roots are the global variables in the data segment and the locals and parameters on every stack. Mark everything reachable from them, transitively; sweep everything unmarked. Mark-and-sweep, and selfie's collector does this on the emulator's view of the guest's memory, or as a library inside the program, or both at once.</p>
+      <p class="f" data-step="2">Which words are pointers? C* does not say; a word is a number. A <strong>conservative</strong> collector treats every word that could be a heap address as if it were one: an over-approximation of an over-approximation, still safe, still a bound. Boehm's collector made that fast; selfie's makes it readable.</p>
+      <p class="f" data-step="3">Self-collecting selfie: the emulator's collector collects the memory of a guest that is running its own collector on the memory of its guest. Try <span class="mono">-gc</span> at two levels and read the profile.</p>
+    </div>
+  </div>
+  <aside class="notes"><p>Mark-and-sweep on the figure. The pointer-or-value question is the conservative collector's whole story. Run the self-collecting command from the book's action callout and show the two collectors stacked; the numbers are on the class machine.</p></aside>
+</section>
+
+<section class="slide" data-act="III" data-mins="6.0">
+  <div class="eyebrow">Cost</div>
+  <h2>Time, space, and the pause.</h2>
+  <div class="fill">
+    <div class="three">
+      <div class="card f" data-step="1"><span class="h">Stop-the-world</span><p>Mark-and-sweep stops the program for a time linear in the heap. Fine for a compiler; not for a game, a pacemaker, or a kernel. Every collector since is a way to spread that time out.</p></div>
+      <div class="card f" data-step="2"><span class="h">Generational, incremental, concurrent</span><p>Most objects die young: collect the young ones often. Do a little marking per allocation. Mark while the program runs, with a barrier that tells the collector what changed. Each is a bound traded for a cost.</p></div>
+      <div class="card syn f" data-step="3"><span class="h">Reference counting</span><p>Count pointers instead of tracing; free at zero. No pause, but cycles are never freed: an under-approximation of unreachability. Safe in the other direction: leaks, never dangling pointers.</p></div>
+    </div>
+    <p class="sm f" data-step="4">Managed languages are languages whose runtime does this for you, and the price is paid on every allocation. The Cost chapter's trade, once more.</p>
+  </div>
+  <aside class="notes"><p>A taxonomy slide; keep it brisk. The point is that every collector is an engineering compromise around one theorem, and the compromises are measured, which is week 11.</p></aside>
+</section>
+
+<section class="slide" data-act="III" data-mins="8.0">
+  <div class="eyebrow">Assignment</div>
+  <h2><span class="mono">threadsafe-malloc</span>: add <span class="mono">lr.d</span> and <span class="mono">sc.d</span>, then use them.</h2>
+  <div class="fill">
+    <div class="two">
+      <div class="stack">
+        <ol class="steps">
+          <li>Add <span class="mono">lr.d</span> and <span class="mono">sc.d</span> to RISC-U: encoding and decoding in selfie, a case each in mipster's <span class="mono">execute</span>, and the reservation, cleared by any store to the address, in the machine context. Make hypster honour it too.</li>
+          <li>Provide them to C* as procedures <span class="mono">lr()</span> and <span class="mono">sc()</span>, emitted like the other library procedures.</li>
+          <li>Rewrite <span class="mono">emit_malloc</span> so that the read-modify-write of <span class="mono">_bump</span> is a retry loop on <span class="mono">lr</span> and <span class="mono">sc</span>. Test with last week's threads: many threads, many allocations, no two blocks overlapping.</li>
+          <li><span class="mono">./grader/self.py threadsafe-malloc</span>.</li>
+        </ol>
+      </div>
+      <div class="card syn"><span class="h">Next week</span><p>The last systems assignment, <span class="mono">treiber-stack</span>, builds a lock-free stack on the same two instructions. And <span class="mono">rotor-bounds</span> turns a model checker on your sequential systems code, because rotor does not yet model threads. Both are introduced in week 10.</p></div>
+    </div>
+  </div>
+  <aside class="notes"><p>Extending the ISA is the new kind of work here. Insist on the reservation being part of the context, so that a context switch clears it, which is what real hardware does across cores.</p></aside>
+</section>
+
+</div>
+</div>
+<script src="../../deck/deck.js"></script>
+</body>
+</html>

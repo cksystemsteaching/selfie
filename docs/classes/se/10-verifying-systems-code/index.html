@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SE 10 · Verifying Systems Code</title>
+<link rel="stylesheet" href="../../deck/deck.css">
+</head>
+<body>
+<div id="stage">
+<div id="deck" tabindex="0" aria-label="Presentation: SE 10 Verifying Systems Code" data-title="SE 10 · Verifying Systems Code" data-figures="../../../figures/">
+
+<section class="slide" data-act="0" data-mins="1.0">
+  <div class="fig bare" style="position:absolute;inset:0"><canvas data-anim="ambient"></canvas></div>
+  <div class="fill center" style="position:relative">
+    <div class="eyebrow">Systems Engineering · week 10 · station IV</div>
+    <h1>Verifying <span class="k">Systems</span> Code</h1>
+    <p class="lead">Rotor turns a program into a formula. Bitme asks a solver whether any input reaches a bad state within a bound.</p>
+  </div>
+  <aside class="notes"><p>The formal-methods week, applied. The introduction class did SAT and the compiler class did bit-blasting in full; here the two are recapped in one slide each and the rest is what a systems engineer does with them: state a memory-safety property, generate the model, run the solver, read the input off the answer. Book: Cost chapter, From Machine Words to Formulas and Models of Machines.</p></aside>
+</section>
+
+<section class="slide" data-act="IV" data-actname="Proof" data-mins="6.0">
+  <div class="eyebrow">Recap · one slide</div>
+  <h2>A machine state is a formula. A step is a formula. Reaching a bad state in <em>k</em> steps is a <span class="k">SAT</span> question.</h2>
+  <div class="fill row mid">
+    <div class="fig grow" style="flex:1.2" data-fig="btor2"><span class="cap">a BTOR2 model: state, init, next, bad, unrolled k steps</span></div>
+    <div class="stack grow">
+      <p class="f" data-step="1">Registers and memory are bit-vectors. Each of the fourteen instructions is a function from state to state, expressible in the theory of bit-vectors and arrays. A program's semantics, from the Meaning chapter, is exactly the transition relation of a BTOR2 model: <em>init</em>, <em>next</em>, and a list of <em>bad</em> states.</p>
+      <p class="f" data-step="2">Unroll <em>next</em> <em>k</em> times, conjoin one bad state, hand the formula to an SMT solver. Satisfiable means an input exists that reaches the bad state at step <em>k</em>, and the satisfying assignment is that input. Unsatisfiable for all <em>k</em> up to a bound means no input reaches it within the bound: a theorem.</p>
+    </div>
+  </div>
+  <aside class="notes"><p>Two slides of theory from the sibling classes in one. If students took neither, the book's Cost chapter is the reading. Emphasise the identity: the semantics of the Meaning chapter and the transition relation of the model are the same object.</p></aside>
+</section>
+
+<section class="slide" data-act="IV" data-mins="7.0">
+  <div class="eyebrow">Rotor</div>
+  <h2>Rotor generates the model of a RISC-U program <span class="j">with</span> its system calls.</h2>
+  <div class="fill">
+    <div class="two">
+      <div class="term sm">
+        <span class="l"><span class="p">$</span> <span class="c">./rotor -c examples/symbolic/division-by-zero-3-35.c - 0</span></span>
+        <span class="l o">… writing division-by-zero-3-35-rotorized.btor2</span>
+        <span class="l o">bad states, among others:</span>
+        <span class="l o">  core-0-division-by-zero</span>
+        <span class="l o">  core-0-fetch-seg-fault   core-0-fetch-invalid-address</span>
+        <span class="l o">  core-0-load-seg-fault    core-0-store-seg-fault</span>
+        <span class="l o">  core-0-brk-seg-fault     core-0-bad-exit-code</span>
+      </div>
+      <div class="stack">
+        <p class="f" data-step="1">Rotor is selfie's model generator. It compiles the program, then emits the machine as a formula: the registers, the memory segments, the fourteen instructions, and the system calls <span class="mono">read</span>, <span class="mono">write</span>, <span class="mono">brk</span>, <span class="mono">exit</span> modelled as what the kernel does to the state. Input bytes are the free variables.</p>
+        <p class="f" data-step="2">The bad states are systems properties: an address outside the mapped segments, a fetch from data, a store into code, a program break that moves backwards, an exit code that is not zero. Memory safety, stated as formulas over the same state the kernel manages. Flags <span class="mono">-Pnosegfaults</span> and <span class="mono">-Pnoinvalidaddresses</span> switch families off; the default checks them all.</p>
+      </div>
+    </div>
+  </div>
+  <aside class="notes"><p>Rotor's purpose in one breath: the executable semantics from the Meaning chapter, emitted as a formula rather than executed. The bad states are exactly the exceptions of week 2, which is the connection for this class: what the kernel catches at run time, the model checker looks for at all run times within a bound.</p></aside>
+</section>
+
+<section class="slide" data-act="IV" data-mins="8.0">
+  <div class="eyebrow">In the terminal</div>
+  <h2>Bitme: unroll, ask, and read the input off the <span class="k">satisfying assignment</span>.</h2>
+  <div class="fill">
+    <div class="term sm">
+      <span class="l"><span class="p">$</span> <span class="c">tools/bitme.py -kmax 120 --use-bitwuzla examples/symbolic/division-by-zero-3-35-rotorized.btor2</span></span>
+      <span class="l o">bitme bounded model checking: -kmin 0 -kmax 120</span>
+      <span class="l o">0: initializing · 1: transitioning · … · k: transitioning</span>
+      <span class="l o">k: core-0-division-by-zero — satisfiable · input-buffer[0] = 48 ('0')</span>
+    </div>
+    <div class="two">
+      <p class="sm f" data-step="1">Step by step, every bad state is asked. Dozens of steps of no while the program sets up its stack and calls read. Then, at the step where the division is fetched, yes, and the solver hands back the byte that gets there: the character zero. A failing input, derived, not guessed. Step numbers and format move with the tools; the shape does not. Check before class.</p>
+      <p class="sm f" data-step="2">The same run on a segmentation fault looks identical, with a different bad state and an input that computes a bad address. That is the point for a systems engineer: the exceptions your kernel handles are the properties the model checker searches for, and the search is exhaustive up to the bound.</p>
+    </div>
+  </div>
+  <aside class="notes"><p>Run it live with the installed backend; bitwuzla is the intended one. Let it scroll. Then state the systems reading: an exception handler bounds at run time, the model checker bounds at design time, and both are bounds.</p></aside>
+</section>
+
+<section class="slide" data-act="IV" data-mins="6.0">
+  <div class="eyebrow">What a bound buys</div>
+  <h2>Absence, up to <em>k</em>. Nothing about <em>k</em>+1. And nothing about <span class="x">threads</span>, yet.</h2>
+  <div class="fill">
+    <div class="three">
+      <div class="card f" data-step="1"><span class="h">Versus testing</span><p>A test visits one state in a space of 2<sup>35</sup> bits per machine. A bounded run covers every input and every path to depth <em>k</em>. Presence versus absence; observation versus theorem.</p></div>
+      <div class="card f" data-step="2"><span class="h">Versus Rice</span><p>No tool decides whether a program segfaults. This one decides whether it does within <em>k</em> steps, which is a different, finite question. The bound is the approximation, chosen and named, like the timer and the TCB.</p></div>
+      <div class="card syn f" data-step="3"><span class="h">Versus concurrency</span><p>Rotor models one machine context. Interleavings, week 8's state space, are not in the formula. Modelling them is a research problem with real tools, and not this class's. The formal-methods assignment stays sequential, and says so.</p></div>
+    </div>
+  </div>
+  <aside class="notes"><p>Three honest comparisons. The third is a disclosure: the class's most interesting bugs are concurrent, and the tool in hand does not see them. Name the gap; do not paper over it.</p></aside>
+</section>
+
+<section class="slide" data-act="IV" data-mins="8.0">
+  <div class="eyebrow">Assignments</div>
+  <h2><span class="mono">rotor-bounds</span> and <span class="mono">treiber-stack</span>.</h2>
+  <div class="fill">
+    <div class="two">
+      <div class="stack">
+        <ol class="steps">
+          <li><strong><span class="mono">rotor-bounds</span>.</strong> Take a small sequential routine from your systems code: your assembler's parser on a short input, or your <span class="mono">malloc</span> driven by a program that allocates until the break moves. Write a C* driver that reads its input with <span class="mono">read</span>.</li>
+          <li>State the property in rotor's terms: which bad state, on which run. Generate the model; run bitme with a bound you choose and justify.</li>
+          <li>Submit the driver, the property, the bound, and either the input the solver found or the bound up to which none exists. One page of notes on what the verdict does and does not establish.</li>
+          <li><strong><span class="mono">treiber-stack</span>.</strong> <span class="mono">init_stack</span>, <span class="mono">push</span>, <span class="mono">pop</span> on a singly linked list with one shared <span class="mono">top</span>, using <span class="mono">lr</span> and <span class="mono">sc</span> rather than compare-and-swap, so the ABA problem cannot arise. Allocate nodes with your thread-safe <span class="mono">malloc</span>. Graded by <span class="mono">./grader/self.py treiber-stack</span>.</li>
+        </ol>
+      </div>
+      <div class="card syn"><span class="h">Grading rotor-bounds</span><p>The grader runs rotor and bitme on your driver with your flags and compares verdict and bound; the exact invocation is in the assignment file. Two weeks for both assignments. The stack is the harder code; the model is the harder thinking.</p></div>
+    </div>
+  </div>
+  <aside class="notes"><p>Two assignments, two weeks. rotor-bounds is new this year; the grader target is described in the assignment file. Treiber stack is the book's final exercise and the reason lr/sc were added. Point out the irony: the one the model checker can verify is the one that is not concurrent.</p></aside>
+</section>
+
+</div>
+</div>
+<script src="../../deck/deck.js"></script>
+</body>
+</html>

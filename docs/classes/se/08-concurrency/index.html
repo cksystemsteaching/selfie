@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SE 08 · Concurrency</title>
+<link rel="stylesheet" href="../../deck/deck.css">
+</head>
+<body>
+<div id="stage">
+<div id="deck" tabindex="0" aria-label="Presentation: SE 08 Concurrency" data-title="SE 08 · Concurrency" data-figures="../../../figures/">
+
+<section class="slide" data-act="0" data-mins="1.0">
+  <div class="fig bare" style="position:absolute;inset:0"><canvas data-anim="ambient"></canvas></div>
+  <div class="fill center" style="position:relative">
+    <div class="eyebrow">Systems Engineering · week 8 · station III</div>
+    <h1>Concurrency</h1>
+    <p class="lead">Threads, locks, load-reserved and store-conditional. Interleavings are a state space, and it explodes.</p>
+  </div>
+  <aside class="notes"><p>Processes share nothing; threads share everything but the stack. Sharing is where the timer of week 5 stops being invisible: a preemption between a load and a store changes the meaning of a program. Book: Computing, Concurrency, and the Runtime Systems section's atomic instructions.</p></aside>
+</section>
+
+<section class="slide" data-act="III" data-actname="Sharing" data-mins="7.0">
+  <div class="eyebrow">Threads</div>
+  <h2>A thread is a process that <span class="k">shares</span> the address space. Only the stack and the registers are its own.</h2>
+  <div class="fill">
+    <div class="two">
+      <div class="stack">
+        <p class="f" data-step="1">Fork copies pages. A thread shares them: same page table, same code, same data, same heap, a fresh stack. In selfie a thread is a context whose page table points to the parent's, with its own registers and a stack segment of its own. That is the whole difference, and it is a difference in how much isolation you keep.</p>
+        <p class="f" data-step="2">Less isolation, cheaper communication: a global variable is a message. And the timer of week 5, invisible to a process, is now visible: it can fire between any two instructions, and the other thread sees memory as it was at that instant.</p>
+      </div>
+      <div class="term sm f" data-step="3">
+        <span class="l o">// x = x + 1, as the compiler emits it</span>
+        <span class="l c">ld   t0,-16(gp)   // read x</span>
+        <span class="l c">addi t0,t0,1      // ← the timer can fire here</span>
+        <span class="l c">sd   t0,-16(gp)   // write x</span>
+        <span class="l o">// two threads, two increments, x goes up by one</span>
+      </div>
+    </div>
+  </div>
+  <aside class="notes"><p>Define a thread by what it does not copy. Then the race: three instructions, one preemption point, and a lost update. The disassembler makes it concrete; show the real three instructions for a global increment.</p></aside>
+</section>
+
+<section class="slide" data-act="III" data-mins="7.0">
+  <div class="eyebrow">The state space</div>
+  <h2>Two threads of <em>n</em> instructions have <span class="x">C(2n, n)</span> interleavings. The meaning of the program is the set of all of them.</h2>
+  <div class="fill">
+    <div class="three">
+      <div class="kpi f" data-step="1"><span class="n">20</span><span class="l">interleavings of two 3-instruction threads</span></div>
+      <div class="kpi f" data-step="2"><span class="n">≈ 10<sup>29</sup></span><span class="l">of two 50-instruction threads</span></div>
+      <div class="kpi f" data-step="3"><span class="n">2<sup>35</sup></span><span class="l">bits of state per thread, before interleaving</span></div>
+    </div>
+    <div class="two">
+      <p class="sm f" data-step="4">The Meaning chapter defined a program's meaning as the state it computes. With threads, the program has one meaning per interleaving, and the scheduler picks which. A program is correct if every interleaving is, and there are more of them than tests. The state-space explosion of the Size chapter, arriving from a new direction.</p>
+      <p class="sm f" data-step="5">So concurrency is the second place in this class where testing shows presence and not absence, and where the honest tools are a proof for all interleavings, or a bound. Locks are the way to make most of the interleavings equivalent, so that fewer need to be considered.</p>
+    </div>
+  </div>
+  <aside class="notes"><p>Count the interleavings; the binomial is enough. Then the definition: meaning as a set. The point of locks, stated before the mechanism: they shrink the set to the ones that matter. Rotor does not model concurrency, which is why week 10 stays sequential; say so here.</p></aside>
+</section>
+
+<section class="slide" data-act="III" data-mins="7.0">
+  <div class="eyebrow">Locks</div>
+  <h2>Mutual exclusion: at most one thread in the critical section. Acquiring the lock must itself be <span class="j">atomic</span>.</h2>
+  <div class="fill">
+    <div class="two">
+      <div class="stack">
+        <p class="f" data-step="1">A lock is a word: 0 free, 1 taken. Acquire: wait until it is 0, then set it to 1. Release: set it to 0. Between acquire and release the thread is alone with the shared data, and the interleavings inside the section collapse to one.</p>
+        <p class="f" data-step="2">But "wait until 0, then set 1" is a load, a branch and a store: three instructions, and the timer can fire between them. Two threads both see 0 and both take the lock. The lock has the race it was meant to remove. No sequence of ordinary instructions fixes this; the machine has to offer one that cannot be interleaved.</p>
+      </div>
+      <div class="card syn f" data-step="3"><span class="h">Blocking</span><p>A thread that finds the lock taken can spin, burning its slice, or ask the kernel to block it: the third process state of week 5, now entered on a lock. The kernel wakes it on release. And two threads each holding a lock the other waits for are both blocked, forever: <strong>deadlock</strong>, which the kernel cannot see without looking for cycles, and which week 12 places on the axis.</p></div>
+    </div>
+  </div>
+  <aside class="notes"><p>The lock, then the race in the lock. This is the moment students see why atomic instructions exist. Then blocking versus spinning, and deadlock as a cycle in the waits-for graph, decidable by inspection and undecidable in advance.</p></aside>
+</section>
+
+<section class="slide" data-act="III" data-mins="8.0">
+  <div class="eyebrow">Atomic instructions</div>
+  <h2><span class="mono">lr.d</span> reserves. <span class="mono">sc.d</span> succeeds only if nobody wrote in between.</h2>
+  <div class="fill">
+    <div class="two">
+      <div class="term sm">
+        <span class="l o">// x = x + 1, lock-free</span>
+        <span class="l c">retry:</span>
+        <span class="l c">  lr.d t0,(a0)       // load x, reserve a0</span>
+        <span class="l c">  addi t0,t0,1</span>
+        <span class="l c">  sc.d t1,t0,(a0)    // store if still reserved; t1 = 0 on success</span>
+        <span class="l c">  bne  t1,zero,retry // someone interfered: try again</span>
+      </div>
+      <div class="stack">
+        <p class="f" data-step="1">Load-reserved and store-conditional, RISC-V's pair: the load remembers the address, the store checks that no other core or thread wrote to it since, and fails instead of overwriting. A failed store is not an error; it is information, and the loop uses it.</p>
+        <p class="f" data-step="2">RISC-U does not have them. Your assignment adds them to the machine, the emulator, and the hypervisor: a new instruction is a new line in the machine chapter's table, a new case in mipster's <span class="mono">execute</span>, and a new column in the interleaving state space that behaves.</p>
+        <p class="f" data-step="3">With these, a lock is four instructions and correct. Without them, no lock is. The whole of concurrent programming rests on one instruction that the machine promises not to interleave.</p>
+      </div>
+    </div>
+  </div>
+  <aside class="notes"><p>The book's lr/sc example. Explain the reservation as a bit the hardware keeps, cleared by any write to the address. Then the design point: RISC-U lacks these, and the students extend the ISA, which is the systems class's version of extending the language.</p></aside>
+</section>
+
+<section class="slide" data-act="III" data-mins="6.0">
+  <div class="eyebrow">Progress</div>
+  <h2>Lock-free is a <span class="k">progress guarantee</span>, not the absence of locks.</h2>
+  <div class="fill">
+    <div class="three">
+      <div class="card f" data-step="1"><span class="h">Blocking</span><p>A thread holding a lock that is preempted, or dies, stops every thread waiting for it. Progress depends on the scheduler being kind.</p></div>
+      <div class="card f" data-step="2"><span class="h">Lock-free</span><p>Some thread always completes in a bounded number of steps of the system. The lr/sc loop: if my store fails, someone else's succeeded. Livelock is possible; deadlock is not.</p></div>
+      <div class="card syn f" data-step="3"><span class="h">Wait-free</span><p>Every thread completes in a bounded number of its own steps. Stronger, rarer, and the only one that is a bound on a single thread rather than on the system. Bounds again, with different quantifiers.</p></div>
+    </div>
+    <p class="sm f" data-step="4">Progress properties are the concurrency chapter's version of liveness: statements about the future of an execution, hence about all interleavings, hence exactly what testing cannot show.</p>
+  </div>
+  <aside class="notes"><p>The three progress guarantees as three quantifier structures over interleavings. Liveness is the word to introduce; week 9 uses it for garbage collection and week 12 places it with Rice.</p></aside>
+</section>
+
+<section class="slide" data-act="III" data-mins="8.0">
+  <div class="eyebrow">Assignments</div>
+  <h2><span class="mono">lock</span> and <span class="mono">threads</span>.</h2>
+  <div class="fill">
+    <div class="two">
+      <div class="stack">
+        <ol class="steps">
+          <li><strong><span class="mono">lock</span></strong>: system calls <span class="mono">lock()</span> and <span class="mono">unlock()</span> on one global lock in the kernel. Acquire blocks the calling context; release wakes one waiter. The kernel is single-threaded, so no atomic instruction is needed here: the door is the atomicity.</li>
+          <li><strong><span class="mono">threads</span></strong>: <span class="mono">pthread_create</span>, <span class="mono">pthread_join</span>, <span class="mono">pthread_exit</span>: a context that shares the caller's page table and gets its own stack. Join blocks like wait. Decide what happens to a process's threads when it exits.</li>
+          <li>Run two threads incrementing one global without a lock and watch the count; then with your lock. Then make the timeout one instruction and watch again.</li>
+          <li><span class="mono">./grader/self.py lock</span> and <span class="mono">./grader/self.py threads</span>.</li>
+        </ol>
+      </div>
+      <div class="card syn"><span class="h">Next week</span><p>Atomic instructions in the machine: <span class="mono">lr.d</span> and <span class="mono">sc.d</span> in RISC-U, mipster and hypster, and a thread-safe <span class="mono">malloc</span> built on them. Keep your threads; they are the test harness.</p></div>
+    </div>
+  </div>
+  <aside class="notes"><p>Two assignments, one week: lock is small once processes exist, threads is a variation on fork. The experiment in step 3 is the lecture's evidence: the lost update, on the students' own machine, at their chosen timeout.</p></aside>
+</section>
+
+</div>
+</div>
+<script src="../../deck/deck.js"></script>
+</body>
+</html>

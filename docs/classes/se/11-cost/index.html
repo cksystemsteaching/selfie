@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SE 11 · Cost</title>
+<link rel="stylesheet" href="../../deck/deck.css">
+</head>
+<body>
+<div id="stage">
+<div id="deck" tabindex="0" aria-label="Presentation: SE 11 Cost" data-title="SE 11 · Cost" data-figures="../../../figures/">
+
+<section class="slide" data-act="0" data-mins="1.0">
+  <div class="fig bare" style="position:absolute;inset:0"><canvas data-anim="ambient"></canvas></div>
+  <div class="fill center" style="position:relative">
+    <div class="eyebrow">Systems Engineering · week 11 · station IV</div>
+    <h1>Cost</h1>
+    <p class="lead">Caches, performance, energy. Landauer's floor, and Goodhart's law for everything you measure.</p>
+  </div>
+  <aside class="notes"><p>The station IV week from the systems side: not intractability in theory but cost in practice, in the three currencies. Selfie's profiler and cache simulator are the instruments. Book: Cost chapter opening and its last two sections; Machine chapter's performance and caches.</p></aside>
+</section>
+
+<section class="slide" data-act="IV" data-actname="Cost" data-mins="6.0">
+  <div class="eyebrow">Three currencies</div>
+  <h2>Time, space, energy. Every design in this class was a trade among them.</h2>
+  <div class="fill">
+    <div class="three">
+      <div class="card f" data-step="1"><span class="h">Time</span><p>Instructions, as the profiler counts them. Emulation ×2,593, virtualization ×208, a context switch, a page fault, a system call: each a number selfie prints. Optimisations preserve meaning and change this.</p></div>
+      <div class="card f" data-step="2"><span class="h">Space</span><p>Bytes mapped. A flat page table at 8 MB against a tree; a bump allocator that never reuses against a free list; a collector that keeps dead memory because it is reachable. Each a bound with a footprint.</p></div>
+      <div class="card syn f" data-step="3"><span class="h">Energy</span><p>Joules from the wall. The one currency with a law of physics attached, and the one a data centre actually pays. Comes at the end.</p></div>
+    </div>
+    <p class="sm f" data-step="4">Decidable is not doable: the halting problem is not what stops a kernel from scheduling optimally or a collector from being precise; the budget is. Station IV, for a systems engineer, is the budget.</p>
+  </div>
+  <aside class="notes"><p>Recall each week's trade in the three currencies. The last sentence is the station's claim, applied: most of what a kernel cannot do, it cannot afford, not cannot decide.</p></aside>
+</section>
+
+<section class="slide" data-act="IV" data-mins="8.0">
+  <div class="eyebrow">Caches</div>
+  <h2>Memory is slow. A cache bets on <span class="k">locality</span>, and the bet usually pays.</h2>
+  <div class="fill">
+    <div class="two">
+      <div class="term sm">
+        <span class="l"><span class="p">$</span> <span class="c">./selfie -c selfie.c -L1 1</span></span>
+        <span class="l o">./selfie: summary: 85754 executed instructions in total</span>
+        <span class="l o">./selfie: L1 caches:     accesses,hits,misses</span>
+        <span class="l o">./selfie: data:          34517,34283(99.32%),234(0.67%)</span>
+        <span class="l o">./selfie: instruction:   85755,85225(99.38%),530(0.61%)</span>
+      </div>
+      <div class="stack">
+        <p class="f" data-step="1">A processor cycle is a nanosecond; a memory access is a hundred. A cache is a small fast memory that keeps what was used recently, on the bet that it will be used again. Selfie simulates L1 instruction and data caches and reports the hit rate: over 99 percent for selfie compiling itself, which is why the bet is the whole architecture.</p>
+        <p class="f" data-step="2">Same meaning, different cost: the cache is invisible to the program's semantics, like the page table's data structure. Which is why it can be tuned freely, and why it leaks: timing differs, and a program that measures its own timing can read what another program cached. Isolation of meaning is not isolation of cost.</p>
+      </div>
+    </div>
+    <p class="sm f" data-step="3">Lines, associativity, eviction, write policy: the chapter's parameters. Change them with selfie's options and watch the miss rate; that is the exercise.</p>
+  </div>
+  <aside class="notes"><p>Run it; the numbers are from the class machine. The side-channel remark is the connection to isolation: a cache is semantically transparent and observationally not, which is where Spectre lives. One sentence, no more.</p></aside>
+</section>
+
+<section class="slide" data-act="IV" data-mins="7.0">
+  <div class="eyebrow">Measure</div>
+  <h2>The profiler is the instrument. What it does not count did not happen.</h2>
+  <div class="fill">
+    <div class="two">
+      <div class="term sm">
+        <span class="l o">./selfie: summary: 85754 executed instructions in total [17.66% nops]</span>
+        <span class="l o">./selfie:          14 syscalls, 1 page faults, 0 timer interrupts</span>
+        <span class="l o">./selfie: memory:  ld: 21307(24.84%), sd: 13210(15.40%)</span>
+        <span class="l o">./selfie: calls:   … loops: … loads: … stores: …</span>
+      </div>
+      <div class="stack">
+        <p class="f" data-step="1">Instruction mix, nops, system calls, page faults, timer interrupts, the hottest procedures and loops: selfie's profile of every run. Every number a design decision of this semester changed. Look at the nop share: the compiler class's optimisation week is about that line.</p>
+        <p class="f" data-step="2">Measure before you optimise, and measure what the user pays, not what is convenient to count. A kernel that minimises context switches and maximises latency has optimised the wrong line. Which is the next slide.</p>
+      </div>
+    </div>
+  </div>
+  <aside class="notes"><p>The profile as the class's instrument. Assign the reading of one full profile of a run of the students' own kernel with several processes, and ask which numbers moved.</p></aside>
+</section>
+
+<section class="slide" data-act="IV" data-mins="6.0">
+  <div class="eyebrow">Goodhart</div>
+  <h2>A metric decays the moment it becomes a <span class="x">target</span>.</h2>
+  <div class="fill">
+    <div class="two">
+      <div class="stack">
+        <p class="f" data-step="1">Goodhart, 1975: when a measure becomes a target, it ceases to be a good measure. Benchmarks that compilers detect. Schedulers tuned for a throughput number until the interactive user leaves. Energy accounting that moves the joules to a different meter. Training to the benchmark.</p>
+        <p class="f" data-step="2">A mature field needs notation, semantics, and a metric, and it needs to keep replacing the metric. The systems engineer's version: the profile is where the argument starts, not where it ends.</p>
+      </div>
+      <blockquote class="f" data-step="3">When a measure becomes a target, it ceases to be a good measure.<cite>Charles Goodhart, 1975</cite></blockquote>
+    </div>
+  </div>
+  <aside class="notes"><p>The book's Goodhart callout, with systems examples. Short; it is a warning, not a lecture.</p></aside>
+</section>
+
+<section class="slide" data-act="IV" data-mins="7.0">
+  <div class="eyebrow">Physics</div>
+  <h2>Every step that forgets <span class="x">costs energy</span>. Every context switch forgets.</h2>
+  <div class="fill row mid">
+    <div class="fig grow" style="flex:1.2" data-fig="energy"><span class="cap">joules · log scale</span></div>
+    <div class="stack grow">
+      <p class="f" data-step="1">Landauer, 1961: erasing one bit costs at least kT ln 2 ≈ 3 × 10<sup>−21</sup> joules, because two states become one and the lost distinction leaves as heat. Every overwrite is an erasure: every store, every register restore, every page copied and dropped.</p>
+      <p class="f" data-step="2">A brute-force search over the introduction class's 266-bit space just counting would cost 10<sup>59</sup> joules, 10<sup>15</sup> Suns. Real hardware sits orders of magnitude above the floor, and the floor does not move for any device that overwrites. A data centre is a machine for forgetting at scale.</p>
+      <p class="f" data-step="3">A human brain runs on 20 watts. Whatever intelligence is, it can be done far more cheaply than it is currently done, and a systems engineer is the person whose job that is.</p>
+    </div>
+  </div>
+  <aside class="notes"><p>Four beats: erasure, the search, the hardware gap, the brain. The systems reading is the middle sentence: kernels, collectors and caches are all machinery for forgetting efficiently, and the floor is the same for all of them.</p></aside>
+</section>
+
+<section class="slide" data-act="IV" data-mins="3.0">
+  <div class="eyebrow">Before next week</div>
+  <h2>Exercises.</h2>
+  <div class="fill">
+    <div class="two">
+      <ol class="steps">
+        <li>Profile your kernel with four processes and a small timeout. Which lines of the profile did processes change, and which did the timeout change?</li>
+        <li>Vary selfie's cache parameters and plot the miss rate for selfie compiling itself. Find the smallest cache that keeps it above 99 percent.</li>
+        <li>Estimate, from the profile and Landauer, a lower bound on the energy of one context switch in your kernel. Compare with what a real processor spends.</li>
+      </ol>
+      <div class="card syn"><span class="h">Next week</span><p>Universality for systems: the halting problem in the scheduler, Rice on everything the kernel wants to know, and deadlock detection as the approximation it uses instead.</p></div>
+    </div>
+  </div>
+  <aside class="notes"><p>Three measured exercises; the third is deliberately absurd in scale and honest in method.</p></aside>
+</section>
+
+</div>
+</div>
+<script src="../../deck/deck.js"></script>
+</body>
+</html>

@@ -61,12 +61,12 @@
         <span class="l"><span class="p">$</span> <span class="c">./selfie -c selfie.c -m 1</span></span>
         <span class="l o">./selfie: selfie.c exiting with exit code 0</span>
         <span class="l o">./selfie: summary: 85754 executed instructions in total</span>
+        <span class="l o">./selfie:          0.19MB mapped memory [19.92% of 1MB physical memory]</span>
         <span class="l o">./selfie:          14 syscalls, 1 page faults, 0 timer interrupts</span>
-        <span class="l o">./selfie: … memory: 1MB mapped by 265 pages …</span>
       </div>
     </div>
   </div>
-  <aside class="notes"><p>Run it. The emulator's profile already says how many faults; explain why a program with 265 mapped pages reported one fault, and then check the emulator: selfie maps pages on the first access in the emulator's load and store paths, and counts only the ones that go through the exception. The numbers on the slide are from the class machine; check before class.</p></aside>
+  <aside class="notes"><p>Run it. The profile reports one page fault for about fifty mapped pages: selfie maps most pages eagerly while loading the binary and preparing the stack, and counts only the faults the running program raises, here the first touch of the heap. Read the bootloader and the exception handler together to see which is which. The numbers are from the class machine; check before class.</p></aside>
 </section>
 
 <section class="slide" data-act="III" data-mins="6.0">
