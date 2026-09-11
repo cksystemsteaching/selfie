@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ICS 13 · Machines</title>
+<link rel="stylesheet" href="../../deck/deck.css">
+</head>
+<body>
+<div id="stage">
+<div id="deck" tabindex="0" aria-label="Presentation: ICS 13 Machines" data-title="ICS 13 · Machines" data-figures="../../../figures/">
+
+<section class="slide" data-act="0" data-mins="1.0">
+  <div class="fig bare" style="position:absolute;inset:0"><canvas data-anim="ambient"></canvas></div>
+  <div class="fill center" style="position:relative">
+    <div class="eyebrow">Introduction to Computer Science · week 13 · station V</div>
+    <h1>Machines</h1>
+    <p class="lead">Now the question everyone actually came with. Today's AI is remarkable — and it is subject to every single thing we have established.</p>
+  </div>
+  <aside class="notes"><p>Tone matters here. Not debunking, not hype. These systems are among the most useful artefacts ever built, and they are computations, so the mathematics applies to them exactly as it applies to a spreadsheet. Every slide is an instance of a theorem from an earlier week, never a verdict. Book: the Machines chapter.</p></aside>
+</section>
+
+<section class="slide" data-act="V" data-actname="Machines" data-mins="8.0">
+  <div class="eyebrow">What it is</div>
+  <h2>A large language model is a machine trained on <span class="j">notation</span>, asked for <span class="k">meaning</span>.</h2>
+  <div class="fill row mid">
+    <div class="fig grow" style="flex:1.4" data-fig="tokens"><span class="cap">tokens in · a distribution over the next one out · then a sample</span></div>
+    <div class="stack grow">
+      <p class="f" data-step="1">The name is exact. What it is trained on is <em>language</em>, so the signal is syntactic: which symbol follows which. Meaning is never handed to it. That this works as well as it does is the genuine surprise of the decade.</p>
+      <p class="f" data-step="2">Context in, a probability for every next token out, one sampled, appended, and round again. The answer becomes the next question.</p>
+      <p class="f" data-step="3">It cost megawatts for weeks; you run on twenty watts. Neither figure changes what kind of object it is: arithmetic on bits, a C* program in principle, which mipster would run.</p>
+    </div>
+  </div>
+  <aside class="notes"><p>Keep the description mechanical and unpolemical; students should leave able to explain what these systems are to a friend. Walk the figure: the chips, the reserved slot, the weights, the bar chart, the sample, the feedback path. Say once that attention is named and not derived here, and that the book points at the paper.</p></aside>
+</section>
+
+<section class="slide" data-act="V" data-mins="5.0">
+  <div class="eyebrow">Station I applies</div>
+  <h2>Billions of parameters, each many bits. That space cannot be inspected, so the behaviour cannot be enumerated. <span class="k">Only sampled.</span></h2>
+  <div class="fill row mid">
+    <div class="fig grow" data-fig="needle"><span class="cap">week 2, again</span></div>
+    <div class="stack grow">
+      <p class="f" data-step="1">A model with a few hundred billion parameters is a point in a state space of the kind week 2 measured. Its behaviour — its output on every possible context — is one of week 7's infinite answer sheets.</p>
+      <p class="f" data-step="2">So when a laboratory says a model was <em>tested extensively</em>, you know what that means. Whatever the tests exercised, the machine did. Whatever they did not, nobody knows.</p>
+      <p class="f" data-step="3">Testing shows presence, not absence. Dijkstra, 1969, about programs. It was always about this.</p>
+    </div>
+  </div>
+  <aside class="notes"><p>The needle from week 2, unchanged. The point is not that the machines are untrustworthy; it is that the only evidence anyone has about them is the evidence anyone has about any program, and that is the whole reason this class exists.</p></aside>
+</section>
+
+<section class="slide" data-act="V" data-mins="8.0">
+  <div class="eyebrow">The old gap, industrialised</div>
+  <h2>A hallucination is a <span class="j">proof-shaped object</span> that isn't <span class="k">true</span>.</h2>
+  <div class="fill row mid">
+    <div class="fig grow" style="flex:1.2" data-fig="venn"><span class="cap">three tests · and they are not the same test</span></div>
+    <div class="stack grow">
+      <p class="f" data-step="1">Fluency is syntax. Correctness is semantics. We built a machine of extraordinary fluency, so the gap between the two — week 7's gap — is something you now meet before breakfast.</p>
+      <p class="f" data-step="2">Not a defect to be patched away: it is the proof/truth distinction at consumer scale. Harnad, 1990: symbols defined only by other symbols never touch the world.</p>
+      <p class="f" data-step="3">So the durable response is not "trust it more" or "trust it less" but check it against something with a semantics — a compiler, a test, an experiment, a source, a colleague.</p>
+    </div>
+  </div>
+  <aside class="notes"><p>Land this without cynicism: the same slide explains why retrieval, tool use, unit tests and human review help so much. They are all ways of importing an external semantics. That is the engineering response to Gödel's second theorem, week 8, and it works, partially, never completely, and the machine cannot supply it itself.</p></aside>
+</section>
+
+<section class="slide" data-act="V" data-mins="6.0">
+  <div class="eyebrow">Where it is going</div>
+  <h2>World models aim at meaning itself — and inherit <span class="x">every limit</span> anyway.</h2>
+  <div class="fill row mid">
+    <div class="fig grow" style="flex:1.3" data-fig="worldmodel"><span class="cap">two routes to the same world</span></div>
+    <div class="stack grow">
+      <p class="f" data-step="1">Not more text but a model of the world — state, dynamics, consequence. Predict what <em>happens</em>, not what is <em>said</em>: an attempt at real semantics, and a bid for efficiency. On a fixed budget efficiency is capability, so world models may well outperform language models outright.</p>
+      <p class="f" data-step="2">And still a finite notation, sitting inside the world it models. Counting: models are countable, behaviours are not. Rice: "is this model right?" is semantic. Gödel: no self-certificate from inside. Cost: the state space did not shrink. Only the map did.</p>
+    </div>
+  </div>
+  <aside class="notes"><p>Take the strongest version of the opposing case and then answer it. The world-model programme is the correct diagnosis of what is missing; the honest forecast is that today's architecture is unlikely to be the last. What no architecture escapes is weeks 7 to 11. If someone asks whether this changes the definition next week, the answer is no: it is an example of it.</p></aside>
+</section>
+
+<section class="slide" data-act="V" data-mins="6.0">
+  <div class="eyebrow">Self-reference · again</div>
+  <h2>The loops are <span class="x">already closed</span>.</h2>
+  <div class="fill row mid">
+    <div class="fig grow" style="flex:1.1" data-fig="loop"><span class="cap">systems judging, training, writing systems</span></div>
+    <div class="stack grow">
+      <p class="f" data-step="1">Models are trained on text that models wrote — with measurable degradation when the loop tightens (model collapse, 2024). Models grade models. Models write the code that trains models, and agents invoke themselves.</p>
+      <p class="f" data-step="2">"Is this system safe?" is a semantic property of a program. Rice says: no general decision procedure. Not hard — impossible. And by Gödel's second theorem, no system this expressive can certify itself. An explanation of its own output is more output.</p>
+      <p class="f" data-step="3">Which is not despair. It says exactly where to spend effort: on external, independent, bounded checks.</p>
+    </div>
+  </div>
+  <aside class="notes"><p>The payoff of weeks 8 and 9. Every AI-safety debate that assumes a sufficiently smart system could simply verify itself is refuted by a 1931 theorem. Then the arrow from outside in the figure, which is the same arrow as Thompson's second compiler and the trusted computing base.</p></aside>
+</section>
+
+<section class="slide" data-act="V" data-mins="8.0">
+  <div class="eyebrow">The loop</div>
+  <h2>A generator supplies <span class="j">notation</span>. The <span class="k">semantics</span> has to come from somewhere else.</h2>
+  <div class="fill row mid">
+    <div class="fig grow" style="flex:1.4" data-fig="gate"><span class="cap">what the machine supplies · and what it does not</span></div>
+    <div class="stack grow">
+      <p class="f" data-step="1">Prompt in English, and what comes back is plausible notation. Unchecked, it is simply accepted — and then there is no semantics anywhere in the loop. Checked, it meets a compiler, a test, a proof, a measurement, and is kept or sent back round.</p>
+      <p class="f" data-step="2">The fourth appearance of one theorem. Cantor's list needed an object built from outside it. Gödel's system needed a stronger one. Thompson's compiler needed a second compiler. The generator needs a check it cannot be.</p>
+      <div class="term sm f" data-step="3">
+        <span class="l"><span class="p">$</span> <span class="c">./selfie -c generated.c -m 1</span></span>
+        <span class="l o">./selfie: syntax error in generated.c in line 4: unexpected symbol "[" found</span>
+      </div>
+    </div>
+  </div>
+  <aside class="notes"><p>Walk the figure slowly, then run the gate on a real generated program: ask a chat bot for a C* program in front of the room, save it, compile it. It usually fails on something C* does not have, which is itself the lesson: the machine produced C, not C*, fluently. Then the next check, mipster, and next week's third, rotor. None of the three is available to the machine that wrote the program.</p></aside>
+</section>
+
+<section class="slide" data-act="V" data-mins="5.0">
+  <div class="eyebrow">What actually changed</div>
+  <h2>Generation got <span class="j">cheap</span>. Verification did <span class="k">not</span>.</h2>
+  <div class="fill">
+    <div class="two">
+      <div class="card f" data-step="1"><span class="h">Before</span><p>Producing a draft, a proof sketch, a program, an image, a translation was expensive and therefore scarce. Scarcity did our filtering for us.</p></div>
+      <div class="card syn f" data-step="2"><span class="h">Now</span><p>Production is nearly free and unbounded in volume. The filter has to be supplied deliberately — by specification, by measurement, by review.</p></div>
+    </div>
+    <p class="f" data-step="3">Recall week 11: hard to find, easy to check. That is a description of a healthy relationship with a machine. Value migrates to the two ends the machine does not occupy: deciding what should be true (<strong>specification</strong>) and establishing that it is (<strong>verification</strong>). Both are acts of meaning. Neither is automated by better generation — and the better generation gets, the more they are worth.</p>
+  </div>
+  <aside class="notes"><p>The most practically useful slide for students choosing what to learn. The advice is not avoid AI but own the ends: be the person who can state precisely what is wanted and can tell whether it was delivered. Those skills appreciate as generation gets cheaper, and every week of this class was training in them.</p></aside>
+</section>
+
+<section class="slide" data-act="V" data-mins="3.0">
+  <div class="eyebrow">Before next week</div>
+  <h2>Recommended exercises.</h2>
+  <div class="fill">
+    <div class="two">
+      <ol class="steps">
+        <li>Read the Machines chapter.</li>
+        <li>Ask a chat bot for a C* program that reads a number and prints its factorial. Compile it. If it does not compile, note why; if it does, run it on three inputs.</li>
+        <li>Ask the same bot whether its program can divide by zero. Then run rotor and bitme on it with a bound of 500. Say which answer is a certificate.</li>
+        <li>Find a hallucination: an exact page number for a claim in a book you own. Place it in the three regions.</li>
+        <li>Write the four appearances of the one theorem behind the gate, and for each name what came from outside.</li>
+      </ol>
+      <div class="card syn"><span class="h">Next week</span><p>So — what is intelligence? The definition, its two halves, why depth still matters, and what computer science is. Then the exam.</p></div>
+    </div>
+  </div>
+  <aside class="notes"><p>Exercise 5 is the exam's; exercise 3 is the one that makes the gate concrete.</p></aside>
+</section>
+
+</div>
+</div>
+<script src="../../deck/deck.js"></script>
+</body>
+</html>

@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ICS 12 · Formal Methods</title>
+<link rel="stylesheet" href="../../deck/deck.css">
+</head>
+<body>
+<div id="stage">
+<div id="deck" tabindex="0" aria-label="Presentation: ICS 12 Formal Methods" data-title="ICS 12 · Formal Methods" data-figures="../../../figures/">
+
+<section class="slide" data-act="0" data-mins="1.0">
+  <div class="fig bare" style="position:absolute;inset:0"><canvas data-anim="ambient"></canvas></div>
+  <div class="fill center" style="position:relative">
+    <div class="eyebrow">Introduction to Computer Science · week 12 · station IV</div>
+    <h1>Formal Methods</h1>
+    <p class="lead">Machine code in. Formulae out. Solver next. The syntax-to-semantics bridge, made mechanical — within a bound.</p>
+  </div>
+  <aside class="notes"><p>The session where Rice's theorem gets its practical answer, on the laptop. A tool built on selfie turns a program into a formula, a solver finds the input that breaks it, and the bound is the approximation, visible and chosen. Everything is run live. Book: the Cost chapter from Models of Machines.</p></aside>
+</section>
+
+<section class="slide" data-act="IV" data-actname="Formal Methods" data-mins="5.0">
+  <div class="eyebrow">Where we are</div>
+  <h2>No tool decides what a program does. Every useful tool is an <span class="k">approximation</span> with a stated bound.</h2>
+  <div class="fill">
+    <div class="three">
+      <div class="card f" data-step="1"><span class="h">Testing · week 2</span><p>Run it on some inputs. Shows presence, not absence. One point per run in a space of 2<sup>34,359,738,368</sup>.</p></div>
+      <div class="card f" data-step="2"><span class="h">The compiler · week 8</span><p>Decides everything about the text, nothing about behaviour. A warning is a question about the text in disguise.</p></div>
+      <div class="card syn f" data-step="3"><span class="h">Today</span><p>For <em>every</em> input, for <em>every</em> path, up to k steps: can the program reach a bad state? A yes comes with the input. A no is a theorem — up to k.</p></div>
+    </div>
+    <p class="sm f" data-step="4">Rice said: choose what to give up. Today we give up everything beyond step k, and get, in exchange, absence.</p>
+  </div>
+  <aside class="notes"><p>Place the session against the two approximations the class already knows. The third card is the new thing and its last sentence is the whole promise: absence, within a bound. Say the price before the demo so that the demo's result is read correctly.</p></aside>
+</section>
+
+<section class="slide" data-act="IV" data-mins="6.0">
+  <div class="eyebrow">Cook and Levin, as engineering</div>
+  <h2>A machine's computation can be <span class="j">written down as a formula</span>.</h2>
+  <div class="fill">
+    <div class="two">
+      <div class="stack">
+        <p class="f" data-step="1">Week 3: addition is a circuit of gates. A gate is a formula over bits: <em>and</em>, <em>or</em>, <em>not</em>. So a 64-bit word is 64 variables, and every instruction of week 6 — add, compare, load, branch — is a formula over the bits of its registers.</p>
+        <p class="f" data-step="2">One step of the machine is one big formula: the new state in terms of the old, depending on which instruction the pc points at. That is what Cook's proof did to prove SAT hard. Here it is a tool.</p>
+      </div>
+      <div class="stack">
+        <div class="card f" data-step="3"><span class="h">SMT</span><p>Solvers that speak words and memory, not just bits: the theory of bitvectors, the theory of arrays. Underneath, they <em>bit-blast</em> to the SAT of last week and run the same clever search. Z3 and Bitwuzla are two of them.</p></div>
+      </div>
+    </div>
+  </div>
+  <aside class="notes"><p>The bridge between last week's SAT solver and this week's program: the adder from week 3 is a formula, so the machine from week 6 is a formula, so a run of the machine is a formula. Name SMT and the two theories, and say that the solvers are black boxes with a stated interface here; the compiler class opens them.</p></aside>
+</section>
+
+<section class="slide" data-act="IV" data-mins="7.0">
+  <div class="eyebrow">In the terminal · rotor</div>
+  <h2>A program that divides by zero — for exactly one input.</h2>
+  <div class="fill">
+    <div class="two">
+      <div class="term sm">
+        <span class="l o">// examples/symbolic/division-by-zero-3-35.c</span>
+        <span class="l c">uint64_t main() {</span>
+        <span class="l c">  uint64_t  a;</span>
+        <span class="l c">  uint64_t* x;</span>
+        <span class="l c">  x = malloc(sizeof(uint64_t));</span>
+        <span class="l c">  *x = 0;</span>
+        <span class="l c">  read(0, x, 1);</span>
+        <span class="l c">  *x = *x - 48;</span>
+        <span class="l c">  a = 41 + (1 / *x);   // '0' divides by zero</span>
+        <span class="l c">  if (*x == 2)</span>
+        <span class="l c">    a = 41 + (1 / 0);  // '2' divides by zero</span>
+        <span class="l c">  if (a == 42)</span>
+        <span class="l c">    return 1;          // '1' exits with 1</span>
+        <span class="l c">  else</span>
+        <span class="l c">    return 0;</span>
+        <span class="l c">}</span>
+      </div>
+      <div class="stack">
+        <p class="f" data-step="1">Reads one byte. Subtracts 48, the code of the digit 0. Divides by the result. Type <span class="mono">0</span> and it divides by zero; type <span class="mono">1</span> and it exits with 1; type <span class="mono">2</span> and it divides by zero on the other line; type anything else and it exits with 0.</p>
+        <div class="term sm f" data-step="2">
+          <span class="l"><span class="p">$</span> <span class="c">make rotor</span></span>
+          <span class="l"><span class="p">$</span> <span class="c">./rotor -c examples/symbolic/division-by-zero-3-35.c - 0</span></span>
+          <span class="l o">./rotor: 15161 lines of model formulae generated</span>
+          <span class="l o">./rotor: 237537 characters of model formulae written into examples/symbolic/division-by-zero-3-35-rotorized.btor2</span>
+        </div>
+        <p class="sm f" data-step="3">Rotor compiles the program with selfie's compiler and writes the model of the RISC-V machine running that binary: every instruction, bit-precisely, as a formula. Linear in the size of the code — it does the same to all of selfie.</p>
+      </div>
+    </div>
+  </div>
+  <aside class="notes"><p>Run it. Then open the model file and scroll: sorts, constants, states, init, next, bad, every line commented. Fifteen thousand lines for fifteen lines of C, and the room should see that most of it is the machine, not the program.</p></aside>
+</section>
+
+<section class="slide" data-act="IV" data-mins="6.0">
+  <div class="eyebrow">The model</div>
+  <h2>State, init, next, <span class="x">bad</span>.</h2>
+  <div class="fill row mid">
+    <div class="fig grow" style="flex:1.4" data-fig="btor2"><span class="cap">a BTOR2 model, unrolled k steps</span></div>
+    <div class="stack grow">
+      <div class="term sm">
+        <span class="l o">191   state 5 core-0-pc ; program counter</span>
+        <span class="l o">150   state 71 input-buffer ; uninitialized input buffer</span>
+        <span class="l o">20070 next 5 191 20064 ; program counter</span>
+        <span class="l o">36027 bad 36026 core-0-division-by-zero</span>
+        <span class="l o">40095 bad 40094 core-0-load-seg-fault</span>
+        <span class="l o">40903 bad 40902 core-0-bad-exit-code ; exit(0)</span>
+      </div>
+      <p class="sm f" data-step="1"><strong>States</strong>: the pc, the registers, the memory segments, and an input buffer left uninitialised so the solver may choose it. <strong>Init</strong>: what they are at step 0. <strong>Next</strong>: what they are one step later — the RISC-V semantics. <strong>Bad</strong>: twenty-four things the machine must not do.</p>
+    </div>
+  </div>
+  <aside class="notes"><p>The figure and four lines from the real file. The uninitialised input buffer is the whole trick: the solver is free to pick it, so asking whether a bad state is reachable is asking whether any input reaches it. That is what turns one run into all runs.</p></aside>
+</section>
+
+<section class="slide" data-act="IV" data-mins="8.0">
+  <div class="eyebrow">In the terminal · bitme</div>
+  <h2>The solver <span class="k">finds</span> the failing input. Nobody told it to try '0'.</h2>
+  <div class="fill">
+    <div class="term sm">
+      <span class="l"><span class="p">$</span> <span class="c">tools/bitme.py -kmax 120 examples/symbolic/division-by-zero-3-35-rotorized.btor2</span></span>
+      <span class="l o">bitme bounded model checking: -kmin 0 -kmax 120</span>
+      <span class="l o">0: initializing … 1: transitioning … 2: transitioning …</span>
+      <span class="l o">… core-0-division-by-zero: SAT with input 48 ('0')</span>
+      <span class="l o">… core-0-bad-exit-code: SAT with input 49 ('1')</span>
+    </div>
+    <div class="two">
+      <p class="sm f" data-step="1">Bitme walks the steps one at a time and asks about every bad state at each. For the first few dozen the answer is no: the program is setting up its stack, calling <span class="mono">malloc</span>, calling <span class="mono">read</span>. Then the division instruction is fetched, and the answer for division by zero is yes — with the input that does it, derived from the formula.</p>
+      <p class="sm f" data-step="2">Among all 256 possible input bytes, the solver found the one that reaches the bad state, the way last week's solver found that x1 must be false: not by trying them, by reasoning. And it did it for a compiled RISC-V binary, not for the C.</p>
+    </div>
+  </div>
+  <aside class="notes"><p>Run it and let the steps scroll; the output is verbose and the step at which the division becomes reachable depends on the version of rotor, so check the number before class and say it. The sentence to land is the title. Then the second input, 1, for the bad exit code a few steps later.</p></aside>
+</section>
+
+<section class="slide" data-act="IV" data-mins="6.0">
+  <div class="eyebrow">What a bound buys</div>
+  <h2>A <span class="x">no</span> up to k is a <span class="k">theorem</span>. It says nothing about k + 1.</h2>
+  <div class="fill">
+    <div class="two">
+      <div class="card syn f" data-step="1"><span class="h">Testing</span><p>Visits one state per run. Shows presence. Says nothing about the inputs you did not try.</p></div>
+      <div class="card f" data-step="2"><span class="h">Bounded model checking</span><p>Every input, every path, up to k steps. Shows <em>absence</em>, within the bound. Says nothing beyond it.</p></div>
+    </div>
+    <p class="f" data-step="3">Rice said no tool decides whether a program can divide by zero, and this one does not. It decides whether a program can divide by zero <em>within k steps</em>, which is a question about a finite object and therefore decidable — and it pays for the answer in solver time that grows with k. Choosing k is choosing what to give up.</p>
+    <p class="sm f" data-step="4">That is formal methods in one sentence, and the workshop around selfie is a set of such choices, each stated: rotor, bitme, babysat, a fuzzer, a second garbage collector, a binary translator — each applied to selfie, and to itself.</p>
+  </div>
+  <aside class="notes"><p>The theorem of the session. Put the two cards side by side and say that neither is better; they answer different questions, and an engineer uses both. Then the workshop, briefly: every tool on it is an approximation with a bound, and every one is a project a student started.</p></aside>
+</section>
+
+<section class="slide" data-act="IV" data-mins="4.0">
+  <div class="eyebrow">Station IV</div>
+  <h2>Syntax became semantics, and then met the <span class="k">wall</span>.</h2>
+  <div class="fill">
+    <div class="two">
+      <div class="stack">
+        <p class="f" data-step="1">Take a program, which is syntax, and its execution, which is semantics, and produce a formula whose satisfiability answers a semantic question exactly — within a bound. The formula goes to a solver, and satisfiability is the canonical hard problem.</p>
+        <p class="f" data-step="2">So a laptop, a small C program and twenty minutes get you to the frontier of complexity theory. That is not a metaphor. It is what just happened on this screen.</p>
+      </div>
+      <div class="card syn f" data-step="3"><span class="h">Next week</span><p>A machine that produces programs, fluently. The one thing it cannot supply is the check you just watched. Bring the gate.</p></div>
+    </div>
+  </div>
+  <aside class="notes"><p>Close by naming the bridge and where it hits the wall, and plant week 13's gate: a generated program is notation, and rotor is one of the things it meets.</p></aside>
+</section>
+
+<section class="slide" data-act="IV" data-mins="3.0">
+  <div class="eyebrow">Before next week</div>
+  <h2>Recommended exercises.</h2>
+  <div class="fill">
+    <div class="two">
+      <ol class="steps">
+        <li>Read the Cost chapter from <em>Models of Machines</em> to the end.</li>
+        <li>Generate the rotor model of <span class="mono">examples/symbolic/simple-if-else-1-35.c</span> and count its state, init, next and bad lines.</li>
+        <li>Run bitme on it with a bound of 100 and report which bad states are reachable and with what input.</li>
+        <li>Change the bound to 20 and explain what a report of <em>no bad state</em> now means and does not mean.</li>
+        <li>Write a C* program of your own with a bug that only one input triggers, and let the solver find the input.</li>
+      </ol>
+      <div class="card syn"><span class="h">Next week</span><p>Machines: what a large language model mechanically is, why a hallucination is a proof-shaped object that is not true, and the gate that the machine cannot supply.</p></div>
+    </div>
+  </div>
+  <aside class="notes"><p>Exercise 5 is the one that makes the method theirs.</p></aside>
+</section>
+
+</div>
+</div>
+<script src="../../deck/deck.js"></script>
+</body>
+</html>
