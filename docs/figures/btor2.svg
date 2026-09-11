@@ -1,53 +1,53 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 450" width="900" height="450" role="img" aria-label="A BTOR2 model: state, init, next and bad, unrolled k steps for a bounded model checker">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="16.0 14.0 868.0 420.0" width="868" height="420" role="img" aria-label="A BTOR2 model: state, init, next and bad, unrolled k steps for a bounded model checker">
 <title>A BTOR2 model: state, init, next and bad, unrolled k steps for a bounded model checker</title>
 <style>svg{--ink:#131C2A;--ink-2:#39485C;--muted:#5D6E85;--line:rgba(19,28,42,.18);--syn:#A2661A;--sem:#1F6C86;--bad:#A63E5A;--panel:#FFFFFF;--ground:#EFF1F3}@media (prefers-color-scheme: dark){svg{--ink:#E7EDF6;--ink-2:#B6C4D8;--muted:#8093AF;--line:rgba(122,162,204,.16);--syn:#E0A550;--sem:#5BB0C7;--bad:#C8607A;--panel:#111C2E;--ground:#080E18}}text{font-family:"JetBrains Mono","SFMono-Regular","SF Mono","Cascadia Mono",Menlo,Consolas,"DejaVu Sans Mono",monospace}.serif{font-family:"Iowan Old Style","Palatino Linotype",Palatino,"Book Antiqua","URW Palladio L",Georgia,serif}</style>
-<text x="120" y="40" font-size="13" fill="var(--syn)" text-anchor="middle" dominant-baseline="central" class="serif">a BTOR2 model</text>
+<text x="120" y="40" font-size="16.9" fill="var(--syn)" text-anchor="middle" dominant-baseline="central" class="serif">a BTOR2 model</text>
 <rect x="30" y="60" width="180" height="200" fill="none" stroke="var(--syn)" stroke-width="1.2"/>
-<text x="45" y="85" font-size="12" fill="var(--syn)" text-anchor="start" dominant-baseline="central">state</text>
-<text x="45" y="101" font-size="9.5" fill="var(--muted)" text-anchor="start" dominant-baseline="central" class="serif">pc, registers, memory, input</text>
-<text x="45" y="130" font-size="12" fill="var(--syn)" text-anchor="start" dominant-baseline="central">init</text>
-<text x="45" y="146" font-size="9.5" fill="var(--muted)" text-anchor="start" dominant-baseline="central" class="serif">what they are at step 0</text>
-<text x="45" y="175" font-size="12" fill="var(--syn)" text-anchor="start" dominant-baseline="central">next</text>
-<text x="45" y="191" font-size="9.5" fill="var(--muted)" text-anchor="start" dominant-baseline="central" class="serif">what they are one step later</text>
-<text x="45" y="220" font-size="12" fill="var(--bad)" text-anchor="start" dominant-baseline="central">bad</text>
-<text x="45" y="236" font-size="9.5" fill="var(--muted)" text-anchor="start" dominant-baseline="central" class="serif">division by zero, seg fault, …</text>
-<text x="560" y="40" font-size="13" fill="var(--sem)" text-anchor="middle" dominant-baseline="central" class="serif">unrolled k steps</text>
+<text x="45" y="85" font-size="15.6" fill="var(--syn)" text-anchor="start" dominant-baseline="central">state</text>
+<text x="45" y="101" font-size="12.35" fill="var(--muted)" text-anchor="start" dominant-baseline="central" class="serif">pc, registers, memory, input</text>
+<text x="45" y="130" font-size="15.6" fill="var(--syn)" text-anchor="start" dominant-baseline="central">init</text>
+<text x="45" y="146" font-size="12.35" fill="var(--muted)" text-anchor="start" dominant-baseline="central" class="serif">what they are at step 0</text>
+<text x="45" y="175" font-size="15.6" fill="var(--syn)" text-anchor="start" dominant-baseline="central">next</text>
+<text x="45" y="191" font-size="12.35" fill="var(--muted)" text-anchor="start" dominant-baseline="central" class="serif">what they are one step later</text>
+<text x="45" y="220" font-size="15.6" fill="var(--bad)" text-anchor="start" dominant-baseline="central">bad</text>
+<text x="45" y="236" font-size="12.35" fill="var(--muted)" text-anchor="start" dominant-baseline="central" class="serif">division by zero, seg fault, …</text>
+<text x="560" y="40" font-size="16.9" fill="var(--sem)" text-anchor="middle" dominant-baseline="central" class="serif">unrolled k steps</text>
 <rect x="270" y="90" width="90" height="110" fill="none" stroke="var(--sem)" stroke-width="1.2"/>
-<text x="315" y="80" font-size="10" fill="var(--muted)" text-anchor="middle" dominant-baseline="central" class="serif">step 0</text>
-<text x="278" y="110" font-size="10" fill="var(--sem)" text-anchor="start" dominant-baseline="central">state</text>
-<text x="278" y="180" font-size="10" fill="var(--bad)" text-anchor="start" dominant-baseline="central">bad?</text>
+<text x="315" y="80" font-size="13" fill="var(--muted)" text-anchor="middle" dominant-baseline="central" class="serif">step 0</text>
+<text x="278" y="110" font-size="13" fill="var(--sem)" text-anchor="start" dominant-baseline="central">state</text>
+<text x="278" y="180" font-size="13" fill="var(--bad)" text-anchor="start" dominant-baseline="central">bad?</text>
 <line x1="362" y1="145" x2="388" y2="145" stroke="var(--ink-2)" stroke-width="1.2"/><path d="M388 145 L382.47 147.34 L382.47 142.66 Z" fill="var(--ink-2)"/>
-<text x="375" y="135" font-size="9" fill="var(--muted)" text-anchor="middle" dominant-baseline="central">next</text>
+<text x="375" y="135" font-size="11.7" fill="var(--muted)" text-anchor="middle" dominant-baseline="central">next</text>
 <rect x="390" y="90" width="90" height="110" fill="none" stroke="var(--sem)" stroke-width="1.2"/>
-<text x="435" y="80" font-size="10" fill="var(--muted)" text-anchor="middle" dominant-baseline="central" class="serif">step 1</text>
-<text x="398" y="110" font-size="10" fill="var(--sem)" text-anchor="start" dominant-baseline="central">state</text>
-<text x="398" y="180" font-size="10" fill="var(--bad)" text-anchor="start" dominant-baseline="central">bad?</text>
+<text x="435" y="80" font-size="13" fill="var(--muted)" text-anchor="middle" dominant-baseline="central" class="serif">step 1</text>
+<text x="398" y="110" font-size="13" fill="var(--sem)" text-anchor="start" dominant-baseline="central">state</text>
+<text x="398" y="180" font-size="13" fill="var(--bad)" text-anchor="start" dominant-baseline="central">bad?</text>
 <line x1="482" y1="145" x2="508" y2="145" stroke="var(--ink-2)" stroke-width="1.2"/><path d="M508 145 L502.47 147.34 L502.47 142.66 Z" fill="var(--ink-2)"/>
-<text x="495" y="135" font-size="9" fill="var(--muted)" text-anchor="middle" dominant-baseline="central">next</text>
+<text x="495" y="135" font-size="11.7" fill="var(--muted)" text-anchor="middle" dominant-baseline="central">next</text>
 <rect x="510" y="90" width="90" height="110" fill="none" stroke="var(--sem)" stroke-width="1.2"/>
-<text x="555" y="80" font-size="10" fill="var(--muted)" text-anchor="middle" dominant-baseline="central" class="serif">step 2</text>
-<text x="518" y="110" font-size="10" fill="var(--sem)" text-anchor="start" dominant-baseline="central">state</text>
-<text x="518" y="180" font-size="10" fill="var(--bad)" text-anchor="start" dominant-baseline="central">bad?</text>
+<text x="555" y="80" font-size="13" fill="var(--muted)" text-anchor="middle" dominant-baseline="central" class="serif">step 2</text>
+<text x="518" y="110" font-size="13" fill="var(--sem)" text-anchor="start" dominant-baseline="central">state</text>
+<text x="518" y="180" font-size="13" fill="var(--bad)" text-anchor="start" dominant-baseline="central">bad?</text>
 <line x1="602" y1="145" x2="628" y2="145" stroke="var(--ink-2)" stroke-width="1.2"/><path d="M628 145 L622.47 147.34 L622.47 142.66 Z" fill="var(--ink-2)"/>
-<text x="615" y="135" font-size="9" fill="var(--muted)" text-anchor="middle" dominant-baseline="central">next</text>
+<text x="615" y="135" font-size="11.7" fill="var(--muted)" text-anchor="middle" dominant-baseline="central">next</text>
 <rect x="630" y="90" width="90" height="110" fill="none" stroke="var(--sem)" stroke-width="1.2"/>
-<text x="675" y="80" font-size="10" fill="var(--muted)" text-anchor="middle" dominant-baseline="central" class="serif">step 3</text>
-<text x="638" y="110" font-size="10" fill="var(--sem)" text-anchor="start" dominant-baseline="central">state</text>
-<text x="638" y="180" font-size="10" fill="var(--bad)" text-anchor="start" dominant-baseline="central">bad?</text>
+<text x="675" y="80" font-size="13" fill="var(--muted)" text-anchor="middle" dominant-baseline="central" class="serif">step 3</text>
+<text x="638" y="110" font-size="13" fill="var(--sem)" text-anchor="start" dominant-baseline="central">state</text>
+<text x="638" y="180" font-size="13" fill="var(--bad)" text-anchor="start" dominant-baseline="central">bad?</text>
 <line x1="722" y1="145" x2="748" y2="145" stroke="var(--ink-2)" stroke-width="1.2"/><path d="M748 145 L742.47 147.34 L742.47 142.66 Z" fill="var(--ink-2)"/>
-<text x="735" y="135" font-size="9" fill="var(--muted)" text-anchor="middle" dominant-baseline="central">next</text>
-<text x="738" y="145" font-size="12" fill="var(--muted)" text-anchor="middle" dominant-baseline="central">…</text>
+<text x="735" y="135" font-size="11.7" fill="var(--muted)" text-anchor="middle" dominant-baseline="central">next</text>
+<text x="738" y="145" font-size="15.6" fill="var(--muted)" text-anchor="middle" dominant-baseline="central">…</text>
 <rect x="750" y="90" width="90" height="110" fill="none" stroke="var(--sem)" stroke-width="1.2"/>
-<text x="795" y="80" font-size="10" fill="var(--muted)" text-anchor="middle" dominant-baseline="central" class="serif">step k</text>
-<text x="758" y="110" font-size="10" fill="var(--sem)" text-anchor="start" dominant-baseline="central">state</text>
-<text x="758" y="180" font-size="10" fill="var(--bad)" text-anchor="start" dominant-baseline="central">bad?</text>
+<text x="795" y="80" font-size="13" fill="var(--muted)" text-anchor="middle" dominant-baseline="central" class="serif">step k</text>
+<text x="758" y="110" font-size="13" fill="var(--sem)" text-anchor="start" dominant-baseline="central">state</text>
+<text x="758" y="180" font-size="13" fill="var(--bad)" text-anchor="start" dominant-baseline="central">bad?</text>
 <line x1="215" y1="145" x2="268" y2="145" stroke="var(--ink-2)" stroke-width="1.2"/><path d="M268 145 L262.47 147.34 L262.47 142.66 Z" fill="var(--ink-2)"/>
-<text x="240" y="135" font-size="9" fill="var(--muted)" text-anchor="middle" dominant-baseline="central">init</text>
-<text x="315" y="235" font-size="10" fill="var(--syn)" text-anchor="middle" dominant-baseline="central">input</text>
+<text x="240" y="135" font-size="11.7" fill="var(--muted)" text-anchor="middle" dominant-baseline="central">init</text>
+<text x="315" y="235" font-size="13" fill="var(--syn)" text-anchor="middle" dominant-baseline="central">input</text>
 <line x1="315" y1="225" x2="315" y2="202" stroke="var(--syn)" stroke-width="1"/><path d="M315 202 L316.95 206.61 L313.05 206.61 Z" fill="var(--syn)"/>
-<text x="315" y="255" font-size="9" fill="var(--muted)" text-anchor="middle" dominant-baseline="central" class="serif">the solver chooses the input</text>
+<text x="315" y="255" font-size="11.7" fill="var(--muted)" text-anchor="middle" dominant-baseline="central" class="serif">the solver chooses the input</text>
 <rect x="30" y="300" width="840" height="120" fill="none" stroke="var(--line)" stroke-width="1" rx="4"/>
-<text x="450" y="330" font-size="12" fill="var(--ink)" text-anchor="middle" dominant-baseline="central" class="serif">satisfiable  ⇔  some input reaches a bad state within k steps  ⇒  the satisfying assignment is the failing input</text>
-<text x="450" y="360" font-size="12" fill="var(--ink)" text-anchor="middle" dominant-baseline="central" class="serif">unsatisfiable  ⇔  no input reaches a bad state within k steps  ⇒  a theorem, up to the bound k, and nothing beyond it</text>
-<text x="450" y="395" font-size="10.5" fill="var(--muted)" text-anchor="middle" dominant-baseline="central" class="serif">size of the unrolled formula: O(k × size of the model)  ·  size of the model: linear in the size of the binary</text>
+<text x="450" y="330" font-size="15.6" fill="var(--ink)" text-anchor="middle" dominant-baseline="central" class="serif">satisfiable  ⇔  some input reaches a bad state within k steps  ⇒  the satisfying assignment is the failing input</text>
+<text x="450" y="360" font-size="15.6" fill="var(--ink)" text-anchor="middle" dominant-baseline="central" class="serif">unsatisfiable  ⇔  no input reaches a bad state within k steps  ⇒  a theorem, up to the bound k, and nothing beyond it</text>
+<text x="450" y="395" font-size="13.65" fill="var(--muted)" text-anchor="middle" dominant-baseline="central" class="serif">size of the unrolled formula: O(k × size of the model)  ·  size of the model: linear in the size of the binary</text>
 </svg>

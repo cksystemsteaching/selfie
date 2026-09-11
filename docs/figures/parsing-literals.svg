@@ -1,9 +1,9 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 560" width="1000" height="560" role="img" aria-label="Parsing literals: compile_factor recognises a literal and compile_literal loads it, at compile time">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="16.0 -3.0 978.3 572.0" width="978" height="572" role="img" aria-label="Parsing literals: compile_factor recognises a literal and compile_literal loads it, at compile time">
 <title>Parsing literals: compile_factor recognises a literal and compile_literal loads it, at compile time</title>
 <style>svg{--ink:#131C2A;--ink-2:#39485C;--muted:#5D6E85;--line:rgba(19,28,42,.18);--syn:#A2661A;--sem:#1F6C86;--bad:#A63E5A;--panel:#FFFFFF;--ground:#EFF1F3}@media (prefers-color-scheme: dark){svg{--ink:#E7EDF6;--ink-2:#B6C4D8;--muted:#8093AF;--line:rgba(122,162,204,.16);--syn:#E0A550;--sem:#5BB0C7;--bad:#C8607A;--panel:#111C2E;--ground:#080E18}}text{font-family:"JetBrains Mono","SFMono-Regular","SF Mono","Cascadia Mono",Menlo,Consolas,"DejaVu Sans Mono",monospace}.serif{font-family:"Iowan Old Style","Palatino Linotype",Palatino,"Book Antiqua","URW Palladio L",Georgia,serif}</style>
-<text x="120" y="40" font-size="16" fill="var(--ink)" text-anchor="middle" dominant-baseline="central" class="serif">C*</text>
-<text x="470" y="40" font-size="16" fill="var(--ink)" text-anchor="middle" dominant-baseline="central" class="serif">starc</text>
-<text x="880" y="40" font-size="16" fill="var(--ink)" text-anchor="middle" dominant-baseline="central" class="serif">RISC-U</text>
+<text x="120" y="22" font-size="16" fill="var(--ink)" text-anchor="middle" dominant-baseline="central" class="serif">C*</text>
+<text x="470" y="22" font-size="16" fill="var(--ink)" text-anchor="middle" dominant-baseline="central" class="serif">starc</text>
+<text x="880" y="22" font-size="16" fill="var(--ink)" text-anchor="middle" dominant-baseline="central" class="serif">RISC-U</text>
 <text x="70" y="90" font-size="18" fill="var(--sem)" text-anchor="middle" dominant-baseline="central">85</text>
 <text x="130" y="90" font-size="18" fill="var(--sem)" text-anchor="middle" dominant-baseline="central">'H'</text>
 <text x="120" y="130" font-size="14" fill="var(--sem)" text-anchor="middle" dominant-baseline="central">"Hello World!"</text>

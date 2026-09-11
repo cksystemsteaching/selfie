@@ -1,14 +1,14 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 360" width="800" height="360" role="img" aria-label="A half adder: an XOR gate for the sum and an AND gate for the carry">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="80.6 23.5 615.2 300.5" width="615" height="300" role="img" aria-label="A half adder: an XOR gate for the sum and an AND gate for the carry">
 <title>A half adder: an XOR gate for the sum and an AND gate for the carry</title>
 <style>svg{--ink:#131C2A;--ink-2:#39485C;--muted:#5D6E85;--line:rgba(19,28,42,.18);--syn:#A2661A;--sem:#1F6C86;--bad:#A63E5A;--panel:#FFFFFF;--ground:#EFF1F3}@media (prefers-color-scheme: dark){svg{--ink:#E7EDF6;--ink-2:#B6C4D8;--muted:#8093AF;--line:rgba(122,162,204,.16);--syn:#E0A550;--sem:#5BB0C7;--bad:#C8607A;--panel:#111C2E;--ground:#080E18}}text{font-family:"JetBrains Mono","SFMono-Regular","SF Mono","Cascadia Mono",Menlo,Consolas,"DejaVu Sans Mono",monospace}.serif{font-family:"Iowan Old Style","Palatino Linotype",Palatino,"Book Antiqua","URW Palladio L",Georgia,serif}</style>
 <rect x="220" y="70" width="360" height="240" fill="none" stroke="var(--syn)" stroke-width="1.2" rx="4"/>
-<text x="400" y="50" font-size="17" fill="var(--syn)" text-anchor="middle" dominant-baseline="central" class="serif">half adder</text>
-<path d="M370 122 Q385 150 370 178 Q410 178 440 150 Q410 122 370 122" fill="none" stroke="var(--ink-2)" stroke-width="1.4"/><path d="M360 122 Q375 150 360 178" fill="none" stroke="var(--ink-2)" stroke-width="1.4"/><text x="400" y="150" font-size="12" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central">XOR</text>
-<path d="M370 222 L400 222 Q440 222 440 250 Q440 278 400 278 Z" fill="none" stroke="var(--ink-2)" stroke-width="1.4"/><text x="400" y="250" font-size="12" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central">AND</text>
+<text x="400" y="50" font-size="18.13" fill="var(--syn)" text-anchor="middle" dominant-baseline="central" class="serif">half adder</text>
+<path d="M370 122 Q385 150 370 178 Q410 178 440 150 Q410 122 370 122" fill="none" stroke="var(--ink-2)" stroke-width="1.4"/><path d="M360 122 Q375 150 360 178" fill="none" stroke="var(--ink-2)" stroke-width="1.4"/><text x="400" y="150" font-size="12.8" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central">XOR</text>
+<path d="M370 222 L400 222 Q440 222 440 250 Q440 278 400 278 Z" fill="none" stroke="var(--ink-2)" stroke-width="1.4"/><text x="400" y="250" font-size="12.8" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central">AND</text>
 <line x1="580" y1="130" x2="620" y2="130" stroke="var(--ink-2)" stroke-width="1.4"/>
-<text x="630" y="130" font-size="15" fill="var(--ink-2)" text-anchor="start" dominant-baseline="central" class="serif">addend</text>
+<text x="630" y="130" font-size="16" fill="var(--ink-2)" text-anchor="start" dominant-baseline="central" class="serif">addend</text>
 <line x1="580" y1="270" x2="620" y2="270" stroke="var(--ink-2)" stroke-width="1.4"/>
-<text x="630" y="270" font-size="15" fill="var(--ink-2)" text-anchor="start" dominant-baseline="central" class="serif">addend</text>
+<text x="630" y="270" font-size="16" fill="var(--ink-2)" text-anchor="start" dominant-baseline="central" class="serif">addend</text>
 <line x1="580" y1="130" x2="445" y2="130" stroke="var(--ink-2)" stroke-width="1.4"/>
 <circle cx="520" cy="130" r="2.5" fill="var(--ink-2)"/>
 <line x1="520" y1="130" x2="520" y2="240" stroke="var(--ink-2)" stroke-width="1.4"/>
@@ -19,7 +19,7 @@
 <circle cx="545" cy="260" r="2.5" fill="var(--ink-2)"/>
 <line x1="545" y1="260" x2="440" y2="260" stroke="var(--ink-2)" stroke-width="1.4"/>
 <line x1="360" y1="150" x2="140" y2="150" stroke="var(--ink-2)" stroke-width="1.4"/>
-<text x="130" y="150" font-size="15" fill="var(--ink-2)" text-anchor="end" dominant-baseline="central" class="serif">sum</text>
+<text x="130" y="150" font-size="16" fill="var(--ink-2)" text-anchor="end" dominant-baseline="central" class="serif">sum</text>
 <line x1="360" y1="250" x2="140" y2="250" stroke="var(--ink-2)" stroke-width="1.4"/>
-<text x="130" y="250" font-size="15" fill="var(--ink-2)" text-anchor="end" dominant-baseline="central" class="serif">carry</text>
+<text x="130" y="250" font-size="16" fill="var(--ink-2)" text-anchor="end" dominant-baseline="central" class="serif">carry</text>
 </svg>

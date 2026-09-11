@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 450" width="800" height="450" role="img" aria-label="Exponential search: two to the n branches and one satisfying leaf">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-8.6 -1.0 817.3 412.0" width="817" height="412" role="img" aria-label="Exponential search: two to the n branches and one satisfying leaf">
 <title>Exponential search: two to the n branches and one satisfying leaf</title>
 <style>svg{--ink:#131C2A;--ink-2:#39485C;--muted:#5D6E85;--line:rgba(19,28,42,.18);--syn:#A2661A;--sem:#1F6C86;--bad:#A63E5A;--panel:#FFFFFF;--ground:#EFF1F3}@media (prefers-color-scheme: dark){svg{--ink:#E7EDF6;--ink-2:#B6C4D8;--muted:#8093AF;--line:rgba(122,162,204,.16);--syn:#E0A550;--sem:#5BB0C7;--bad:#C8607A;--panel:#111C2E;--ground:#080E18}}text{font-family:"JetBrains Mono","SFMono-Regular","SF Mono","Cascadia Mono",Menlo,Consolas,"DejaVu Sans Mono",monospace}.serif{font-family:"Iowan Old Style","Palatino Linotype",Palatino,"Book Antiqua","URW Palladio L",Georgia,serif}</style>
 <line x1="400" y1="58.5" x2="200" y2="105" stroke="var(--line)" stroke-width="1" opacity="0.45"/>

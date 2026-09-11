@@ -1,8 +1,8 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 860 520" width="860" height="520" role="img" aria-label="Audio sampled with an 8-bit bit depth and stored contiguously, sample by sample">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="8.9 14.0 872.6 490.0" width="873" height="490" role="img" aria-label="Audio sampled with an 8-bit bit depth and stored contiguously, sample by sample">
 <title>Audio sampled with an 8-bit bit depth and stored contiguously, sample by sample</title>
 <style>svg{--ink:#131C2A;--ink-2:#39485C;--muted:#5D6E85;--line:rgba(19,28,42,.18);--syn:#A2661A;--sem:#1F6C86;--bad:#A63E5A;--panel:#FFFFFF;--ground:#EFF1F3}@media (prefers-color-scheme: dark){svg{--ink:#E7EDF6;--ink-2:#B6C4D8;--muted:#8093AF;--line:rgba(122,162,204,.16);--syn:#E0A550;--sem:#5BB0C7;--bad:#C8607A;--panel:#111C2E;--ground:#080E18}}text{font-family:"JetBrains Mono","SFMono-Regular","SF Mono","Cascadia Mono",Menlo,Consolas,"DejaVu Sans Mono",monospace}.serif{font-family:"Iowan Old Style","Palatino Linotype",Palatino,"Book Antiqua","URW Palladio L",Georgia,serif}</style>
-<text x="440" y="42" font-size="15" fill="var(--muted)" text-anchor="middle" dominant-baseline="central" class="serif">storage</text>
-<text x="650" y="42" font-size="15" fill="var(--muted)" text-anchor="middle" dominant-baseline="central" class="serif">addresses</text>
+<text x="440" y="42" font-size="20.64" fill="var(--muted)" text-anchor="middle" dominant-baseline="central" class="serif">storage</text>
+<text x="650" y="42" font-size="20.64" fill="var(--muted)" text-anchor="middle" dominant-baseline="central" class="serif">addresses</text>
 <line x1="640" y1="490" x2="640" y2="62" stroke="var(--line)" stroke-width="1.2"/><path d="M640 62 L642.34 67.53 L637.66 67.53 Z" fill="var(--line)"/>
 <rect x="340" y="70" width="200" height="420" fill="none" stroke="var(--line)" stroke-width="1"/>
 <circle cx="440" cy="430.17" r="1.4" fill="var(--muted)"/><circle cx="440" cy="439.17" r="1.4" fill="var(--muted)"/><circle cx="440" cy="448.17" r="1.4" fill="var(--muted)"/>
@@ -31,34 +31,34 @@
 <rect x="490" y="350.21" width="25" height="38.12" fill="none" stroke="var(--line)" stroke-width="1"/>
 <rect x="515" y="350.21" width="25" height="38.12" fill="none" stroke="var(--line)" stroke-width="1"/>
 <line x1="662" y1="369.27" x2="544" y2="369.27" stroke="var(--line)" stroke-width="1.2"/><path d="M544 369.27 L549.53 366.94 L549.53 371.61 Z" fill="var(--line)"/>
-<text x="674" y="369.27" font-size="15" fill="var(--ink-2)" text-anchor="start" dominant-baseline="central">7</text>
+<text x="674" y="369.27" font-size="20.64" fill="var(--ink-2)" text-anchor="start" dominant-baseline="central">7</text>
 <circle cx="440" cy="226.84" r="1.4" fill="var(--muted)"/><circle cx="440" cy="235.84" r="1.4" fill="var(--muted)"/><circle cx="440" cy="244.84" r="1.4" fill="var(--muted)"/>
 <line x1="340" y1="197.08" x2="540" y2="197.08" stroke="var(--line)" stroke-width="1"/>
 <line x1="340" y1="197.72" x2="540" y2="197.72" stroke="var(--line)" stroke-width="1"/>
-<text x="440" y="197.4" font-size="15" fill="var(--ink)" text-anchor="middle" dominant-baseline="central" class="serif"></text>
+<text x="440" y="197.4" font-size="20.64" fill="var(--ink)" text-anchor="middle" dominant-baseline="central" class="serif"></text>
 <line x1="662" y1="197.08" x2="544" y2="197.08" stroke="var(--line)" stroke-width="1.2"/><path d="M544 197.08 L549.53 194.74 L549.53 199.42 Z" fill="var(--line)"/>
-<text x="674" y="197.08" font-size="13" fill="var(--muted)" text-anchor="start" dominant-baseline="central">end</text>
+<text x="674" y="197.08" font-size="17.89" fill="var(--muted)" text-anchor="start" dominant-baseline="central">end</text>
 <circle cx="440" cy="124.54" r="1.4" fill="var(--muted)"/><circle cx="440" cy="133.54" r="1.4" fill="var(--muted)"/><circle cx="440" cy="142.54" r="1.4" fill="var(--muted)"/>
-<text x="160" y="42" font-size="15" fill="var(--muted)" text-anchor="middle" dominant-baseline="central" class="serif">interpretation</text>
+<text x="160" y="42" font-size="20.64" fill="var(--muted)" text-anchor="middle" dominant-baseline="central" class="serif">interpretation</text>
 <line x1="160" y1="60" x2="160" y2="100" stroke="var(--line)" stroke-width="1.2"/><path d="M160 100 L157.66 94.47 L162.34 94.47 Z" fill="var(--line)"/>
-<text x="160" y="120" font-size="15" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central" class="serif">audio</text>
+<text x="160" y="120" font-size="20.64" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central" class="serif">audio</text>
 <line x1="70" y1="230" x2="300" y2="230" stroke="var(--line)" stroke-width="1"/><path d="M300 230 L295.39 231.95 L295.39 228.05 Z" fill="var(--line)"/>
 <line x1="70" y1="300" x2="70" y2="160" stroke="var(--line)" stroke-width="1"/><path d="M70 160 L71.95 164.61 L68.05 164.61 Z" fill="var(--line)"/>
-<text x="56" y="168" font-size="10" fill="var(--muted)" text-anchor="end" dominant-baseline="central">127</text>
-<text x="56" y="230" font-size="10" fill="var(--muted)" text-anchor="end" dominant-baseline="central">0</text>
-<text x="56" y="292" font-size="10" fill="var(--muted)" text-anchor="end" dominant-baseline="central">-128</text>
+<text x="56" y="168" font-size="13.76" fill="var(--muted)" text-anchor="end" dominant-baseline="central">127</text>
+<text x="56" y="230" font-size="13.76" fill="var(--muted)" text-anchor="end" dominant-baseline="central">0</text>
+<text x="56" y="292" font-size="13.76" fill="var(--muted)" text-anchor="end" dominant-baseline="central">-128</text>
 <path d="M70 230 L73 219.69 L76 209.75 L79 200.53 L82 192.35 L85 185.5 L88 180.23 L91 176.73 L94 175.11 L97 175.43 L100 177.69 L103 181.8 L106 187.62 L109 194.94 L112 203.5 L115 213 L118 223.11 L121 233.45 L124 243.68 L127 253.42 L130 262.33 L133 270.09 L136 276.44 L139 281.14 L142 284.03 L145 285 L148 284.03 L151 281.14 L154 276.44 L157 270.09 L160 262.33 L163 253.42 L166 243.68 L169 233.45 L172 223.11 L175 213 L178 203.5 L181 194.94 L184 187.62 L187 181.8 L190 177.69 L193 175.43 L196 175.11 L199 176.73 L202 180.23 L205 185.5 L208 192.35 L211 200.53 L214 209.75 L217 219.69 L220 230 L223 240.31 L226 250.25 L229 259.47 L232 267.65 L235 274.5 L238 279.77 L241 283.27 L244 284.89 L247 284.57 L250 282.31 L253 278.2 L256 272.38 L259 265.06 L262 256.5 L265 247 L268 236.89 L271 226.55 L274 216.32 L277 206.58 L280 197.67 L283 189.91 L286 183.56 L289 178.86 L292 175.97" fill="none" stroke="var(--sem)" stroke-width="1.4"/>
 <line x1="82" y1="230" x2="82" y2="192.35" stroke="var(--syn)" stroke-width="1.4"/>
 <circle cx="82" cy="192.35" r="2.5" fill="var(--syn)"/>
-<text x="82" y="310" font-size="11" fill="var(--muted)" text-anchor="middle" dominant-baseline="central">0</text>
+<text x="82" y="310" font-size="15.14" fill="var(--muted)" text-anchor="middle" dominant-baseline="central">0</text>
 <line x1="97" y1="230" x2="97" y2="175.43" stroke="var(--syn)" stroke-width="1.4"/>
 <circle cx="97" cy="175.43" r="2.5" fill="var(--syn)"/>
-<text x="97" y="310" font-size="11" fill="var(--muted)" text-anchor="middle" dominant-baseline="central">1</text>
+<text x="97" y="310" font-size="15.14" fill="var(--muted)" text-anchor="middle" dominant-baseline="central">1</text>
 <line x1="112" y1="230" x2="112" y2="203.5" stroke="var(--syn)" stroke-width="1.4"/>
 <circle cx="112" cy="203.5" r="2.5" fill="var(--syn)"/>
-<text x="112" y="310" font-size="11" fill="var(--muted)" text-anchor="middle" dominant-baseline="central">2</text>
-<text x="190" y="330" font-size="13" fill="var(--muted)" text-anchor="middle" dominant-baseline="central" class="serif">samples</text>
+<text x="112" y="310" font-size="15.14" fill="var(--muted)" text-anchor="middle" dominant-baseline="central">2</text>
+<text x="190" y="330" font-size="17.89" fill="var(--muted)" text-anchor="middle" dominant-baseline="central" class="serif">samples</text>
 <path d="M305 310 Q300 331.15 336 331.15" fill="none" stroke="var(--line)" stroke-width="1" stroke-dasharray="3 3"/>
-<text x="730" y="197.08" font-size="12" fill="var(--muted)" text-anchor="start" dominant-baseline="central" class="serif">end of audio</text>
-<text x="730" y="404.34" font-size="12" fill="var(--muted)" text-anchor="start" dominant-baseline="central" class="serif">beginning of audio</text>
+<text x="730" y="197.08" font-size="16.51" fill="var(--muted)" text-anchor="start" dominant-baseline="central" class="serif">end of audio</text>
+<text x="730" y="404.34" font-size="16.51" fill="var(--muted)" text-anchor="start" dominant-baseline="central" class="serif">beginning of audio</text>
 </svg>

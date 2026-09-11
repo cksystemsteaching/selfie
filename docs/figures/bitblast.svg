@@ -1,46 +1,46 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 420" width="900" height="420" role="img" aria-label="Bit-blasting: a word operation as a circuit as a CNF formula, the Cook-Levin construction as a tool">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="20.3 15.0 918.6 387.0" width="919" height="387" role="img" aria-label="Bit-blasting: a word operation as a circuit as a CNF formula, the Cook-Levin construction as a tool">
 <title>Bit-blasting: a word operation as a circuit as a CNF formula, the Cook-Levin construction as a tool</title>
 <style>svg{--ink:#131C2A;--ink-2:#39485C;--muted:#5D6E85;--line:rgba(19,28,42,.18);--syn:#A2661A;--sem:#1F6C86;--bad:#A63E5A;--panel:#FFFFFF;--ground:#EFF1F3}@media (prefers-color-scheme: dark){svg{--ink:#E7EDF6;--ink-2:#B6C4D8;--muted:#8093AF;--line:rgba(122,162,204,.16);--syn:#E0A550;--sem:#5BB0C7;--bad:#C8607A;--panel:#111C2E;--ground:#080E18}}text{font-family:"JetBrains Mono","SFMono-Regular","SF Mono","Cascadia Mono",Menlo,Consolas,"DejaVu Sans Mono",monospace}.serif{font-family:"Iowan Old Style","Palatino Linotype",Palatino,"Book Antiqua","URW Palladio L",Georgia,serif}</style>
-<text x="150" y="40" font-size="13" fill="var(--syn)" text-anchor="middle" dominant-baseline="central" class="serif">a word operation</text>
-<text x="450" y="40" font-size="13" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central" class="serif">a circuit</text>
-<text x="750" y="40" font-size="13" fill="var(--sem)" text-anchor="middle" dominant-baseline="central" class="serif">a formula in CNF</text>
+<text x="150" y="40" font-size="16.25" fill="var(--syn)" text-anchor="middle" dominant-baseline="central" class="serif">a word operation</text>
+<text x="450" y="40" font-size="16.25" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central" class="serif">a circuit</text>
+<text x="750" y="40" font-size="16.25" fill="var(--sem)" text-anchor="middle" dominant-baseline="central" class="serif">a formula in CNF</text>
 <rect x="60" y="70" width="180" height="60" fill="none" stroke="var(--syn)" stroke-width="1.2" rx="4"/>
-<text x="150" y="92" font-size="15" fill="var(--syn)" text-anchor="middle" dominant-baseline="central">s = a + b</text>
-<text x="150" y="114" font-size="10" fill="var(--muted)" text-anchor="middle" dominant-baseline="central">64-bit bitvectors</text>
+<text x="150" y="92" font-size="18.75" fill="var(--syn)" text-anchor="middle" dominant-baseline="central">s = a + b</text>
+<text x="150" y="114" font-size="12.5" fill="var(--muted)" text-anchor="middle" dominant-baseline="central">64-bit bitvectors</text>
 <line x1="245" y1="100" x2="335" y2="100" stroke="var(--line)" stroke-width="1.2"/><path d="M335 100 L329.47 102.34 L329.47 97.66 Z" fill="var(--line)"/>
 <rect x="345" y="70" width="60" height="60" fill="none" stroke="var(--ink-2)" stroke-width="1.2" rx="4"/>
-<text x="375" y="92" font-size="12" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central">FA</text>
-<text x="375" y="114" font-size="9" fill="var(--muted)" text-anchor="middle" dominant-baseline="central">bit i−1</text>
+<text x="375" y="92" font-size="15" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central">FA</text>
+<text x="375" y="114" font-size="11.25" fill="var(--muted)" text-anchor="middle" dominant-baseline="central">bit i−1</text>
 <line x1="353" y1="60" x2="353" y2="68" stroke="var(--line)" stroke-width="1.2"/><path d="M353 68 L351.44 64.32 L354.56 64.32 Z" fill="var(--line)"/>
 <line x1="397" y1="60" x2="397" y2="68" stroke="var(--line)" stroke-width="1.2"/><path d="M397 68 L395.44 64.32 L398.56 64.32 Z" fill="var(--line)"/>
 <line x1="375" y1="132" x2="375" y2="142" stroke="var(--line)" stroke-width="1.2"/><path d="M375 142 L373.44 138.32 L376.56 138.32 Z" fill="var(--line)"/>
 <line x1="407" y1="100" x2="413" y2="100" stroke="var(--line)" stroke-width="1.2"/><path d="M413 100 L409.32 101.56 L409.32 98.44 Z" fill="var(--line)"/>
 <rect x="415" y="70" width="60" height="60" fill="none" stroke="var(--ink-2)" stroke-width="1.2" rx="4"/>
-<text x="445" y="92" font-size="12" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central">FA</text>
-<text x="445" y="114" font-size="9" fill="var(--muted)" text-anchor="middle" dominant-baseline="central">bit i</text>
+<text x="445" y="92" font-size="15" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central">FA</text>
+<text x="445" y="114" font-size="11.25" fill="var(--muted)" text-anchor="middle" dominant-baseline="central">bit i</text>
 <line x1="423" y1="60" x2="423" y2="68" stroke="var(--line)" stroke-width="1.2"/><path d="M423 68 L421.44 64.32 L424.56 64.32 Z" fill="var(--line)"/>
 <line x1="467" y1="60" x2="467" y2="68" stroke="var(--line)" stroke-width="1.2"/><path d="M467 68 L465.44 64.32 L468.56 64.32 Z" fill="var(--line)"/>
 <line x1="445" y1="132" x2="445" y2="142" stroke="var(--line)" stroke-width="1.2"/><path d="M445 142 L443.44 138.32 L446.56 138.32 Z" fill="var(--line)"/>
 <line x1="477" y1="100" x2="483" y2="100" stroke="var(--line)" stroke-width="1.2"/><path d="M483 100 L479.32 101.56 L479.32 98.44 Z" fill="var(--line)"/>
 <rect x="485" y="70" width="60" height="60" fill="none" stroke="var(--ink-2)" stroke-width="1.2" rx="4"/>
-<text x="515" y="92" font-size="12" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central">FA</text>
-<text x="515" y="114" font-size="9" fill="var(--muted)" text-anchor="middle" dominant-baseline="central">bit i+1</text>
+<text x="515" y="92" font-size="15" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central">FA</text>
+<text x="515" y="114" font-size="11.25" fill="var(--muted)" text-anchor="middle" dominant-baseline="central">bit i+1</text>
 <line x1="493" y1="60" x2="493" y2="68" stroke="var(--line)" stroke-width="1.2"/><path d="M493 68 L491.44 64.32 L494.56 64.32 Z" fill="var(--line)"/>
 <line x1="537" y1="60" x2="537" y2="68" stroke="var(--line)" stroke-width="1.2"/><path d="M537 68 L535.44 64.32 L538.56 64.32 Z" fill="var(--line)"/>
 <line x1="515" y1="132" x2="515" y2="142" stroke="var(--line)" stroke-width="1.2"/><path d="M515 142 L513.44 138.32 L516.56 138.32 Z" fill="var(--line)"/>
-<text x="450" y="52" font-size="9" fill="var(--muted)" text-anchor="middle" dominant-baseline="central">aᵢ bᵢ</text>
-<text x="450" y="150" font-size="9" fill="var(--muted)" text-anchor="middle" dominant-baseline="central">sᵢ</text>
-<text x="485" y="88" font-size="8" fill="var(--muted)" text-anchor="middle" dominant-baseline="central">carry</text>
+<text x="450" y="52" font-size="11.25" fill="var(--muted)" text-anchor="middle" dominant-baseline="central">aᵢ bᵢ</text>
+<text x="450" y="150" font-size="11.25" fill="var(--muted)" text-anchor="middle" dominant-baseline="central">sᵢ</text>
+<text x="485" y="88" font-size="10" fill="var(--muted)" text-anchor="middle" dominant-baseline="central">carry</text>
 <line x1="575" y1="100" x2="665" y2="100" stroke="var(--line)" stroke-width="1.2"/><path d="M665 100 L659.47 102.34 L659.47 97.66 Z" fill="var(--line)"/>
-<text x="680" y="72" font-size="10.5" fill="var(--sem)" text-anchor="start" dominant-baseline="central">sᵢ ↔ aᵢ ⊕ bᵢ ⊕ cᵢ</text>
-<text x="680" y="92" font-size="10.5" fill="var(--sem)" text-anchor="start" dominant-baseline="central">cᵢ₊₁ ↔ (aᵢ∧bᵢ) ∨ (cᵢ∧(aᵢ⊕bᵢ))</text>
-<text x="680" y="112" font-size="10.5" fill="var(--muted)" text-anchor="start" dominant-baseline="central">per gate, a fresh variable g:</text>
-<text x="680" y="132" font-size="10.5" fill="var(--muted)" text-anchor="start" dominant-baseline="central">(¬g ∨ a) (¬g ∨ b) (g ∨ ¬a ∨ ¬b)</text>
-<text x="680" y="152" font-size="10.5" fill="var(--muted)" text-anchor="start" dominant-baseline="central">… 64 × a few dozen clauses</text>
+<text x="680" y="72" font-size="13.12" fill="var(--sem)" text-anchor="start" dominant-baseline="central">sᵢ ↔ aᵢ ⊕ bᵢ ⊕ cᵢ</text>
+<text x="680" y="92" font-size="13.12" fill="var(--sem)" text-anchor="start" dominant-baseline="central">cᵢ₊₁ ↔ (aᵢ∧bᵢ) ∨ (cᵢ∧(aᵢ⊕bᵢ))</text>
+<text x="680" y="112" font-size="13.12" fill="var(--muted)" text-anchor="start" dominant-baseline="central">per gate, a fresh variable g:</text>
+<text x="680" y="132" font-size="13.12" fill="var(--muted)" text-anchor="start" dominant-baseline="central">(¬g ∨ a) (¬g ∨ b) (g ∨ ¬a ∨ ¬b)</text>
+<text x="680" y="152" font-size="13.12" fill="var(--muted)" text-anchor="start" dominant-baseline="central">… 64 × a few dozen clauses</text>
 <line x1="60" y1="200" x2="840" y2="200" stroke="var(--line)" stroke-width="1" stroke-dasharray="4 4"/>
-<text x="450" y="235" font-size="12" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central" class="serif">Every operation of the machine on words — add, compare, shift, load — is a circuit over the bits of its operands,</text>
-<text x="450" y="257" font-size="12" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central" class="serif">and every gate is three or four clauses over the bits (Tseitin, 1968). An SMT formula over bitvectors becomes a SAT formula,</text>
-<text x="450" y="279" font-size="12" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central" class="serif">much bigger, and goes to CDCL. This is the construction in Cook's proof that SAT is NP-hard, used as a tool.</text>
-<text x="450" y="330" font-size="11" fill="var(--muted)" text-anchor="middle" dominant-baseline="central" class="serif">arrays (memory) are added on demand: read(write(m, i, v), i) = v, and read(write(m, i, v), j) = read(m, j) for j ≠ i</text>
-<text x="450" y="380" font-size="11" fill="var(--muted)" text-anchor="middle" dominant-baseline="central">Bitwuzla · Z3 · the solvers bitme drives</text>
+<text x="450" y="235" font-size="15" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central" class="serif">Every operation of the machine on words — add, compare, shift, load — is a circuit over the bits of its operands,</text>
+<text x="450" y="257" font-size="15" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central" class="serif">and every gate is three or four clauses over the bits (Tseitin, 1968). An SMT formula over bitvectors becomes a SAT formula,</text>
+<text x="450" y="279" font-size="15" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central" class="serif">much bigger, and goes to CDCL. This is the construction in Cook's proof that SAT is NP-hard, used as a tool.</text>
+<text x="450" y="330" font-size="13.75" fill="var(--muted)" text-anchor="middle" dominant-baseline="central" class="serif">arrays (memory) are added on demand: read(write(m, i, v), i) = v, and read(write(m, i, v), j) = read(m, j) for j ≠ i</text>
+<text x="450" y="380" font-size="13.75" fill="var(--muted)" text-anchor="middle" dominant-baseline="central">Bitwuzla · Z3 · the solvers bitme drives</text>
 </svg>

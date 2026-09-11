@@ -1,43 +1,43 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 620" width="900" height="620" role="img" aria-label="The RISC-U machine: 32 registers, an instruction register, a program counter, and 4 GB of byte-addressed memory">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="9.7 13.0 855.0 581.0" width="855" height="581" role="img" aria-label="The RISC-U machine: 32 registers, an instruction register, a program counter, and 4 GB of byte-addressed memory">
 <title>The RISC-U machine: 32 registers, an instruction register, a program counter, and 4 GB of byte-addressed memory</title>
 <style>svg{--ink:#131C2A;--ink-2:#39485C;--muted:#5D6E85;--line:rgba(19,28,42,.18);--syn:#A2661A;--sem:#1F6C86;--bad:#A63E5A;--panel:#FFFFFF;--ground:#EFF1F3}@media (prefers-color-scheme: dark){svg{--ink:#E7EDF6;--ink-2:#B6C4D8;--muted:#8093AF;--line:rgba(122,162,204,.16);--syn:#E0A550;--sem:#5BB0C7;--bad:#C8607A;--panel:#111C2E;--ground:#080E18}}text{font-family:"JetBrains Mono","SFMono-Regular","SF Mono","Cascadia Mono",Menlo,Consolas,"DejaVu Sans Mono",monospace}.serif{font-family:"Iowan Old Style","Palatino Linotype",Palatino,"Book Antiqua","URW Palladio L",Georgia,serif}</style>
-<text x="200" y="40" font-size="16" fill="var(--syn)" text-anchor="middle" dominant-baseline="central" class="serif">RISC-U ISA (von Neumann architecture)</text>
-<text x="210" y="110" font-size="13" fill="var(--muted)" text-anchor="middle" dominant-baseline="central" class="serif">CPU registers (storage)</text>
+<text x="200" y="40" font-size="19.2" fill="var(--syn)" text-anchor="middle" dominant-baseline="central" class="serif">RISC-U ISA (von Neumann architecture)</text>
+<text x="210" y="110" font-size="15.6" fill="var(--muted)" text-anchor="middle" dominant-baseline="central" class="serif">CPU registers (storage)</text>
 <rect x="130" y="125" width="190" height="300" fill="none" stroke="var(--syn)" stroke-width="1.2"/>
 <line x1="100" y1="400" x2="100" y2="130" stroke="var(--line)" stroke-width="1"/><path d="M100 130 L101.95 134.61 L98.05 134.61 Z" fill="var(--line)"/>
-<text x="92" y="135" font-size="11" fill="var(--muted)" text-anchor="end" dominant-baseline="central">31</text>
-<text x="92" y="392" font-size="11" fill="var(--muted)" text-anchor="end" dominant-baseline="central">0</text>
-<text x="60" y="392" font-size="10" fill="var(--muted)" text-anchor="end" dominant-baseline="central" class="serif">(zero)</text>
-<text x="100" y="112" font-size="11" fill="var(--muted)" text-anchor="middle" dominant-baseline="central" class="serif">registers</text>
+<text x="92" y="135" font-size="13.2" fill="var(--muted)" text-anchor="end" dominant-baseline="central">31</text>
+<text x="92" y="392" font-size="13.2" fill="var(--muted)" text-anchor="end" dominant-baseline="central">0</text>
+<text x="60" y="392" font-size="12" fill="var(--muted)" text-anchor="end" dominant-baseline="central" class="serif">(zero)</text>
+<text x="84" y="112" font-size="13.2" fill="var(--muted)" text-anchor="middle" dominant-baseline="central" class="serif">registers</text>
 <line x1="130" y1="380" x2="320" y2="380" stroke="var(--line)" stroke-width="1"/>
 <circle cx="225" cy="240" r="1.4" fill="var(--muted)"/><circle cx="225" cy="249" r="1.4" fill="var(--muted)"/><circle cx="225" cy="258" r="1.4" fill="var(--muted)"/>
 <line x1="130" y1="405" x2="320" y2="405" stroke="var(--line)" stroke-width="1"/>
 <rect x="130" y="380" width="190" height="25" fill="none" stroke="var(--line)" stroke-width="1"/>
 <rect x="130" y="405" width="190" height="20" fill="none" stroke="var(--line)" stroke-width="1"/>
-<text x="118" y="392" font-size="11" fill="var(--ink-2)" text-anchor="end" dominant-baseline="central">ir</text>
-<text x="118" y="415" font-size="11" fill="var(--ink-2)" text-anchor="end" dominant-baseline="central">pc</text>
+<text x="118" y="392" font-size="13.2" fill="var(--ink-2)" text-anchor="end" dominant-baseline="central">ir</text>
+<text x="118" y="415" font-size="13.2" fill="var(--ink-2)" text-anchor="end" dominant-baseline="central">pc</text>
 <rect x="130" y="380" width="95" height="25" fill="var(--syn)" fill-opacity="0.15"/>
-<text x="177" y="372" font-size="9" fill="var(--muted)" text-anchor="middle" dominant-baseline="central" class="serif">32 bits</text>
-<text x="225" y="442" font-size="10" fill="var(--muted)" text-anchor="middle" dominant-baseline="central" class="serif">64 bits</text>
-<text x="210" y="470" font-size="12" fill="var(--muted)" text-anchor="middle" dominant-baseline="central" class="serif">CPU (ALU hidden)</text>
+<text x="177" y="372" font-size="10.8" fill="var(--muted)" text-anchor="middle" dominant-baseline="central" class="serif">32 bits</text>
+<text x="225" y="442" font-size="12" fill="var(--muted)" text-anchor="middle" dominant-baseline="central" class="serif">64 bits</text>
+<text x="210" y="470" font-size="14.4" fill="var(--muted)" text-anchor="middle" dominant-baseline="central" class="serif">CPU (ALU hidden)</text>
 <rect x="340" y="180" width="70" height="150" fill="none" stroke="var(--line)" stroke-width="1"/>
 <line x1="410" y1="205" x2="326" y2="205" stroke="var(--ink-2)" stroke-width="1.2"/><path d="M326 205 L331.53 202.66 L331.53 207.34 Z" fill="var(--ink-2)"/>
-<text x="375" y="195" font-size="10" fill="var(--muted)" text-anchor="middle" dominant-baseline="central" class="serif">load</text>
+<text x="375" y="195" font-size="12" fill="var(--muted)" text-anchor="middle" dominant-baseline="central" class="serif">load</text>
 <line x1="326" y1="255" x2="410" y2="255" stroke="var(--ink-2)" stroke-width="1.2"/><path d="M410 255 L404.47 257.34 L404.47 252.66 Z" fill="var(--ink-2)"/>
-<text x="375" y="245" font-size="10" fill="var(--muted)" text-anchor="middle" dominant-baseline="central" class="serif">store</text>
+<text x="375" y="245" font-size="12" fill="var(--muted)" text-anchor="middle" dominant-baseline="central" class="serif">store</text>
 <line x1="410" y1="315" x2="326" y2="315" stroke="var(--ink-2)" stroke-width="1.2"/><path d="M326 315 L331.53 312.66 L331.53 317.34 Z" fill="var(--ink-2)"/>
-<text x="375" y="305" font-size="10" fill="var(--muted)" text-anchor="middle" dominant-baseline="central" class="serif">fetch</text>
-<text x="375" y="350" font-size="10" fill="var(--muted)" text-anchor="middle" dominant-baseline="central" class="serif">memory bus (von Neumann bottleneck)</text>
-<text x="580" y="70" font-size="13" fill="var(--muted)" text-anchor="middle" dominant-baseline="central" class="serif">main memory (storage)</text>
+<text x="375" y="305" font-size="12" fill="var(--muted)" text-anchor="middle" dominant-baseline="central" class="serif">fetch</text>
+<text x="375" y="350" font-size="12" fill="var(--muted)" text-anchor="middle" dominant-baseline="central" class="serif">memory bus (von Neumann bottleneck)</text>
+<text x="580" y="70" font-size="15.6" fill="var(--muted)" text-anchor="middle" dominant-baseline="central" class="serif">main memory (storage)</text>
 <rect x="440" y="85" width="280" height="440" fill="none" stroke="var(--syn)" stroke-width="1.2"/>
 <circle cx="580" cy="280" r="1.4" fill="var(--muted)"/><circle cx="580" cy="292" r="1.4" fill="var(--muted)"/><circle cx="580" cy="304" r="1.4" fill="var(--muted)"/><circle cx="580" cy="316" r="1.4" fill="var(--muted)"/><circle cx="580" cy="328" r="1.4" fill="var(--muted)"/>
-<text x="580" y="548" font-size="11" fill="var(--muted)" text-anchor="middle" dominant-baseline="central" class="serif">64 bits</text>
+<text x="580" y="548" font-size="13.2" fill="var(--muted)" text-anchor="middle" dominant-baseline="central" class="serif">64 bits</text>
 <line x1="770" y1="525" x2="770" y2="80" stroke="var(--line)" stroke-width="1.2"/><path d="M770 80 L772.34 85.53 L767.66 85.53 Z" fill="var(--line)"/>
-<text x="770" y="60" font-size="12" fill="var(--muted)" text-anchor="middle" dominant-baseline="central" class="serif">addresses</text>
+<text x="770" y="60" font-size="14.4" fill="var(--muted)" text-anchor="middle" dominant-baseline="central" class="serif">addresses</text>
 <line x1="760" y1="95" x2="724" y2="95" stroke="var(--line)" stroke-width="1"/><path d="M724 95 L728.61 93.05 L728.61 96.95 Z" fill="var(--line)"/>
-<text x="790" y="95" font-size="12" fill="var(--ink-2)" text-anchor="start" dominant-baseline="central">2³² − 8</text>
+<text x="790" y="95" font-size="14.4" fill="var(--ink-2)" text-anchor="start" dominant-baseline="central">2³² − 8</text>
 <line x1="760" y1="515" x2="724" y2="515" stroke="var(--line)" stroke-width="1"/><path d="M724 515 L728.61 513.05 L728.61 516.95 Z" fill="var(--line)"/>
-<text x="790" y="515" font-size="12" fill="var(--ink-2)" text-anchor="start" dominant-baseline="central">0</text>
+<text x="790" y="515" font-size="14.4" fill="var(--ink-2)" text-anchor="start" dominant-baseline="central">0</text>
 <path d="M225 415 L225 580 L790 580 L790 525" fill="none" stroke="var(--syn)" stroke-width="1" stroke-dasharray="3 3"/>
 <circle cx="225" cy="415" r="2.5" fill="var(--syn)"/>
 </svg>

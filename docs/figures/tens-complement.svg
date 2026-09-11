@@ -1,50 +1,50 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" width="800" height="600" role="img" aria-label="Two decimal digits read three ways: as an encoding, unsigned, and signed in tens complement">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="16.0 11.0 768.0 588.0" width="768" height="588" role="img" aria-label="Two decimal digits read three ways: as an encoding, unsigned, and signed in tens complement">
 <title>Two decimal digits read three ways: as an encoding, unsigned, and signed in tens complement</title>
 <style>svg{--ink:#131C2A;--ink-2:#39485C;--muted:#5D6E85;--line:rgba(19,28,42,.18);--syn:#A2661A;--sem:#1F6C86;--bad:#A63E5A;--panel:#FFFFFF;--ground:#EFF1F3}@media (prefers-color-scheme: dark){svg{--ink:#E7EDF6;--ink-2:#B6C4D8;--muted:#8093AF;--line:rgba(122,162,204,.16);--syn:#E0A550;--sem:#5BB0C7;--bad:#C8607A;--panel:#111C2E;--ground:#080E18}}text{font-family:"JetBrains Mono","SFMono-Regular","SF Mono","Cascadia Mono",Menlo,Consolas,"DejaVu Sans Mono",monospace}.serif{font-family:"Iowan Old Style","Palatino Linotype",Palatino,"Book Antiqua","URW Palladio L",Georgia,serif}</style>
 <circle cx="400" cy="310" r="120" fill="none" stroke="var(--syn)" stroke-width="1.4"/>
 <circle cx="400" cy="190" r="2.5" fill="var(--syn)"/>
-<text x="400" y="206" font-size="11" fill="var(--syn)" text-anchor="middle" dominant-baseline="central">0</text>
+<text x="400" y="206" font-size="16" fill="var(--syn)" text-anchor="middle" dominant-baseline="central">0</text>
 <circle cx="437.08" cy="195.87" r="2.5" fill="var(--syn)"/>
-<text x="432.14" y="211.09" font-size="11" fill="var(--syn)" text-anchor="middle" dominant-baseline="central">5</text>
+<text x="432.14" y="211.09" font-size="16" fill="var(--syn)" text-anchor="middle" dominant-baseline="central">5</text>
 <circle cx="362.92" cy="195.87" r="2.5" fill="var(--syn)"/>
-<text x="367.86" y="211.09" font-size="11" fill="var(--syn)" text-anchor="middle" dominant-baseline="central">95</text>
+<text x="367.86" y="211.09" font-size="16" fill="var(--syn)" text-anchor="middle" dominant-baseline="central">95</text>
 <circle cx="400" cy="430" r="2.5" fill="var(--syn)"/>
-<text x="400" y="414" font-size="11" fill="var(--syn)" text-anchor="middle" dominant-baseline="central">50</text>
+<text x="400" y="414" font-size="16" fill="var(--syn)" text-anchor="middle" dominant-baseline="central">50</text>
 <circle cx="437.08" cy="424.13" r="2.5" fill="var(--syn)"/>
-<text x="432.14" y="408.91" font-size="11" fill="var(--syn)" text-anchor="middle" dominant-baseline="central">45</text>
+<text x="432.14" y="408.91" font-size="16" fill="var(--syn)" text-anchor="middle" dominant-baseline="central">45</text>
 <circle cx="362.92" cy="424.13" r="2.5" fill="var(--syn)"/>
-<text x="367.86" y="408.91" font-size="11" fill="var(--syn)" text-anchor="middle" dominant-baseline="central">55</text>
+<text x="367.86" y="408.91" font-size="16" fill="var(--syn)" text-anchor="middle" dominant-baseline="central">55</text>
 <circle cx="400" cy="310" r="180" fill="none" stroke="var(--sem)" stroke-width="1.4"/>
 <circle cx="400" cy="130" r="2.5" fill="var(--sem)"/>
-<text x="400" y="146" font-size="11" fill="var(--sem)" text-anchor="middle" dominant-baseline="central">0</text>
+<text x="400" y="146" font-size="16" fill="var(--sem)" text-anchor="middle" dominant-baseline="central">0</text>
 <circle cx="455.62" cy="138.81" r="2.5" fill="var(--sem)"/>
-<text x="450.68" y="154.03" font-size="11" fill="var(--sem)" text-anchor="middle" dominant-baseline="central">5</text>
+<text x="450.68" y="154.03" font-size="16" fill="var(--sem)" text-anchor="middle" dominant-baseline="central">5</text>
 <circle cx="344.38" cy="138.81" r="2.5" fill="var(--sem)"/>
-<text x="349.32" y="154.03" font-size="11" fill="var(--sem)" text-anchor="middle" dominant-baseline="central">95</text>
+<text x="349.32" y="154.03" font-size="16" fill="var(--sem)" text-anchor="middle" dominant-baseline="central">95</text>
 <circle cx="400" cy="490" r="2.5" fill="var(--sem)"/>
-<text x="400" y="474" font-size="11" fill="var(--sem)" text-anchor="middle" dominant-baseline="central">50</text>
+<text x="400" y="474" font-size="16" fill="var(--sem)" text-anchor="middle" dominant-baseline="central">50</text>
 <circle cx="455.62" cy="481.19" r="2.5" fill="var(--sem)"/>
-<text x="450.68" y="465.97" font-size="11" fill="var(--sem)" text-anchor="middle" dominant-baseline="central">45</text>
+<text x="450.68" y="465.97" font-size="16" fill="var(--sem)" text-anchor="middle" dominant-baseline="central">45</text>
 <circle cx="344.38" cy="481.19" r="2.5" fill="var(--sem)"/>
-<text x="349.32" y="465.97" font-size="11" fill="var(--sem)" text-anchor="middle" dominant-baseline="central">55</text>
+<text x="349.32" y="465.97" font-size="16" fill="var(--sem)" text-anchor="middle" dominant-baseline="central">55</text>
 <circle cx="400" cy="310" r="240" fill="none" stroke="var(--bad)" stroke-width="1.4"/>
 <circle cx="400" cy="70" r="2.5" fill="var(--bad)"/>
-<text x="400" y="86" font-size="11" fill="var(--bad)" text-anchor="middle" dominant-baseline="central">0</text>
+<text x="400" y="86" font-size="16" fill="var(--bad)" text-anchor="middle" dominant-baseline="central">0</text>
 <circle cx="474.16" cy="81.75" r="2.5" fill="var(--bad)"/>
-<text x="469.22" y="96.96" font-size="11" fill="var(--bad)" text-anchor="middle" dominant-baseline="central">5</text>
+<text x="469.22" y="96.96" font-size="16" fill="var(--bad)" text-anchor="middle" dominant-baseline="central">5</text>
 <circle cx="325.84" cy="81.75" r="2.5" fill="var(--bad)"/>
-<text x="330.78" y="96.96" font-size="11" fill="var(--bad)" text-anchor="middle" dominant-baseline="central">-5</text>
+<text x="330.78" y="96.96" font-size="16" fill="var(--bad)" text-anchor="middle" dominant-baseline="central">-5</text>
 <circle cx="400" cy="550" r="2.5" fill="var(--bad)"/>
-<text x="400" y="534" font-size="11" fill="var(--bad)" text-anchor="middle" dominant-baseline="central">-50</text>
+<text x="400" y="534" font-size="16" fill="var(--bad)" text-anchor="middle" dominant-baseline="central">-50</text>
 <circle cx="474.16" cy="538.25" r="2.5" fill="var(--bad)"/>
-<text x="469.22" y="523.04" font-size="11" fill="var(--bad)" text-anchor="middle" dominant-baseline="central">45</text>
+<text x="469.22" y="523.04" font-size="16" fill="var(--bad)" text-anchor="middle" dominant-baseline="central">45</text>
 <circle cx="325.84" cy="538.25" r="2.5" fill="var(--bad)"/>
-<text x="330.78" y="523.04" font-size="11" fill="var(--bad)" text-anchor="middle" dominant-baseline="central">-45</text>
-<text x="30" y="40" font-size="15" fill="var(--syn)" text-anchor="start" dominant-baseline="central" class="serif">2-decimal-digit encoding</text>
-<text x="770" y="40" font-size="15" fill="var(--sem)" text-anchor="end" dominant-baseline="central" class="serif">unsigned interpretation</text>
-<text x="30" y="570" font-size="15" fill="var(--bad)" text-anchor="start" dominant-baseline="central" class="serif">signed interpretation (tens complement)</text>
-<text x="770" y="570" font-size="14" fill="var(--bad)" text-anchor="end" dominant-baseline="central" class="serif">0…49 positive · 50…99 negative</text>
-<text x="400" y="286" font-size="12" fill="var(--syn)" text-anchor="middle" dominant-baseline="central">0, 1, 2, …, 48, 49, 50, 51, 52, …, 98, 99</text>
-<text x="400" y="310" font-size="12" fill="var(--sem)" text-anchor="middle" dominant-baseline="central">0, 1, 2, …, 48, 49, 50, 51, 52, …, 98, 99</text>
-<text x="400" y="334" font-size="12" fill="var(--bad)" text-anchor="middle" dominant-baseline="central">0, 1, 2, …, 48, 49, -50, -49, -48, …, -2, -1</text>
+<text x="330.78" y="523.04" font-size="16" fill="var(--bad)" text-anchor="middle" dominant-baseline="central">-45</text>
+<text x="30" y="40" font-size="21.82" fill="var(--syn)" text-anchor="start" dominant-baseline="central" class="serif">2-decimal-digit encoding</text>
+<text x="770" y="40" font-size="21.82" fill="var(--sem)" text-anchor="end" dominant-baseline="central" class="serif">unsigned interpretation</text>
+<text x="30" y="570" font-size="21.82" fill="var(--bad)" text-anchor="start" dominant-baseline="central" class="serif">signed interpretation (tens complement)</text>
+<text x="770" y="570" font-size="20.36" fill="var(--bad)" text-anchor="end" dominant-baseline="central" class="serif">0…49 positive · 50…99 negative</text>
+<text x="400" y="286" font-size="17.45" fill="var(--syn)" text-anchor="middle" dominant-baseline="central">0, 1, 2, …, 48, 49, 50, 51, 52, …, 98, 99</text>
+<text x="400" y="310" font-size="17.45" fill="var(--sem)" text-anchor="middle" dominant-baseline="central">0, 1, 2, …, 48, 49, 50, 51, 52, …, 98, 99</text>
+<text x="400" y="334" font-size="17.45" fill="var(--bad)" text-anchor="middle" dominant-baseline="central">0, 1, 2, …, 48, 49, -50, -49, -48, …, -2, -1</text>
 </svg>

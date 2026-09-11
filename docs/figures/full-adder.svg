@@ -1,35 +1,35 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 360" width="900" height="360" role="img" aria-label="A full adder: two half adders and an OR gate">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-9.4 5.0 908.6 329.0" width="909" height="329" role="img" aria-label="A full adder: two half adders and an OR gate">
 <title>A full adder: two half adders and an OR gate</title>
 <style>svg{--ink:#131C2A;--ink-2:#39485C;--muted:#5D6E85;--line:rgba(19,28,42,.18);--syn:#A2661A;--sem:#1F6C86;--bad:#A63E5A;--panel:#FFFFFF;--ground:#EFF1F3}@media (prefers-color-scheme: dark){svg{--ink:#E7EDF6;--ink-2:#B6C4D8;--muted:#8093AF;--line:rgba(122,162,204,.16);--syn:#E0A550;--sem:#5BB0C7;--bad:#C8607A;--panel:#111C2E;--ground:#080E18}}text{font-family:"JetBrains Mono","SFMono-Regular","SF Mono","Cascadia Mono",Menlo,Consolas,"DejaVu Sans Mono",monospace}.serif{font-family:"Iowan Old Style","Palatino Linotype",Palatino,"Book Antiqua","URW Palladio L",Georgia,serif}</style>
 <rect x="130" y="50" width="690" height="270" fill="none" stroke="var(--syn)" stroke-width="1.2" rx="4"/>
-<text x="475" y="32" font-size="17" fill="var(--syn)" text-anchor="middle" dominant-baseline="central" class="serif">full adder</text>
+<text x="475" y="32" font-size="19.55" fill="var(--syn)" text-anchor="middle" dominant-baseline="central" class="serif">full adder</text>
 <rect x="560" y="100" width="150" height="120" fill="none" stroke="var(--line)" stroke-width="1.2" rx="3"/>
-<text x="635" y="160" font-size="14" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central" class="serif">half adder</text>
+<text x="635" y="160" font-size="16.1" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central" class="serif">half adder</text>
 <rect x="330" y="100" width="150" height="120" fill="none" stroke="var(--line)" stroke-width="1.2" rx="3"/>
-<text x="405" y="160" font-size="14" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central" class="serif">half adder</text>
+<text x="405" y="160" font-size="16.1" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central" class="serif">half adder</text>
 <line x1="820" y1="130" x2="710" y2="130" stroke="var(--ink-2)" stroke-width="1.4"/>
-<text x="830" y="130" font-size="14" fill="var(--ink-2)" text-anchor="start" dominant-baseline="central" class="serif">addend</text>
+<text x="830" y="130" font-size="16.1" fill="var(--ink-2)" text-anchor="start" dominant-baseline="central" class="serif">addend</text>
 <line x1="820" y1="190" x2="710" y2="190" stroke="var(--ink-2)" stroke-width="1.4"/>
-<text x="830" y="190" font-size="14" fill="var(--ink-2)" text-anchor="start" dominant-baseline="central" class="serif">addend</text>
-<text x="620" y="88" font-size="12" fill="var(--muted)" text-anchor="middle" dominant-baseline="central" class="serif">sum</text>
+<text x="830" y="190" font-size="16.1" fill="var(--ink-2)" text-anchor="start" dominant-baseline="central" class="serif">addend</text>
+<text x="620" y="88" font-size="13.8" fill="var(--muted)" text-anchor="middle" dominant-baseline="central" class="serif">sum</text>
 <line x1="560" y1="130" x2="480" y2="130" stroke="var(--ink-2)" stroke-width="1.4"/>
-<text x="520" y="118" font-size="11" fill="var(--muted)" text-anchor="middle" dominant-baseline="central" class="serif">sum</text>
-<text x="600" y="205" font-size="11" fill="var(--muted)" text-anchor="middle" dominant-baseline="central" class="serif">carry-out</text>
+<text x="520" y="118" font-size="12.65" fill="var(--muted)" text-anchor="middle" dominant-baseline="central" class="serif">sum</text>
+<text x="600" y="205" font-size="12.65" fill="var(--muted)" text-anchor="middle" dominant-baseline="central" class="serif">carry-out</text>
 <line x1="560" y1="190" x2="530" y2="190" stroke="var(--ink-2)" stroke-width="1.4"/>
 <line x1="530" y1="190" x2="530" y2="270" stroke="var(--ink-2)" stroke-width="1.4"/>
 <line x1="820" y1="250" x2="500" y2="250" stroke="var(--ink-2)" stroke-width="1.4"/>
-<text x="830" y="250" font-size="14" fill="var(--ink-2)" text-anchor="start" dominant-baseline="central" class="serif">carry-in</text>
+<text x="830" y="250" font-size="16.1" fill="var(--ink-2)" text-anchor="start" dominant-baseline="central" class="serif">carry-in</text>
 <line x1="500" y1="250" x2="500" y2="190" stroke="var(--ink-2)" stroke-width="1.4"/>
 <line x1="500" y1="190" x2="480" y2="190" stroke="var(--ink-2)" stroke-width="1.4"/>
 <circle cx="500" cy="250" r="2.5" fill="var(--ink-2)"/>
 <line x1="330" y1="130" x2="80" y2="130" stroke="var(--ink-2)" stroke-width="1.4"/>
-<text x="70" y="130" font-size="14" fill="var(--ink-2)" text-anchor="end" dominant-baseline="central" class="serif">sum</text>
+<text x="70" y="130" font-size="16.1" fill="var(--ink-2)" text-anchor="end" dominant-baseline="central" class="serif">sum</text>
 <line x1="330" y1="190" x2="290" y2="190" stroke="var(--ink-2)" stroke-width="1.4"/>
 <line x1="290" y1="190" x2="290" y2="240" stroke="var(--ink-2)" stroke-width="1.4"/>
 <line x1="290" y1="240" x2="250" y2="240" stroke="var(--ink-2)" stroke-width="1.4"/>
 <line x1="530" y1="270" x2="250" y2="270" stroke="var(--ink-2)" stroke-width="1.4"/>
 <path d="M250 220 L215 220 Q250 255 215 290 L250 290 Q290 290 300 255 Q290 220 250 220 Z" fill="none" stroke="var(--ink-2)" stroke-width="1.4"/>
-<text x="255" y="255" font-size="12" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central">OR</text>
+<text x="255" y="255" font-size="13.8" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central">OR</text>
 <line x1="215" y1="255" x2="80" y2="255" stroke="var(--ink-2)" stroke-width="1.4"/>
-<text x="70" y="255" font-size="14" fill="var(--ink-2)" text-anchor="end" dominant-baseline="central" class="serif">carry-out</text>
+<text x="70" y="255" font-size="16.1" fill="var(--ink-2)" text-anchor="end" dominant-baseline="central" class="serif">carry-out</text>
 </svg>
