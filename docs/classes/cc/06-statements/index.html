@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CC 06 · Statements</title>
+<link rel="stylesheet" href="../../deck/deck.css">
+</head>
+<body>
+<div id="stage">
+<div id="deck" tabindex="0" aria-label="Presentation: CC 06 Statements" data-title="CC 06 · Statements" data-figures="../../../figures/">
+
+<section class="slide" data-act="0" data-mins="1.0">
+  <div class="fig bare" style="position:absolute;inset:0"><canvas data-anim="ambient"></canvas></div>
+  <div class="fill center" style="position:relative">
+    <div class="eyebrow">Compiler Construction · week 6 · station III</div>
+    <h1>Statements</h1>
+    <p class="lead">Assignments, loops, conditionals — and why while plus assignment is already universal.</p>
+  </div>
+  <aside class="notes"><p>The session where the compiler starts generating control flow, and where the language becomes Turing-complete: assignment and while are enough. Fixups, compositionality, and the first time behaviour escapes the compiler entirely. Book: Statements through Conditionals. Assignments: bitwise-and-or-not and logical-and-or-not.</p></aside>
+</section>
+
+<section class="slide" data-act="III" data-actname="Statements" data-mins="7.0">
+  <div class="eyebrow">Assignments</div>
+  <h2>An <span class="j">rvalue</span> becomes an <span class="k">lvalue</span>: compute, then store.</h2>
+  <div class="fill">
+    <div class="fig grow" data-fig="emitting-assignments"><span class="cap">x = x + 7 · ld, addi, add, sd</span></div>
+    <div class="two">
+      <p class="sm f" data-step="1">The only right-associative binary operator in C*: <span class="mono">x = x + 7</span> is <span class="mono">x = (x + 7)</span>. Semantics: compute the right-hand side's value, a temporary rvalue; then store it at the left-hand side's address, a persistent lvalue. Before and after — assignment is the reason a program has a <em>state</em>.</p>
+      <p class="sm f" data-step="2"><span class="mono">compile_assignment</span> gets the variable already parsed, because of the lookahead that distinguishes assignments from calls. It finds the address from the table, compiles the expression into the current temporary, checks the types, and emits one <span class="mono">sd</span>. Then frees the temporary: assertion, zero registers allocated.</p>
+    </div>
+  </div>
+  <aside class="notes"><p>The first statement, and the first place the notion of state enters: everything before was expressions with values, this is the thing that changes memory. The order of evaluation remark from the book is worth a sentence: the address first, the value second, and for variables it does not matter, for dereferenced pointers it does.</p></aside>
+</section>
+
+<section class="slide" data-act="III" data-mins="8.0">
+  <div class="eyebrow">Loops</div>
+  <h2>A branch forward over the body, a jump back to the condition — and a <span class="k">fixup</span>.</h2>
+  <div class="fill">
+    <div class="fig grow" data-fig="emitting-while-loops"><span class="cap">while (x &lt; 7) x = x + 7;</span></div>
+    <div class="two">
+      <p class="sm f" data-step="1">Remember where the condition starts. Compile it into a temporary. Emit a <span class="mono">beq</span> that skips the body if the temporary is zero — but the body has not been compiled yet, so the branch distance is unknown. Emit it with 0 and remember its address.</p>
+      <p class="sm f" data-step="2">Compile the body. Emit a <span class="mono">jal</span> back to the condition, whose distance is known. Then <em>fix up</em> the branch: overwrite its immediate with the distance to here. Straight code generation's one exception, and it is a write into code that was already emitted — code as data, at compile time.</p>
+    </div>
+  </div>
+  <aside class="notes"><p>The fixup is the concept of the session. Show fixup_relative_BFormat: it decodes the instruction at the remembered address, replaces the immediate, and re-encodes it. That is the encoder and decoder of week 5 used on the compiler's own output, which is the smallest self-reference in the compiler.</p></aside>
+</section>
+
+<section class="slide" data-act="III" data-mins="6.0">
+  <div class="eyebrow">Conditionals</div>
+  <h2>Branch to else on false, jump over else on true, fix up <span class="k">both</span>.</h2>
+  <div class="fill">
+    <div class="fig grow" data-fig="emitting-if-statements"><span class="cap">if (x &lt; 7) x = x + 7; else x = x − 7;</span></div>
+    <div class="two">
+      <p class="sm f" data-step="1">Same shape with one more fixup: the <span class="mono">beq</span> over the true branch is fixed when the else begins, and the <span class="mono">jal</span> over the else branch is fixed when the else ends. Without an else, only the first.</p>
+      <p class="sm f" data-step="2">Ten times more ifs than whiles in selfie's source — the profile says 956 to 92 — and yet the if is redundant: every conditional can be written as a loop, not the other way round.</p>
+    </div>
+  </div>
+  <aside class="notes"><p>Quick, because it is the while with one more fixup. The redundancy remark sets up the theorem two slides on: the if is convenience, the while is power.</p></aside>
+</section>
+
+<section class="slide" data-act="III" data-mins="6.0">
+  <div class="eyebrow">Compositionality</div>
+  <h2>The grammar says what may be <span class="j">composed</span>. The code generator makes the composition <span class="k">mean</span> what its parts mean.</h2>
+  <div class="fill">
+    <div class="two">
+      <div class="stack">
+        <p class="f" data-step="1">Any expression may be a loop condition; any statement, or block of them, a body. That is <strong>composability</strong>, and the grammar decides it.</p>
+        <p class="f" data-step="2"><strong>Compositionality</strong> is more: the meaning of <span class="mono">while (x &lt; 7) x = x + 7;</span> is determined by the meaning of <span class="mono">x &lt; 7</span> and of <span class="mono">x = x + 7</span> and by the rule for while, and by nothing else. The code for the condition and the body is exactly the code they would get on their own, sandwiched between a branch and a jump.</p>
+      </div>
+      <div class="card syn f" data-step="3"><span class="h">Why it matters</span><p>Compositionality is what makes a compiler four thousand lines instead of four million: each <span class="mono">compile_X</span> knows only its rule and the invariants — a value in the current temporary, zero temporaries at a statement boundary — and trusts the rest. It is also what a proof about a program is built on.</p></div>
+    </div>
+  </div>
+  <aside class="notes"><p>The book's distinction, and the design principle of the whole compiler. The invariants in the card are the ones in the assert comments; a student who breaks one in an assignment sees the compiler run out of registers three weeks later, which is the best lesson in compositionality there is.</p></aside>
+</section>
+
+<section class="slide" data-act="III" data-mins="7.0">
+  <div class="eyebrow">Theorem</div>
+  <h2>Assignment and while are <span class="k">universal</span>. Nothing else is needed.</h2>
+  <div class="fill">
+    <div class="two">
+      <div class="stack">
+        <p class="f" data-step="1">With assignments and while loops over unbounded integers you can write anything any programming language can express. Conditionals, procedures, everything else is convenience. That is what Turing-complete means for a language, and C* crossed the line on this deck.</p>
+        <p class="f" data-step="2">Which is also the moment the compiler lost the ability to know what its output does. Up to expressions, everything terminated by construction. With one while loop, the halting problem is in the language — and Rice's theorem applies to every property of behaviour from here on.</p>
+      </div>
+      <div class="stack">
+        <div class="term sm f" data-step="3">
+          <span class="l c">uint64_t c;</span>
+          <span class="l c">uint64_t main() {</span>
+          <span class="l c">  c = 1;</span>
+          <span class="l c">  while (c != 0) c = c + 2;</span>
+          <span class="l c">  return c;</span>
+          <span class="l c">}</span>
+        </div>
+        <p class="sm f" data-step="3">The compiler compiles this happily and correctly. It cannot know that it never stops — you can, by parity and wrap-around. The gift and the limit arrived in the same week.</p>
+      </div>
+    </div>
+  </div>
+  <aside class="notes"><p>The theorem of the session, and the hinge of the class. Up to now everything was decidable because everything was about the text; from this slide on the language is universal and the compiler is, by Rice, blind to behaviour. Say that the next three weeks live with that: procedures, the fixed point, and optimisation as approximation.</p></aside>
+</section>
+
+<section class="slide" data-act="III" data-mins="8.0">
+  <div class="eyebrow">Assignments</div>
+  <h2><span class="mono">bitwise-and-or-not</span> and <span class="mono">logical-and-or-not</span>.</h2>
+  <div class="fill">
+    <div class="two">
+      <div class="stack">
+        <div class="card f"><span class="h">bitwise-and-or-not</span><p>Grammar: <span class="mono">&amp;</span>, <span class="mono">|</span>, <span class="mono">~</span> with C's precedence. ISA: <span class="mono">and</span>, <span class="mono">or</span>, <span class="mono">xori</span> in riscu.md, encoded, decoded, emulated. Code generation: the binary operators as in week 5; not as <span class="mono">xori</span> with −1. Only grammar.md, riscu.md and selfie.c.</p></div>
+        <div class="card syn f"><span class="h">logical-and-or-not</span><p>Grammar: <span class="mono">&amp;&amp;</span>, <span class="mono">||</span>, <span class="mono">!</span> with C's precedence, below comparisons. Code generation with what RISC-U has: <span class="mono">sltu</span> against zero normalises any value to 0 or 1, and then and, or, not are arithmetic. Both operands evaluated — lazy evaluation is next week's assignment, and it needs this week's fixups.</p></div>
+      </div>
+      <div class="stack">
+        <ol class="steps">
+          <li>Grammar first, both times: where in the precedence ladder does each operator go?</li>
+          <li>For the bitwise ones, the ISA before the emulator before the code generator, as in week 5.</li>
+          <li>For the logical ones, write the RISC-U sequence for <span class="mono">a &amp;&amp; b</span> on paper before coding, and count temporaries.</li>
+          <li><span class="mono">./grader/self.py bitwise-and-or-not</span>, <span class="mono">logical-and-or-not</span>, and <span class="mono">self-compile</span>.</li>
+        </ol>
+      </div>
+    </div>
+  </div>
+  <aside class="notes"><p>Two assignments, one week, because the second reuses the first's pattern. The normalisation trick for the logical operators is the one to make sure they see: C's truth is nonzero, RISC-U's sltu gives a clean bit, and everything after is arithmetic.</p></aside>
+</section>
+
+</div>
+</div>
+<script src="../../deck/deck.js"></script>
+</body>
+</html>

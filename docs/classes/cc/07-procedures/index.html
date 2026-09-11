@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CC 07 · Procedures</title>
+<link rel="stylesheet" href="../../deck/deck.css">
+</head>
+<body>
+<div id="stage">
+<div id="deck" tabindex="0" aria-label="Presentation: CC 07 Procedures" data-title="CC 07 · Procedures" data-figures="../../../figures/">
+
+<section class="slide" data-act="0" data-mins="1.0">
+  <div class="fig bare" style="position:absolute;inset:0"><canvas data-anim="ambient"></canvas></div>
+  <div class="fill center" style="position:relative">
+    <div class="eyebrow">Compiler Construction · week 7 · station III</div>
+    <h1>Procedures</h1>
+    <p class="lead">Calls, the calling convention, the call stack, recursion — and where the halting problem lives in a compiler.</p>
+  </div>
+  <aside class="notes"><p>The hardest technical session of the class, as the book says: the semantics of procedure calls is non-trivial and it is where the stack of the machine chapter earns its keep. Control flow and data flow, the frame, prologue and epilogue, and recursion as the second source of non-termination. Book: Procedures. Assignments: for-loop and lazy-evaluation.</p></aside>
+</section>
+
+<section class="slide" data-act="III" data-actname="Procedures" data-mins="6.0">
+  <div class="eyebrow">Two perspectives</div>
+  <h2>A procedure is an <span class="j">abstraction</span> for the programmer and an <span class="k">allocation</span> for the machine.</h2>
+  <div class="fill">
+    <div class="two">
+      <div class="stack">
+        <p class="f" data-step="1"><strong>Abstraction.</strong> Code gets a name and can be reused from anywhere, with parameters. That is structured programming, and it is the reason twelve thousand lines are readable.</p>
+        <p class="f" data-step="2"><strong>Allocation.</strong> Every call allocates memory for its parameters, its return address, its local variables — on a stack, dynamically, and frees it on return. Procedures are also the most efficient memory management technology ever invented, because deallocation is in reverse order of allocation and costs one addition.</p>
+      </div>
+      <div class="term sm f" data-step="3">
+        <span class="l c">procedure = ( type | "void" ) identifier "(" [ variable { "," variable } [ "," "..." ] ] ")"</span>
+        <span class="l c">            ( ";" | "{" { variable ";" } { statement } "}" ) .</span>
+        <span class="l c">call      = identifier "(" [ expression { "," expression } ] ")" .</span>
+        <span class="l c">return    = "return" [ expression ] .</span>
+      </div>
+    </div>
+  </div>
+  <aside class="notes"><p>The two perspectives of the book. The second is the one students have not heard: the call stack is not an implementation detail but the reason procedures are cheap, and the reason the systems class will find the stack at the centre of everything.</p></aside>
+</section>
+
+<section class="slide" data-act="III" data-mins="7.0">
+  <div class="eyebrow">Control flow and data flow</div>
+  <h2>Caller and callee agree on a <span class="k">convention</span>, or nothing works.</h2>
+  <div class="fill">
+    <div class="two">
+      <div class="stack">
+        <p class="f" data-step="1"><strong>Control.</strong> The caller jumps to the callee with <span class="mono">jal ra,…</span>, which saves the return address in <span class="mono">ra</span>. The callee returns with <span class="mono">jalr zero,0(ra)</span>. Between them, the callee may call others, so <span class="mono">ra</span> must be saved somewhere — the stack.</p>
+        <p class="f" data-step="2"><strong>Data.</strong> The caller evaluates the actual parameters and pushes them; the callee reads them relative to its frame pointer <span class="mono">s0</span>. The return value comes back in <span class="mono">a0</span>. Who pops what is part of the convention: the caller pops the parameters it pushed, the callee pops its own locals.</p>
+      </div>
+      <div class="card syn f" data-step="3"><span class="h">Why a convention</span><p>The caller and the callee may be compiled in different files, by different compilers, years apart. Nothing in the language says where a parameter goes. The convention does, and it is why selfie's binaries and gcc's can call each other's code — and why getting one detail wrong corrupts memory silently.</p></div>
+    </div>
+  </div>
+  <aside class="notes"><p>Draw the jal and jalr pair and the two stack pointers. The convention is a semantics fixed by decree, outside the language, and the card says why it has to be: separate compilation. Selfie follows the RISC-V convention closely enough to interoperate with gcc-compiled code on real hardware.</p></aside>
+</section>
+
+<section class="slide" data-act="III" data-mins="8.0">
+  <div class="eyebrow">The frame</div>
+  <h2>What the caller allocates, what the callee allocates, and the two pointers that <span class="k">delimit</span> it.</h2>
+  <div class="fill row mid">
+    <div class="fig grow" style="flex:1.3" data-fig="call-frame"><span class="cap">a call frame on the stack</span></div>
+    <div class="stack grow">
+      <div class="term sm">
+        <span class="l o">// procedure_prologue</span>
+        <span class="l c">addi sp,sp,-8    ; sd ra,0(sp)</span>
+        <span class="l c">addi sp,sp,-8    ; sd s0,0(sp)</span>
+        <span class="l c">addi s0,sp,0</span>
+        <span class="l c">addi sp,sp,-locals</span>
+        <span class="l o">// procedure_epilogue: the reverse, then</span>
+        <span class="l c">jalr zero,0(ra)</span>
+      </div>
+      <p class="sm f" data-step="1">Prologue: save the return address, save the caller's frame pointer, set the callee's, make room for locals. Epilogue: undo in reverse and return. Parameters sit above the frame, locals below it, both addressed as offsets from <span class="mono">s0</span> — which is why the frame pointer exists: <span class="mono">sp</span> moves during expression evaluation, <span class="mono">s0</span> does not.</p>
+    </div>
+  </div>
+  <aside class="notes"><p>Read procedure_prologue and procedure_epilogue against the figure. The frame pointer question always comes: why two registers? Because sp changes while temporaries are pushed for nested calls and s0 gives a fixed base for locals and parameters. Show a local variable's load as ld t0,-8(s0) and a parameter's as ld t0,16(s0).</p></aside>
+</section>
+
+<section class="slide" data-act="III" data-mins="7.0">
+  <div class="eyebrow">Recursion</div>
+  <h2>A procedure that calls itself needs nothing new. The stack was <span class="k">already</span> there.</h2>
+  <div class="fill">
+    <div class="two">
+      <div class="term sm">
+        <span class="l c">uint64_t factorial(uint64_t n) {</span>
+        <span class="l c">  if (n &lt;= 1)</span>
+        <span class="l c">    return 1;</span>
+        <span class="l c">  else</span>
+        <span class="l c">    return n * factorial(n - 1);</span>
+        <span class="l c">}</span>
+      </div>
+      <div class="stack">
+        <p class="f" data-step="1">Each call gets its own frame with its own <span class="mono">n</span>; the frames stack up until <span class="mono">n</span> is 1 and unwind multiplying on the way back. The code is emitted once. The frames exist only at runtime, as many as the input demands.</p>
+        <p class="f" data-step="2">And that is the second way a C* program fails to halt. Last week's while loop; this week's <span class="mono">factorial(n + 1)</span>. Unbounded recursion is unbounded looping with memory attached — and the machine's memory is finite, so it ends in a stack overflow, which the compiler cannot predict either.</p>
+      </div>
+    </div>
+    <p class="sm f" data-step="3">Assignments, loops, procedures: the whole of C* is now on the table. The parser proved every text; the code generator constructed every meaning; and the meaning is now something no analysis of the text fully determines.</p>
+  </div>
+  <aside class="notes"><p>Run the book's factorial example under -d and count the frames. Then the point: recursion is the halting problem's other costume, and a stack overflow is the finite machine meeting the unbounded language. Week 8 turns to what the compiler can say about itself.</p></aside>
+</section>
+
+<section class="slide" data-act="III" data-mins="6.0">
+  <div class="eyebrow">In selfie</div>
+  <h2>Bootstrapping the builtins: <span class="mono">malloc</span>, <span class="mono">exit</span>, <span class="mono">read</span>, <span class="mono">write</span>, <span class="mono">open</span>.</h2>
+  <div class="fill">
+    <div class="two">
+      <div class="stack">
+        <p class="f" data-step="1">Selfie uses no library. Five procedures are declared but never defined in <span class="mono">selfie.c</span>. When gcc compiles selfie, gcc supplies them as builtins. When selfie compiles selfie, <span class="mono">starc</span> supplies them as <strong>system call wrappers</strong>: a procedure whose body is an <span class="mono">ecall</span>, obeying the calling convention on one side and the system call convention on the other.</p>
+        <p class="f" data-step="2">The wrapper is emitted by <span class="mono">emit_exit</span> and unwrapped by <span class="mono">implement_exit</span>, which follows it in the source. The boundary between a program and its operating system, written twice in one file, next to each other.</p>
+      </div>
+      <div class="card syn f" data-step="3"><span class="h">Boot levels</span><p>Boot level 0: selfie compiled by gcc, running on hardware. Level 1: selfie compiled by selfie, running on mipster. Level 2: selfie compiled by that, on mipster on mipster. The number of <span class="mono">&gt;</span> signs in every output line says which. Next week is about what changes between the levels, and what does not.</p></div>
+    </div>
+  </div>
+  <aside class="notes"><p>The preparation for the fixed point. The builtins are the one place the compiler depends on the machine's environment, and the wrappers are how selfie makes that dependence explicit rather than borrowed. Show emit_exit and implement_exit side by side.</p></aside>
+</section>
+
+<section class="slide" data-act="III" data-mins="8.0">
+  <div class="eyebrow">Assignments</div>
+  <h2><span class="mono">for-loop</span> and <span class="mono">lazy-evaluation</span>.</h2>
+  <div class="fill">
+    <div class="two">
+      <div class="stack">
+        <div class="card f"><span class="h">for-loop</span><p>Grammar: C's <span class="mono">for ( init ; condition ; update ) body</span>, each part optional. Code: the update is compiled <em>after</em> the body but written before it — so the fixups of week 6, once more, with a jump over the update on entry.</p></div>
+        <div class="card syn f"><span class="h">lazy-evaluation</span><p>Make <span class="mono">&amp;&amp;</span> and <span class="mono">||</span> short-circuit: if the left operand decides, the right is not evaluated. A branch after the left operand, fixed up after the right; the value normalised to 0 or 1 either way. Watch the temporaries: both paths must leave exactly one.</p></div>
+      </div>
+      <div class="stack">
+        <ol class="steps">
+          <li>Grammar first, in grammar.md; note that the for's parts are statements and expressions you already compile.</li>
+          <li>Draw the emitted code for a for loop with all four parts before writing <span class="mono">compile_for</span>.</li>
+          <li>For lazy evaluation, draw the two paths and mark where the temporary is allocated and freed on each.</li>
+          <li><span class="mono">./grader/self.py for-loop</span>, <span class="mono">lazy-evaluation</span>, <span class="mono">self-compile</span>. Then use a for loop in selfie.c and self-compile again.</li>
+        </ol>
+      </div>
+    </div>
+  </div>
+  <aside class="notes"><p>Both assignments are fixup exercises, and lazy evaluation is the one where the register invariant bites: a student who frees on one path and not the other finds out in self-compilation. That is the invariants from week 6 as a grading criterion.</p></aside>
+</section>
+
+</div>
+</div>
+<script src="../../deck/deck.js"></script>
+</body>
+</html>

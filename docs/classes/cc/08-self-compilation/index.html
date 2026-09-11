@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CC 08 · Self-Compilation</title>
+<link rel="stylesheet" href="../../deck/deck.css">
+</head>
+<body>
+<div id="stage">
+<div id="deck" tabindex="0" aria-label="Presentation: CC 08 Self-Compilation" data-title="CC 08 · Self-Compilation" data-figures="../../../figures/">
+
+<section class="slide" data-act="0" data-mins="1.0">
+  <div class="fig bare" style="position:absolute;inset:0"><canvas data-anim="ambient"></canvas></div>
+  <div class="fill center" style="position:relative">
+    <div class="eyebrow">Compiler Construction · week 8 · station III</div>
+    <h1>Self-Compilation</h1>
+    <p class="lead">The fixed point, bootstrapping, trusting trust, diverse double-compiling — and what the fixed point proves.</p>
+  </div>
+  <aside class="notes"><p>The theoretical centre of the class. The compiler is complete; now it is turned on itself. What the identical bytes prove, what Thompson says they cannot, what Gödel's second theorem says about every self-check, and what the outside check is. Book: the Meaning chapter's Truths With No Proof and Trusting Trust, and the Programming chapter's closing callout. Assignment: array-access.</p></aside>
+</section>
+
+<section class="slide" data-act="III" data-actname="Fixed Point" data-mins="7.0">
+  <div class="eyebrow">The fixed point</div>
+  <h2>The compiler compiles its own source and gets the <span class="k">same bytes twice</span>.</h2>
+  <div class="fill row mid">
+    <div class="fig grow" style="flex:1.2" data-fig="bootstrap"><span class="cap">selfie1.m = selfie2.m · 188,392 bytes</span></div>
+    <div class="stack grow">
+      <div class="term sm">
+        <span class="l"><span class="p">$</span> <span class="c">make self-self-check</span></span>
+        <span class="l o">./selfie -c selfie.c -o selfie1.m -s selfie1.s -m 2 -c selfie.c -o selfie2.m -s selfie2.s</span>
+        <span class="l o">…</span>
+        <span class="l o">diff -q selfie1.m selfie2.m</span>
+        <span class="l o">diff -q selfie1.s selfie2.s</span>
+      </div>
+      <p class="f" data-step="1">Stage 0: gcc compiles selfie.c. Stage 1: that selfie compiles selfie.c into selfie1.m. Stage 2: selfie1.m, on mipster, compiles selfie.c into selfie2.m. Identical. 1,228,259,585 instructions in total.</p>
+      <p class="f" data-step="2">Every assignment in this class has passed this check. Today: what, exactly, did it check?</p>
+    </div>
+  </div>
+  <aside class="notes"><p>Run it; it takes a minute or two. The instruction count is selfie's own. Then the question, and refuse to let anyone answer it quickly.</p></aside>
+</section>
+
+<section class="slide" data-act="III" data-mins="7.0">
+  <div class="eyebrow">Why it is a fixed point</div>
+  <h2>The boot levels, and why the bytes <span class="j">must</span> agree.</h2>
+  <div class="fill">
+    <div class="two">
+      <div class="stack">
+        <p class="f" data-step="1">Selfie1.m and selfie2.m were produced by two different compilers: one compiled by gcc, one compiled by selfie. If both compilers implement the same semantics for C*, they produce the same output for the same input. Selfie.c is the input both times.</p>
+        <p class="f" data-step="2">So agreement is evidence that gcc's reading of C* and selfie's reading of C* coincide on selfie.c — and, since selfie's reading is <em>defined</em> by selfie.c, that the definition is consistent with itself. A dictionary whose entries, when applied to the dictionary, produce the dictionary.</p>
+      </div>
+      <div class="card syn f" data-step="3"><span class="h">What can differ, and does</span><p>Filenames in strings. The value of register a6. Anything that depends on the boot level. Selfie is written to keep those out of the binary, which is engineering, not theory — and the reason the assembly is compared as well as the bytes.</p></div>
+    </div>
+  </div>
+  <aside class="notes"><p>The argument for why the fixed point is expected, so that the next slide can say what it does not establish. The card is the practical part: reproducible builds are hard, and selfie's discipline about boot-level-dependent values is what makes the diff empty.</p></aside>
+</section>
+
+<section class="slide" data-act="III" data-mins="7.0">
+  <div class="eyebrow">Trusting trust · 1984</div>
+  <h2>The source does <span class="x">not</span> determine the binary.</h2>
+  <div class="fill">
+    <div class="two">
+      <div class="stack">
+        <p class="f" data-step="1">Thompson's compiler: recognises when it compiles login and inserts a back door; recognises when it compiles a compiler and inserts the code that does both. Remove the trick from the source, recompile with the infected binary — the back door survives, because the source is not what compiled the compiler.</p>
+        <p class="f" data-step="2">Such a compiler passes <span class="mono">self-self-check</span>. It agrees with itself perfectly. The identical bytes prove self-agreement and nothing more.</p>
+      </div>
+      <div class="stack">
+        <blockquote class="f" data-step="3">You can't trust code that you did not totally create yourself.<cite>Ken Thompson, Reflections on Trusting Trust</cite></blockquote>
+        <div class="card syn f" data-step="4"><span class="h">Diverse double-compiling · Wheeler 2005</span><p>Compile the compiler's source with two unrelated compilers, then compile it again with each result. If the source is honest, the two final binaries agree; an infection in either first compiler shows up as a difference. The check comes from <em>outside</em>.</p></div>
+      </div>
+    </div>
+  </div>
+  <aside class="notes"><p>Tell it properly. Then Wheeler, because the response is the point: an independent second compiler is the outside check, and selfie's stage 0 by gcc is exactly that, which is why the fixed point is checkable at all. Ask what happens if gcc and selfie were both infected identically: nothing shows, and that is the theorem next.</p></aside>
+</section>
+
+<section class="slide" data-act="III" data-mins="7.0">
+  <div class="eyebrow">Theorem</div>
+  <h2>No strong system can <span class="x">certify itself</span>.</h2>
+  <div class="fill">
+    <div class="two">
+      <div class="thm f" data-step="1"><span class="name">Gödel · second incompleteness · 1931</span><span class="st">A consistent formal system rich enough for arithmetic cannot prove its own consistency.</span></div>
+      <div class="stack">
+        <p class="f" data-step="2"><strong>Read as engineering.</strong> A trustworthy system cannot be the source of its own trust. Confidence comes from outside: a second compiler, a solver, a test on hardware, a person.</p>
+        <p class="f" data-step="3"><strong>Read as a rule for this class.</strong> Every self-check — the fixed point, a test suite the compiler compiles, a compiler that verifies its own output — establishes agreement, never correctness. Whenever you build a check, ask what it is outside of.</p>
+      </div>
+    </div>
+    <p class="sm f" data-step="4">The first theorem is the companion: there are truths about the compiler that no analysis inside the compiler reaches. The same diagonal as Cantor's, and the same as next week's Rice: assume a complete list, ask each item about itself, answer the opposite.</p>
+  </div>
+  <aside class="notes"><p>The theorem, stated once with both readings. The rule for the class is the deliverable: from now on every tool discussed is asked what it is outside of. Week 12's model checker is outside the compiler and is the strongest answer this class has.</p></aside>
+</section>
+
+<section class="slide" data-act="III" data-mins="6.0">
+  <div class="eyebrow">Meanwhile, in the source</div>
+  <h2>A compiler that mistranslated one construct would reproduce the mistake <span class="k">perfectly</span>.</h2>
+  <div class="fill">
+    <div class="two">
+      <div class="stack">
+        <p class="f" data-step="1">Suppose <span class="mono">compile_term</span> emitted <span class="mono">mul</span> for <span class="mono">/</span>. Selfie.c uses division in a few places; the miscompiled selfie would compute wrong results there — and, compiling selfie.c, emit <span class="mono">mul</span> for <span class="mono">/</span> again, byte for byte the same as stage 1. The fixed point holds. The compiler is wrong.</p>
+        <p class="f" data-step="2">What catches it: gcc's selfie disagrees with selfie's selfie at stage 1 — the outside check — or a test that divides, or the model checker of week 12 asked whether the output of <span class="mono">1 / 2</span> can ever be 2.</p>
+      </div>
+      <div class="card syn f" data-step="3"><span class="h">Try it</span><p>Change one emit in your selfie so that the change is invisible to selfie.c — a construct selfie.c never uses — and run the check. It passes. Now add a use of that construct to selfie.c. Which stage disagrees, and why?</p></div>
+    </div>
+  </div>
+  <aside class="notes"><p>The concrete version of the theorem, and the exercise that makes it stick. The variant in the card is subtle: a bug in a construct selfie.c never uses is invisible to the fixed point forever, which is what test coverage means and why the grader compiles programs that are not selfie.</p></aside>
+</section>
+
+<section class="slide" data-act="III" data-mins="8.0">
+  <div class="eyebrow">Assignment</div>
+  <h2><span class="mono">array-access</span>: <span class="mono">[</span> and <span class="mono">]</span> on heap-allocated arrays.</h2>
+  <div class="fill">
+    <div class="two">
+      <div class="stack">
+        <ol class="steps">
+          <li><strong>Specify.</strong> Extend the grammar so that a factor and the left-hand side of an assignment may be <span class="mono">identifier [ expression ]</span>, for pointers obtained from <span class="mono">malloc</span>.</li>
+          <li><strong>Semantics.</strong> <span class="mono">a[i]</span> is <span class="mono">*(a + i)</span> with the scaling of week 5: the address is the pointer plus eight times the index. Decide it, write it down, then implement it.</li>
+          <li><strong>Generate.</strong> A load for an rvalue, a store for an lvalue; the index in a temporary, scaled, added, and freed. Assertions on the temporaries, both paths.</li>
+          <li><span class="mono">./grader/self.py array-access</span> and <span class="mono">self-compile</span>. Then rewrite one pointer expression in selfie.c as an array access and self-compile again — your first use of your own language extension in the compiler that implements it.</li>
+        </ol>
+      </div>
+      <div class="card syn"><span class="h">The point</span><p>From this week on, every extension is expected to be used in selfie.c itself. That is the fixed point as a habit: a feature exists when the compiler compiles itself through it.</p></div>
+    </div>
+  </div>
+  <aside class="notes"><p>The first of the three array assignments, and the first where students are asked to use their extension in selfie.c. The semantic decision in step 2 is the lesson: the meaning of the bracket is chosen, not found, and the same choice C made.</p></aside>
+</section>
+
+</div>
+</div>
+<script src="../../deck/deck.js"></script>
+</body>
+</html>
