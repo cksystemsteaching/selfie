@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CC 04 · Symbols and Types</title>
+<link rel="stylesheet" href="../../deck/deck.css">
+</head>
+<body>
+<div id="stage">
+<div id="deck" tabindex="0" aria-label="Presentation: CC 04 Symbols and Types" data-title="CC 04 · Symbols and Types" data-figures="../../../figures/">
+
+<section class="slide" data-act="0" data-mins="1.0">
+  <div class="fig bare" style="position:absolute;inset:0"><canvas data-anim="ambient"></canvas></div>
+  <div class="fill center" style="position:relative">
+    <div class="eyebrow">Compiler Construction · week 4 · station III</div>
+    <h1>Symbols and Types</h1>
+    <p class="lead">The symbol table, what a type is — and why type checking is proof checking while almost everything else about meaning is not.</p>
+  </div>
+  <aside class="notes"><p>The first week that touches meaning, and the first week where Rice's line is drawn inside the compiler: the symbol table and the types are attributes of the text, and the compiler decides them; everything else it says about behaviour is a warning, which is to say an approximation. Book: Variables, Symbol Table, and the type remarks throughout Expressions. Assignment: bitwise-shift-compilation.</p></aside>
+</section>
+
+<section class="slide" data-act="III" data-actname="Symbols" data-mins="7.0">
+  <div class="eyebrow">Variables</div>
+  <h2>A declaration is an entry in a table and a word in memory.</h2>
+  <div class="fill">
+    <div class="fig grow" data-fig="global-variable-declaration"><span class="cap">uint64_t x = 42;</span></div>
+    <div class="two">
+      <p class="sm f" data-step="1"><span class="mono">compile_cstar</span> sees a type and an identifier not followed by a parenthesis: a global variable. It creates a symbol table entry with the name, the type, the line number, and an address — the next free word in the data segment, negative relative to <span class="mono">gp</span> — and emits the initial value as a data word.</p>
+      <p class="sm f" data-step="2">No code is generated. A declaration is a promise about the future: whenever <span class="mono">x</span> appears again, this is where it lives and this is what it is. The table is where the promise is kept.</p>
+    </div>
+  </div>
+  <aside class="notes"><p>Walk the figure left to right: the source, compile_variable and compile_initialize, the entry in the compiler's memory, the word in the target's data segment. Say that this is the first time the compiler remembers something across lines, which is the reason a finite state machine with a stack was not enough and a data structure appears.</p></aside>
+</section>
+
+<section class="slide" data-act="III" data-mins="7.0">
+  <div class="eyebrow">The symbol table</div>
+  <h2>A key-value store. <span class="j">Logic</span> first, <span class="k">implementation</span> second.</h2>
+  <div class="fill">
+    <div class="fig grow" data-fig="symbol-table"><span class="cap">a list of entries · or an array of lists, by a hash of the key</span></div>
+    <div class="two">
+      <p class="sm f" data-step="1"><strong>Logic.</strong> Two operations: create an entry for a symbol with its attributes, and look a symbol up. That is the API, and it is all the parser needs to know. What happens on a duplicate, and whether to search before creating, are the subtle parts, and they are logic too.</p>
+      <p class="sm f" data-step="2"><strong>Implementation.</strong> A linked list of entries, each a few words on the heap with a pointer to the next — or, for speed, an array of such lists indexed by a hash of the name. Selfie has both. Lists versus arrays is the only choice there ever is: point explicitly, or lay out contiguously.</p>
+    </div>
+  </div>
+  <aside class="notes"><p>The book's data-structures lesson, compressed: separate what from how, write the API first, then choose between pointers and contiguity. Show create_symbol_table_entry and search_symbol_table in selfie.c and count the fields of an entry. Then the profile line from self-compilation: 21,689 symbol table lookups in two iterations on average, which is what the hash buys.</p></aside>
+</section>
+
+<section class="slide" data-act="III" data-mins="6.0">
+  <div class="eyebrow">Use</div>
+  <h2>Using a variable: look it up, and load it relative to <span class="mono">gp</span>.</h2>
+  <div class="fill">
+    <div class="fig grow" data-fig="variable-use"><span class="cap">x in an expression · ld t0,-ds(gp)</span></div>
+    <div class="two">
+      <p class="sm f" data-step="1"><span class="mono">compile_factor</span> sees an identifier not followed by a parenthesis and calls <span class="mono">load_variable</span>, which looks the name up, takes the address from the entry, and emits one load: the value into a fresh temporary. The type in the entry is returned as the type of the factor.</p>
+      <p class="sm f" data-step="2">If the lookup fails, that is a syntax error: <em>undeclared identifier</em>. Notice that this is decided — the table is finite and the name is a string — and it is the first thing the compiler knows that the parser alone did not.</p>
+    </div>
+  </div>
+  <aside class="notes"><p>The dual of the declaration figure. The undeclared-identifier error is the pivot to the second half of the session: it looks like a semantic error and it is a question about the text, because the table is part of the text's structure. That is where the line runs.</p></aside>
+</section>
+
+<section class="slide" data-act="III" data-mins="7.0">
+  <div class="eyebrow">Types</div>
+  <h2>A type is a <span class="j">label</span> the compiler attaches to notation. Checking labels is <span class="k">decidable</span>.</h2>
+  <div class="fill">
+    <div class="two">
+      <div class="stack">
+        <p class="f" data-step="1">C* has two: <span class="mono">uint64_t</span> and <span class="mono">uint64_t*</span>. Every literal, variable, procedure and expression gets one, as a grammar attribute computed bottom-up: a literal's from the scanner, a variable's from the table, a term's from its factors.</p>
+        <p class="f" data-step="2">Where two meet — an assignment, an operator, a call — the compiler compares the labels. In C* a mismatch is a <strong>warning</strong>, because C* is permissive and casts exist; in stricter languages it is an error. Either way the compiler <em>decided</em> it, in finite time, by looking at labels.</p>
+      </div>
+      <div class="stack">
+        <div class="card syn f" data-step="3"><span class="h">Type checking is proof checking</span><p>A typing derivation is a proof, in a small formal system, that the program will not add a pointer to a pointer. Sound: if it type checks, that mistake cannot happen. Incomplete: many fine programs are rejected. That trade is chosen, and it is Rice's theorem answered for one property.</p></div>
+        <div class="term sm f" data-step="4">
+          <span class="l"><span class="p">$</span> <span class="c">./selfie -c warn.c</span></span>
+          <span class="l o">./selfie: warning in warn.c in line 1: type mismatch, uint64_t* expected but uint64_t found</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <aside class="notes"><p>The theorem of the session. Types are the compiler's one systematic way of saying something about behaviour without deciding behaviour: it decides a property of the text that implies a property of the behaviour, and gives up completeness to get it. Say sound and incomplete out loud; every tool in week 12 is one or the other.</p></aside>
+</section>
+
+<section class="slide" data-act="III" data-mins="6.0">
+  <div class="eyebrow">Rice's line, inside the compiler</div>
+  <h2>What the compiler <span class="j">decides</span>. What it only <span class="k">warns</span> about. What it <span class="x">cannot</span> say.</h2>
+  <div class="fill">
+    <div class="three">
+      <div class="card syn f" data-step="1"><span class="h">Decided</span><p>Does it parse. Is every identifier declared. Do the types match. How many procedures, how many while loops. All about the text, all answered, always.</p></div>
+      <div class="card f" data-step="2"><span class="h">Approximated</span><p>Will this pointer arithmetic go wrong. Is this cast meaningful. Is this variable ever used. The compiler says something sound and incomplete, or stays silent, by design.</p></div>
+      <div class="card f" data-step="3"><span class="h">Never</span><p>Does it halt. Does it divide by zero. Is it equivalent to the previous version. Is it correct. Rice, 1953: no compiler, no tool, no method, for all programs.</p></div>
+    </div>
+    <p class="sm f" data-step="4">Every assignment in this class extends the first column. Week 9 shows how optimisations live in the second. Week 12 shows the best anyone can do in the third, within a bound.</p>
+  </div>
+  <aside class="notes"><p>Sort the room's own examples into the three columns; it is the exercise that shows whether the theorem has been understood as a practical instrument. The line between the first two columns is where the interesting compiler design happens.</p></aside>
+</section>
+
+<section class="slide" data-act="III" data-mins="8.0">
+  <div class="eyebrow">Assignment</div>
+  <h2><span class="mono">bitwise-shift-compilation</span>: <span class="mono">&lt;&lt;</span> and <span class="mono">&gt;&gt;</span> in the grammar and the parser.</h2>
+  <div class="fill">
+    <div class="two">
+      <div class="stack">
+        <ol class="steps">
+          <li><strong>Specify.</strong> Extend <span class="mono">grammar.md</span> with the shift operators, with C's precedence: below <span class="mono">+</span> and <span class="mono">−</span>, above the comparisons. That is a new rule between <span class="mono">arithmetic</span> and <span class="mono">expression</span>.</li>
+          <li><strong>Scan.</strong> Two new symbols, each two characters, each with a lookahead of one after <span class="mono">&lt;</span> and <span class="mono">&gt;</span> — which already need one for <span class="mono">&lt;=</span> and <span class="mono">&gt;=</span>.</li>
+          <li><strong>Parse.</strong> One new <span class="mono">compile_X</span> for the new rule, called from where <span class="mono">compile_arithmetic</span> used to be called. Types: both operands <span class="mono">uint64_t</span>; warn otherwise.</li>
+          <li><strong>Check.</strong> <span class="mono">./grader/self.py bitwise-shift-compilation</span>. Code generation is next week's assignment; for now the parser must accept and type the operators.</li>
+        </ol>
+      </div>
+      <div class="card syn"><span class="h">Rules</span><p>Only grammar.md and selfie.c. No warnings. Self-compile must still pass, which it will, since selfie.c does not use the operators yet. Submit something by the deadline.</p></div>
+    </div>
+  </div>
+  <aside class="notes"><p>The precedence question is the whole assignment: a new rule at the right height in the grammar, and a new procedure at the right place in the call chain. Have them find the exact line in compile_expression that calls compile_arithmetic before they leave the room.</p></aside>
+</section>
+
+</div>
+</div>
+<script src="../../deck/deck.js"></script>
+</body>
+</html>

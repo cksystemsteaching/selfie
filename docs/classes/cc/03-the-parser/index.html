@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CC 03 · The Parser</title>
+<link rel="stylesheet" href="../../deck/deck.css">
+</head>
+<body>
+<div id="stage">
+<div id="deck" tabindex="0" aria-label="Presentation: CC 03 The Parser" data-title="CC 03 · The Parser" data-figures="../../../figures/">
+
+<section class="slide" data-act="0" data-mins="1.0">
+  <div class="fig bare" style="position:absolute;inset:0"><canvas data-anim="ambient"></canvas></div>
+  <div class="fill center" style="position:relative">
+    <div class="eyebrow">Compiler Construction · week 3 · station II</div>
+    <h1>The Parser</h1>
+    <p class="lead">Context-free grammars, LL(1), recursive descent — and why a parse is a proof.</p>
+  </div>
+  <aside class="notes"><p>The parser session: what a finite state machine cannot do, what a stack adds, how a grammar becomes procedures, and the claim that carries the class: a successful parse is a derivation, which is a proof that the text is in the language, and it always terminates. Book: the Programming chapter's Parser section and Expressions. No new assignment this week; hex-literal continues.</p></aside>
+</section>
+
+<section class="slide" data-act="II" data-actname="Parser" data-mins="7.0">
+  <div class="eyebrow">Beyond regular</div>
+  <h2>A finite machine cannot count. Parentheses <span class="k">need counting</span>.</h2>
+  <div class="fill row mid">
+    <div class="fig grow" style="flex:1.4" data-fig="elementary-expressions"><span class="cap">a context-free grammar, one FSM per rule, and a stack</span></div>
+    <div class="stack grow">
+      <p class="f" data-step="1">Whatever number of states a machine has, feed it more opening parentheses than that and two different depths land in the same state. So no finite state machine checks that every <span class="mono">(</span> has its <span class="mono">)</span>. That is the pumping lemma in one sentence.</p>
+      <p class="f" data-step="2">The C* grammar has rules that mention each other — <span class="mono">factor</span> mentions <span class="mono">expression</span> which mentions <span class="mono">term</span> which mentions <span class="mono">factor</span> — and cannot be substituted into one rule. It is <strong>context-free</strong>, not regular.</p>
+      <p class="f" data-step="3">The machine that decides it is a finite state machine plus a <strong>stack</strong>: a pushdown automaton. One FSM per rule, and the stack remembers which rule to return to.</p>
+    </div>
+  </div>
+  <aside class="notes"><p>Do the parentheses argument properly; it is the first proof of the class and the reason a parser is a different kind of object from a scanner. Then the figure: three machines, one per rule, and the stack that holds the return path. The Chomsky hierarchy gets one sentence: regular inside context-free inside the rest, and the introduction class says where the ladder ends.</p></aside>
+</section>
+
+<section class="slide" data-act="II" data-mins="6.0">
+  <div class="eyebrow">LL(1)</div>
+  <h2>Left to right, leftmost derivation, <span class="j">lookahead of one</span>.</h2>
+  <div class="fill">
+    <div class="two">
+      <div class="stack">
+        <p class="f" data-step="1">C* is <strong>LL(1)</strong>: read the symbols from left to right, always expand the leftmost non-terminal, and decide which alternative of a rule applies by looking at one symbol. The grammar was designed so that this works — the same principle as the scanner's lookahead, one level up.</p>
+        <p class="f" data-step="2">LR(1) languages need to be parsed from the right-hand sides backwards and are harder; most production compilers use generated parsers for them. LL(1) can be parsed by hand, with joy, and industry engineers do it routinely: simplify the syntax until it is LL(1), then write the parser.</p>
+      </div>
+      <div class="card syn f" data-step="3"><span class="h">Recursive descent</span><p>One procedure per rule, named <span class="mono">compile_X</span> for non-terminal <span class="mono">X</span>. A non-terminal on the right-hand side is a call. A terminal is a check against <span class="mono">symbol</span> and a <span class="mono">get_symbol()</span>. <span class="mono">{ }</span> is a while, <span class="mono">[ ]</span> is an if, <span class="mono">|</span> is an if-else chain. The grammar <em>is</em> the program.</p></div>
+    </div>
+  </div>
+  <aside class="notes"><p>The translation table in the card is the whole technique. Have the room translate the while rule into a procedure on paper before showing compile_while next week. The stack of the pushdown automaton is the call stack of the recursive procedures, which is why recursive descent needs nothing that the machine chapter did not already provide.</p></aside>
+</section>
+
+<section class="slide" data-act="II" data-mins="8.0">
+  <div class="eyebrow">In selfie</div>
+  <h2>Parsing literals: <span class="mono">compile_factor</span>, <span class="mono">compile_literal</span>, <span class="mono">compile_value</span>.</h2>
+  <div class="fill">
+    <div class="fig grow" data-fig="parsing-literals"><span class="cap">compile time · and what the runtime will see</span></div>
+    <div class="two">
+      <p class="sm f" data-step="1">A literal is used in exactly one place in the grammar, inside <span class="mono">factor</span>. So <span class="mono">compile_factor</span> looks at one symbol: if it is a value or a string, it calls <span class="mono">compile_literal</span>, which consumes it and returns its <strong>type</strong> — the first grammar attribute of the class.</p>
+      <p class="sm f" data-step="2">Left of the bar: compile time, the compiler's memory. Right: runtime, the target's. Compile time is also runtime — for the compiler's own machine code — and keeping the two apart is the single most common difficulty in this class. Read that twice.</p>
+    </div>
+  </div>
+  <aside class="notes"><p>Open compile_factor and read it top to bottom: the synchronisation loop for syntax errors, the optional cast, the optional minus and star, then the alternatives. The figure's vertical bar is the concept to insist on: everything this class writes runs at compile time and produces something that runs at runtime, and the compiler's own runtime is somebody else's compile time.</p></aside>
+</section>
+
+<section class="slide" data-act="II" data-mins="6.0">
+  <div class="eyebrow">Precedence and associativity</div>
+  <h2>The grammar encodes <span class="j">precedence</span>. The code encodes <span class="k">associativity</span>.</h2>
+  <div class="fill">
+    <div class="two">
+      <div class="term sm">
+        <span class="l c">expression = term { ( "+" | "-" ) term } .</span>
+        <span class="l c">term       = factor { ( "*" | "/" | "%" ) factor } .</span>
+        <span class="l c">factor     = literal | identifier | "(" expression ")" .</span>
+      </div>
+      <div class="stack">
+        <p class="f" data-step="1"><span class="mono">x + 7 * y</span> groups as <span class="mono">x + (7 * y)</span> because <span class="mono">*</span> lives one rule deeper than <span class="mono">+</span>: lower precedence, higher in the grammar. That is syntactic, and EBNF can say it.</p>
+        <p class="f" data-step="2"><span class="mono">x - 7 + y</span> groups as <span class="mono">(x - 7) + y</span> because the while loop in <span class="mono">compile_expression</span> emits code as it goes, left to right. That is associativity, and EBNF cannot say it — it shows up only in the implementation.</p>
+        <p class="f" data-step="3">Even <span class="mono">+</span> is made left-associative, although addition associates in arithmetic. Why? Because it does not associate on a machine with overflow, and week 3 of the introduction class said why.</p>
+      </div>
+    </div>
+  </div>
+  <aside class="notes"><p>The distinction between what the grammar fixes and what the code fixes is the distinction the class is about, in a small place. Ask the room where the grouping of x - 7 + y is decided and make them find the while loop. The overflow remark is the reason even associative operators get an order: 2 to the 64 minus 1 plus 1 minus 1 is not the same computation in both orders.</p></aside>
+</section>
+
+<section class="slide" data-act="II" data-mins="6.0">
+  <div class="eyebrow">Syntax errors</div>
+  <h2>Report, <span class="k">continue</span>, and finish the program anyway.</h2>
+  <div class="fill">
+    <div class="two">
+      <div class="stack">
+        <p class="f" data-step="1">A compiler that stops at the first error is a compiler you run a hundred times. So every <span class="mono">compile_X</span> begins by synchronising: skip symbols until one arrives that can start an <span class="mono">X</span>, report what was skipped, and go on. The generated code may then be nonsense, and that is fine; nobody runs it.</p>
+        <p class="f" data-step="2">Designing good error handling is more art than science, and selfie's is minimal: a message with the line number and the unexpected symbol. It is also, as week 8 will note, the compiler deciding something — about the text.</p>
+      </div>
+      <div class="term sm f" data-step="3">
+        <span class="l"><span class="p">$</span> <span class="c">printf 'uint64_t main() { return 1 + ; }' &gt; bad.c; ./selfie -c bad.c</span></span>
+        <span class="l o">./selfie: syntax error in bad.c in line 1: unexpected symbol ";" found</span>
+        <span class="l o">./selfie: syntax error in bad.c in line 1: unexpected symbol "}" found</span>
+      </div>
+    </div>
+  </div>
+  <aside class="notes"><p>Run it. Two messages for one mistake, because after skipping the semicolon the parser tries again and meets the brace. That cascade is the price of continuing, and production compilers spend enormous effort keeping it short.</p></aside>
+</section>
+
+<section class="slide" data-act="II" data-mins="7.0">
+  <div class="eyebrow">Station II</div>
+  <h2>A parse is a <span class="k">proof</span>.</h2>
+  <div class="fill">
+    <div class="two">
+      <div class="stack">
+        <p class="f" data-step="1">A derivation — start symbol, rule, rule, rule, down to the terminals — is a finite object that anyone can check step by step. That is what a proof is. A successful parse constructs one, and the parse tree is the proof written down.</p>
+        <p class="f" data-step="2">And the parser always terminates: every call consumes symbols or returns, and there are finitely many. Membership in a context-free language is <em>decidable</em>. Everything the parser says is about the text, and everything about the text can be decided.</p>
+      </div>
+      <div class="stack">
+        <div class="card syn f" data-step="3"><span class="h">What the parser does not know</span><p>Whether <span class="mono">x</span> was declared. Whether the types match. Whether the program halts. The first two are next week, and they are still about the text. The third never is.</p></div>
+        <div class="card f" data-step="4"><span class="h">Sizes of notation</span><p>Regular: one rule, no memory. Context-free: many rules, a stack. Above that, grammars a machine can only semi-decide, and above that, the halting problem. Chomsky's ladder is the axis of this class, on the countable side.</p></div>
+      </div>
+    </div>
+  </div>
+  <aside class="notes"><p>The theorem of the session, stated so that week 8 can build on it: syntax is proof, and proof is decidable. Then the ladder, briefly. The card on the left is the agenda of the next week and the next six.</p></aside>
+</section>
+
+<section class="slide" data-act="II" data-mins="3.0">
+  <div class="eyebrow">This week</div>
+  <h2>Finish <span class="mono">hex-literal</span>. Read ahead.</h2>
+  <div class="fill">
+    <div class="two">
+      <ol class="steps">
+        <li>Finish and submit <span class="mono">hex-literal</span>: grammar first, then the scanner, then <span class="mono">self-compile</span>.</li>
+        <li>Translate the <span class="mono">while</span> and <span class="mono">if</span> rules into recursive-descent procedures on paper, before looking at <span class="mono">compile_while</span> and <span class="mono">compile_if</span>.</li>
+        <li>Derive <span class="mono">x = x + 7 * y;</span> from the grammar starting at <span class="mono">statement</span>, and draw the tree. Mark which node fixes the precedence.</li>
+        <li>Read the book's sections on Variables and the Symbol Table.</li>
+      </ol>
+      <div class="card syn"><span class="h">Next week</span><p>Symbols and types: the symbol table, what a type is, and why type checking is proof checking while almost everything else about meaning is not. Assignment: bitwise shift operators, compilation.</p></div>
+    </div>
+  </div>
+  <aside class="notes"><p>Exercise 2 is the one that makes recursive descent theirs.</p></aside>
+</section>
+
+</div>
+</div>
+<script src="../../deck/deck.js"></script>
+</body>
+</html>

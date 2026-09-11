@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CC 05 · Expressions</title>
+<link rel="stylesheet" href="../../deck/deck.css">
+</head>
+<body>
+<div id="stage">
+<div id="deck" tabindex="0" aria-label="Presentation: CC 05 Expressions" data-title="CC 05 · Expressions" data-figures="../../../figures/">
+
+<section class="slide" data-act="0" data-mins="1.0">
+  <div class="fig bare" style="position:absolute;inset:0"><canvas data-anim="ambient"></canvas></div>
+  <div class="fill center" style="position:relative">
+    <div class="eyebrow">Compiler Construction · week 5 · station II</div>
+    <h1>Expressions</h1>
+    <p class="lead">Code generation for literals, terms and arithmetic; registers as a stack; and encoding an instruction, which is Gödel numbering made mechanical.</p>
+  </div>
+  <aside class="notes"><p>The first code-generation session. Three problems: where code goes, where data goes, which registers to use. Then the expressions of C* one rule at a time, and at the end the encoder, which is the point where the compiler turns notation into a number. Book: Code Generation, Expressions, Arithmetic Operators, Comparison Operators. Assignment: bitwise-shift-execution.</p></aside>
+</section>
+
+<section class="slide" data-act="II" data-actname="Code" data-mins="7.0">
+  <div class="eyebrow">Three problems</div>
+  <h2>Where code goes. Where data goes. <span class="k">Which register</span>.</h2>
+  <div class="fill">
+    <div class="three">
+      <div class="card f" data-step="1"><span class="h">Code</span><p>Straight code generation: emit each instruction as soon as it is known, one after another, into <span class="mono">code_binary</span>; <span class="mono">code_size</span> grows by four per instruction. When a target address is not yet known, remember the spot and <em>fix it up</em> later. Next week.</p></div>
+      <div class="card f" data-step="2"><span class="h">Data</span><p>Strings, big integers and global variables go into <span class="mono">data_binary</span>, in reverse: the first word is at offset −8 from <span class="mono">gp</span>, the next at −16. The data segment is static allocation at compile time.</p></div>
+      <div class="card syn f" data-step="3"><span class="h">Registers</span><p>Seven temporaries, <span class="mono">t0</span> to <span class="mono">t6</span>, allocated as a <strong>stack</strong> at compile time: <span class="mono">talloc</span>, <span class="mono">tfree</span>, <span class="mono">current_temporary</span>, <span class="mono">previous_temporary</span>. Knowing the two most recent is enough for every situation selfie meets.</p></div>
+    </div>
+    <p class="sm f" data-step="4">A stack allocator at compile time, for registers used at runtime. The two timelines again — and the assertions on <span class="mono">allocated_temporaries</span> in the comments are how the compiler keeps itself from leaking registers.</p>
+  </div>
+  <aside class="notes"><p>The book's three problems. The register stack is the one to dwell on: it is a compile-time data structure about a runtime resource, and the assertions in the comments are the discipline that makes it correct. Real compilers spend a chapter on register allocation and week 9 says why it is hard.</p></aside>
+</section>
+
+<section class="slide" data-act="II" data-mins="7.0">
+  <div class="eyebrow">Literals</div>
+  <h2>Emitting a literal: one <span class="mono">addi</span>, or a word in the data segment and its address.</h2>
+  <div class="fill">
+    <div class="fig grow" data-fig="emitting-literals"><span class="cap">load_integer · load_string</span></div>
+    <div class="two">
+      <p class="sm f" data-step="1">A small integer fits in the 12-bit immediate of one <span class="mono">addi t0,zero,85</span>. A medium one needs a <span class="mono">lui</span> and an <span class="mono">addi</span>. A big one goes into the data segment like a string and is loaded from there.</p>
+      <p class="sm f" data-step="2">A string is emitted into the data segment, entered into the symbol table so that it is reused if it occurs again, and its <em>address</em> is what the code loads: <span class="mono">addi t0,zero,-ds</span> then <span class="mono">add t0,gp,t0</span>. The value of a string literal is a pointer.</p>
+    </div>
+  </div>
+  <aside class="notes"><p>Three cases, and the point that the semantics of a string literal is a pointer, decided by the language, not discovered. Show load_integer and the immediate-range check: the compiler has to know how many bits an instruction can hold, which is the ISA leaking into the frontend.</p></aside>
+</section>
+
+<section class="slide" data-act="II" data-mins="8.0">
+  <div class="eyebrow">Terms</div>
+  <h2>Infix in, <span class="k">postfix</span> out: both factors in temporaries, then one instruction.</h2>
+  <div class="fill">
+    <div class="fig grow" data-fig="emitting-terms"><span class="cap">compile_term · x * 7</span></div>
+    <div class="two">
+      <p class="sm f" data-step="1"><span class="mono">compile_term</span> calls <span class="mono">compile_factor</span>, which leaves the value in a fresh temporary. Then while the symbol is <span class="mono">*</span>, <span class="mono">/</span> or <span class="mono">%</span>: remember the operator, get the next symbol, call <span class="mono">compile_factor</span> again, emit <span class="mono">mul</span>, <span class="mono">divu</span> or <span class="mono">remu</span> on the previous and current temporaries — and free one.</p>
+      <p class="sm f" data-step="2">The infix operator is remembered across the second operand and emitted after it. That is the translation from the notation for humans to the notation for the machine, and the register stack is what makes it one instruction.</p>
+    </div>
+  </div>
+  <aside class="notes"><p>Read compile_term in full; it is forty lines and the whole pattern. The tfree at the end of the loop is the line to point at: without it the compiler runs out of registers at the seventh factor, and with it any expression of nesting depth up to seven compiles. Selfie's own source never needs more, which the register profile of make self-self shows.</p></aside>
+</section>
+
+<section class="slide" data-act="II" data-mins="6.0">
+  <div class="eyebrow">Arithmetic and comparison</div>
+  <h2>Pointer arithmetic is <span class="j">scaled</span>. A comparison is a <span class="k">subtraction</span>.</h2>
+  <div class="fill row mid">
+    <div class="fig grow" data-fig="emitting-arithmetic"><span class="cap">x + 7 with x a pointer: multiply by 8 first</span></div>
+    <div class="fig grow" data-fig="emitting-expressions"><span class="cap">x == 7 as unsigned 7 − x &lt; 1</span></div>
+  </div>
+  <aside class="notes"><p>Two places where the semantics is decided rather than obvious. Adding 7 to a pointer adds 56 bytes, because the language says so, and the type from last week is what tells the compiler to emit the multiply. And RISC-U has one comparison instruction, sltu, so equality is computed as an unsigned subtraction compared with one, which is a small proof about two's complement that the room should do on paper.</p></aside>
+</section>
+
+<section class="slide" data-act="II" data-mins="7.0">
+  <div class="eyebrow">Encoding</div>
+  <h2>An instruction is a number. Making it one is <span class="k">Gödel numbering</span>, by hand.</h2>
+  <div class="fill">
+    <div class="two">
+      <div class="term sm">
+        <span class="l c">uint64_t encode_i_format(uint64_t immediate, uint64_t rs1,</span>
+        <span class="l c">                         uint64_t funct3, uint64_t rd, uint64_t opcode) {</span>
+        <span class="l o">  // assert: -2^11 &lt;= immediate &lt; 2^11</span>
+        <span class="l c">  check_immediate_range(immediate, 12);</span>
+        <span class="l c">  immediate = sign_shrink(immediate, 12);</span>
+        <span class="l c">  return left_shift(left_shift(left_shift(left_shift(</span>
+        <span class="l c">    immediate, 5) + rs1, 3) + funct3, 5) + rd, 7) + opcode;</span>
+        <span class="l c">}</span>
+        <span class="l o"></span>
+        <span class="l c">void emit_addi(uint64_t rd, uint64_t rs1, uint64_t immediate) {</span>
+        <span class="l c">  emit_instruction(encode_i_format(immediate, rs1, F3_ADDI, rd, OP_IMM));</span>
+        <span class="l c">}</span>
+      </div>
+      <div class="stack">
+        <p class="f" data-step="1">Twelve bits of immediate, five of source register, three of function, five of destination, seven of opcode: shift and add, and <span class="mono">addi t1,zero,7</span> is <span class="mono">0x00700313</span>. The emulator's decoder does the same arithmetic backwards, and both are in one file, so the encoding is defined once.</p>
+        <p class="f" data-step="2">This is the moment the compiler turns notation into a number that a machine can compute with. The introduction class called it Gödelisierung and made a theorem of it; here it is thirteen lines and a shift.</p>
+      </div>
+    </div>
+  </div>
+  <aside class="notes"><p>Decode 0x00700313 on the board, field by field, against riscu.md. Then the remark that matters: the encoder and the decoder are in the same file and are each other's inverse, which is the smallest instance in selfie of a language and its semantics being defined by the same program.</p></aside>
+</section>
+
+<section class="slide" data-act="II" data-mins="5.0">
+  <div class="eyebrow">ELF</div>
+  <h2>And the binary is a file that real hardware runs.</h2>
+  <div class="fill">
+    <div class="two">
+      <div class="term sm">
+        <span class="l"><span class="p">$</span> <span class="c">./selfie -c selfie.c -o selfie.m &amp;&amp; od -A d -t x1 selfie.m | head -1</span></span>
+        <span class="l o">0000000 7f 45 4c 46 02 01 01 00 00 00 00 00 00 00 00 00</span>
+        <span class="l"><span class="p">$</span> <span class="c">spike pk selfie.m</span></span>
+        <span class="l o">selfie.m { -c { source } | -o binary | … }</span>
+      </div>
+      <div class="stack">
+        <p class="f" data-step="1"><span class="mono">-o</span> writes an ELF file: a header that says where code and data go, then <span class="mono">code_binary</span>, then <span class="mono">data_binary</span>. The same bytes load into mipster, into spike, and onto a RISC-V board.</p>
+        <p class="f" data-step="2">Everything on this deck happened at compile time and produced a number. Everything that number does happens at runtime, on a machine that has never seen the source. That separation is the whole architecture of a compiler.</p>
+      </div>
+    </div>
+  </div>
+  <aside class="notes"><p>If spike is installed, run it; otherwise say that the docker image has it. The point is that the compiler's output is not a selfie-internal artefact but a standard one, which is what makes the fixed point in week 8 checkable by other tools.</p></aside>
+</section>
+
+<section class="slide" data-act="II" data-mins="7.0">
+  <div class="eyebrow">Assignment</div>
+  <h2><span class="mono">bitwise-shift-execution</span>: <span class="mono">sll</span> and <span class="mono">srl</span>, in the ISA, the emulator, and the code generator.</h2>
+  <div class="fill">
+    <div class="two">
+      <div class="stack">
+        <ol class="steps">
+          <li><strong>Specify.</strong> Extend <span class="mono">riscu.md</span> with <span class="mono">sll rd,rs1,rs2</span> and <span class="mono">srl rd,rs1,rs2</span>: assembly, encoding as R-format instructions, and semantics in the style of the other lines.</li>
+          <li><strong>Encode and decode.</strong> An <span class="mono">emit_sll</span> and <span class="mono">emit_srl</span> using <span class="mono">encode_r_format</span>, and the matching cases in the decoder and the disassembler.</li>
+          <li><strong>Execute.</strong> The two instructions in mipster, using C*'s own <span class="mono">&lt;&lt;</span> and <span class="mono">&gt;&gt;</span> — which do not exist in C* until your compiler from last week exists. Self-reference, as an assignment.</li>
+          <li><strong>Generate.</strong> In last week's <span class="mono">compile_X</span>, emit them. Then <span class="mono">./grader/self.py bitwise-shift-execution</span> and <span class="mono">self-compile</span>.</li>
+        </ol>
+      </div>
+      <div class="card syn"><span class="h">Rules</span><p>Only riscu.md and selfie.c. No warnings. Note the bootstrap: to use shifts in selfie.c, selfie must first be compiled by a C compiler that has them, and then by itself.</p></div>
+    </div>
+  </div>
+  <aside class="notes"><p>The first assignment that touches the backend and the emulator at once, and the first where the bootstrap bites: the emulator's implementation of the shift uses the shift, so the first compilation has to be by clang and the second by the new selfie. Make sure they see why that works.</p></aside>
+</section>
+
+</div>
+</div>
+<script src="../../deck/deck.js"></script>
+</body>
+</html>
