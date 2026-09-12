@@ -268,7 +268,7 @@ blockquote cite{display:block;margin-top:calc(var(--u)*1.4);font-family:var(--mo
 .term{background:var(--panel-2);border:1px solid var(--line);border-radius:calc(var(--u)*.7);
   padding:calc(var(--u)*1.25) calc(var(--u)*1.6);font-family:var(--mono);
   font-size:calc(var(--u)*1.42);line-height:1.62;color:var(--ink-2);overflow:hidden}
-.term .l{display:block;white-space:nowrap}
+.term .l{display:block;white-space:pre}
 .term .p{color:var(--syn)}
 .term .c{color:var(--ink)}
 .term .o{color:var(--muted)}
