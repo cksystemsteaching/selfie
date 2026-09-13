@@ -24,12 +24,12 @@
 <circle cx="500" cy="250" r="2.5" fill="var(--ink-2)"/>
 <line x1="330" y1="130" x2="80" y2="130" stroke="var(--ink-2)" stroke-width="1.4"/>
 <text x="70" y="130" font-size="16.1" fill="var(--ink-2)" text-anchor="end" dominant-baseline="central" class="serif">sum</text>
-<line x1="330" y1="190" x2="290" y2="190" stroke="var(--ink-2)" stroke-width="1.4"/>
-<line x1="290" y1="190" x2="290" y2="240" stroke="var(--ink-2)" stroke-width="1.4"/>
-<line x1="290" y1="240" x2="250" y2="240" stroke="var(--ink-2)" stroke-width="1.4"/>
-<line x1="530" y1="270" x2="250" y2="270" stroke="var(--ink-2)" stroke-width="1.4"/>
-<path d="M250 220 L215 220 Q250 255 215 290 L250 290 Q290 290 300 255 Q290 220 250 220 Z" fill="none" stroke="var(--ink-2)" stroke-width="1.4"/>
+<line x1="330" y1="190" x2="322" y2="190" stroke="var(--ink-2)" stroke-width="1.4"/>
+<line x1="322" y1="190" x2="322" y2="240" stroke="var(--ink-2)" stroke-width="1.4"/>
+<line x1="322" y1="240" x2="302" y2="240" stroke="var(--ink-2)" stroke-width="1.4"/>
+<line x1="530" y1="270" x2="302" y2="270" stroke="var(--ink-2)" stroke-width="1.4"/>
+<path d="M312 220 L272 220 Q226 220 210 255 Q226 290 272 290 L312 290 Q286 255 312 220 Z" fill="none" stroke="var(--ink-2)" stroke-width="1.4"/>
 <text x="255" y="255" font-size="13.8" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central">OR</text>
-<line x1="215" y1="255" x2="80" y2="255" stroke="var(--ink-2)" stroke-width="1.4"/>
+<line x1="210" y1="255" x2="80" y2="255" stroke="var(--ink-2)" stroke-width="1.4"/>
 <text x="70" y="255" font-size="16.1" fill="var(--ink-2)" text-anchor="end" dominant-baseline="central" class="serif">carry-out</text>
 </svg>

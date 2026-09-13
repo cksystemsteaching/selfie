@@ -17,4 +17,11 @@
 <line x1="730" y1="510" x2="730" y2="555" stroke="var(--ink)" stroke-width="1.2"/>
 <line x1="760" y1="540" x2="970" y2="540" stroke="var(--bad)" stroke-width="1.4"/><path d="M970 540 L964.47 542.34 L964.47 537.66 Z" fill="var(--bad)"/>
 <text x="865" y="528" font-size="11" fill="var(--muted)" text-anchor="middle" dominant-baseline="central" class="serif">runtime</text>
+
+<path d="M85.2 90.0 C153.0 90.0 168.1 232.4 236.0 232.4" fill="none" stroke="var(--sem)" stroke-width="1.3" stroke-opacity="0.85"/><path d="M236.0 232.4 L230.0 235.0 L230.0 229.8 Z" fill="var(--sem)" fill-opacity="0.85"/>
+<path d="M150.7 90.0 C193.5 90.0 193.3 232.4 236.0 232.4" fill="none" stroke="var(--sem)" stroke-width="1.3" stroke-opacity="0.85"/><path d="M236.0 232.4 L230.0 235.0 L230.0 229.8 Z" fill="var(--sem)" fill-opacity="0.85"/>
+<path d="M184.8 130.0 C236.9 130.0 183.9 303.7 236.0 303.7" fill="none" stroke="var(--sem)" stroke-width="1.3" stroke-opacity="0.85"/><path d="M236.0 303.7 L230.0 306.3 L230.0 301.1 Z" fill="var(--sem)" fill-opacity="0.85"/>
+<path d="M429.4 250.2 C588.1 250.2 623.3 269.5 782.0 269.5" fill="none" stroke="var(--syn)" stroke-width="1.3" stroke-opacity="0.85"/><path d="M782.0 269.5 L776.0 272.1 L776.0 266.9 Z" fill="var(--syn)" fill-opacity="0.85"/>
+<path d="M372.3 321.6 C556.7 321.6 597.7 289.0 782.0 289.0" fill="none" stroke="var(--syn)" stroke-width="1.3" stroke-opacity="0.85"/><path d="M782.0 289.0 L776.0 291.6 L776.0 286.4 Z" fill="var(--syn)" fill-opacity="0.85"/>
+<path d="M500.7 303.7 C627.3 303.7 655.4 308.5 782.0 308.5" fill="none" stroke="var(--syn)" stroke-width="1.3" stroke-opacity="0.85"/><path d="M782.0 308.5 L776.0 311.1 L776.0 305.9 Z" fill="var(--syn)" fill-opacity="0.85"/>
 </svg>

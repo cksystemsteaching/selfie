@@ -22,4 +22,11 @@
 <line x1="590" y1="530" x2="590" y2="575" stroke="var(--ink)" stroke-width="1.2"/>
 <line x1="620" y1="560" x2="970" y2="560" stroke="var(--bad)" stroke-width="1.4"/><path d="M970 560 L964.47 562.34 L964.47 557.66 Z" fill="var(--bad)"/>
 <text x="795" y="548" font-size="11" fill="var(--muted)" text-anchor="middle" dominant-baseline="central" class="serif">runtime</text>
+
+<path d="M85.2 90.0 C130.5 90.0 140.6 72.0 186.0 72.0" fill="none" stroke="var(--sem)" stroke-width="1.3" stroke-opacity="0.85"/><path d="M186.0 72.0 L180.0 74.6 L180.0 69.4 Z" fill="var(--sem)" fill-opacity="0.85"/>
+<path d="M150.7 90.0 C190.7 90.0 146.0 72.0 186.0 72.0" fill="none" stroke="var(--sem)" stroke-width="1.3" stroke-opacity="0.85"/><path d="M186.0 72.0 L180.0 74.6 L180.0 69.4 Z" fill="var(--sem)" fill-opacity="0.85"/>
+<path d="M164.8 130.0 C204.8 130.0 146.0 251.0 186.0 251.0" fill="none" stroke="var(--sem)" stroke-width="1.3" stroke-opacity="0.85"/><path d="M186.0 251.0 L180.0 253.6 L180.0 248.4 Z" fill="var(--sem)" fill-opacity="0.85"/>
+<path d="M552.0 202.2 C620.4 202.2 527.7 430.0 596.0 430.0" fill="none" stroke="var(--bad)" stroke-width="1.3" stroke-opacity="0.85"/><path d="M596.0 430.0 L590.0 432.6 L590.0 427.4 Z" fill="var(--bad)" fill-opacity="0.85"/>
+<path d="M592.0 364.9 C632.0 364.9 556.0 456.0 596.0 456.0" fill="none" stroke="var(--bad)" stroke-width="1.3" stroke-opacity="0.85"/><path d="M596.0 456.0 L590.0 458.6 L590.0 453.4 Z" fill="var(--bad)" fill-opacity="0.85"/>
+<path d="M376.3 332.4 C549.0 332.4 587.3 130.0 760.0 130.0" fill="none" stroke="var(--bad)" stroke-width="1.3" stroke-opacity="0.85"/><path d="M760.0 130.0 L754.0 132.6 L754.0 127.4 Z" fill="var(--bad)" fill-opacity="0.85"/>
 </svg>

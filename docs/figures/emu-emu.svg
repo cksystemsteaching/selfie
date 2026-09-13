@@ -11,7 +11,7 @@
 <line x1="340" y1="520" x2="400" y2="300" stroke="var(--line)" stroke-width="1" stroke-dasharray="3 3"/>
 <line x1="130" y1="560" x2="130" y2="610" stroke="var(--syn)" stroke-width="1.2"/><path d="M130 610 L128.05 605.39 L131.95 605.39 Z" fill="var(--syn)"/>
 <text x="90" y="600" font-size="14.55" fill="var(--syn)" text-anchor="middle" dominant-baseline="central" class="serif">exceptions</text>
-<path d="M470 300 L470 320 L140 320 L140 296" fill="none" stroke="var(--syn)" stroke-width="1.2"/>
-<line x1="140" y1="304" x2="140" y2="300" stroke="var(--syn)" stroke-width="1.2"/><path d="M140 300 L141.95 304.61 L138.05 304.61 Z" fill="var(--syn)"/>
-<text x="470" y="340" font-size="14.55" fill="var(--syn)" text-anchor="middle" dominant-baseline="central" class="serif">exceptions</text>
+<path d="M470 300 L470 340 L368 340" fill="none" stroke="var(--syn)" stroke-width="1.2"/><path d="M362 340 L371 335.5 L371 344.5 Z" fill="var(--syn)"/>
+
+<text x="470" y="356" font-size="14.55" fill="var(--syn)" text-anchor="middle" dominant-baseline="central" class="serif">exceptions</text>
 </svg>
