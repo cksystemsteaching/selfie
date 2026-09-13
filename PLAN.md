@@ -350,8 +350,8 @@ to the class index.
 ## 10. Decisions taken
 
 - Slides: HTML decks, one per lecture, on the talks' engine factored into a shared directory.
-- Book: replaces `book/README.md` in place; the current edition stays on the
-  `elementary-computer-science` branch and in its published output.
+- Book: replaces `book/README.md` in place; the previous edition remains in the history of
+  `main` and in its original repository, github.com/ckirsch/book.
 - Figures: all new, SVG, shared between book and decks; none of `book/figures/` reused.
 - Theory: one Meaning chapter before the compiler and systems chapters.
 - Hands-on formal methods: `rotor-check` (CC) and `rotor-bounds` (SE) only; solvers are
