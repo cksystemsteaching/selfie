@@ -9,7 +9,7 @@
 
 ## Important:
 
-The introductory class has no graded assignments. What it has is one set of recommended exercises per week, listed below, and an exam at the end of the semester that draws on these exercises and on nothing else. Every exam question has the shape of one of them: place a number on the axis, build a diagonal, say what a self-check proves, sort text from behaviour, name the outside check. Doing the exercises every week is the preparation; there is no other. Each week also ends with a piece of music to listen to after studying the material, a symphony from Beethoven, Brahms, Mahler, Bruckner or Mozart, and Bach's Goldberg Variations where they fit, and two things to read, a book for everyone and a paper for the ones who want the source. Neither is on the exam.
+The introductory class has no graded assignments. What it has is one set of recommended exercises per week, listed below, and an exam at the end of the semester that draws on these exercises and on nothing else. Every exam question has the shape of one of them: place a number on the axis, build a diagonal, say what a self-check proves, sort text from behaviour, name the outside check. Doing the exercises every week is the preparation; there is no other. Each week also ends with a piece of music to listen to after studying the material, a symphony from Beethoven, Brahms, Mahler, Bruckner, Mozart or Dvořák, and Bach's Goldberg Variations where they fit, and two things to read, a book for everyone and a paper for the ones who want the source. Neither is on the exam.
 
 The exercises follow the fourteen lectures, whose slides are at [docs/classes/ics](../docs/classes/ics/), and the book [*What is Intelligence?*](../book/README.md), one chapter section at a time. Where an exercise says *run*, it means run selfie yourself, in a terminal, and read what it prints. Where it says *write*, it means on paper, in a language with a semantics, so that someone else could check it.
 
@@ -145,7 +145,7 @@ Will this program ever stop? No program can always tell. Then the same move run 
 
 Listen, after this week: [Beethoven · Symphony No. 9](https://www.youtube.com/watch?v=Hn0IS-vlwCI), Bernstein, Berlin, Christmas 1989. The finale replays each earlier movement and rejects it — “O Freunde, nicht diese Töne!” — a symphony that asks about itself before it answers. Then the universal machine: everybody sings. Bernstein conducted it in Berlin six weeks after the Wall fell, with Freiheit for Freude.
 
-Read, after this week: [The Annotated Turing](https://en.wikipedia.org/wiki/The_Annotated_Turing), Petzold, 2008: Turing’s 1936 paper, every paragraph explained. And, more technical, [On Computable Numbers, with an Application to the Entscheidungsproblem](https://doi.org/10.1112/plms/s2-42.1.230), Turing, 1936: the machine, the universal machine and the halting problem in thirty-six pages.
+Read, after this week: [Die Verwandlung](https://www.gutenberg.org/ebooks/22367), Kafka, Prague, 1915: Gregor Samsa wakes up as something else, and everyone around him reads the text and misses the meaning. The week’s lesson, told twenty years before Turing proved it. And, more technical, [On Computable Numbers, with an Application to the Entscheidungsproblem](https://doi.org/10.1112/plms/s2-42.1.230), Turing, 1936: the machine, the universal machine and the halting problem in thirty-six pages; [The Annotated Turing](https://en.wikipedia.org/wiki/The_Annotated_Turing) by Petzold explains every paragraph.
 
 ## Week 10: Systems
 
@@ -157,7 +157,7 @@ Two ways to build an operating system, why they are the same, why virtualization
 4. Say in one paragraph why an operating system by emulation has no self-reference and one by virtualization does.
 5. Name the outside check in each of: Thompson's compiler, Gödel's second theorem, the trusted computing base.
 
-Listen, after this week: [Brahms · Symphony No. 1](https://www.youtube.com/watch?v=FXGQ0Y45yQk), Bernstein, Vienna Philharmonic, 1981. Twenty years in the writing, with Beethoven standing behind him. The finale’s great theme is the Ode to Joy, hosted: the same guest on Brahms’s machine, and the guest cannot tell. Emulation and virtualization, C minor to C major.
+Listen, after this week: [Dvořák · Symphony No. 9 “From the New World”](https://www.youtube.com/watch?v=scGXNcAjeXc), Karel Ančerl, Czech Philharmonic. Written in New York by a Bohemian: American spirituals and the songs of the plains, hosted on a Bohemian machine, and the guest cannot tell which orchestra it is running on. Emulation and virtualization, in E minor, and the Largo went home and became a folk song.
 
 Read, after this week: [Operating Systems: Principles and Practice](https://ospp.cs.washington.edu/), Anderson and Dahlin: the kernel as this class sees it, from processes to virtual machines. And, more technical, [Formal Requirements for Virtualizable Third Generation Architectures](https://doi.org/10.1145/361011.361073), Popek and Goldberg, 1974: the theorem that says which machines can be virtualized.
 
