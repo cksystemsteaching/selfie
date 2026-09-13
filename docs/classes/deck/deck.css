@@ -367,3 +367,6 @@ blockquote cite{display:block;margin-top:calc(var(--u)*1.4);font-family:var(--mo
   .slide,.slide.on,.f,#bar .seg i{transition:none}
   .f{opacity:1;transform:none}
 }
+
+/* links in cards and text: the semantics colour, underlined by a hairline */
+.card a,.stack a,.slide p a{color:var(--sem);text-decoration:none;border-bottom:1px solid var(--sem)}

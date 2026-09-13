@@ -9,7 +9,7 @@
 
 ## Important:
 
-The introductory class has no graded assignments. What it has is one set of recommended exercises per week, listed below, and an exam at the end of the semester that draws on these exercises and on nothing else. Every exam question has the shape of one of them: place a number on the axis, build a diagonal, say what a self-check proves, sort text from behaviour, name the outside check. Doing the exercises every week is the preparation; there is no other.
+The introductory class has no graded assignments. What it has is one set of recommended exercises per week, listed below, and an exam at the end of the semester that draws on these exercises and on nothing else. Every exam question has the shape of one of them: place a number on the axis, build a diagonal, say what a self-check proves, sort text from behaviour, name the outside check. Doing the exercises every week is the preparation; there is no other. Each week also ends with a piece of music to listen to after studying the material, a symphony from Beethoven, Brahms, Mahler, Bruckner or Mozart, and Bach's Goldberg Variations where they fit; those are not on the exam.
 
 The exercises follow the fourteen lectures, whose slides are at [docs/classes/ics](../docs/classes/ics/), and the book [*What is Intelligence?*](../book/README.md), one chapter section at a time. Where an exercise says *run*, it means run selfie yourself, in a terminal, and read what it prints. Where it says *write*, it means on paper, in a language with a semantics, so that someone else could check it.
 
@@ -30,6 +30,8 @@ The talk, and the purpose of the class: a deep understanding of basic computer s
 3. Type `./selfie`. It answers with its synopsis, one line, in a formal language. Bring that line to week 2.
 4. Read the introduction of the book, and the Selfie chapter, and type the two commands in it.
 
+Listen, after this week: [Beethoven · Symphony No. 3 “Eroica”](https://www.youtube.com/watch?v=RkP33esCi5g), Bernstein, Vienna Philharmonic. A symphony that invented a new language for the form — twice the length of anything before it, and every later symphony is written in the language it made. The definition, in E flat.
+
 ## Week 2: Size
 
 Small, vast, then two sizes of endless: the axis the whole class walks along.
@@ -39,6 +41,8 @@ Small, vast, then two sizes of endless: the axis the whole class walks along.
 3. How many bits do you need for a thousand states? A million? Every person alive? Every atom in the Earth (about 10^50)?
 4. A "512 GB" phone: how many GiB does it report, and why?
 5. Find three anchors of your own for a million, a billion, and a trillion, of anything.
+
+Listen, after this week: [Beethoven · Symphony No. 5](https://www.youtube.com/watch?v=PNpyRBVTavQ), Carlos Kleiber, Vienna Philharmonic, 1974. Four notes, and the whole first movement — the whole symphony — is built from them. Small to vast in one line. Then watch Leonard Bernstein explain the first movement [on YouTube](https://www.youtube.com/watch?v=mu2HJerMp8A) on the 1954 Omnibus broadcast: how Beethoven found the notation he needed, one rejected sketch at a time.
 
 ## Week 3: Everything is Bits
 
@@ -51,6 +55,8 @@ Numbers, negative numbers, overflow, characters, text, files, code: the same 85 
 5. Run `examples/overflows.c` and explain each line of output.
 6. In the pointers figure of the book, what happens if the byte at address 0 held 7 instead of 85?
 
+Listen, after this week: [Mozart · Symphony No. 40 in G minor](https://www.youtube.com/watch?v=z_4jMxbwmVc), Harnoncourt, Concentus Musicus. One two-note sigh, the smallest unit, and the whole first movement is that figure at different positions. Everything is bits, in G minor.
+
 ## Week 4: Notation
 
 Formal languages: EBNF, and the two languages selfie is made of, C\* with seven keywords and RISC-U with fourteen instructions.
@@ -60,6 +66,8 @@ Formal languages: EBNF, and the two languages selfie is made of, C\* with seven 
 3. Derive `c = c + 1;` from the grammar, rule by rule, starting at `statement`.
 4. Type `tiny.c` from the book, compile it with `-S`, and find the nine instructions of the loop. Change 7 to 700 and see which bits change.
 5. Write a regular expression for the dates of this course, and an EBNF grammar for nested parentheses. Which of the two needs the stack?
+
+Listen, after this week: [Mozart · Symphony No. 41 “Jupiter”](https://www.youtube.com/watch?v=qB7g_Y3LvbU), Böhm, Vienna Philharmonic, 1979. The finale: a four-note motif and four other themes, combined by the rules of counterpoint in every way the rules allow. A grammar, derived to the end.
 
 ## Week 5: Countability
 
@@ -71,6 +79,8 @@ Everything you can write down can be listed, so every program has a number, and 
 4. Run `make self-self-check` and time it. Roughly how many instructions did the emulator execute? The output tells you.
 5. Pair the natural numbers with the integers, negative ones included. Then with the fractions, if you dare.
 
+Listen, after this week: [Bach · Goldberg Variations](https://www.youtube.com/watch?v=p4yAB37wG5s), Glenn Gould, 1981. Thirty variations on one bass line, enumerated: every third one is a canon, at the unison, then the second, then the third, up to the ninth. Then the aria again, the same text at the end of the list. Countability you can hear.
+
 ## Week 6: The Machine
 
 RISC-U, code and data in one memory, and the emulator that runs every program written for it, including itself.
@@ -80,6 +90,8 @@ RISC-U, code and data in one memory, and the emulator that runs every program wr
 3. For each of the fourteen instructions, write one sentence saying what it does, without looking.
 4. Where in memory does `c` live? Find its address in the trace, and find the store that writes 7 into it.
 5. Run self-execution and time it against running selfie directly. Estimate the factor.
+
+Listen, after this week: [Beethoven · Symphony No. 7](https://www.youtube.com/watch?v=vwBEQYAwkfk), Carlos Kleiber, Concertgebouw Orchestra, 1983. The machine: one rhythm per movement, fetched, decoded and executed without pause. Wagner called it the apotheosis of the dance; it is also the apotheosis of the loop.
 
 ## Week 7: Uncountability
 
@@ -91,6 +103,8 @@ The diagonal, twice. Programs are countable; what programs do is not.
 4. How many programs of at most 1,000 characters are there over an alphabet of 100 symbols? How many behaviours on inputs 1 to 1,000 are there? Which number is bigger, and by how much?
 5. Find one new notation from your own life, a recipe format, chess notation, a knitting pattern, and say what it made sayable.
 
+Listen, after this week: [Bruckner · Symphony No. 7](https://www.youtube.com/watch?v=PvCUHLQx2uM), Karajan, Vienna Philharmonic, 1989. The Adagio, written as Wagner lay dying: endlessness that comes in sizes. Bruckner’s time does not tick, it expands, and the climax arrives the way the diagonal does — from outside every row.
+
 ## Week 8: Self-Reference I
 
 A compiler defines the meaning of the language it is written in; the fixed point, what Ken Thompson says it cannot prove, and Gödel's two theorems with the same diagonal.
@@ -100,6 +114,8 @@ A compiler defines the meaning of the language it is written in; the fixed point
 3. Run `make self-self-check` once more. Then state, in one sentence each, what the identical binaries prove and what they do not.
 4. Write three C\* programs: one with a syntax error, one with a type warning, one that divides by zero at runtime. Say for each whether the compiler could have known.
 5. In your own words: why is a dictionary written in the language it defines a problem in English and not in C\*?
+
+Listen, after this week: [Mahler · Symphony No. 5](https://www.youtube.com/watch?v=9KSESLJ0LWA), Bernstein, Vienna Philharmonic. The finale takes the Adagietto’s own theme as its input and runs it as a fugue subject: a symphony compiling itself. Whether what comes out is the same piece is this week’s question.
 
 ## Week 9: Self-Reference II
 
@@ -111,6 +127,8 @@ Will this program ever stop? No program can always tell. Then the same move run 
 4. Name one approximation for each of: is it free of infinite loops; is it safe; is it correct. Say what each gives up.
 5. Find the penumbra in a rule you live under: a house rule, a traffic rule, a grading rule.
 
+Listen, after this week: [Beethoven · Symphony No. 9](https://www.youtube.com/watch?v=Hn0IS-vlwCI), Bernstein, Berlin, Christmas 1989. The finale replays each earlier movement and rejects it — “O Freunde, nicht diese Töne!” — a symphony that asks about itself before it answers. Then the universal machine: everybody sings. Bernstein conducted it in Berlin six weeks after the Wall fell, with Freiheit for Freude.
+
 ## Week 10: Systems
 
 Two ways to build an operating system, why they are the same, why virtualization is used anyway, and the loop at its centre.
@@ -120,6 +138,8 @@ Two ways to build an operating system, why they are the same, why virtualization
 3. Run `make self-emu` and `make self-os-emu` if your machine has the time, and compute the overhead on real work.
 4. Say in one paragraph why an operating system by emulation has no self-reference and one by virtualization does.
 5. Name the outside check in each of: Thompson's compiler, Gödel's second theorem, the trusted computing base.
+
+Listen, after this week: [Brahms · Symphony No. 1](https://www.youtube.com/watch?v=FXGQ0Y45yQk), Bernstein, Vienna Philharmonic, 1981. Twenty years in the writing, with Beethoven standing behind him. The finale’s great theme is the Ode to Joy, hosted: the same guest on Brahms’s machine, and the guest cannot tell. Emulation and virtualization, C minor to C major.
 
 ## Week 11: Cost
 
@@ -131,6 +151,8 @@ A question with a guaranteed answer you will never receive; hard to find, easy t
 4. How many years to try 2^60 assignments at a billion per second? At a trillion?
 5. Compute the minimum energy to erase 8 GB once, by Landauer, and compare it with a phone battery, about 4 × 10^4 joules.
 
+Listen, after this week: [Mahler · Symphony No. 6 “Tragic”](https://www.youtube.com/watch?v=BSY7qYLG4Y0), Bernstein, Vienna Philharmonic. Eighty minutes of a budget being spent. The hammer blows of the finale are the bound, and the last one is not struck. Every step that forgets costs something.
+
 ## Week 12: Formal Methods
 
 Machine code in, formula out, solver next. Rotor turns a program into a formula, and bitme finds the input that makes it divide by zero, within a bound.
@@ -140,6 +162,8 @@ Machine code in, formula out, solver next. Rotor turns a program into a formula,
 3. Run bitme on it with a bound of 100 and report which bad states are reachable and with what input.
 4. Change the bound to 20 and explain what a report of no bad state now means and does not mean.
 5. Write a C\* program of your own with a bug that only one input triggers, and let the solver find the input.
+
+Listen, after this week: [Brahms · Symphony No. 4](https://www.youtube.com/watch?v=l9dGLYJE05Y), Carlos Kleiber, Bavarian State Orchestra, 1996. The finale is a passacaglia: an eight-bar formula stated once, then thirty variations checked against it, every one within the bound, none escaping. Bounded model checking in E minor.
 
 ## Week 13: Machines
 
@@ -151,6 +175,8 @@ What a large language model mechanically is, why a hallucination is a proof-shap
 4. Find a hallucination: an exact page number for a claim in a book you own. Place it in the three regions of the book's figure.
 5. Write the four appearances of the one theorem behind the gate, and for each name what came from outside.
 
+Listen, after this week: [Bruckner · Symphony No. 9](https://www.youtube.com/watch?v=ugHoycD1Nd8), Bernstein, Vienna Philharmonic. Unfinished: three movements, and sketches for a fourth. Every completion of the finale since is a proof-shaped object, plausible notation with no way to check it against a meaning Bruckner did not leave. Listen to what is there, and notice where it stops.
+
 ## Week 14: So, What is Intelligence?
 
 The definition, its two halves, why depth still matters, and what computer science is. Then the exam.
@@ -159,3 +185,5 @@ The definition, its two halves, why depth still matters, and what computer scien
 2. Write the six habits of the last lecture in your own words, one sentence each, with one example from your own life for each.
 3. Go back through weeks 2 to 13 and, for each week, write the one exercise you would put on the exam, and its answer.
 4. State the book's definition of intelligence from memory. Then say, in one paragraph, what it makes of a machine that produces notation without a semantics.
+
+Listen, after this week: [Mahler · Symphony No. 9](https://www.youtube.com/watch?v=D4o2SBWUH0s), Bernstein, Vienna Philharmonic, 1971. The last movement ends ersterbend, dying away: the notation thins until the page is nearly empty and the meaning is not. Geist, not Technik. And for the road, Bach’s Goldberg Variations once more [on YouTube](https://www.youtube.com/watch?v=p4yAB37wG5s) — the aria returns unchanged, and you are not.
