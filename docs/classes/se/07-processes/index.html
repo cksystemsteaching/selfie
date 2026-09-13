@@ -16,6 +16,7 @@
     <div class="eyebrow">Systems Engineering · week 7 · station III</div>
     <h1>Processes</h1>
     <p class="lead">Fork, wait, exit. A process is a virtual machine with a name.</p>
+    <p class="decknav"><a href="../06-self-hosting/">← SE 06 · Self-Hosting</a></p>
   </div>
   <aside class="notes"><p>The abstraction that everyone uses and nobody defines: a process. Defined here as a machine context plus a system-call interface plus a parent. The three calls that make a tree of them, and the two decidability remarks that come with wait. Book: Computing, Time-Sharing, the process versus thread callout and the fork examples.</p></aside>
 </section>
@@ -104,6 +105,7 @@
       <div class="card syn"><span class="h">Look ahead</span><p>Keep the blocked state explicit and separate from ready; week 8 reuses it for locks, and week 9 asks what memory a process that exited leaves behind. Orphans and zombies are not exotic: they are what a tree of contexts does when the door records exits and nothing else.</p></div>
     </div>
   </div>
+  <p class="decknav next"><a href="../08-concurrency/">SE 08 · Concurrency →</a></p>
   <aside class="notes"><p>Finish fork-wait and add exit. The design questions, no child and parent-exits-first, are the actual assignment; the code is a page. Next week threads, which share what processes copy.</p></aside>
 </section>
 

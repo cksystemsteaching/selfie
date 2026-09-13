@@ -16,6 +16,7 @@
     <div class="eyebrow">Compiler Construction · week 4 · station III</div>
     <h1>Symbols and Types</h1>
     <p class="lead">The symbol table, what a type is — and why type checking is proof checking while almost everything else about meaning is not.</p>
+    <p class="decknav"><a href="../03-the-parser/">← CC 03 · The Parser</a></p>
   </div>
   <aside class="notes"><p>The first week that touches meaning, and the first week where Rice's line is drawn inside the compiler: the symbol table and the types are attributes of the text, and the compiler decides them; everything else it says about behaviour is a warning, which is to say an approximation. Book: Variables, Symbol Table, and the type remarks throughout Expressions. Assignment: bitwise-shift-compilation.</p></aside>
 </section>
@@ -110,6 +111,7 @@
       <div class="card syn"><span class="h">Rules</span><p>Only grammar.md and selfie.c. No warnings. Self-compile must still pass, which it will, since selfie.c does not use the operators yet. Submit something by the deadline.</p></div>
     </div>
   </div>
+  <p class="decknav next"><a href="../05-expressions/">CC 05 · Expressions →</a></p>
   <aside class="notes"><p>The precedence question is the whole assignment: a new rule at the right height in the grammar, and a new procedure at the right place in the call chain. Have them find the exact line in compile_expression that calls compile_arithmetic before they leave the room.</p></aside>
 </section>
 

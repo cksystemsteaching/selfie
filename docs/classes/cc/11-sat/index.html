@@ -16,6 +16,7 @@
     <div class="eyebrow">Compiler Construction · week 11 · station IV</div>
     <h1>SAT</h1>
     <p class="lead">NP-completeness, Cook and Levin through circuits, why SAT is hard, and how modern solvers answer it anyway: DPLL, CDCL, and babysat as the executable specification.</p>
+    <p class="decknav"><a href="../10-semantics-as-a-formula/">← CC 10 · Semantics as a Formula</a></p>
   </div>
   <aside class="notes"><p>The solver session, in full: the theory of NP in an hour and the algorithms in the next. Nobody implements a solver in this class; babysat is there so the box is not opaque, and the worked example on Rivest's formula is the one to do by hand. Book: the Cost chapter from Decidable Is Not Doable to How Modern SAT Solvers Work. Assignment: struct-declaration.</p></aside>
 </section>
@@ -144,6 +145,7 @@
       <div class="card syn"><span class="h">Why structs last</span><p>They are the one extension that changes the symbol table's shape rather than adding an entry, and the one that selfie itself would most benefit from: its own symbol table entries are hand-laid-out words with getter procedures, because C* has no structs. Next week you will be able to write the table you have been reading all semester.</p></div>
     </div>
   </div>
+  <p class="decknav next"><a href="../12-bounded-model-checking/">CC 12 · Bounded Model Checking →</a></p>
   <aside class="notes"><p>The struct pair is the capstone assignment. This week only declarations and the symbol table representation; access and code generation next week. Point at how selfie fakes structs today, with allocate_line and getters, as the motivation.</p></aside>
 </section>
 

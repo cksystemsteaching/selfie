@@ -370,3 +370,8 @@ blockquote cite{display:block;margin-top:calc(var(--u)*1.4);font-family:var(--mo
 
 /* links in cards and text: the semantics colour, underlined by a hairline */
 .card a,.stack a,.slide p a{color:var(--sem);text-decoration:none;border-bottom:1px solid var(--sem)}
+
+/* previous and next deck: a line under the title, and the last line of the last slide */
+.decknav{font-family:var(--mono);font-size:calc(var(--u)*1.15);letter-spacing:.08em;color:var(--muted);margin:calc(var(--u)*1.2) 0 0}
+.slide p.decknav a{color:var(--muted);border-bottom-color:var(--line)}
+.decknav.next{text-align:right;margin-top:auto;max-width:none;align-self:stretch}

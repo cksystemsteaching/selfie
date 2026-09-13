@@ -16,6 +16,7 @@
     <div class="eyebrow">Systems Engineering · week 8 · station III</div>
     <h1>Concurrency</h1>
     <p class="lead">Threads, locks, load-reserved and store-conditional. Interleavings are a state space, and it explodes.</p>
+    <p class="decknav"><a href="../07-processes/">← SE 07 · Processes</a></p>
   </div>
   <aside class="notes"><p>Processes share nothing; threads share everything but the stack. Sharing is where the timer of week 5 stops being invisible: a preemption between a load and a store changes the meaning of a program. Book: Computing, Concurrency, and the Runtime Systems section's atomic instructions.</p></aside>
 </section>
@@ -126,6 +127,7 @@
       <div class="card syn"><span class="h">Next week</span><p>Atomic instructions in the machine: <span class="mono">lr.d</span> and <span class="mono">sc.d</span> in RISC-U, mipster and hypster, and a thread-safe <span class="mono">malloc</span> built on them. Keep your threads; they are the test harness.</p></div>
     </div>
   </div>
+  <p class="decknav next"><a href="../09-runtime-systems/">SE 09 · Runtime Systems →</a></p>
   <aside class="notes"><p>Two assignments, one week: lock is small once processes exist, threads is a variation on fork. The experiment in step 3 is the lecture's evidence: the lost update, on the students' own machine, at their chosen timeout.</p></aside>
 </section>
 

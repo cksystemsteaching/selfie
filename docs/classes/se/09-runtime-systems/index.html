@@ -16,6 +16,7 @@
     <div class="eyebrow">Systems Engineering · week 9 · station III</div>
     <h1>Runtime <span class="k">Systems</span></h1>
     <p class="lead">Malloc, garbage collection. Liveness is undecidable, so collectors compute reachability instead.</p>
+    <p class="decknav"><a href="../08-concurrency/">← SE 08 · Concurrency</a></p>
   </div>
   <aside class="notes"><p>The part of the operating system that lives inside the process: the allocator and the collector. One theorem, Rice on liveness, and the engineering answer to it, reachability as a decidable over-approximation. Book: Computing, Runtime Systems.</p></aside>
 </section>
@@ -102,6 +103,7 @@
       <div class="card syn"><span class="h">Next week</span><p>The last systems assignment, <span class="mono">treiber-stack</span>, builds a lock-free stack on the same two instructions. And <span class="mono">rotor-bounds</span> turns a model checker on your sequential systems code, because rotor does not yet model threads. Both are introduced in week 10.</p></div>
     </div>
   </div>
+  <p class="decknav next"><a href="../10-verifying-systems-code/">SE 10 · Verifying Systems Code →</a></p>
   <aside class="notes"><p>Extending the ISA is the new kind of work here. Insist on the reservation being part of the context, so that a context switch clears it, which is what real hardware does across cores.</p></aside>
 </section>
 

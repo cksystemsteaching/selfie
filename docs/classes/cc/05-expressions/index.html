@@ -16,6 +16,7 @@
     <div class="eyebrow">Compiler Construction · week 5 · station II</div>
     <h1>Expressions</h1>
     <p class="lead">Code generation for literals, terms and arithmetic; registers as a stack; and encoding an instruction, which is Gödel numbering made mechanical.</p>
+    <p class="decknav"><a href="../04-symbols-and-types/">← CC 04 · Symbols and Types</a></p>
   </div>
   <aside class="notes"><p>The first code-generation session. Three problems: where code goes, where data goes, which registers to use. Then the expressions of C* one rule at a time, and at the end the encoder, which is the point where the compiler turns notation into a number. Book: Code Generation, Expressions, Arithmetic Operators, Comparison Operators. Assignment: bitwise-shift-execution.</p></aside>
 </section>
@@ -134,6 +135,7 @@
       <div class="card syn"><span class="h">Rules</span><p>Only riscu.md and selfie.c. No warnings. Note the bootstrap: to use shifts in selfie.c, selfie must first be compiled by a C compiler that has them, and then by itself.</p></div>
     </div>
   </div>
+  <p class="decknav next"><a href="../06-statements/">CC 06 · Statements →</a></p>
   <aside class="notes"><p>The first assignment that touches the backend and the emulator at once, and the first where the bootstrap bites: the emulator's implementation of the shift uses the shift, so the first compilation has to be by clang and the second by the new selfie. Make sure they see why that works.</p></aside>
 </section>
 

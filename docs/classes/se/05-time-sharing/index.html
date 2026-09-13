@@ -16,6 +16,7 @@
     <div class="eyebrow">Systems Engineering · week 5 · station III</div>
     <h1>Time-<span class="k">Sharing</span></h1>
     <p class="lead">The timer interrupt is the kernel's answer to the halting problem. Scheduling is what it cannot answer.</p>
+    <p class="decknav"><a href="../04-virtual-memory/">← SE 04 · Virtual Memory</a></p>
   </div>
   <aside class="notes"><p>Temporal isolation. A guest may not stop; the kernel cannot know; so the kernel stops it. Then what the kernel does with the time it has taken back, and why optimal scheduling is out of reach for a reason from the Cost chapter. Book: Computing, Time-Sharing; Intelligence chapter's halting section for the theorem.</p></aside>
 </section>
@@ -104,6 +105,7 @@
       <div class="card syn"><span class="h">Reuse</span><p><span class="mono">create_context</span>, <span class="mono">load</span>, the kernel loop, and mipster with a timeout are all there. The assignment is to arrange them into a list of contexts and a scheduler. Look at how the existing code handles a context that exits, and keep the case of one instance behaving exactly as before.</p></div>
     </div>
   </div>
+  <p class="decknav next"><a href="../06-self-hosting/">SE 06 · Self-Hosting →</a></p>
   <aside class="notes"><p>The first real systems assignment. Start the design in the room: a list of contexts, a current pointer, the queue discipline, and what happens when one exits. Next week self-hosting; week 7 fork and wait build on this.</p></aside>
 </section>
 

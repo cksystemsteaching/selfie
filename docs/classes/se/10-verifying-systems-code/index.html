@@ -16,6 +16,7 @@
     <div class="eyebrow">Systems Engineering · week 10 · station IV</div>
     <h1>Verifying <span class="k">Systems</span> Code</h1>
     <p class="lead">Rotor turns a program into a formula. Bitme asks a solver whether any input reaches a bad state within a bound.</p>
+    <p class="decknav"><a href="../09-runtime-systems/">← SE 09 · Runtime Systems</a></p>
   </div>
   <aside class="notes"><p>The formal-methods week, applied. The introduction class did SAT and the compiler class did bit-blasting in full; here the two are recapped in one slide each and the rest is what a systems engineer does with them: state a memory-safety property, generate the model, run the solver, read the input off the answer. Book: Cost chapter, From Machine Words to Formulas and Models of Machines.</p></aside>
 </section>
@@ -108,6 +109,7 @@
       <div class="card syn"><span class="h">Grading rotor-bounds</span><p>The grader runs rotor and bitme on your driver with your flags and compares verdict and bound; the exact invocation is in the assignment file. Two weeks for both assignments. The stack is the harder code; the model is the harder thinking.</p></div>
     </div>
   </div>
+  <p class="decknav next"><a href="../11-cost/">SE 11 · Cost →</a></p>
   <aside class="notes"><p>Two assignments, two weeks. rotor-bounds is new this year; the grader target is described in the assignment file. Treiber stack is the book's final exercise and the reason lr/sc were added. Point out the irony: the one the model checker can verify is the one that is not concurrent.</p></aside>
 </section>
 

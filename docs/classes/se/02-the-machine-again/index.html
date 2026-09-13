@@ -16,6 +16,7 @@
     <div class="eyebrow">Systems Engineering · week 2 · station II</div>
     <h1>The Machine, <span class="k">Again</span></h1>
     <p class="lead">Privilege, exceptions, system calls, machine contexts — and the assembler as a regular language.</p>
+    <p class="decknav"><a href="../01-what-is-selfie/">← SE 01 · What is Selfie?</a></p>
   </div>
   <aside class="notes"><p>The machine as a kernel sees it: not the fourteen instructions but the boundary around them. Exceptions, the one instruction that crosses the boundary, and the record the kernel keeps of a machine, the context. Then the assembler assignment, which is the loop back to the machine via a bit of compiler frontend. Book: the Machine chapter's Instructions and Emulation, and the Computing chapter's Back to the Basics.</p></aside>
 </section>
@@ -111,6 +112,7 @@
       <div class="card syn"><span class="h">Reuse</span><p>Selfie's scanner has <span class="mono">get_character</span>, identifier and integer scanning, and the register names; its emulator has the decoders and the disassembler. An assembler is mostly plumbing between things that exist. Take your time designing the grammar; the plumbing is quick afterwards.</p></div>
     </div>
   </div>
+  <p class="decknav next"><a href="../03-emulation/">SE 03 · Emulation →</a></p>
   <aside class="notes"><p>Introduce it and start it in the room. The grammar is the deliverable this week; a student who writes the parser first usually writes a context-free one and wonders why. Point at the disassembler output as the exact language to accept.</p></aside>
 </section>
 

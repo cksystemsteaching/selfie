@@ -16,6 +16,7 @@
     <div class="eyebrow">Compiler Construction · week 9 · station III</div>
     <h1>Optimisation <span class="k">and Rice</span></h1>
     <p class="lead">Every optimiser is an approximation. Sound or complete, never both — and register allocation is NP-hard.</p>
+    <p class="decknav"><a href="../08-self-compilation/">← CC 08 · Self-Compilation</a></p>
   </div>
   <aside class="notes"><p>Selfie does not optimise, deliberately, and this session is about why every optimisation is a semantic question and therefore, by Rice, an approximation. Constant folding, dead code, register allocation as graph colouring, and the two ways to be wrong. Book: the Meaning chapter's Rice section and the Cost chapter's opening. Assignment: array-allocation.</p></aside>
 </section>
@@ -105,6 +106,7 @@
       <div class="card syn"><span class="h">Watch</span><p>Bounds are not checked: <span class="mono">a[n]</span> on an array of <span class="mono">n</span> words reads the neighbour. That is C, it is decided, and week 12 is the first week that can find such an access for you.</p></div>
     </div>
   </div>
+  <p class="decknav next"><a href="../10-semantics-as-a-formula/">CC 10 · Semantics as a Formula →</a></p>
   <aside class="notes"><p>The second array assignment, and the one that touches the frame layout from week 7. The array-versus-pointer distinction in the symbol table is the design decision; the missing bounds check is the preview of what the model checker is for.</p></aside>
 </section>
 
