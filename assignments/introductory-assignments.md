@@ -9,7 +9,7 @@
 
 ## Important:
 
-The introductory class has no graded assignments. What it has is one set of recommended exercises per week, listed below, and an exam at the end of the semester that draws on these exercises and on nothing else. Every exam question has the shape of one of them: place a number on the axis, build a diagonal, say what a self-check proves, sort text from behaviour, name the outside check. Doing the exercises every week is the preparation; there is no other. Each week also ends with a piece of music to listen to after studying the material, a symphony from Beethoven, Brahms, Mahler, Bruckner, Mozart or Dvořák, and Bach's Goldberg Variations where they fit, and two things to read, a book for everyone and a paper for the ones who want the source. Neither is on the exam.
+The introductory class has no graded assignments. What it has is one set of recommended exercises per week, listed below, and an exam at the end of the semester that draws on these exercises and on nothing else. Every exam question has the shape of one of them: place a number on the axis, build a diagonal, say what a self-check proves, sort text from behaviour, name the outside check. Doing the exercises every week is the preparation; there is no other. Each week also ends with a piece of music to listen to after studying the material, a symphony from Beethoven, Brahms, Mahler, Bruckner, Mozart or Dvořák, once Kraftwerk, and Bach's Goldberg Variations where they fit, and two things to read, a book for everyone and a paper for the ones who want the source. Neither is on the exam.
 
 The exercises follow the fourteen lectures, whose slides are at [docs/classes/ics](../docs/classes/ics/), and the book [*What is Intelligence?*](../book/README.md), one chapter section at a time. Where an exercise says *run*, it means run selfie yourself, in a terminal, and read what it prints. Where it says *write*, it means on paper, in a language with a semantics, so that someone else could check it.
 
@@ -101,7 +101,7 @@ RISC-U, code and data in one memory, and the emulator that runs every program wr
 4. Where in memory does `c` live? Find its address in the trace, and find the store that writes 7 into it.
 5. Run self-execution and time it against running selfie directly. Estimate the factor.
 
-Listen, after this week: [Beethoven · Symphony No. 7](https://www.youtube.com/watch?v=vwBEQYAwkfk), Carlos Kleiber, Concertgebouw Orchestra, 1983. The machine: one rhythm per movement, fetched, decoded and executed without pause. Wagner called it the apotheosis of the dance; it is also the apotheosis of the loop.
+Listen, after this week: [Kraftwerk · First Techno](https://www.youtube.com/watch?v=hWUiLJnEYJI&t=34s), Hütter and Schneider, live on West German television, 1970, before the word existed. Two men, oscillators, a rhythm machine and a flute: the machine as an instrument that plays itself, and everything with a four-on-the-floor beat since, from Detroit to Berlin, descends from this room. Then *Die Mensch-Maschine*, 1978, and *Computerwelt*, 1981, when the machine got a face and a voice. The machine week has its own music.
 
 Read, after this week: [The RISC-V Instruction Set Manual](https://riscv.org/technical/specifications/), volume I: the fourteen instructions, and the other hundred or so, from the source. And, more technical, [First Draft of a Report on the EDVAC](https://en.wikipedia.org/wiki/First_Draft_of_a_Report_on_the_EDVAC), von Neumann, 1945: code and data in one memory, proposed.
 
