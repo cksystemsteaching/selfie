@@ -54,10 +54,11 @@ Numbers, negative numbers, overflow, characters, text, files, code: the same 85 
 
 1. Read the Size chapter from *Numbers* to *Code*.
 2. Write 42, 255, and 1000 in binary and hexadecimal. Add 85 and 42 in binary with carries.
-3. What is 1010101 as a signed 7-bit number? What is 11111111 as an unsigned and as a signed byte?
-4. Write your first name in ASCII, in binary, and count the bits. Then in UTF-8 if it has an umlaut.
-5. Run `examples/overflows.c` and explain each line of output.
-6. In the pointers figure of the book, what happens if the byte at address 0 held 7 instead of 85?
+3. How many digits does 1000 need in unary, binary, ternary and decimal? Which of the four ratios stays the same as the number grows, and which does not?
+4. What is 1010101 as a signed 7-bit number? What is 11111111 as an unsigned and as a signed byte?
+5. Write your first name in ASCII, in binary, and count the bits. Then in UTF-8 if it has an umlaut.
+6. Run `examples/overflows.c` and explain each line of output.
+7. In the pointers figure of the book, what happens if the byte at address 0 held 7 instead of 85?
 
 Listen, after this week: [Mozart · Symphony No. 40 in G minor](https://www.youtube.com/watch?v=z_4jMxbwmVc), Harnoncourt, Concentus Musicus. One two-note sigh, the smallest unit, and the whole first movement is that figure at different positions. Everything is bits, in G minor.
 
