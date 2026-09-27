@@ -397,6 +397,14 @@ A bit is one distinction: this, not that. Add a bit and you do not *add* states,
 
 ![Sixteen bits: 65,536 states, and the doubling curve](../docs/figures/bits.svg "Sixteen bits: 65,536 states, and the doubling curve")
 
+> Polynomial or exponential?
+
+The word *exponential* gets used for anything that grows fast, and students who have heard it that way have a hard time with what follows, so let us separate it from fast. Line up the shapes: a constant, a logarithm, a line, a square, a cube. On ordinary axes, by $n = 16$ the cube has reached 4,096 and everything below it looks like a floor, while $2^n$ left the page at $n = 12$. On axes that are both logarithmic, which is the only way to see all of them at once, every polynomial becomes a straight line whose slope is its degree, 0, 1, 2, 3; the logarithm bends flat; and the exponential bends up and leaves at $n = 30$, when the cube stands at 27,000 against a billion. Polynomials differ from each other by a slope. The exponential differs from all of them by kind.
+
+![Growth: constant, logarithmic, linear, quadratic, cubic and exponential, on linear and on log-log axes](../docs/figures/growth.svg "Growth: constant, logarithmic, linear, quadratic, cubic and exponential, on linear and on log-log axes")
+
+Here is the test that tells them apart without a picture. Multiply the input by ten: a linear function multiplies by ten, a quadratic by a hundred, a cubic by a thousand, always a fixed factor set by the degree, which is what polynomial means; $2^n$ goes from $10^{30}$ at $n = 100$ to $10^{301}$ at $n = 1{,}000$, and there is no factor. Now add one to the input: every polynomial moves by a little, ten percent, twenty-one percent, thirty-three percent; $2^n$ doubles. If adding one to the input multiplies the output, you are looking at an exponential. Every bit added to a memory is exactly that plus one. And the logarithm is the exponential read backwards: multiply the input by ten and it goes up by a constant, about 3.3, which is why ten times the states cost three more bits, and why so few bits suffice for what comes next. The line between polynomial and exponential returns in the cost chapter as the line between what can be done and what cannot.
+
 How many bits does it take to have more states than the universe has atoms? Students guess millions, or billions. The answer is 266, because $2^{266}$ is about $1.2 \times 10^{80}$. Thirty-four bytes of memory, which is less than this sentence, have more states than there are atoms. The figure puts that on the log scale, next to the number of people alive and the number of molecules in a spoonful of water.
 
 ![A log scale to ten to the eighty, and 266 bits just past its end](../docs/figures/ruler.svg "A log scale to ten to the eighty, and 266 bits just past its end")

@@ -85,6 +85,7 @@ figures of the first edition:
 | `emu-emu`, `os-emu`, `os-vmm-emu` | an OS by emulation, by virtualization, under a VMM | book ch. 7; SE 6 |
 | `live-versus-dead`, `roots-into-heap` | garbage collection | book ch. 7; SE 9 |
 | `btor2` | a BTOR2 model: state, init, next, bad, unrolled k steps | book ch. 8; ICS 12; CC 10; SE 10 |
+| `growth` | constant, log, linear, quadratic, cubic, exponential on linear and log-log axes | book ch. 2; ICS 2 |
 | `bases` | digits needed per base, and the levels one digit must tell apart | book ch. 2; ICS 3 |
 | `station` | the six stations on the axis | book, part openings; week-1 decks |
 

@@ -40,9 +40,10 @@ Small, vast, then two sizes of endless: the axis the whole class walks along.
 
 1. Read the Size chapter up to *Numbers*, and Borges's *Library of Babel*.
 2. Rerun `./selfie -c selfie.c`. Where on the map do 365,784 characters sit? And 43,492 instructions? And the machine's state count?
-3. How many bits do you need for a thousand states? A million? Every person alive? Every atom in the Earth (about 10^50)?
-4. A "512 GB" phone: how many GiB does it report, and why?
-5. Find three anchors of your own for a million, a billion, and a trillion, of anything.
+3. For each of n, n², n³ and 2ⁿ: what happens to the value when n goes from 10 to 11, and when it goes from 10 to 100? Which of the four is the odd one out, and in which of the two questions?
+4. How many bits do you need for a thousand states? A million? Every person alive? Every atom in the Earth (about 10^50)?
+5. A "512 GB" phone: how many GiB does it report, and why?
+6. Find three anchors of your own for a million, a billion, and a trillion, of anything.
 
 Listen, after this week: [Beethoven · Symphony No. 5](https://www.youtube.com/watch?v=PNpyRBVTavQ), Carlos Kleiber, Vienna Philharmonic, 1974. Four notes, and the whole first movement — the whole symphony — is built from them. Small to vast in one line. Then watch Leonard Bernstein explain the first movement [on YouTube](https://www.youtube.com/watch?v=mu2HJerMp8A) on the 1954 Omnibus broadcast: how Beethoven found the notation he needed, one rejected sketch at a time.
 

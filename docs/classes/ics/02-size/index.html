@@ -131,6 +131,44 @@
   <aside class="notes"><p>Ask the question on the last step and collect guesses before advancing. Answers land in the millions or billions. Emphasise that every distinction a system can make is a bit, and the combinations multiply. This is where the book's Size chapter starts its arithmetic, and it is the one operation every later number in the class is built from.</p></aside>
 </section>
 
+<section class="slide" data-act="I" data-mins="5.0">
+  <div class="eyebrow">Growth · the shapes</div>
+  <h2>Constant, logarithmic, linear, quadratic, cubic — and then something that is <span class="x">not on the same list</span>.</h2>
+  <div class="fill row mid">
+    <div class="fig grow" style="flex:1.4" data-fig="growth"><span class="cap">the same six functions, twice</span></div>
+    <div class="stack grow">
+      <p class="f" data-step="1">Left, ordinary axes: by n = 16 the cube has reached 4,096 and everything below it is a floor. The exponential left the page at n = 12.</p>
+      <p class="f" data-step="2">Right, both axes logarithmic, which is the only way to see them together. Every polynomial becomes a straight line and its slope is its degree: 0, 1, 2, 3. The logarithm bends flat. The exponential bends <em>up</em>, and leaves at n = 30, when the cube is still at 27,000.</p>
+      <p class="f" data-step="3">Polynomials differ from each other by a slope. The exponential differs from all of them by kind.</p>
+    </div>
+  </div>
+  <aside class="notes"><p>The students have heard the word exponential used for anything that grows fast; this slide separates it from fast. The log-log panel is the device: a polynomial is a line, the degree is the slope, and higher degree is a steeper line, nothing more. The exponential is the curve that no line catches. Let them find the cube at n = 30 on the right panel: 27,000, against a billion.</p></aside>
+</section>
+
+<section class="slide" data-act="I" data-mins="5.0">
+  <div class="eyebrow">Growth · the test</div>
+  <h2>Multiply the input by ten. A polynomial multiplies by a constant. <span class="k">Add one</span> to the input. An exponential multiplies by a constant.</h2>
+  <div class="fill">
+    <div class="two">
+      <table class="t">
+        <tr><th></th><th>n = 10</th><th>n = 11</th><th>n = 100</th><th>n = 1,000</th></tr>
+        <tr><td class="mono">1</td><td>1</td><td>1</td><td>1</td><td>1</td></tr>
+        <tr><td class="mono">log₂ n</td><td>3.3</td><td>3.5</td><td>6.6</td><td>10</td></tr>
+        <tr><td class="mono">n</td><td>10</td><td>11</td><td>100</td><td>1,000</td></tr>
+        <tr><td class="mono">n²</td><td>100</td><td>121</td><td>10,000</td><td>10⁶</td></tr>
+        <tr><td class="mono">n³</td><td>1,000</td><td>1,331</td><td>10⁶</td><td>10⁹</td></tr>
+        <tr><td class="mono">2ⁿ</td><td>1,024</td><td>2,048</td><td>10³⁰</td><td>10³⁰¹</td></tr>
+      </table>
+      <div class="stack">
+        <p class="f" data-step="1"><strong>Times ten.</strong> Read the columns n = 100 and n = 1,000. Linear: ×10. Quadratic: ×100. Cubic: ×1,000. A constant factor each time, fixed by the degree; that is what <em>polynomial</em> means. The exponential goes from 10<sup>30</sup> to 10<sup>301</sup>, and there is no factor.</p>
+        <p class="f" data-step="2"><strong>Plus one.</strong> Read n = 10 and n = 11. Every polynomial moves by a little: 10 percent, 21 percent, 33 percent. The exponential doubles. That is the test: if adding one to the input multiplies the output, you are looking at an exponential. Every bit added to a memory is that plus one.</p>
+        <p class="f" data-step="3"><strong>And the logarithm</strong> is the exponential read backwards: multiply the input by ten and it goes up by a constant, 3.3. Ten times the states, three more bits. That is why 266 bits are enough for the universe.</p>
+      </div>
+    </div>
+  </div>
+  <aside class="notes"><p>The table is the lesson; the two tests are what they should take away. Times ten on the input: polynomials answer with a fixed factor, the exponential with a new number of digits. Plus one on the input: polynomials barely move, the exponential doubles. Then hand it back to bits, where plus one is exactly the operation, and forward to week 11, where polynomial against exponential is the line between doable and not.</p></aside>
+</section>
+
 <section class="slide" data-act="I" data-mins="4.0">
   <div class="eyebrow">Scale check</div>
   <h2>34 bytes of memory has more states than the observable universe has atoms.</h2>
@@ -235,6 +273,7 @@
       <ol class="steps">
         <li>Read the Size chapter up to <em>Numbers</em>, and Borges's <em>Library of Babel</em>.</li>
         <li>Rerun <span class="mono">./selfie -c selfie.c</span>. Where on the map do 365,784 characters sit? And 43,492 instructions? And the machine's state count?</li>
+        <li>For each of n, n², n³ and 2ⁿ: what happens to the value when n goes from 10 to 11, and when it goes from 10 to 100? Which of the four is the odd one out, and in which of the two questions?</li>
         <li>How many bits do you need for a thousand states? A million? Every person alive? Every atom in the Earth (about 10<sup>50</sup>)?</li>
         <li>A "512 GB" phone: how many GiB does it report, and why?</li>
         <li>Find three anchors of your own for a million, a billion, and a trillion — of anything.</li>
