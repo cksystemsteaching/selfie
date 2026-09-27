@@ -83,25 +83,25 @@
 <section class="slide" data-act="II" data-mins="5.0">
   <div class="eyebrow">Self-reference · the first and simplest</div>
   <h2>EBNF, written in <span class="k">EBNF</span>. The notation describes its own syntax, and loses nothing by it.</h2>
-  <div class="fill">
-    <div class="two">
-      <div class="term sm">
-        <span class="l c">EBNF       = { production } .</span>
-        <span class="l c">production = non_terminal "=" expression "." .</span>
-        <span class="l o"></span>
-        <span class="l c">expression = term { "|" term } .</span>
-        <span class="l c">term       = factor { " " factor } .</span>
-        <span class="l c">factor     = non_terminal | terminal</span>
-        <span class="l c">           | "{" expression "}" | "[" expression "]" | "(" expression ")" .</span>
-        <span class="l o"></span>
-        <span class="l c">non_terminal = variable .</span>
-        <span class="l c">terminal     = """ { character } """ .</span>
-      </div>
-      <div class="stack">
-        <p class="f" data-step="1">Nine lines, and every rule on the previous slide is a sentence of this language, including these nine. Check one: the rule for <span class="mono">integer</span> is a <span class="mono">non_terminal</span>, an <span class="mono">=</span>, an <span class="mono">expression</span> of one <span class="mono">term</span> of two <span class="mono">factor</span>s, and a full stop. Read the grammar of the grammar with the grammar. It works.</p>
-        <p class="f" data-step="2">Nothing strange happens. The text is finite, the reading terminates, and the machine that checks it is the same stack machine as for any other grammar. Self-reference at the level of notation is harmless, because a text describing texts is just another text.</p>
-        <p class="f" data-step="3"><strong>Hold this example.</strong> It comes back three times, and each time it bites harder: a compiler that compiles its own source, week 8; a program asked about its own halting, week 9; a kernel that must isolate itself, week 10. Same move, on meaning instead of notation. That is where the limits live.</p>
-      </div>
+  <div class="fill row mid">
+    <div class="term" style="flex:1.15">
+      <span class="l c">EBNF       = { production } .</span>
+      <span class="l c">production = non_terminal "=" expression "." .</span>
+      <span class="l o"></span>
+      <span class="l c">expression = term { "|" term } .</span>
+      <span class="l c">term       = factor { " " factor } .</span>
+      <span class="l c">factor     = non_terminal | terminal</span>
+      <span class="l c">           | "{" expression "}"</span>
+      <span class="l c">           | "[" expression "]"</span>
+      <span class="l c">           | "(" expression ")" .</span>
+      <span class="l o"></span>
+      <span class="l c">non_terminal = variable .</span>
+      <span class="l c">terminal     = """ { character } """ .</span>
+    </div>
+    <div class="stack grow">
+      <p class="f" data-step="1">Nine rules, and every rule on the previous slide is a sentence of this language, including these nine. Check one: the rule for <span class="mono">integer</span> is a <span class="mono">non_terminal</span>, an <span class="mono">=</span>, an <span class="mono">expression</span> of one <span class="mono">term</span> of two <span class="mono">factor</span>s, and a full stop. The grammar of the grammar, read with the grammar. It works.</p>
+      <p class="f" data-step="2">Nothing strange happens. The text is finite, the reading terminates, and the machine that checks it is the same stack machine as for any other grammar. Self-reference at the level of notation is harmless: a text describing texts is just another text.</p>
+      <p class="f" data-step="3"><strong>Hold this example.</strong> It comes back three times, and each time it bites harder: a compiler that compiles its own source, week 8; a program asked about its own halting, week 9; a kernel that must isolate itself, week 10. The same move, on meaning instead of notation. That is where the limits live.</p>
     </div>
   </div>
   <aside class="notes"><p>The book calls this the final step of the notation chapter, and it is the first appearance of the guiding principle of the whole class. Make the students verify one production against the grammar by hand; the point that they can do it with no further background is the point. Then say clearly why it is harmless here: syntax about syntax is still finite text, checked by a finite procedure. The forward references are the promise: the same move on meaning, self-compilation, the halting construction, the kernel hosting itself, is where the theorems come from. Do not explain those now; name them.</p></aside>
