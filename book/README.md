@@ -2323,6 +2323,10 @@ terminal     = """ { character } """ .
 character = letter | digit | ... .
 ```
 
+> The first self-reference, and the simplest
+
+Notice what just happened: a notation described its own syntax, and nothing strange followed. Every production in this book, including the nine above, is a sentence of the language the nine define, and you can check that by hand with no further background. It is harmless because a text about texts is still a finite text, read by the same finite procedure as any other. Hold on to the example. Self-reference is the guiding principle of this book, and it returns three times with the same move made on meaning instead of notation: a compiler that compiles its own source in the programming chapter, a program asked about its own halting in the meaning chapter, and a kernel that must isolate itself in the computing chapter. There it is not harmless; there it is where the limits live.
+
 By now, you should be able to read the EBNF just like sentences in English. There are a few aspects we should point out. Here, by `expression` we mean an EBNF expression, not an arithmetic expression. However, syntactically they are quite similar which is why we use the same terminology. Even EBNF productions and assignments are almost identical, syntactically! There are also two EBNF operators of which you have seen only one but probably without noticing. An EBNF term is a sequence of factors which are connected by the (invisible) *sequential composition* operator `" "` between them that has in fact precedence over the choice operator `|`, just like `*` over `+`, for example. And there is the *optionality* operator `[ ]` that we have not used yet. Anything in between those brackets may appear in a sentence but does not have to. The synopsis of selfie uses those. To see the synopsis again, this time without self-compilation, just type in your terminal:
 
 ```bash
