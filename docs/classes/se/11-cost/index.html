@@ -39,7 +39,7 @@
   <div class="eyebrow">Caches</div>
   <h2>Memory is slow. A cache bets on <span class="k">locality</span>, and the bet usually pays.</h2>
   <div class="fill">
-    <div class="two">
+    <div class="two" style="grid-template-columns:1.15fr 1fr">
       <div class="term sm">
         <span class="l"><span class="p">$</span> <span class="c">./selfie -c selfie.c -L1 1</span></span>
         <span class="l o">./selfie: summary: 85754 executed instructions in total</span>
@@ -48,8 +48,8 @@
         <span class="l o">./selfie: instruction:   85755,85225(99.38%),530(0.61%)</span>
       </div>
       <div class="stack">
-        <p class="f" data-step="1">A processor cycle is a nanosecond; a memory access is a hundred. A cache keeps what was used recently, betting it will be used again. Selfie simulates L1 caches and reports the hit rate: over 99 percent for selfie compiling itself.</p>
-        <p class="f" data-step="2">Same meaning, different cost: the cache is invisible to the program's semantics, so it can be tuned freely. And it leaks: a program that measures its own timing can read what another cached. Isolation of meaning is not isolation of cost.</p>
+        <p class="f" data-step="1">A processor cycle is a nanosecond; a memory access is a hundred. A cache keeps what was used recently, betting it will be used again. Selfie simulates L1 caches: over 99 percent hits for selfie compiling itself.</p>
+        <p class="f" data-step="2">Same meaning, different cost: the cache is invisible to the program's semantics, so it can be tuned freely. And it leaks: a program that times itself can read what another cached. Isolation of meaning is not isolation of cost.</p>
       </div>
     </div>
     <p class="sm f" data-step="3">Lines, associativity, eviction: change them with selfie's options and watch the miss rate. That is the exercise.</p>
@@ -63,9 +63,12 @@
   <div class="fill">
     <div class="two">
       <div class="term sm">
-        <span class="l o">./selfie: summary: 85754 executed instructions in total [17.66% nops]</span>
-        <span class="l o">./selfie:          14 syscalls, 1 page faults, 0 timer interrupts</span>
-        <span class="l o">./selfie: memory:  ld: 21307(24.84%), sd: 13210(15.40%)</span>
+        <span class="l o">./selfie: summary: 85754 executed instructions</span>
+        <span class="l o">                   in total [17.66% nops]</span>
+        <span class="l o">./selfie:          14 syscalls, 1 page faults,</span>
+        <span class="l o">                   0 timer interrupts</span>
+        <span class="l o">./selfie: memory:  ld: 21307(24.84%),</span>
+        <span class="l o">                   sd: 13210(15.40%)</span>
         <span class="l o">./selfie: calls:   … loops: … loads: … stores: …</span>
       </div>
       <div class="stack">

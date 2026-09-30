@@ -108,7 +108,7 @@
         <span class="l c">retry:</span>
         <span class="l c">  lr.d t0,(a0)       // load x, reserve a0</span>
         <span class="l c">  addi t0,t0,1</span>
-        <span class="l c">  sc.d t1,t0,(a0)    // store if reserved; t1 = 0 if ok</span>
+        <span class="l c">  sc.d t1,t0,(a0)    // if reserved: store, t1 = 0</span>
         <span class="l c">  bne  t1,zero,retry // interfered: retry</span>
       </div>
       <div class="stack">

@@ -42,11 +42,12 @@
     <div class="two">
       <div class="term sm">
         <span class="l o">// selfie.c, the shape of it</span>
-        <span class="l c">uint64_t* mipster(uint64_t* to_context, uint64_t timeout) {</span>
+        <span class="l c">uint64_t* mipster(uint64_t* to_context,</span>
+        <span class="l c">                  uint64_t timeout) {</span>
         <span class="l c">  restore_context(to_context);</span>
-        <span class="l c">  run_until_exception(timeout);  // TIMER is an exception</span>
+        <span class="l c">  run_until_exception(timeout); // TIMER is one</span>
         <span class="l c">  save_context(to_context);</span>
-        <span class="l c">  return to_context;              // whoever called decides</span>
+        <span class="l c">  return to_context;            // caller decides</span>
         <span class="l c">}</span>
       </div>
       <div class="stack">

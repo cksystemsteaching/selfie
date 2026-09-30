@@ -76,14 +76,15 @@
     <div class="stack grow">
       <div class="term sm">
         <span class="l"><span class="p">$</span> <span class="c">./selfie -c generated.c -m 1</span></span>
-        <span class="l o">./selfie: … exception: invalid memory access at 0x…</span>
+        <span class="l o">./selfie: … exception: invalid memory access …</span>
         <span class="l"><span class="p">$</span> <span class="c">./selfie -c selfie.c -m 2 -c generated.c -y 1</span></span>
         <span class="l"><span class="p">$</span> <span class="c">./rotor -c generated.c - 0</span></span>
-        <span class="l"><span class="p">$</span> <span class="c">tools/bitme.py -kmax 1000 generated-rotorized.btor2</span></span>
+        <span class="l"><span class="p">$</span> <span class="c">tools/bitme.py -kmax 1000 \</span></span>
+        <span class="l"><span class="c">    generated-rotorized.btor2</span></span>
         <span class="l o">… core-0-load-seg-fault — satisfiable · input …</span>
       </div>
-      <p class="sm f" data-step="1"><strong>Does it run?</strong> On mipster, isolated: the exception handler catches what the generator did not. <strong>Under your kernel?</strong> Under hypster, time-shared, with your locks. <strong>Can it fail?</strong> Within a thousand steps, on any input: absence within a bound.</p>
-      <p class="sm f" data-step="2">None of the three is available to the machine that wrote it: the check the generator cannot be. One theorem, fourth appearance, and this class built all three checks.</p>
+      <p class="sm f" data-step="1"><strong>Does it run?</strong> On mipster, isolated: the handler catches what the generator did not. <strong>Under your kernel?</strong> On hypster, time-shared, with your locks. <strong>Can it fail?</strong> Within a thousand steps, on any input: absence within a bound.</p>
+      <p class="sm f" data-step="2">The machine that wrote it has none of the three: the check the generator cannot be. One theorem, fourth appearance; this class built all three checks.</p>
     </div>
   </div>
   <aside class="notes"><p>Do it live with a real bot and a real routine, a linked list or a small allocator; the first run usually faults, and that is the lesson. Then run it under the students' own kernel, then rotor. Generation got cheap; every check on this slide did not.</p></aside>
