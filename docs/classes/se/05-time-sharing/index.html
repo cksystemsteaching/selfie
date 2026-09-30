@@ -82,7 +82,7 @@
     <div class="three">
       <div class="card f" data-step="1"><span class="h">Round robin</span><p>A queue; the timer moves the running context to the back. Every context gets a slice every <em>n</em> slices. Fair, simple, and what selfie does. It optimises nothing.</p></div>
       <div class="card f" data-step="2"><span class="h">Priorities, deadlines</span><p>Real schedulers weigh interactivity, deadlines, fairness across users, energy. Each is a policy; each can be gamed; each is a bound on something that cannot be decided.</p></div>
-      <div class="card syn f" data-step="3"><span class="h">The limit</span><p>Given jobs with lengths and deadlines and several processors, finding a schedule that meets every deadline is NP-hard: the Cost chapter's station, in the kernel. Even if the kernel knew every job's length, which by Rice it cannot, it could not afford to schedule them optimally.</p></div>
+      <div class="card syn f" data-step="3"><span class="h">The limit</span><p>With deadlines and several processors, finding a schedule that meets every deadline is NP-hard: one more job multiplies the schedules to try. Even knowing every job's length, which by Rice it cannot, the kernel could not afford the optimum.</p></div>
     </div>
     <p class="sm f" data-step="4">Two limits, one design: the scheduler does not know and could not compute. So it is a policy, chosen by people, adjusted by measurement. Week 11 measures.</p>
   </div>

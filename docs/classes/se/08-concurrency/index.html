@@ -59,6 +59,30 @@
   <aside class="notes"><p>Count the interleavings; the binomial is enough. Then the definition: meaning as a set. The point of locks, stated before the mechanism: they shrink the set to the ones that matter. Rotor does not model concurrency, which is why week 10 stays sequential; say so here.</p></aside>
 </section>
 
+<section class="slide" data-act="III" data-mins="4.0">
+  <div class="eyebrow">Growth · the test, on interleavings</div>
+  <h2>One more instruction per thread. About <span class="x">four times</span> the interleavings.</h2>
+  <div class="fill">
+    <div class="two">
+      <table class="t">
+        <tr><th>n</th><th>C(2n, n)</th><th>× per +1</th></tr>
+        <tr><td>1</td><td>2</td><td></td></tr>
+        <tr><td>2</td><td>6</td><td>3.0</td></tr>
+        <tr><td>3</td><td>20</td><td>3.3</td></tr>
+        <tr><td>4</td><td>70</td><td>3.5</td></tr>
+        <tr><td>5</td><td>252</td><td>3.6</td></tr>
+        <tr><td>10</td><td>184,756</td><td>3.8</td></tr>
+        <tr><td>50</td><td>≈ 10<sup>29</sup></td><td>≈ 4</td></tr>
+      </table>
+      <div class="stack">
+        <p class="f" data-step="1">Two threads of n instructions each. The test for an exponential: add one to the input and the output multiplies. Here the factor climbs to four, so the count grows like 4<sup>n</sup>. A polynomial would answer plus one with a few percent.</p>
+        <p class="f" data-step="2">Ten times the testing buys about two more instructions of coverage. That is why a race survives years of tests, and why a lock, which removes interleavings instead of visiting them, is the only tool that scales.</p>
+      </div>
+    </div>
+  </div>
+  <aside class="notes"><p>Let them compute the third column from the second. The ratio is 2(2n+1)/(n+1), which tends to four. The point of the slide is the second paragraph: exponential growth means testing effort buys logarithmic coverage, so the engineering answer has to cut the space, not search it.</p></aside>
+</section>
+
 <section class="slide" data-act="III" data-mins="7.0">
   <div class="eyebrow">Locks</div>
   <h2>Mutual exclusion: at most one thread in the critical section. Acquiring the lock must itself be <span class="j">atomic</span>.</h2>
