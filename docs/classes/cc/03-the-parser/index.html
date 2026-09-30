@@ -98,8 +98,8 @@
       </div>
       <div class="stack">
         <p class="f" data-step="1"><span class="mono">x + 7 * y</span> groups as <span class="mono">x + (7 * y)</span> because <span class="mono">*</span> lives one rule deeper than <span class="mono">+</span>: lower precedence, higher in the grammar. That is syntactic, and EBNF can say it.</p>
-        <p class="f" data-step="2"><span class="mono">x - 7 + y</span> groups as <span class="mono">(x - 7) + y</span> because the while loop in <span class="mono">compile_expression</span> emits code as it goes, left to right. That is associativity, and EBNF cannot say it — it shows up only in the implementation.</p>
-        <p class="f" data-step="3">Even <span class="mono">+</span> is made left-associative, although addition associates in arithmetic. Why? Because it does not associate on a machine with overflow, and week 3 of the introduction class said why.</p>
+        <p class="f" data-step="2"><span class="mono">x - 7 + y</span> groups as <span class="mono">(x - 7) + y</span> because the while loop in <span class="mono">compile_expression</span> emits code as it goes, left to right. That is associativity, and EBNF cannot say it.</p>
+        <p class="f" data-step="3">Even <span class="mono">+</span> is made left-associative, although addition associates in arithmetic. It does not on a machine with overflow.</p>
       </div>
     </div>
   </div>

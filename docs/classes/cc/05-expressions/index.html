@@ -126,13 +126,13 @@
     <div class="two">
       <div class="stack">
         <ol class="steps">
-          <li><strong>Specify.</strong> Extend <span class="mono">riscu.md</span> with <span class="mono">sll rd,rs1,rs2</span> and <span class="mono">srl rd,rs1,rs2</span>: assembly, encoding as R-format instructions, and semantics in the style of the other lines.</li>
-          <li><strong>Encode and decode.</strong> An <span class="mono">emit_sll</span> and <span class="mono">emit_srl</span> using <span class="mono">encode_r_format</span>, and the matching cases in the decoder and the disassembler.</li>
-          <li><strong>Execute.</strong> The two instructions in mipster, using C*'s own <span class="mono">&lt;&lt;</span> and <span class="mono">&gt;&gt;</span> — which do not exist in C* until your compiler from last week exists. Self-reference, as an assignment.</li>
+          <li><strong>Specify.</strong> Extend <span class="mono">riscu.md</span> with <span class="mono">sll rd,rs1,rs2</span> and <span class="mono">srl rd,rs1,rs2</span>: assembly, R-format encoding, and semantics in the style of the other lines.</li>
+          <li><strong>Encode and decode.</strong> <span class="mono">emit_sll</span> and <span class="mono">emit_srl</span> using <span class="mono">encode_r_format</span>, and the matching cases in the decoder and the disassembler.</li>
+          <li><strong>Execute.</strong> The two instructions in mipster, using C*'s own <span class="mono">&lt;&lt;</span> and <span class="mono">&gt;&gt;</span>, which do not exist until your compiler from last week does. Self-reference, as an assignment.</li>
           <li><strong>Generate.</strong> In last week's <span class="mono">compile_X</span>, emit them. Then <span class="mono">./grader/self.py bitwise-shift-execution</span> and <span class="mono">self-compile</span>.</li>
         </ol>
       </div>
-      <div class="card syn"><span class="h">Rules</span><p>Only riscu.md and selfie.c. No warnings. Note the bootstrap: to use shifts in selfie.c, selfie must first be compiled by a C compiler that has them, and then by itself.</p></div>
+      <div class="card syn"><span class="h">Rules</span><p>Only riscu.md and selfie.c. No warnings. Note the bootstrap: to use shifts in selfie.c, selfie must first be compiled by a C compiler that has them, then by itself.</p></div>
     </div>
   </div>
   <aside class="notes"><p>The first assignment that touches the backend and the emulator at once, and the first where the bootstrap bites: the emulator's implementation of the shift uses the shift, so the first compilation has to be by clang and the second by the new selfie. Make sure they see why that works.</p></aside>

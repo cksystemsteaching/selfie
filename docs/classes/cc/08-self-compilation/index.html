@@ -112,10 +112,10 @@
     <div class="two">
       <div class="stack">
         <ol class="steps">
-          <li><strong>Specify.</strong> Extend the grammar so that a factor and the left-hand side of an assignment may be <span class="mono">identifier [ expression ]</span>, for pointers obtained from <span class="mono">malloc</span>.</li>
-          <li><strong>Semantics.</strong> <span class="mono">a[i]</span> is <span class="mono">*(a + i)</span> with the scaling of week 5: the address is the pointer plus eight times the index. Decide it, write it down, then implement it.</li>
-          <li><strong>Generate.</strong> A load for an rvalue, a store for an lvalue; the index in a temporary, scaled, added, and freed. Assertions on the temporaries, both paths.</li>
-          <li><span class="mono">./grader/self.py array-access</span> and <span class="mono">self-compile</span>. Then rewrite one pointer expression in selfie.c as an array access and self-compile again — your first use of your own language extension in the compiler that implements it.</li>
+          <li><strong>Specify.</strong> Extend the grammar so that a factor and the left-hand side of an assignment may be <span class="mono">identifier [ expression ]</span>, for pointers from <span class="mono">malloc</span>.</li>
+          <li><strong>Semantics.</strong> <span class="mono">a[i]</span> is <span class="mono">*(a + i)</span> with the scaling of week 5: the pointer plus eight times the index. Write it down, then implement it.</li>
+          <li><strong>Generate.</strong> A load for an rvalue, a store for an lvalue; the index in a temporary, scaled, added, and freed.</li>
+          <li><span class="mono">./grader/self.py array-access</span> and <span class="mono">self-compile</span>. Then rewrite one pointer expression in selfie.c as an array access and self-compile again: your own extension, used in the compiler that implements it.</li>
         </ol>
       </div>
       <div class="card syn"><span class="h">The point</span><p>From this week on, every extension is expected to be used in selfie.c itself. That is the fixed point as a habit: a feature exists when the compiler compiles itself through it.</p></div>

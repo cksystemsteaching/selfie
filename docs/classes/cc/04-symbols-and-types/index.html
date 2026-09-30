@@ -103,13 +103,13 @@
     <div class="two">
       <div class="stack">
         <ol class="steps">
-          <li><strong>Specify.</strong> Extend <span class="mono">grammar.md</span> with the shift operators, with C's precedence: below <span class="mono">+</span> and <span class="mono">−</span>, above the comparisons. That is a new rule between <span class="mono">arithmetic</span> and <span class="mono">expression</span>.</li>
-          <li><strong>Scan.</strong> Two new symbols, each two characters, each with a lookahead of one after <span class="mono">&lt;</span> and <span class="mono">&gt;</span> — which already need one for <span class="mono">&lt;=</span> and <span class="mono">&gt;=</span>.</li>
-          <li><strong>Parse.</strong> One new <span class="mono">compile_X</span> for the new rule, called from where <span class="mono">compile_arithmetic</span> used to be called. Types: both operands <span class="mono">uint64_t</span>; warn otherwise.</li>
-          <li><strong>Check.</strong> <span class="mono">./grader/self.py bitwise-shift-compilation</span>. Code generation is next week's assignment; for now the parser must accept and type the operators.</li>
+          <li><strong>Specify.</strong> Extend <span class="mono">grammar.md</span> with the shift operators at C's precedence: below <span class="mono">+</span> and <span class="mono">−</span>, above the comparisons. A new rule between <span class="mono">arithmetic</span> and <span class="mono">expression</span>.</li>
+          <li><strong>Scan.</strong> Two new symbols of two characters each, with a lookahead of one after <span class="mono">&lt;</span> and <span class="mono">&gt;</span>, which <span class="mono">&lt;=</span> and <span class="mono">&gt;=</span> already need.</li>
+          <li><strong>Parse.</strong> One new <span class="mono">compile_X</span> for the new rule, called where <span class="mono">compile_arithmetic</span> used to be. Both operands <span class="mono">uint64_t</span>; warn otherwise.</li>
+          <li><strong>Check.</strong> <span class="mono">./grader/self.py bitwise-shift-compilation</span>. Code generation is next week; for now the parser must accept and type the operators.</li>
         </ol>
       </div>
-      <div class="card syn"><span class="h">Rules</span><p>Only grammar.md and selfie.c. No warnings. Self-compile must still pass, which it will, since selfie.c does not use the operators yet. Submit something by the deadline.</p></div>
+      <div class="card syn"><span class="h">Rules</span><p>Only grammar.md and selfie.c. No warnings. Self-compile must still pass. Submit something by the deadline.</p></div>
     </div>
   </div>
   <aside class="notes"><p>The precedence question is the whole assignment: a new rule at the right height in the grammar, and a new procedure at the right place in the call chain. Have them find the exact line in compile_expression that calls compile_arithmetic before they leave the room.</p></aside>
