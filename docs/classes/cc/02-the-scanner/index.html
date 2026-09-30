@@ -41,9 +41,9 @@
   <div class="fill row mid">
     <div class="fig grow" style="flex:1.2" data-fig="integer-literal-fsm"><span class="cap">integer = digit { digit } .</span></div>
     <div class="stack grow">
-      <p class="f" data-step="1">Substitute <span class="mono">digit</span> into <span class="mono">integer</span> and one rule remains: that is what regular means. Every regular expression has a finite state machine, and every finite state machine has a regular expression. Kleene, 1956.</p>
-      <p class="f" data-step="2">The machine reads one character at a time and remembers only which circle it is in. Start on a digit, then loop on digits, accepting all the while. No stack, no counter, no memory of what came before.</p>
-      <p class="f" data-step="3">And the machine <em>decides</em>: for every finite input it stops and says yes or no. Everything the scanner does is on the decidable side of Rice's line, because it is about the text and nothing else.</p>
+      <p class="f" data-step="1">Substitute <span class="mono">digit</span> into <span class="mono">integer</span> and one rule remains: that is what regular means. Every regular expression has a finite state machine and vice versa. Kleene, 1956.</p>
+      <p class="f" data-step="2">The machine reads one character at a time and remembers only which circle it is in. No stack, no counter, no memory of what came before.</p>
+      <p class="f" data-step="3">And it <em>decides</em>: for every finite input it stops and says yes or no. The scanner is on the decidable side of Rice's line, because it is about the text and nothing else.</p>
     </div>
   </div>
   <aside class="notes"><p>Run the machine by finger on 85, on 007, on 8a. Then the two theorems: Kleene's equivalence, stated not proved, and decidability, which the introduction class established and which is the reason the scanner never hangs.</p></aside>
@@ -69,9 +69,9 @@
   <div class="fill row mid">
     <div class="fig grow" style="flex:1.5" data-fig="scanning-integer-literals"><span class="cap">get_symbol, the case for digits · what lands in compiler memory</span></div>
     <div class="stack grow">
-      <p class="f" data-step="1">The digit branch of <span class="mono">get_symbol</span>: if the character is '0', it is the literal 0 and we are done. Otherwise allocate a string, store digits while there are digits, terminate with a NULL, convert with <span class="mono">atoi</span>, and set the symbol to <span class="mono">SYM_INTEGER</span>.</p>
-      <p class="f" data-step="2">On the right, what it leaves behind: the characters '8' and '5' on the heap, the value 85 in the global <span class="mono">literal</span>, and the symbol in <span class="mono">symbol</span>. The parser reads those three globals and never sees a character.</p>
-      <p class="f" data-step="3">The while loop is the self-loop of the machine. The if is the '0' branch. The code is the model, transcribed.</p>
+      <p class="f" data-step="1">The digit branch of <span class="mono">get_symbol</span>: a '0' is the literal 0. Otherwise allocate a string, store digits while there are digits, terminate with a NULL, convert with <span class="mono">atoi</span>, set the symbol to <span class="mono">SYM_INTEGER</span>.</p>
+      <p class="f" data-step="2">What it leaves behind: the characters on the heap, the value 85 in <span class="mono">literal</span>, the symbol in <span class="mono">symbol</span>. The parser reads those globals and never sees a character.</p>
+      <p class="f" data-step="3">The while loop is the machine's self-loop; the if is the '0' branch. The code is the model, transcribed.</p>
     </div>
   </div>
   <aside class="notes"><p>Open selfie.c at get_symbol and read the digit branch against the figure; the line numbers move with the version, the shape does not. Point at the three globals: symbol, literal, and the pointer to the characters. That interface is the whole contract between scanner and parser.</p></aside>

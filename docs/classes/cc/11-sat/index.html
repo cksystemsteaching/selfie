@@ -101,8 +101,8 @@
         <span class="l c">}</span>
       </div>
       <div class="stack">
-        <p class="f" data-step="1">Recursion over the variables in order. Set the next one true; if no clause is already false under the partial assignment, recurse. Then false, the same. If both fail, backtrack. <span class="mono">instance_may_be_true</span> is a loop over the clauses; a clause may still be true if some literal is true or unassigned.</p>
-        <p class="f" data-step="2">Four hundred lines in C*, with a DIMACS parser, on top of selfie, so mipster runs it. It is what a SAT solver <em>is</em>, with the search tree of the first slide walked depth-first and pruned at dead branches. Everything below is what makes that walk short.</p>
+        <p class="f" data-step="1">Recursion over the variables in order. Set the next one true; if no clause is already false, recurse. Then false, the same. If both fail, backtrack. A clause may still be true if some literal is true or unassigned.</p>
+        <p class="f" data-step="2">Four hundred lines of C* on top of selfie, so mipster runs it. It is what a SAT solver <em>is</em>: the search tree walked depth-first and pruned at dead branches.</p>
         <div class="term sm f" data-step="3">
           <span class="l"><span class="p">$</span> <span class="c">make sat</span></span>
           <span class="l o">./babysat: examples/sat/rivest.cnf is satisfiable with -1 -2 3 4</span>
@@ -135,9 +135,9 @@
   <div class="fill row mid">
     <div class="fig grow" style="flex:1.4" data-fig="sat"><span class="cap">decide · propagate · conflict · learn · backjump</span></div>
     <div class="stack grow">
-      <p class="f" data-step="1">Decide x1 = T, then x2 = T; propagation forces x3 and x4 and C6 dies. Trace the conflict back: x4 came from x3 and x2, x3 from x1 and x2. The decisions responsible are x1 and x2. <strong>Learn</strong> ¬x1 ∨ ¬x2, a clause implied by the formula.</p>
-      <p class="f" data-step="2">Backjump to right after x1 = T, where the learned clause is unit: x2 = F. Propagate: x4 = T, x3 = F, C1 dies. Everything traces to x1 alone. Learn ¬x1. Level 0: x1 = F.</p>
-      <p class="f" data-step="3">Decide x2 = T: x4 = F, x3 = T, C5 dies. Learn ¬x2. Then x2 = F, x3 = T satisfies everything with x4 free. Four assignments, three learned clauses — and the learned clauses are theorems: x1 and x2 are false in every model, which is the comment in the file.</p>
+      <p class="f" data-step="1">Decide x1 = T, then x2 = T; propagation forces x3 and x4, and C6 dies. The decisions responsible are x1 and x2: <strong>learn</strong> ¬x1 ∨ ¬x2.</p>
+      <p class="f" data-step="2">Backjump: the learned clause forces x2 = F. C1 dies, and this time only x1 is to blame. Learn ¬x1.</p>
+      <p class="f" data-step="3">With x1 = F, decide x2 = T: C5 dies, learn ¬x2. Then x2 = F, x3 = T satisfies everything. Four assignments instead of sixteen; the learned clauses are theorems.</p>
     </div>
   </div>
   <aside class="notes"><p>Take the full time and do it on the board with the figure as the check. The three things to name: the implication graph, the learned clause as a resolvent, and non-chronological backjumping. Then the engineering, one sentence each: two watched literals, VSIDS, restarts. GRASP 1996, Chaff 2001, and every solver since.</p></aside>

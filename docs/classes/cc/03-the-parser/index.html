@@ -27,9 +27,9 @@
   <div class="fill row mid">
     <div class="fig grow" style="flex:1.4" data-fig="elementary-expressions"><span class="cap">a context-free grammar, one FSM per rule, and a stack</span></div>
     <div class="stack grow">
-      <p class="f" data-step="1">Whatever number of states a machine has, feed it more opening parentheses than that and two different depths land in the same state. So no finite state machine checks that every <span class="mono">(</span> has its <span class="mono">)</span>. That is the pumping lemma in one sentence.</p>
-      <p class="f" data-step="2">The C* grammar has rules that mention each other — <span class="mono">factor</span> mentions <span class="mono">expression</span> which mentions <span class="mono">term</span> which mentions <span class="mono">factor</span> — and cannot be substituted into one rule. It is <strong>context-free</strong>, not regular.</p>
-      <p class="f" data-step="3">The machine that decides it is a finite state machine plus a <strong>stack</strong>: a pushdown automaton. One FSM per rule, and the stack remembers which rule to return to.</p>
+      <p class="f" data-step="1">Feed a machine more opening parentheses than it has states and two depths land in the same state. So no finite state machine checks that every <span class="mono">(</span> has its <span class="mono">)</span>. The pumping lemma in one sentence.</p>
+      <p class="f" data-step="2">The C* grammar has rules that mention each other, <span class="mono">factor</span> to <span class="mono">expression</span> to <span class="mono">term</span> to <span class="mono">factor</span>, and cannot be substituted into one rule. It is <strong>context-free</strong>, not regular.</p>
+      <p class="f" data-step="3">What decides it is a finite state machine plus a <strong>stack</strong>: one FSM per rule, and the stack remembers where to return.</p>
     </div>
   </div>
   <aside class="notes"><p>Do the parentheses argument properly; it is the first proof of the class and the reason a parser is a different kind of object from a scanner. Then the figure: three machines, one per rule, and the stack that holds the return path. The Chomsky hierarchy gets one sentence: regular inside context-free inside the rest, and the introduction class says where the ladder ends.</p></aside>
