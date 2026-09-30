@@ -27,10 +27,10 @@
   <div class="fill">
     <div class="two">
       <div class="stack">
-        <p class="f" data-step="1">Trained on most of the written record to predict the next piece of text; sampled one token at a time and fed its own output back. Nothing in it is a semantics: it does not run programs, check proofs, or consult the world. It produces notation that is likely, in the sense of resembling what was written before.</p>
-        <p class="f" data-step="2">That makes it superb at everything that is a property of notation: fluency, style, translation, recall of patterns. And structurally unable to certify anything that is a property of meaning. A hallucination is a proof-shaped object that is not true; the machine cannot tell, because telling would require the semantics it does not have.</p>
+        <p class="f" data-step="1">Trained on most of the written record to predict the next piece of text; sampled one token at a time and fed its own output back. Nothing in it is a semantics: it does not run programs, check proofs, or consult the world.</p>
+        <p class="f" data-step="2">That makes it superb at everything that is a property of notation: fluency, style, translation. And structurally unable to certify a property of meaning. A hallucination is a proof-shaped object that is not true, and the machine cannot tell.</p>
       </div>
-      <div class="card syn f" data-step="3"><span class="h">In systems terms</span><p>A program, running on someone's hardware, consuming a great deal of energy, whose output is other programs, commands and requests. Untrusted, by construction: not malicious, but unverified, and there is a whole class about what a kernel does with those.</p></div>
+      <div class="card syn f" data-step="3"><span class="h">In systems terms</span><p>A program on someone's hardware, consuming a great deal of energy, whose output is other programs, commands and requests. Untrusted by construction: not malicious, but unverified, and this class is about what a kernel does with those.</p></div>
     </div>
   </div>
   <aside class="notes"><p>One slide on the machine, no more; the book has the rest. The systems framing is the card: a source of unverified programs, which is the situation the kernel was designed for.</p></aside>
@@ -78,11 +78,12 @@
         <span class="l"><span class="p">$</span> <span class="c">./selfie -c generated.c -m 1</span></span>
         <span class="l o">./selfie: … exception: invalid memory access at 0x…</span>
         <span class="l"><span class="p">$</span> <span class="c">./selfie -c selfie.c -m 2 -c generated.c -y 1</span></span>
-        <span class="l"><span class="p">$</span> <span class="c">./rotor -c generated.c - 0 &amp;&amp; tools/bitme.py -kmax 1000 generated-rotorized.btor2</span></span>
+        <span class="l"><span class="p">$</span> <span class="c">./rotor -c generated.c - 0</span></span>
+        <span class="l"><span class="p">$</span> <span class="c">tools/bitme.py -kmax 1000 generated-rotorized.btor2</span></span>
         <span class="l o">… core-0-load-seg-fault — satisfiable · input …</span>
       </div>
-      <p class="sm f" data-step="1"><strong>Does it run?</strong> On mipster, isolated: the exception handler catches what the generator did not. <strong>Does it run under your kernel?</strong> Under hypster, time-shared with others, with your locks. <strong>Can it fail?</strong> Within a thousand steps, on any input: absence within a bound.</p>
-      <p class="sm f" data-step="2">None of the three is available to the machine that wrote it. Cantor's object from outside the list, Gödel's stronger system, Thompson's second compiler, the check the generator cannot be: the fourth appearance of one theorem, and this class built all three checks.</p>
+      <p class="sm f" data-step="1"><strong>Does it run?</strong> On mipster, isolated: the exception handler catches what the generator did not. <strong>Under your kernel?</strong> Under hypster, time-shared, with your locks. <strong>Can it fail?</strong> Within a thousand steps, on any input: absence within a bound.</p>
+      <p class="sm f" data-step="2">None of the three is available to the machine that wrote it: the check the generator cannot be. One theorem, fourth appearance, and this class built all three checks.</p>
     </div>
   </div>
   <aside class="notes"><p>Do it live with a real bot and a real routine, a linked list or a small allocator; the first run usually faults, and that is the lesson. Then run it under the students' own kernel, then rotor. Generation got cheap; every check on this slide did not.</p></aside>

@@ -75,10 +75,10 @@
   <div class="fill">
     <div class="two">
       <div class="stack">
-        <p class="f" data-step="1">Four conditions, all necessary: mutual exclusion, hold and wait, no preemption of held resources, and a circular wait. Break any one by design and deadlock is impossible. Ordering all locks breaks the fourth; that is the discipline most kernels adopt, and it is a proof obligation on the programmer, not the machine.</p>
-        <p class="f" data-step="2">Whether an arbitrary program <em>will</em> deadlock is a behaviour property: Rice. Whether the system <em>is</em> deadlocked now is a fact about the current state: a cycle in the waits-for graph, blocked contexts as nodes, held locks as edges. Linear time. The kernel checks the present because it cannot see the future.</p>
+        <p class="f" data-step="1">Four conditions, all necessary: mutual exclusion, hold and wait, no preemption of held resources, and a circular wait. Break any one by design and deadlock is impossible. Ordering all locks breaks the fourth: a proof obligation on the programmer, not the machine.</p>
+        <p class="f" data-step="2">Whether a program <em>will</em> deadlock is a behaviour property: Rice. Whether the system <em>is</em> deadlocked now is a fact about the current state: a cycle in the waits-for graph. Linear time. The kernel checks the present because it cannot see the future.</p>
       </div>
-      <div class="card syn f" data-step="3"><span class="h">Then what?</span><p>Detection tells you a cycle exists. Recovery is killing a process in it, which is the halting problem's answer once more: preempt what cannot be reasoned with. Or do what most systems do, and let the user notice. Detection is an approximation the kernel can afford; prevention is a proof it cannot make.</p></div>
+      <div class="card syn f" data-step="3"><span class="h">Then what?</span><p>Detection tells you a cycle exists. Recovery is killing a process in it: preempt what cannot be reasoned with. Or do what most systems do, and let the user notice. Detection is an approximation the kernel can afford; prevention is a proof it cannot make.</p></div>
     </div>
   </div>
   <aside class="notes"><p>Coffman's conditions, then the decidability split, which is the same split as liveness versus reachability last time. Week 8's blocked contexts are the graph. Recovery by killing is the timer again.</p></aside>

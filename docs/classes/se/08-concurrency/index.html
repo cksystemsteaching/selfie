@@ -27,7 +27,7 @@
   <div class="fill">
     <div class="two">
       <div class="stack">
-        <p class="f" data-step="1">Fork copies pages. A thread shares them: same page table, same code, same data, same heap, a fresh stack. In selfie a thread is a context whose page table points to the parent's, with its own registers and a stack segment of its own. That is the whole difference, and it is a difference in how much isolation you keep.</p>
+        <p class="f" data-step="1">Fork copies pages. A thread shares them: same page table, code, data and heap, a fresh stack. In selfie a thread is a context whose page table points to the parent's. A difference in how much isolation you keep.</p>
         <p class="f" data-step="2">Less isolation, cheaper communication: a global variable is a message. And the timer of week 5, invisible to a process, is now visible: it can fire between any two instructions, and the other thread sees memory as it was at that instant.</p>
       </div>
       <div class="term sm f" data-step="3">
@@ -89,10 +89,10 @@
   <div class="fill">
     <div class="two">
       <div class="stack">
-        <p class="f" data-step="1">A lock is a word: 0 free, 1 taken. Acquire: wait until it is 0, then set it to 1. Release: set it to 0. Between acquire and release the thread is alone with the shared data, and the interleavings inside the section collapse to one.</p>
-        <p class="f" data-step="2">But "wait until 0, then set 1" is a load, a branch and a store: three instructions, and the timer can fire between them. Two threads both see 0 and both take the lock. The lock has the race it was meant to remove. No sequence of ordinary instructions fixes this; the machine has to offer one that cannot be interleaved.</p>
+        <p class="f" data-step="1">A lock is a word: 0 free, 1 taken. Acquire: wait until it is 0, then set it to 1. Release: set it to 0. In between, the thread is alone with the shared data, and the interleavings inside the section collapse to one.</p>
+        <p class="f" data-step="2">But "wait until 0, then set 1" is a load, a branch and a store, and the timer can fire between them: two threads both see 0 and both take the lock. The machine has to offer an instruction that cannot be interleaved.</p>
       </div>
-      <div class="card syn f" data-step="3"><span class="h">Blocking</span><p>A thread that finds the lock taken can spin, burning its slice, or ask the kernel to block it: the third process state of week 5, now entered on a lock. The kernel wakes it on release. And two threads each holding a lock the other waits for are both blocked, forever: <strong>deadlock</strong>, which the kernel cannot see without looking for cycles, and which week 12 places on the axis.</p></div>
+      <div class="card syn f" data-step="3"><span class="h">Blocking</span><p>A thread that finds the lock taken can spin, burning its slice, or ask the kernel to block it: the third process state, now entered on a lock. And two threads each holding a lock the other waits for are blocked forever: <strong>deadlock</strong>, which week 12 places on the axis.</p></div>
     </div>
   </div>
   <aside class="notes"><p>The lock, then the race in the lock. This is the moment students see why atomic instructions exist. Then blocking versus spinning, and deadlock as a cycle in the waits-for graph, decidable by inspection and undecidable in advance.</p></aside>
@@ -142,9 +142,9 @@
     <div class="two">
       <div class="stack">
         <ol class="steps">
-          <li><strong><span class="mono">lock</span></strong>: system calls <span class="mono">lock()</span> and <span class="mono">unlock()</span> on one global lock in the kernel. Acquire blocks the calling context; release wakes one waiter. The kernel is single-threaded, so no atomic instruction is needed here: the door is the atomicity.</li>
-          <li><strong><span class="mono">threads</span></strong>: <span class="mono">pthread_create</span>, <span class="mono">pthread_join</span>, <span class="mono">pthread_exit</span>: a context that shares the caller's page table and gets its own stack. Join blocks like wait. Decide what happens to a process's threads when it exits.</li>
-          <li>Run two threads incrementing one global without a lock and watch the count; then with your lock. Then make the timeout one instruction and watch again.</li>
+          <li><strong><span class="mono">lock</span></strong>: system calls <span class="mono">lock()</span> and <span class="mono">unlock()</span> on one global lock in the kernel. Acquire blocks the calling context; release wakes one waiter. The kernel is single-threaded: the door is the atomicity.</li>
+          <li><strong><span class="mono">threads</span></strong>: <span class="mono">pthread_create</span>, <span class="mono">pthread_join</span>, <span class="mono">pthread_exit</span>: a context that shares the caller's page table and gets its own stack. Join blocks like wait.</li>
+          <li>Run two threads incrementing one global without a lock and watch the count; then with your lock. Then make the timeout one instruction.</li>
           <li><span class="mono">./grader/self.py lock</span> and <span class="mono">./grader/self.py threads</span>.</li>
         </ol>
       </div>

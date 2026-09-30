@@ -66,9 +66,9 @@
   <div class="fill row mid">
     <div class="fig grow" style="flex:1" data-fig="traffic-light-model"><span class="cap">wait moves the parent to blocked; the child's exit moves it back to ready</span></div>
     <div class="stack grow">
-      <p class="f" data-step="1"><span class="mono">exit</span> ends a context and records its status; <span class="mono">wait</span> blocks the caller until some child has exited, then returns that status. The parent is not polling; the kernel moves it to blocked, gives its slices to others, and moves it back when the child's exit arrives.</p>
-      <p class="f" data-step="2">The kernel cannot know whether a program will exit. It can know, exactly, whether a program has called <span class="mono">exit</span>: the door records it. Decidable facts about processes are facts about the door, and only those. Rice, drawn as a line around the interface.</p>
-      <p class="f" data-step="3">A parent waiting on a child that waits on the parent: both blocked, forever, and the kernel cannot see it unless it looks for cycles. Deadlock, week 8's problem, first met here.</p>
+      <p class="f" data-step="1"><span class="mono">exit</span> ends a context and records its status; <span class="mono">wait</span> blocks the caller until some child has exited, then returns that status. The kernel moves the parent to blocked, gives its slices to others, and moves it back when the child's exit arrives.</p>
+      <p class="f" data-step="2">The kernel cannot know whether a program will exit. It can know, exactly, whether a program has called <span class="mono">exit</span>: the door records it. Decidable facts about processes are facts about the door. Rice, drawn as a line around the interface.</p>
+      <p class="f" data-step="3">A parent waiting on a child that waits on the parent: both blocked, forever. Deadlock, week 8's problem, first met here.</p>
     </div>
   </div>
   <aside class="notes"><p>Blocked as visible state, versus running-forever as invisible. The line around the interface is a useful picture: the kernel decides on system calls, never on behaviour. Then plant deadlock.</p></aside>

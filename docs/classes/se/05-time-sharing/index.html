@@ -27,9 +27,9 @@
   <div class="fill row mid">
     <div class="fig grow" style="flex:1.1" data-fig="halt"><span class="cap">the halting construction, from the introduction class</span></div>
     <div class="stack grow">
-      <p class="f" data-step="1">Cooperative multitasking asks each program to yield. A program that never does takes the machine with it, and no kernel can screen programs for that in advance: Turing, 1936, on the scheduler.</p>
-      <p class="f" data-step="2">Preemptive multitasking does not ask. A hardware timer raises an exception after a fixed number of cycles, whatever the program is doing; the kernel saves the context and runs another. The halting problem is not solved; it is made irrelevant by a bound.</p>
-      <p class="f" data-step="3">Every kernel principle in this class has this shape: what cannot be decided is bounded. The timer is the purest instance.</p>
+      <p class="f" data-step="1">Cooperative multitasking asks each program to yield. A program that never does takes the machine with it, and no kernel can screen for that in advance: Turing, 1936.</p>
+      <p class="f" data-step="2">Preemptive multitasking does not ask. A hardware timer raises an exception after a fixed number of cycles; the kernel saves the context and runs another. The halting problem is not solved; it is made irrelevant by a bound.</p>
+      <p class="f" data-step="3">Every kernel principle in this class has this shape: what cannot be decided is bounded.</p>
     </div>
   </div>
   <aside class="notes"><p>The halting construction, and then the kernel's reaction to it. Cooperative versus preemptive is the decide-versus-bound distinction in disguise. Say that this is not a workaround; it is the only design consistent with the theorem.</p></aside>
@@ -50,8 +50,8 @@
         <span class="l c">}</span>
       </div>
       <div class="stack">
-        <p class="f" data-step="1">The emulator's loop from week 3 with one more exit: after <span class="mono">timeout</span> instructions it raises a timer exception and returns the context, exactly as it would on a system call or a page fault. The caller, the kernel, looks at why the machine stopped and decides.</p>
-        <p class="f" data-step="2">The kernel in selfie is a loop around this call: pick a context, run it for a slice, handle what stopped it, pick again. That loop is the operating system by emulation. Every process, every thread you write this semester is an entry in its list.</p>
+        <p class="f" data-step="1">The emulator's loop from week 3 with one more exit: after <span class="mono">timeout</span> instructions it raises a timer exception and returns the context, as it would on a system call or a page fault. The caller, the kernel, decides what happens next.</p>
+        <p class="f" data-step="2">The kernel in selfie is a loop around this call: pick a context, run it for a slice, handle what stopped it, pick again. That loop is the operating system by emulation.</p>
       </div>
     </div>
     <div class="term sm f" data-step="3">
@@ -68,8 +68,8 @@
   <div class="fill row mid">
     <div class="fig grow" style="flex:1.1" data-fig="traffic-light-model"><span class="cap">the three states and the events that move a context between them</span></div>
     <div class="stack grow">
-      <p class="f" data-step="1"><strong>Running</strong>: its registers are in the processor. <strong>Ready</strong>: saved, waiting for a slice. <strong>Blocked</strong>: saved, waiting for something else — input, a child, a lock. The timer moves running to ready; a system call that must wait moves running to blocked; the awaited event moves blocked to ready.</p>
-      <p class="f" data-step="2">A finite state machine, per context, from the notation chapter. The kernel's whole knowledge of a program is which of three states it is in and a few kilobytes of saved registers. It knows nothing about what the program is doing, by Rice, and needs to know nothing.</p>
+      <p class="f" data-step="1"><strong>Running</strong>: its registers are in the processor. <strong>Ready</strong>: saved, waiting for a slice. <strong>Blocked</strong>: saved, waiting for input, a child, a lock. The timer moves running to ready; a system call that must wait moves running to blocked; the awaited event moves blocked to ready.</p>
+      <p class="f" data-step="2">A finite state machine per context. The kernel's whole knowledge of a program is which of three states it is in and a few kilobytes of saved registers. By Rice it knows nothing about what the program is doing, and needs to know nothing.</p>
     </div>
   </div>
   <aside class="notes"><p>The traffic light. Insist on the last point: the kernel is a finite state machine per context because that is all it can know. Blocked becomes important in week 7 with wait and in week 8 with locks.</p></aside>

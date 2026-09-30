@@ -31,14 +31,14 @@
         <span class="l c">uint64_t* malloc(uint64_t size) {</span>
         <span class="l c">  uint64_t* block = _bump;     // read</span>
         <span class="l c">  _bump = _bump + size;        // modify, write</span>
-        <span class="l c">  if (_bump &gt; brk) brk(_bump); // ask the kernel for pages</span>
+        <span class="l c">  if (_bump &gt; brk) brk(_bump); // ask the kernel</span>
         <span class="l c">  return block;</span>
         <span class="l c">}</span>
       </div>
       <div class="stack">
-        <p class="f" data-step="1">A global pointer that moves up. Allocation is constant time, memory is never reused, and the heap grows until the kernel refuses. Selfie's own compiler runs on this and never frees a byte; for a compiler that is fine.</p>
-        <p class="f" data-step="2">Add <span class="mono">free</span> and you need a free list, a fit policy, coalescing against fragmentation, and metadata per block: the book's tour from first-fit to slab allocators. Every design is a different notation for the same meaning, a function from requests to disjoint blocks, with a different cost profile.</p>
-        <p class="f" data-step="3">And the read-modify-write of <span class="mono">_bump</span> is last week's race. Two threads can receive the same block. That is the assignment.</p>
+        <p class="f" data-step="1">A global pointer that moves up. Allocation is constant time, memory is never reused, and the heap grows until the kernel refuses. Selfie's compiler never frees a byte.</p>
+        <p class="f" data-step="2">Add <span class="mono">free</span> and you need a free list, a fit policy, coalescing, and metadata per block. Every design is a different notation for the same meaning, with a different cost profile.</p>
+        <p class="f" data-step="3">And the read-modify-write of <span class="mono">_bump</span> is last week's race: two threads can receive the same block. That is the assignment.</p>
       </div>
     </div>
   </div>

@@ -26,9 +26,9 @@
   <h2>Isolation is the <span class="k">semantic</span> problem. Virtualization buys performance with <span class="x">self-reference</span>. What a kernel cannot decide, it <span class="j">bounds</span>.</h2>
   <div class="fill">
     <div class="three">
-      <div class="card syn f" data-step="1"><span class="h">Isolation</span><p>Weeks 2 to 4 and 7 to 9. Give each program the illusion of the whole machine: the door, translated addresses, a context of its own. A process is a meaning the kernel constructs, and threads are what happens when the construction is shared.</p></div>
+      <div class="card syn f" data-step="1"><span class="h">Isolation</span><p>Weeks 2 to 4 and 7 to 9. Give each program the illusion of the whole machine: the door, translated addresses, a context of its own. A process is a meaning the kernel constructs.</p></div>
       <div class="card f" data-step="2"><span class="h">Self-reference</span><p>Weeks 3 and 6. An OS by emulation equals one by virtualization; the difference is a factor of twelve and the kernel needing what it provides. Gödel II as an operating system; the TCB as its axioms.</p></div>
-      <div class="card f" data-step="3"><span class="h">Bounds</span><p>Weeks 5, 9 to 12. The timer for halting, reachability for liveness, cycle detection for deadlock, the model checker's <em>k</em> for Rice, the profile for the budget. Every mechanism a chosen approximation, named.</p></div>
+      <div class="card f" data-step="3"><span class="h">Bounds</span><p>Weeks 5, 9 to 12. The timer for halting, reachability for liveness, cycle detection for deadlock, the model checker's <em>k</em> for Rice, the profile for the budget. Each a chosen approximation, named.</p></div>
     </div>
     <p class="sm f" data-step="4">A system, then: a construction of isolated meanings on one universal machine, held together by a small trusted ground and a set of bounds that stand in for what no program can decide.</p>
   </div>
@@ -54,10 +54,10 @@
   <div class="fill">
     <div class="two">
       <div class="stack">
-        <p class="f" data-step="1">The book's definition. Every notation was invented by someone who saw a truth before it could be proved: Turing's machine before there were computers, the process before there were kernels, the page before there was hardware to walk it.</p>
-        <p class="f" data-step="2">Systems engineering, against the definition: the properties are isolation, liveness, progress, safety, each a new property in the language of the machine, each seen as true of good systems before anyone could prove it of one. The proofs came later, bounded, and the field advances by inventing the next property to want.</p>
+        <p class="f" data-step="1">The book's definition. Every notation was invented by someone who saw a truth before it could be proved: Turing's machine before there were computers, the process before there were kernels.</p>
+        <p class="f" data-step="2">Systems engineering, against the definition: isolation, liveness, progress, safety, each a new property in the language of the machine, each seen as true of good systems before anyone could prove it of one. The field advances by inventing the next property to want.</p>
       </div>
-      <div class="card syn f" data-step="3"><span class="h">And the machines</span><p>A generator produces notation in existing languages. It does not discover unproven truth, because truth is a property of meaning and it has none. That is not a limitation of this year's model; it is the definition. The person who states the next property, and checks it, is doing the thing.</p></div>
+      <div class="card syn f" data-step="3"><span class="h">And the machines</span><p>A generator produces notation in existing languages. It does not discover unproven truth, because truth is a property of meaning and it has none. That is the definition, not a limitation of this year's model. The person who states the next property, and checks it, is doing the thing.</p></div>
     </div>
   </div>
   <aside class="notes"><p>The definition, and the class held against it. The card is the book's positioning of generative AI, stated once and calmly.</p></aside>

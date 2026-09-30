@@ -27,9 +27,9 @@
   <div class="fill row mid">
     <div class="fig grow" style="flex:1.1" data-fig="layout"><span class="cap">a program's memory layout: code, data, heap, stack</span></div>
     <div class="stack grow">
-      <p class="f" data-step="1">The compiler lays out every program the same way, and the machine has one memory. So either the second program is relocated, which means rewriting its addresses, or every address a program uses is a name that the kernel resolves at run time.</p>
-      <p class="f" data-step="2">The second is virtual memory. The program's addresses are <em>virtual</em>: notation. The addresses the memory chip sees are <em>physical</em>: meaning. The mapping from one to the other is owned by the kernel, and a program that cannot name a physical address cannot touch another program's memory.</p>
-      <p class="f" data-step="3">Isolation as a translation problem. The Meaning chapter's semantics, applied to addresses.</p>
+      <p class="f" data-step="1">The compiler lays out every program the same way, and the machine has one memory. Either the second program is relocated, or every address is a name the kernel resolves at run time.</p>
+      <p class="f" data-step="2">That is virtual memory. The program's addresses are <em>virtual</em>: notation. The memory chip's are <em>physical</em>: meaning. The kernel owns the mapping, and a program that cannot name a physical address cannot touch another's memory.</p>
+      <p class="f" data-step="3">Isolation as a translation problem: the Meaning chapter's semantics, applied to addresses.</p>
     </div>
   </div>
   <aside class="notes"><p>The layout from the compiler class, then the collision. Relocation versus translation; the answer everyone took. Then say it in the vocabulary of the book: virtual is syntax, physical is semantics, and the kernel interprets.</p></aside>
