@@ -119,7 +119,8 @@
       </div>
       <div class="term">
         <span class="l"><span class="p">$</span> <span class="c">cat examples/overflows.c</span></span>
-        <span class="l o">// … prints UINT64_MAX + 1, INT64_MAX + 1, and what happens</span>
+        <span class="l o">// … prints UINT64_MAX + 1, INT64_MAX + 1,</span>
+        <span class="l o">// and what happens</span>
         <span class="l"><span class="p">$</span> <span class="c">./selfie -c examples/overflows.c -m 1</span></span>
         <span class="l o">…</span>
       </div>
@@ -189,9 +190,9 @@
       <p class="f" data-step="2">That file is bytes at addresses, like a text or an image. The machine reads it and does what it says. Nothing in the bytes tells you whether they are code or data; the machine chapter shows what does.</p>
       <div class="term sm f" data-step="3">
         <span class="l"><span class="p">$</span> <span class="c">./selfie -c examples/hello-world.c -m 1</span></span>
-        <span class="l o">./selfie: selfie compiling examples/hello-world.c to 64-bit RISC-U with 64-bit starc</span>
+        <span class="l o">./selfie: selfie compiling examples/hello-world.c</span>
+        <span class="l o">  to 64-bit RISC-U with 64-bit starc</span>
         <span class="l o">…</span>
-        <span class="l o">./selfie: 64-bit mipster executing 64-bit RISC-U binary examples/hello-world.c with 1MB physical memory</span>
         <span class="l o">Hello World!</span>
       </div>
     </div>

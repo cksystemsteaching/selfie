@@ -77,7 +77,8 @@
       <span class="l o">0000016 02 00 f3 00 01 00 00 00 00 00 01 00 00 00 00 00</span>
       <span class="l"><span class="p">$</span> <span class="c">./selfie -l selfie.m -m 1</span></span>
       <span class="l o">./selfie: 188392 bytes with 43492 instructions and 14424 bytes of data loaded from selfie.m</span>
-      <span class="l o">selfie.m { -c { source } | -o binary | [ -s | -S ] assembly | -l binary } [ ( -m | -d | -r | -y ) 0-4096 ... ]</span>
+      <span class="l o">selfie.m { -c { source } | -o binary | [ -s | -S ] assembly | -l binary }</span>
+      <span class="l o">         [ ( -m | -d | -r | -y ) 0-4096 ... ]</span>
     </div>
     <div class="two">
       <p class="sm f" data-step="1">The <span class="mono">-o</span> option writes the number to a file. The first four bytes, 7f 45 4c 46, spell ELF: the file format every Linux program uses, so this number runs on real RISC-V hardware too.</p>
@@ -95,11 +96,12 @@
     <div class="stack grow">
       <div class="term sm">
         <span class="l"><span class="p">$</span> <span class="c">make self-self-check</span></span>
-        <span class="l o">./selfie -c selfie.c -o selfie1.m -s selfie1.s -m 2 -c selfie.c -o selfie2.m -s selfie2.s</span>
+        <span class="l o">./selfie -c selfie.c -o selfie1.m -s selfie1.s</span>
+        <span class="l o">  -m 2 -c selfie.c -o selfie2.m -s selfie2.s</span>
         <span class="l o">diff -q selfie1.m selfie2.m</span>
         <span class="l o">diff -q selfie1.s selfie2.s</span>
       </div>
-      <p class="f" data-step="1">Stage one: a C compiler you did not write produces a selfie. Stage two: that selfie compiles selfie.c into selfie1.m. Stage three: selfie1.m, on the emulator, compiles it again into selfie2.m.</p>
+      <p class="f" data-step="1">A C compiler you did not write produces a selfie. That selfie compiles selfie.c into selfie1.m. Then selfie1.m, on the emulator, compiles it again into selfie2.m.</p>
       <p class="f" data-step="2">The two are identical: 188,392 bytes, the same number. What that does <em>not</em> prove is the subject of week 8.</p>
     </div>
   </div>

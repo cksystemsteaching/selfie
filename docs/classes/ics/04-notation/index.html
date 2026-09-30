@@ -65,10 +65,12 @@
     <div class="two">
       <div class="term">
         <span class="l c">integer = digit { digit } .</span>
-        <span class="l c">digit   = "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" .</span>
+        <span class="l c">digit   = "0" | "1" | "2" | "3" | "4" |</span>
+        <span class="l c">          "5" | "6" | "7" | "8" | "9" .</span>
         <span class="l o"></span>
         <span class="l c">while   = "while" "(" expression ")"</span>
-        <span class="l c">            ( statement | "{" { statement } "}" ) .</span>
+        <span class="l c">          ( statement |</span>
+        <span class="l c">            "{" { statement } "}" ) .</span>
       </div>
       <div class="stack">
         <p class="f" data-step="1"><span class="mono">=</span> defines. <span class="mono">|</span> is <em>or</em>. <span class="mono">{ }</span> is <em>any number of</em>, including none. <span class="mono">[ ]</span> is <em>optional</em>. <span class="mono">( )</span> groups. Quotes hold the literal characters. A full stop ends the rule.</p>
@@ -86,7 +88,8 @@
   <div class="fill row mid">
     <div class="term" style="flex:1">
       <span class="l c">EBNF       = { production } .</span>
-      <span class="l c">production = non_terminal "=" expression "." .</span>
+      <span class="l c">production = non_terminal "="</span>
+      <span class="l c">             expression "." .</span>
       <span class="l c">expression = term { "|" term } .</span>
       <span class="l c">term       = factor { " " factor } .</span>
       <span class="l c">factor     = non_terminal | terminal</span>

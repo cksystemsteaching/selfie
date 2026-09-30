@@ -95,11 +95,16 @@
       <p class="f" data-step="3">And a workshop of tools around it that turn a program into a logical formula and hand it to a solver — where this class meets the frontier, in week 12.</p>
     </div>
     <div class="term grow">
-      <span class="l"><span class="p">$</span> <span class="c">./selfie -c selfie.c -o selfie1.m -m 2 -c selfie.c -o selfie2.m</span></span>
-      <span class="l o">./selfie: selfie compiling selfie.c to 64-bit RISC-U with 64-bit starc</span>
+      <span class="l"><span class="p">$</span> <span class="c">./selfie -c selfie.c -o selfie1.m -m 2 \</span></span>
+      <span class="l"><span class="c">    -c selfie.c -o selfie2.m</span></span>
+      <span class="l o">./selfie: selfie compiling selfie.c</span>
+      <span class="l o">  to 64-bit RISC-U with 64-bit starc</span>
       <span class="l o">…</span>
-      <span class="l o">./selfie: 64-bit mipster executing 64-bit RISC-U binary selfie1.m with 2MB physical memory</span>
-      <span class="l o">selfie1.m: selfie compiling selfie.c to 64-bit RISC-U with 64-bit starc</span>
+      <span class="l o">./selfie: 64-bit mipster executing</span>
+      <span class="l o">  64-bit RISC-U binary selfie1.m</span>
+      <span class="l o">  with 2MB physical memory</span>
+      <span class="l o">selfie1.m: selfie compiling selfie.c</span>
+      <span class="l o">  to 64-bit RISC-U with 64-bit starc</span>
       <span class="l o">…</span>
       <span class="l"><span class="p">$</span> <span class="c">diff -s selfie1.m selfie2.m</span></span>
       <span class="l o">Files selfie1.m and selfie2.m are identical</span>

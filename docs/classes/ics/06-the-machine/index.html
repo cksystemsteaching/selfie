@@ -108,12 +108,13 @@
     <div class="fig grow" style="flex:1.2" data-fig="interp"><span class="cap">one guest instruction, about 2,600 on the host</span></div>
     <div class="stack grow">
       <div class="term sm">
-        <span class="l"><span class="p">$</span> <span class="c">./selfie -c selfie.c -o selfie.m -m 2 -l selfie.m -m 1</span></span>
+        <span class="l"><span class="p">$</span> <span class="c">./selfie -c selfie.c -o selfie.m \</span></span>
+        <span class="l"><span class="c">    -m 2 -l selfie.m -m 1</span></span>
         <span class="l o">…</span>
         <span class="l o">&gt; selfie.m { -c { source } | -o binary | … }</span>
       </div>
-      <p class="f" data-step="1"><span class="mono">mipster</span> is a page of C* per group of instructions: fetch, decode, do what the table of week 4 says, repeat. It is the machine, written down.</p>
-      <p class="f" data-step="2">So it can run any RISC-U program — including selfie, which contains mipster, which then runs selfie. The second command of week 1. Slower by a factor of about 2,600 per level, and semantically identical.</p>
+      <p class="f" data-step="1"><span class="mono">mipster</span> is a page of C* per group of instructions: fetch, decode, execute, repeat. It is the machine, written down.</p>
+      <p class="f" data-step="2">So it can run any RISC-U program, including selfie, which contains mipster, which then runs selfie: the second command of week 1. About 2,600 times slower per level, semantically identical.</p>
     </div>
   </div>
   <aside class="notes"><p>Run it and let the room hear the slowness. Then the sentence to land: the emulator is one program that runs every program written for its machine, itself included. Next week's counting session will call that the universal machine, and week 9 will show it is Turing's.</p></aside>

@@ -56,17 +56,23 @@
     <div class="two">
       <div class="term sm">
         <span class="l"><span class="p">$</span> <span class="c">make emu-emu</span></span>
-        <span class="l o">./selfie -c selfie.c -o selfie.m -m 3 -l selfie.m -m 2 -l selfie.m -m 1</span>
+        <span class="l o">./selfie -c selfie.c -o selfie.m -m 3</span>
+        <span class="l o">  -l selfie.m -m 2 -l selfie.m -m 1</span>
         <span class="l o">…</span>
-        <span class="l o">&gt; selfie.m: summary: 86380 executed instructions in total</span>
-        <span class="l o">./selfie: summary: 222410917 executed instructions in total</span>
+        <span class="l o">&gt; selfie.m: summary:</span>
+        <span class="l o">    86380 executed instructions in total</span>
+        <span class="l o">./selfie: summary:</span>
+        <span class="l o">    222410917 executed instructions in total</span>
       </div>
       <div class="term sm">
         <span class="l"><span class="p">$</span> <span class="c">make os-emu</span></span>
-        <span class="l o">./selfie -c selfie.c -o selfie.m -m 2 -l selfie.m -y 1</span>
+        <span class="l o">./selfie -c selfie.c -o selfie.m -m 2</span>
+        <span class="l o">  -l selfie.m -y 1</span>
         <span class="l o">…</span>
-        <span class="l o">&gt; selfie.m: summary: 86380 executed instructions in total</span>
-        <span class="l o">./selfie: summary: 17860937 executed instructions in total</span>
+        <span class="l o">&gt; selfie.m: summary:</span>
+        <span class="l o">    86380 executed instructions in total</span>
+        <span class="l o">./selfie: summary:</span>
+        <span class="l o">    17860937 executed instructions in total</span>
       </div>
     </div>
     <div class="two">
@@ -112,10 +118,10 @@
     <div class="fig grow" style="flex:1.1" data-fig="ladder"><span class="cap">hypster on hypster on mipster</span></div>
     <div class="stack grow">
       <div class="term sm">
-        <span class="l"><span class="p">$</span> <span class="c">./selfie -c selfie.c -o selfie.m -m 3 -l selfie.m -y 2 -l selfie.m -y 1</span></span>
-        <span class="l o">…</span>
+        <span class="l"><span class="p">$</span> <span class="c">./selfie -c selfie.c -o selfie.m -m 3 \</span></span>
+        <span class="l"><span class="c">    -l selfie.m -y 2 -l selfie.m -y 1</span></span>
       </div>
-      <p class="f" data-step="1">The third command from week 1. An emulated machine hosts a hypervisor that hosts a hypervisor that hosts selfie, which prints its synopsis. Still fast: there is only one emulator in the stack and each hypervisor adds little.</p>
+      <p class="f" data-step="1">The third command from week 1: an emulated machine hosts a hypervisor that hosts a hypervisor that hosts selfie, which prints its synopsis. Still fast: only one emulator in the stack, and each hypervisor adds little.</p>
       <p class="f" data-step="2">Understand the first command and you understand compilers; the second, machines; the third, operating systems. Only the third is hard to implement, and this deck said where.</p>
     </div>
   </div>
