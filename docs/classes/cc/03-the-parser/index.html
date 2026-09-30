@@ -35,6 +35,29 @@
   <aside class="notes"><p>Do the parentheses argument properly; it is the first proof of the class and the reason a parser is a different kind of object from a scanner. Then the figure: three machines, one per rule, and the stack that holds the return path. The Chomsky hierarchy gets one sentence: regular inside context-free inside the rest, and the introduction class says where the ladder ends.</p></aside>
 </section>
 
+<section class="slide" data-act="II" data-mins="5.0">
+  <div class="eyebrow">Self-reference · the first and simplest</div>
+  <h2>EBNF needs a <span class="k">stack</span> to read itself.</h2>
+  <div class="fill row mid">
+    <div class="term" style="flex:1.12">
+      <span class="l c">EBNF       = { production } .</span>
+      <span class="l c">production = non_terminal "=" expression "." .</span>
+      <span class="l c">expression = term { "|" term } .</span>
+      <span class="l c">term       = factor { " " factor } .</span>
+      <span class="l c">factor     = non_terminal | terminal</span>
+      <span class="l c">           | "{" expression "}"</span>
+      <span class="l c">           | "[" expression "]"</span>
+      <span class="l c">           | "(" expression ")" .</span>
+    </div>
+    <div class="stack grow" style="flex:1.1">
+      <p class="f" data-step="1">The grammar of grammars, in its own notation. A <span class="mono">factor</span> contains an <span class="mono">expression</span> in brackets, so braces nest, and nesting needs counting: EBNF is context-free, not regular.</p>
+      <p class="f" data-step="2">So the parser for grammar.md is the kind of parser you write this week: one procedure per rule, and the call stack for the brackets. Nothing breaks: a text about texts is just another text.</p>
+      <p class="f" data-step="3"><strong>Hold this example.</strong> It is self-reference on notation, and harmless. Week 8 makes the same move on meaning, a compiler compiling itself, and there the theorems start.</p>
+    </div>
+  </div>
+  <aside class="notes"><p>The introduction class showed these rules as the first self-reference; here the compiler class adds what it takes to read them. Have the students point at the recursion, factor to expression and back, and say why a scanner cannot do it. Then the promise: the fixed point of week 8 is this move on semantics, and Gödel is what it costs.</p></aside>
+</section>
+
 <section class="slide" data-act="II" data-mins="6.0">
   <div class="eyebrow">LL(1)</div>
   <h2>Left to right, leftmost derivation, <span class="j">lookahead of one</span>.</h2>

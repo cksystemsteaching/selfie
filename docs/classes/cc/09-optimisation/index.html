@@ -67,8 +67,8 @@
   <div class="fill">
     <div class="two">
       <div class="stack">
-        <p class="f" data-step="1">Selfie's stack of seven temporaries is the simplest allocator there is, and it fails at nesting depth eight. A real allocator asks: which values are <em>live</em> at the same time, and can two values that are never live together share a register?</p>
-        <p class="f" data-step="2">Draw a node per value and an edge between values live simultaneously. Colouring the graph with k colours, one per register, so that no edge joins two nodes of one colour, is register allocation with k registers. Chaitin, 1981. And k-colouring is NP-complete.</p>
+        <p class="f" data-step="1">Selfie's stack of seven temporaries is the simplest allocator there is, and it fails at nesting depth eight. A real allocator asks which values are <em>live</em> at the same time; two that never are can share a register.</p>
+        <p class="f" data-step="2">A node per value, an edge between values live simultaneously. Colouring the graph with k colours, no edge joining two of one colour, is allocation with k registers. Chaitin, 1981. And k-colouring is NP-complete: one more value, k times the colourings.</p>
       </div>
       <div class="card syn f" data-step="3"><span class="h">Which is where week 11 begins</span><p>Decidable, and unaffordable in the worst case. Compilers colour greedily, spill to memory when they fail, and get within a few percent of optimal on real code. Hardness in the worst case, structure in the typical one — the whole of station IV in one pass of the compiler.</p></div>
     </div>

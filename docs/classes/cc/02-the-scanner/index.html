@@ -85,7 +85,7 @@
     <div class="stack grow">
       <p class="f" data-step="1">The character '5' is the byte 53. Subtract 48, the code of '0', and it is the digit 5. Multiply what you have so far by ten and add it. Leftmost digit first, so 8 becomes 80 becomes 85.</p>
       <p class="f" data-step="2">And check for wrap-around: a literal with twenty digits does not fit in 64 bits, and the machine will not tell you. The scanner must.</p>
-      <p class="f" data-step="3">Notation to meaning, in a loop: the string is syntax, the value is what it denotes, and this procedure is the semantics of integer literals.</p>
+      <p class="f" data-step="3">Notation to meaning, in a loop: the semantics of integer literals. Hexadecimal is the same loop with sixteen for ten: one hex digit is four bits, a constant factor shorter.</p>
     </div>
   </div>
   <aside class="notes"><p>The first semantic function of the class, and it is worth calling it that: atoi is the meaning of the notation for numbers. The overflow check is where the finite machine of the introduction class shows up in the compiler.</p></aside>
