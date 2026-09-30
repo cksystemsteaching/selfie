@@ -29,12 +29,12 @@
     <div class="stack grow">
       <div class="term sm">
         <span class="l"><span class="p">$</span> <span class="c">make self-self-check</span></span>
-        <span class="l o">./selfie -c selfie.c -o selfie1.m -s selfie1.s -m 2 -c selfie.c -o selfie2.m -s selfie2.s</span>
-        <span class="l o">…</span>
+        <span class="l o">./selfie -c selfie.c -o selfie1.m -s selfie1.s</span>
+        <span class="l o">  -m 2 -c selfie.c -o selfie2.m -s selfie2.s</span>
         <span class="l o">diff -q selfie1.m selfie2.m</span>
         <span class="l o">diff -q selfie1.s selfie2.s</span>
       </div>
-      <p class="f" data-step="1">Stage 0: gcc compiles selfie.c. Stage 1: that selfie compiles selfie.c into selfie1.m. Stage 2: selfie1.m, on mipster, compiles selfie.c into selfie2.m. Identical. 1,228,259,585 instructions in total.</p>
+      <p class="f" data-step="1">Stage 0: gcc compiles selfie.c. Stage 1: that selfie compiles it into selfie1.m. Stage 2: selfie1.m, on mipster, compiles it into selfie2.m. Identical, after 1,228,259,585 instructions.</p>
       <p class="f" data-step="2">Every assignment in this class has passed this check. Today: what, exactly, did it check?</p>
     </div>
   </div>

@@ -77,17 +77,21 @@
   <div class="fill">
     <div class="two">
       <div class="term sm">
-        <span class="l c">uint64_t encode_i_format(uint64_t immediate, uint64_t rs1,</span>
-        <span class="l c">                         uint64_t funct3, uint64_t rd, uint64_t opcode) {</span>
+        <span class="l c">uint64_t encode_i_format(uint64_t immediate,</span>
+        <span class="l c">    uint64_t rs1, uint64_t funct3,</span>
+        <span class="l c">    uint64_t rd, uint64_t opcode) {</span>
         <span class="l o">  // assert: -2^11 &lt;= immediate &lt; 2^11</span>
         <span class="l c">  check_immediate_range(immediate, 12);</span>
         <span class="l c">  immediate = sign_shrink(immediate, 12);</span>
-        <span class="l c">  return left_shift(left_shift(left_shift(left_shift(</span>
-        <span class="l c">    immediate, 5) + rs1, 3) + funct3, 5) + rd, 7) + opcode;</span>
+        <span class="l c">  return left_shift(left_shift(left_shift(</span>
+        <span class="l c">    left_shift(immediate, 5) + rs1, 3)</span>
+        <span class="l c">    + funct3, 5) + rd, 7) + opcode;</span>
         <span class="l c">}</span>
         <span class="l o"></span>
-        <span class="l c">void emit_addi(uint64_t rd, uint64_t rs1, uint64_t immediate) {</span>
-        <span class="l c">  emit_instruction(encode_i_format(immediate, rs1, F3_ADDI, rd, OP_IMM));</span>
+        <span class="l c">void emit_addi(uint64_t rd, uint64_t rs1,</span>
+        <span class="l c">    uint64_t immediate) {</span>
+        <span class="l c">  emit_instruction(encode_i_format(</span>
+        <span class="l c">    immediate, rs1, F3_ADDI, rd, OP_IMM));</span>
         <span class="l c">}</span>
       </div>
       <div class="stack">
@@ -105,8 +109,9 @@
   <div class="fill">
     <div class="two">
       <div class="term sm">
-        <span class="l"><span class="p">$</span> <span class="c">./selfie -c selfie.c -o selfie.m &amp;&amp; od -A d -t x1 selfie.m | head -1</span></span>
-        <span class="l o">0000000 7f 45 4c 46 02 01 01 00 00 00 00 00 00 00 00 00</span>
+        <span class="l"><span class="p">$</span> <span class="c">./selfie -c selfie.c -o selfie.m</span></span>
+        <span class="l"><span class="p">$</span> <span class="c">od -A d -t x1 selfie.m | head -1</span></span>
+        <span class="l o">0000000 7f 45 4c 46 02 01 01 00 00 00 00 00 00 …</span>
         <span class="l"><span class="p">$</span> <span class="c">spike pk selfie.m</span></span>
         <span class="l o">selfie.m { -c { source } | -o binary | … }</span>
       </div>

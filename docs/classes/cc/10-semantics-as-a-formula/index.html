@@ -44,11 +44,15 @@
       <div class="term sm">
         <span class="l"><span class="p">$</span> <span class="c">make rotor</span></span>
         <span class="l o">cc … --include selfie.h tools/rotor.c -o rotor</span>
-        <span class="l"><span class="p">$</span> <span class="c">./rotor -c examples/symbolic/division-by-zero-3-35.c - 0</span></span>
+        <span class="l"><span class="p">$</span> <span class="c">./rotor -c \</span></span>
+        <span class="l"><span class="c">    examples/symbolic/division-by-zero-3-35.c - 0</span></span>
         <span class="l o">./rotor: 15161 lines of model formulae generated</span>
-        <span class="l o">./rotor: 237537 characters written into examples/symbolic/division-by-zero-3-35-rotorized.btor2</span>
+        <span class="l o">./rotor: 237537 characters of model formulae</span>
+        <span class="l o">  written into examples/symbolic/</span>
+        <span class="l o">  division-by-zero-3-35-rotorized.btor2</span>
         <span class="l"><span class="p">$</span> <span class="c">./rotor -c selfie.c - 0</span></span>
-        <span class="l o">./rotor: … lines of model formulae generated, in about the time it takes to compile</span>
+        <span class="l o">./rotor: … lines of model formulae generated,</span>
+        <span class="l o">  in about the time it takes to compile</span>
       </div>
       <div class="stack">
         <p class="f" data-step="1">Rotor is built on selfie: it uses starc to compile the program and then generates the model of the machine with that binary loaded. Fifteen thousand lines for fifteen lines of C, because most of the model is the machine, not the program.</p>
@@ -70,11 +74,12 @@
         <span class="l o">5 sort bitvec 64 ; 64-bit double word</span>
         <span class="l o">191 state 5 core-0-pc ; program counter</span>
         <span class="l o">192 init 5 191 190 ; initializing pc</span>
-        <span class="l o">150 state 71 input-buffer ; uninitialized input buffer</span>
+        <span class="l o">150 state 71 input-buffer</span>
+        <span class="l o">    ; uninitialized input buffer</span>
         <span class="l o">20070 next 5 191 20064 ; program counter</span>
         <span class="l o">36027 bad 36026 core-0-division-by-zero</span>
       </div>
-      <p class="sm f" data-step="1">Each line has a number, an operator, a sort, and arguments that are earlier lines: a directed acyclic graph of formulas. <span class="mono">state</span> declares a variable that persists across steps; <span class="mono">init</span> fixes it at step 0; <span class="mono">next</span> says what it is one step later; <span class="mono">bad</span> names a Boolean that must never be true. The input buffer has no <span class="mono">init</span>: the solver chooses it.</p>
+      <p class="sm f" data-step="1">Each line has a number, an operator, a sort, and earlier lines as arguments: a graph of formulas. <span class="mono">state</span> declares a variable that persists across steps; <span class="mono">init</span> fixes it at step 0; <span class="mono">next</span> says what it is a step later; <span class="mono">bad</span> names a Boolean that must never be true. The input buffer has no <span class="mono">init</span>: the solver chooses it.</p>
     </div>
   </div>
   <aside class="notes"><p>Open the file and walk one thread: the pc's state line, its init, and its next, which is an ite chain over the decoded instruction. Then the bad lines, twenty-four of them. The uninitialised input is the trick that turns one execution into all executions, and it should be said as such.</p></aside>

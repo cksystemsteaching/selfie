@@ -31,9 +31,13 @@
         <p class="f" data-step="2"><strong>Allocation.</strong> Every call allocates memory for its parameters, its return address, its local variables — on a stack, dynamically, and frees it on return. Procedures are also the most efficient memory management technology ever invented, because deallocation is in reverse order of allocation and costs one addition.</p>
       </div>
       <div class="term sm f" data-step="3">
-        <span class="l c">procedure = ( type | "void" ) identifier "(" [ variable { "," variable } [ "," "..." ] ] ")"</span>
-        <span class="l c">            ( ";" | "{" { variable ";" } { statement } "}" ) .</span>
-        <span class="l c">call      = identifier "(" [ expression { "," expression } ] ")" .</span>
+        <span class="l c">procedure = ( type | "void" ) identifier "("</span>
+        <span class="l c">            [ variable { "," variable }</span>
+        <span class="l c">              [ "," "..." ] ] ")"</span>
+        <span class="l c">            ( ";" | "{" { variable ";" }</span>
+        <span class="l c">                    { statement } "}" ) .</span>
+        <span class="l c">call      = identifier "("</span>
+        <span class="l c">            [ expression { "," expression } ] ")" .</span>
         <span class="l c">return    = "return" [ expression ] .</span>
       </div>
     </div>

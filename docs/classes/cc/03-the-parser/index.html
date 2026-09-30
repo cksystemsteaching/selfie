@@ -94,7 +94,8 @@
       <div class="term sm">
         <span class="l c">expression = term { ( "+" | "-" ) term } .</span>
         <span class="l c">term       = factor { ( "*" | "/" | "%" ) factor } .</span>
-        <span class="l c">factor     = literal | identifier | "(" expression ")" .</span>
+        <span class="l c">factor     = literal | identifier |</span>
+        <span class="l c">             "(" expression ")" .</span>
       </div>
       <div class="stack">
         <p class="f" data-step="1"><span class="mono">x + 7 * y</span> groups as <span class="mono">x + (7 * y)</span> because <span class="mono">*</span> lives one rule deeper than <span class="mono">+</span>: lower precedence, higher in the grammar. That is syntactic, and EBNF can say it.</p>
@@ -116,9 +117,12 @@
         <p class="f" data-step="2">Designing good error handling is more art than science, and selfie's is minimal: a message with the line number and the unexpected symbol. It is also, as week 8 will note, the compiler deciding something — about the text.</p>
       </div>
       <div class="term sm f" data-step="3">
-        <span class="l"><span class="p">$</span> <span class="c">printf 'uint64_t main() { return 1 + ; }' &gt; bad.c; ./selfie -c bad.c</span></span>
-        <span class="l o">./selfie: syntax error in bad.c in line 1: unexpected symbol ";" found</span>
-        <span class="l o">./selfie: syntax error in bad.c in line 1: unexpected symbol "}" found</span>
+        <span class="l"><span class="p">$</span> <span class="c">printf 'uint64_t main() { return 1 + ; }' &gt; bad.c</span></span>
+        <span class="l"><span class="p">$</span> <span class="c">./selfie -c bad.c</span></span>
+        <span class="l o">./selfie: syntax error in bad.c in line 1:</span>
+        <span class="l o">  unexpected symbol ";" found</span>
+        <span class="l o">./selfie: syntax error in bad.c in line 1:</span>
+        <span class="l o">  unexpected symbol "}" found</span>
       </div>
     </div>
   </div>

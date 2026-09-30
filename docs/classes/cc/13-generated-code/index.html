@@ -55,11 +55,14 @@
     <div class="two">
       <div class="term sm">
         <span class="l"><span class="p">$</span> <span class="c">./selfie -c generated.c</span></span>
-        <span class="l o">./selfie: syntax error in generated.c in line 3: unexpected symbol "[" found</span>
+        <span class="l o">./selfie: syntax error in generated.c in line 3:</span>
+        <span class="l o">  unexpected symbol "[" found</span>
         <span class="l o">// … after asking again for C*, not C:</span>
         <span class="l"><span class="p">$</span> <span class="c">./selfie -c generated.c -m 1 7</span></span>
         <span class="l o">5040</span>
-        <span class="l"><span class="p">$</span> <span class="c">./rotor -c generated.c - 0 &amp;&amp; tools/bitme.py -kmax 1000 generated-rotorized.btor2</span></span>
+        <span class="l"><span class="p">$</span> <span class="c">./rotor -c generated.c - 0</span></span>
+        <span class="l"><span class="p">$</span> <span class="c">tools/bitme.py -kmax 1000 \</span></span>
+        <span class="l"><span class="c">    generated-rotorized.btor2</span></span>
         <span class="l o">… core-0-division-by-zero — satisfiable · input 0</span>
       </div>
       <div class="stack">

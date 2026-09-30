@@ -86,7 +86,7 @@
   <div class="eyebrow">Babysat</div>
   <h2>The executable specification: try true, try false, <span class="k">prune</span> when a clause is already lost.</h2>
   <div class="fill">
-    <div class="two">
+    <div class="two" style="grid-template-columns:1fr 1.15fr">
       <div class="term sm">
         <span class="l c">uint64_t babysat(uint64_t depth) {</span>
         <span class="l c">  if (depth == number_of_sat_variables)</span>
@@ -105,7 +105,8 @@
         <p class="f" data-step="2">Four hundred lines of C* on top of selfie, so mipster runs it. It is what a SAT solver <em>is</em>: the search tree walked depth-first and pruned at dead branches.</p>
         <div class="term sm f" data-step="3">
           <span class="l"><span class="p">$</span> <span class="c">make sat</span></span>
-          <span class="l o">./babysat: examples/sat/rivest.cnf is satisfiable with -1 -2 3 4</span>
+          <span class="l o">./babysat: examples/sat/rivest.cnf is satisfiable</span>
+          <span class="l o">  with -1 -2 3 4</span>
         </div>
       </div>
     </div>
