@@ -41,9 +41,9 @@
   <div class="fill row mid">
     <div class="fig grow" style="flex:1.2" data-fig="powerset"><span class="cap">subsets as answer sheets · 1 = in</span></div>
     <div class="stack grow">
-      <p class="f" data-step="1">Take any collection of counting numbers — the evens, the primes, just {3}, none of them, all of them. Each one is a <strong>subset</strong>. To pin one down, walk 1, 2, 3, … and answer in or out, forever.</p>
-      <p class="f" data-step="2">That answer sheet is an infinite bit string, and every infinite bit string is one. All of them together make the <strong>power set</strong>, written 2<sup>ℕ</sup> — two choices, made ℕ times.</p>
-      <p class="f" data-step="3">A handful have names. Almost all are an endless coin-flip, with nothing shorter to say about them than the flips.</p>
+      <p class="f" data-step="1">Take any collection of counting numbers — the evens, the primes, just {3}, none, all. Each is a <strong>subset</strong>. To pin one down, walk 1, 2, 3, … and answer in or out, forever.</p>
+      <p class="f" data-step="2">That answer sheet is an infinite bit string, and every infinite bit string is one. Together they make the <strong>power set</strong>, 2<sup>ℕ</sup> — two choices, made ℕ times.</p>
+      <p class="f" data-step="3">A handful have names. Almost all are an endless coin-flip, with nothing shorter to say than the flips.</p>
     </div>
   </div>
   <aside class="notes"><p>The bridge slide, and the one to go slowly on: everything after depends on the room seeing that a subset and an infinite bit string are the same object seen twice. Read the rows out. Then the last row, which has no rule and no name, and which is what nearly every subset looks like: to specify it you must transmit the answers themselves, forever. That is the first appearance of incompressibility, and it returns in week 13.</p></aside>
@@ -55,10 +55,10 @@
   <div class="fill row mid">
     <div class="fig grow" style="flex:1.2" data-fig="diagset"><span class="cap">● in · ○ out</span></div>
     <div class="stack grow">
-      <p class="f" data-step="1">Suppose the subsets could be listed: <span class="mono">S1, S2, S3, …</span>, every one of them somewhere on the list.</p>
-      <p class="f" data-step="2">Go down the <span class="j">diagonal</span> and ask each row about <em>its own number</em>. Is 1 in S1? Is 2 in S2? Is n in Sn?</p>
-      <p class="f" data-step="3">Now build <span class="mono">D</span> by answering the opposite every time: <span class="mono">D = { n : n is not in Sn }</span>. A rule anyone can apply.</p>
-      <p class="f" data-step="4"><span class="mono">D</span> is not S1: they disagree about 1. Not S2: they disagree about 2. Not Sn for any n. So the list left something out, and it was <strong>any list at all</strong>.</p>
+      <p class="f" data-step="1">Suppose the subsets could be listed: <span class="mono">S1, S2, S3, …</span>, every one somewhere on the list.</p>
+      <p class="f" data-step="2">Go down the <span class="j">diagonal</span> and ask each row about <em>its own number</em>: is 1 in S1? Is 2 in S2? Is n in Sn?</p>
+      <p class="f" data-step="3">Build <span class="mono">D</span> by answering the opposite every time: <span class="mono">D = { n : n is not in Sn }</span>.</p>
+      <p class="f" data-step="4"><span class="mono">D</span> is not S1: they disagree about 1. Not S2: they disagree about 2. Not any Sn. So the list left something out, and it was <strong>any list at all</strong>.</p>
     </div>
   </div>
   <aside class="notes"><p>Take the full time. Build the grid, ring the diagonal, then construct D one column at a time out loud: 1 is in S1, so 1 stays out of D; 2 is out of S2, so 2 goes into D. Then the kill: ask where D is on the list. Somebody says further down; point at row n and ask what D and Sn say about n. They disagree by construction. Stress that no assumption was made about the list. Students who have seen a proof by contradiction recognise the shape; the others have just seen their first, and it is one of the good ones.</p></aside>
@@ -70,9 +70,9 @@
   <div class="fill row mid">
     <div class="fig grow" style="flex:1.2" data-fig="diagreal"><span class="cap">any list · and the number it missed</span></div>
     <div class="stack grow">
-      <p class="f" data-step="1">Suppose you could list them: <span class="mono">r1, r2, r3, …</span>, each written out as an endless decimal. Take the first digit of the first, the second of the second, the n-th of the n-th. The diagonal again.</p>
-      <p class="f" data-step="2">Build a new number <span class="mono">x</span> by changing every one of those digits. Then x differs from r1 in the first place, from rn in the n-th — so x is on no row.</p>
-      <div class="card syn f" data-step="3"><span class="h">The one place it needs care</span><p>Change each digit to 5, or to 4 if it was already 5. That keeps you clear of the trailing nines: 0.4999… and 0.5000… are the same number written twice, and a proof that only landed on that would have proved nothing.</p></div>
+      <p class="f" data-step="1">Suppose you could list them: <span class="mono">r1, r2, r3, …</span>, each an endless decimal. Take the first digit of the first, the second of the second, the n-th of the n-th. The diagonal again.</p>
+      <p class="f" data-step="2">Build a new number <span class="mono">x</span> by changing every one of those digits. Then x differs from rn in the n-th place — so x is on no row.</p>
+      <div class="card syn f" data-step="3"><span class="h">The one place it needs care</span><p>Change each digit to 5, or to 4 if it was 5. That avoids the trailing nines: 0.4999… and 0.5000… are the same number written twice, and a proof that landed on that would prove nothing.</p></div>
     </div>
   </div>
   <aside class="notes"><p>Run it exactly as before so the room hears the repetition; that is the teaching point, one argument in two costumes. The rows on screen are arbitrary, not famous constants; say so. The trailing-nines care is worth the twenty seconds: it is the only crack in the proof, every serious textbook patches it, and showing the patch is what separates a proof from a slogan.</p></aside>
@@ -142,9 +142,9 @@
     <div class="two">
       <ol class="steps">
         <li>Read the Meaning chapter from <em>What we want to talk about is not</em> to <em>Syntax and semantics</em>.</li>
-        <li>Make up six subsets of {1, …, 6} as answer sheets and build the diagonal D by hand. Check that it differs from every row.</li>
-        <li>Run the decimal version on a list of six decimals of your own. Then explain, in one sentence, why the fractions escape the argument.</li>
-        <li>How many programs of at most 1,000 characters are there over an alphabet of 100 symbols? How many behaviours on inputs 1 to 1,000 are there? Which number is bigger, and by how much?</li>
+        <li>Write six subsets of {1, …, 6} as answer sheets and build the diagonal D by hand. Check it against every row.</li>
+        <li>Run the decimal version on six decimals of your own. Why do the fractions escape the argument?</li>
+        <li>How many programs of at most 1,000 characters are there over 100 symbols? How many behaviours on inputs 1 to 1,000? Which is bigger, and by how much?</li>
         <li>Find one new notation from your own life — a recipe format, chess notation, a knitting pattern — and say what it made sayable.</li>
       </ol>
       <div class="card syn"><span class="h">Next week</span><p>Self-reference I: a compiler defines the meaning of the language it is written in; the fixed point, and what Ken Thompson says it cannot prove; and Gödel's two theorems, with the same diagonal.</p></div>

@@ -185,9 +185,9 @@
   <div class="fill row mid">
     <div class="fig grow" data-fig="correct-integer-literal-fsm"><span class="cap">integer literals without leading zeros</span></div>
     <div class="stack grow">
-      <p class="f" data-step="1">A <strong>finite state machine</strong> reads one character at a time and remembers only which circle it is in. That is enough to check integers, identifiers, and the whole synopsis — anything a regular expression describes.</p>
-      <p class="f" data-step="2">It is not enough for parentheses: to check that every <span class="mono">(</span> has its <span class="mono">)</span> you must count without bound, and a finite machine cannot. Add a <strong>stack</strong> and you can: expressions, statements, procedures, all of C*, all of EBNF itself.</p>
-      <p class="f" data-step="3">Regular inside context-free inside … — the sizes of notation form a ladder, and week 9 says where the ladder ends.</p>
+      <p class="f" data-step="1">A <strong>finite state machine</strong> reads one character at a time and remembers only which circle it is in. That is enough for integers, identifiers, and the whole synopsis — anything a regular expression describes.</p>
+      <p class="f" data-step="2">It is not enough for parentheses: matching every <span class="mono">(</span> with its <span class="mono">)</span> means counting without bound. Add a <strong>stack</strong> and you can: expressions, statements, procedures, all of C*, all of EBNF itself.</p>
+      <p class="f" data-step="3">Regular inside context-free inside … — notation comes in sizes, a ladder, and week 9 says where it ends.</p>
     </div>
   </div>
   <aside class="notes"><p>Run the FSM on 007 and on 42 by finger. Then the parentheses argument, which is the first proof-shaped thing in the class and worth doing properly: whatever number of states the machine has, feed it more opening parentheses than that and two different depths land in the same state, so it cannot tell them apart. That is why the compiler in week 8 has a stack, and why the machine of week 6 has one too.</p></aside>

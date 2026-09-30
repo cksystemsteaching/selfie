@@ -46,8 +46,8 @@
     <div class="fig grow" style="flex:1.3" data-fig="bases"><span class="cap">digits per base · levels per digit</span></div>
     <div class="stack grow">
       <p class="f" data-step="1">Unary writes n as n bars; positional notation needs ⌈log<sub>b</sub> n⌉ digits: 85 is 85 bars, 7 bits, 2 decimal digits. Base 1 to 2 buys an exponential; base 2 to 10 buys log<sub>2</sub> 10 ≈ 3.3, for every n.</p>
-      <p class="f" data-step="2">The price is arithmetic. In unary, counting is appending a bar: constant time. In any positional base an addition walks the digits: log n steps, with carries.</p>
-      <p class="f" data-step="3">So the mathematics says leave unary, and does not say which base. That is a decision for physics.</p>
+      <p class="f" data-step="2">The price is arithmetic. In unary, counting appends a bar: constant time. In a positional base an addition walks the digits: log n steps, with carries.</p>
+      <p class="f" data-step="3">So the mathematics says leave unary, and does not say which base. That is for physics.</p>
     </div>
   </div>
   <aside class="notes"><p>The exponential is the one that matters and the students should say it back: 85 bars against 7 bits. Then the constant factor, log₂ b, which is the same for every n and so cannot ever pay for much. Then the cost, log-time addition, which every positional base pays. The mathematics leaves the base open; the next slide closes it.</p></aside>
@@ -74,19 +74,19 @@
   <div class="fill">
     <div class="two">
       <div class="stack">
-        <p class="f" data-step="1">Write base 3 with the digits −1, 0 and 1 instead of 0, 1 and 2. Then every integer, negative ones included, has exactly one representation, and −n is n with every digit negated: 85 = 81 + 3 + 1 is 1 0 0 1 1 and −85 is −1 0 0 −1 −1. No two's complement, no sign convention, and rounding is truncation.</p>
-        <p class="f" data-step="2">Setun, built at Moscow State University in 1958, computed in balanced ternary and about fifty were made. Knuth called it the prettiest number system of all. It lost anyway, and not to a better idea: to the transistor, which is a switch, and to a supply chain of parts that were all binary.</p>
+        <p class="f" data-step="1">Write base 3 with digits −1, 0 and 1. Every integer, negative or not, has exactly one representation, and −n is n with every digit negated: 85 = 81 + 3 + 1 is 1 0 0 1 1, and −85 is −1 0 0 −1 −1. No two's complement, no sign convention.</p>
+        <p class="f" data-step="2">Setun, built in Moscow in 1958, computed in balanced ternary. Knuth called it the prettiest number system of all. It lost anyway, not to a better idea but to the transistor, which is a switch.</p>
       </div>
       <div class="stack">
         <table class="t">
           <tr><th></th><th>binary</th><th>balanced ternary</th></tr>
           <tr><td>digits</td><td class="mono">0 1</td><td class="mono">−1 0 1</td></tr>
-          <tr><td>negative numbers</td><td>a convention on top</td><td>built in</td></tr>
-          <tr><td>negation</td><td>invert and add 1</td><td>flip every digit</td></tr>
-          <tr><td>digit count for n</td><td class="mono">log₂ n</td><td class="mono">log₃ n = 0.63 · log₂ n</td></tr>
-          <tr><td>levels a digit holds</td><td>2</td><td>3</td></tr>
+          <tr><td>negatives</td><td>convention</td><td>built in</td></tr>
+          <tr><td>negation</td><td>invert, add 1</td><td>flip digits</td></tr>
+          <tr><td>length</td><td class="mono">log₂ n</td><td class="mono">0.63 · log₂ n</td></tr>
+          <tr><td>levels</td><td>2</td><td>3</td></tr>
         </table>
-        <p class="sm f" data-step="3">Mathematically the nicer system; physically three levels where two would do. The bits do not say which; the transistor does.</p>
+        <p class="sm f" data-step="3">Mathematically the nicer system; physically three levels where two would do. The transistor decides.</p>
       </div>
     </div>
   </div>
@@ -224,11 +224,11 @@
       <ol class="steps">
         <li>Read the Size chapter from <em>Numbers</em> to <em>Code</em>.</li>
         <li>Write 42, 255, and 1000 in binary and hexadecimal. Add 85 and 42 in binary with carries.</li>
-        <li>How many digits does 1000 need in unary, binary, ternary and decimal? Which of the four ratios stays the same as the number grows, and which does not?</li>
+        <li>How many digits does 1000 need in unary, binary, ternary and decimal? Which ratios stay the same as the number grows?</li>
         <li>What is 1010101 as a signed 7-bit number? What is 11111111 as an unsigned and as a signed byte?</li>
         <li>Write your first name in ASCII, in binary, and count the bits. Then in UTF-8 if it has an umlaut.</li>
         <li>Run <span class="mono">examples/overflows.c</span> and explain each line of output.</li>
-        <li>In the pointers figure, what happens if the byte at address 0 held 7 instead of 85?</li>
+        <li>In the pointers figure, what if the byte at address 0 held 7 instead of 85?</li>
       </ol>
       <div class="card syn"><span class="h">Next week</span><p>Notation: formal languages. EBNF, and the two languages selfie is made of — C* with seven keywords, RISC-U with fourteen instructions — read exactly.</p></div>
     </div>

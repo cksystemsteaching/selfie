@@ -97,9 +97,9 @@
   <div class="fill row mid">
     <div class="fig grow" style="flex:1.2" data-fig="selfref"><span class="cap">the kernel requires what the kernel provides</span></div>
     <div class="stack grow">
-      <p class="f" data-step="1">The kernel provides isolation. To provide it, the kernel runs on the same processor as the guests — so the kernel needs to be isolated too. From the guests. By whom?</p>
-      <p class="f" data-step="2">By itself, would be the answer, and week 8 said what that is worth. Nothing certifies itself. So real kernels do it the other way: a small piece of code, isolated by construction, that must never fault, written and checked by hand — the <strong>trusted computing base</strong>. Keeping it small is the microkernel programme.</p>
-      <p class="f" data-step="3">The certification comes from outside the loop. Same shape as Thompson's second compiler. Same theorem.</p>
+      <p class="f" data-step="1">The kernel provides isolation. To provide it, the kernel runs on the same processor as the guests — so it needs isolating too. From the guests. By whom?</p>
+      <p class="f" data-step="2">By itself, and week 8 said what that is worth: nothing certifies itself. So real kernels rely on a small piece of code, isolated by construction and checked by hand, that must never fault — the <strong>trusted computing base</strong>. Keeping it small is the microkernel programme.</p>
+      <p class="f" data-step="3">The certification comes from outside the loop: the shape of Thompson's second compiler. Same theorem.</p>
     </div>
   </div>
   <aside class="notes"><p>This is the slide of the session, and the reason the systems side is in a class about intelligence. The kernel that needs what it provides is Gödel's second theorem in engineering clothes, and the response is the one every station of the semester recommends: an outside check, kept as small as possible. In selfie the trusted base is hypster's exception handler and context switch.</p></aside>
@@ -115,8 +115,8 @@
         <span class="l"><span class="p">$</span> <span class="c">./selfie -c selfie.c -o selfie.m -m 3 -l selfie.m -y 2 -l selfie.m -y 1</span></span>
         <span class="l o">…</span>
       </div>
-      <p class="f" data-step="1">The third command from week 1. An emulated machine hosts a hypervisor that hosts a hypervisor that hosts selfie, which prints its synopsis. Still reasonably fast, because there is only one emulator in the stack and each hypervisor adds little.</p>
-      <p class="f" data-step="2">Understand the first command and you understand compilers; the second, machines; the third, operating systems. Only the third is hard to implement, and this deck said exactly where.</p>
+      <p class="f" data-step="1">The third command from week 1. An emulated machine hosts a hypervisor that hosts a hypervisor that hosts selfie, which prints its synopsis. Still fast: there is only one emulator in the stack and each hypervisor adds little.</p>
+      <p class="f" data-step="2">Understand the first command and you understand compilers; the second, machines; the third, operating systems. Only the third is hard to implement, and this deck said where.</p>
     </div>
   </div>
   <aside class="notes"><p>Run it. Then the sentence from week 1, now earned. The systems class spends a semester making hypster do this with processes, threads and locks; here the point is that the loop closes and the machine still works.</p></aside>
