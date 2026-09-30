@@ -96,12 +96,11 @@
       <div class="term sm">
         <span class="l"><span class="p">$</span> <span class="c">make self-self-check</span></span>
         <span class="l o">./selfie -c selfie.c -o selfie1.m -s selfie1.s -m 2 -c selfie.c -o selfie2.m -s selfie2.s</span>
-        <span class="l o">…</span>
         <span class="l o">diff -q selfie1.m selfie2.m</span>
         <span class="l o">diff -q selfie1.s selfie2.s</span>
       </div>
-      <p class="f" data-step="1">Stage one: a C compiler you did not write produces a selfie. Stage two: that selfie compiles selfie.c into selfie1.m. Stage three: selfie1.m, running on the emulator, compiles selfie.c into selfie2.m.</p>
-      <p class="f" data-step="2">selfie1.m and selfie2.m are identical: 188,392 bytes, the same number. The compiler agrees with itself. What that does <em>not</em> prove is the subject of week 8.</p>
+      <p class="f" data-step="1">Stage one: a C compiler you did not write produces a selfie. Stage two: that selfie compiles selfie.c into selfie1.m. Stage three: selfie1.m, on the emulator, compiles it again into selfie2.m.</p>
+      <p class="f" data-step="2">The two are identical: 188,392 bytes, the same number. What that does <em>not</em> prove is the subject of week 8.</p>
     </div>
   </div>
   <aside class="notes"><p>Run it, and let it take its minute; the room should see the second compilation happen inside the emulator, slower. The diff prints nothing, which is the point. Say clearly what it proves, self-agreement, and refuse to say more: a compiler that consistently mistranslated one construct would pass this check. Week 8 has Thompson's compiler for that. Today it is the first fixed point they have seen, and it is real.</p></aside>

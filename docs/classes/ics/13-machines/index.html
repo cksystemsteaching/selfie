@@ -27,9 +27,9 @@
   <div class="fill row mid">
     <div class="fig grow" style="flex:1.4" data-fig="tokens"><span class="cap">tokens in · a distribution over the next one out · then a sample</span></div>
     <div class="stack grow">
-      <p class="f" data-step="1">The name is exact. What it is trained on is <em>language</em>, so the signal is syntactic: which symbol follows which. Meaning is never handed to it. That this works as well as it does is the genuine surprise of the decade.</p>
+      <p class="f" data-step="1">The name is exact. It is trained on <em>language</em>, so the signal is syntactic: which symbol follows which. Meaning is never handed to it.</p>
       <p class="f" data-step="2">Context in, a probability for every next token out, one sampled, appended, and round again. The answer becomes the next question.</p>
-      <p class="f" data-step="3">It cost megawatts for weeks; you run on twenty watts. Neither figure changes what kind of object it is: arithmetic on bits, a C* program in principle, which mipster would run.</p>
+      <p class="f" data-step="3">It cost megawatts for weeks; you run on twenty watts. Either way it is arithmetic on bits, which mipster could run.</p>
     </div>
   </div>
   <aside class="notes"><p>Keep the description mechanical and unpolemical; students should leave able to explain what these systems are to a friend. Walk the figure: the chips, the reserved slot, the weights, the bar chart, the sample, the feedback path. Say once that attention is named and not derived here, and that the book points at the paper.</p></aside>
@@ -96,11 +96,12 @@
   <div class="fill row mid">
     <div class="fig grow" style="flex:1.4" data-fig="gate"><span class="cap">what the machine supplies · and what it does not</span></div>
     <div class="stack grow">
-      <p class="f" data-step="1">Prompt in English, and what comes back is plausible notation. Unchecked, it is simply accepted — and then there is no semantics anywhere in the loop. Checked, it meets a compiler, a test, a proof, a measurement, and is kept or sent back round.</p>
-      <p class="f" data-step="2">The fourth appearance of one theorem. Cantor's list needed an object built from outside it. Gödel's system needed a stronger one. Thompson's compiler needed a second compiler. The generator needs a check it cannot be.</p>
+      <p class="f" data-step="1">Prompt in English, and what comes back is plausible notation. Unchecked, there is no semantics anywhere in the loop. Checked, it meets a compiler, a test, a proof, and is kept or sent back.</p>
+      <p class="f" data-step="2">One theorem, fourth appearance. Cantor's list needed an object from outside; Gödel's system a stronger one; Thompson's compiler a second one. The generator needs a check it cannot be.</p>
       <div class="term sm f" data-step="3">
         <span class="l"><span class="p">$</span> <span class="c">./selfie -c generated.c -m 1</span></span>
-        <span class="l o">./selfie: syntax error in generated.c in line 4: unexpected symbol "[" found</span>
+        <span class="l o">./selfie: syntax error in generated.c in line 4:</span>
+        <span class="l o">          unexpected symbol "[" found</span>
       </div>
     </div>
   </div>
