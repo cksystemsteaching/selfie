@@ -25,10 +25,10 @@
   <div class="eyebrow">Virtualization</div>
   <h2>Run the guest's instructions on the host's processor. Trap only what crosses the <span class="k">boundary</span>.</h2>
   <div class="fill row mid">
-    <div class="fig grow" style="flex:1" data-fig="emuvirt"><span class="cap">an OS by emulation reads the guest; an OS by virtualization runs it</span></div>
-    <div class="stack grow" style="flex:1.2">
-      <p class="f" data-step="1">Hypster does what mipster does with one change: instead of interpreting the guest's instructions, it maps the guest's context onto the processor and lets it execute them. Adds, loads, branches: native speed. System calls, page faults, the timer: exceptions back to hypster, handled as mipster would.</p>
-      <p class="f" data-step="2">Same signature, same contexts, same handlers. The guest cannot tell which one hosts it: same output, same 86,380 instructions. Emulation and virtualization are semantically equivalent; the emulator is the executable specification.</p>
+    <div class="fig grow" style="flex:1.3" data-fig="emuvirt"><span class="cap">an OS by emulation reads the guest; an OS by virtualization runs it</span></div>
+    <div class="stack grow">
+      <p class="f" data-step="1">Hypster does what mipster does with one change: it maps the guest's context onto the processor and lets it execute the guest's instructions. Adds, loads, branches: native speed. System calls, page faults, the timer: exceptions back to hypster.</p>
+      <p class="f" data-step="2">Same signature, same contexts, same handlers. The guest cannot tell which one hosts it: same output, same 86,380 instructions. The emulator is the executable specification.</p>
     </div>
   </div>
   <aside class="notes"><p>The equivalence, now argued: hypster and mipster are two implementations of one interface, and the guest observes only the interface. Read the two procedures side by side in selfie.c; the difference is a handful of lines around who executes.</p></aside>
@@ -38,15 +38,15 @@
   <div class="eyebrow">The bill</div>
   <h2>×2,593 versus ×208. Performance is the <span class="j">only</span> reason.</h2>
   <div class="fill row mid">
-    <div class="fig grow" style="flex:1" data-fig="cost"><span class="cap">host instructions per guest instruction, emulated and virtualized</span></div>
-    <div class="stack grow" style="flex:1.2">
+    <div class="fig grow" style="flex:1.2" data-fig="cost"><span class="cap">host instructions per guest instruction, emulated and virtualized</span></div>
+    <div class="stack grow">
       <div class="term sm">
         <span class="l"><span class="p">$</span> <span class="c">make os-emu</span></span>
         <span class="l o">&gt; selfie.m: summary: 86380 executed instructions in total</span>
         <span class="l o">./selfie: summary: 17860937 executed instructions in total</span>
       </div>
-      <p class="f" data-step="1">The guest still runs 86,380; the host 18 million instead of 222. What remains is the cost of exceptions and context switches. On real hardware, a few percent.</p>
-      <p class="f" data-step="2">Nothing else changed: not the isolation, not the output, not the semantics. Virtualization is an optimisation, and an optimisation preserves meaning. So what does it cost?</p>
+      <p class="f" data-step="1">The guest still runs 86,380; the host 18 million instead of 222. What remains is exceptions and context switches: on real hardware, a few percent.</p>
+      <p class="f" data-step="2">Nothing else changed: not the isolation, not the output, not the semantics. An optimisation preserves meaning. So what does it cost?</p>
     </div>
   </div>
   <aside class="notes"><p>Run it. The numbers are selfie's on the class machine; check before class. Then the question that the next slide answers: an optimisation preserves meaning, so what did we pay?</p></aside>
@@ -56,10 +56,10 @@
   <div class="eyebrow">Self-reference</div>
   <h2>The kernel now runs on the machine it isolates. It needs the isolation it <span class="x">provides</span>.</h2>
   <div class="fill row mid">
-    <div class="fig grow" style="flex:1" data-fig="selfref"><span class="cap">virtualization is emulation plus self-reference</span></div>
-    <div class="stack grow" style="flex:1.2">
-      <p class="f" data-step="1">In mipster the guest is data; the host is never at stake. In hypster the guest runs on the host's processor and memory, behind the host's page tables. Who protects the page tables? The page tables. Who stops a guest that ignores the timer? The timer.</p>
-      <p class="f" data-step="2">So the kernel must be isolated from the very things it isolates: memory only it can map, a mode only it can enter, a timer only it can set. Hence the privilege levels of week 2.</p>
+    <div class="fig grow" style="flex:1.2" data-fig="selfref"><span class="cap">virtualization is emulation plus self-reference</span></div>
+    <div class="stack grow">
+      <p class="f" data-step="1">In mipster the guest is data; the host is never at stake. In hypster the guest runs on the host's processor, behind the host's page tables. Who protects the page tables? The page tables.</p>
+      <p class="f" data-step="2">So the kernel must be isolated from the very things it isolates: memory only it can map, a mode only it can enter, a timer only it can set.</p>
       <p class="f" data-step="3">The price is self-reference, where every limit lives.</p>
     </div>
   </div>
@@ -70,14 +70,14 @@
   <div class="eyebrow">Bootstrap</div>
   <h2>Hypervisor on hypervisor on emulator. Somebody has to be <span class="k">first</span>.</h2>
   <div class="fill row mid">
-    <div class="fig grow" style="flex:1" data-fig="ladder"><span class="cap">self-hosting: each level virtualizes the one above, and the bottom is emulated</span></div>
-    <div class="stack grow" style="flex:1.2">
+    <div class="fig grow" style="flex:1.2" data-fig="ladder"><span class="cap">self-hosting: each level virtualizes the one above, and the bottom is emulated</span></div>
+    <div class="stack grow">
       <div class="term sm">
         <span class="l"><span class="p">$</span> <span class="c">./selfie -c selfie.c -o selfie.m -m 3 \</span></span>
         <span class="l c">    -l selfie.m -y 2 -l selfie.m -y 1</span>
       </div>
-      <p class="f" data-step="1">Each level asks the one below to create a context and run it; requests fall to the bottom, where mipster, an emulator, executes. The ladder stands on something that does not stand on itself.</p>
-      <p class="f" data-step="2">Gödel's second theorem in a kernel: no system establishes its own consistency from inside, no kernel its own isolation. Both need a ground outside: hardware privilege, an emulator, or a smaller kernel underneath.</p>
+      <p class="f" data-step="1">Each level asks the one below to create a context and run it; requests fall to the bottom, where mipster, an emulator, executes.</p>
+      <p class="f" data-step="2">Gödel's second theorem in a kernel: no system establishes its own consistency from inside, no kernel its own isolation. The ground is outside: hardware privilege, an emulator, a smaller kernel.</p>
     </div>
   </div>
   <aside class="notes"><p>The third command, finally explained. Trace one system call down the ladder. Then Gödel II, stated as what the ladder shows: no level isolates itself; the bottom is trusted.</p></aside>

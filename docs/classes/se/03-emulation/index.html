@@ -36,9 +36,9 @@
         <span class="l c">}</span>
       </div>
       <div class="stack">
-        <p class="f" data-step="1">The machine chapter's cycle as a program. The guest's code is data in the host's memory, read one word at a time and never executed by the host's processor. Fourteen cases in <span class="mono">execute</span>, each a few lines of arithmetic on the context's registers.</p>
-        <p class="f" data-step="2">This is Turing's universal machine: one program that becomes any program when handed its description. The introduction class proved it universal; this class runs it.</p>
-        <p class="f" data-step="3">And it is an operating system: the guest cannot touch anything the emulator does not hand it. Isolation for free. No self-reference anywhere.</p>
+        <p class="f" data-step="1">The machine chapter's cycle as a program. The guest's code is data in the host's memory, read one word at a time, never executed by the host's processor.</p>
+        <p class="f" data-step="2">This is Turing's universal machine: one program that becomes any program when handed its description.</p>
+        <p class="f" data-step="3">And it is an operating system: the guest cannot touch anything the emulator does not hand it. Isolation for free, and no self-reference.</p>
       </div>
     </div>
   </div>
@@ -58,8 +58,8 @@
         <span class="l o">&gt; selfie.m: summary: 86380 executed instructions in total</span>
         <span class="l o">./selfie: summary: 222410917 executed instructions in total</span>
       </div>
-      <p class="f" data-step="1">Selfie printing its synopsis costs 85,754 instructions bare-metal. Hosted by mipster inside mipster it costs the guest 86,380 and the host 222 million: a factor of 2,593, one per level.</p>
-      <p class="f" data-step="2">The guest cannot tell. Same output, same instruction count give or take the boot level, which selfie tells it deliberately. Emulation is semantically transparent and computationally expensive, and that sentence is the whole motivation for the next three weeks.</p>
+      <p class="f" data-step="1">Printing its synopsis costs selfie 85,754 instructions. Under mipster inside mipster: 86,380 for the guest, 222 million for the host, ×2,593.</p>
+      <p class="f" data-step="2">The guest cannot tell: same output, same count. Semantically transparent, computationally expensive.</p>
     </div>
   </div>
   <aside class="notes"><p>Run both. The guest's number is the one to underline: 86,380, the same whether it is hosted by an emulator or, in week 6, by a hypervisor. The host's number is the bill, and it is what virtualization exists to cut.</p></aside>

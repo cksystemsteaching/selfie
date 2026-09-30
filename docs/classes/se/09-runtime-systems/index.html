@@ -51,9 +51,9 @@
   <div class="fill row mid">
     <div class="fig grow" style="flex:1.1" data-fig="live-versus-dead"><span class="cap">live memory may be used again; dead memory will not be; unreachable memory cannot be</span></div>
     <div class="stack grow">
-      <p class="f" data-step="1">A block is <strong>live</strong> if the program will use it again and <strong>dead</strong> if it will not. Whether a program will ever use a given address is a property of its future behaviour: Rice, exactly. No collector decides liveness.</p>
-      <p class="f" data-step="2">A block is <strong>reachable</strong> if some chain of pointers leads to it from a variable. Reachability is a property of the current state, computed by a graph traversal in time linear in the heap. Unreachable implies dead; the converse fails, and the difference is the memory a collector keeps although it is dead.</p>
-      <p class="f" data-step="3">So every garbage collector computes the decidable over-approximation of the undecidable property. Safe, never precise. The design principle of the class again: bound what you cannot decide.</p>
+      <p class="f" data-step="1">A block is <strong>live</strong> if the program will use it again, <strong>dead</strong> if not. That is a property of future behaviour: Rice, exactly. No collector decides liveness.</p>
+      <p class="f" data-step="2">A block is <strong>reachable</strong> if a chain of pointers leads to it from a variable: a property of the current state, computed by a graph traversal. Unreachable implies dead; the converse fails.</p>
+      <p class="f" data-step="3">So every collector computes the decidable over-approximation of the undecidable property. Safe, never precise: bound what you cannot decide.</p>
     </div>
   </div>
   <aside class="notes"><p>The cleanest Rice application in the class. Live is about the future, reachable is about the present. The collector is sound, keeps dead memory, and leaks are what it cannot see: memory that is reachable and dead.</p></aside>
@@ -65,9 +65,9 @@
   <div class="fill row mid">
     <div class="fig grow" style="flex:1.2" data-fig="roots-into-heap"><span class="cap">roots in the data and stack segments; the heap reached from them</span></div>
     <div class="stack grow">
-      <p class="f" data-step="1">The roots are the global variables in the data segment and the locals and parameters on every stack. Mark everything reachable from them, transitively; sweep everything unmarked. Mark-and-sweep, and selfie's collector does this on the emulator's view of the guest's memory, or as a library inside the program, or both at once.</p>
-      <p class="f" data-step="2">Which words are pointers? C* does not say; a word is a number. A <strong>conservative</strong> collector treats every word that could be a heap address as if it were one: an over-approximation of an over-approximation, still safe, still a bound. Boehm's collector made that fast; selfie's makes it readable.</p>
-      <p class="f" data-step="3">Self-collecting selfie: the emulator's collector collects the memory of a guest that is running its own collector on the memory of its guest. Try <span class="mono">-gc</span> at two levels and read the profile.</p>
+      <p class="f" data-step="1">The roots are the globals in the data segment and the locals and parameters on every stack. Mark everything reachable from them; sweep the rest. Selfie's collector does this from the emulator, or as a library inside the program, or both.</p>
+      <p class="f" data-step="2">Which words are pointers? C* does not say. A <strong>conservative</strong> collector treats every word that could be a heap address as one: still safe, still a bound.</p>
+      <p class="f" data-step="3">Try <span class="mono">-gc</span> at two levels: a collector collecting a guest that runs its own collector.</p>
     </div>
   </div>
   <aside class="notes"><p>Mark-and-sweep on the figure. The pointer-or-value question is the conservative collector's whole story. Run the self-collecting command from the book's action callout and show the two collectors stacked; the numbers are on the class machine.</p></aside>

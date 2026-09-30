@@ -42,9 +42,9 @@
   <div class="fill row mid">
     <div class="fig grow" style="flex:1.1" data-fig="halt"><span class="cap">the halting construction: a program that halts iff it does not</span></div>
     <div class="stack grow">
-      <p class="f" data-step="1">Suppose <em>H</em> decides halting. Build <em>D</em>: run <em>H</em> on its own input, and loop if <em>H</em> says halt, halt if it says loop. Run <em>D</em> on <em>D</em>. Either answer contradicts itself. Cantor's diagonal, on programs; Gödel's sentence, on machines. Self-reference, the guiding principle of the book, does the work.</p>
-      <p class="f" data-step="2">The kernel's answer, week 5: do not decide, bound. The timer interrupt is a proof-free guarantee that every context yields, bought by preempting the ones that would not. What a scheduler knows about a program's future is exactly nothing, and the design is consistent with that.</p>
-      <p class="f" data-step="3">Fork, week 7, is the construction made literal: a process that runs a copy of itself and asks the copy a question. The kernel copes because the copy is isolated, and isolation is what stops self-reference from becoming a contradiction.</p>
+      <p class="f" data-step="1">Suppose <em>H</em> decides halting. Build <em>D</em>: run <em>H</em> on its own input, loop if <em>H</em> says halt, halt if it says loop. Run <em>D</em> on <em>D</em>: either answer contradicts itself. Cantor's diagonal, on programs.</p>
+      <p class="f" data-step="2">The kernel's answer, week 5: do not decide, bound. The timer guarantees that every context yields, by preempting the ones that would not.</p>
+      <p class="f" data-step="3">Fork, week 7, is the construction made literal: a process that runs a copy of itself. The kernel copes because the copy is isolated; isolation keeps self-reference from becoming a contradiction.</p>
     </div>
   </div>
   <aside class="notes"><p>The construction on the figure, then two systems readings: the timer, and fork as the diagonal. The last point is a nice one: isolation is how a system tolerates self-reference without paradox.</p></aside>

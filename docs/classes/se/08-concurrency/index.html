@@ -108,13 +108,13 @@
         <span class="l c">retry:</span>
         <span class="l c">  lr.d t0,(a0)       // load x, reserve a0</span>
         <span class="l c">  addi t0,t0,1</span>
-        <span class="l c">  sc.d t1,t0,(a0)    // store if still reserved; t1 = 0 on success</span>
-        <span class="l c">  bne  t1,zero,retry // someone interfered: try again</span>
+        <span class="l c">  sc.d t1,t0,(a0)    // store if reserved; t1 = 0 if ok</span>
+        <span class="l c">  bne  t1,zero,retry // interfered: retry</span>
       </div>
       <div class="stack">
-        <p class="f" data-step="1">Load-reserved and store-conditional, RISC-V's pair: the load remembers the address, the store checks that no other core or thread wrote to it since, and fails instead of overwriting. A failed store is not an error; it is information, and the loop uses it.</p>
-        <p class="f" data-step="2">RISC-U does not have them. Your assignment adds them to the machine, the emulator, and the hypervisor: a new instruction is a new line in the machine chapter's table, a new case in mipster's <span class="mono">execute</span>, and a new column in the interleaving state space that behaves.</p>
-        <p class="f" data-step="3">With these, a lock is four instructions and correct. Without them, no lock is. The whole of concurrent programming rests on one instruction that the machine promises not to interleave.</p>
+        <p class="f" data-step="1">Load-reserved and store-conditional: the load remembers the address, the store checks that nobody wrote to it since, and fails instead of overwriting. A failed store is information, and the loop uses it.</p>
+        <p class="f" data-step="2">RISC-U does not have them. Your assignment adds them to the machine, the emulator and the hypervisor: a new line in the instruction table, a new case in mipster's <span class="mono">execute</span>.</p>
+        <p class="f" data-step="3">With these, a lock is four instructions and correct. Without them, no lock is.</p>
       </div>
     </div>
   </div>

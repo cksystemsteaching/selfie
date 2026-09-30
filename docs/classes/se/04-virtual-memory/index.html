@@ -41,9 +41,9 @@
   <div class="fill row mid">
     <div class="fig grow" style="flex:1.2" data-fig="page-table"><span class="cap">a virtual address splits into page number and offset; the page table maps pages to frames</span></div>
     <div class="stack grow">
-      <p class="f" data-step="1">Cut both address spaces into 4 KB blocks: <em>pages</em> on the virtual side, <em>frames</em> on the physical. A 32-bit address is a 20-bit page number and a 12-bit offset. Translate the page number through a table; copy the offset unchanged. Positional notation: the offset is the last digit in base 4,096.</p>
-      <p class="f" data-step="2">A million pages means a million entries: 4 or 8 MB per table if flat, which selfie accepts for simplicity. Real systems use a tree so that untouched regions cost nothing, and a cache, the TLB, so that the tree is rarely walked.</p>
-      <p class="f" data-step="3">In selfie, <span class="mono">tlb</span> is the procedure that translates, and the emulator calls it on every load, store and fetch. Find it; it is a few lines.</p>
+      <p class="f" data-step="1">Cut both address spaces into 4 KB blocks: <em>pages</em> on the virtual side, <em>frames</em> on the physical. A 32-bit address is a 20-bit page number and a 12-bit offset: translate the page number through a table, copy the offset. Positional notation in base 4,096.</p>
+      <p class="f" data-step="2">A million pages means a million entries, 4 or 8 MB if flat, which selfie accepts. Real systems use a tree, and a cache, the TLB.</p>
+      <p class="f" data-step="3">In selfie, <span class="mono">tlb</span> translates, on every load, store and fetch. Find it; it is a few lines.</p>
     </div>
   </div>
   <aside class="notes"><p>The figure carries it. Do the arithmetic once: 2^32 bytes, 2^12 per page, 2^20 pages. Then the two engineering answers to a million entries, trees and caches, which the Cost week comes back to.</p></aside>

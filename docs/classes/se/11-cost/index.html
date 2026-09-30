@@ -48,11 +48,11 @@
         <span class="l o">./selfie: instruction:   85755,85225(99.38%),530(0.61%)</span>
       </div>
       <div class="stack">
-        <p class="f" data-step="1">A processor cycle is a nanosecond; a memory access is a hundred. A cache is a small fast memory that keeps what was used recently, on the bet that it will be used again. Selfie simulates L1 instruction and data caches and reports the hit rate: over 99 percent for selfie compiling itself, which is why the bet is the whole architecture.</p>
-        <p class="f" data-step="2">Same meaning, different cost: the cache is invisible to the program's semantics, like the page table's data structure. Which is why it can be tuned freely, and why it leaks: timing differs, and a program that measures its own timing can read what another program cached. Isolation of meaning is not isolation of cost.</p>
+        <p class="f" data-step="1">A processor cycle is a nanosecond; a memory access is a hundred. A cache keeps what was used recently, betting it will be used again. Selfie simulates L1 caches and reports the hit rate: over 99 percent for selfie compiling itself.</p>
+        <p class="f" data-step="2">Same meaning, different cost: the cache is invisible to the program's semantics, so it can be tuned freely. And it leaks: a program that measures its own timing can read what another cached. Isolation of meaning is not isolation of cost.</p>
       </div>
     </div>
-    <p class="sm f" data-step="3">Lines, associativity, eviction, write policy: the chapter's parameters. Change them with selfie's options and watch the miss rate; that is the exercise.</p>
+    <p class="sm f" data-step="3">Lines, associativity, eviction: change them with selfie's options and watch the miss rate. That is the exercise.</p>
   </div>
   <aside class="notes"><p>Run it; the numbers are from the class machine. The side-channel remark is the connection to isolation: a cache is semantically transparent and observationally not, which is where Spectre lives. One sentence, no more.</p></aside>
 </section>
@@ -98,9 +98,9 @@
   <div class="fill row mid">
     <div class="fig grow" style="flex:1.2" data-fig="energy"><span class="cap">joules · log scale</span></div>
     <div class="stack grow">
-      <p class="f" data-step="1">Landauer, 1961: erasing one bit costs at least kT ln 2 ≈ 3 × 10<sup>−21</sup> joules, because two states become one and the lost distinction leaves as heat. Every overwrite is an erasure: every store, every register restore, every page copied and dropped.</p>
-      <p class="f" data-step="2">A brute-force search over the introduction class's 266-bit space just counting would cost 10<sup>59</sup> joules, 10<sup>15</sup> Suns. Real hardware sits orders of magnitude above the floor, and the floor does not move for any device that overwrites. A data centre is a machine for forgetting at scale.</p>
-      <p class="f" data-step="3">A human brain runs on 20 watts. Whatever intelligence is, it can be done far more cheaply than it is currently done, and a systems engineer is the person whose job that is.</p>
+      <p class="f" data-step="1">Landauer, 1961: erasing one bit costs at least kT ln 2 ≈ 3 × 10<sup>−21</sup> joules, because two states become one and the lost distinction leaves as heat. Every overwrite is an erasure.</p>
+      <p class="f" data-step="2">Just counting through a 266-bit space would cost 10<sup>59</sup> joules, 10<sup>15</sup> Suns. A data centre is a machine for forgetting at scale.</p>
+      <p class="f" data-step="3">A brain runs on 20 watts. Intelligence can be done far more cheaply than it is, and that is a systems engineer's job.</p>
     </div>
   </div>
   <aside class="notes"><p>Four beats: erasure, the search, the hardware gap, the brain. The systems reading is the middle sentence: kernels, collectors and caches are all machinery for forgetting efficiently, and the floor is the same for all of them.</p></aside>
