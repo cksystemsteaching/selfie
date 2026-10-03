@@ -410,9 +410,9 @@ table.t td:first-child{white-space:nowrap}
   <div class="fill">
     <div class="term f" data-step="1">
       <span class="l"><span class="o">// the compiler compiles its own source — twice</span></span>
-      <span class="l"><span class="p">$</span> <span class="c">./selfie -c selfie.c -o selfie1.m -m 2 -c selfie.c -o selfie2.m</span></span>
-      <span class="l"><span class="p">$</span> <span class="c">diff -s selfie1.m selfie2.m</span></span>
-      <span class="l"><span class="o">  Files selfie1.m and selfie2.m are </span><span class="k">identical</span></span>
+      <span class="l"><span class="p">$</span> <span class="c">./selfie -c selfie.c -o selfie0.m -m 3 -c selfie.c -o selfie1.m</span></span>
+      <span class="l"><span class="p">$</span> <span class="c">diff -s selfie0.m selfie1.m</span></span>
+      <span class="l"><span class="o">  Files selfie0.m and selfie1.m are </span><span class="k">identical</span></span>
     </div>
     <div class="term f" data-step="2">
       <span class="l"><span class="o">// the emulator executes its own machine code</span></span>
@@ -572,15 +572,15 @@ table.t td:first-child{white-space:nowrap}
   <div class="eyebrow sem">Self · 1 of 3</div>
   <h2>Self-compilation: the compiler compiles its own source, and gets <span class="k">the same answer twice</span>.</h2>
   <div class="fill row mid">
-    <div class="fig grow" style="flex:1.25"><canvas data-anim="bootstrap"></canvas><span class="cap">two roads to the same 188,392 bytes</span></div>
+    <div class="fig grow" style="flex:1.25"><canvas data-anim="bootstrap"></canvas><span class="cap">two roads to the same 194,648 bytes</span></div>
     <div class="stack grow">
       <p class="f" data-step="1"><strong>Borrow a meaning.</strong> An ordinary C compiler builds <span class="mono">selfie.c</span> once. C* is a subset of C, so this works — and it is the only outside help the system ever gets.</p>
-      <p class="f" data-step="2"><strong>Use it on itself.</strong> That binary compiles <span class="mono">selfie.c</span> to RISC-U code. Call it <span class="mono">selfie1.m</span>. Its meaning still came from the foreign compiler.</p>
-      <p class="f" data-step="3"><strong>Now close the loop.</strong> <em>Run</em> <span class="mono">selfie1.m</span> and have it compile <span class="mono">selfie.c</span> again. Call that <span class="mono">selfie2.m</span> — a compiler that was compiled by itself.</p>
-      <p class="f" data-step="4"><span class="mono">selfie1.m</span> and <span class="mono">selfie2.m</span> are <span class="k">identical</span>. Byte for byte. That equality is called a <strong>fixed point</strong>, and reaching it is the moment the system stops depending on anything outside itself.</p>
+      <p class="f" data-step="2"><strong>Use it on itself.</strong> That binary compiles <span class="mono">selfie.c</span> to RISC-U code. Call it <span class="mono">selfie0.m</span>. Its meaning still came from the foreign compiler.</p>
+      <p class="f" data-step="3"><strong>Now close the loop.</strong> <em>Run</em> <span class="mono">selfie0.m</span> and have it compile <span class="mono">selfie.c</span> again. Call that <span class="mono">selfie1.m</span> — a compiler that was compiled by itself.</p>
+      <p class="f" data-step="4"><span class="mono">selfie0.m</span> and <span class="mono">selfie1.m</span> are <span class="k">identical</span>. Byte for byte. That equality is called a <strong>fixed point</strong>, and reaching it is the moment the system stops depending on anything outside itself.</p>
     </div>
   </div>
-  <aside class="notes"><p>Walk the figure one step at a time and keep the question in front of the room: where does the meaning come from at each stage? Stage one borrows it from clang or gcc. Stage two still borrows it, indirectly. Stage three does not — the compiler that produced <span class="mono">selfie2.m</span> was itself produced by starc, so the only definition of C* involved is selfie's own. That the two outputs agree bit for bit is not automatic and it is not cosmetic: it says the compiler's opinion about the meaning of its own source text is stable under self-application. If you change the code generator, this is the test that catches you, because your new compiler has to compile itself and the result has to survive being run. Students find that constraint intimidating for about a week and then discover it is the best code review they have ever had.</p></aside>
+  <aside class="notes"><p>Walk the figure one step at a time and keep the question in front of the room: where does the meaning come from at each stage? Stage one borrows it from clang or gcc. Stage two still borrows it, indirectly. Stage three does not — the compiler that produced <span class="mono">selfie1.m</span> was itself produced by starc, so the only definition of C* involved is selfie's own. That the two outputs agree bit for bit is not automatic and it is not cosmetic: it says the compiler's opinion about the meaning of its own source text is stable under self-application. If you change the code generator, this is the test that catches you, because your new compiler has to compile itself and the result has to survive being run. Students find that constraint intimidating for about a week and then discover it is the best code review they have ever had.</p></aside>
 </section>
 
 <section class="slide dense" data-act="II" data-mins="1.15">
@@ -1293,16 +1293,16 @@ ANIM.bootstrap = (ctx,w,h,st,t)=>{
     ctx.globalAlpha=1;
   };
   stage(0,"selfie.c","./selfie","clang", C.ink2, st>=1);
-  stage(1,"./selfie  -c selfie.c","selfie1.m","starc", C.syn, st>=2);
-  stage(2,"selfie1.m  -c selfie.c","selfie2.m","starc, run by mipster", C.sem, st>=3);
+  stage(1,"./selfie  -c selfie.c","selfie0.m","starc", C.syn, st>=2);
+  stage(2,"selfie0.m  -c selfie.c","selfie1.m","starc, run by mipster", C.sem, st>=3);
   if(st>=4){
     const y=ys[2]+bh+h*.075;
     ctx.globalAlpha=ease((t-.1)*1.4);
     ctx.strokeStyle=C.sem; ctx.lineWidth=1.4;
     ctx.beginPath(); ctx.moveTo(rx, y); ctx.lineTo(rx+rw, y); ctx.stroke();
-    txt(ctx,"selfie1.m = selfie2.m", rx+rw/2, y+h*.06,
+    txt(ctx,"selfie0.m = selfie1.m", rx+rw/2, y+h*.06,
         {size:F*1.05, col:C.sem, align:"center", box:[w*.44, w-4]});
-    txt(ctx,"identical · 188,392 bytes", rx+rw/2, y+h*.135,
+    txt(ctx,"identical · 194,648 bytes", rx+rw/2, y+h*.135,
         {size:F*.8, col:C.muted, align:"center", box:[w*.44, w-4]});
     ctx.globalAlpha=1;
   }
