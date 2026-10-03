@@ -80,17 +80,17 @@
         <ol class="steps">
           <li><strong>A test program.</strong> In C*, using your extension, with one input on which it misbehaves: an out-of-bounds index, a division by zero, a wrong exit code, reachable only for some input byte.</li>
           <li><strong>A property.</strong> State which of rotor's bad states the misbehaviour is, and the bound within which it is reachable.</li>
-          <li><strong>The run.</strong> Compile the program with <em>your</em> selfie, generate its rotor model, run bitme with your bound. Submit program, property, bound, and the input the solver found.</li>
-          <li><strong>The check.</strong> The grader recompiles your program with your selfie, regenerates the model, runs bitme to your bound, and compares verdict and input.</li>
+          <li><strong>The run.</strong> Compile the program with <em>your</em> selfie, generate its rotor model, run bitme with your bound. Submit the program and a four-line property file: bad state, bound, verdict, and the input the solver found.</li>
+          <li><strong>The check.</strong> The grader recompiles your program with your selfie, regenerates the model, runs bitme to your bound, and confirms the verdict.</li>
         </ol>
       </div>
       <div class="stack">
         <div class="card syn"><span class="h">And struct-execution</span><p>The other half of the capstone: field access <span class="mono">p-&gt;f</span> as a load or store at the pointer plus the field's offset. Then use a struct in selfie.c, for the symbol table if you dare, and self-compile.</p></div>
-        <p class="sm">Rules as always. For rotor-check the submission is a directory with the program and a one-page note.</p>
+        <p class="sm">Rules as always. For rotor-check the submission is the directory <span class="mono">assignments/rotor-check</span> with <span class="mono">program.c</span> and <span class="mono">property.txt</span>.</p>
       </div>
     </div>
   </div>
-  <aside class="notes"><p>Two assignments, and rotor-check is the new one. The grader target runs rotor and bitme on the submitted program under the submitted compiler and compares; the exact flags are in the assignment file. The point is that the students turn the tool on their own code, and see the input come back.</p></aside>
+  <aside class="notes"><p>Two assignments, and rotor-check is the new one. The grader target runs rotor and bitme on the submitted program under the submitted compiler and confirms the verdict within the bound; the exact flags are in the assignment file. The point is that the students turn the tool on their own code, and see the input come back.</p></aside>
 </section>
 <section class="slide" data-act="IV" data-mins="1.0">
   <div class="eyebrow">After this week</div>

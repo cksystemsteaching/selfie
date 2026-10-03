@@ -58,8 +58,8 @@
   <h2>Understand the first and you understand <span class="k">compilers</span>.</h2>
   <div class="fill">
     <div class="term sm">
-      <span class="l"><span class="p">$</span> <span class="c">./selfie -c selfie.c -o selfie1.m -m 2 -c selfie.c -o selfie2.m &amp;&amp; diff -s selfie1.m selfie2.m</span></span>
-      <span class="l o">Files selfie1.m and selfie2.m are identical</span>
+      <span class="l"><span class="p">$</span> <span class="c">./selfie -c selfie.c -o selfie0.m -m 3 -c selfie.c -o selfie1.m &amp;&amp; diff -s selfie0.m selfie1.m</span></span>
+      <span class="l o">Files selfie0.m and selfie1.m are identical</span>
       <span class="l"><span class="p">$</span> <span class="c">./selfie -c selfie.c -o selfie.m -m 2 -l selfie.m -m 1</span></span>
       <span class="l"><span class="p">$</span> <span class="c">./selfie -c selfie.c -o selfie.m -m 3 -l selfie.m -y 2 -l selfie.m -y 1</span></span>
     </div>

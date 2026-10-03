@@ -25,16 +25,16 @@
   <div class="eyebrow">The fixed point</div>
   <h2>The compiler compiles its own source and gets the <span class="k">same bytes twice</span>.</h2>
   <div class="fill row mid">
-    <div class="fig grow" style="flex:1.2" data-fig="bootstrap"><span class="cap">selfie1.m = selfie2.m · 188,392 bytes</span></div>
+    <div class="fig grow" style="flex:1.2" data-fig="bootstrap"><span class="cap">selfie0.m = selfie1.m · 194,648 bytes</span></div>
     <div class="stack grow">
       <div class="term sm">
         <span class="l"><span class="p">$</span> <span class="c">make self-self-check</span></span>
-        <span class="l o">./selfie -c selfie.c -o selfie1.m -s selfie1.s</span>
-        <span class="l o">  -m 2 -c selfie.c -o selfie2.m -s selfie2.s</span>
-        <span class="l o">diff -q selfie1.m selfie2.m</span>
-        <span class="l o">diff -q selfie1.s selfie2.s</span>
+        <span class="l o">./selfie -c selfie.c -o selfie0.m -s selfie0.s</span>
+        <span class="l o">  -m 3 -c selfie.c -o selfie1.m -s selfie1.s</span>
+        <span class="l o">diff -q selfie0.m selfie1.m</span>
+        <span class="l o">diff -q selfie0.s selfie1.s</span>
       </div>
-      <p class="f" data-step="1">Stage 0: gcc compiles selfie.c. Stage 1: that selfie compiles it into selfie1.m. Stage 2: selfie1.m, on mipster, compiles it into selfie2.m. Identical, after 1,228,259,585 instructions.</p>
+      <p class="f" data-step="1">Stage 0: gcc compiles selfie.c. Stage 1: that selfie compiles it into selfie0.m. Stage 2: selfie0.m, on mipster, compiles it into selfie1.m. Identical, after 1,228,259,585 instructions.</p>
       <p class="f" data-step="2">Every assignment in this class has passed this check. Today: what, exactly, did it check?</p>
     </div>
   </div>
@@ -47,7 +47,7 @@
   <div class="fill">
     <div class="two">
       <div class="stack">
-        <p class="f" data-step="1">Selfie1.m and selfie2.m were produced by two different compilers: one compiled by gcc, one compiled by selfie. If both compilers implement the same semantics for C*, they produce the same output for the same input. Selfie.c is the input both times.</p>
+        <p class="f" data-step="1">Selfie0.m and selfie1.m were produced by two different compilers: one compiled by gcc, one compiled by selfie. If both compilers implement the same semantics for C*, they produce the same output for the same input. Selfie.c is the input both times.</p>
         <p class="f" data-step="2">So agreement is evidence that gcc's reading of C* and selfie's reading of C* coincide on selfie.c — and, since selfie's reading is <em>defined</em> by selfie.c, that the definition is consistent with itself. A dictionary whose entries, when applied to the dictionary, produce the dictionary.</p>
       </div>
       <div class="card syn f" data-step="3"><span class="h">What can differ, and does</span><p>Filenames in strings. The value of register a6. Anything that depends on the boot level. Selfie is written to keep those out of the binary, which is engineering, not theory — and the reason the assembly is compared as well as the bytes.</p></div>
