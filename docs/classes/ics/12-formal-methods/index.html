@@ -54,7 +54,7 @@
 
 <section class="slide" data-act="IV" data-mins="7.0">
   <div class="eyebrow">In the terminal · rotor</div>
-  <h2>A program that divides by zero — for exactly one input.</h2>
+  <h2>A program that divides by zero — for two inputs out of 256.</h2>
   <div class="fill">
     <div class="two" style="grid-template-columns:1fr 1.1fr">
       <div class="term sm">
@@ -132,7 +132,7 @@
     </div>
     <div class="two">
       <p class="sm f" data-step="1">Bitme walks the steps one at a time and asks about every bad state at each. For the first few dozen the answer is no: the program is setting up its stack, calling <span class="mono">malloc</span>, calling <span class="mono">read</span>. Then the division instruction is fetched, and the answer for division by zero is yes — with the input that does it, derived from the formula.</p>
-      <p class="sm f" data-step="2">Among all 256 possible input bytes, the solver found the one that reaches the bad state, the way last week's solver found that x1 must be false: not by trying them, by reasoning. And it did it for a compiled RISC-V binary, not for the C.</p>
+      <p class="sm f" data-step="2">Among all 256 possible input bytes, the solver found the ones that reach a bad state, the way last week's solver found that x1 must be false: not by trying them, by reasoning. And it did it for a compiled RISC-V binary, not for the C.</p>
     </div>
   </div>
   <aside class="notes"><p>Run it and let the steps scroll; the output is verbose; with bitwuzla the division becomes reachable at step 76 with the input byte 48, the second division at step 89 with '2', and the exit(0) property at step 106 with byte 12. The steps move with the versions of rotor and bitme, so check them before class and say them. The sentence to land is the title. Then the third input, 12, for the flagged exit a few steps later.</p></aside>

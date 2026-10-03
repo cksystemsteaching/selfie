@@ -79,7 +79,7 @@
       </div>
     </div>
   </div>
-  <aside class="notes"><p>Read the rules aloud as sentences; that is the skill. The next slide is the self-reference the book is proud of, EBNF describing its own syntax, which students can understand without any further background. Have them derive 007 from the integer rule step by step — it is allowed, and next week's compiler will reject it anyway, which is the first hint that grammar is not the whole story.</p></aside>
+  <aside class="notes"><p>Read the rules aloud as sentences; that is the skill. The next slide is the self-reference the book is proud of, EBNF describing its own syntax, which students can understand without any further background. Have them derive 007 from the integer rule step by step — it is allowed, and selfie's scanner accepts it too: the book leaves the fix as an exercise, which is the first hint that a grammar is a decision somebody made.</p></aside>
 </section>
 
 <section class="slide" data-act="II" data-mins="5.0">
@@ -100,7 +100,7 @@
       <span class="l c">terminal     = """ { character } """ .</span>
     </div>
     <div class="stack grow" style="flex:1.2">
-      <p class="f" data-step="1">Every rule on the previous slide is a sentence of this language, these nine included. Check one: <span class="mono">integer</span> is a <span class="mono">non_terminal</span>, an <span class="mono">=</span>, an <span class="mono">expression</span> of one <span class="mono">term</span> of two <span class="mono">factor</span>s, and a full stop.</p>
+      <p class="f" data-step="1">Every rule on the previous slide is a sentence of this language, these seven included. Check one: <span class="mono">integer</span> is a <span class="mono">non_terminal</span>, an <span class="mono">=</span>, an <span class="mono">expression</span> of one <span class="mono">term</span> of two <span class="mono">factor</span>s, and a full stop.</p>
       <p class="f" data-step="2">Nothing strange happens: the text is finite, the reading terminates, the checker is the same stack machine as for any grammar. A text about texts is just another text.</p>
       <p class="f" data-step="3"><strong>Hold this example.</strong> It returns three times, harder each time: a compiler compiling itself, week 8; a program asked about its own halting, week 9; a kernel isolating itself, week 10. The same move on meaning, where the limits live.</p>
     </div>
@@ -223,7 +223,7 @@
         <li>Type <span class="mono">tiny.c</span>, compile it with <span class="mono">-S</span>, and find the nine instructions of the loop. Change 7 to 700 and see which bits change.</li>
         <li>Write a regular expression for the dates of this course, and an EBNF grammar for nested parentheses. Which of the two needs the stack?</li>
       </ol>
-      <div class="card syn"><span class="h">Next week</span><p>Countability: everything you can write down can be listed, so every program has a number — and a binary is one number, 188,392 bytes long. The compiler compiles itself and gets the same number twice.</p></div>
+      <div class="card syn"><span class="h">Next week</span><p>Countability: everything you can write down can be listed, so every program has a number — and a binary is one number, 194,648 bytes long. The compiler compiles itself and gets the same number twice.</p></div>
     </div>
   </div>
   <aside class="notes"><p>Exercise 3 is the one that teaches grammar reading; exercise 4 is the one that teaches that bits are the program.</p></aside>

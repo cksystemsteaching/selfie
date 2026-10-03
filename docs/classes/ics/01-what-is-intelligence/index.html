@@ -95,19 +95,19 @@
       <p class="f" data-step="3">And a workshop of tools around it that turn a program into a logical formula and hand it to a solver — where this class meets the frontier, in week 12.</p>
     </div>
     <div class="term grow">
-      <span class="l"><span class="p">$</span> <span class="c">./selfie -c selfie.c -o selfie1.m -m 2 \</span></span>
-      <span class="l"><span class="c">    -c selfie.c -o selfie2.m</span></span>
+      <span class="l"><span class="p">$</span> <span class="c">./selfie -c selfie.c -o selfie0.m -m 3 \</span></span>
+      <span class="l"><span class="c">    -c selfie.c -o selfie1.m</span></span>
       <span class="l o">./selfie: selfie compiling selfie.c</span>
       <span class="l o">  to 64-bit RISC-U with 64-bit starc</span>
       <span class="l o">…</span>
       <span class="l o">./selfie: 64-bit mipster executing</span>
-      <span class="l o">  64-bit RISC-U binary selfie1.m</span>
-      <span class="l o">  with 2MB physical memory</span>
-      <span class="l o">selfie1.m: selfie compiling selfie.c</span>
+      <span class="l o">  64-bit RISC-U binary selfie0.m</span>
+      <span class="l o">  with 3MB physical memory</span>
+      <span class="l o">&gt; selfie0.m: selfie compiling selfie.c</span>
       <span class="l o">  to 64-bit RISC-U with 64-bit starc</span>
       <span class="l o">…</span>
-      <span class="l"><span class="p">$</span> <span class="c">diff -s selfie1.m selfie2.m</span></span>
-      <span class="l o">Files selfie1.m and selfie2.m are identical</span>
+      <span class="l"><span class="p">$</span> <span class="c">diff -s selfie0.m selfie1.m</span></span>
+      <span class="l o">Files selfie0.m and selfie1.m are identical</span>
     </div>
   </div>
   <aside class="notes"><p>Run it. It takes a minute or two on a laptop and the room should watch the second compilation happen inside the emulator, slower than the first, and then the diff. Do not explain yet what it proves and does not prove; that is week 8. Today it is the demonstration that the whole system fits in one file that they will be reading, and that the class has a specimen and not just a subject.</p></aside>
@@ -128,7 +128,7 @@
       </div>
       <div class="stack">
         <div class="card f" data-step="1"><span class="h">The book</span><p><em>What is Intelligence?</em> — this class is its first six parts at talk resolution, one chapter per week or so. It is in the repository under <span class="mono">book/</span>.</p></div>
-        <div class="card syn f" data-step="2"><span class="h">Exercises</span><p>This class has no formal assignments. It has a recommended exercise list per week — reading, the commands of the session to rerun, a few paper exercises — and one thing to try on the autograder, which is how the compiler and systems classes are graded.</p></div>
+        <div class="card syn f" data-step="2"><span class="h">Exercises</span><p>This class has no formal assignments. It has a recommended exercise list per week: reading, the commands of the session to rerun, a few paper exercises. Whoever wants more can try the first autograded assignments of the compiler and systems classes.</p></div>
       </div>
     </div>
   </div>

@@ -36,7 +36,7 @@
       </div>
     </div>
   </div>
-  <aside class="notes"><p>Do the addition on the board before showing the figure, carries and all. Then the figure: seven full adders, each of which is two half adders and an OR gate, each of which is a few logic gates. This is the only piece of hardware in the class and it is here to show that arithmetic is circuits, and circuits are formulas, which week 11 will use when a program becomes a formula.</p></aside>
+  <aside class="notes"><p>Do the addition on the board before showing the figure, carries and all. Then the figure: seven full adders, each of which is two half adders and an OR gate, each of which is a few logic gates. This is the only piece of hardware in the class and it is here to show that arithmetic is circuits, and circuits are formulas, which week 12 will use when a program becomes a formula.</p></aside>
 </section>
 
 <section class="slide" data-act="I" data-mins="5.0">
@@ -121,7 +121,9 @@
         <span class="l"><span class="p">$</span> <span class="c">cat examples/overflows.c</span></span>
         <span class="l o">// … prints UINT64_MAX + 1, INT64_MAX + 1,</span>
         <span class="l o">// and what happens</span>
-        <span class="l"><span class="p">$</span> <span class="c">./selfie -c examples/overflows.c -m 1</span></span>
+        <span class="l"><span class="p">$</span> <span class="c">make selfie.h</span></span>
+        <span class="l"><span class="p">$</span> <span class="c">./selfie -c selfie.h \</span></span>
+        <span class="l"><span class="c">    examples/overflows.c -m 1</span></span>
         <span class="l o">…</span>
       </div>
     </div>
