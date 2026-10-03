@@ -18,7 +18,7 @@
     <p class="lead">The timer interrupt is the kernel's answer to the halting problem. Scheduling is what it cannot answer.</p>
     <p class="decknav"><a href="../04-virtual-memory/">← SE 04 · Virtual Memory</a></p>
   </div>
-  <aside class="notes"><p>Temporal isolation. A guest may not stop; the kernel cannot know; so the kernel stops it. Then what the kernel does with the time it has taken back, and why optimal scheduling is out of reach for a reason from the Cost chapter. Book: Computing, Time-Sharing; Intelligence chapter's halting section for the theorem.</p></aside>
+  <aside class="notes"><p>Temporal isolation. A guest may not stop; the kernel cannot know; so the kernel stops it. Then what the kernel does with the time it has taken back, and why optimal scheduling is out of reach for a reason from the Cost chapter. Book: Computing, Time-Sharing; the Meaning chapter's halting problem callout for the theorem.</p></aside>
 </section>
 
 <section class="slide" data-act="III" data-actname="Time" data-mins="7.0">
@@ -97,8 +97,8 @@
     <div class="two">
       <div class="stack">
         <ol class="steps">
-          <li>Extend selfie so that <span class="mono">-m</span> can run <em>n</em> instances of the loaded program as separate machine contexts with separate memory, round-robin scheduled by the kernel loop with a timeout you choose.</li>
-          <li>Each instance prints something that identifies it, so that the interleaving is visible on the terminal. Make the slice small enough that the interleaving shows.</li>
+          <li>Add two options: <span class="mono">-x</span> <em>n</em> runs <em>n</em> instances of the loaded program on mipster, <span class="mono">-z</span> <em>n</em> on hypster, each a machine context with its own memory, scheduled round-robin by the kernel loop with a timeout you choose.</li>
+          <li>Each instance prints something that identifies it. Make the slice small enough that the interleaving shows on the terminal.</li>
           <li>Check that no instance can see another's memory, and that the total instruction count is the sum of the instances'.</li>
           <li><span class="mono">./grader/self.py processes</span>.</li>
         </ol>
