@@ -1,19 +1,67 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 520" width="900" height="520" role="img" aria-label="CDCL on Rivest's formula: decide, propagate, conflict, learn, backjump">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="16.0 5.0 886.0 497.5" width="886" height="498" role="img" aria-label="CDCL on Rivest's formula: decide, propagate, conflict, learn, backjump">
 <title>CDCL on Rivest's formula: decide, propagate, conflict, learn, backjump</title>
 <style>svg{--ink:#131C2A;--ink-2:#39485C;--muted:#5D6E85;--line:rgba(19,28,42,.18);--syn:#A2661A;--sem:#1F6C86;--bad:#A63E5A;--panel:#FFFFFF;--ground:#EFF1F3}@media (prefers-color-scheme: dark){svg{--ink:#E7EDF6;--ink-2:#B6C4D8;--muted:#8093AF;--line:rgba(122,162,204,.16);--syn:#E0A550;--sem:#5BB0C7;--bad:#C8607A;--panel:#111C2E;--ground:#080E18}}text{font-family:"JetBrains Mono","SFMono-Regular","SF Mono","Cascadia Mono",Menlo,Consolas,"DejaVu Sans Mono",monospace}.serif{font-family:"Iowan Old Style","Palatino Linotype",Palatino,"Book Antiqua","URW Palladio L",Georgia,serif}</style>
-<text x="30" y="30" font-size="14" fill="var(--ink)" text-anchor="start" dominant-baseline="central" class="serif">CDCL on Rivest's seven clauses</text>
-<text x="30" y="62" font-size="11.5" fill="var(--muted)" text-anchor="start" dominant-baseline="central">C1 (2 ∨ 3 ∨ ¬4)</text>
-<text x="30" y="82" font-size="11.5" fill="var(--muted)" text-anchor="start" dominant-baseline="central">C2 (1 ∨ 3 ∨ 4)</text>
-<text x="30" y="102" font-size="11.5" fill="var(--muted)" text-anchor="start" dominant-baseline="central">C3 (¬1 ∨ 2 ∨ 4)</text>
-<text x="30" y="122" font-size="11.5" fill="var(--muted)" text-anchor="start" dominant-baseline="central">C4 (¬1 ∨ ¬2 ∨ 3)</text>
-<text x="30" y="142" font-size="11.5" fill="var(--muted)" text-anchor="start" dominant-baseline="central">C5 (¬2 ∨ ¬3 ∨ 4)</text>
-<text x="30" y="162" font-size="11.5" fill="var(--muted)" text-anchor="start" dominant-baseline="central">C6 (¬1 ∨ ¬3 ∨ ¬4)</text>
-<text x="30" y="182" font-size="11.5" fill="var(--muted)" text-anchor="start" dominant-baseline="central">C7 (1 ∨ ¬2 ∨ ¬4)</text>
-<circle cx="560" cy="70" r="6" fill="var(--syn)"/>
-<text x="574" y="70" font-size="10" fill="var(--muted)" text-anchor="start" dominant-baseline="central">decide</text>
-<g class="f" data-step="1"><line x1="560" y1="76" x2="470" y2="124" stroke="var(--ink-2)" stroke-width="1.2"/><path d="M470 124 L473.15 120.11 L474.98 123.55 Z" fill="var(--ink-2)"/><circle cx="470" cy="130" r="6" fill="var(--ink-2)"/><text x="470" y="114" font-size="11" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central">x1 = T</text><line x1="470" y1="136" x2="400" y2="184" stroke="var(--ink-2)" stroke-width="1.2"/><path d="M400 184 L402.7 179.79 L404.9 183 Z" fill="var(--ink-2)"/><circle cx="400" cy="190" r="6" fill="var(--ink-2)"/><text x="400" y="174" font-size="11" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central">x2 = T</text><text x="400" y="214" font-size="10" fill="var(--muted)" text-anchor="middle" dominant-baseline="central">unit: x3 = T (C4), x4 = T (C5)</text><rect x="356" y="229" width="88" height="22" fill="var(--bad)" rx="4" fill-opacity="0.15"/><rect x="356" y="229" width="88" height="22" fill="none" stroke="var(--bad)" stroke-width="1" rx="4"/><text x="400" y="240" font-size="10.5" fill="var(--bad)" text-anchor="middle" dominant-baseline="central">C6 conflict</text><text x="300" y="270" font-size="11" fill="var(--sem)" text-anchor="start" dominant-baseline="central">learn ¬x1 ∨ ¬x2 · backjump</text></g>
-<g class="f" data-step="2"><line x1="470" y1="136" x2="540" y2="184" stroke="var(--ink-2)" stroke-width="1.2"/><path d="M540 184 L535.1 183 L537.3 179.79 Z" fill="var(--ink-2)"/><circle cx="540" cy="190" r="6" fill="var(--ink-2)"/><text x="540" y="174" font-size="11" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central">x2 = F</text><text x="540" y="214" font-size="10" fill="var(--muted)" text-anchor="middle" dominant-baseline="central">unit: x4 = T (C3), x3 = F (C6)</text><rect x="496" y="229" width="88" height="22" fill="var(--bad)" rx="4" fill-opacity="0.15"/><rect x="496" y="229" width="88" height="22" fill="none" stroke="var(--bad)" stroke-width="1" rx="4"/><text x="540" y="240" font-size="10.5" fill="var(--bad)" text-anchor="middle" dominant-baseline="central">C1 conflict</text><text x="470" y="270" font-size="11" fill="var(--sem)" text-anchor="start" dominant-baseline="central">learn ¬x1 · backjump to level 0</text></g>
-<g class="f" data-step="3"><line x1="560" y1="76" x2="660" y2="124" stroke="var(--ink-2)" stroke-width="1.2"/><path d="M660 124 L655.01 123.76 L656.69 120.25 Z" fill="var(--ink-2)"/><circle cx="660" cy="130" r="6" fill="var(--ink-2)"/><text x="660" y="114" font-size="11" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central">x1 = F</text><line x1="660" y1="136" x2="600" y2="184" stroke="var(--ink-2)" stroke-width="1.2"/><path d="M600 184 L602.38 179.6 L604.81 182.64 Z" fill="var(--ink-2)"/><circle cx="600" cy="190" r="6" fill="var(--ink-2)"/><text x="600" y="174" font-size="11" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central">x2 = T</text><text x="600" y="214" font-size="10" fill="var(--muted)" text-anchor="middle" dominant-baseline="central">unit: x4 = F (C7), x3 = T (C2)</text><rect x="556" y="229" width="88" height="22" fill="var(--bad)" rx="4" fill-opacity="0.15"/><rect x="556" y="229" width="88" height="22" fill="none" stroke="var(--bad)" stroke-width="1" rx="4"/><text x="600" y="240" font-size="10.5" fill="var(--bad)" text-anchor="middle" dominant-baseline="central">C5 conflict</text><text x="620" y="270" font-size="11" fill="var(--sem)" text-anchor="start" dominant-baseline="central">learn ¬x2</text></g>
-<g class="f" data-step="4"><line x1="660" y1="136" x2="730" y2="184" stroke="var(--ink-2)" stroke-width="1.2"/><path d="M730 184 L725.1 183 L727.3 179.79 Z" fill="var(--ink-2)"/><circle cx="730" cy="190" r="6" fill="var(--ink-2)"/><text x="730" y="174" font-size="11" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central">x2 = F</text><line x1="730" y1="196" x2="760" y2="254" stroke="var(--ink-2)" stroke-width="1.2"/><path d="M760 254 L756.15 250.8 L759.61 249.01 Z" fill="var(--ink-2)"/><circle cx="760" cy="260" r="6" fill="var(--ink-2)"/><text x="760" y="244" font-size="11" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central">x3 = T</text><rect x="700" y="285" width="120" height="26" fill="var(--sem)" rx="4" fill-opacity="0.15"/><rect x="700" y="285" width="120" height="26" fill="none" stroke="var(--sem)" stroke-width="1" rx="4"/><text x="760" y="298" font-size="11" fill="var(--sem)" text-anchor="middle" dominant-baseline="central">SAT · x4 free</text><text x="760" y="330" font-size="10.5" fill="var(--muted)" text-anchor="middle" dominant-baseline="central">−1 −2 3 4 · what babysat found</text></g>
-<text x="450" y="480" font-size="11" fill="var(--muted)" text-anchor="middle" dominant-baseline="central" class="serif">four assignments examined, three clauses learned — instead of sixteen assignments enumerated</text>
+<text x="30" y="30" font-size="16.1" fill="var(--ink)" text-anchor="start" dominant-baseline="central" class="serif">CDCL on Rivest's seven clauses</text>
+<text x="30" y="62" font-size="13.22" fill="var(--muted)" text-anchor="start" dominant-baseline="central">C1 (2 ∨ 3 ∨ ¬4)</text>
+<text x="30" y="82" font-size="13.22" fill="var(--muted)" text-anchor="start" dominant-baseline="central">C2 (1 ∨ 3 ∨ 4)</text>
+<text x="30" y="102" font-size="13.22" fill="var(--muted)" text-anchor="start" dominant-baseline="central">C3 (¬1 ∨ 2 ∨ 4)</text>
+<text x="30" y="122" font-size="13.22" fill="var(--muted)" text-anchor="start" dominant-baseline="central">C4 (¬1 ∨ ¬2 ∨ 3)</text>
+<text x="30" y="142" font-size="13.22" fill="var(--muted)" text-anchor="start" dominant-baseline="central">C5 (¬2 ∨ ¬3 ∨ 4)</text>
+<text x="30" y="162" font-size="13.22" fill="var(--muted)" text-anchor="start" dominant-baseline="central">C6 (¬1 ∨ ¬3 ∨ ¬4)</text>
+<text x="30" y="182" font-size="13.22" fill="var(--muted)" text-anchor="start" dominant-baseline="central">C7 (1 ∨ ¬2 ∨ ¬4)</text>
+<g class="f" data-step="1"></g>
+<g class="f" data-step="2"></g>
+<g class="f" data-step="3"></g>
+<g class="f" data-step="4"></g>
+<text x="450" y="480" font-size="12.65" fill="var(--muted)" text-anchor="middle" dominant-baseline="central" class="serif">four assignments examined, three clauses learned — instead of sixteen assignments enumerated</text>
+<line x1="534.38" y1="72.11" x2="385.62" y2="127.89" stroke="var(--ink-2)" stroke-width="1.2"/>
+<path d="M385.62 127.89 L390.18 122.98 L392.29 128.60 Z" fill="var(--ink-2)"/>
+<line x1="545.62" y1="72.11" x2="694.38" y2="127.89" stroke="var(--ink-2)" stroke-width="1.2"/>
+<path d="M694.38 127.89 L687.71 128.60 L689.82 122.98 Z" fill="var(--ink-2)"/>
+<line x1="375.20" y1="133.60" x2="304.80" y2="186.40" stroke="var(--ink-2)" stroke-width="1.2"/>
+<path d="M304.80 186.40 L307.80 180.40 L311.40 185.20 Z" fill="var(--ink-2)"/>
+<line x1="384.80" y1="133.60" x2="455.20" y2="186.40" stroke="var(--ink-2)" stroke-width="1.2"/>
+<path d="M455.20 186.40 L448.60 185.20 L452.20 180.40 Z" fill="var(--ink-2)"/>
+<line x1="695.20" y1="133.60" x2="624.80" y2="186.40" stroke="var(--ink-2)" stroke-width="1.2"/>
+<path d="M624.80 186.40 L627.80 180.40 L631.40 185.20 Z" fill="var(--ink-2)"/>
+<line x1="704.80" y1="133.60" x2="775.20" y2="186.40" stroke="var(--ink-2)" stroke-width="1.2"/>
+<path d="M775.20 186.40 L768.60 185.20 L772.20 180.40 Z" fill="var(--ink-2)"/>
+<line x1="782.36" y1="195.51" x2="807.64" y2="254.49" stroke="var(--ink-2)" stroke-width="1.2"/>
+<path d="M807.64 254.49 L802.52 250.15 L808.03 247.79 Z" fill="var(--ink-2)"/>
+<circle cx="540" cy="70" r="6" fill="var(--syn)"/>
+<circle cx="380" cy="130" r="6" fill="var(--ink-2)"/>
+<circle cx="700" cy="130" r="6" fill="var(--ink-2)"/>
+<circle cx="300" cy="190" r="6" fill="var(--ink-2)"/>
+<circle cx="460" cy="190" r="6" fill="var(--ink-2)"/>
+<circle cx="620" cy="190" r="6" fill="var(--ink-2)"/>
+<circle cx="780" cy="190" r="6" fill="var(--ink-2)"/>
+<circle cx="810" cy="260" r="6" fill="var(--ink-2)"/>
+<text x="554" y="70" font-size="12.65" fill="var(--muted)" text-anchor="start" dominant-baseline="central">decide</text>
+<text x="380" y="114" font-size="12.65" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central">x1 = T</text>
+<text x="700" y="114" font-size="12.65" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central">x1 = F</text>
+<text x="300" y="174" font-size="12.65" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central">x2 = T</text>
+<text x="300" y="212" font-size="11.5" fill="var(--muted)" text-anchor="middle" dominant-baseline="central">unit: x3 = T (C4)</text>
+<text x="300" y="226" font-size="11.5" fill="var(--muted)" text-anchor="middle" dominant-baseline="central">x4 = T (C5)</text>
+<rect x="256" y="238" width="88" height="22" fill="var(--bad)" rx="4" fill-opacity="0.15"/><rect x="256" y="238" width="88" height="22" fill="none" stroke="var(--bad)" stroke-width="1" rx="4"/>
+<text x="300" y="249" font-size="12.07" fill="var(--bad)" text-anchor="middle" dominant-baseline="central">C6 conflict</text>
+<text x="300" y="278" font-size="12.65" fill="var(--sem)" text-anchor="middle" dominant-baseline="central">learn ¬x1 ∨ ¬x2</text>
+<text x="300" y="293" font-size="12.65" fill="var(--sem)" text-anchor="middle" dominant-baseline="central">backjump</text>
+<text x="460" y="174" font-size="12.65" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central">x2 = F</text>
+<text x="460" y="212" font-size="11.5" fill="var(--muted)" text-anchor="middle" dominant-baseline="central">unit: x4 = T (C3)</text>
+<text x="460" y="226" font-size="11.5" fill="var(--muted)" text-anchor="middle" dominant-baseline="central">x3 = F (C6)</text>
+<rect x="416" y="238" width="88" height="22" fill="var(--bad)" rx="4" fill-opacity="0.15"/><rect x="416" y="238" width="88" height="22" fill="none" stroke="var(--bad)" stroke-width="1" rx="4"/>
+<text x="460" y="249" font-size="12.07" fill="var(--bad)" text-anchor="middle" dominant-baseline="central">C1 conflict</text>
+<text x="460" y="278" font-size="12.65" fill="var(--sem)" text-anchor="middle" dominant-baseline="central">learn ¬x1</text>
+<text x="460" y="293" font-size="12.65" fill="var(--sem)" text-anchor="middle" dominant-baseline="central">backjump to level 0</text>
+<text x="620" y="174" font-size="12.65" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central">x2 = T</text>
+<text x="620" y="212" font-size="11.5" fill="var(--muted)" text-anchor="middle" dominant-baseline="central">unit: x4 = F (C7)</text>
+<text x="620" y="226" font-size="11.5" fill="var(--muted)" text-anchor="middle" dominant-baseline="central">x3 = T (C2)</text>
+<rect x="576" y="238" width="88" height="22" fill="var(--bad)" rx="4" fill-opacity="0.15"/><rect x="576" y="238" width="88" height="22" fill="none" stroke="var(--bad)" stroke-width="1" rx="4"/>
+<text x="620" y="249" font-size="12.07" fill="var(--bad)" text-anchor="middle" dominant-baseline="central">C5 conflict</text>
+<text x="620" y="278" font-size="12.65" fill="var(--sem)" text-anchor="middle" dominant-baseline="central">learn ¬x2</text>
+<text x="780" y="174" font-size="12.65" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central">x2 = F</text>
+<text x="810" y="244" font-size="12.65" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central">x3 = T</text>
+<rect x="750" y="285" width="120" height="26" fill="var(--sem)" rx="4" fill-opacity="0.15"/><rect x="750" y="285" width="120" height="26" fill="none" stroke="var(--sem)" stroke-width="1" rx="4"/>
+<text x="810" y="298" font-size="12.65" fill="var(--sem)" text-anchor="middle" dominant-baseline="central">SAT · x4 free</text>
+<text x="888" y="330" font-size="12.07" fill="var(--muted)" text-anchor="end" dominant-baseline="central">−1 −2 3 4 · what babysat found</text>
 </svg>

@@ -16,6 +16,7 @@
     <div class="eyebrow">Compiler Construction · week 11 · station IV</div>
     <h1>SAT</h1>
     <p class="lead">NP-completeness, Cook and Levin through circuits, why SAT is hard, and how modern solvers answer it anyway: DPLL, CDCL, and babysat as the executable specification.</p>
+    <p class="decknav"><a href="../10-semantics-as-a-formula/">← CC 10 · Semantics as a Formula</a></p>
   </div>
   <aside class="notes"><p>The solver session, in full: the theory of NP in an hour and the algorithms in the next. Nobody implements a solver in this class; babysat is there so the box is not opaque, and the worked example on Rivest's formula is the one to do by hand. Book: the Cost chapter from Decidable Is Not Doable to How Modern SAT Solvers Work. Assignment: struct-declaration.</p></aside>
 </section>
@@ -32,6 +33,20 @@
     </div>
   </div>
   <aside class="notes"><p>Definitions, briskly, with the register allocation of week 9 as the compiler's own example. The certificate is the notion to land: a proof that is easy to check and hard to find, which is the shape of everything in station IV and of the machines in week 13.</p></aside>
+</section>
+
+<section class="slide" data-act="IV" data-mins="5.0">
+  <div class="eyebrow">Growth · the test</div>
+  <h2>Polynomial or exponential: <span class="k">times ten</span>, or <span class="x">plus one</span>.</h2>
+  <div class="fill row mid">
+    <div class="fig grow" style="flex:1.35" data-fig="growth"><span class="cap">a polynomial is a line on log-log axes; the exponential is not</span></div>
+    <div class="stack grow">
+      <p class="f" data-step="1"><strong>Times ten.</strong> Ten times the input costs a polynomial method a fixed factor: ×10 if linear, like parsing; ×100 if quadratic. That is what affordable means.</p>
+      <p class="f" data-step="2"><strong>Plus one.</strong> One more variable doubles the 2<sup>n</sup> assignments. One more value to colour multiplies the colourings by k. If adding one to the input multiplies the work, no hardware catches up.</p>
+      <p class="f" data-step="3">P is the left test passing. NP-hard means nobody knows a method that escapes the right one.</p>
+    </div>
+  </div>
+  <aside class="notes"><p>The introduction class has this figure in week 2; students who did not take it need the two tests before the word polynomial means anything. Read the log-log panel: slope is degree, and the exponential is the curve no line catches. Then go straight back to SAT, where plus one is one more variable.</p></aside>
 </section>
 
 <section class="slide" data-act="IV" data-mins="8.0">
@@ -71,7 +86,7 @@
   <div class="eyebrow">Babysat</div>
   <h2>The executable specification: try true, try false, <span class="k">prune</span> when a clause is already lost.</h2>
   <div class="fill">
-    <div class="two">
+    <div class="two" style="grid-template-columns:1fr 1.15fr">
       <div class="term sm">
         <span class="l c">uint64_t babysat(uint64_t depth) {</span>
         <span class="l c">  if (depth == number_of_sat_variables)</span>
@@ -86,11 +101,12 @@
         <span class="l c">}</span>
       </div>
       <div class="stack">
-        <p class="f" data-step="1">Recursion over the variables in order. Set the next one true; if no clause is already false under the partial assignment, recurse. Then false, the same. If both fail, backtrack. <span class="mono">instance_may_be_true</span> is a loop over the clauses; a clause may still be true if some literal is true or unassigned.</p>
-        <p class="f" data-step="2">Four hundred lines in C*, with a DIMACS parser, on top of selfie, so mipster runs it. It is what a SAT solver <em>is</em>, with the search tree of the first slide walked depth-first and pruned at dead branches. Everything below is what makes that walk short.</p>
+        <p class="f" data-step="1">Recursion over the variables in order. Set the next one true; if no clause is already false, recurse. Then false, the same. If both fail, backtrack. A clause may still be true if some literal is true or unassigned.</p>
+        <p class="f" data-step="2">Four hundred lines of C* on top of selfie, so mipster runs it. It is what a SAT solver <em>is</em>: the search tree walked depth-first and pruned at dead branches.</p>
         <div class="term sm f" data-step="3">
           <span class="l"><span class="p">$</span> <span class="c">make sat</span></span>
-          <span class="l o">./babysat: examples/sat/rivest.cnf is satisfiable with -1 -2 3 4</span>
+          <span class="l o">./babysat: examples/sat/rivest.cnf is satisfiable</span>
+          <span class="l o">  with -1 -2 3 4</span>
         </div>
       </div>
     </div>
@@ -120,9 +136,9 @@
   <div class="fill row mid">
     <div class="fig grow" style="flex:1.4" data-fig="sat"><span class="cap">decide · propagate · conflict · learn · backjump</span></div>
     <div class="stack grow">
-      <p class="f" data-step="1">Decide x1 = T, then x2 = T; propagation forces x3 and x4 and C6 dies. Trace the conflict back: x4 came from x3 and x2, x3 from x1 and x2. The decisions responsible are x1 and x2. <strong>Learn</strong> ¬x1 ∨ ¬x2, a clause implied by the formula.</p>
-      <p class="f" data-step="2">Backjump to right after x1 = T, where the learned clause is unit: x2 = F. Propagate: x4 = T, x3 = F, C1 dies. Everything traces to x1 alone. Learn ¬x1. Level 0: x1 = F.</p>
-      <p class="f" data-step="3">Decide x2 = T: x4 = F, x3 = T, C5 dies. Learn ¬x2. Then x2 = F, x3 = T satisfies everything with x4 free. Four assignments, three learned clauses — and the learned clauses are theorems: x1 and x2 are false in every model, which is the comment in the file.</p>
+      <p class="f" data-step="1">Decide x1 = T, then x2 = T; propagation forces x3 and x4, and C6 dies. The decisions responsible are x1 and x2: <strong>learn</strong> ¬x1 ∨ ¬x2.</p>
+      <p class="f" data-step="2">Backjump: the learned clause forces x2 = F. C1 dies, and this time only x1 is to blame. Learn ¬x1.</p>
+      <p class="f" data-step="3">With x1 = F, decide x2 = T: C5 dies, learn ¬x2. Then x2 = F, x3 = T satisfies everything. Four assignments instead of sixteen; the learned clauses are theorems.</p>
     </div>
   </div>
   <aside class="notes"><p>Take the full time and do it on the board with the figure as the check. The three things to name: the implication graph, the learned clause as a resolvent, and non-chronological backjumping. Then the engineering, one sentence each: two watched literals, VSIDS, restarts. GRASP 1996, Chaff 2001, and every solver since.</p></aside>
@@ -145,6 +161,18 @@
     </div>
   </div>
   <aside class="notes"><p>The struct pair is the capstone assignment. This week only declarations and the symbol table representation; access and code generation next week. Point at how selfie fakes structs today, with allocate_line and getters, as the motivation.</p></aside>
+</section>
+<section class="slide" data-act="IV" data-mins="1.0">
+  <div class="eyebrow">After this week</div>
+  <h2>Listen, then read.</h2>
+  <div class="fill">
+    <div class="two">
+      <div class="card"><span class="h">Listen</span><p><a href="https://www.youtube.com/watch?v=tfMQ-AYiuJw">Bach · Musical Offering</a> — Jordi Savall, Le Concert des Nations. Over two of the canons Bach wrote <em>Quaerendo invenietis</em>, seek and you shall find: the score gives the theme and the rule, and the player must find the assignment that makes it work. SAT, 1747.</p></div>
+      <div class="card"><span class="h">Read</span><p><a href="https://www-cs-faculty.stanford.edu/~knuth/taocp.html">The Art of Computer Programming, Volume 4, Fascicle 6: Satisfiability</a> — Knuth, 2015: three hundred pages on SAT solving, with solvers sat0 to sat13; babysat is deliberately more naive than sat0. And, more technical, <a href="https://doi.org/10.1145/378239.379017">Chaff: Engineering an Efficient SAT Solver</a> — Moskewicz and others, 2001: the paper that made CDCL fast, with the two watched literals and VSIDS; what runs inside every solver since.</p></div>
+    </div>
+  </div>
+  <p class="decknav next"><a href="../12-bounded-model-checking/">CC 12 · Bounded Model Checking →</a></p>
+  <aside class="notes"><p>One minute, or none: leave it on the screen while the room packs up. A piece, a book and a paper, chosen for the week’s idea; the cards say why.</p></aside>
 </section>
 
 </div>

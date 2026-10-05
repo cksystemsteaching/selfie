@@ -1,53 +1,53 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 600" width="900" height="600" role="img" aria-label="The memory layout of a RISC-U program: code, data, heap and stack, and the registers that delimit them">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="66.0 23.5 867.2 585.5" width="867" height="586" role="img" aria-label="The memory layout of a RISC-U program: code, data, heap and stack, and the registers that delimit them">
 <title>The memory layout of a RISC-U program: code, data, heap and stack, and the registers that delimit them</title>
 <style>svg{--ink:#131C2A;--ink-2:#39485C;--muted:#5D6E85;--line:rgba(19,28,42,.18);--syn:#A2661A;--sem:#1F6C86;--bad:#A63E5A;--panel:#FFFFFF;--ground:#EFF1F3}@media (prefers-color-scheme: dark){svg{--ink:#E7EDF6;--ink-2:#B6C4D8;--muted:#8093AF;--line:rgba(122,162,204,.16);--syn:#E0A550;--sem:#5BB0C7;--bad:#C8607A;--panel:#111C2E;--ground:#080E18}}text{font-family:"JetBrains Mono","SFMono-Regular","SF Mono","Cascadia Mono",Menlo,Consolas,"DejaVu Sans Mono",monospace}.serif{font-family:"Iowan Old Style","Palatino Linotype",Palatino,"Book Antiqua","URW Palladio L",Georgia,serif}</style>
-<text x="150" y="50" font-size="14" fill="var(--muted)" text-anchor="middle" dominant-baseline="central" class="serif">interpretation</text>
-<text x="540" y="50" font-size="14" fill="var(--muted)" text-anchor="middle" dominant-baseline="central" class="serif">main memory (storage)</text>
-<text x="790" y="50" font-size="14" fill="var(--muted)" text-anchor="middle" dominant-baseline="central" class="serif">addresses</text>
+<text x="150" y="50" font-size="18" fill="var(--muted)" text-anchor="middle" dominant-baseline="central" class="serif">interpretation</text>
+<text x="540" y="50" font-size="18" fill="var(--muted)" text-anchor="middle" dominant-baseline="central" class="serif">main memory (storage)</text>
+<text x="790" y="50" font-size="18" fill="var(--muted)" text-anchor="middle" dominant-baseline="central" class="serif">addresses</text>
 <rect x="80" y="120" width="150" height="320" fill="none" stroke="var(--line)" stroke-width="1.2"/>
 <line x1="80" y1="200" x2="230" y2="200" stroke="var(--line)" stroke-width="1" stroke-dasharray="6 4"/>
 <line x1="80" y1="260" x2="230" y2="260" stroke="var(--line)" stroke-width="1" stroke-dasharray="6 4"/>
 <line x1="80" y1="340" x2="230" y2="340" stroke="var(--line)" stroke-width="1"/>
 <line x1="80" y1="390" x2="230" y2="390" stroke="var(--line)" stroke-width="1"/>
-<text x="155" y="150" font-size="14" fill="var(--syn)" text-anchor="middle" dominant-baseline="central" class="serif">stack</text>
+<text x="155" y="150" font-size="18" fill="var(--syn)" text-anchor="middle" dominant-baseline="central" class="serif">stack</text>
 <line x1="155" y1="165" x2="155" y2="195" stroke="var(--syn)" stroke-width="1"/><path d="M155 195 L153.05 190.39 L156.95 190.39 Z" fill="var(--syn)"/>
 <line x1="155" y1="300" x2="155" y2="265" stroke="var(--syn)" stroke-width="1"/><path d="M155 265 L156.95 269.61 L153.05 269.61 Z" fill="var(--syn)"/>
-<text x="155" y="320" font-size="14" fill="var(--syn)" text-anchor="middle" dominant-baseline="central" class="serif">heap</text>
-<text x="155" y="365" font-size="14" fill="var(--syn)" text-anchor="middle" dominant-baseline="central" class="serif">data</text>
-<text x="155" y="415" font-size="14" fill="var(--syn)" text-anchor="middle" dominant-baseline="central" class="serif">code</text>
+<text x="155" y="320" font-size="18" fill="var(--syn)" text-anchor="middle" dominant-baseline="central" class="serif">heap</text>
+<text x="155" y="365" font-size="18" fill="var(--syn)" text-anchor="middle" dominant-baseline="central" class="serif">data</text>
+<text x="155" y="415" font-size="18" fill="var(--syn)" text-anchor="middle" dominant-baseline="central" class="serif">code</text>
 <rect x="380" y="80" width="320" height="480" fill="none" stroke="var(--syn)" stroke-width="1.2"/>
 <line x1="230" y1="120" x2="380" y2="80" stroke="var(--line)" stroke-width="1" stroke-dasharray="3 3"/>
 <line x1="230" y1="440" x2="380" y2="560" stroke="var(--line)" stroke-width="1" stroke-dasharray="3 3"/>
-<text x="540" y="105" font-size="14" fill="var(--syn)" text-anchor="middle" dominant-baseline="central" class="serif">stack</text>
+<text x="540" y="105" font-size="18" fill="var(--syn)" text-anchor="middle" dominant-baseline="central" class="serif">stack</text>
 <line x1="600" y1="95" x2="600" y2="140" stroke="var(--syn)" stroke-width="1"/><path d="M600 140 L598.05 135.39 L601.95 135.39 Z" fill="var(--syn)"/>
 <line x1="380" y1="150" x2="700" y2="150" stroke="var(--line)" stroke-width="1" stroke-dasharray="8 5"/>
 <circle cx="540" cy="200" r="1.4" fill="var(--muted)"/><circle cx="540" cy="212" r="1.4" fill="var(--muted)"/><circle cx="540" cy="224" r="1.4" fill="var(--muted)"/><circle cx="540" cy="236" r="1.4" fill="var(--muted)"/>
 <line x1="540" y1="355" x2="540" y2="305" stroke="var(--syn)" stroke-width="1"/><path d="M540 305 L541.95 309.61 L538.05 309.61 Z" fill="var(--syn)"/>
-<text x="580" y="330" font-size="14" fill="var(--syn)" text-anchor="start" dominant-baseline="central" class="serif">heap</text>
+<text x="580" y="330" font-size="18" fill="var(--syn)" text-anchor="start" dominant-baseline="central" class="serif">heap</text>
 <line x1="380" y1="360" x2="700" y2="360" stroke="var(--line)" stroke-width="1"/>
-<text x="690" y="372.5" font-size="10" fill="var(--muted)" text-anchor="end" dominant-baseline="central" class="serif">(unused)</text>
+<text x="690" y="372.5" font-size="12.86" fill="var(--muted)" text-anchor="end" dominant-baseline="central" class="serif">(unused)</text>
 <line x1="380" y1="385" x2="700" y2="385" stroke="var(--line)" stroke-width="1"/>
-<text x="540" y="395" font-size="10" fill="var(--bad)" text-anchor="middle" dominant-baseline="central">0x12000</text>
+<text x="540" y="395" font-size="12.86" fill="var(--bad)" text-anchor="middle" dominant-baseline="central">0x12000</text>
 <circle cx="600" cy="395" r="2.5" fill="var(--bad)"/>
 <line x1="380" y1="405" x2="700" y2="405" stroke="var(--line)" stroke-width="1"/>
-<text x="540" y="430" font-size="14" fill="var(--syn)" text-anchor="middle" dominant-baseline="central" class="serif">data</text>
+<text x="540" y="430" font-size="18" fill="var(--syn)" text-anchor="middle" dominant-baseline="central" class="serif">data</text>
 <line x1="380" y1="455" x2="700" y2="455" stroke="var(--line)" stroke-width="1"/>
-<text x="690" y="467.5" font-size="10" fill="var(--muted)" text-anchor="end" dominant-baseline="central" class="serif">(unused)</text>
+<text x="690" y="467.5" font-size="12.86" fill="var(--muted)" text-anchor="end" dominant-baseline="central" class="serif">(unused)</text>
 <line x1="380" y1="480" x2="700" y2="480" stroke="var(--line)" stroke-width="1"/>
-<text x="540" y="505" font-size="14" fill="var(--syn)" text-anchor="middle" dominant-baseline="central" class="serif">code</text>
+<text x="540" y="505" font-size="18" fill="var(--syn)" text-anchor="middle" dominant-baseline="central" class="serif">code</text>
 <line x1="380" y1="530" x2="700" y2="530" stroke="var(--line)" stroke-width="1"/>
-<text x="690" y="545" font-size="10" fill="var(--muted)" text-anchor="end" dominant-baseline="central" class="serif">(unused)</text>
+<text x="690" y="545" font-size="12.86" fill="var(--muted)" text-anchor="end" dominant-baseline="central" class="serif">(unused)</text>
 <line x1="380" y1="560" x2="700" y2="560" stroke="var(--line)" stroke-width="1"/>
 <line x1="790" y1="560" x2="790" y2="70" stroke="var(--line)" stroke-width="1.2"/><path d="M790 70 L792.34 75.53 L787.66 75.53 Z" fill="var(--line)"/>
 <line x1="780" y1="150" x2="704" y2="150" stroke="var(--line)" stroke-width="1"/><path d="M704 150 L708.61 148.05 L708.61 151.95 Z" fill="var(--line)"/>
-<text x="800" y="150" font-size="11" fill="var(--ink-2)" text-anchor="start" dominant-baseline="central">sp</text>
+<text x="800" y="150" font-size="14.14" fill="var(--ink-2)" text-anchor="start" dominant-baseline="central">sp</text>
 <line x1="780" y1="360" x2="704" y2="360" stroke="var(--line)" stroke-width="1"/><path d="M704 360 L708.61 358.05 L708.61 361.95 Z" fill="var(--line)"/>
-<text x="800" y="360" font-size="11" fill="var(--ink-2)" text-anchor="start" dominant-baseline="central">0x12000</text>
+<text x="800" y="360" font-size="14.14" fill="var(--ink-2)" text-anchor="start" dominant-baseline="central">0x12000</text>
 <line x1="780" y1="385" x2="704" y2="385" stroke="var(--line)" stroke-width="1"/><path d="M704 385 L708.61 383.05 L708.61 386.95 Z" fill="var(--line)"/>
-<text x="800" y="385" font-size="11" fill="var(--ink-2)" text-anchor="start" dominant-baseline="central">gp (0x11008)</text>
+<text x="800" y="385" font-size="14.14" fill="var(--ink-2)" text-anchor="start" dominant-baseline="central">gp (0x11008)</text>
 <line x1="780" y1="405" x2="704" y2="405" stroke="var(--line)" stroke-width="1"/><path d="M704 405 L708.61 403.05 L708.61 406.95 Z" fill="var(--line)"/>
-<text x="800" y="405" font-size="11" fill="var(--ink-2)" text-anchor="start" dominant-baseline="central">bump (0x11000)</text>
+<text x="800" y="405" font-size="14.14" fill="var(--ink-2)" text-anchor="start" dominant-baseline="central">bump (0x11000)</text>
 <line x1="780" y1="480" x2="704" y2="480" stroke="var(--line)" stroke-width="1"/><path d="M704 480 L708.61 478.05 L708.61 481.95 Z" fill="var(--line)"/>
-<text x="800" y="480" font-size="11" fill="var(--ink-2)" text-anchor="start" dominant-baseline="central">0x10000</text>
-<text x="540" y="585" font-size="11" fill="var(--muted)" text-anchor="middle" dominant-baseline="central" class="serif">64 bits</text>
+<text x="800" y="480" font-size="14.14" fill="var(--ink-2)" text-anchor="start" dominant-baseline="central">0x10000</text>
+<text x="540" y="585" font-size="14.14" fill="var(--muted)" text-anchor="middle" dominant-baseline="central" class="serif">64 bits</text>
 </svg>

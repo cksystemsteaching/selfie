@@ -16,6 +16,7 @@
     <div class="eyebrow">Introduction to Computer Science · week 12 · station IV</div>
     <h1>Formal Methods</h1>
     <p class="lead">Machine code in. Formulae out. Solver next. The syntax-to-semantics bridge, made mechanical — within a bound.</p>
+    <p class="decknav"><a href="../11-cost/">← ICS 11 · Cost</a></p>
   </div>
   <aside class="notes"><p>The session where Rice's theorem gets its practical answer, on the laptop. A tool built on selfie turns a program into a formula, a solver finds the input that breaks it, and the bound is the approximation, visible and chosen. Everything is run live. Book: the Cost chapter from Models of Machines.</p></aside>
 </section>
@@ -53,9 +54,9 @@
 
 <section class="slide" data-act="IV" data-mins="7.0">
   <div class="eyebrow">In the terminal · rotor</div>
-  <h2>A program that divides by zero — for exactly one input.</h2>
+  <h2>A program that divides by zero — for two inputs out of 256.</h2>
   <div class="fill">
-    <div class="two">
+    <div class="two" style="grid-template-columns:1fr 1.1fr">
       <div class="term sm">
         <span class="l o">// examples/symbolic/division-by-zero-3-35.c</span>
         <span class="l c">uint64_t main() {</span>
@@ -75,14 +76,17 @@
         <span class="l c">}</span>
       </div>
       <div class="stack">
-        <p class="f" data-step="1">Reads one byte. Subtracts 48, the code of the digit 0. Divides by the result. Type <span class="mono">0</span> and it divides by zero; type <span class="mono">1</span> and it exits with 1; type <span class="mono">2</span> and it divides by zero on the other line; type anything else and it exits with 0.</p>
+        <p class="f" data-step="1">Reads one byte, subtracts 48, the code of the digit 0, and divides by the result. <span class="mono">0</span> or <span class="mono">2</span> divides by zero, on different lines; <span class="mono">1</span> exits with 1; anything else, with 0.</p>
         <div class="term sm f" data-step="2">
           <span class="l"><span class="p">$</span> <span class="c">make rotor</span></span>
-          <span class="l"><span class="p">$</span> <span class="c">./rotor -c examples/symbolic/division-by-zero-3-35.c - 0</span></span>
+          <span class="l"><span class="p">$</span> <span class="c">./rotor -c \</span></span>
+          <span class="l"><span class="c">    examples/symbolic/division-by-zero-3-35.c - 0</span></span>
           <span class="l o">./rotor: 15161 lines of model formulae generated</span>
-          <span class="l o">./rotor: 237537 characters of model formulae written into examples/symbolic/division-by-zero-3-35-rotorized.btor2</span>
+          <span class="l o">./rotor: 237537 characters of model formulae</span>
+          <span class="l o">  written into examples/symbolic/</span>
+          <span class="l o">  division-by-zero-3-35-rotorized.btor2</span>
         </div>
-        <p class="sm f" data-step="3">Rotor compiles the program with selfie's compiler and writes the model of the RISC-V machine running that binary: every instruction, bit-precisely, as a formula. Linear in the size of the code — it does the same to all of selfie.</p>
+        <p class="sm f" data-step="3">Rotor compiles the program and writes a model of the RISC-V machine running that binary: every instruction, bit-precisely, as a formula. Linear in the code size — it does the same to all of selfie.</p>
       </div>
     </div>
   </div>
@@ -97,11 +101,13 @@
     <div class="stack grow">
       <div class="term sm">
         <span class="l o">191   state 5 core-0-pc ; program counter</span>
-        <span class="l o">150   state 71 input-buffer ; uninitialized input buffer</span>
+        <span class="l o">150   state 71 input-buffer</span>
+        <span class="l o">      ; uninitialized input buffer</span>
         <span class="l o">20070 next 5 191 20064 ; program counter</span>
         <span class="l o">36027 bad 36026 core-0-division-by-zero</span>
         <span class="l o">40095 bad 40094 core-0-load-seg-fault</span>
-        <span class="l o">40903 bad 40902 core-0-bad-exit-code ; exit(0)</span>
+        <span class="l o">40903 bad 40902 core-0-bad-exit-code</span>
+        <span class="l o">      ; exit(0)</span>
       </div>
       <p class="sm f" data-step="1"><strong>States</strong>: the pc, the registers, the memory segments, and an input buffer left uninitialised so the solver may choose it. <strong>Init</strong>: what they are at step 0. <strong>Next</strong>: what they are one step later — the RISC-V semantics. <strong>Bad</strong>: twenty-four things the machine must not do.</p>
     </div>
@@ -126,7 +132,7 @@
     </div>
     <div class="two">
       <p class="sm f" data-step="1">Bitme walks the steps one at a time and asks about every bad state at each. For the first few dozen the answer is no: the program is setting up its stack, calling <span class="mono">malloc</span>, calling <span class="mono">read</span>. Then the division instruction is fetched, and the answer for division by zero is yes — with the input that does it, derived from the formula.</p>
-      <p class="sm f" data-step="2">Among all 256 possible input bytes, the solver found the one that reaches the bad state, the way last week's solver found that x1 must be false: not by trying them, by reasoning. And it did it for a compiled RISC-V binary, not for the C.</p>
+      <p class="sm f" data-step="2">Among all 256 possible input bytes, the solver found the ones that reach a bad state, the way last week's solver found that x1 must be false: not by trying them, by reasoning. And it did it for a compiled RISC-V binary, not for the C.</p>
     </div>
   </div>
   <aside class="notes"><p>Run it and let the steps scroll; the output is verbose; with bitwuzla the division becomes reachable at step 76 with the input byte 48, the second division at step 89 with '2', and the exit(0) property at step 106 with byte 12. The steps move with the versions of rotor and bitme, so check them before class and say them. The sentence to land is the title. Then the third input, 12, for the flagged exit a few steps later.</p></aside>
@@ -177,6 +183,18 @@
     </div>
   </div>
   <aside class="notes"><p>Exercise 5 is the one that makes the method theirs.</p></aside>
+</section>
+<section class="slide" data-act="IV" data-mins="1.0">
+  <div class="eyebrow">After this week</div>
+  <h2>Listen, then read.</h2>
+  <div class="fill">
+    <div class="two">
+      <div class="card"><span class="h">Listen</span><p><a href="https://www.youtube.com/watch?v=l9dGLYJE05Y">Brahms · Symphony No. 4</a> — Carlos Kleiber, Bavarian State Orchestra, 1996. The finale is a passacaglia: an eight-bar formula stated once, then thirty variations checked against it, every one within the bound, none escaping. Bounded model checking in E minor.</p></div>
+      <div class="card"><span class="h">Read</span><p><a href="https://mitpress.mit.edu/9780262038836/model-checking/">Model Checking</a> — Clarke, Grumberg, Kroening, Peled and Veith, second edition 2018: the textbook, from temporal logic to SAT-based methods. And, more technical, <a href="https://doi.org/10.1007/3-540-49059-0_14">Symbolic Model Checking without BDDs</a> — Biere, Cimatti, Clarke and Zhu, 1999: the paper that invented bounded model checking, the k that bitme runs.</p></div>
+    </div>
+  </div>
+  <p class="decknav next"><a href="../13-machines/">ICS 13 · Machines →</a></p>
+  <aside class="notes"><p>One minute, or none: leave it on the screen while the room packs up. A symphony and two texts, one for everyone and one for the ones who want the source.</p></aside>
 </section>
 
 </div>

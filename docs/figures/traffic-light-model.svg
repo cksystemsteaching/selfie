@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 620" width="600" height="620" role="img" aria-label="The process states blocked, ready and running, and the transitions between them">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="41.6 36.0 525.4 548.0" width="525" height="548" role="img" aria-label="The process states blocked, ready and running, and the transitions between them">
 <title>The process states blocked, ready and running, and the transitions between them</title>
 <style>svg{--ink:#131C2A;--ink-2:#39485C;--muted:#5D6E85;--line:rgba(19,28,42,.18);--syn:#A2661A;--sem:#1F6C86;--bad:#A63E5A;--panel:#FFFFFF;--ground:#EFF1F3}@media (prefers-color-scheme: dark){svg{--ink:#E7EDF6;--ink-2:#B6C4D8;--muted:#8093AF;--line:rgba(122,162,204,.16);--syn:#E0A550;--sem:#5BB0C7;--bad:#C8607A;--panel:#111C2E;--ground:#080E18}}text{font-family:"JetBrains Mono","SFMono-Regular","SF Mono","Cascadia Mono",Menlo,Consolas,"DejaVu Sans Mono",monospace}.serif{font-family:"Iowan Old Style","Palatino Linotype",Palatino,"Book Antiqua","URW Palladio L",Georgia,serif}</style>
 <circle cx="300" cy="120" r="70" fill="none" stroke="var(--bad)" stroke-width="2"/>

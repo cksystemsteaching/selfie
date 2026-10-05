@@ -1,42 +1,42 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 560" width="900" height="560" role="img" aria-label="A call frame: what the caller allocates, what the callee allocates, and the two pointers that delimit it">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="46.0 11.0 876.6 545.5" width="877" height="546" role="img" aria-label="A call frame: what the caller allocates, what the callee allocates, and the two pointers that delimit it">
 <title>A call frame: what the caller allocates, what the callee allocates, and the two pointers that delimit it</title>
 <style>svg{--ink:#131C2A;--ink-2:#39485C;--muted:#5D6E85;--line:rgba(19,28,42,.18);--syn:#A2661A;--sem:#1F6C86;--bad:#A63E5A;--panel:#FFFFFF;--ground:#EFF1F3}@media (prefers-color-scheme: dark){svg{--ink:#E7EDF6;--ink-2:#B6C4D8;--muted:#8093AF;--line:rgba(122,162,204,.16);--syn:#E0A550;--sem:#5BB0C7;--bad:#C8607A;--panel:#111C2E;--ground:#080E18}}text{font-family:"JetBrains Mono","SFMono-Regular","SF Mono","Cascadia Mono",Menlo,Consolas,"DejaVu Sans Mono",monospace}.serif{font-family:"Iowan Old Style","Palatino Linotype",Palatino,"Book Antiqua","URW Palladio L",Georgia,serif}</style>
-<text x="120" y="40" font-size="15" fill="var(--syn)" text-anchor="middle" dominant-baseline="central" class="serif">call stack</text>
-<text x="790" y="40" font-size="12" fill="var(--muted)" text-anchor="middle" dominant-baseline="central" class="serif">high addresses</text>
-<text x="790" y="530" font-size="12" fill="var(--muted)" text-anchor="middle" dominant-baseline="central" class="serif">low addresses</text>
+<text x="120" y="40" font-size="22.5" fill="var(--syn)" text-anchor="middle" dominant-baseline="central" class="serif">call stack</text>
+<text x="790" y="40" font-size="18" fill="var(--muted)" text-anchor="middle" dominant-baseline="central" class="serif">high addresses</text>
+<text x="790" y="530" font-size="18" fill="var(--muted)" text-anchor="middle" dominant-baseline="central" class="serif">low addresses</text>
 <line x1="660" y1="500" x2="660" y2="60" stroke="var(--line)" stroke-width="1.2"/><path d="M660 60 L662.34 65.53 L657.66 65.53 Z" fill="var(--line)"/>
 <rect x="300" y="70" width="300" height="40" fill="none" stroke="var(--line)" stroke-width="1"/>
-<text x="450" y="90" font-size="12" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central" class="serif">caller's call frame</text>
+<text x="450" y="90" font-size="18" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central" class="serif">caller's call frame</text>
 <rect x="300" y="110" width="300" height="60" fill="none" stroke="var(--syn)" stroke-width="1"/>
-<text x="450" y="140" font-size="12" fill="var(--syn)" text-anchor="middle" dominant-baseline="central" class="serif">temporaries</text>
+<text x="450" y="140" font-size="18" fill="var(--syn)" text-anchor="middle" dominant-baseline="central" class="serif">temporaries</text>
 <rect x="300" y="170" width="300" height="45" fill="none" stroke="var(--syn)" stroke-width="1"/>
-<text x="450" y="192.5" font-size="12" fill="var(--syn)" text-anchor="middle" dominant-baseline="central" class="serif">variadic actual parameters</text>
+<text x="450" y="192.5" font-size="18" fill="var(--syn)" text-anchor="middle" dominant-baseline="central" class="serif">variadic actual parameters</text>
 <rect x="300" y="215" width="300" height="45" fill="none" stroke="var(--syn)" stroke-width="1"/>
-<text x="450" y="237.5" font-size="12" fill="var(--syn)" text-anchor="middle" dominant-baseline="central" class="serif">non-variadic actual parameters</text>
+<text x="450" y="237.5" font-size="18" fill="var(--syn)" text-anchor="middle" dominant-baseline="central" class="serif">non-variadic actual parameters</text>
 <rect x="300" y="260" width="300" height="40" fill="none" stroke="var(--sem)" stroke-width="1"/>
-<text x="450" y="280" font-size="12" fill="var(--sem)" text-anchor="middle" dominant-baseline="central" class="serif">return address register ra</text>
+<text x="450" y="280" font-size="18" fill="var(--sem)" text-anchor="middle" dominant-baseline="central" class="serif">return address register ra</text>
 <rect x="300" y="300" width="300" height="40" fill="none" stroke="var(--sem)" stroke-width="1"/>
-<text x="450" y="320" font-size="12" fill="var(--sem)" text-anchor="middle" dominant-baseline="central" class="serif">caller's frame pointer s0</text>
+<text x="450" y="320" font-size="18" fill="var(--sem)" text-anchor="middle" dominant-baseline="central" class="serif">caller's frame pointer s0</text>
 <rect x="300" y="340" width="300" height="80" fill="none" stroke="var(--sem)" stroke-width="1"/>
-<text x="450" y="380" font-size="12" fill="var(--sem)" text-anchor="middle" dominant-baseline="central" class="serif">local variables</text>
+<text x="450" y="380" font-size="18" fill="var(--sem)" text-anchor="middle" dominant-baseline="central" class="serif">local variables</text>
 <rect x="300" y="420" width="300" height="80" fill="none" stroke="var(--line)" stroke-width="1"/>
-<text x="450" y="460" font-size="12" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central" class="serif">next call frame</text>
-<text x="60" y="165" font-size="11" fill="var(--syn)" text-anchor="start" dominant-baseline="central">allocated by caller</text>
+<text x="450" y="460" font-size="18" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central" class="serif">next call frame</text>
+<text x="60" y="165" font-size="16.5" fill="var(--syn)" text-anchor="start" dominant-baseline="central">allocated by caller</text>
 <line x1="280" y1="110" x2="280" y2="260" stroke="var(--syn)" stroke-width="1.2"/>
-<text x="60" y="185" font-size="11" fill="var(--muted)" text-anchor="start" dominant-baseline="central">deallocated by caller</text>
+<text x="60" y="185" font-size="16.5" fill="var(--muted)" text-anchor="start" dominant-baseline="central">deallocated by caller</text>
 <line x1="270" y1="110" x2="270" y2="215" stroke="var(--muted)" stroke-width="1" stroke-dasharray="3 3"/>
-<text x="700" y="360" font-size="11" fill="var(--sem)" text-anchor="start" dominant-baseline="central">allocated by callee</text>
+<text x="700" y="360" font-size="16.5" fill="var(--sem)" text-anchor="start" dominant-baseline="central">allocated by callee</text>
 <line x1="620" y1="260" x2="620" y2="420" stroke="var(--sem)" stroke-width="1.2"/>
-<text x="700" y="380" font-size="11" fill="var(--muted)" text-anchor="start" dominant-baseline="central">deallocated by callee</text>
+<text x="700" y="380" font-size="16.5" fill="var(--muted)" text-anchor="start" dominant-baseline="central">deallocated by callee</text>
 <line x1="630" y1="110" x2="630" y2="420" stroke="var(--muted)" stroke-width="1" stroke-dasharray="3 3"/>
-<text x="700" y="300" font-size="11" fill="var(--ink-2)" text-anchor="start" dominant-baseline="central">callee's call frame</text>
+<text x="700" y="300" font-size="16.5" fill="var(--ink-2)" text-anchor="start" dominant-baseline="central">callee's call frame</text>
 <line x1="200" y1="340" x2="296" y2="340" stroke="var(--ink-2)" stroke-width="1.2"/><path d="M296 340 L291.39 341.95 L291.39 338.05 Z" fill="var(--ink-2)"/>
-<text x="60" y="325" font-size="11" fill="var(--ink-2)" text-anchor="start" dominant-baseline="central">callee's frame pointer s0</text>
+<text x="60" y="325" font-size="16.5" fill="var(--ink-2)" text-anchor="start" dominant-baseline="central">callee's frame pointer s0</text>
 <line x1="200" y1="420" x2="296" y2="420" stroke="var(--ink-2)" stroke-width="1.2"/><path d="M296 420 L291.39 421.95 L291.39 418.05 Z" fill="var(--ink-2)"/>
-<text x="60" y="435" font-size="11" fill="var(--ink-2)" text-anchor="start" dominant-baseline="central">stack pointer sp</text>
-<text x="60" y="280" font-size="11" fill="var(--ink-2)" text-anchor="start" dominant-baseline="central">callee's procedure mark</text>
+<text x="60" y="435" font-size="16.5" fill="var(--ink-2)" text-anchor="start" dominant-baseline="central">stack pointer sp</text>
+<text x="60" y="280" font-size="16.5" fill="var(--ink-2)" text-anchor="start" dominant-baseline="central">callee's procedure mark</text>
 <path d="M600 320 L640 320" fill="none" stroke="var(--ink-2)" stroke-width="1" stroke-dasharray="2 2"/>
 <path d="M640 320 L640 90 L610 90" fill="none" stroke="var(--ink-2)" stroke-width="1" stroke-dasharray="2 2"/>
 <line x1="614" y1="90" x2="604" y2="90" stroke="var(--ink-2)" stroke-width="1"/><path d="M604 90 L607.68 88.44 L607.68 91.56 Z" fill="var(--ink-2)"/>
-<text x="60" y="460" font-size="11" fill="var(--muted)" text-anchor="start" dominant-baseline="central">callee is next caller</text>
+<text x="60" y="460" font-size="16.5" fill="var(--muted)" text-anchor="start" dominant-baseline="central">callee is next caller</text>
 </svg>

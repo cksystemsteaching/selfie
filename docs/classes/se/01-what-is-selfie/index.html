@@ -16,6 +16,7 @@
     <div class="eyebrow">Systems Engineering · week 1</div>
     <h1>What is <span class="k">Selfie</span>?</h1>
     <p class="lead">The talk, then the spine of the semester in an hour — weighted to the third command.</p>
+    <p class="decknav"><a href="../">↑ Systems Engineering</a></p>
   </div>
   <aside class="notes"><p>Give the selfie talk first, all of it, because its Part III is the thesis of this class. Then this deck: the spine, pointed at systems, and the logistics. Book: the Introduction, the Selfie chapter, and the Computing chapter's opening callout.</p></aside>
 </section>
@@ -26,12 +27,12 @@
   <div class="fill">
     <div class="two">
       <div class="stack">
-        <p class="f" data-step="1">Three sentences, and the class is their derivation. Fourteen weeks of building hypster, the hypervisor in selfie, into an operating system with processes, threads and locks, and at each step asking which of the three the code you wrote belongs to.</p>
-        <p class="f" data-step="2">The purpose is the one shared with the companion classes: a deep understanding of the basic principles, deep enough to position generative AI, and whatever comes next, properly. A kernel is where a system meets things it cannot trust, and that is the shape of the newest problem too.</p>
+        <p class="f" data-step="1">Three sentences, and the class is their derivation: fourteen weeks of building hypster, selfie's hypervisor, into an operating system.</p>
+        <p class="f" data-step="2">The purpose is shared with the companion classes: principles deep enough to position generative AI, and whatever comes next, properly.</p>
       </div>
       <div class="stack">
-        <div class="card syn f" data-step="3"><span class="h">The assignments</span><p>Ten autograded extensions of selfie: an assembler, processes, fork and wait, locks, threads, a thread-safe malloc, a lock-free stack. Plus one new one in week 10: state a memory-safety property for a piece of your systems code and let a model checker find the input that breaks it.</p></div>
-        <div class="card f" data-step="4"><span class="h">The book</span><p><em>What is Intelligence?</em> — the Computing chapter is this class; the Meaning and Cost chapters are its theory. Read the Introduction and the Selfie chapter this week.</p></div>
+        <div class="card syn f" data-step="3"><span class="h">The assignments</span><p>Ten autograded extensions of selfie, from an assembler to a lock-free stack. In week 10 a new one: a model checker finds the input that breaks your own systems code.</p></div>
+        <div class="card f" data-step="4"><span class="h">The book</span><p><em>What is Intelligence?</em> The Computing chapter is this class. Read the Introduction and the Selfie chapter this week.</p></div>
       </div>
     </div>
   </div>
@@ -57,7 +58,7 @@
   <h2>Understand the third and you understand <span class="k">operating systems</span>.</h2>
   <div class="fill">
     <div class="term sm">
-      <span class="l"><span class="p">$</span> <span class="c">./selfie -c selfie.c -o selfie1.m -m 2 -c selfie.c -o selfie2.m &amp;&amp; diff -s selfie1.m selfie2.m</span></span>
+      <span class="l"><span class="p">$</span> <span class="c">./selfie -c selfie.c -o selfie0.m -m 3 -c selfie.c -o selfie1.m &amp;&amp; diff -s selfie0.m selfie1.m</span></span>
       <span class="l"><span class="p">$</span> <span class="c">./selfie -c selfie.c -o selfie.m -m 2 -l selfie.m -m 1</span></span>
       <span class="l"><span class="p">$</span> <span class="c">./selfie -c selfie.c -o selfie.m -m 3 -l selfie.m -y 2 -l selfie.m -y 1</span></span>
     </div>
@@ -76,9 +77,9 @@
   <div class="fill row mid">
     <div class="fig grow" style="flex:1.3" data-fig="emuvirt"><span class="cap">two ways to build one operating system</span></div>
     <div class="stack grow">
-      <p class="f" data-step="1">By emulation the guest is read; by virtualization the guest is run, on the same processor as the kernel. Same guest, same 86,380 instructions, same output. Only the bill for the host differs: ×2,593 against ×208.</p>
-      <p class="f" data-step="2">So virtualization is needed only for performance, and it buys that performance by introducing self-reference: the kernel needs what it provides. Weeks 4 to 6 build up to that sentence and week 6 lands it.</p>
-      <p class="f" data-step="3">In my experience this is the one thing whose absence stops students from ever understanding what a kernel is. Most courses show only the virtualized design, with the loop tangled into paging and scheduling and never named. Here it is named first.</p>
+      <p class="f" data-step="1">By emulation the guest is read; by virtualization it is run, on the kernel's own processor. Same guest, same 86,380 instructions, same output. Only the host's bill differs: ×2,593 against ×208.</p>
+      <p class="f" data-step="2">So virtualization is only for performance, bought with self-reference: the kernel needs what it provides.</p>
+      <p class="f" data-step="3">Most courses show only the virtualized design and never name the loop. Here it is named first.</p>
     </div>
   </div>
   <aside class="notes"><p>The talk's Part III in one slide, stated as the thesis of the class. Do not argue it yet; weeks 4 to 6 do. The numbers are selfie's own and come back in week 3.</p></aside>
@@ -88,24 +89,29 @@
   <div class="eyebrow">Fourteen weeks</div>
   <h2>The route.</h2>
   <div class="fill">
-    <table class="t">
-      <tr><th>wk</th><th>lecture</th><th>assignment</th></tr>
-      <tr><td>2</td><td>The machine again: privilege, exceptions, system calls; the assembler</td><td class="mono">assembler-parser</td></tr>
-      <tr><td>3</td><td>Emulation: mipster as universal machine; the price of interpretation</td><td class="mono">self-assembler</td></tr>
-      <tr><td>4</td><td>Virtual memory: paging; virtual as notation, physical as meaning</td><td class="mono">—</td></tr>
-      <tr><td>5</td><td>Time-sharing: the timer interrupt as the answer to halting; scheduling</td><td class="mono">processes</td></tr>
-      <tr><td>6</td><td>Self-hosting: hypster; the bootstrap problem as Gödel II; the TCB</td><td class="mono">fork-wait</td></tr>
-      <tr><td>7</td><td>Processes: fork, wait, exit; a process is a virtual machine</td><td class="mono">fork-wait-exit</td></tr>
-      <tr><td>8</td><td>Concurrency: threads, locks, lr/sc; interleavings as state space</td><td class="mono">lock, threads</td></tr>
-      <tr><td>9</td><td>Runtime systems: malloc, garbage collection; liveness by reachability</td><td class="mono">threadsafe-malloc</td></tr>
-      <tr><td>10</td><td>Verifying systems code: rotor, bounded model checking</td><td class="mono">treiber-stack, rotor-bounds</td></tr>
-      <tr><td>11</td><td>Cost: caches, performance, energy; Landauer; Goodhart</td><td class="mono">—</td></tr>
-      <tr><td>12</td><td>Universality for systems: halting, Rice on schedulers, deadlock</td><td class="mono">—</td></tr>
-      <tr><td>13</td><td>Agents as processes: sandboxing is virtualization; the gate</td><td class="mono">—</td></tr>
-      <tr><td>14</td><td>What a system is; the definition</td><td class="mono">—</td></tr>
-    </table>
+    <div class="two">
+      <table class="t">
+        <tr><th>wk</th><th>lecture</th><th>assignment</th></tr>
+        <tr><td>2</td><td>The machine again; the assembler</td><td class="mono">assembler-parser</td></tr>
+        <tr><td>3</td><td>Emulation: mipster as universal machine</td><td class="mono">self-assembler</td></tr>
+        <tr><td>4</td><td>Virtual memory: paging</td><td class="mono">—</td></tr>
+        <tr><td>5</td><td>Time-sharing: the timer, scheduling</td><td class="mono">processes</td></tr>
+        <tr><td>6</td><td>Self-hosting: hypster, Gödel II, the TCB</td><td class="mono">fork-wait</td></tr>
+        <tr><td>7</td><td>Processes: fork, wait, exit</td><td class="mono">fork-wait-exit</td></tr>
+        <tr><td>8</td><td>Concurrency: threads, locks, lr/sc</td><td class="mono">lock, threads</td></tr>
+      </table>
+      <table class="t">
+        <tr><th>wk</th><th>lecture</th><th>assignment</th></tr>
+        <tr><td>9</td><td>Runtime systems: malloc, garbage collection</td><td class="mono">threadsafe-malloc</td></tr>
+        <tr><td>10</td><td>Verifying systems code: rotor, bitme</td><td class="mono">treiber-stack, rotor-bounds</td></tr>
+        <tr><td>11</td><td>Cost: caches, energy, Goodhart</td><td class="mono">—</td></tr>
+        <tr><td>12</td><td>Universality: halting, Rice, deadlock</td><td class="mono">—</td></tr>
+        <tr><td>13</td><td>Agents as processes: the gate</td><td class="mono">—</td></tr>
+        <tr><td>14</td><td>What a system is; the definition</td><td class="mono">—</td></tr>
+      </table>
+    </div>
   </div>
-  <aside class="notes"><p>Fourteen sessions of ninety minutes, assignments introduced in the room. Note the two-week runs: processes and fork span three weeks, and the two rotor-related assignments sit in week 10.</p></aside>
+  <aside class="notes"><p>Fourteen sessions of ninety minutes, assignments introduced in the room. Note the two-week runs: processes and fork span three weeks, and treiber-stack and rotor-bounds both sit in week 10.</p></aside>
 </section>
 
 <section class="slide" data-act="I" data-mins="2.0">
@@ -123,6 +129,18 @@
     </div>
   </div>
   <aside class="notes"><p>Exercise 3 is the one that makes the thesis of the class real before it is argued.</p></aside>
+</section>
+<section class="slide" data-act="I" data-mins="1.0">
+  <div class="eyebrow">After this week</div>
+  <h2>Listen, then read.</h2>
+  <div class="fill">
+    <div class="two">
+      <div class="card"><span class="h">Listen</span><p><a href="https://www.youtube.com/watch?v=4jO6d4z8r7w">Wagner · Das Rheingold</a> — Boulez, Chéreau, Bayreuth. One E flat in the double basses, held for 136 bars, and the whole world of the Ring boots from it. The spine of a systems class: everything from one state, and the price paid for it later.</p></div>
+      <div class="card"><span class="h">Read</span><p><a href="https://ospp.cs.washington.edu/">Operating Systems: Principles and Practice</a> — Anderson and Dahlin: the textbook of this class, kernels, processes, concurrency, memory and file systems, in depth. And, more technical, <a href="https://doi.org/10.1145/361011.361061">The UNIX Time-Sharing System</a> — Ritchie and Thompson, 1974: the operating system in eleven pages, and the design taste every kernel since has copied.</p></div>
+    </div>
+  </div>
+  <p class="decknav next"><a href="../02-the-machine-again/">SE 02 · The Machine, Again →</a></p>
+  <aside class="notes"><p>One minute, or none: leave it on the screen while the room packs up. A piece, a book and a paper, chosen for the week’s idea; the cards say why.</p></aside>
 </section>
 
 </div>

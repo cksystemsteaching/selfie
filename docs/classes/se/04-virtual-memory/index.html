@@ -16,6 +16,7 @@
     <div class="eyebrow">Systems Engineering · week 4 · station III</div>
     <h1>Virtual <span class="k">Memory</span></h1>
     <p class="lead">Paging: the virtual address is notation, the physical address is its meaning.</p>
+    <p class="decknav"><a href="../03-emulation/">← SE 03 · Emulation</a></p>
   </div>
   <aside class="notes"><p>Spatial isolation. Every guest believes it owns the 4 GB of week 2; the kernel translates. The chapter's paging section, read with the Meaning chapter's vocabulary: an address space is a notation, and the page table is the interpreter. Book: Computing, Virtual Memory.</p></aside>
 </section>
@@ -26,9 +27,9 @@
   <div class="fill row mid">
     <div class="fig grow" style="flex:1.1" data-fig="layout"><span class="cap">a program's memory layout: code, data, heap, stack</span></div>
     <div class="stack grow">
-      <p class="f" data-step="1">The compiler lays out every program the same way, and the machine has one memory. So either the second program is relocated, which means rewriting its addresses, or every address a program uses is a name that the kernel resolves at run time.</p>
-      <p class="f" data-step="2">The second is virtual memory. The program's addresses are <em>virtual</em>: notation. The addresses the memory chip sees are <em>physical</em>: meaning. The mapping from one to the other is owned by the kernel, and a program that cannot name a physical address cannot touch another program's memory.</p>
-      <p class="f" data-step="3">Isolation as a translation problem. The Meaning chapter's semantics, applied to addresses.</p>
+      <p class="f" data-step="1">The compiler lays out every program the same way, and the machine has one memory. Either the second program is relocated, or every address is a name the kernel resolves at run time.</p>
+      <p class="f" data-step="2">That is virtual memory. The program's addresses are <em>virtual</em>: notation. The memory chip's are <em>physical</em>: meaning. The kernel owns the mapping, and a program that cannot name a physical address cannot touch another's memory.</p>
+      <p class="f" data-step="3">Isolation as a translation problem: the Meaning chapter's semantics, applied to addresses.</p>
     </div>
   </div>
   <aside class="notes"><p>The layout from the compiler class, then the collision. Relocation versus translation; the answer everyone took. Then say it in the vocabulary of the book: virtual is syntax, physical is semantics, and the kernel interprets.</p></aside>
@@ -40,9 +41,9 @@
   <div class="fill row mid">
     <div class="fig grow" style="flex:1.2" data-fig="page-table"><span class="cap">a virtual address splits into page number and offset; the page table maps pages to frames</span></div>
     <div class="stack grow">
-      <p class="f" data-step="1">Cut both address spaces into 4 KB blocks: <em>pages</em> on the virtual side, <em>frames</em> on the physical. A 32-bit address is a 20-bit page number and a 12-bit offset. Translate the page number through a table; copy the offset unchanged. That is the whole mechanism.</p>
-      <p class="f" data-step="2">A million pages means a million entries: 4 or 8 MB per table if flat, which selfie accepts for simplicity. Real systems use a tree so that untouched regions cost nothing, and a cache, the TLB, so that the tree is rarely walked.</p>
-      <p class="f" data-step="3">In selfie, <span class="mono">tlb</span> is the procedure that translates, and the emulator calls it on every load, store and fetch. Find it; it is a few lines.</p>
+      <p class="f" data-step="1">Cut both address spaces into 4 KB blocks: <em>pages</em> on the virtual side, <em>frames</em> on the physical. A 32-bit address is a 20-bit page number and a 12-bit offset: translate the page number through a table, copy the offset. Positional notation in base 4,096.</p>
+      <p class="f" data-step="2">A million pages means a million entries, 4 or 8 MB if flat, which selfie accepts. Real systems use a tree, and a cache, the TLB.</p>
+      <p class="f" data-step="3">In selfie, <span class="mono">tlb</span> translates, on every load, store and fetch. Find it; it is a few lines.</p>
     </div>
   </div>
   <aside class="notes"><p>The figure carries it. Do the arithmetic once: 2^32 bytes, 2^12 per page, 2^20 pages. Then the two engineering answers to a million entries, trees and caches, which the Cost week comes back to.</p></aside>
@@ -60,9 +61,12 @@
       <div class="term sm f" data-step="3">
         <span class="l"><span class="p">$</span> <span class="c">./selfie -c selfie.c -m 1</span></span>
         <span class="l o">./selfie: selfie.c exiting with exit code 0</span>
-        <span class="l o">./selfie: summary: 85754 executed instructions in total</span>
-        <span class="l o">./selfie:          0.19MB mapped memory [19.92% of 1MB physical memory]</span>
-        <span class="l o">./selfie:          14 syscalls, 1 page faults, 0 timer interrupts</span>
+        <span class="l o">./selfie: summary: 85754 executed instructions</span>
+        <span class="l o">                   in total</span>
+        <span class="l o">./selfie:          0.19MB mapped memory</span>
+        <span class="l o">                   [19.92% of 1MB physical memory]</span>
+        <span class="l o">./selfie:          14 syscalls, 1 page faults,</span>
+        <span class="l o">                   0 timer interrupts</span>
       </div>
     </div>
   </div>
@@ -95,6 +99,18 @@
     </div>
   </div>
   <aside class="notes"><p>Plant the loop in its spatial form. Do not resolve it; week 6 does. Two-week runs on the assembler are deliberate: the self-assembly fixed point takes people longer than the parser.</p></aside>
+</section>
+<section class="slide" data-act="III" data-mins="1.0">
+  <div class="eyebrow">After this week</div>
+  <h2>Listen, then read.</h2>
+  <div class="fill">
+    <div class="two">
+      <div class="card"><span class="h">Listen</span><p><a href="https://www.youtube.com/watch?v=m7F2KPZ8nwk">Strauss · Die Frau ohne Schatten</a> — Böhm, Vienna 1977. The Empress has no shadow: an address with nothing mapped behind it, and the opera is the page fault handler, three acts of it. Virtual memory, at Hofmannsthal’s scale.</p></div>
+      <div class="card"><span class="h">Read</span><p><a href="https://doi.org/10.1145/356571.356573">Virtual Memory</a> — Denning, 1970, in Computing Surveys: the whole subject, paging, working sets and thrashing, as it stood when it was new. And, more technical, <a href="https://doi.org/10.1109/TEC.1962.5219356">One-Level Storage System</a> — Kilburn, Edwards, Lanigan and Sumner, 1962: the Atlas paper, where paging was invented.</p></div>
+    </div>
+  </div>
+  <p class="decknav next"><a href="../05-time-sharing/">SE 05 · Time-Sharing →</a></p>
+  <aside class="notes"><p>One minute, or none: leave it on the screen while the room packs up. A piece, a book and a paper, chosen for the week’s idea; the cards say why.</p></aside>
 </section>
 
 </div>

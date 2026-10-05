@@ -166,7 +166,7 @@ verdict: <reachable or unreachable>
 input: <the input bitme found, or none>
 ```
 
-- Generate the model with `./rotor -c assignments/rotor-check/program.c - 0` and run `tools/bitme.py -kmax <bound> assignments/rotor-check/program-rotorized.btor2`. Do not commit the model; the grader regenerates it under your compiler.
+- Generate the model with `./rotor -c assignments/rotor-check/program.c - 0` and run `tools/bitme.py -kmax <bound> --use-bitwuzla assignments/rotor-check/program-rotorized.btor2`. Do not commit the model; the grader regenerates it under your compiler.
 - Do not modify any files other than **selfie.c**, **grammar.md**, and the two files above.
 - Use the `rotor-check` target in the grader to determine your grade. It compiles and runs your program, regenerates the model, checks that the named bad state exists in it, and runs bitme with your bound: a *reachable* verdict must be confirmed by a satisfying assignment within the bound, an *unreachable* one by bitme reaching the bound without one. bitme needs a solver; see the [grader README](../grader/README.md).
 

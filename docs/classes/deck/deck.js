@@ -78,11 +78,14 @@ function fit(){
    the footer — shrink that one slide's unit until it fits. Every length in a
    slide is a multiple of --u, so this is a pure scale: nothing re-wraps. */
 function autofit(){
+  /* The largest scale at which a slide's content still fits. Height is not
+     proportional to the scale: beside a code panel or a wide table, prose gets
+     a wider column as the scale drops and so shortens faster than the scale.
+     A loop that only shrinks overshoots; this one bisects. */
   deck.classList.add("measuring");
   slides.forEach(s=>{
-    s.style.removeProperty("--k");
-    let k = 1;
-    for(let pass=0; pass<5; pass++){
+    const fits = k=>{
+      if(k >= 1) s.style.removeProperty("--k"); else s.style.setProperty("--k", k.toFixed(4));
       const cs = getComputedStyle(s), r = s.getBoundingClientRect();
       const top = r.top + parseFloat(cs.paddingTop), limit = r.bottom - parseFloat(cs.paddingBottom);
       let bottom = top;
@@ -96,11 +99,17 @@ function autofit(){
           walk(e);
         }
       })(s);
-      const need = bottom - top, avail = limit - top;
-      if(need <= avail + .5) break;
-      k = Math.max(.7, k * avail/need * .996);
-      s.style.setProperty("--k", k.toFixed(4));
+      return bottom - top <= limit - top + .5;
+    };
+    if(fits(1)) return;
+    const FLOOR = .7;
+    if(!fits(FLOOR)) return;               /* too much content: stay at the floor */
+    let lo = FLOOR, hi = 1;                /* lo fits, hi does not */
+    for(let i=0; i<8; i++){
+      const mid = (lo + hi) / 2;
+      if(fits(mid)) lo = mid; else hi = mid;
     }
+    fits(lo);
   });
   deck.classList.remove("measuring");
 }

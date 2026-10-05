@@ -16,6 +16,7 @@
     <div class="eyebrow">Compiler Construction · week 3 · station II</div>
     <h1>The Parser</h1>
     <p class="lead">Context-free grammars, LL(1), recursive descent — and why a parse is a proof.</p>
+    <p class="decknav"><a href="../02-the-scanner/">← CC 02 · The Scanner</a></p>
   </div>
   <aside class="notes"><p>The parser session: what a finite state machine cannot do, what a stack adds, how a grammar becomes procedures, and the claim that carries the class: a successful parse is a derivation, which is a proof that the text is in the language, and it always terminates. Book: the Programming chapter's Parser section and Expressions. No new assignment this week; hex-literal continues.</p></aside>
 </section>
@@ -26,12 +27,35 @@
   <div class="fill row mid">
     <div class="fig grow" style="flex:1.4" data-fig="elementary-expressions"><span class="cap">a context-free grammar, one FSM per rule, and a stack</span></div>
     <div class="stack grow">
-      <p class="f" data-step="1">Whatever number of states a machine has, feed it more opening parentheses than that and two different depths land in the same state. So no finite state machine checks that every <span class="mono">(</span> has its <span class="mono">)</span>. That is the pumping lemma in one sentence.</p>
-      <p class="f" data-step="2">The C* grammar has rules that mention each other — <span class="mono">factor</span> mentions <span class="mono">expression</span> which mentions <span class="mono">term</span> which mentions <span class="mono">factor</span> — and cannot be substituted into one rule. It is <strong>context-free</strong>, not regular.</p>
-      <p class="f" data-step="3">The machine that decides it is a finite state machine plus a <strong>stack</strong>: a pushdown automaton. One FSM per rule, and the stack remembers which rule to return to.</p>
+      <p class="f" data-step="1">Feed a machine more opening parentheses than it has states and two depths land in the same state. So no finite state machine checks that every <span class="mono">(</span> has its <span class="mono">)</span>. The pumping lemma in one sentence.</p>
+      <p class="f" data-step="2">The C* grammar has rules that mention each other, <span class="mono">factor</span> to <span class="mono">expression</span> to <span class="mono">term</span> to <span class="mono">factor</span>, and cannot be substituted into one rule. It is <strong>context-free</strong>, not regular.</p>
+      <p class="f" data-step="3">What decides it is a finite state machine plus a <strong>stack</strong>: one FSM per rule, and the stack remembers where to return.</p>
     </div>
   </div>
   <aside class="notes"><p>Do the parentheses argument properly; it is the first proof of the class and the reason a parser is a different kind of object from a scanner. Then the figure: three machines, one per rule, and the stack that holds the return path. The Chomsky hierarchy gets one sentence: regular inside context-free inside the rest, and the introduction class says where the ladder ends.</p></aside>
+</section>
+
+<section class="slide" data-act="II" data-mins="5.0">
+  <div class="eyebrow">Self-reference · the first and simplest</div>
+  <h2>EBNF needs a <span class="k">stack</span> to read itself.</h2>
+  <div class="fill row mid">
+    <div class="term" style="flex:1.12">
+      <span class="l c">EBNF       = { production } .</span>
+      <span class="l c">production = non_terminal "=" expression "." .</span>
+      <span class="l c">expression = term { "|" term } .</span>
+      <span class="l c">term       = factor { " " factor } .</span>
+      <span class="l c">factor     = non_terminal | terminal</span>
+      <span class="l c">           | "{" expression "}"</span>
+      <span class="l c">           | "[" expression "]"</span>
+      <span class="l c">           | "(" expression ")" .</span>
+    </div>
+    <div class="stack grow" style="flex:1.1">
+      <p class="f" data-step="1">The grammar of grammars, in its own notation. A <span class="mono">factor</span> contains an <span class="mono">expression</span> in brackets, so braces nest, and nesting needs counting: EBNF is context-free, not regular.</p>
+      <p class="f" data-step="2">So the parser for grammar.md is the kind of parser you write this week: one procedure per rule, and the call stack for the brackets. Nothing breaks: a text about texts is just another text.</p>
+      <p class="f" data-step="3"><strong>Hold this example.</strong> It is self-reference on notation, and harmless. Week 8 makes the same move on meaning, a compiler compiling itself, and there the theorems start.</p>
+    </div>
+  </div>
+  <aside class="notes"><p>The introduction class showed these rules as the first self-reference; here the compiler class adds what it takes to read them. Have the students point at the recursion, factor to expression and back, and say why a scanner cannot do it. Then the promise: the fixed point of week 8 is this move on semantics, and Gödel is what it costs.</p></aside>
 </section>
 
 <section class="slide" data-act="II" data-mins="6.0">
@@ -68,14 +92,15 @@
   <div class="fill">
     <div class="two">
       <div class="term sm">
-        <span class="l c">expression = term { ( "+" | "-" ) term } .</span>
+        <span class="l c">arithmetic = term { ( "+" | "-" ) term } .</span>
         <span class="l c">term       = factor { ( "*" | "/" | "%" ) factor } .</span>
-        <span class="l c">factor     = literal | identifier | "(" expression ")" .</span>
+        <span class="l c">factor     = literal | identifier |</span>
+        <span class="l c">             "(" expression ")" .</span>
       </div>
       <div class="stack">
         <p class="f" data-step="1"><span class="mono">x + 7 * y</span> groups as <span class="mono">x + (7 * y)</span> because <span class="mono">*</span> lives one rule deeper than <span class="mono">+</span>: lower precedence, higher in the grammar. That is syntactic, and EBNF can say it.</p>
-        <p class="f" data-step="2"><span class="mono">x - 7 + y</span> groups as <span class="mono">(x - 7) + y</span> because the while loop in <span class="mono">compile_expression</span> emits code as it goes, left to right. That is associativity, and EBNF cannot say it — it shows up only in the implementation.</p>
-        <p class="f" data-step="3">Even <span class="mono">+</span> is made left-associative, although addition associates in arithmetic. Why? Because it does not associate on a machine with overflow, and week 3 of the introduction class said why.</p>
+        <p class="f" data-step="2"><span class="mono">x - 7 + y</span> groups as <span class="mono">(x - 7) + y</span> because the while loop in <span class="mono">compile_arithmetic</span> emits code as it goes, left to right. That is associativity, and EBNF cannot say it.</p>
+        <p class="f" data-step="3">Even <span class="mono">+</span> is made left-associative, although addition associates in arithmetic. It does not on a machine with overflow.</p>
       </div>
     </div>
   </div>
@@ -92,9 +117,12 @@
         <p class="f" data-step="2">Designing good error handling is more art than science, and selfie's is minimal: a message with the line number and the unexpected symbol. It is also, as week 8 will note, the compiler deciding something — about the text.</p>
       </div>
       <div class="term sm f" data-step="3">
-        <span class="l"><span class="p">$</span> <span class="c">printf 'uint64_t main() { return 1 + ; }' &gt; bad.c; ./selfie -c bad.c</span></span>
-        <span class="l o">./selfie: syntax error in bad.c in line 1: unexpected symbol ";" found</span>
-        <span class="l o">./selfie: syntax error in bad.c in line 1: unexpected symbol "}" found</span>
+        <span class="l"><span class="p">$</span> <span class="c">printf 'uint64_t main() { return 1 + ; }' &gt; bad.c</span></span>
+        <span class="l"><span class="p">$</span> <span class="c">./selfie -c bad.c</span></span>
+        <span class="l o">./selfie: syntax error in bad.c in line 1:</span>
+        <span class="l o">  unexpected symbol ";" found</span>
+        <span class="l o">./selfie: syntax error in bad.c in line 1:</span>
+        <span class="l o">  unexpected symbol "}" found</span>
       </div>
     </div>
   </div>
@@ -134,6 +162,18 @@
     </div>
   </div>
   <aside class="notes"><p>Exercise 2 is the one that makes recursive descent theirs.</p></aside>
+</section>
+<section class="slide" data-act="II" data-mins="1.0">
+  <div class="eyebrow">After this week</div>
+  <h2>Listen, then read.</h2>
+  <div class="fill">
+    <div class="two">
+      <div class="card"><span class="h">Listen</span><p><a href="https://www.youtube.com/watch?v=Qt9DgM7gVrY">Wagner · Siegfried</a> — Barenboim, Kupfer, Berlin 1994. Act I is a riddle contest, three questions each way with a head as the stake, and a sword forged from its own fragments. The leitmotifs are the nonterminals: you recognise Nothung before Siegfried does.</p></div>
+      <div class="card"><span class="h">Read</span><p><a href="http://infolab.stanford.edu/~ullman/focs.html">Foundations of Computer Science</a> — Aho and Ullman, free online: grammars and parsing in chapter 11, with BNF where EBNF came from. And, more technical, <a href="https://doi.org/10.1016/S0019-9958(65)90426-2">On the Translation of Languages from Left to Right</a> — Knuth, 1965: LR parsing, the paper that made parser generators possible; recursive descent is what selfie does instead.</p></div>
+    </div>
+  </div>
+  <p class="decknav next"><a href="../04-symbols-and-types/">CC 04 · Symbols and Types →</a></p>
+  <aside class="notes"><p>One minute, or none: leave it on the screen while the room packs up. A piece, a book and a paper, chosen for the week’s idea; the cards say why.</p></aside>
 </section>
 
 </div>

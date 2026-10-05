@@ -16,6 +16,7 @@
     <div class="eyebrow">Compiler Construction · week 2 · stations I and II</div>
     <h1>The Scanner</h1>
     <p class="lead">Regular languages, finite state machines, and characters into symbols — a finite machine deciding a countable set.</p>
+    <p class="decknav"><a href="../01-what-is-selfie/">← CC 01 · What is Selfie?</a></p>
   </div>
   <aside class="notes"><p>The first technical session, and the one that sets the method for the whole class: specification first, modelling second, implementation last, for every language element. Everything today is regular, so everything today is decidable by a machine with no memory but its state. Book: the Programming chapter, Literals through Scanner. Assignment: hex-literal, introduced at the end.</p></aside>
 </section>
@@ -40,9 +41,9 @@
   <div class="fill row mid">
     <div class="fig grow" style="flex:1.2" data-fig="integer-literal-fsm"><span class="cap">integer = digit { digit } .</span></div>
     <div class="stack grow">
-      <p class="f" data-step="1">Substitute <span class="mono">digit</span> into <span class="mono">integer</span> and one rule remains: that is what regular means. Every regular expression has a finite state machine, and every finite state machine has a regular expression. Kleene, 1956.</p>
-      <p class="f" data-step="2">The machine reads one character at a time and remembers only which circle it is in. Start on a digit, then loop on digits, accepting all the while. No stack, no counter, no memory of what came before.</p>
-      <p class="f" data-step="3">And the machine <em>decides</em>: for every finite input it stops and says yes or no. Everything the scanner does is on the decidable side of Rice's line, because it is about the text and nothing else.</p>
+      <p class="f" data-step="1">Substitute <span class="mono">digit</span> into <span class="mono">integer</span> and one rule remains: that is what regular means. Every regular expression has a finite state machine and vice versa. Kleene, 1956.</p>
+      <p class="f" data-step="2">The machine reads one character at a time and remembers only which circle it is in. No stack, no counter, no memory of what came before.</p>
+      <p class="f" data-step="3">And it <em>decides</em>: for every finite input it stops and says yes or no. The scanner is on the decidable side of Rice's line, because it is about the text and nothing else.</p>
     </div>
   </div>
   <aside class="notes"><p>Run the machine by finger on 85, on 007, on 8a. Then the two theorems: Kleene's equivalence, stated not proved, and decidability, which the introduction class established and which is the reason the scanner never hangs.</p></aside>
@@ -68,9 +69,9 @@
   <div class="fill row mid">
     <div class="fig grow" style="flex:1.5" data-fig="scanning-integer-literals"><span class="cap">get_symbol, the case for digits · what lands in compiler memory</span></div>
     <div class="stack grow">
-      <p class="f" data-step="1">The digit branch of <span class="mono">get_symbol</span>: if the character is '0', it is the literal 0 and we are done. Otherwise allocate a string, store digits while there are digits, terminate with a NULL, convert with <span class="mono">atoi</span>, and set the symbol to <span class="mono">SYM_INTEGER</span>.</p>
-      <p class="f" data-step="2">On the right, what it leaves behind: the characters '8' and '5' on the heap, the value 85 in the global <span class="mono">literal</span>, and the symbol in <span class="mono">symbol</span>. The parser reads those three globals and never sees a character.</p>
-      <p class="f" data-step="3">The while loop is the self-loop of the machine. The if is the '0' branch. The code is the model, transcribed.</p>
+      <p class="f" data-step="1">The digit branch of <span class="mono">get_symbol</span>: a '0' is the literal 0. Otherwise allocate a string, store digits while there are digits, terminate with a NULL, convert with <span class="mono">atoi</span>, set the symbol to <span class="mono">SYM_INTEGER</span>.</p>
+      <p class="f" data-step="2">What it leaves behind: the characters on the heap, the value 85 in <span class="mono">literal</span>, the symbol in <span class="mono">symbol</span>. The parser reads those globals and never sees a character.</p>
+      <p class="f" data-step="3">The while loop is the machine's self-loop; the if is the '0' branch. The code is the model, transcribed.</p>
     </div>
   </div>
   <aside class="notes"><p>Open selfie.c at get_symbol and read the digit branch against the figure; the line numbers move with the version, the shape does not. Point at the three globals: symbol, literal, and the pointer to the characters. That interface is the whole contract between scanner and parser.</p></aside>
@@ -82,9 +83,9 @@
   <div class="fill row mid">
     <div class="fig grow" style="flex:1.4" data-fig="atoi"><span class="cap">"85" → 85, leftmost digit first</span></div>
     <div class="stack grow">
-      <p class="f" data-step="1">The character '5' is the byte 53. Subtract 48, the code of '0', and it is the digit 5. Multiply what you have so far by ten and add it. Leftmost digit first, so 8 becomes 80 becomes 85.</p>
-      <p class="f" data-step="2">And check for wrap-around: a literal with twenty digits does not fit in 64 bits, and the machine will not tell you. The scanner must.</p>
-      <p class="f" data-step="3">Notation to meaning, in a loop: the string is syntax, the value is what it denotes, and this procedure is the semantics of integer literals.</p>
+      <p class="f" data-step="1">The character '5' is the byte 53. Subtract 48, the code of '0', and it is the digit 5. Multiply what you have by ten and add it: 8 becomes 80 becomes 85.</p>
+      <p class="f" data-step="2">And check for wrap-around: a literal with twenty digits does not fit in 64 bits, and the machine will not tell you.</p>
+      <p class="f" data-step="3">Notation to meaning, in a loop: the semantics of integer literals. Hexadecimal is the same loop with sixteen for ten: one hex digit is four bits, a constant factor shorter.</p>
     </div>
   </div>
   <aside class="notes"><p>The first semantic function of the class, and it is worth calling it that: atoi is the meaning of the notation for numbers. The overflow check is where the finite machine of the introduction class shows up in the compiler.</p></aside>
@@ -146,13 +147,25 @@
         <div class="term sm">
           <span class="l"><span class="p">$</span> <span class="c">./grader/self.py hex-literal</span></span>
           <span class="l o">…</span>
-          <span class="l o">grade for hex-literal: 2</span>
+          <span class="l o">your grade is: 2</span>
         </div>
         <div class="card syn"><span class="h">Rules</span><p>Do not modify any files other than grammar.md and selfie.c. No compiler warnings. Submit by the deadline even if unfinished — a submission with self-grade 5 beats no submission.</p></div>
       </div>
     </div>
   </div>
   <aside class="notes"><p>Introduce it in the room and let them start. The lookahead question in step 2 is the point: '0' is currently a complete literal, and now it may be the start of a longer one, so the machine needs to peek at the next character. The grader's output format is whatever the current grader prints; the number is what matters.</p></aside>
+</section>
+<section class="slide" data-act="II" data-mins="1.0">
+  <div class="eyebrow">After this week</div>
+  <h2>Listen, then read.</h2>
+  <div class="fill">
+    <div class="two">
+      <div class="card"><span class="h">Listen</span><p><a href="https://www.youtube.com/watch?v=3EnosoXeTWI">Bach · The Well-Tempered Clavier, Book I</a> — Sviatoslav Richter. Twenty-four keys, one prelude and one fugue each, in order: the alphabet of tonal music, scanned from C major to B minor with nothing skipped.</p></div>
+      <div class="card"><span class="h">Read</span><p><a href="https://en.wikipedia.org/wiki/Introduction_to_the_Theory_of_Computation">Introduction to the Theory of Computation</a> — Sipser, chapter 1: regular languages, finite automata and the pumping lemma, done properly. And, more technical, <a href="https://doi.org/10.1145/363347.363387">Regular Expression Search Algorithm</a> — Thompson, 1968: the construction that turns a regular expression into an automaton, four pages, still in use.</p></div>
+    </div>
+  </div>
+  <p class="decknav next"><a href="../03-the-parser/">CC 03 · The Parser →</a></p>
+  <aside class="notes"><p>One minute, or none: leave it on the screen while the room packs up. A piece, a book and a paper, chosen for the week’s idea; the cards say why.</p></aside>
 </section>
 
 </div>

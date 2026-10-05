@@ -16,6 +16,7 @@
     <div class="eyebrow">Introduction to Computer Science · week 2 · station I</div>
     <h1>Size</h1>
     <p class="lead">Bits, orders of magnitude, state spaces — and why testing shows presence, not absence.</p>
+    <p class="decknav"><a href="../01-what-is-intelligence/">← ICS 01 · What is Intelligence?</a></p>
   </div>
   <aside class="notes"><p>Station I. This session is arithmetic only, no theorems: the goal is a physical feeling for how big the spaces are that everything later happens in. Open with the synopsis line they were asked to bring, then the map, the anchors, the units, one bit, the phone, the needle, and the first of the five reframes. Book: the Size chapter's opening sections.</p></aside>
 </section>
@@ -26,7 +27,8 @@
   <div class="fill">
     <div class="term">
       <span class="l"><span class="p">$</span> <span class="c">./selfie</span></span>
-      <span class="l o">./selfie { -c { source } | -o binary | [ -s | -S ] assembly | -l binary } [ ( -m | -d | -r | -y ) 0-4096 ... ]</span>
+      <span class="l o">./selfie { -c { source } | -o binary | ( -s | -S ) assembly | -l binary }</span>
+      <span class="l o">         [ ( -m | -d | -r | -y ) 0-4096 ... ]</span>
     </div>
     <div class="two">
       <p class="f" data-step="1">This is selfie's <strong>synopsis</strong>: a regular expression that says exactly how selfie may be invoked. Braces mean <em>any number of</em>, brackets mean <em>optional</em>, the bar means <em>or</em>. We learn to read it properly in week 4.</p>
@@ -128,6 +130,44 @@
     </div>
   </div>
   <aside class="notes"><p>Ask the question on the last step and collect guesses before advancing. Answers land in the millions or billions. Emphasise that every distinction a system can make is a bit, and the combinations multiply. This is where the book's Size chapter starts its arithmetic, and it is the one operation every later number in the class is built from.</p></aside>
+</section>
+
+<section class="slide" data-act="I" data-mins="5.0">
+  <div class="eyebrow">Growth · the shapes</div>
+  <h2>Constant, logarithmic, linear, quadratic, cubic — and then something that is <span class="x">not on the same list</span>.</h2>
+  <div class="fill row mid">
+    <div class="fig grow" style="flex:1.4" data-fig="growth"><span class="cap">the same six functions, twice</span></div>
+    <div class="stack grow">
+      <p class="f" data-step="1">Left, ordinary axes: by n = 16 the cube has reached 4,096 and everything below it is a floor. The exponential left the page at n = 12.</p>
+      <p class="f" data-step="2">Right, both axes logarithmic. Every polynomial is a straight line whose slope is its degree. The logarithm bends flat. The exponential bends <em>up</em> and leaves at n = 30, when the cube is at 27,000.</p>
+      <p class="f" data-step="3">Polynomials differ from each other by a slope. The exponential differs from all of them by kind.</p>
+    </div>
+  </div>
+  <aside class="notes"><p>The students have heard the word exponential used for anything that grows fast; this slide separates it from fast. The log-log panel is the device: a polynomial is a line, the degree is the slope, and higher degree is a steeper line, nothing more. The exponential is the curve that no line catches. Let them find the cube at n = 30 on the right panel: 27,000, against a billion.</p></aside>
+</section>
+
+<section class="slide" data-act="I" data-mins="5.0">
+  <div class="eyebrow">Growth · the test</div>
+  <h2>Times ten: a polynomial multiplies by a constant. <span class="k">Plus one</span>: an exponential does.</h2>
+  <div class="fill">
+    <div class="two">
+      <table class="t">
+        <tr><th></th><th>n = 10</th><th>n = 11</th><th>n = 100</th><th>n = 1,000</th></tr>
+        <tr><td class="mono">1</td><td>1</td><td>1</td><td>1</td><td>1</td></tr>
+        <tr><td class="mono">log₂ n</td><td>3.3</td><td>3.5</td><td>6.6</td><td>10</td></tr>
+        <tr><td class="mono">n</td><td>10</td><td>11</td><td>100</td><td>1,000</td></tr>
+        <tr><td class="mono">n²</td><td>100</td><td>121</td><td>10,000</td><td>10⁶</td></tr>
+        <tr><td class="mono">n³</td><td>1,000</td><td>1,331</td><td>10⁶</td><td>10⁹</td></tr>
+        <tr><td class="mono">2ⁿ</td><td>1,024</td><td>2,048</td><td>10³⁰</td><td>10³⁰¹</td></tr>
+      </table>
+      <div class="stack">
+        <p class="f" data-step="1"><strong>Times ten.</strong> Compare n = 100 and n = 1,000. Linear ×10, quadratic ×100, cubic ×1,000: a fixed factor set by the degree. That is what <em>polynomial</em> means. The exponential goes from 10<sup>30</sup> to 10<sup>301</sup>.</p>
+        <p class="f" data-step="2"><strong>Plus one.</strong> Compare n = 10 and n = 11. Every polynomial moves by a little; the exponential doubles. Every bit added to a memory is that plus one.</p>
+        <p class="f" data-step="3"><strong>The logarithm</strong> is the exponential read backwards: ten times the states, three more bits.</p>
+      </div>
+    </div>
+  </div>
+  <aside class="notes"><p>The table is the lesson; the two tests are what they should take away. Times ten on the input: polynomials answer with a fixed factor, the exponential with a new number of digits. Plus one on the input: polynomials barely move, the exponential doubles. Then hand it back to bits, where plus one is exactly the operation, and forward to week 11, where polynomial against exponential is the line between doable and not.</p></aside>
 </section>
 
 <section class="slide" data-act="I" data-mins="4.0">
@@ -232,16 +272,29 @@
   <div class="fill">
     <div class="two">
       <ol class="steps">
-        <li>Read the Size chapter up to <em>Numbers</em>, and Borges's <em>Library of Babel</em>.</li>
-        <li>Rerun <span class="mono">./selfie -c selfie.c</span>. Where on the map do 365,784 characters sit? And 43,492 instructions? And the machine's state count?</li>
-        <li>How many bits do you need for a thousand states? A million? Every person alive? Every atom in the Earth (about 10<sup>50</sup>)?</li>
+        <li>Read the Size chapter up to <em>Numbers</em>, its section <em>Life 1</em>, and Borges's <em>Library of Babel</em>.</li>
+        <li>Rerun <span class="mono">./selfie -c selfie.c</span>. Where on the map do 365,784 characters sit? And 43,492 instructions?</li>
+        <li>For each of n, n², n³ and 2ⁿ: what happens when n goes from 10 to 11, and from 10 to 100? Which is the odd one out, in which question?</li>
+        <li>How many bits for a thousand states? A million? Every person alive? Every atom in the Earth (about 10<sup>50</sup>)?</li>
         <li>A "512 GB" phone: how many GiB does it report, and why?</li>
         <li>Find three anchors of your own for a million, a billion, and a trillion — of anything.</li>
       </ol>
-      <div class="card syn"><span class="h">Next week</span><p>Everything is bits: numbers, negative numbers, overflow, characters, text, files, images, code. The same 85 in five different notations, and what the machine makes of each.</p></div>
+      <div class="card syn"><span class="h">Next week</span><p>Everything is bits: numbers, overflow, characters, text, files, images, code. The same 85 in five notations.</p></div>
     </div>
   </div>
   <aside class="notes"><p>Nothing is collected. Say which exercise the exam might draw on, which is all of them, and that the anchors exercise is the one that pays off longest.</p></aside>
+</section>
+<section class="slide" data-act="I" data-mins="1.0">
+  <div class="eyebrow">After this week</div>
+  <h2>Listen, then read.</h2>
+  <div class="fill">
+    <div class="two">
+      <div class="card"><span class="h">Listen</span><p><a href="https://www.youtube.com/watch?v=PNpyRBVTavQ">Beethoven · Symphony No. 5</a> — Carlos Kleiber, Vienna Philharmonic, 1974. Four notes, and the whole first movement — the whole symphony — is built from them. Small to vast in one line. Then watch Leonard Bernstein explain the first movement <a href="https://www.youtube.com/watch?v=mu2HJerMp8A">on YouTube</a> on the 1954 Omnibus broadcast: how Beethoven found the notation he needed, one rejected sketch at a time.</p></div>
+      <div class="card"><span class="h">Read</span><p><a href="https://en.wikipedia.org/wiki/One_Two_Three..._Infinity">One Two Three… Infinity</a> — Gamow, 1947: from counting to the sizes of endless, by a physicist who could draw. And, more technical, <a href="https://doi.org/10.1126/science.194.4271.1235">Mathematics and Computer Science: Coping with Finiteness</a> — Knuth, 1976: numbers so large that finite stops meaning small.</p></div>
+    </div>
+  </div>
+  <p class="decknav next"><a href="../03-everything-is-bits/">ICS 03 · Everything is Bits →</a></p>
+  <aside class="notes"><p>One minute, or none: leave it on the screen while the room packs up. A symphony and two texts, one for everyone and one for the ones who want the source.</p></aside>
 </section>
 
 </div>

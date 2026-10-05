@@ -16,6 +16,7 @@
     <div class="eyebrow">Systems Engineering · week 7 · station III</div>
     <h1>Processes</h1>
     <p class="lead">Fork, wait, exit. A process is a virtual machine with a name.</p>
+    <p class="decknav"><a href="../06-self-hosting/">← SE 06 · Self-Hosting</a></p>
   </div>
   <aside class="notes"><p>The abstraction that everyone uses and nobody defines: a process. Defined here as a machine context plus a system-call interface plus a parent. The three calls that make a tree of them, and the two decidability remarks that come with wait. Book: Computing, Time-Sharing, the process versus thread callout and the fork examples.</p></aside>
 </section>
@@ -50,11 +51,11 @@
         <span class="l c">}</span>
       </div>
       <div class="stack">
-        <p class="f" data-step="1"><span class="mono">fork</span> creates a new context that is a copy of the caller: same code, same data, same heap and stack, same pc. It returns in both. The only difference between them is the return value, and everything a parent and child do differently descends from that one bit.</p>
-        <p class="f" data-step="2">In selfie: create a context, copy the page table's mapped pages into fresh frames, copy the registers, set <span class="mono">a0</span> to 0 in the child and to the child's id in the parent, put both on the ready queue. Real kernels copy lazily, on the first write, which is another notation for the same meaning.</p>
+        <p class="f" data-step="1"><span class="mono">fork</span> creates a context that is a copy of the caller: same code, data, heap, stack and pc. It returns in both. The only difference is the return value, and everything parent and child do differently descends from that one bit.</p>
+        <p class="f" data-step="2">In selfie: create a context, copy the mapped pages into fresh frames, copy the registers, set <span class="mono">a0</span> to 0 in the child and to the child's id in the parent. Real kernels copy lazily, on the first write.</p>
       </div>
     </div>
-    <p class="sm f" data-step="3">A virtual machine snapshot, at process granularity. The compiler class's fixed point was one program producing itself; fork is one machine producing itself. Self-reference again, harmless here because the copy is isolated.</p>
+    <p class="sm f" data-step="3">The compiler class's fixed point was one program producing itself; fork is one machine producing itself. Harmless, because the copy is isolated.</p>
   </div>
   <aside class="notes"><p>The book's fork example. Walk through the copy in selfie's terms: context, pages, registers, one register differs. Copy-on-write as notation versus meaning, briefly.</p></aside>
 </section>
@@ -65,9 +66,9 @@
   <div class="fill row mid">
     <div class="fig grow" style="flex:1" data-fig="traffic-light-model"><span class="cap">wait moves the parent to blocked; the child's exit moves it back to ready</span></div>
     <div class="stack grow">
-      <p class="f" data-step="1"><span class="mono">exit</span> ends a context and records its status; <span class="mono">wait</span> blocks the caller until some child has exited, then returns that status. The parent is not polling; the kernel moves it to blocked, gives its slices to others, and moves it back when the child's exit arrives.</p>
-      <p class="f" data-step="2">The kernel cannot know whether a program will exit. It can know, exactly, whether a program has called <span class="mono">exit</span>: the door records it. Decidable facts about processes are facts about the door, and only those. Rice, drawn as a line around the interface.</p>
-      <p class="f" data-step="3">A parent waiting on a child that waits on the parent: both blocked, forever, and the kernel cannot see it unless it looks for cycles. Deadlock, week 8's problem, first met here.</p>
+      <p class="f" data-step="1"><span class="mono">exit</span> ends a context and records its status; <span class="mono">wait</span> blocks the caller until some child has exited, then returns that status. The kernel moves the parent to blocked, gives its slices to others, and moves it back when the child's exit arrives.</p>
+      <p class="f" data-step="2">The kernel cannot know whether a program will exit. It can know, exactly, whether a program has called <span class="mono">exit</span>: the door records it. Decidable facts about processes are facts about the door. Rice, drawn as a line around the interface.</p>
+      <p class="f" data-step="3">A parent waiting on a child that waits on the parent: both blocked, forever. Deadlock, week 8's problem, first met here.</p>
     </div>
   </div>
   <aside class="notes"><p>Blocked as visible state, versus running-forever as invisible. The line around the interface is a useful picture: the kernel decides on system calls, never on behaviour. Then plant deadlock.</p></aside>
@@ -105,6 +106,18 @@
     </div>
   </div>
   <aside class="notes"><p>Finish fork-wait and add exit. The design questions, no child and parent-exits-first, are the actual assignment; the code is a page. Next week threads, which share what processes copy.</p></aside>
+</section>
+<section class="slide" data-act="III" data-mins="1.0">
+  <div class="eyebrow">After this week</div>
+  <h2>Listen, then read.</h2>
+  <div class="fill">
+    <div class="two">
+      <div class="card"><span class="h">Listen</span><p><a href="https://www.youtube.com/watch?v=jNlFWTafU6c">Wagner · Die Walküre</a> — Boulez, Chéreau, Bayreuth 1980. Act III opens with eight processes riding in parallel, each carrying a hero home; one of them, Brünnhilde, disobeyed the parent and is put to sleep until a child wakes her. Fork, wait, and an exit status of fire.</p></div>
+      <div class="card"><span class="h">Read</span><p><a href="https://man7.org/tlpi/">The Linux Programming Interface</a> — Kerrisk, 2010: fork, exec, wait and exit as Linux actually does them, fifteen hundred pages of it, and the book to have open while writing this week’s assignment. And, more technical, <a href="https://doi.org/10.1145/363095.363143">The Structure of the “THE” Multiprogramming System</a> — Dijkstra, 1968: processes as sequential processes, layered, with semaphores, in the paper that started the subject.</p></div>
+    </div>
+  </div>
+  <p class="decknav next"><a href="../08-concurrency/">SE 08 · Concurrency →</a></p>
+  <aside class="notes"><p>One minute, or none: leave it on the screen while the room packs up. A piece, a book and a paper, chosen for the week’s idea; the cards say why.</p></aside>
 </section>
 
 </div>

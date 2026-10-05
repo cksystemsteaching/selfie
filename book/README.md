@@ -383,7 +383,7 @@ The examples code is written in such a way that you should be able to understand
 
 ### Orders of Magnitude
 
-Before we look at how anything is encoded in bits, let us practice reading the sizes involved, because every later claim in this book is a claim about how big something is, and a number you cannot place is a number you cannot argue with. The figure below is the map of the whole book. On the left, the small: one thing. Then eighty steps, each ten times the last, take us from one thing to every atom in the observable universe, about $10^{80}$, and that is the whole physical world in eighty decades. Then a wall, and no number of steps crosses it. Past the wall, endlessness comes in two sizes, one that counts every notation and one that counts every meaning, and the second is strictly bigger. This chapter and the next two live on the left of the wall. The meaning chapter is about what is on the right.
+Before we look at how anything is encoded in bits, let us practice reading the sizes involved, because every later claim in this book is a claim about how big something is, and a number you cannot place is a number you cannot argue with. The figure below is the map of the whole book. On the left, the small: one thing. Then eighty steps, each ten times the last, take us from one thing to every atom in the observable universe, about $10^{80}$, and that is the whole physical world in eighty decades. Then a wall, and no number of steps crosses it. Past the wall, endlessness comes in two sizes, one that counts every notation and one that counts every meaning, and the second is strictly bigger. This chapter lives on the left of the wall. The next two live just past it, among the countable, and the meaning chapter is about the box beyond them.
 
 ![The axis: small, vast, then two sizes of endless](../docs/figures/scale.svg "The axis: small, vast, then two sizes of endless")
 
@@ -396,6 +396,14 @@ Three words one syllable apart, three different worlds. A million seconds is ele
 A bit is one distinction: this, not that. Add a bit and you do not *add* states, you *double* them. Ten bits are a thousand states, twenty are a million, thirty are a billion. Doubling is the most underestimated operation in human reasoning and the entire engine of computing. The figure shows sixteen bits and the curve that the doubling draws.
 
 ![Sixteen bits: 65,536 states, and the doubling curve](../docs/figures/bits.svg "Sixteen bits: 65,536 states, and the doubling curve")
+
+> Polynomial or exponential?
+
+The word *exponential* gets used for anything that grows fast, and students who have heard it that way have a hard time with what follows, so let us separate it from fast. Line up the shapes: a constant, a logarithm, a line, a square, a cube. On ordinary axes, by $n = 16$ the cube has reached 4,096 and everything below it looks like a floor, while $2^n$ left the page at $n = 12$. On axes that are both logarithmic, which is the only way to see all of them at once, every polynomial becomes a straight line whose slope is its degree, 0, 1, 2, 3; the logarithm bends flat; and the exponential bends up and leaves at $n = 30$, when the cube stands at 27,000 against a billion. Polynomials differ from each other by a slope. The exponential differs from all of them by kind.
+
+![Growth: constant, logarithmic, linear, quadratic, cubic and exponential, on linear and on log-log axes](../docs/figures/growth.svg "Growth: constant, logarithmic, linear, quadratic, cubic and exponential, on linear and on log-log axes")
+
+Here is the test that tells them apart without a picture. Multiply the input by ten: a linear function multiplies by ten, a quadratic by a hundred, a cubic by a thousand, always a fixed factor set by the degree, which is what polynomial means; $2^n$ goes from $10^{30}$ at $n = 100$ to $10^{301}$ at $n = 1{,}000$, and there is no factor. Now add one to the input: every polynomial moves by a little, ten percent, twenty-one percent, thirty-three percent; $2^n$ doubles. If adding one to the input multiplies the output, you are looking at an exponential. Every bit added to a memory is exactly that plus one. And the logarithm is the exponential read backwards: multiply the input by ten and it goes up by a constant, about 3.3, which is why ten times the states cost three more bits, and why so few bits suffice for what comes next. The line between polynomial and exponential returns in the cost chapter as the line between what can be done and what cannot.
 
 How many bits does it take to have more states than the universe has atoms? Students guess millions, or billions. The answer is 266, because $2^{266}$ is about $1.2 \times 10^{80}$. Thirty-four bytes of memory, which is less than this sentence, have more states than there are atoms. The figure puts that on the log scale, next to the number of people alive and the number of molecules in a spoonful of water.
 
@@ -564,6 +572,18 @@ This means we are adding 1 and 1 plus the carry bit 1. The result is of course 1
 ```
 
 So, who would have thought that binary notation and addition works exactly the same as decimal notation and addition? The only difference is the base and thus the number of symbols available per digit. Now, just one more thought about this. Notice that binary and decimal addition takes as many steps as there are digits in the addend with the most digits. This is why manual counting in anything but unary is less convenient. However, since any positional notation with base higher than 1 is exponentially more compact than unary, addition is effectively still fast because the *value* of the involved numbers can get very large even with relatively few digits. Also, there are ways to improve on the number of steps necessary to perform binary addition which we nevertheless ignore here.
+
+> Why binary, and not ternary or decimal?
+
+Students ask this every year, and the answer has two halves that should be kept apart. The first half is mathematics. Unary writes $n$ as $n$ bars; any positional base $b$ writes it in about $\log_b n$ digits. Going from base 1 to base 2 is therefore an exponential saving, and it is the saving that matters: 85 bars against seven bits. Going from base 2 to any higher base $b$ saves only a factor of $\log_2 b$, the same factor for every $n$: decimal is about 3.3 times shorter than binary whether the number has ten bits or ten billion. The saving has a price, and every positional base pays it in full: in unary, counting is appending a bar and adding is concatenation, constant time per bar; in any positional notation an addition walks the digits and propagates carries, which takes as many steps as there are digits, that is, logarithmically many in the value. So the mathematics says leave unary, and then falls silent, because all bases above one are within a constant factor of each other.
+
+![Why binary: digits needed per base, and the levels one digit must tell apart](../docs/figures/bases.svg "Why binary")
+
+The second half is physics. A base-$b$ digit must hold one of $b$ distinguishable states, and the hardware pays per state it can tell apart, not per digit. The gap between neighbouring states is what noise has to cross, and it shrinks as $b$ grows; two states, on and off, put the gap as far apart as the supply voltage allows and leave nothing in between to calibrate. That is what a transistor is: a switch. There is a classical argument that if cost is proportional to $b$ per digit, the product $b \cdot \log_b n$ is smallest near $e$, so that 3 beats 2 by about five percent; five percent buys no factory, and a switch that needs no calibration does. The honest exception confirms the rule: flash memory stores two, three or four bits per cell as four, eight or sixteen charge levels, a constant-factor saving paid for in error correction and endurance, and the cells are read back out as bits.
+
+Ternary deserves one more sentence, because with the digits $-1$, $0$ and $1$ instead of $0$, $1$ and $2$ it is the prettier system: every integer has exactly one representation, negative numbers need no convention on top, and negating a number is negating every digit. The Setun computer, built at Moscow State University in 1958, worked this way, and about fifty were made. It lost to the transistor and to a supply of parts that were all binary, not to a better idea. Which is worth remembering when we next look at how binary machines handle negative numbers: as a convention laid over the bits.
+
+And one more base, because nature settled the same question differently. DNA is written in base 4, with the nucleotides A, C, G and T as its digits. The physics is chemistry: a nucleotide is a discrete molecule, not a voltage level, so there is no noise band between one digit and the next and four states cost nothing in reliability. What the four buy is pairing: A binds only to T and G only to C, so every strand carries its own complement, and complementary pairing is how the text is copied and how a copy is checked. Two letters would pair as well, but at half the information density for the same chemistry, and the code that reads the text in words of three letters, $4^3 = 64$ codons for twenty amino acids and a stop, would need words of five. The argument is the one above with a different physics plugged in, and it comes back in the last chapter, where the machinery that copies and interprets DNA is the self-copying machine.
 
 Okay, but why do we make you go through all this? It is not just because binary addition is one of the most important operations computers including your smartphone perform, in fact, billions of times per second. It is also to show you something that is even more basic than binary addition. It is called Boolean algebra, the fundamental building block of all modern computing devices.
 
@@ -1247,20 +1267,20 @@ Here, the relevant output should be similar to this:
 ```
 ...
 ./selfie: --------------------------------------------------------------------------------
-./selfie: summary: 363556041 executed instructions in total [17.29% nops]
-./selfie:          2.39MB mapped memory [79.68% of 3MB physical memory]
+./selfie: summary: 394514542 executed instructions in total [19.11% nops]
+./selfie:          2.46MB mapped memory [82.16% of 3MB physical memory]
 ./selfie: ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 ./selfie: context: > selfie.c
-./selfie:          363556041 executed instructions [100.00% share, factor 1.00]
+./selfie:          394514542 executed instructions [100.00% share, factor 1.00]
 ./selfie:          2.28KB peak stack size
-./selfie:          3.27MB allocated in 24561 mallocs (2.19MB or 66.98% actually accessed)
-./selfie:          381781 exceptions handled by ./selfie, one every 952 executed instructions
-./selfie:          381213 syscalls, 562 page faults, 6 timer interrupts
+./selfie:          3.32MB allocated in 25295 mallocs (2.26MB or 68.15% actually accessed)
+./selfie:          391733 exceptions handled by ./selfie, one every 1007 executed instructions
+./selfie:          391146 syscalls, 580 page faults, 7 timer interrupts
 ./selfie: --------------------------------------------------------------------------------
 ...
 ```
 
-We configured selfie with 3MB of main memory storage (physical memory) using the `-m` option (with argument `3` which stands for `3MB`) and then self-compiled selfie. In total, selfie *allocated* addresses for 3.27MB of main memory but ended up *accessing* only 2.19MB, that is, using only 66.98% of the 3.27MB in memory storage. Moreover, selfie needed an additional 0.20MB of memory storage for its code, that is, in sum 2.39MB of (mapped) memory which is 79.68% of the 3MB available physical memory. In order to run, selfie also allocates memory for a stack that grows and shrinks during execution. Nevertheless, the stack usually requires relatively little memory in the range of a few kilobytes, not megabytes, in this case no more than 2.28KB at its peak. That memory is part of the 2.39MB of (mapped) memory.
+We configured selfie with 3MB of main memory storage (physical memory) using the `-m` option (with argument `3` which stands for `3MB`) and then self-compiled selfie. In total, selfie *allocated* addresses for 3.32MB of main memory but ended up *accessing* only 2.26MB, that is, using only 68.15% of the 3.32MB in memory storage. Moreover, selfie needed an additional 0.20MB of memory storage for its code, that is, in sum 2.46MB of (mapped) memory which is 82.16% of the 3MB available physical memory. In order to run, selfie also allocates memory for a stack that grows and shrinks during execution. Nevertheless, the stack usually requires relatively little memory in the range of a few kilobytes, not megabytes, in this case no more than 2.28KB at its peak. That memory is part of the 2.46MB of (mapped) memory.
 
 Let us take a closer look at how digital memory can in principle be used to store any type of information. The key question is where to do that in memory, in particular with information that does not fit into a single byte. There are essentially two different ways of answering that question which can also be combined. Suppose we need to store, say, eight bytes. We can either store each of the eight bytes somewhere in memory, not necessarily next to each other, that is, *non-contiguously*, or we store the eight bytes somewhere in memory but all next to each other, that is, in a *contiguous* block of memory.
 
@@ -1450,8 +1470,8 @@ more selfie.s
 The output should be similar to this:
 
 ```
-0x0(~1): 0x0003D2B7: lui t0,0x3D
-0x4(~1): 0x62028293: addi t0,t0,1568
+0x0(~1): 0x0003F2B7: lui t0,0x3F
+0x4(~1): 0x85828293: addi t0,t0,-1960
 0x8(~1): 0x00028193: addi gp,t0,0
 0xC(~1): 0x00000513: addi a0,zero,0
 0x10(~1): 0x0D600893: addi a7,zero,214
@@ -1468,7 +1488,7 @@ The output should be similar to this:
 0x3C(~1): 0x00513023: sd t0,0(sp)
 0x40(~1): 0x01010293: addi t0,sp,16
 0x44(~1): 0x00513423: sd t0,8(sp)
-0x48(~1): 0x2D4290EF: jal ra,42165[0x2931C]
+0x48(~1): 0x6A42A0EF: jal ra,43433[0x2A6EC]
 ...
 ```
 
@@ -1863,36 +1883,36 @@ The first few lines of output give you an idea of the size of the system in term
 ./selfie: ================================================================================
 ./selfie: selfie compiling selfie.c to 64-bit RISC-U with 64-bit starc
 ./selfie: --------------------------------------------------------------------------------
-./selfie: 356585 characters read in 12123 lines and 1737 comments
-./selfie: with 213753(59.94%) characters in 49836 actual symbols
-./selfie: 484 global variables, 654 procedures, 493 string literals
-./selfie: 1343 assignments, 91 while, 905 if, 3092 calls, 612 return
+./selfie: 365784 characters read in 12394 lines and 1741 comments
+./selfie: with 219888(60.11%) characters in 51329 actual symbols
+./selfie: 491 global variables, 661 procedures, 512 string literals
+./selfie: 1408 assignments, 92 while, 956 if, 3190 calls, 622 return
 ./selfie: --------------------------------------------------------------------------------
-./selfie: 19355 symbol table lookups in 2 iterations on average
+./selfie: 21689 symbol table lookups in 2 iterations on average
 ```
 
 What you see here is a *profile* of the compiled source code, reported by the selfie compiler called `starc`. For example, there are 484 global variables and 654 procedures in the source code of selfie. Some concepts we have not yet seen such as symbols and string literals are introduced in the programming chapter. The rest of the output provides insight into the machine code that selfie generated for itself:
 
 ```
-./selfie: 182752 bytes generated with 42224 instructions and 13856 bytes of data
+./selfie: 188392 bytes generated with 43492 instructions and 14424 bytes of data
 ./selfie: --------------------------------------------------------------------------------
 ./selfie: profile: instruction: total(ratio%)
-./selfie: init:    lui: 2665(6.31%), addi: 12332(29.20%)
-./selfie: memory:  ld: 7847(18.58%), sd: 7579(17.94%)
-./selfie: compute: add: 3665(8.67%), sub: 726(1.71%), mul: 520(1.23%)
-./selfie: compute: divu: 93(0.22%), remu: 29(0.06%)
-./selfie: compare: sltu: 710(1.68%)
-./selfie: control: beq: 1000(2.36%), jal: 4389(10.39%), jalr: 661(1.56%)
+./selfie: init:    lui: 2736(6.29%), addi: 12716(29.23%)
+./selfie: memory:  ld: 8055(18.52%), sd: 7862(18.07%)
+./selfie: compute: add: 3742(8.60%), sub: 760(1.74%), mul: 516(1.18%)
+./selfie: compute: divu: 92(0.21%), remu: 29(0.06%)
+./selfie: compare: sltu: 740(1.70%)
+./selfie: control: beq: 1052(2.41%), jal: 4516(10.38%), jalr: 668(1.53%)
 ./selfie: system:  ecall: 8(0.01%)
 ./selfie: --------------------------------------------------------------------------------
 ./selfie: profile: data: total(bytes)
-./selfie: global variables:       485(3880)
-./selfie: unique string literals: 377(9976)
+./selfie: global variables:       492(3936)
+./selfie: unique string literals: 392(10488)
 ./selfie: unique big integers:    0(0)
 ./selfie: ################################################################################
 ```
 
-For example, the system generated 3,665 `add` instructions which is 8.67% of all 42,224 generated instructions. In the following, let us take a closer look using the `double.c` example.
+For example, the system generated 3,742 `add` instructions which is 8.60% of all 43,492 generated instructions. In the following, let us take a closer look using the `double.c` example.
 
 ### RISC-U Machine Code
 
@@ -2116,29 +2136,29 @@ Selfie responds with its synopsis which is written in EBNF! But have a look at t
 ```
 ...
 ./selfie: --------------------------------------------------------------------------------
-./selfie: summary: 81425 executed instructions in total [15.50% nops]
-./selfie:          0.19MB mapped memory [19.53% of 1MB physical memory]
+./selfie: summary: 85754 executed instructions in total [17.66% nops]
+./selfie:          0.19MB mapped memory [19.92% of 1MB physical memory]
 ./selfie: ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 ./selfie: context: > selfie.c
-./selfie:          81425 executed instructions [100.00% share, factor 1.00]
+./selfie:          85754 executed instructions [100.00% share, factor 1.00]
 ./selfie:          0.28KB peak stack size
 ./selfie:          0.00MB allocated in 8 mallocs (0.00MB or 100.00% actually accessed)
-./selfie:          15 exceptions handled by ./selfie, one every 5428 executed instructions
+./selfie:          15 exceptions handled by ./selfie, one every 5716 executed instructions
 ./selfie:          14 syscalls, 1 page faults, 0 timer interrupts
 ./selfie: --------------------------------------------------------------------------------
 ./selfie: profile: instruction: total(ratio%)[nops%]
-./selfie: init:    lui: 60(0.07%)[0.00%], addi: 31249(38.37%)[12.81%]
-./selfie: memory:  ld: 19157(23.52%)[11.97%], sd: 13200(16.21%)[34.82%]
-./selfie: compute: add: 2330(2.86%)[7.25%], sub: 407(0.49%)[30.22%], mul: 2791(3.42%)[13.68%]
-./selfie: compute: divu: 952(1.16%)[6.61%], remu: 1077(1.32%)[22.00%]
-./selfie: compare: sltu: 700(0.85%)[1.42%]
-./selfie: control: beq: 848(1.04%)[87.26%], jal: 5815(7.14%)[0.00%], jalr: 2825(3.46%)[0.00%]
+./selfie: init:    lui: 61(0.07%)[0.00%], addi: 31269(36.46%)[12.81%]
+./selfie: memory:  ld: 21307(24.84%)[17.60%], sd: 13210(15.40%)[34.80%]
+./selfie: compute: add: 2332(2.71%)[7.24%], sub: 408(0.47%)[30.14%], mul: 2792(3.25%)[13.68%]
+./selfie: compute: divu: 952(1.11%)[6.61%], remu: 1077(1.25%)[22.00%]
+./selfie: compare: sltu: 1769(2.06%)[0.56%]
+./selfie: control: beq: 1917(2.23%)[94.36%], jal: 5819(6.78%)[0.00%], jalr: 2827(3.29%)[0.00%]
 ./selfie: system:  ecall: 14(0.01%)
 ./selfie: --------------------------------------------------------------------------------
 ...
 ```
 
-Selfie reports how many instructions it executed just to print its synopsis: 81,425 instructions! The system also provides another *profile* but this time of the executed instructions, not the generated instructions. For example, the `add` instruction was executed 2,330 times which is 2.86% of all executed instructions. There is even more detailed information after that which we skip here. The machine chapter has more on that.
+Selfie reports how many instructions it executed just to print its synopsis: 85,754 instructions! The system also provides another *profile* but this time of the executed instructions, not the generated instructions. For example, the `add` instruction was executed 2,332 times which is 2.71% of all executed instructions. There is even more detailed information after that which we skip here. The machine chapter has more on that.
 
 ### EBNF Grammar
 
@@ -2303,6 +2323,10 @@ terminal     = """ { character } """ .
 character = letter | digit | ... .
 ```
 
+> The first self-reference, and the simplest
+
+Notice what just happened: a notation described its own syntax, and nothing strange followed. Every production in this book, including the eight above, is a sentence of the language the eight define, and you can check that by hand with no further background. It is harmless because a text about texts is still a finite text, read by the same finite procedure as any other. Hold on to the example. Self-reference is the guiding principle of this book, and it returns three times with the same move made on meaning instead of notation: a compiler that compiles its own source in the programming chapter, a program asked about its own halting in the meaning chapter, and a kernel that must isolate itself in the computing chapter. There it is not harmless; there it is where the limits live.
+
 By now, you should be able to read the EBNF just like sentences in English. There are a few aspects we should point out. Here, by `expression` we mean an EBNF expression, not an arithmetic expression. However, syntactically they are quite similar which is why we use the same terminology. Even EBNF productions and assignments are almost identical, syntactically! There are also two EBNF operators of which you have seen only one but probably without noticing. An EBNF term is a sequence of factors which are connected by the (invisible) *sequential composition* operator `" "` between them that has in fact precedence over the choice operator `|`, just like `*` over `+`, for example. And there is the *optionality* operator `[ ]` that we have not used yet. Anything in between those brackets may appear in a sentence but does not have to. The synopsis of selfie uses those. To see the synopsis again, this time without self-compilation, just type in your terminal:
 
 ```bash
@@ -2347,7 +2371,7 @@ For many years, there has been a trend towards ignoring the machine when teachin
 
 > Station II: a finite machine, and the universal one
 
-Two things from the axis of the book apply to everything in this chapter. First, the machine is finite. Its 32 registers and 4 GB of memory are $2^{35}$ bits, so it is a finite state machine with $2^{34,359,738,368}$ states, as the size chapter computed, and it is deterministic: the same state and the same input give the same next state, always. Second, the emulator we build for it in this chapter, `mipster`, is not just a convenience. It is one machine that runs every program written for the machine, itself included, and the meaning chapter names it: the universal machine that Turing described in 1936, and the reason nobody owns a calculator, a typewriter, a map, and a record player as four separate objects. When you reach the emulation section, you will be looking at a page of C\* per instruction group that is, in every sense that matters, that machine.
+Two things from the axis of the book apply to everything in this chapter. First, the machine is finite. Its 4 GB of memory alone are $2^{35}$ bits, so it is a finite state machine with at least $2^{34,359,738,368}$ states, as the size chapter computed, and it is deterministic: the same state and the same input give the same next state, always. Second, the emulator we build for it in this chapter, `mipster`, is not just a convenience. It is one machine that runs every program written for the machine, itself included, and the meaning chapter names it: the universal machine that Turing described in 1936, and the reason nobody owns a calculator, a typewriter, a map, and a record player as four separate objects. When you reach the emulation section, you will be looking at a page of C\* per instruction group that is, in every sense that matters, that machine.
 
 > Von Neumann versus Harvard
 
@@ -2490,25 +2514,25 @@ The relevant output should be similar to this:
 ```
 ...
 ./selfie: vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
-./selfie: 182752 bytes generated with 42224 instructions and 13856 bytes of data
+./selfie: 188392 bytes generated with 43492 instructions and 14424 bytes of data
 ./selfie: --------------------------------------------------------------------------------
 ./selfie: profile: instruction: total(ratio%)
-./selfie: init:    lui: 2665(6.31%), addi: 12332(29.20%)
-./selfie: memory:  ld: 7847(18.58%), sd: 7579(17.94%)
-./selfie: compute: add: 3665(8.67%), sub: 726(1.71%), mul: 520(1.23%)
-./selfie: compute: divu: 93(0.22%), remu: 29(0.06%)
-./selfie: compare: sltu: 710(1.68%)
-./selfie: control: beq: 1000(2.36%), jal: 4389(10.39%), jalr: 661(1.56%)
+./selfie: init:    lui: 2736(6.29%), addi: 12716(29.23%)
+./selfie: memory:  ld: 8055(18.52%), sd: 7862(18.07%)
+./selfie: compute: add: 3742(8.60%), sub: 760(1.74%), mul: 516(1.18%)
+./selfie: compute: divu: 92(0.21%), remu: 29(0.06%)
+./selfie: compare: sltu: 740(1.70%)
+./selfie: control: beq: 1052(2.41%), jal: 4516(10.38%), jalr: 668(1.53%)
 ./selfie: system:  ecall: 8(0.01%)
 ./selfie: --------------------------------------------------------------------------------
 ./selfie: profile: data: total(bytes)
-./selfie: global variables:       485(3880)
-./selfie: unique string literals: 377(9976)
+./selfie: global variables:       492(3936)
+./selfie: unique string literals: 392(10488)
 ./selfie: unique big integers:    0(0)
 ./selfie: ################################################################################
 ```
 
-Selfie reports that it generated 42,224 RISC-U machine instructions as well as 13,856 bytes of data needed to run the code. Moreover, as mentioned before, selfie outputs how many instructions of each type it generated. The `addi` instruction is with 29.20% the most common instruction while the `ecall` instruction is with 0.01% the least common.
+Selfie reports that it generated 43,492 RISC-U machine instructions as well as 14,424 bytes of data needed to run the code. Moreover, as mentioned before, selfie outputs how many instructions of each type it generated. The `addi` instruction is with 29.23% the most common instruction while the `ecall` instruction is with 0.01% the least common.
 
 In order to explain all RISC-U machine instructions we use as running example the assembly code generated for the procedure `count` introduced in the notation chapter. Here is the source code again, this time with a `main` procedure that invokes `count` to count from `0` to `10000` and then return `10000`:
 
@@ -2549,7 +2573,7 @@ where selfie stores the assembly code in a text file called `count.s` and respon
 ./selfie: 0 global variables, 2 procedures, 0 string literals
 ./selfie: 2 assignments, 1 while, 0 if, 1 calls, 2 return
 ./selfie: --------------------------------------------------------------------------------
-./selfie: 12 symbol table lookups in 1 iterations on average
+./selfie: 14 symbol table lookups in 0 iterations on average
 ./selfie: vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 ./selfie: 512 bytes generated with 126 instructions and 8 bytes of data
 ./selfie: --------------------------------------------------------------------------------
@@ -3088,24 +3112,24 @@ The relevant output should be similar to this:
 ```
 ...
 ./selfie: --------------------------------------------------------------------------------
-./selfie: summary: 363556041 executed instructions in total [17.29% nops]
-./selfie:          2.39MB mapped memory [79.68% of 3MB physical memory]
+./selfie: summary: 394514542 executed instructions in total [19.11% nops]
+./selfie:          2.46MB mapped memory [82.16% of 3MB physical memory]
 ./selfie: ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 ...
 ./selfie: --------------------------------------------------------------------------------
 ./selfie: profile: instruction: total(ratio%)[nops%]
-./selfie: init:    lui: 815641(0.22%)[0.00%], addi: 139654242(38.41%)[15.08%]
-./selfie: memory:  ld: 83132286(22.86%)[13.90%], sd: 56594058(15.56%)[27.55%]
-./selfie: compute: add: 9141065(2.51%)[26.30%], sub: 4314604(1.18%)[9.49%], mul: 9066351(2.49%)[37.58%]
-./selfie: compute: divu: 3601572(0.99%)[40.76%], remu: 3682679(1.01%)[53.64%]
-./selfie: compare: sltu: 5755232(1.58%)[2.41%]
-./selfie: control: beq: 8156026(2.24%)[59.51%], jal: 26331739(7.24%)[0.00%], jalr: 12929333(3.55%)[0.00%]
-./selfie: system:  ecall: 381213(0.10%)
+./selfie: init:    lui: 844972(0.21%)[0.00%], addi: 145115501(36.78%)[15.08%]
+./selfie: memory:  ld: 94728816(24.01%)[18.96%], sd: 58800893(14.90%)[27.39%]
+./selfie: compute: add: 9449947(2.39%)[26.36%], sub: 4517081(1.14%)[9.42%], mul: 9375415(2.37%)[37.68%]
+./selfie: compute: divu: 3724966(0.94%)[40.99%], remu: 3808203(0.96%)[53.66%]
+./selfie: compare: sltu: 10246923(2.59%)[1.91%]
+./selfie: control: beq: 12703776(3.22%)[72.71%], jal: 27366919(6.93%)[0.00%], jalr: 13439984(3.40%)[0.00%]
+./selfie: system:  ecall: 391146(0.09%)
 ./selfie: --------------------------------------------------------------------------------
 ...
 ```
 
-While only 0.22% of all executed instructions were `lui` instructions, around 76% were `addi`, `ld`, and `sd` instructions (38.41% + 22.86% + 15.56%). In other words, three quarters of all executed instructions are just these four instructions. That ratio is likely to be lower if we were to optimize the code generated by the selfie compiler but it still shows their importance. By the way, `lui` was executed less often because the 12-bit immediate values of `addi`, `ld`, and `sd` are often enough to get the job done.
+While only 0.21% of all executed instructions were `lui` instructions, around 76% were `addi`, `ld`, and `sd` instructions (36.78% + 24.01% + 14.90%). In other words, three quarters of all executed instructions are just these four instructions. That ratio is likely to be lower if we were to optimize the code generated by the selfie compiler but it still shows their importance. By the way, `lui` was executed less often because the 12-bit immediate values of `addi`, `ld`, and `sd` are often enough to get the job done.
 
 Our next topic are the classical arithmetic instructions that most CPUs feature in one form or another.
 
@@ -3483,13 +3507,13 @@ As mentioned before, selfie reports how much physical memory was actually needed
 ```
 ...
 ./selfie: --------------------------------------------------------------------------------
-./selfie: summary: 363556041 executed instructions in total [17.29% nops]
-./selfie:          2.39MB mapped memory [119.53% of 2MB physical memory]
+./selfie: summary: 394514542 executed instructions in total [19.11% nops]
+./selfie:          2.46MB mapped memory [123.24% of 2MB physical memory]
 ./selfie: ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 ...
 ```
 
-In this case, 2.39MB of the available 2MB of physical memory were needed, that is, `mipster` tolerated memory usage of 119.53% above the threshold of 2MB.
+In this case, 2.46MB of the available 2MB of physical memory were needed, that is, `mipster` tolerated memory usage of 123.24% above the threshold of 2MB.
 
 > Console arguments of selfie
 
@@ -3721,8 +3745,8 @@ Check out the first appearance of L1 cache profiling data in the output:
 ...
 ./selfie: --------------------------------------------------------------------------------
 ./selfie: L1 caches:     accesses,hits,misses
-./selfie: data:          442192764,426977522(96.56%),15215242(3.44%)
-./selfie: instruction:   1129138332,1071038499(94.85%),58099833(5.14%)
+./selfie: data:          487226968,470934262(96.66%),16292706(3.34%)
+./selfie: instruction:   1228242013,1167255879(95.03%),60986134(4.96%)
 ./selfie: ################################################################################
 ...
 ```
@@ -3812,20 +3836,20 @@ The `-o` option instructs selfie to write the machine code compiled from `selfie
 ./selfie: <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 ./selfie: 64-bit mipster terminating 64-bit RISC-U binary selfie.m with exit code 0
 ./selfie: --------------------------------------------------------------------------------
-./selfie: summary: 81425 executed instructions in total [15.50% nops]
-./selfie:          0.19MB mapped memory [19.53% of 1MB physical memory]
+./selfie: summary: 85754 executed instructions in total [17.66% nops]
+./selfie:          0.19MB mapped memory [19.92% of 1MB physical memory]
 ./selfie: ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 ./selfie: context: > selfie.m
-./selfie:          81425 executed instructions [100.00% share, factor 1.00]
+./selfie:          85754 executed instructions [100.00% share, factor 1.00]
 ./selfie:          0.28KB peak stack size
 ./selfie:          0.00MB allocated in 8 mallocs (0.00MB or 100.00% actually accessed)
-./selfie:          15 exceptions handled by ./selfie, one every 5428 executed instructions
+./selfie:          15 exceptions handled by ./selfie, one every 5716 executed instructions
 ./selfie:          14 syscalls, 1 page faults, 0 timer interrupts
 ./selfie: --------------------------------------------------------------------------------
 ...
 ```
 
-Selfie running on `mipster` took around 81k RISC-U instructions and less than 1MB memory to print its synopsis. We have seen those numbers before. The following command does what the above two invocations of selfie do in a single invocation of selfie:
+Selfie running on `mipster` took around 86k RISC-U instructions and less than 1MB memory to print its synopsis. We have seen those numbers before. The following command does what the above two invocations of selfie do in a single invocation of selfie:
 
 ```bash
 ./selfie -c selfie.c -o selfie.m -m 1
@@ -3861,14 +3885,14 @@ This *self-executes* `mipster` by running a `mipster` instance, say, `OS` on ano
 > selfie.m: <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 > selfie.m: 64-bit mipster terminating 64-bit RISC-U binary selfie.m with exit code 0
 > selfie.m: --------------------------------------------------------------------------------
-> selfie.m: summary: 82019 executed instructions in total [15.48% nops]
-> selfie.m:          0.19MB mapped memory [19.92% of 1MB physical memory]
+> selfie.m: summary: 86380 executed instructions in total [17.65% nops]
+> selfie.m:          0.20MB mapped memory [20.31% of 1MB physical memory]
 > selfie.m: ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 > selfie.m: context: >> selfie.m
-> selfie.m:          82019 executed instructions [100.00% share, factor 1.00]
+> selfie.m:          86380 executed instructions [100.00% share, factor 1.00]
 > selfie.m:          0.28KB peak stack size
 > selfie.m:          0.00MB allocated in 8 mallocs (0.00MB or 100.00% actually accessed)
-> selfie.m:          15 exceptions handled by > selfie.m, one every 5467 executed instructions
+> selfie.m:          15 exceptions handled by > selfie.m, one every 5758 executed instructions
 > selfie.m:          14 syscalls, 1 page faults, 0 timer interrupts
 > selfie.m: --------------------------------------------------------------------------------
 ...
@@ -3876,26 +3900,26 @@ This *self-executes* `mipster` by running a `mipster` instance, say, `OS` on ano
 ./selfie: <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 ./selfie: 64-bit mipster terminating 64-bit RISC-U binary selfie.m with exit code 0
 ./selfie: --------------------------------------------------------------------------------
-./selfie: summary: 200980764 executed instructions in total [13.34% nops]
-./selfie:          2.26MB mapped memory [75.39% of 3MB physical memory]
+./selfie: summary: 222410917 executed instructions in total [14.62% nops]
+./selfie:          2.73MB mapped memory [91.28% of 3MB physical memory]
 ./selfie: ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 ./selfie: context: > selfie.m
-./selfie:          200980764 executed instructions [100.00% share, factor 1.00]
-./selfie:          0.67KB peak stack size
-./selfie:          2.87MB allocated in 32 mallocs (2.06MB or 71.78% actually accessed)
-./selfie:          2593 exceptions handled by ./selfie, one every 77508 executed instructions
-./selfie:          166 syscalls, 529 page faults, 1898 timer interrupts
+./selfie:          222410917 executed instructions [100.00% share, factor 1.00]
+./selfie:          0.60KB peak stack size
+./selfie:          3.34MB allocated in 29 mallocs (2.53MB or 75.84% actually accessed)
+./selfie:          2914 exceptions handled by ./selfie, one every 76324 executed instructions
+./selfie:          167 syscalls, 650 page faults, 2097 timer interrupts
 ./selfie: --------------------------------------------------------------------------------
 ...
 ```
 
-This time selfie printing its synopsis on `mipster` instance `OS` took around 82k RISC-U instructions and less than 1MB memory. In fact, it took just a few hundred instructions more than before. The reason is that the synopsis printed by selfie contains one more `>` character than before, that is, `>> selfie.m ...` rather than `> selfie.m ...`. It takes a few hundred instructions to print that additional character. But why is there one more `>` character?
+This time selfie printing its synopsis on `mipster` instance `OS` took around 86k RISC-U instructions and less than 1MB memory. In fact, it took just a few hundred instructions more than before. The reason is that the synopsis printed by selfie contains one more `>` character than before, that is, `>> selfie.m ...` rather than `> selfie.m ...`. It takes a few hundred instructions to print that additional character. But why is there one more `>` character?
 
 > Boot level
 
 Well, the number of `>` characters indicate the *boot level* on which the code runs. Here, `mipster` instance `HW` runs on boot level 0, `mipster` instance `OS` runs on boot level 1, and selfie printing its synopsis runs on boot level 2. In short, the boot level increases by 1 with each `mipster` instance. Console output generated by boot levels higher than `0` are shown by a sequence of greater-than `>` characters, making it easier to understand the output. Hence console output generated by boot levels `1` and `2` is prefixed by `>` and `>>`, respectively.
 
-Alright, but then check this out. The `mipster` instance `HW` took around 200 million (!) RISC-U instructions and around 2MB memory to run `OS`. This means that, on average, `HW` executed around 2.5k instructions just so that `OS` executes a single instruction. In other words, `mipster` takes, at least on this workload, on average around 2.5k RISC-U instructions to implement a single RISC-U instruction, and around 2MB of memory in addition for the whole run. Have you noticed that the synopsis is actually printed a bit slower on your console? That is because execution is slowed down by a factor of 2.5k.
+Alright, but then check this out. The `mipster` instance `HW` took around 222 million (!) RISC-U instructions and less than 3MB memory to run `OS`. This means that, on average, `HW` executed around 2.6k instructions just so that `OS` executes a single instruction. In other words, `mipster` takes, at least on this workload, on average around 2.6k RISC-U instructions to implement a single RISC-U instruction, and less than 3MB of memory in addition for the whole run. Have you noticed that the synopsis is actually printed a bit slower on your console? That is because execution is slowed down by a factor of 2.6k.
 
 What if we stack even more `mipster` instances onto each other just to see what happens? On my laptop, I ran three `mipster` instances, calling the third `mipster` instance `VMM`, assuming that `VMM` runs in between `mipster` instances `HW` and `OS`, and allocating 5MB rather than 3MB of physical memory to `HW`:
 
@@ -3946,14 +3970,14 @@ The relevant output is:
 >> selfie.m: <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 >> selfie.m: 64-bit mipster terminating 64-bit RISC-U binary selfie.m with exit code 0
 >> selfie.m: --------------------------------------------------------------------------------
->> selfie.m: summary: 82613 executed instructions in total [15.49% nops]
->> selfie.m:          0.19MB mapped memory [19.92% of 1MB physical memory]
+>> selfie.m: summary: 87006 executed instructions in total [17.65% nops]
+>> selfie.m:          0.20MB mapped memory [20.31% of 1MB physical memory]
 >> selfie.m: ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 >> selfie.m: context: >>> selfie.m
->> selfie.m:          82613 executed instructions [100.00% share, factor 1.00]
+>> selfie.m:          87006 executed instructions [100.00% share, factor 1.00]
 >> selfie.m:          0.28KB peak stack size
 >> selfie.m:          0.00MB allocated in 8 mallocs (0.00MB or 100.00% actually accessed)
->> selfie.m:          15 exceptions handled by >> selfie.m, one every 5507 executed instructions
+>> selfie.m:          15 exceptions handled by >> selfie.m, one every 5800 executed instructions
 >> selfie.m:          14 syscalls, 1 page faults, 0 timer interrupts
 >> selfie.m: --------------------------------------------------------------------------------
 ...
@@ -3961,38 +3985,38 @@ The relevant output is:
 > selfie.m: <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 > selfie.m: 64-bit hypster terminating 64-bit RISC-U binary selfie.m with exit code 0
 > selfie.m: --------------------------------------------------------------------------------
-> selfie.m: summary: 2.27MB mapped memory [75.78% of 3MB physical memory]
+> selfie.m: summary: 2.75MB mapped memory [91.66% of 3MB physical memory]
 > selfie.m: ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 > selfie.m: context: >> selfie.m
-> selfie.m:          2607 exceptions handled by > selfie.m
-> selfie.m:          166 syscalls, 529 page faults, 1912 timer interrupts
+> selfie.m:          2928 exceptions handled by > selfie.m
+> selfie.m:          167 syscalls, 650 page faults, 2111 timer interrupts
 > selfie.m: ################################################################################
 
 ./selfie: <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 ./selfie: 64-bit mipster terminating 64-bit RISC-U binary selfie.m with exit code 0
 ./selfie: --------------------------------------------------------------------------------
-./selfie: summary: 241719900 executed instructions in total [13.75% nops]
-./selfie:          3.22MB mapped memory [80.66% of 4MB physical memory]
+./selfie: summary: 266572876 executed instructions in total [14.87% nops]
+./selfie:          4.14MB mapped memory [103.51% of 4MB physical memory]
 ./selfie: ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 ./selfie: context: >> selfie.m
-./selfie:          202267404 executed instructions [83.68% share, factor 1.19]
-./selfie:          0.70KB peak stack size
-./selfie:          2.87MB allocated in 32 mallocs (2.06MB or 71.78% actually accessed)
-./selfie:          2607 exceptions handled by > selfie.m, one every 77586 executed instructions
-./selfie:          166 syscalls, 529 page faults, 1912 timer interrupts
+./selfie:          223841974 executed instructions [83.97% share, factor 1.19]
+./selfie:          0.61KB peak stack size
+./selfie:          3.34MB allocated in 29 mallocs (2.53MB or 75.84% actually accessed)
+./selfie:          2928 exceptions handled by > selfie.m, one every 76448 executed instructions
+./selfie:          167 syscalls, 650 page faults, 2111 timer interrupts
 ./selfie: ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 ./selfie: context: > selfie.m
-./selfie:          39452496 executed instructions [16.32% share, factor 6.12]
-./selfie:          2607 exceptions handled by 15133 instructions each [19.50% overhead, factor 1.19]
+./selfie:          42730902 executed instructions [16.02% share, factor 6.23]
+./selfie:          2928 exceptions handled by 14593 instructions each [19.08% overhead, factor 1.19]
 ./selfie:          0.73KB peak stack size
-./selfie:          5.04MB allocated in 36 mallocs (3.01MB or 59.75% actually accessed)
-./selfie:          1319 exceptions handled by ./selfie, one every 29910 executed instructions
-./selfie:          197 syscalls, 772 page faults, 350 timer interrupts
+./selfie:          5.51MB allocated in 32 mallocs (3.92MB or 71.17% actually accessed)
+./selfie:          1574 exceptions handled by ./selfie, one every 27147 executed instructions
+./selfie:          201 syscalls, 1005 page faults, 368 timer interrupts
 ./selfie: --------------------------------------------------------------------------------
 ...
 ```
 
-Now we are back from billions to millions of instructions. This time `HW` took around 241 million RISC-U instructions to run both `VMM` and `OS`, compared to the 200 million RISC-U instructions to run just `OS`. This means that `VMM` introduces an overhead over `OS` of just around 20%. In other words, `VMM` slows down `OS` by a factor of around 1.2 instructions for each instruction of `OS`. How is this possible?
+Now we are back from billions to millions of instructions. This time `HW` took around 267 million RISC-U instructions to run both `VMM` and `OS`, compared to the 222 million RISC-U instructions to run just `OS`. This means that `VMM` introduces an overhead over `OS` of just around 20%. In other words, `VMM` slows down `OS` by a factor of around 1.2 instructions for each instruction of `OS`. How is this possible?
 
 The key observation is that `VMM` is RISC-U code that executes RISC-U code, that is, the RISC-U code of `OS` in this case. But if `HW` can execute the RISC-U code of `VMM`, it can also execute the RISC-U code of `OS`, effectively bypassing `VMM`. The option `-y` with argument `3` in the above invocation of selfie does exactly that. Instead of launching a `mipster` instance, it creates a `hypster` instance for `VMM` which, similar to a `mipster` instance, executes `OS`, yet not by interpretation but by instructing `HW` to execute `OS` on its behalf, through something called a *context switch*. Note that the `hypster` instance for `VMM` executed `0` instructions of the `OS` instance! Instead, the `mipster` instance `HW` executed the `OS` instance. The 20% overhead of the `VMM` instance comes from context switching and other systems-related work and may become even less if `OS` were to run longer amortizing bootstrapping cost even more.
 
@@ -4088,7 +4112,7 @@ There is a second way of saying the same thing that is even more useful for us. 
 ./selfie -c selfie.c -o selfie.m
 ```
 
-the file `selfie.m` is one number, 188,392 bytes long. That is all a file is. Kurt Gödel used this idea in 1931 for a purpose we get to below, and the method of assigning a unique natural number to every formula, proof, or program is therefore called *Gödelisierung* or *Gödel numbering*. The figure shows the idea on a single line of code: the text, and the number that is its ASCII codes written one after the other.
+the file `selfie.m` is one number, 194,648 bytes long. That is all a file is. Kurt Gödel used this idea in 1931 for a purpose we get to below, and the method of assigning a unique natural number to every formula, proof, or program is therefore called *Gödelisierung* or *Gödel numbering*. The figure shows the idea on a single line of code: the text, and the number that is its ASCII codes written one after the other.
 
 ![Give every text a number, and a program can read itself](../docs/figures/godel.svg "Give every text a number, and a program can read itself")
 
@@ -4180,7 +4204,7 @@ Here is the second theorem in the only form most programmers ever meet it. Ken T
 make self-self-check
 ```
 
-The two binaries come out identical, 188,392 bytes each. What does that prove? Exactly one thing: that selfie *agrees with itself*. It does not prove that selfie is correct. A compiler that consistently mistranslated one construct would reproduce the mistake perfectly and pass the check. The fixed point is real, and it is beautiful, but it is a proof of self-agreement, and Gödel's second theorem says that this is the most any system can give you about itself. The outside check, in this case, is a second, independent compiler: David Wheeler showed in 2005 that compiling a compiler with two unrelated compilers and comparing the results detects Thompson's attack. We return to this in the programming chapter when we build the fixed point with our own hands.
+The two binaries come out identical, 194,648 bytes each. What does that prove? Exactly one thing: that selfie *agrees with itself*. It does not prove that selfie is correct. A compiler that consistently mistranslated one construct would reproduce the mistake perfectly and pass the check. The fixed point is real, and it is beautiful, but it is a proof of self-agreement, and Gödel's second theorem says that this is the most any system can give you about itself. The outside check, in this case, is a second, independent compiler: David Wheeler showed in 2005 that compiling a compiler with two unrelated compilers and comparing the results detects Thompson's attack. We return to this in the programming chapter when we build the fixed point with our own hands.
 
 ### The Machine, and What It Cannot Decide
 
@@ -5363,17 +5387,17 @@ make self-self
 The relevant output is at the very end:
 
 ```
-./selfie: t0 register:   170535378,85280151,85255227[1.00]
-./selfie: t1 register:   71512534,35780990,35731544[1.00]
-./selfie: t2 register:   15595462,7797731,7797731[1.00]
-./selfie: t3 register:   572688,286344,286344[1.00]
-./selfie: t4 register:   136870,68435,68435[1.00]
-./selfie: t5 register:   109496,54748,54748[1.00]
-./selfie: t6 register:   27374,13687,13687[1.00]
-./selfie: temps total:   258489802,129282086,129207716[1.00]
+./selfie: t0 register:   194024743,97025203,96999540[1.00]
+./selfie: t1 register:   82626055,41338491,41287564[1.00]
+./selfie: t2 register:   16118102,8059051,8059051[1.00]
+./selfie: t3 register:   588938,294469,294469[1.00]
+./selfie: t4 register:   140460,70230,70230[1.00]
+./selfie: t5 register:   112368,56184,56184[1.00]
+./selfie: t6 register:   28092,14046,14046[1.00]
+./selfie: temps total:   293638758,146857674,146781084[1.00]
 ```
 
-For example, register `t0` is accessed around 170 million times, roughly half by reading its value and the other half by writing its value, that is, by a ratio of reads and writes by around 1. Register `t1` is already accessed a lot less, and so on. However, the ratio of reads and writes is about the same for all. Stack allocation for register allocation is clearly visible in these numbers. However, the actual problem is the ratio of reads and writes. It would be better if there were more reads than writes per register because that would mean that registers would be used as actual memory, preventing unnecessary slower main memory access. We could achieve that by using a more involved algorithm for register allocation.
+For example, register `t0` is accessed around 194 million times, roughly half by reading its value and the other half by writing its value, that is, by a ratio of reads and writes by around 1. Register `t1` is already accessed a lot less, and so on. However, the ratio of reads and writes is about the same for all. Stack allocation for register allocation is clearly visible in these numbers. However, the actual problem is the ratio of reads and writes. It would be better if there were more reads than writes per register because that would mean that registers would be used as actual memory, preventing unnecessary slower main memory access. We could achieve that by using a more involved algorithm for register allocation.
 
 > Constant folding
 
@@ -6523,14 +6547,6 @@ You may wonder if `gcc` can do the same. The answer is yes. Modern production co
 
 The key difference between the bootstrapping compiler, say, `gcc` and the bootstrapped compiler, here `starc` is that by default `gcc` generates code for the machine on which `gcc` runs whereas `starc` generates RISC-U machine code. On my machine, for example, `gcc` generates ARM machine code which means that, in this case, the executable `selfie`, which includes `starc`, is machine code that runs on an ARM processor. Therefore, `starc` is in this case a *cross-compiler*, that is, a compiler that generates code for a machine architecture that is different from the machine architecture on which the compiler runs. In particular, a cross-compiler generates code that does not run on the processor on which the cross-compiler runs. Cross-compilers typically target machines that are not meant for code development such as smartphones and *embedded systems* in general such as computers in cars and planes. The fact that `starc` is a cross-compiler on my machine and probably yours as well is, however, not intended but a mere consequence of `starc` generating RISC-U machine code for simplicity and educational purposes. Generating ARM machine code, for example, would be significantly more involved.
 
-> Station III: the operating system that must isolate itself
-
-This chapter is the meaning chapter's second theorem run as engineering, and it helps to know the shape of the argument before the details. There are two ways to build an operating system, and the figure draws both. By *emulation*, the operating system interprets its guest: the guest's code is data being read, so isolation comes for free and there is no self-reference anywhere. By *virtualization*, the operating system context switches its guest onto the very processor the kernel itself runs on, and that buys performance, a factor of twelve on the workload below, at a price. The kernel must now be isolated from the things whose isolation it provides. It needs what it provides, which is the loop the self-reference section of this chapter is about, and which the meaning chapter recognized as Gödel's: no system can be the source of its own trust.
-
-![Two ways to build the same operating system](../docs/figures/emuvirt.svg "Two ways to build the same operating system")
-
-The claim that carries the chapter is that the two designs are *semantically equivalent*. Selfie can demonstrate it rather than assert it: the same guest executes exactly the same 86,380 instructions whether it is hosted by emulation or by virtualization, and only the bill for the host differs. Virtualization is needed only for performance, and it buys that performance by introducing self-reference. In my experience, that one sentence is the thing whose absence stops students from ever understanding what a kernel is, because they are shown only the virtualized design, with the loop tangled into paging and scheduling and never named. So it is named here, first.
-
 > Emulation
 
 How do we run code generated by a cross-compiler like `starc`? After all, we are unlikely to have access to an actual RISC-V machine that can execute RISC-U machine code. Remember that RISC-U is a strict subset of RISC-V. Well, `selfie` not only implements `starc` but also an *emulator* of a RISC-U machine called `mipster` that can execute any RISC-U machine code such as the code generated by `starc` for `selfie.c`:
@@ -6709,7 +6725,7 @@ You have now seen every piece of the compiler, and you have seen that the compil
 make self-self-check
 ```
 
-They are identical, 188,392 bytes each, and the figure shows the three stages: `clang` producing a first selfie, that selfie producing `selfie1.m`, and `selfie1.m` producing `selfie2.m`. This is the *fixed point*, and it is the single most beautiful thing selfie does.
+They are identical, 194,648 bytes each, and the figure shows the three stages: `clang` producing a first selfie, that selfie producing `selfie0.m`, and `selfie0.m` producing `selfie1.m`. This is the *fixed point*, and it is the single most beautiful thing selfie does.
 
 ![Self-compilation: the same answer twice](../docs/figures/bootstrap.svg "Self-compilation: the same answer twice")
 
@@ -6743,6 +6759,14 @@ This is also seminal work on computer programming that belongs in any computer s
 
 We have seen the basic principles of encoding *information* in bits, running actual code on a simple yet representative *machine*, and *programming* that machine in a simple yet realistic programming language using tools written in the very same language. This is a remarkable achievement that could easily justify to leave it at that, if it was not for the fact that we are incredibly close to seeing and understanding the probably single most important contribution of computer science to humanity so far. Some might say it is the Internet but there is something more fundamental than that. The nature of information is not just about how to communicate. Information and in particular its meaning only comes to life when it is worked on, known to humans as *reasoning* and to machines as *computing*. In the early days of computer science, computing was something rare and expensive available to only a selected few, and it was highly specialized and bound by severe physical constraints. Today, computing is a commodity virtually independent of any particular hardware and available to anyone with a network connection. All modern technological advancements seem to be either a consequence of that or at least depend on that. In short, everything new involves computing and yet we have only seen a glimpse of the impact of that development. The idea that enables *computing as utility* for everything and everyone is (networked) *virtualization*. The goal of this chapter is to understand what virtualization is, how it works, and why it is so important. However, be patient, it really takes all we have learned so far and more to get there.
 
+> Station III: the operating system that must isolate itself
+
+This chapter is the meaning chapter's second theorem run as engineering, and it helps to know the shape of the argument before the details. There are two ways to build an operating system, and the figure draws both. By *emulation*, the operating system interprets its guest: the guest's code is data being read, so isolation comes for free and there is no self-reference anywhere. By *virtualization*, the operating system context switches its guest onto the very processor the kernel itself runs on, and that buys performance, a factor of twelve on the workload below, at a price. The kernel must now be isolated from the things whose isolation it provides. It needs what it provides, which is the loop the self-reference section of this chapter is about, and which the meaning chapter recognized as Gödel's: no system can be the source of its own trust.
+
+![Two ways to build the same operating system](../docs/figures/emuvirt.svg "Two ways to build the same operating system")
+
+The claim that carries the chapter is that the two designs are *semantically equivalent*. Selfie can demonstrate it rather than assert it: the same guest executes exactly the same 86,380 instructions whether it is hosted by emulation or by virtualization, and only the bill for the host differs. Virtualization is needed only for performance, and it buys that performance by introducing self-reference. In my experience, that one sentence is the thing whose absence stops students from ever understanding what a kernel is, because they are shown only the virtualized design, with the loop tangled into paging and scheduling and never named. So it is named here, first.
+
 > Emulation
 
 Given a particular piece of hardware, say, a 64-bit RISC-V machine, it is always possible to develop a piece of software that emulates such a machine. Selfie does that in the procedure `mipster`. An emulator creates an instance of the machine in software that is indistinguishable from the machine in hardware. In other words, machine code cannot tell whether it is running on emulated or on real hardware, unless the code has a reference to the world outside of such a system, such as the progress of real time revealing the speed of its own progress during execution. Without optimizations, emulation is slower than hardware. An emulator implements, at least logically and `mipster` even for real, an interpreter of machine code in software. The execution of a single machine instruction on the *emulated machine* therefore takes the *emulating machine* on which the emulator runs many machine instructions. We have already looked at that phenomenon at the end of the machine chapter. Let us take an even closer look now. Try the following command in your terminal:
@@ -6751,7 +6775,7 @@ Given a particular piece of hardware, say, a 64-bit RISC-V machine, it is always
 make emu
 ```
 
-As mentioned before in the machine chapter, the command invokes selfie to load its own RISC-U machine code into a `mipster` instance, say, `HW` for hardware, and then have `HW` execute that code, that is, selfie without any further console arguments. In that case, selfie runs on boot level 1 and just prints its synopsis and quits. It takes `HW` around 81k instructions to do so.
+As mentioned before in the machine chapter, the command invokes selfie to load its own RISC-U machine code into a `mipster` instance, say, `HW` for hardware, and then have `HW` execute that code, that is, selfie without any further console arguments. In that case, selfie runs on boot level 1 and just prints its synopsis and quits. It takes `HW` around 86k instructions to do so.
 
 The scenario created by this command is to emulate running selfie without any operating system *bare-metal* directly on 64-bit RISC-V hardware, as represented by the `mipster` instance `HW`. However, a more realistic scenario is to run selfie like an *application* on an *operating system* that *isolates* code execution from the underlying hardware, enabling a user experience that we are all used to, such as running more than one app at the same time. Before we get closer to that, try the following command:
 
@@ -6759,7 +6783,7 @@ The scenario created by this command is to emulate running selfie without any op
 make emu-emu
 ```
 
-Again, as mentioned before in the machine chapter, the command invokes selfie to load its own RISC-U machine code into two `mipster` instances `HW`, as before, and `OS`, for operating system, and then have `HW` execute `OS` and in turn have `OS` execute selfie without any further arguments. Now, selfie runs on boot level 2 and, again, just prints its synopsis and quits. Similar to selfie running on `HW`, it takes selfie running on `OS` around 82k instructions to do that. However, now it takes `HW` around 200 million (!) instructions to execute selfie running on `OS`. This is by a factor of around 2.5k slower!
+Again, as mentioned before in the machine chapter, the command invokes selfie to load its own RISC-U machine code into two `mipster` instances `HW`, as before, and `OS`, for operating system, and then have `HW` execute `OS` and in turn have `OS` execute selfie without any further arguments. Now, selfie runs on boot level 2 and, again, just prints its synopsis and quits. Similar to selfie running on `HW`, it takes selfie running on `OS` around 86k instructions to do that. However, now it takes `HW` around 222 million (!) instructions to execute selfie running on `OS`. This is by a factor of around 2.6k slower!
 
 The reason is that `OS` runs as `mipster` instance which interprets code and is thus slow. Yet logically, `mipster` already does in principle what an operating system does. It *isolates* the code `OS` executes from everything else that might be executing on `HW`. Selfie cannot tell the difference between running bare-metal on `HW`, as before, or running like an application on `OS`, except for the increased boot level, and that is only because we chose to tell selfie about its boot level.
 
@@ -6789,7 +6813,7 @@ The relevant output is:
 > selfie.m: <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 > selfie.m: 64-bit hypster terminating 64-bit RISC-U binary selfie.m with exit code 0
 > selfie.m: --------------------------------------------------------------------------------
-> selfie.m: summary: 0.19MB mapped memory [19.92% of 1MB physical memory]
+> selfie.m: summary: 0.20MB mapped memory [20.31% of 1MB physical memory]
 > selfie.m: ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 > selfie.m: context: >> selfie.m
 > selfie.m:          15 exceptions handled by > selfie.m
@@ -6799,28 +6823,28 @@ The relevant output is:
 ./selfie: <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 ./selfie: 64-bit mipster terminating 64-bit RISC-U binary selfie.m with exit code 0
 ./selfie: --------------------------------------------------------------------------------
-./selfie: summary: 16144075 executed instructions in total [14.87% nops]
-./selfie:          0.98MB mapped memory [49.21% of 2MB physical memory]
+./selfie: summary: 17860937 executed instructions in total [15.48% nops]
+./selfie:          1.42MB mapped memory [71.09% of 2MB physical memory]
 ./selfie: ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 ./selfie: context: >> selfie.m
-./selfie:          82019 executed instructions [0.50% share, factor 196.83]
+./selfie:          86380 executed instructions [0.48% share, factor 206.77]
 ./selfie:          0.28KB peak stack size
 ./selfie:          0.00MB allocated in 8 mallocs (0.00MB or 100.00% actually accessed)
-./selfie:          15 exceptions handled by > selfie.m, one every 5467 executed instructions
+./selfie:          15 exceptions handled by > selfie.m, one every 5758 executed instructions
 ./selfie:          14 syscalls, 1 page faults, 0 timer interrupts
 ./selfie: ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 ./selfie: context: > selfie.m
-./selfie:          16062056 executed instructions [99.49% share, factor 1.00]
-./selfie:          15 exceptions handled by 1070803 instructions each [19583.33% overhead, factor 196.83]
+./selfie:          17774557 executed instructions [99.52% share, factor 1.00]
+./selfie:          15 exceptions handled by 1184970 instructions each [20577.16% overhead, factor 206.77]
 ./selfie:          0.55KB peak stack size
-./selfie:          2.87MB allocated in 32 mallocs (0.78MB or 27.13% actually accessed)
-./selfie:          398 exceptions handled by ./selfie, one every 40356 executed instructions
-./selfie:          65 syscalls, 200 page faults, 133 timer interrupts
+./selfie:          3.34MB allocated in 29 mallocs (1.21MB or 36.28% actually accessed)
+./selfie:          514 exceptions handled by ./selfie, one every 34580 executed instructions
+./selfie:          66 syscalls, 311 page faults, 137 timer interrupts
 ./selfie: --------------------------------------------------------------------------------
 ...
 ```
 
-Now, it takes `HW` around 16 million instructions to execute selfie running on `OS` while, from the perspective of selfie, there is no difference whatsoever, well, other than speed of execution. Even its boot level is the same as before. An improvement by a factor of around 12 is great but it still leaves us with an overhead of almost 20000% (!), that is, a factor of around 200 slowdown compared to running selfie bare-metal on `HW`.
+Now, it takes `HW` around 18 million instructions to execute selfie running on `OS` while, from the perspective of selfie, there is no difference whatsoever, well, other than speed of execution. Even its boot level is the same as before. An improvement by a factor of around 12 is great but it still leaves us with an overhead of more than 20000% (!), that is, a factor of around 200 slowdown compared to running selfie bare-metal on `HW`.
 
 If we insert another layer of virtualization in between `HW` and `OS` using a `hypster` instance, previously called `VMM` for *virtual machine monitor*, the situation gets worse again. To see that, try the following command:
 
@@ -6851,7 +6875,7 @@ The relevant output is:
 >> selfie.m: <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 >> selfie.m: 64-bit hypster terminating 64-bit RISC-U binary selfie.m with exit code 0
 >> selfie.m: --------------------------------------------------------------------------------
->> selfie.m: summary: 0.19MB mapped memory [19.92% of 1MB physical memory]
+>> selfie.m: summary: 0.20MB mapped memory [20.31% of 1MB physical memory]
 >> selfie.m: ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 >> selfie.m: context: >>> selfie.m
 >> selfie.m:          15 exceptions handled by >> selfie.m
@@ -6861,46 +6885,46 @@ The relevant output is:
 > selfie.m: <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 > selfie.m: 64-bit hypster terminating 64-bit RISC-U binary selfie.m with exit code 0
 > selfie.m: --------------------------------------------------------------------------------
-> selfie.m: summary: 0.98MB mapped memory [49.02% of 2MB physical memory]
+> selfie.m: summary: 1.42MB mapped memory [71.09% of 2MB physical memory]
 > selfie.m: ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 > selfie.m: context: >> selfie.m
-> selfie.m:          399 exceptions handled by > selfie.m
-> selfie.m:          65 syscalls, 200 page faults, 134 timer interrupts
+> selfie.m:          514 exceptions handled by > selfie.m
+> selfie.m:          66 syscalls, 311 page faults, 137 timer interrupts
 > selfie.m: ################################################################################
 
 ./selfie: <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 ./selfie: 64-bit mipster terminating 64-bit RISC-U binary selfie.m with exit code 0
 ./selfie: --------------------------------------------------------------------------------
-./selfie: summary: 54581784 executed instructions in total [15.52% nops]
-./selfie:          1.94MB mapped memory [64.84% of 3MB physical memory]
+./selfie: summary: 59492501 executed instructions in total [15.93% nops]
+./selfie:          2.82MB mapped memory [94.14% of 3MB physical memory]
 ./selfie: ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 ./selfie: context: >>> selfie.m
-./selfie:          82613 executed instructions [0.15% share, factor 660.69]
+./selfie:          87006 executed instructions [0.14% share, factor 683.77]
 ./selfie:          0.28KB peak stack size
 ./selfie:          0.00MB allocated in 8 mallocs (0.00MB or 100.00% actually accessed)
-./selfie:          15 exceptions handled by >> selfie.m, one every 5507 executed instructions
+./selfie:          15 exceptions handled by >> selfie.m, one every 5800 executed instructions
 ./selfie:          14 syscalls, 1 page faults, 0 timer interrupts
 ./selfie: ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 ./selfie: context: >> selfie.m
-./selfie:          16074813 executed instructions [29.45% share, factor 3.39]
-./selfie:          15 exceptions handled by 1071654 instructions each [19457.97% overhead, factor 195.57]
+./selfie:          17788002 executed instructions [29.89% share, factor 3.34]
+./selfie:          15 exceptions handled by 1185866 instructions each [20444.56% overhead, factor 205.44]
 ./selfie:          0.55KB peak stack size
-./selfie:          2.87MB allocated in 32 mallocs (0.78MB or 27.13% actually accessed)
-./selfie:          399 exceptions handled by > selfie.m, one every 40287 executed instructions
-./selfie:          65 syscalls, 200 page faults, 134 timer interrupts
+./selfie:          3.34MB allocated in 29 mallocs (1.21MB or 36.28% actually accessed)
+./selfie:          514 exceptions handled by > selfie.m, one every 34607 executed instructions
+./selfie:          66 syscalls, 311 page faults, 137 timer interrupts
 ./selfie: ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 ./selfie: context: > selfie.m
-./selfie:          38424358 executed instructions [70.40% share, factor 1.42]
-./selfie:          399 exceptions handled by 96301 instructions each [239.03% overhead, factor 3.39]
+./selfie:          41617493 executed instructions [69.95% share, factor 1.42]
+./selfie:          514 exceptions handled by 80967 instructions each [233.96% overhead, factor 3.33]
 ./selfie:          0.73KB peak stack size
-./selfie:          3.04MB allocated in 34 mallocs (1.73MB or 56.79% actually accessed)
-./selfie:          887 exceptions handled by ./selfie, one every 43319 executed instructions
-./selfie:          94 syscalls, 443 page faults, 350 timer interrupts
+./selfie:          4.51MB allocated in 31 mallocs (2.60MB or 57.61% actually accessed)
+./selfie:          1133 exceptions handled by ./selfie, one every 36732 executed instructions
+./selfie:          99 syscalls, 666 page faults, 368 timer interrupts
 ./selfie: --------------------------------------------------------------------------------
 ...
 ```
 
-In this case, it takes `HW` around 54 million instructions to execute selfie running on `OS` and in turn `OS` running on `VMM` while, from the perspective of selfie, there is again no difference, except for speed of execution and the increased boot level. Now, the system is by a factor of around 660 slower than running selfie bare-metal on `HW`.
+In this case, it takes `HW` around 59 million instructions to execute selfie running on `OS` and in turn `OS` running on `VMM` while, from the perspective of selfie, there is again no difference, except for speed of execution and the increased boot level. Now, the system is by a factor of around 690 slower than running selfie bare-metal on `HW`.
 
 However, production operating systems and virtual machine monitors typically slow down code execution by a factor close to 1 which is the reason why they are so useful. In short, their benefits come with almost no performance penalty. Is `hypster` just a poor design? Well, no. There are two reasons why we do not see negligible overhead. Firstly, selfie just printing its synopsis is not enough work to amortize the overhead of context switching. To see that, try the following command:
 
@@ -6908,19 +6932,19 @@ However, production operating systems and virtual machine monitors typically slo
 make self-emu
 ```
 
-The command invokes selfie to self-compile bare-metal on `HW`. It takes `HW` around 1.1 billion instructions to do that. What if we do the same but on `OS` as `hypster` instance running on `HW`? The following command shows that:
+The command invokes selfie to self-compile bare-metal on `HW`. It takes `HW` around 1.2 billion instructions to do that. What if we do the same but on `OS` as `hypster` instance running on `HW`? The following command shows that:
 
 ```bash
 make self-os-emu
 ```
 
-In this case, it takes `HW` around 1.9 billion instructions! The overhead of `OS` has reduced to a factor of around 1.7 which is much closer to where we want to be. If we increased the amount of work that selfie does when running on `OS`, the overhead would come down even more. Even if we again insert `VMM` in between `HW` and `OS`, the situation does not get much worse. Try the following command.
+In this case, it takes `HW` around 2.1 billion instructions! The overhead of `OS` has reduced to a factor of around 1.7 which is much closer to where we want to be. If we increased the amount of work that selfie does when running on `OS`, the overhead would come down even more. Even if we again insert `VMM` in between `HW` and `OS`, the situation does not get much worse. Try the following command.
 
 ```bash
 make self-os-vmm-emu
 ```
 
-Now, it takes `HW` around 2.7 billion instructions. The overhead by a factor of around 2.4 is worse than 1.7 but still much less than before. The second reason why we are still seeing overhead that is or in fact seems to be not negligible is surprising. In short, we are already where we would like to be but just underestimate the cost of executing code bare-metal and thus overestimate the overhead of virtualizing code execution. We need to take a closer look to understand that. It is an interesting lesson in how to measure performance and interpret the results properly.
+Now, it takes `HW` around 3 billion instructions. The overhead by a factor of around 2.4 is worse than 1.7 but still much less than before. The second reason why we are still seeing overhead that is or in fact seems to be not negligible is surprising. In short, we are already where we would like to be but just underestimate the cost of executing code bare-metal and thus overestimate the overhead of virtualizing code execution. We need to take a closer look to understand that. It is an interesting lesson in how to measure performance and interpret the results properly.
 
 > Performance and Overhead
 
@@ -6928,9 +6952,9 @@ The key observation is that the number of executed instructions does not necessa
 
 The reason is simple. Executing an `ecall` instruction essentially corresponds to executing an entire procedure that in turn may be implemented by any number of instructions. Those instructions are typically part of operating system or virtual machine monitor code that implements system functionality such as reading from and writing to files, for example. Selfie exposes the cost of executing those instructions but only on boot levels higher than 0. On boot level 0, all system functionality is implemented by the system on which selfie runs. Measuring its cost requires stepping out of the selfie system, which is possible but still something we avoid, again for keeping things simple.
 
-Let us go back to our last three examples and analyze the situation with that information in mind. Self-compiling selfie on `HW` takes around 1.1 billion instructions including `ecall` instructions, but without counting the number of instructions that are executed as consequence of executing those `ecall` instructions. That number is exposed when self-compiling selfie on `OS` and in turn `OS` running on `HW`. Then, the output of selfie shows that it took around 0.8 billion instructions to execute `OS`, which is exactly the overhead over just self-compiling selfie on `HW`. Similarly, self-compiling selfie on `OS` with `VMM` running in between `OS` and `HW` shows that it takes another 0.8 billion instructions to execute `VMM`.
+Let us go back to our last three examples and analyze the situation with that information in mind. Self-compiling selfie on `HW` takes around 1.2 billion instructions including `ecall` instructions, but without counting the number of instructions that are executed as consequence of executing those `ecall` instructions. That number is exposed when self-compiling selfie on `OS` and in turn `OS` running on `HW`. Then, the output of selfie shows that it took around 0.9 billion instructions to execute `OS`, which is exactly the overhead over just self-compiling selfie on `HW`. Similarly, self-compiling selfie on `OS` with `VMM` running in between `OS` and `HW` shows that it takes another 0.9 billion instructions to execute `VMM`.
 
-While it is fair to say that most of the 0.8 billion instructions for executing `OS`, as well as `VMM`, implement system functionality such as reading from and writing to files as well as memory management, and are thus *not* overhead, some of those instructions could be avoided if we were to combine the code for self-compiling selfie with the `OS` code, for example, and then run that combined code directly on `HW`. This way we would avoid the code for isolating the execution of selfie on `OS` from the execution of `OS`, in particular the code for context switching. However, that code can be implemented efficiently, to some extent even in selfie, and is therefore worth doing.
+While it is fair to say that most of the 0.9 billion instructions for executing `OS`, as well as `VMM`, implement system functionality such as reading from and writing to files as well as memory management, and are thus *not* overhead, some of those instructions could be avoided if we were to combine the code for self-compiling selfie with the `OS` code, for example, and then run that combined code directly on `HW`. This way we would avoid the code for isolating the execution of selfie on `OS` from the execution of `OS`, in particular the code for context switching. However, that code can be implemented efficiently, to some extent even in selfie, and is therefore worth doing.
 
 > Exceptions, not literally
 
@@ -6947,30 +6971,30 @@ The relevant output is:
 ./selfie: <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 ./selfie: 64-bit mipster terminating 64-bit RISC-U binary selfie.m with exit code 0
 ./selfie: --------------------------------------------------------------------------------
-./selfie: summary: 1946980891 executed instructions in total [17.11% nops]
-./selfie:          3.36MB mapped memory [84.18% of 4MB physical memory]
+./selfie: summary: 2112219497 executed instructions in total [18.35% nops]
+./selfie:          3.87MB mapped memory [96.97% of 4MB physical memory]
 ./selfie: ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 ./selfie: context: >> selfie.m
-./selfie:          1129157370 executed instructions [57.99% share, factor 1.72]
+./selfie:          1228262089 executed instructions [58.15% share, factor 1.71]
 ./selfie:          2.35KB peak stack size
-./selfie:          3.27MB allocated in 24562 mallocs (2.20MB or 67.14% actually accessed)
-./selfie:          471439 exceptions handled by > selfie.m, one every 2395 executed instructions
-./selfie:          470867 syscalls, 564 page faults, 8 timer interrupts
+./selfie:          3.32MB allocated in 25296 mallocs (2.27MB or 68.31% actually accessed)
+./selfie:          484140 exceptions handled by > selfie.m, one every 2536 executed instructions
+./selfie:          483549 syscalls, 582 page faults, 9 timer interrupts
 ./selfie: ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 ./selfie: context: > selfie.m
-./selfie:          817823521 executed instructions [42.00% share, factor 2.38]
-./selfie:          471439 exceptions handled by 1734 instructions each [72.43% overhead, factor 1.72]
+./selfie:          883957408 executed instructions [41.84% share, factor 2.38]
+./selfie:          484140 exceptions handled by 1825 instructions each [71.96% overhead, factor 1.71]
 ./selfie:          0.80KB peak stack size
-./selfie:          5.04MB allocated in 36 mallocs (3.15MB or 62.53% actually accessed)
-./selfie:          447508 exceptions handled by ./selfie, one every 1827 executed instructions
-./selfie:          446368 syscalls, 808 page faults, 332 timer interrupts
+./selfie:          5.51MB allocated in 33 mallocs (3.66MB or 66.38% actually accessed)
+./selfie:          459604 exceptions handled by ./selfie, one every 1923 executed instructions
+./selfie:          458317 syscalls, 938 page faults, 349 timer interrupts
 ./selfie: --------------------------------------------------------------------------------
 ...
 ```
 
-Just self-compiling selfie without the overhead for `OS` takes `HW` executing around 1.1 billion instructions (see context `>> selfie.m`). However, doing so *throws* around 471k *exceptions*, on average one every 2.4k executed instructions, of which the majority is caused by *system calls*, or *syscalls* for short, which are invoked when executing `ecall` instructions. Therefore, after executing around 2.4k instructions on average that are not `ecall` instructions, an `ecall` instruction is executed. Here, an exception is essentially a mechanism to divert control of the processor to operating system code for handling the situation, such as executing the code invoked by an `ecall` instruction. The details are not important here. In our case, `OS` handles all exceptions thrown while self-compiling selfie on `OS` (see context `> selfie.m`), which takes executing around 0.8 billion instructions for `OS` and thus around 1.7k instructions per exception. This results in an overhead of around 72% over just self-compiling selfie on `HW`, that is, a slowdown by a factor of around 1.7 in this case.
+Just self-compiling selfie without the overhead for `OS` takes `HW` executing around 1.2 billion instructions (see context `>> selfie.m`). However, doing so *throws* around 484k *exceptions*, on average one every 2.5k executed instructions, of which the majority is caused by *system calls*, or *syscalls* for short, which are invoked when executing `ecall` instructions. Therefore, after executing around 2.5k instructions on average that are not `ecall` instructions, an `ecall` instruction is executed. Here, an exception is essentially a mechanism to divert control of the processor to operating system code for handling the situation, such as executing the code invoked by an `ecall` instruction. The details are not important here. In our case, `OS` handles all exceptions thrown while self-compiling selfie on `OS` (see context `> selfie.m`), which takes executing around 0.9 billion instructions for `OS` and thus around 1.8k instructions per exception. This results in an overhead of around 72% over just self-compiling selfie on `HW`, that is, a slowdown by a factor of around 1.7 in this case.
 
-However, most of what `OS` does is something that needs to be done anyway such as reading input, writing output, and managing memory. Only a fraction of the 1.7k instructions executed per exception is done for context switching. How much exactly is difficult to measure. But what we can say is that self-compiling selfie on `OS` throws on average one exception every 2.4k instructions executed. If we would like to stay below, say, 10% overhead for context switching, we have around 240 instructions to do that. Not bad. Modern operating systems and virtual machine monitors can do that. How about selfie? Let us do an experiment. Consider the following program called `overhead.c` located in the `examples` folder of the selfie repository:
+However, most of what `OS` does is something that needs to be done anyway such as reading input, writing output, and managing memory. Only a fraction of the 1.8k instructions executed per exception is done for context switching. How much exactly is difficult to measure. But what we can say is that self-compiling selfie on `OS` throws on average one exception every 2.5k instructions executed. If we would like to stay below, say, 10% overhead for context switching, we have around 250 instructions to do that. Not bad. Modern operating systems and virtual machine monitors can do that. How about selfie? Let us do an experiment. Consider the following program called `overhead.c` located in the `examples` folder of the selfie repository:
 
 ```c
 uint64_t main() {
@@ -6996,8 +7020,8 @@ It takes a few minutes for the experiment to finish, so just wait for it. The re
 ./selfie: <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 ./selfie: 64-bit mipster terminating 64-bit RISC-U binary selfie.m with exit code 0
 ./selfie: --------------------------------------------------------------------------------
-./selfie: summary: 10022679395 executed instructions in total [19.99% nops]
-./selfie:          0.83MB mapped memory [41.60% of 2MB physical memory]
+./selfie: summary: 10022829391 executed instructions in total [19.99% nops]
+./selfie:          1.26MB mapped memory [63.28% of 2MB physical memory]
 ./selfie: ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 ./selfie: context: >> examples/overhead.c
 ./selfie:          10000000045 executed instructions [99.78% share, factor 1.00]
@@ -7007,17 +7031,17 @@ It takes a few minutes for the experiment to finish, so just wait for it. The re
 ./selfie:          3 syscalls, 0 page faults, 100001 timer interrupts
 ./selfie: ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 ./selfie: context: > selfie.m
-./selfie:          22679350 executed instructions [0.22% share, factor 441.92]
-./selfie:          100004 exceptions handled by 226 instructions each [0.22% overhead, factor 1.00]
+./selfie:          22829346 executed instructions [0.22% share, factor 439.03]
+./selfie:          100004 exceptions handled by 228 instructions each [0.22% overhead, factor 1.00]
 ./selfie:          0.76KB peak stack size
-./selfie:          3.22MB allocated in 70 mallocs (0.62MB or 19.49% actually accessed)
-./selfie:          509 exceptions handled by ./selfie, one every 44556 executed instructions
-./selfie:          347 syscalls, 161 page faults, 1 timer interrupts
+./selfie:          3.65MB allocated in 67 mallocs (1.05MB or 28.95% actually accessed)
+./selfie:          620 exceptions handled by ./selfie, one every 36821 executed instructions
+./selfie:          348 syscalls, 271 page faults, 1 timer interrupts
 ./selfie: --------------------------------------------------------------------------------
 ...
 ```
 
-Handling around 100k exceptions took `OS` around 226 instructions each, mostly for exceptions caused by timer interrupts, so there you go. Context switching is part of handling any exception. Selfie can apparently perform context switching, at least on average, in no more than 226 instructions.
+Handling around 100k exceptions took `OS` around 228 instructions each, mostly for exceptions caused by timer interrupts, so there you go. Context switching is part of handling any exception. Selfie can apparently perform context switching, at least on average, in no more than 228 instructions.
 
 > Again, from composability to compositionality
 
@@ -8248,7 +8272,7 @@ Open the file. It is a formula in the BTOR2 notation, and it is readable, becaus
 40903 bad 40902 core-0-bad-exit-code ; exit(0)
 ```
 
-among illegal instructions, unaligned fetches, stores outside the segments, and unknown system calls. The whole model has a few thousand lines for this program, and the number of lines grows linearly with the size of the binary: rotor generates a model of all of selfie, forty-three thousand instructions, in the same way and in about the same time it takes to compile it. The figure shows the shape of such a model and what unrolling it means.
+among illegal instructions, unaligned fetches, stores outside the segments, and unknown system calls. The whole model has about fifteen thousand lines for this program, and the number of lines grows linearly with the size of the binary: rotor generates a model of all of selfie, forty-three thousand instructions, in the same way and in about the same time it takes to compile it. The figure shows the shape of such a model and what unrolling it means.
 
 ![A BTOR2 model: state, init, next, bad, unrolled k steps](../docs/figures/btor2.svg "A BTOR2 model: state, init, next, bad, unrolled k steps")
 

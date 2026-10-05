@@ -16,6 +16,7 @@
     <div class="eyebrow">Compiler Construction · week 12 · station IV</div>
     <h1>Bounded Model Checking</h1>
     <p class="lead">SMT: bitvectors and arrays by bit-blasting. Bitme: the model of week 10 unrolled and handed to the solver of week 11 — and your own extension checked.</p>
+    <p class="decknav"><a href="../11-sat/">← CC 11 · SAT</a></p>
   </div>
   <aside class="notes"><p>The two halves of station IV meet: the formula and the solver. Bit-blasting as Cook-Levin made concrete, the theories of words and memory, bitme run live, what a bound buys, and the assignment where students check their own compiler extension. Book: the Cost chapter from From Machine Words to Formulas to What a Bound Buys. Assignments: struct-execution and rotor-check.</p></aside>
 </section>
@@ -43,15 +44,14 @@
       <span class="l o">bitme bounded model checking: -kmin 0 -kmax 120</span>
       <span class="l o">0: initializing · 1: transitioning · … · 75: transitioning</span>
       <span class="l o">76: core-0-division-by-zero</span>
-      <span class="l o">76: vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv</span>
       <span class="l o">76: 150 state 71 input-buffer ; uninitialized input buffer</span>
       <span class="l o">76: state150-76 = (store … #b0 #b00110000)      ← byte 48, the character '0'</span>
       <span class="l o">89: core-0-division-by-zero … #b00110010          ← byte 50, '2': the second division</span>
       <span class="l o">106: core-0-bad-exit-code … #b00001100            ← byte 12: exit(0), the flagged exit</span>
     </div>
     <div class="two">
-      <p class="sm f" data-step="1">Bitme walks the steps and, at each, asks the solver about every bad state. Seventy-five steps of no while the program sets up its stack and calls malloc and read. Then, at step 76, where the division instruction is fetched, yes — and the assignment of the uninitialised input buffer is the failing input. Nobody told it to try '0'.</p>
-      <p class="sm f" data-step="2">The step numbers move with the versions of rotor and bitme; check before class. The shape does not move: a bad state, a step, an input. And the same run on the students' own extensions is the assignment.</p>
+      <p class="sm f" data-step="1">Bitme walks the steps and, at each, asks the solver about every bad state. Seventy-five steps of no while the program sets up its stack and calls malloc and read. Then, at step 76, yes, and the assignment of the input buffer is the failing input. Nobody told it to try '0'.</p>
+      <p class="sm f" data-step="2">The step numbers move with the versions of the tools; check before class. The shape does not: a bad state, a step, an input. The same run on your own extensions is the assignment.</p>
     </div>
   </div>
   <aside class="notes"><p>Run it with whichever backend is installed; bitwuzla is the intended one for bitvectors and is markedly faster than Z3 on the division. Let it scroll. Then the sentence: the solver derived the input from the formula, the way CDCL derived that x1 must be false last week.</p></aside>
@@ -78,19 +78,31 @@
     <div class="two">
       <div class="stack">
         <ol class="steps">
-          <li><strong>A test program.</strong> In C*, using your extension — the for loop, arrays, lazy evaluation, structs — with one input on which it misbehaves: an out-of-bounds index, a division by zero, a wrong exit code, reachable only for some input byte.</li>
+          <li><strong>A test program.</strong> In C*, using your extension, with one input on which it misbehaves: an out-of-bounds index, a division by zero, a wrong exit code, reachable only for some input byte.</li>
           <li><strong>A property.</strong> State which of rotor's bad states the misbehaviour is, and the bound within which it is reachable.</li>
-          <li><strong>The run.</strong> Compile the program with <em>your</em> selfie, generate its rotor model, run bitme with your bound. Submit the program, the property, the bound, and the input the solver found.</li>
-          <li><strong>The check.</strong> The grader recompiles your program with your selfie, regenerates the model, runs bitme to your bound, and compares the verdict and the input.</li>
+          <li><strong>The run.</strong> Compile the program with <em>your</em> selfie, generate its rotor model, run bitme with your bound. Submit the program and a four-line property file: bad state, bound, verdict, and the input the solver found.</li>
+          <li><strong>The check.</strong> The grader recompiles your program with your selfie, regenerates the model, runs bitme to your bound, and confirms the verdict.</li>
         </ol>
       </div>
       <div class="stack">
-        <div class="card syn"><span class="h">And struct-execution</span><p>The other half of the capstone: field access <span class="mono">p-&gt;f</span> as a load or store at the pointer plus the field's offset, types from the entry, the assertions on temporaries. Then use a struct in selfie.c — for the symbol table, if you dare — and self-compile.</p></div>
-        <p class="sm">Rules as always: selfie.c and the grammar; no warnings; self-compile passes. For rotor-check the submission is a directory with the program and a one-page note.</p>
+        <div class="card syn"><span class="h">And struct-execution</span><p>The other half of the capstone: field access <span class="mono">p-&gt;f</span> as a load or store at the pointer plus the field's offset. Then use a struct in selfie.c, for the symbol table if you dare, and self-compile.</p></div>
+        <p class="sm">Rules as always. For rotor-check the submission is the directory <span class="mono">assignments/rotor-check</span> with <span class="mono">program.c</span> and <span class="mono">property.txt</span>.</p>
       </div>
     </div>
   </div>
-  <aside class="notes"><p>Two assignments, and rotor-check is the new one. The grader target runs rotor and bitme on the submitted program under the submitted compiler and compares; the exact flags are in the assignment file. The point is that the students turn the tool on their own code, and see the input come back.</p></aside>
+  <aside class="notes"><p>Two assignments, and rotor-check is the new one. The grader target runs rotor and bitme on the submitted program under the submitted compiler and confirms the verdict within the bound; the exact flags are in the assignment file. The point is that the students turn the tool on their own code, and see the input come back.</p></aside>
+</section>
+<section class="slide" data-act="IV" data-mins="1.0">
+  <div class="eyebrow">After this week</div>
+  <h2>Listen, then read.</h2>
+  <div class="fill">
+    <div class="two">
+      <div class="card"><span class="h">Listen</span><p><a href="https://www.youtube.com/watch?v=5y5mbMvhMXE">Strauss · Elektra</a> — Solti, Nilsson, Vienna 1967. One act, no interruption, one question asked of every state: is it him? The recognition scene is the satisfying assignment found; the dance is what happens when the bound is reached.</p></div>
+      <div class="card"><span class="h">Read</span><p><a href="https://link.springer.com/book/10.1007/978-3-319-10575-8">Handbook of Model Checking</a> — Clarke, Henzinger, Veith and Bloem, editors, 2018: where the field defines its terms; bounded model checking is one chapter. And, more technical, <a href="https://doi.org/10.1007/978-3-540-24730-2_15">A Tool for Checking ANSI-C Programs</a> — Clarke, Kroening and Lerda, 2004: CBMC, the bounded model checker for C that rotor and bitme are cousins of.</p></div>
+    </div>
+  </div>
+  <p class="decknav next"><a href="../13-generated-code/">CC 13 · Generated Code →</a></p>
+  <aside class="notes"><p>One minute, or none: leave it on the screen while the room packs up. A piece, a book and a paper, chosen for the week’s idea; the cards say why.</p></aside>
 </section>
 
 </div>

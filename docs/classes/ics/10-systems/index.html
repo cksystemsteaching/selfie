@@ -16,8 +16,9 @@
     <div class="eyebrow">Introduction to Computer Science · week 10 · station III</div>
     <h1>Systems</h1>
     <p class="lead">Two ways to build an operating system. Why they are the same. Why one is used anyway — and the loop at its centre.</p>
+    <p class="decknav"><a href="../09-self-reference-ii/">← ICS 09 · Self-Reference II</a></p>
   </div>
-  <aside class="notes"><p>The systems side of station III: the second incompleteness theorem as engineering. The argument is the selfie talk's Part III, compressed: two designs, the evidence that they are equivalent, the price of the faster one. Every number on this deck is selfie reporting on selfie. Book: the Computing chapter's station callouts, Emulation, Virtualization, Self-Reference.</p></aside>
+  <aside class="notes"><p>The systems side of station III: the second incompleteness theorem as engineering. The argument is the selfie talk's Part III, compressed: two designs, the evidence that they are equivalent, the price of the faster one. Every number on this deck is selfie reporting on selfie. Book: the Computing chapter's station callout, its Emulation and Virtualization callouts, and Self-Reference.</p></aside>
 </section>
 
 <section class="slide" data-act="III" data-actname="Systems" data-mins="5.0">
@@ -55,17 +56,21 @@
     <div class="two">
       <div class="term sm">
         <span class="l"><span class="p">$</span> <span class="c">make emu-emu</span></span>
-        <span class="l o">./selfie -c selfie.c -o selfie.m -m 3 -l selfie.m -m 2 -l selfie.m -m 1</span>
+        <span class="l o">./selfie -l selfie.m -m 3 -l selfie.m -m 1</span>
         <span class="l o">…</span>
-        <span class="l o">&gt; selfie.m: summary: 86380 executed instructions in total</span>
-        <span class="l o">./selfie: summary: 222410917 executed instructions in total</span>
+        <span class="l o">&gt; selfie.m: summary:</span>
+        <span class="l o">    86380 executed instructions in total</span>
+        <span class="l o">./selfie: summary:</span>
+        <span class="l o">    222410917 executed instructions in total</span>
       </div>
       <div class="term sm">
         <span class="l"><span class="p">$</span> <span class="c">make os-emu</span></span>
-        <span class="l o">./selfie -c selfie.c -o selfie.m -m 2 -l selfie.m -y 1</span>
+        <span class="l o">./selfie -l selfie.m -m 2 -l selfie.m -y 1</span>
         <span class="l o">…</span>
-        <span class="l o">&gt; selfie.m: summary: 86380 executed instructions in total</span>
-        <span class="l o">./selfie: summary: 17860937 executed instructions in total</span>
+        <span class="l o">&gt; selfie.m: summary:</span>
+        <span class="l o">    86380 executed instructions in total</span>
+        <span class="l o">./selfie: summary:</span>
+        <span class="l o">    17860937 executed instructions in total</span>
       </div>
     </div>
     <div class="two">
@@ -96,9 +101,9 @@
   <div class="fill row mid">
     <div class="fig grow" style="flex:1.2" data-fig="selfref"><span class="cap">the kernel requires what the kernel provides</span></div>
     <div class="stack grow">
-      <p class="f" data-step="1">The kernel provides isolation. To provide it, the kernel runs on the same processor as the guests — so the kernel needs to be isolated too. From the guests. By whom?</p>
-      <p class="f" data-step="2">By itself, would be the answer, and week 8 said what that is worth. Nothing certifies itself. So real kernels do it the other way: a small piece of code, isolated by construction, that must never fault, written and checked by hand — the <strong>trusted computing base</strong>. Keeping it small is the microkernel programme.</p>
-      <p class="f" data-step="3">The certification comes from outside the loop. Same shape as Thompson's second compiler. Same theorem.</p>
+      <p class="f" data-step="1">The kernel provides isolation. To provide it, the kernel runs on the same processor as the guests — so it needs isolating too. From the guests. By whom?</p>
+      <p class="f" data-step="2">By itself, and week 8 said what that is worth: nothing certifies itself. So real kernels rely on a small piece of code, isolated by construction and checked by hand, that must never fault — the <strong>trusted computing base</strong>. Keeping it small is the microkernel programme.</p>
+      <p class="f" data-step="3">The certification comes from outside the loop: the shape of Thompson's second compiler. Same theorem.</p>
     </div>
   </div>
   <aside class="notes"><p>This is the slide of the session, and the reason the systems side is in a class about intelligence. The kernel that needs what it provides is Gödel's second theorem in engineering clothes, and the response is the one every station of the semester recommends: an outside check, kept as small as possible. In selfie the trusted base is hypster's exception handler and context switch.</p></aside>
@@ -111,11 +116,11 @@
     <div class="fig grow" style="flex:1.1" data-fig="ladder"><span class="cap">hypster on hypster on mipster</span></div>
     <div class="stack grow">
       <div class="term sm">
-        <span class="l"><span class="p">$</span> <span class="c">./selfie -c selfie.c -o selfie.m -m 3 -l selfie.m -y 2 -l selfie.m -y 1</span></span>
-        <span class="l o">…</span>
+        <span class="l"><span class="p">$</span> <span class="c">./selfie -c selfie.c -o selfie.m -m 3 \</span></span>
+        <span class="l"><span class="c">    -l selfie.m -y 2 -l selfie.m -y 1</span></span>
       </div>
-      <p class="f" data-step="1">The third command from week 1. An emulated machine hosts a hypervisor that hosts a hypervisor that hosts selfie, which prints its synopsis. Still reasonably fast, because there is only one emulator in the stack and each hypervisor adds little.</p>
-      <p class="f" data-step="2">Understand the first command and you understand compilers; the second, machines; the third, operating systems. Only the third is hard to implement, and this deck said exactly where.</p>
+      <p class="f" data-step="1">The third command from week 1: an emulated machine hosts a hypervisor that hosts a hypervisor that hosts selfie, which prints its synopsis. Still fast: only one emulator in the stack, and each hypervisor adds little.</p>
+      <p class="f" data-step="2">Understand the first command and you understand compilers; the second, machines; the third, operating systems. Only the third is hard to implement, and this deck said where.</p>
     </div>
   </div>
   <aside class="notes"><p>Run it. Then the sentence from week 1, now earned. The systems class spends a semester making hypster do this with processes, threads and locks; here the point is that the loop closes and the machine still works.</p></aside>
@@ -152,6 +157,18 @@
     </div>
   </div>
   <aside class="notes"><p>Exercise 5 is the one that shows whether the pattern has been seen; it comes back in week 13 with a fourth item.</p></aside>
+</section>
+<section class="slide" data-act="III" data-mins="1.0">
+  <div class="eyebrow">After this week</div>
+  <h2>Listen, then read.</h2>
+  <div class="fill">
+    <div class="two">
+      <div class="card"><span class="h">Listen</span><p><a href="https://www.youtube.com/watch?v=scGXNcAjeXc">Dvořák · Symphony No. 9 “From the New World”</a> — Karel Ančerl, Czech Philharmonic. Written in New York by a Bohemian: American spirituals and the songs of the plains, hosted on a Bohemian machine, and the guest cannot tell which orchestra it is running on. Emulation and virtualization, in E minor — and the Largo went home and became a folk song.</p></div>
+      <div class="card"><span class="h">Read</span><p><a href="https://ospp.cs.washington.edu/">Operating Systems: Principles and Practice</a> — Anderson and Dahlin: the kernel as this class sees it, from processes to virtual machines. And, more technical, <a href="https://doi.org/10.1145/361011.361073">Formal Requirements for Virtualizable Third Generation Architectures</a> — Popek and Goldberg, 1974: the theorem that says which machines can be virtualized.</p></div>
+    </div>
+  </div>
+  <p class="decknav next"><a href="../11-cost/">ICS 11 · Cost →</a></p>
+  <aside class="notes"><p>One minute, or none: leave it on the screen while the room packs up. A symphony and two texts, one for everyone and one for the ones who want the source.</p></aside>
 </section>
 
 </div>

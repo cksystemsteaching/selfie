@@ -16,6 +16,7 @@
     <div class="eyebrow">Systems Engineering · week 3 · station III</div>
     <h1>Emulation</h1>
     <p class="lead">Mipster as the universal machine, the price of interpretation, and self-execution.</p>
+    <p class="decknav"><a href="../02-the-machine-again/">← SE 02 · The Machine, Again</a></p>
   </div>
   <aside class="notes"><p>The emulator, read as an operating system: it is one, by emulation, and it is the universal machine of the introduction class. The cost of that design, the factor of 2,593, is what the rest of the class is willing to pay self-reference to avoid. Book: the Machine chapter's Emulation and the Computing chapter's opening.</p></aside>
 </section>
@@ -35,9 +36,9 @@
         <span class="l c">}</span>
       </div>
       <div class="stack">
-        <p class="f" data-step="1">The machine chapter's cycle as a program. The guest's code is data in the host's memory, read one word at a time and never executed by the host's processor. Fourteen cases in <span class="mono">execute</span>, each a few lines of arithmetic on the context's registers.</p>
-        <p class="f" data-step="2">This is Turing's universal machine: one program that becomes any program when handed its description. The introduction class proved it universal; this class runs it.</p>
-        <p class="f" data-step="3">And it is an operating system: the guest cannot touch anything the emulator does not hand it. Isolation for free. No self-reference anywhere.</p>
+        <p class="f" data-step="1">The machine chapter's cycle as a program. The guest's code is data in the host's memory, read one word at a time, never executed by the host's processor.</p>
+        <p class="f" data-step="2">This is Turing's universal machine: one program that becomes any program when handed its description.</p>
+        <p class="f" data-step="3">And it is an operating system: the guest cannot touch anything the emulator does not hand it. Isolation for free, and no self-reference.</p>
       </div>
     </div>
   </div>
@@ -52,13 +53,13 @@
     <div class="stack grow">
       <div class="term sm">
         <span class="l"><span class="p">$</span> <span class="c">make emu</span></span>
-        <span class="l o">./selfie: summary: 85754 executed instructions in total</span>
+        <span class="l o">./selfie: … 85754 executed instructions …</span>
         <span class="l"><span class="p">$</span> <span class="c">make emu-emu</span></span>
-        <span class="l o">&gt; selfie.m: summary: 86380 executed instructions in total</span>
-        <span class="l o">./selfie: summary: 222410917 executed instructions in total</span>
+        <span class="l o">&gt; selfie.m: … 86380 executed instructions …</span>
+        <span class="l o">./selfie: … 222410917 executed instructions …</span>
       </div>
-      <p class="f" data-step="1">Selfie printing its synopsis costs 85,754 instructions bare-metal. Hosted by mipster inside mipster it costs the guest 86,380 and the host 222 million: a factor of 2,593, one per level.</p>
-      <p class="f" data-step="2">The guest cannot tell. Same output, same instruction count give or take the boot level, which selfie tells it deliberately. Emulation is semantically transparent and computationally expensive, and that sentence is the whole motivation for the next three weeks.</p>
+      <p class="f" data-step="1">Printing its synopsis costs selfie 85,754 instructions. Under mipster inside mipster: 86,380 for the guest, 222 million for the host, ×2,593.</p>
+      <p class="f" data-step="2">The guest cannot tell: same output, same count. Semantically transparent, computationally expensive.</p>
     </div>
   </div>
   <aside class="notes"><p>Run both. The guest's number is the one to underline: 86,380, the same whether it is hosted by an emulator or, in week 6, by a hypervisor. The host's number is the bill, and it is what virtualization exists to cut.</p></aside>
@@ -110,6 +111,18 @@
     </div>
   </div>
   <aside class="notes"><p>The second half of the assembler. Self-assembly is a fixed point, and say what it proves and does not, briefly, because the systems class inherits that lesson from the talk. The assembler is one of the two candidate routines for rotor-bounds in week 10.</p></aside>
+</section>
+<section class="slide" data-act="III" data-mins="1.0">
+  <div class="eyebrow">After this week</div>
+  <h2>Listen, then read.</h2>
+  <div class="fill">
+    <div class="two">
+      <div class="card"><span class="h">Listen</span><p><a href="https://www.youtube.com/watch?v=4njrCvCHWLY">Bach · The Well-Tempered Clavier, Book II</a> — Sviatoslav Richter. Twenty-two years after Book I, the same twenty-four keys again, on whatever keyboard is at hand: the same specification executed on a different machine, and the music cannot tell. Emulation is semantically transparent.</p></div>
+      <div class="card"><span class="h">Read</span><p><a href="https://www.sciencedirect.com/book/9781558609105">Virtual Machines: Versatile Platforms for Systems and Processes</a> — Smith and Nair, 2005: emulation, binary translation and virtualization in one book, the taxonomy this class uses. And, more technical, <a href="https://www.usenix.org/legacy/event/usenix05/tech/freenix/bellard.html">QEMU, a Fast and Portable Dynamic Translator</a> — Bellard, 2005: the emulator everyone runs, in seven pages; mipster is what it would be without the translation.</p></div>
+    </div>
+  </div>
+  <p class="decknav next"><a href="../04-virtual-memory/">SE 04 · Virtual Memory →</a></p>
+  <aside class="notes"><p>One minute, or none: leave it on the screen while the room packs up. A piece, a book and a paper, chosen for the week’s idea; the cards say why.</p></aside>
 </section>
 
 </div>

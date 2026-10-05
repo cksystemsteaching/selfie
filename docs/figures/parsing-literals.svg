@@ -1,9 +1,9 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 560" width="1000" height="560" role="img" aria-label="Parsing literals: compile_factor recognises a literal and compile_literal loads it, at compile time">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="16.0 -3.0 978.3 572.0" width="978" height="572" role="img" aria-label="Parsing literals: compile_factor recognises a literal and compile_literal loads it, at compile time">
 <title>Parsing literals: compile_factor recognises a literal and compile_literal loads it, at compile time</title>
 <style>svg{--ink:#131C2A;--ink-2:#39485C;--muted:#5D6E85;--line:rgba(19,28,42,.18);--syn:#A2661A;--sem:#1F6C86;--bad:#A63E5A;--panel:#FFFFFF;--ground:#EFF1F3}@media (prefers-color-scheme: dark){svg{--ink:#E7EDF6;--ink-2:#B6C4D8;--muted:#8093AF;--line:rgba(122,162,204,.16);--syn:#E0A550;--sem:#5BB0C7;--bad:#C8607A;--panel:#111C2E;--ground:#080E18}}text{font-family:"JetBrains Mono","SFMono-Regular","SF Mono","Cascadia Mono",Menlo,Consolas,"DejaVu Sans Mono",monospace}.serif{font-family:"Iowan Old Style","Palatino Linotype",Palatino,"Book Antiqua","URW Palladio L",Georgia,serif}</style>
-<text x="120" y="40" font-size="16" fill="var(--ink)" text-anchor="middle" dominant-baseline="central" class="serif">C*</text>
-<text x="470" y="40" font-size="16" fill="var(--ink)" text-anchor="middle" dominant-baseline="central" class="serif">starc</text>
-<text x="880" y="40" font-size="16" fill="var(--ink)" text-anchor="middle" dominant-baseline="central" class="serif">RISC-U</text>
+<text x="120" y="22" font-size="16" fill="var(--ink)" text-anchor="middle" dominant-baseline="central" class="serif">C*</text>
+<text x="470" y="22" font-size="16" fill="var(--ink)" text-anchor="middle" dominant-baseline="central" class="serif">starc</text>
+<text x="880" y="22" font-size="16" fill="var(--ink)" text-anchor="middle" dominant-baseline="central" class="serif">RISC-U</text>
 <text x="70" y="90" font-size="18" fill="var(--sem)" text-anchor="middle" dominant-baseline="central">85</text>
 <text x="130" y="90" font-size="18" fill="var(--sem)" text-anchor="middle" dominant-baseline="central">'H'</text>
 <text x="120" y="130" font-size="14" fill="var(--sem)" text-anchor="middle" dominant-baseline="central">"Hello World!"</text>
@@ -17,4 +17,11 @@
 <line x1="730" y1="510" x2="730" y2="555" stroke="var(--ink)" stroke-width="1.2"/>
 <line x1="760" y1="540" x2="970" y2="540" stroke="var(--bad)" stroke-width="1.4"/><path d="M970 540 L964.47 542.34 L964.47 537.66 Z" fill="var(--bad)"/>
 <text x="865" y="528" font-size="11" fill="var(--muted)" text-anchor="middle" dominant-baseline="central" class="serif">runtime</text>
+
+<path d="M85.2 90.0 C153.0 90.0 168.1 232.4 236.0 232.4" fill="none" stroke="var(--sem)" stroke-width="1.3" stroke-opacity="0.85"/><path d="M236.0 232.4 L230.0 235.0 L230.0 229.8 Z" fill="var(--sem)" fill-opacity="0.85"/>
+<path d="M150.7 90.0 C193.5 90.0 193.3 232.4 236.0 232.4" fill="none" stroke="var(--sem)" stroke-width="1.3" stroke-opacity="0.85"/><path d="M236.0 232.4 L230.0 235.0 L230.0 229.8 Z" fill="var(--sem)" fill-opacity="0.85"/>
+<path d="M184.8 130.0 C236.9 130.0 183.9 303.7 236.0 303.7" fill="none" stroke="var(--sem)" stroke-width="1.3" stroke-opacity="0.85"/><path d="M236.0 303.7 L230.0 306.3 L230.0 301.1 Z" fill="var(--sem)" fill-opacity="0.85"/>
+<path d="M429.4 250.2 C588.1 250.2 623.3 269.5 782.0 269.5" fill="none" stroke="var(--syn)" stroke-width="1.3" stroke-opacity="0.85"/><path d="M782.0 269.5 L776.0 272.1 L776.0 266.9 Z" fill="var(--syn)" fill-opacity="0.85"/>
+<path d="M372.3 321.6 C556.7 321.6 597.7 289.0 782.0 289.0" fill="none" stroke="var(--syn)" stroke-width="1.3" stroke-opacity="0.85"/><path d="M782.0 289.0 L776.0 291.6 L776.0 286.4 Z" fill="var(--syn)" fill-opacity="0.85"/>
+<path d="M500.7 303.7 C627.3 303.7 655.4 308.5 782.0 308.5" fill="none" stroke="var(--syn)" stroke-width="1.3" stroke-opacity="0.85"/><path d="M782.0 308.5 L776.0 311.1 L776.0 305.9 Z" fill="var(--syn)" fill-opacity="0.85"/>
 </svg>

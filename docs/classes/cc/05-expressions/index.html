@@ -16,6 +16,7 @@
     <div class="eyebrow">Compiler Construction · week 5 · station II</div>
     <h1>Expressions</h1>
     <p class="lead">Code generation for literals, terms and arithmetic; registers as a stack; and encoding an instruction, which is Gödel numbering made mechanical.</p>
+    <p class="decknav"><a href="../04-symbols-and-types/">← CC 04 · Symbols and Types</a></p>
   </div>
   <aside class="notes"><p>The first code-generation session. Three problems: where code goes, where data goes, which registers to use. Then the expressions of C* one rule at a time, and at the end the encoder, which is the point where the compiler turns notation into a number. Book: Code Generation, Expressions, Arithmetic Operators, Comparison Operators. Assignment: bitwise-shift-execution.</p></aside>
 </section>
@@ -76,17 +77,21 @@
   <div class="fill">
     <div class="two">
       <div class="term sm">
-        <span class="l c">uint64_t encode_i_format(uint64_t immediate, uint64_t rs1,</span>
-        <span class="l c">                         uint64_t funct3, uint64_t rd, uint64_t opcode) {</span>
+        <span class="l c">uint64_t encode_i_format(uint64_t immediate,</span>
+        <span class="l c">    uint64_t rs1, uint64_t funct3,</span>
+        <span class="l c">    uint64_t rd, uint64_t opcode) {</span>
         <span class="l o">  // assert: -2^11 &lt;= immediate &lt; 2^11</span>
         <span class="l c">  check_immediate_range(immediate, 12);</span>
         <span class="l c">  immediate = sign_shrink(immediate, 12);</span>
-        <span class="l c">  return left_shift(left_shift(left_shift(left_shift(</span>
-        <span class="l c">    immediate, 5) + rs1, 3) + funct3, 5) + rd, 7) + opcode;</span>
+        <span class="l c">  return left_shift(left_shift(left_shift(</span>
+        <span class="l c">    left_shift(immediate, 5) + rs1, 3)</span>
+        <span class="l c">    + funct3, 5) + rd, 7) + opcode;</span>
         <span class="l c">}</span>
         <span class="l o"></span>
-        <span class="l c">void emit_addi(uint64_t rd, uint64_t rs1, uint64_t immediate) {</span>
-        <span class="l c">  emit_instruction(encode_i_format(immediate, rs1, F3_ADDI, rd, OP_IMM));</span>
+        <span class="l c">void emit_addi(uint64_t rd, uint64_t rs1,</span>
+        <span class="l c">    uint64_t immediate) {</span>
+        <span class="l c">  emit_instruction(encode_i_format(</span>
+        <span class="l c">    immediate, rs1, F3_ADDI, rd, OP_IMM));</span>
         <span class="l c">}</span>
       </div>
       <div class="stack">
@@ -104,8 +109,9 @@
   <div class="fill">
     <div class="two">
       <div class="term sm">
-        <span class="l"><span class="p">$</span> <span class="c">./selfie -c selfie.c -o selfie.m &amp;&amp; od -A d -t x1 selfie.m | head -1</span></span>
-        <span class="l o">0000000 7f 45 4c 46 02 01 01 00 00 00 00 00 00 00 00 00</span>
+        <span class="l"><span class="p">$</span> <span class="c">./selfie -c selfie.c -o selfie.m</span></span>
+        <span class="l"><span class="p">$</span> <span class="c">od -A d -t x1 selfie.m | head -1</span></span>
+        <span class="l o">0000000 7f 45 4c 46 02 01 01 00 00 00 00 00 00 …</span>
         <span class="l"><span class="p">$</span> <span class="c">spike pk selfie.m</span></span>
         <span class="l o">selfie.m { -c { source } | -o binary | … }</span>
       </div>
@@ -125,16 +131,28 @@
     <div class="two">
       <div class="stack">
         <ol class="steps">
-          <li><strong>Specify.</strong> Extend <span class="mono">riscu.md</span> with <span class="mono">sll rd,rs1,rs2</span> and <span class="mono">srl rd,rs1,rs2</span>: assembly, encoding as R-format instructions, and semantics in the style of the other lines.</li>
-          <li><strong>Encode and decode.</strong> An <span class="mono">emit_sll</span> and <span class="mono">emit_srl</span> using <span class="mono">encode_r_format</span>, and the matching cases in the decoder and the disassembler.</li>
-          <li><strong>Execute.</strong> The two instructions in mipster, using C*'s own <span class="mono">&lt;&lt;</span> and <span class="mono">&gt;&gt;</span> — which do not exist in C* until your compiler from last week exists. Self-reference, as an assignment.</li>
+          <li><strong>Specify.</strong> Extend <span class="mono">riscu.md</span> with <span class="mono">sll rd,rs1,rs2</span> and <span class="mono">srl rd,rs1,rs2</span>: assembly, R-format encoding, and semantics in the style of the other lines.</li>
+          <li><strong>Encode and decode.</strong> <span class="mono">emit_sll</span> and <span class="mono">emit_srl</span> using <span class="mono">encode_r_format</span>, and the matching cases in the decoder and the disassembler.</li>
+          <li><strong>Execute.</strong> The two instructions in mipster, using C*'s own <span class="mono">&lt;&lt;</span> and <span class="mono">&gt;&gt;</span>, which do not exist until your compiler from last week does. Self-reference, as an assignment.</li>
           <li><strong>Generate.</strong> In last week's <span class="mono">compile_X</span>, emit them. Then <span class="mono">./grader/self.py bitwise-shift-execution</span> and <span class="mono">self-compile</span>.</li>
         </ol>
       </div>
-      <div class="card syn"><span class="h">Rules</span><p>Only riscu.md and selfie.c. No warnings. Note the bootstrap: to use shifts in selfie.c, selfie must first be compiled by a C compiler that has them, and then by itself.</p></div>
+      <div class="card syn"><span class="h">Rules</span><p>Only riscu.md and selfie.c. No warnings. Note the bootstrap: to use shifts in selfie.c, selfie must first be compiled by a C compiler that has them, then by itself.</p></div>
     </div>
   </div>
   <aside class="notes"><p>The first assignment that touches the backend and the emulator at once, and the first where the bootstrap bites: the emulator's implementation of the shift uses the shift, so the first compilation has to be by clang and the second by the new selfie. Make sure they see why that works.</p></aside>
+</section>
+<section class="slide" data-act="II" data-mins="1.0">
+  <div class="eyebrow">After this week</div>
+  <h2>Listen, then read.</h2>
+  <div class="fill">
+    <div class="two">
+      <div class="card"><span class="h">Listen</span><p><a href="https://www.youtube.com/watch?v=ngjEVKxQCWs">Bach · Chaconne, from Partita No. 2</a> — Hilary Hahn. One four-bar bass and sixty-four variations built over it: every expression a term over the same operand, evaluated in order, in fifteen minutes.</p></div>
+      <div class="card"><span class="h">Read</span><p><a href="https://en.wikipedia.org/wiki/The_C_Programming_Language">The C Programming Language</a> — Kernighan and Ritchie, 1978: the language C* is a subset of, in the book that taught it to everyone; the precedence table is on page 53. And, more technical, <a href="https://www.cs.utexas.edu/~EWD/MCReps/MR35.PDF">ALGOL 60 Translation</a> — Dijkstra, 1961: the shunting-yard algorithm, and the first compiler for a language with recursive expressions.</p></div>
+    </div>
+  </div>
+  <p class="decknav next"><a href="../06-statements/">CC 06 · Statements →</a></p>
+  <aside class="notes"><p>One minute, or none: leave it on the screen while the room packs up. A piece, a book and a paper, chosen for the week’s idea; the cards say why.</p></aside>
 </section>
 
 </div>

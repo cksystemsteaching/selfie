@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 450" width="800" height="450" role="img" aria-label="Self-execution: one guest instruction costs the host about 2,600">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-21.8 49.0 779.8 348.0" width="780" height="348" role="img" aria-label="Self-execution: one guest instruction costs the host about 2,600">
 <title>Self-execution: one guest instruction costs the host about 2,600</title>
 <style>svg{--ink:#131C2A;--ink-2:#39485C;--muted:#5D6E85;--line:rgba(19,28,42,.18);--syn:#A2661A;--sem:#1F6C86;--bad:#A63E5A;--panel:#FFFFFF;--ground:#EFF1F3}@media (prefers-color-scheme: dark){svg{--ink:#E7EDF6;--ink-2:#B6C4D8;--muted:#8093AF;--line:rgba(122,162,204,.16);--syn:#E0A550;--sem:#5BB0C7;--bad:#C8607A;--panel:#111C2E;--ground:#080E18}}text{font-family:"JetBrains Mono","SFMono-Regular","SF Mono","Cascadia Mono",Menlo,Consolas,"DejaVu Sans Mono",monospace}.serif{font-family:"Iowan Old Style","Palatino Linotype",Palatino,"Book Antiqua","URW Palladio L",Georgia,serif}</style>
 <text x="136.16" y="92.25" font-size="18" fill="var(--sem)" text-anchor="end" dominant-baseline="central">guest</text>

@@ -16,6 +16,7 @@
     <div class="eyebrow">Compiler Construction · week 4 · station III</div>
     <h1>Symbols and Types</h1>
     <p class="lead">The symbol table, what a type is — and why type checking is proof checking while almost everything else about meaning is not.</p>
+    <p class="decknav"><a href="../03-the-parser/">← CC 03 · The Parser</a></p>
   </div>
   <aside class="notes"><p>The first week that touches meaning, and the first week where Rice's line is drawn inside the compiler: the symbol table and the types are attributes of the text, and the compiler decides them; everything else it says about behaviour is a warning, which is to say an approximation. Book: Variables, Symbol Table, and the type remarks throughout Expressions. Assignment: bitwise-shift-compilation.</p></aside>
 </section>
@@ -72,7 +73,8 @@
         <div class="card syn f" data-step="3"><span class="h">Type checking is proof checking</span><p>A typing derivation is a proof, in a small formal system, that the program will not add a pointer to a pointer. Sound: if it type checks, that mistake cannot happen. Incomplete: many fine programs are rejected. That trade is chosen, and it is Rice's theorem answered for one property.</p></div>
         <div class="term sm f" data-step="4">
           <span class="l"><span class="p">$</span> <span class="c">./selfie -c warn.c</span></span>
-          <span class="l o">./selfie: warning in warn.c in line 1: type mismatch, uint64_t* expected but uint64_t found</span>
+          <span class="l o">./selfie: warning in warn.c in line 1: type mismatch,</span>
+          <span class="l o">          uint64_t* expected but uint64_t found</span>
         </div>
       </div>
     </div>
@@ -101,16 +103,28 @@
     <div class="two">
       <div class="stack">
         <ol class="steps">
-          <li><strong>Specify.</strong> Extend <span class="mono">grammar.md</span> with the shift operators, with C's precedence: below <span class="mono">+</span> and <span class="mono">−</span>, above the comparisons. That is a new rule between <span class="mono">arithmetic</span> and <span class="mono">expression</span>.</li>
-          <li><strong>Scan.</strong> Two new symbols, each two characters, each with a lookahead of one after <span class="mono">&lt;</span> and <span class="mono">&gt;</span> — which already need one for <span class="mono">&lt;=</span> and <span class="mono">&gt;=</span>.</li>
-          <li><strong>Parse.</strong> One new <span class="mono">compile_X</span> for the new rule, called from where <span class="mono">compile_arithmetic</span> used to be called. Types: both operands <span class="mono">uint64_t</span>; warn otherwise.</li>
-          <li><strong>Check.</strong> <span class="mono">./grader/self.py bitwise-shift-compilation</span>. Code generation is next week's assignment; for now the parser must accept and type the operators.</li>
+          <li><strong>Specify.</strong> Extend <span class="mono">grammar.md</span> with the shift operators at C's precedence: below <span class="mono">+</span> and <span class="mono">−</span>, above the comparisons. A new rule between <span class="mono">arithmetic</span> and <span class="mono">expression</span>.</li>
+          <li><strong>Scan.</strong> Two new symbols of two characters each, with a lookahead of one after <span class="mono">&lt;</span> and <span class="mono">&gt;</span>, which <span class="mono">&lt;=</span> and <span class="mono">&gt;=</span> already need.</li>
+          <li><strong>Parse.</strong> One new <span class="mono">compile_X</span> for the new rule, called where <span class="mono">compile_arithmetic</span> used to be. Both operands <span class="mono">uint64_t</span>; warn otherwise.</li>
+          <li><strong>Check.</strong> <span class="mono">./grader/self.py bitwise-shift-compilation</span>. Code generation is next week; for now the parser must accept and type the operators.</li>
         </ol>
       </div>
-      <div class="card syn"><span class="h">Rules</span><p>Only grammar.md and selfie.c. No warnings. Self-compile must still pass, which it will, since selfie.c does not use the operators yet. Submit something by the deadline.</p></div>
+      <div class="card syn"><span class="h">Rules</span><p>Only grammar.md and selfie.c. No warnings. Self-compile must still pass. Submit something by the deadline.</p></div>
     </div>
   </div>
   <aside class="notes"><p>The precedence question is the whole assignment: a new rule at the right height in the grammar, and a new procedure at the right place in the call chain. Have them find the exact line in compile_expression that calls compile_arithmetic before they leave the room.</p></aside>
+</section>
+<section class="slide" data-act="III" data-mins="1.0">
+  <div class="eyebrow">After this week</div>
+  <h2>Listen, then read.</h2>
+  <div class="fill">
+    <div class="two">
+      <div class="card"><span class="h">Listen</span><p><a href="https://www.youtube.com/watch?v=C1TSbjY3xIA">Wagner · Die Meistersinger von Nürnberg</a> — Karajan, Dresden 1970. Beckmesser the Marker sits in his box with chalk, counting Walther’s violations of the Tabulatur: a type checker at work, sound about the rules and wrong about the song. Sachs is the week: the rules are notation, and the meaning is elsewhere.</p></div>
+      <div class="card"><span class="h">Read</span><p><a href="https://en.wikipedia.org/wiki/Types_and_Programming_Languages">Types and Programming Languages</a> — Pierce, 2002: what a type system is, what it proves, and what it cannot; the textbook of the field. And, more technical, <a href="https://doi.org/10.1016/0022-0000(78)90014-4">A Theory of Type Polymorphism in Programming</a> — Milner, 1978: the type checker as a proof search, and the sentence “well-typed programs cannot go wrong”.</p></div>
+    </div>
+  </div>
+  <p class="decknav next"><a href="../05-expressions/">CC 05 · Expressions →</a></p>
+  <aside class="notes"><p>One minute, or none: leave it on the screen while the room packs up. A piece, a book and a paper, chosen for the week’s idea; the cards say why.</p></aside>
 </section>
 
 </div>

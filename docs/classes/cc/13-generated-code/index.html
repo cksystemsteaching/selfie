@@ -16,6 +16,7 @@
     <div class="eyebrow">Compiler Construction · week 13 · station V</div>
     <h1>Generated Code</h1>
     <p class="lead">What a large language model is; a generated program as notation; the compiler, the test and the model checker as the gate.</p>
+    <p class="decknav"><a href="../12-bounded-model-checking/">← CC 12 · Bounded Model Checking</a></p>
   </div>
   <aside class="notes"><p>The machines week, for a compiler class: a generated program is a piece of notation like any other, and this class has spent a semester building the three things it can be checked against. Book: the Machines chapter. No new assignment; the capstone continues.</p></aside>
 </section>
@@ -26,9 +27,9 @@
   <div class="fill row mid">
     <div class="fig grow" style="flex:1.4" data-fig="tokens"><span class="cap">tokens in · a distribution over the next one out · then a sample</span></div>
     <div class="stack grow">
-      <p class="f" data-step="1">Context in, a probability for every next token out, one sampled and appended. Trained on text by predicting the next token: a purely syntactic signal. Meaning never handed to it.</p>
-      <p class="f" data-step="2">It is arithmetic on bits — in principle a C* program, which mipster would run. It computes what a Turing machine computes, and week 8 said what that means about self-certification.</p>
-      <p class="f" data-step="3">Its behaviour on every context is one of week 7's infinite sheets. Only sampled, never enumerated. Testing shows presence.</p>
+      <p class="f" data-step="1">Context in, a probability for every next token out, one sampled and appended. Trained by predicting the next token: a purely syntactic signal.</p>
+      <p class="f" data-step="2">It is arithmetic on bits, in principle a C* program, which mipster would run. It computes what a Turing machine computes, and week 8 said what that means for self-certification.</p>
+      <p class="f" data-step="3">Its behaviour on every context is one of the introduction class's infinite answer sheets: only sampled, never enumerated.</p>
     </div>
   </div>
   <aside class="notes"><p>Mechanical and unpolemical. A compiler class should notice that a language model is, among other things, a scanner and a parser that were never written: it learned a distribution over token sequences, and whether that sequence is a C* program is a question it cannot decide, but starc can.</p></aside>
@@ -41,7 +42,7 @@
     <div class="fig grow" style="flex:1.2" data-fig="venn"><span class="cap">plausible · provable · true</span></div>
     <div class="stack grow">
       <p class="f" data-step="1">Fluency is syntax. Correctness is semantics. A generated program can be perfectly fluent C — indented, idiomatic, commented — and not parse as C*, or parse and divide by zero, or run and compute the wrong thing. Three tests, and they are not the same test.</p>
-      <p class="f" data-step="2">Not a defect to patch away: the gap of week 7 at consumer scale. The response is the same as everywhere in this class: check the notation against a semantics you own.</p>
+      <p class="f" data-step="2">Not a defect to patch away: the gap between notation and meaning, at consumer scale. The response is the same as everywhere in this class: check the notation against a semantics you own.</p>
     </div>
   </div>
   <aside class="notes"><p>The three regions map onto the three checks of the next slide. Say that the same reasoning is why retrieval, tool use and unit tests help these systems: they import an external semantics, which the machine cannot supply.</p></aside>
@@ -54,11 +55,14 @@
     <div class="two">
       <div class="term sm">
         <span class="l"><span class="p">$</span> <span class="c">./selfie -c generated.c</span></span>
-        <span class="l o">./selfie: syntax error in generated.c in line 3: unexpected symbol "[" found</span>
+        <span class="l o">./selfie: syntax error in generated.c in line 3:</span>
+        <span class="l o">  unexpected symbol "[" found</span>
         <span class="l o">// … after asking again for C*, not C:</span>
         <span class="l"><span class="p">$</span> <span class="c">./selfie -c generated.c -m 1 7</span></span>
         <span class="l o">5040</span>
-        <span class="l"><span class="p">$</span> <span class="c">./rotor -c generated.c - 0 &amp;&amp; tools/bitme.py -kmax 1000 generated-rotorized.btor2</span></span>
+        <span class="l"><span class="p">$</span> <span class="c">./rotor -c generated.c - 0</span></span>
+        <span class="l"><span class="p">$</span> <span class="c">tools/bitme.py -kmax 1000 --use-bitwuzla \</span></span>
+        <span class="l"><span class="c">    generated-rotorized.btor2</span></span>
         <span class="l o">… core-0-division-by-zero — satisfiable · input 0</span>
       </div>
       <div class="stack">
@@ -97,6 +101,18 @@
     </div>
   </div>
   <aside class="notes"><p>The practical advice, in the class's own terms. The card is a real permission and a real requirement: the draft may be generated, the checks may not be skipped, and the report on what the checks found is what is graded.</p></aside>
+</section>
+<section class="slide" data-act="V" data-mins="1.0">
+  <div class="eyebrow">After this week</div>
+  <h2>Listen, then read.</h2>
+  <div class="fill">
+    <div class="two">
+      <div class="card"><span class="h">Listen</span><p><a href="https://www.youtube.com/watch?v=prSYMHm7RZ0">Strauss · Capriccio</a> — Runnicles, San Francisco, Kiri Te Kanawa. His last opera argues for an evening about which comes first, the words or the music: notation or meaning. The Countess never chooses, and the gate is the reason she cannot.</p></div>
+      <div class="card"><span class="h">Read</span><p><a href="https://en.wikipedia.org/wiki/The_Alignment_Problem">The Alignment Problem</a> — Christian, 2020: what it means to get a machine to do what was wanted, told through the people who tried. And, more technical, <a href="https://arxiv.org/abs/2107.03374">Evaluating Large Language Models Trained on Code</a> — Chen and others, 2021: the Codex paper, with the honest table of how often the generated program passes the tests.</p></div>
+    </div>
+  </div>
+  <p class="decknav next"><a href="../14-what-is-a-compiler/">CC 14 · What is a Compiler? →</a></p>
+  <aside class="notes"><p>One minute, or none: leave it on the screen while the room packs up. A piece, a book and a paper, chosen for the week’s idea; the cards say why.</p></aside>
 </section>
 
 </div>

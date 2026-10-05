@@ -1,26 +1,26 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 620" width="1000" height="620" role="img" aria-label="An array-based page table, and a tree-based one: a root page directory pointing to leaf page tables">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="80.3 14.0 891.9 583.5" width="892" height="584" role="img" aria-label="An array-based page table, and a tree-based one: a root page directory pointing to leaf page tables">
 <title>An array-based page table, and a tree-based one: a root page directory pointing to leaf page tables</title>
 <style>svg{--ink:#131C2A;--ink-2:#39485C;--muted:#5D6E85;--line:rgba(19,28,42,.18);--syn:#A2661A;--sem:#1F6C86;--bad:#A63E5A;--panel:#FFFFFF;--ground:#EFF1F3}@media (prefers-color-scheme: dark){svg{--ink:#E7EDF6;--ink-2:#B6C4D8;--muted:#8093AF;--line:rgba(122,162,204,.16);--syn:#E0A550;--sem:#5BB0C7;--bad:#C8607A;--panel:#111C2E;--ground:#080E18}}text{font-family:"JetBrains Mono","SFMono-Regular","SF Mono","Cascadia Mono",Menlo,Consolas,"DejaVu Sans Mono",monospace}.serif{font-family:"Iowan Old Style","Palatino Linotype",Palatino,"Book Antiqua","URW Palladio L",Georgia,serif}</style>
-<text x="180" y="40" font-size="13" fill="var(--syn)" text-anchor="middle" dominant-baseline="central" class="serif">page table, array-based</text>
+<text x="180" y="40" font-size="16.9" fill="var(--syn)" text-anchor="middle" dominant-baseline="central" class="serif">page table, array-based</text>
 <rect x="120" y="70" width="120" height="480" fill="none" stroke="var(--syn)" stroke-width="1.2"/>
 <line x1="270" y1="550" x2="270" y2="60" stroke="var(--line)" stroke-width="1.2"/><path d="M270 60 L272.34 65.53 L267.66 65.53 Z" fill="var(--line)"/>
-<text x="300" y="300" font-size="11" fill="var(--muted)" text-anchor="start" dominant-baseline="central" class="serif">2²⁰ PTEs</text>
-<text x="180" y="575" font-size="10" fill="var(--muted)" text-anchor="middle" dominant-baseline="central" class="serif">8 MB (2²⁰ · 2³ = 2²³)</text>
-<text x="470" y="60" font-size="11" fill="var(--muted)" text-anchor="middle" dominant-baseline="central" class="serif">virtual address</text>
+<text x="300" y="300" font-size="14.3" fill="var(--muted)" text-anchor="start" dominant-baseline="central" class="serif">2²⁰ PTEs</text>
+<text x="180" y="575" font-size="13" fill="var(--muted)" text-anchor="middle" dominant-baseline="central" class="serif">8 MB (2²⁰ · 2³ = 2²³)</text>
+<text x="470" y="60" font-size="14.3" fill="var(--muted)" text-anchor="middle" dominant-baseline="central" class="serif">virtual address</text>
 <rect x="420" y="75" width="70" height="26" fill="none" stroke="var(--ink-2)" stroke-width="1"/>
 <rect x="490" y="75" width="60" height="26" fill="none" stroke="var(--ink-2)" stroke-width="1"/>
 <rect x="550" y="75" width="70" height="26" fill="none" stroke="var(--ink-2)" stroke-width="1"/>
-<text x="455" y="88" font-size="10" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central">11 bits</text>
-<text x="520" y="88" font-size="10" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central">9 bits</text>
-<text x="585" y="88" font-size="10" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central">12 bits</text>
-<text x="455" y="115" font-size="9" fill="var(--muted)" text-anchor="middle" dominant-baseline="central" class="serif">PDE</text>
-<text x="520" y="115" font-size="9" fill="var(--muted)" text-anchor="middle" dominant-baseline="central" class="serif">PTE</text>
-<text x="585" y="115" font-size="9" fill="var(--muted)" text-anchor="middle" dominant-baseline="central" class="serif">byte in page</text>
-<text x="487" y="130" font-size="9" fill="var(--muted)" text-anchor="middle" dominant-baseline="central" class="serif">page number</text>
-<text x="780" y="40" font-size="13" fill="var(--syn)" text-anchor="middle" dominant-baseline="central" class="serif">page table, tree-based</text>
+<text x="455" y="88" font-size="13" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central">11 bits</text>
+<text x="520" y="88" font-size="13" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central">9 bits</text>
+<text x="585" y="88" font-size="13" fill="var(--ink-2)" text-anchor="middle" dominant-baseline="central">12 bits</text>
+<text x="455" y="115" font-size="11.7" fill="var(--muted)" text-anchor="middle" dominant-baseline="central" class="serif">PDE</text>
+<text x="520" y="115" font-size="11.7" fill="var(--muted)" text-anchor="middle" dominant-baseline="central" class="serif">PTE</text>
+<text x="585" y="115" font-size="11.7" fill="var(--muted)" text-anchor="middle" dominant-baseline="central" class="serif">byte in page</text>
+<text x="487" y="130" font-size="11.7" fill="var(--muted)" text-anchor="middle" dominant-baseline="central" class="serif">page number</text>
+<text x="780" y="40" font-size="16.9" fill="var(--syn)" text-anchor="middle" dominant-baseline="central" class="serif">page table, tree-based</text>
 <rect x="720" y="160" width="90" height="110" fill="none" stroke="var(--syn)" stroke-width="1.2"/>
-<text x="765" y="150" font-size="10" fill="var(--muted)" text-anchor="middle" dominant-baseline="central" class="serif">root page directory</text>
-<text x="860" y="215" font-size="10" fill="var(--muted)" text-anchor="start" dominant-baseline="central" class="serif">2¹¹ PDEs · 16 KB</text>
+<text x="765" y="150" font-size="13" fill="var(--muted)" text-anchor="middle" dominant-baseline="central" class="serif">root page directory</text>
+<text x="860" y="215" font-size="13" fill="var(--muted)" text-anchor="start" dominant-baseline="central" class="serif">2¹¹ PDEs · 16 KB</text>
 <rect x="560" y="360" width="80" height="190" fill="none" stroke="var(--syn)" stroke-width="1.2"/>
 <line x1="765" y1="272" x2="600" y2="356" stroke="var(--line)" stroke-width="1"/><path d="M600 356 L603.22 352.18 L604.99 355.65 Z" fill="var(--line)"/>
 <rect x="700" y="360" width="80" height="190" fill="none" stroke="var(--syn)" stroke-width="1.2"/>
@@ -28,5 +28,5 @@
 <rect x="850" y="360" width="80" height="190" fill="none" stroke="var(--syn)" stroke-width="1.2"/>
 <line x1="765" y1="272" x2="890" y2="356" stroke="var(--line)" stroke-width="1"/><path d="M890 356 L885.09 355.05 L887.26 351.82 Z" fill="var(--line)"/>
 <circle cx="790" cy="450" r="1.4" fill="var(--muted)"/><circle cx="790" cy="450" r="1.4" fill="var(--muted)"/><circle cx="790" cy="450" r="1.4" fill="var(--muted)"/>
-<text x="780" y="575" font-size="10" fill="var(--muted)" text-anchor="middle" dominant-baseline="central" class="serif">leaf page tables · 4 KB each · 2⁹ PTEs</text>
+<text x="780" y="575" font-size="13" fill="var(--muted)" text-anchor="middle" dominant-baseline="central" class="serif">leaf page tables · 4 KB each · 2⁹ PTEs</text>
 </svg>
