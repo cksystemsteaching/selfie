@@ -1,0 +1,50 @@
+name: Merge Dependabot Security Updates
+
+# Dependabot security updates are switched on in the repository settings, with
+# no .github/dependabot.yml, so every pull request Dependabot opens here is a
+# security fix. Once a day this workflow merges each of them that has no
+# failing and no pending checks; a pull request with no checks at all, such as
+# one that only bumps a requirements.txt, counts as mergeable. Anything else
+# stays open for the next run, or for a human.
+#
+# main only lets an administrator merge without a review, so the merge is done
+# with an administrator's personal access token in the DEPENDABOT_MERGE_TOKEN
+# secret (contents and pull requests: read and write), not with GITHUB_TOKEN.
+# When the token expires this workflow fails until the secret is replaced.
+#
+# If a dependabot.yml with version updates is ever added, those pull requests
+# would be merged by this workflow too, unless it is narrowed first.
+
+on:
+  schedule:
+    # trigger daily at 4am
+    - cron: '0 4 * * *'
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  merge-dependabot:
+    name: Merge Dependabot pull requests that pass their checks
+    runs-on: ubuntu-latest
+    if: ${{ github.repository == 'cksystemsteaching/selfie' }}
+
+    steps:
+    - name: Merge
+      env:
+        GH_TOKEN: ${{ secrets.DEPENDABOT_MERGE_TOKEN }}
+        GH_REPO: ${{ github.repository }}
+      run: |
+        ready=$(gh pr list --author 'app/dependabot' --state open --json number,statusCheckRollup --jq '
+          .[]
+          | select(all(.statusCheckRollup[]?;
+              if .__typename == "CheckRun"
+              then .status == "COMPLETED" and (.conclusion | IN("SUCCESS", "SKIPPED", "NEUTRAL"))
+              else .state == "SUCCESS"
+              end))
+          | .number')
+        for pr in $ready; do
+          # a pull request that conflicts after an earlier merge is rebased by
+          # Dependabot and merged by a later run
+          gh pr merge "$pr" --admin --merge || echo "::warning::could not merge pull request #$pr"
+        done
