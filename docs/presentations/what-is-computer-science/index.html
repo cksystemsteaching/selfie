@@ -607,9 +607,9 @@ table.t td:first-child{white-space:nowrap}
   <div class="fill">
     <div class="term f" data-step="1">
       <span class="l"><span class="o">// self-compilation: the compiler compiles its own source — twice — and the results agree</span></span>
-      <span class="l"><span class="p">$</span> <span class="c">./selfie -c selfie.c -o selfie1.m -m 2 -c selfie.c -o selfie2.m</span></span>
-      <span class="l"><span class="p">$</span> <span class="c">diff -s selfie1.m selfie2.m</span></span>
-      <span class="l"><span class="o">  Files selfie1.m and selfie2.m are </span><span class="k">identical</span></span>
+      <span class="l"><span class="p">$</span> <span class="c">./selfie -c selfie.c -o selfie0.m -m 3 -c selfie.c -o selfie1.m</span></span>
+      <span class="l"><span class="p">$</span> <span class="c">diff -s selfie0.m selfie1.m</span></span>
+      <span class="l"><span class="o">  Files selfie0.m and selfie1.m are </span><span class="k">identical</span></span>
     </div>
     <div class="term f" data-step="2">
       <span class="l"><span class="o">// self-execution: the emulator executes its own machine code</span></span>

@@ -27,7 +27,8 @@
   <div class="fill">
     <div class="term">
       <span class="l"><span class="p">$</span> <span class="c">./selfie</span></span>
-      <span class="l o">./selfie { -c { source } | -o binary | [ -s | -S ] assembly | -l binary } [ ( -m | -d | -r | -y ) 0-4096 ... ]</span>
+      <span class="l o">./selfie { -c { source } | -o binary | ( -s | -S ) assembly | -l binary }</span>
+      <span class="l o">         [ ( -m | -d | -r | -y ) 0-4096 ... ]</span>
     </div>
     <div class="two">
       <p class="f" data-step="1">This is selfie's <strong>synopsis</strong>: a regular expression that says exactly how selfie may be invoked. Braces mean <em>any number of</em>, brackets mean <em>optional</em>, the bar means <em>or</em>. We learn to read it properly in week 4.</p>
@@ -138,7 +139,7 @@
     <div class="fig grow" style="flex:1.4" data-fig="growth"><span class="cap">the same six functions, twice</span></div>
     <div class="stack grow">
       <p class="f" data-step="1">Left, ordinary axes: by n = 16 the cube has reached 4,096 and everything below it is a floor. The exponential left the page at n = 12.</p>
-      <p class="f" data-step="2">Right, both axes logarithmic, which is the only way to see them together. Every polynomial becomes a straight line and its slope is its degree: 0, 1, 2, 3. The logarithm bends flat. The exponential bends <em>up</em>, and leaves at n = 30, when the cube is still at 27,000.</p>
+      <p class="f" data-step="2">Right, both axes logarithmic. Every polynomial is a straight line whose slope is its degree. The logarithm bends flat. The exponential bends <em>up</em> and leaves at n = 30, when the cube is at 27,000.</p>
       <p class="f" data-step="3">Polynomials differ from each other by a slope. The exponential differs from all of them by kind.</p>
     </div>
   </div>
@@ -147,7 +148,7 @@
 
 <section class="slide" data-act="I" data-mins="5.0">
   <div class="eyebrow">Growth · the test</div>
-  <h2>Multiply the input by ten. A polynomial multiplies by a constant. <span class="k">Add one</span> to the input. An exponential multiplies by a constant.</h2>
+  <h2>Times ten: a polynomial multiplies by a constant. <span class="k">Plus one</span>: an exponential does.</h2>
   <div class="fill">
     <div class="two">
       <table class="t">
@@ -160,9 +161,9 @@
         <tr><td class="mono">2ⁿ</td><td>1,024</td><td>2,048</td><td>10³⁰</td><td>10³⁰¹</td></tr>
       </table>
       <div class="stack">
-        <p class="f" data-step="1"><strong>Times ten.</strong> Read the columns n = 100 and n = 1,000. Linear: ×10. Quadratic: ×100. Cubic: ×1,000. A constant factor each time, fixed by the degree; that is what <em>polynomial</em> means. The exponential goes from 10<sup>30</sup> to 10<sup>301</sup>, and there is no factor.</p>
-        <p class="f" data-step="2"><strong>Plus one.</strong> Read n = 10 and n = 11. Every polynomial moves by a little: 10 percent, 21 percent, 33 percent. The exponential doubles. That is the test: if adding one to the input multiplies the output, you are looking at an exponential. Every bit added to a memory is that plus one.</p>
-        <p class="f" data-step="3"><strong>And the logarithm</strong> is the exponential read backwards: multiply the input by ten and it goes up by a constant, 3.3. Ten times the states, three more bits. That is why 266 bits are enough for the universe.</p>
+        <p class="f" data-step="1"><strong>Times ten.</strong> Compare n = 100 and n = 1,000. Linear ×10, quadratic ×100, cubic ×1,000: a fixed factor set by the degree. That is what <em>polynomial</em> means. The exponential goes from 10<sup>30</sup> to 10<sup>301</sup>.</p>
+        <p class="f" data-step="2"><strong>Plus one.</strong> Compare n = 10 and n = 11. Every polynomial moves by a little; the exponential doubles. Every bit added to a memory is that plus one.</p>
+        <p class="f" data-step="3"><strong>The logarithm</strong> is the exponential read backwards: ten times the states, three more bits.</p>
       </div>
     </div>
   </div>
@@ -271,14 +272,14 @@
   <div class="fill">
     <div class="two">
       <ol class="steps">
-        <li>Read the Size chapter up to <em>Numbers</em>, and Borges's <em>Library of Babel</em>.</li>
-        <li>Rerun <span class="mono">./selfie -c selfie.c</span>. Where on the map do 365,784 characters sit? And 43,492 instructions? And the machine's state count?</li>
-        <li>For each of n, n², n³ and 2ⁿ: what happens to the value when n goes from 10 to 11, and when it goes from 10 to 100? Which of the four is the odd one out, and in which of the two questions?</li>
-        <li>How many bits do you need for a thousand states? A million? Every person alive? Every atom in the Earth (about 10<sup>50</sup>)?</li>
+        <li>Read the Size chapter up to <em>Numbers</em>, its section <em>Life 1</em>, and Borges's <em>Library of Babel</em>.</li>
+        <li>Rerun <span class="mono">./selfie -c selfie.c</span>. Where on the map do 365,784 characters sit? And 43,492 instructions?</li>
+        <li>For each of n, n², n³ and 2ⁿ: what happens when n goes from 10 to 11, and from 10 to 100? Which is the odd one out, in which question?</li>
+        <li>How many bits for a thousand states? A million? Every person alive? Every atom in the Earth (about 10<sup>50</sup>)?</li>
         <li>A "512 GB" phone: how many GiB does it report, and why?</li>
         <li>Find three anchors of your own for a million, a billion, and a trillion — of anything.</li>
       </ol>
-      <div class="card syn"><span class="h">Next week</span><p>Everything is bits: numbers, negative numbers, overflow, characters, text, files, images, code. The same 85 in five different notations, and what the machine makes of each.</p></div>
+      <div class="card syn"><span class="h">Next week</span><p>Everything is bits: numbers, overflow, characters, text, files, images, code. The same 85 in five notations.</p></div>
     </div>
   </div>
   <aside class="notes"><p>Nothing is collected. Say which exercise the exam might draw on, which is all of them, and that the anchors exercise is the one that pays off longest.</p></aside>

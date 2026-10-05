@@ -38,7 +38,7 @@ Read, after this week: [Gödel, Escher, Bach](https://en.wikipedia.org/wiki/G%C3
 
 Small, vast, then two sizes of endless: the axis the whole class walks along.
 
-1. Read the Size chapter up to *Numbers*, and Borges's *Library of Babel*.
+1. Read the Size chapter up to *Numbers*, its section *Life 1*, and Borges's *Library of Babel*.
 2. Rerun `./selfie -c selfie.c`. Where on the map do 365,784 characters sit? And 43,492 instructions? And the machine's state count?
 3. For each of n, n², n³ and 2ⁿ: what happens to the value when n goes from 10 to 11, and when it goes from 10 to 100? Which of the four is the odd one out, and in which of the two questions?
 4. How many bits do you need for a thousand states? A million? Every person alive? Every atom in the Earth (about 10^50)?
@@ -58,7 +58,7 @@ Numbers, negative numbers, overflow, characters, text, files, code: the same 85 
 3. How many digits does 1000 need in unary, binary, ternary and decimal? Which of the four ratios stays the same as the number grows, and which does not?
 4. What is 1010101 as a signed 7-bit number? What is 11111111 as an unsigned and as a signed byte?
 5. Write your first name in ASCII, in binary, and count the bits. Then in UTF-8 if it has an umlaut.
-6. Run `examples/overflows.c` and explain each line of output.
+6. Run `examples/overflows.c` with `make selfie.h` and then `./selfie -c selfie.h examples/overflows.c -m 1`, and explain each line of output.
 7. In the pointers figure of the book, what happens if the byte at address 0 held 7 instead of 85?
 
 Listen, after this week: [Mozart · Symphony No. 40 in G minor](https://www.youtube.com/watch?v=z_4jMxbwmVc), Harnoncourt, Concentus Musicus. One two-note sigh, the smallest unit, and the whole first movement is that figure at different positions. Everything is bits, in G minor.
@@ -72,7 +72,7 @@ Formal languages: EBNF, and the two languages selfie is made of, C\* with seven 
 1. Read the Notation chapter: C\*, RISC-U, EBNF.
 2. Write the EBNF rule for a C\* character literal, and for a string literal. Check against `grammar.md`.
 3. Derive `c = c + 1;` from the grammar, rule by rule, starting at `statement`.
-4. Type `tiny.c` from the book, compile it with `-S`, and find the nine instructions of the loop. Change 7 to 700 and see which bits change.
+4. Type `tiny.c` from this week's slides, compile it with `-S`, and find the nine instructions of the loop. Change 7 to 700 and see which bits change.
 5. Write a regular expression for the dates of this course, and an EBNF grammar for nested parentheses. Which of the two needs the stack?
 
 Listen, after this week: [Mozart · Symphony No. 41 “Jupiter”](https://www.youtube.com/watch?v=qB7g_Y3LvbU), Böhm, Vienna Philharmonic, 1979. The finale: a four-note motif and four other themes, combined by the rules of counterpoint in every way the rules allow. A grammar, derived to the end.
@@ -83,7 +83,7 @@ Read, after this week: [Introduction to the Theory of Computation](https://en.wi
 
 Everything you can write down can be listed, so every program has a number, and a binary is one number, 188,392 bytes long.
 
-1. Read the Meaning chapter up to *Give every text a number*, and the Selfie chapter's three commands.
+1. Read the Meaning chapter through *Give every text a number*, and the Selfie chapter's callout *Three commands, three theorems*.
 2. Write down the first sixteen strings over {0, 1} in the order of the enumeration. Where is 1011? What is at position 100?
 3. Gödel-number the string `c = 7;` by writing its ASCII codes one after the other. Then decode 99611032611032555559.
 4. Run `make self-self-check` and time it. Roughly how many instructions did the emulator execute? The output tells you.
@@ -111,7 +111,7 @@ Read, after this week: [The RISC-V Instruction Set Manual](https://riscv.org/tec
 
 The diagonal, twice. Programs are countable; what programs do is not.
 
-1. Read the Meaning chapter from *What we want to talk about is not* to *Syntax and semantics*.
+1. Read the Meaning chapter from *What We Want to Talk About Is Not* to *Syntax and Semantics*.
 2. Make up six subsets of {1, …, 6} as answer sheets and build the diagonal D by hand. Check that it differs from every row.
 3. Run the decimal version on a list of six decimals of your own. Then explain, in one sentence, why the fractions escape the argument.
 4. How many programs of at most 1,000 characters are there over an alphabet of 100 symbols? How many behaviours on inputs 1 to 1,000 are there? Which number is bigger, and by how much?
@@ -125,7 +125,7 @@ Read, after this week: [Everything and More: A Compact History of ∞](https://e
 
 A compiler defines the meaning of the language it is written in; the fixed point, what Ken Thompson says it cannot prove, and Gödel's two theorems with the same diagonal.
 
-1. Read the Meaning chapter from *Syntax and Semantics* to *Trusting Trust*, and the two station callouts in the Programming chapter.
+1. Read the Meaning chapter from *Syntax and Semantics* to *Trusting trust*, and the two station callouts in the Programming chapter.
 2. Read Thompson's lecture. It is three pages. Write down, in one sentence, what an outside check for it looks like.
 3. Run `make self-self-check` once more. Then state, in one sentence each, what the identical binaries prove and what they do not.
 4. Write three C\* programs: one with a syntax error, one with a type warning, one that divides by zero at runtime. Say for each whether the compiler could have known.
@@ -167,7 +167,7 @@ Read, after this week: [Operating Systems: Principles and Practice](https://ospp
 
 A question with a guaranteed answer you will never receive; hard to find, easy to check; a SAT solver in 400 lines; and every step that forgets costs energy.
 
-1. Read the Cost chapter up to *Models of Machines*.
+1. Read the Cost chapter up to *Models of Machines*, and *Every Step That Forgets Costs Energy*.
 2. Check by hand that −1 −2 3 4 satisfies every clause of `rivest.cnf`. Add the eighth clause `1 2 -3 0` back and show that nothing satisfies all eight.
 3. Write a CNF file of your own with five variables and run `babysat` on it. Then one with twenty-five, and time it.
 4. How many years to try 2^60 assignments at a billion per second? At a trillion?

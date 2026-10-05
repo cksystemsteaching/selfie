@@ -41,9 +41,9 @@
   <div class="fill row mid">
     <div class="fig grow" style="flex:1.2" data-fig="complexity"><span class="cap">cost against input size</span></div>
     <div class="stack grow">
-      <p class="f" data-step="1"><strong>Time</strong> is instructions, as the emulator counts them. <strong>Space</strong> is memory. <strong>Energy</strong> is what the wall delivers, and it has a law of physics attached — last slides.</p>
-      <p class="f" data-step="2">A method that takes n<sup>2</sup> steps on an input of size n is polynomial; n can be a million before it hurts. A method that takes 2<sup>n</sup> is exponential; n cannot be a hundred.</p>
-      <p class="f" data-step="3">The questions some method answers in polynomial time form the class <strong>P</strong>. Sorting, routing, checking that a text is a C* program, running mipster for k steps: nobody argues about whether these are affordable.</p>
+      <p class="f" data-step="1"><strong>Time</strong> is instructions, as the emulator counts them. <strong>Space</strong> is memory. <strong>Energy</strong> is what the wall delivers, with a law of physics attached.</p>
+      <p class="f" data-step="2">A method taking n<sup>2</sup> steps on an input of size n is polynomial; n can be a million before it hurts. One taking 2<sup>n</sup> is exponential; n cannot be a hundred.</p>
+      <p class="f" data-step="3">Questions answerable in polynomial time form the class <strong>P</strong>: sorting, routing, parsing C*, running mipster for k steps. All affordable.</p>
     </div>
   </div>
   <aside class="notes"><p>Keep it to the one distinction. The curves are the book's complexity figure; do not do big-O properly, just point at where 2 to the n leaves the picture. P is named so that NP can be, next.</p></aside>
@@ -83,8 +83,10 @@
         <span class="l o">-1 -3 -4 0</span>
         <span class="l o">1 -2 -4 0</span>
         <span class="l"><span class="p">$</span> <span class="c">make sat</span></span>
-        <span class="l o">./babysat: 7 clauses with 4 declared variables loaded from examples/sat/rivest.cnf</span>
-        <span class="l o">./babysat: examples/sat/rivest.cnf is satisfiable with -1 -2 3 4</span>
+        <span class="l o">./babysat: 7 clauses with 4 declared variables</span>
+        <span class="l o">  loaded from examples/sat/rivest.cnf</span>
+        <span class="l o">./babysat: examples/sat/rivest.cnf is satisfiable</span>
+        <span class="l o">  with -1 -2 3 4</span>
       </div>
       <div class="stack">
         <p class="f" data-step="1">A formula in <strong>conjunctive normal form</strong>: variables 1 to 4, a minus sign for <em>not</em>, each line an <em>or</em> of its literals, the whole thing an <em>and</em> of lines. Is there a way to set the four variables that makes every line true?</p>
@@ -120,9 +122,9 @@
   <div class="fill row mid">
     <div class="fig grow" style="flex:1.2" data-fig="energy"><span class="cap">joules · log scale</span></div>
     <div class="stack grow">
-      <p class="f" data-step="1">Landauer, 1961: erasing one bit at room temperature costs at least kT ln 2 ≈ 3 × 10<sup>−21</sup> joules — because erasing is irreversible: two states become one, and the lost distinction leaves as heat.</p>
-      <p class="f" data-step="2">A search moves on, and moving on is erasing. Just <em>counting</em> through week 2's 266-bit space flips the lowest bit 2<sup>266</sup> times: about 10<sup>59</sup> joules, 10<sup>15</sup> times everything the Sun will ever radiate. You cannot even count the states.</p>
-      <p class="f" data-step="3">Meanwhile a human brain runs on <strong>20 watts</strong>. Time, space, energy: one budget. Any claim about intelligence that ignores it is a claim about magic.</p>
+      <p class="f" data-step="1">Landauer, 1961: erasing one bit costs at least kT ln 2 ≈ 3 × 10<sup>−21</sup> joules, because erasing is irreversible: two states become one, and the lost distinction leaves as heat.</p>
+      <p class="f" data-step="2">A search moves on, and moving on is erasing. Just <em>counting</em> through week 2's 266-bit space costs about 10<sup>59</sup> joules, 10<sup>15</sup> times everything the Sun will ever radiate.</p>
+      <p class="f" data-step="3">A human brain runs on <strong>20 watts</strong>. Time, space, energy: one budget. A claim about intelligence that ignores it is a claim about magic.</p>
     </div>
   </div>
   <aside class="notes"><p>Four beats: why erasure costs anything, why a search pays it, the counter, and the brain. The floor is not a fact about silicon; today's transistors sit orders of magnitude above it and it stays where it is for any device that overwrites. The 20 watts come back in week 13 as the proof that the job can be done far more cheaply than we do it.</p></aside>
@@ -147,11 +149,11 @@
   <div class="fill">
     <div class="two">
       <ol class="steps">
-        <li>Read the Cost chapter up to <em>Models of Machines</em>.</li>
-        <li>Check by hand that −1 −2 3 4 satisfies every clause of <span class="mono">rivest.cnf</span>. Add the eighth clause <span class="mono">1 2 -3 0</span> back and show that nothing satisfies all eight.</li>
-        <li>Write a CNF file of your own with five variables and run <span class="mono">babysat</span> on it. Then one with twenty-five, and time it.</li>
+        <li>Read the Cost chapter up to <em>Models of Machines</em>, and <em>Every Step That Forgets Costs Energy</em>.</li>
+        <li>Check by hand that −1 −2 3 4 satisfies every clause of <span class="mono">rivest.cnf</span>. Add the clause <span class="mono">1 2 -3 0</span> back: nothing satisfies all eight.</li>
+        <li>Write a CNF file with five variables and run <span class="mono">babysat</span> on it. Then one with twenty-five, and time it.</li>
         <li>How many years to try 2<sup>60</sup> assignments at a billion per second? At a trillion?</li>
-        <li>Compute the minimum energy to erase 8 GB once, by Landauer, and compare it with a phone battery, about 4 × 10<sup>4</sup> joules.</li>
+        <li>By Landauer, compute the minimum energy to erase 8 GB once; compare with a phone battery, about 4 × 10<sup>4</sup> joules.</li>
       </ol>
       <div class="card syn"><span class="h">Next week</span><p>Formal methods: machine code in, formula out, solver next. A tool built on selfie turns a program into a formula, and the solver finds the input that makes it divide by zero — within a bound.</p></div>
     </div>

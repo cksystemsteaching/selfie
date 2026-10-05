@@ -77,17 +77,21 @@
   <div class="fill">
     <div class="two">
       <div class="term sm">
-        <span class="l c">uint64_t encode_i_format(uint64_t immediate, uint64_t rs1,</span>
-        <span class="l c">                         uint64_t funct3, uint64_t rd, uint64_t opcode) {</span>
+        <span class="l c">uint64_t encode_i_format(uint64_t immediate,</span>
+        <span class="l c">    uint64_t rs1, uint64_t funct3,</span>
+        <span class="l c">    uint64_t rd, uint64_t opcode) {</span>
         <span class="l o">  // assert: -2^11 &lt;= immediate &lt; 2^11</span>
         <span class="l c">  check_immediate_range(immediate, 12);</span>
         <span class="l c">  immediate = sign_shrink(immediate, 12);</span>
-        <span class="l c">  return left_shift(left_shift(left_shift(left_shift(</span>
-        <span class="l c">    immediate, 5) + rs1, 3) + funct3, 5) + rd, 7) + opcode;</span>
+        <span class="l c">  return left_shift(left_shift(left_shift(</span>
+        <span class="l c">    left_shift(immediate, 5) + rs1, 3)</span>
+        <span class="l c">    + funct3, 5) + rd, 7) + opcode;</span>
         <span class="l c">}</span>
         <span class="l o"></span>
-        <span class="l c">void emit_addi(uint64_t rd, uint64_t rs1, uint64_t immediate) {</span>
-        <span class="l c">  emit_instruction(encode_i_format(immediate, rs1, F3_ADDI, rd, OP_IMM));</span>
+        <span class="l c">void emit_addi(uint64_t rd, uint64_t rs1,</span>
+        <span class="l c">    uint64_t immediate) {</span>
+        <span class="l c">  emit_instruction(encode_i_format(</span>
+        <span class="l c">    immediate, rs1, F3_ADDI, rd, OP_IMM));</span>
         <span class="l c">}</span>
       </div>
       <div class="stack">
@@ -105,8 +109,9 @@
   <div class="fill">
     <div class="two">
       <div class="term sm">
-        <span class="l"><span class="p">$</span> <span class="c">./selfie -c selfie.c -o selfie.m &amp;&amp; od -A d -t x1 selfie.m | head -1</span></span>
-        <span class="l o">0000000 7f 45 4c 46 02 01 01 00 00 00 00 00 00 00 00 00</span>
+        <span class="l"><span class="p">$</span> <span class="c">./selfie -c selfie.c -o selfie.m</span></span>
+        <span class="l"><span class="p">$</span> <span class="c">od -A d -t x1 selfie.m | head -1</span></span>
+        <span class="l o">0000000 7f 45 4c 46 02 01 01 00 00 00 00 00 00 …</span>
         <span class="l"><span class="p">$</span> <span class="c">spike pk selfie.m</span></span>
         <span class="l o">selfie.m { -c { source } | -o binary | … }</span>
       </div>
@@ -126,13 +131,13 @@
     <div class="two">
       <div class="stack">
         <ol class="steps">
-          <li><strong>Specify.</strong> Extend <span class="mono">riscu.md</span> with <span class="mono">sll rd,rs1,rs2</span> and <span class="mono">srl rd,rs1,rs2</span>: assembly, encoding as R-format instructions, and semantics in the style of the other lines.</li>
-          <li><strong>Encode and decode.</strong> An <span class="mono">emit_sll</span> and <span class="mono">emit_srl</span> using <span class="mono">encode_r_format</span>, and the matching cases in the decoder and the disassembler.</li>
-          <li><strong>Execute.</strong> The two instructions in mipster, using C*'s own <span class="mono">&lt;&lt;</span> and <span class="mono">&gt;&gt;</span> — which do not exist in C* until your compiler from last week exists. Self-reference, as an assignment.</li>
+          <li><strong>Specify.</strong> Extend <span class="mono">riscu.md</span> with <span class="mono">sll rd,rs1,rs2</span> and <span class="mono">srl rd,rs1,rs2</span>: assembly, R-format encoding, and semantics in the style of the other lines.</li>
+          <li><strong>Encode and decode.</strong> <span class="mono">emit_sll</span> and <span class="mono">emit_srl</span> using <span class="mono">encode_r_format</span>, and the matching cases in the decoder and the disassembler.</li>
+          <li><strong>Execute.</strong> The two instructions in mipster, using C*'s own <span class="mono">&lt;&lt;</span> and <span class="mono">&gt;&gt;</span>, which do not exist until your compiler from last week does. Self-reference, as an assignment.</li>
           <li><strong>Generate.</strong> In last week's <span class="mono">compile_X</span>, emit them. Then <span class="mono">./grader/self.py bitwise-shift-execution</span> and <span class="mono">self-compile</span>.</li>
         </ol>
       </div>
-      <div class="card syn"><span class="h">Rules</span><p>Only riscu.md and selfie.c. No warnings. Note the bootstrap: to use shifts in selfie.c, selfie must first be compiled by a C compiler that has them, and then by itself.</p></div>
+      <div class="card syn"><span class="h">Rules</span><p>Only riscu.md and selfie.c. No warnings. Note the bootstrap: to use shifts in selfie.c, selfie must first be compiled by a C compiler that has them, then by itself.</p></div>
     </div>
   </div>
   <aside class="notes"><p>The first assignment that touches the backend and the emulator at once, and the first where the bootstrap bites: the emulator's implementation of the shift uses the shift, so the first compilation has to be by clang and the second by the new selfie. Make sure they see why that works.</p></aside>

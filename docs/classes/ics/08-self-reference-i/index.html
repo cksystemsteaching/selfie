@@ -53,18 +53,18 @@
   <div class="eyebrow">The fixed point</div>
   <h2>Selfie compiles selfie and gets the same bytes twice. What does that <span class="k">prove</span>?</h2>
   <div class="fill row mid">
-    <div class="fig grow" style="flex:1.2" data-fig="bootstrap"><span class="cap">selfie1.m = selfie2.m · 188,392 bytes</span></div>
+    <div class="fig grow" style="flex:1.2" data-fig="bootstrap"><span class="cap">selfie0.m = selfie1.m · 194,648 bytes</span></div>
     <div class="stack grow">
       <p class="f" data-step="1">Exactly one thing: that selfie <strong>agrees with itself</strong>. A compiler that consistently mistranslated one construct would reproduce the mistake perfectly, and pass.</p>
       <p class="f" data-step="2">It does not prove that selfie is correct. It does not prove that selfie.c is what compiled selfie. The source does not determine the binary.</p>
       <div class="term sm f" data-step="3">
-        <span class="l"><span class="p">$</span> <span class="c">make self</span></span>
-        <span class="l o">./selfie -c selfie.c -o selfie.m -s selfie.s -m 1</span>
-        <span class="l o">…</span>
+        <span class="l"><span class="p">$</span> <span class="c">make self-self-check</span></span>
+        <span class="l o">./selfie -c selfie.c -o selfie0.m -s selfie0.s</span>
+        <span class="l o">  -m 3 -c selfie.c -o selfie1.m -s selfie1.s</span>
       </div>
     </div>
   </div>
-  <aside class="notes"><p>Two weeks ago the fixed point was a demonstration. Today it is a question. Be exact about what the identical bytes establish, because the next slide is the reason the exactness matters, and because the machines chapter needs the habit of asking what a self-check proves.</p></aside>
+  <aside class="notes"><p>Three weeks ago the fixed point was a demonstration. Today it is a question. Be exact about what the identical bytes establish, because the next slide is the reason the exactness matters, and because the machines chapter needs the habit of asking what a self-check proves.</p></aside>
 </section>
 
 <section class="slide" data-act="III" data-mins="7.0">
@@ -144,11 +144,11 @@
   <div class="fill">
     <div class="two">
       <ol class="steps">
-        <li>Read the Meaning chapter from <em>Syntax and Semantics</em> to <em>Trusting Trust</em>, and the two station callouts in the Programming chapter.</li>
-        <li>Read Thompson's lecture. It is three pages. Write down, in one sentence, what an outside check for it looks like.</li>
-        <li>Run <span class="mono">make self-self-check</span> once more. Then state, in one sentence each, what the identical binaries prove and what they do not.</li>
-        <li>Write three C* programs: one with a syntax error, one with a type warning, one that divides by zero at runtime. Say for each whether the compiler could have known.</li>
-        <li>In your own words: why is a dictionary written in the language it defines a problem in English and not in C*?</li>
+        <li>Read the Meaning chapter from <em>Syntax and Semantics</em> to <em>Trusting trust</em>, and the two station callouts in the Programming chapter.</li>
+        <li>Read Thompson's lecture, three pages. Write down, in one sentence, what an outside check for it looks like.</li>
+        <li>Run <span class="mono">make self-self-check</span> again. State, in one sentence each, what the identical binaries prove and what they do not.</li>
+        <li>Write three C* programs: a syntax error, a type warning, a division by zero at runtime. Could the compiler have known each?</li>
+        <li>Why is a dictionary written in the language it defines a problem in English and not in C*?</li>
       </ol>
       <div class="card syn"><span class="h">Next week</span><p>Self-reference II: will this program ever stop? No program can always tell. Then the same move run forwards — one machine that can be any machine — and Rice: every interesting question about behaviour.</p></div>
     </div>

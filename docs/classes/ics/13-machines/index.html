@@ -27,9 +27,9 @@
   <div class="fill row mid">
     <div class="fig grow" style="flex:1.4" data-fig="tokens"><span class="cap">tokens in · a distribution over the next one out · then a sample</span></div>
     <div class="stack grow">
-      <p class="f" data-step="1">The name is exact. What it is trained on is <em>language</em>, so the signal is syntactic: which symbol follows which. Meaning is never handed to it. That this works as well as it does is the genuine surprise of the decade.</p>
+      <p class="f" data-step="1">The name is exact. It is trained on <em>language</em>, so the signal is syntactic: which symbol follows which. Meaning is never handed to it.</p>
       <p class="f" data-step="2">Context in, a probability for every next token out, one sampled, appended, and round again. The answer becomes the next question.</p>
-      <p class="f" data-step="3">It cost megawatts for weeks; you run on twenty watts. Neither figure changes what kind of object it is: arithmetic on bits, a C* program in principle, which mipster would run.</p>
+      <p class="f" data-step="3">It cost megawatts for weeks; you run on twenty watts. Either way it is arithmetic on bits, which mipster could run.</p>
     </div>
   </div>
   <aside class="notes"><p>Keep the description mechanical and unpolemical; students should leave able to explain what these systems are to a friend. Walk the figure: the chips, the reserved slot, the weights, the bar chart, the sample, the feedback path. Say once that attention is named and not derived here, and that the book points at the paper.</p></aside>
@@ -37,12 +37,12 @@
 
 <section class="slide" data-act="V" data-mins="5.0">
   <div class="eyebrow">Station I applies</div>
-  <h2>Billions of parameters, each many bits. That space cannot be inspected, so the behaviour cannot be enumerated. <span class="k">Only sampled.</span></h2>
+  <h2>Billions of parameters, each many bits. The behaviour cannot be enumerated. <span class="k">Only sampled.</span></h2>
   <div class="fill row mid">
     <div class="fig grow" data-fig="needle"><span class="cap">week 2, again</span></div>
     <div class="stack grow">
-      <p class="f" data-step="1">A model with a few hundred billion parameters is a point in a state space of the kind week 2 measured. Its behaviour — its output on every possible context — is one of week 7's infinite answer sheets.</p>
-      <p class="f" data-step="2">So when a laboratory says a model was <em>tested extensively</em>, you know what that means. Whatever the tests exercised, the machine did. Whatever they did not, nobody knows.</p>
+      <p class="f" data-step="1">A model with a few hundred billion parameters is a point in a state space of the kind week 2 measured. Its behaviour — its output on every context — is one of week 7's infinite answer sheets.</p>
+      <p class="f" data-step="2">So when a laboratory says a model was <em>tested extensively</em>, you know what that means. What the tests exercised, the machine did. What they did not, nobody knows.</p>
       <p class="f" data-step="3">Testing shows presence, not absence. Dijkstra, 1969, about programs. It was always about this.</p>
     </div>
   </div>
@@ -69,8 +69,8 @@
   <div class="fill row mid">
     <div class="fig grow" style="flex:1.3" data-fig="worldmodel"><span class="cap">two routes to the same world</span></div>
     <div class="stack grow">
-      <p class="f" data-step="1">Not more text but a model of the world — state, dynamics, consequence. Predict what <em>happens</em>, not what is <em>said</em>: an attempt at real semantics, and a bid for efficiency. On a fixed budget efficiency is capability, so world models may well outperform language models outright.</p>
-      <p class="f" data-step="2">And still a finite notation, sitting inside the world it models. Counting: models are countable, behaviours are not. Rice: "is this model right?" is semantic. Gödel: no self-certificate from inside. Cost: the state space did not shrink. Only the map did.</p>
+      <p class="f" data-step="1">Not more text but a model of the world: state, dynamics, consequence. Predict what <em>happens</em>, not what is <em>said</em>: real semantics, and efficiency. On a fixed budget efficiency is capability, so world models may well outperform language models.</p>
+      <p class="f" data-step="2">And still a finite notation inside the world it models. Counting: models are countable, behaviours are not. Rice: "is this model right?" is semantic. Gödel: no self-certificate. Cost: the state space did not shrink. Only the map did.</p>
     </div>
   </div>
   <aside class="notes"><p>Take the strongest version of the opposing case and then answer it. The world-model programme is the correct diagnosis of what is missing; the honest forecast is that today's architecture is unlikely to be the last. What no architecture escapes is weeks 7 to 11. If someone asks whether this changes the definition next week, the answer is no: it is an example of it.</p></aside>
@@ -82,9 +82,9 @@
   <div class="fill row mid">
     <div class="fig grow" style="flex:1.1" data-fig="loop"><span class="cap">systems judging, training, writing systems</span></div>
     <div class="stack grow">
-      <p class="f" data-step="1">Models are trained on text that models wrote — with measurable degradation when the loop tightens (model collapse, 2024). Models grade models. Models write the code that trains models, and agents invoke themselves.</p>
-      <p class="f" data-step="2">"Is this system safe?" is a semantic property of a program. Rice says: no general decision procedure. Not hard — impossible. And by Gödel's second theorem, no system this expressive can certify itself. An explanation of its own output is more output.</p>
-      <p class="f" data-step="3">Which is not despair. It says exactly where to spend effort: on external, independent, bounded checks.</p>
+      <p class="f" data-step="1">Models are trained on text that models wrote, and degrade measurably when the loop tightens (model collapse, 2024). Models grade models, write the code that trains models, and invoke themselves as agents.</p>
+      <p class="f" data-step="2">"Is this system safe?" is a semantic property of a program. Rice: no general decision procedure. Not hard — impossible. And by Gödel's second theorem no system this expressive certifies itself: an explanation of its own output is more output.</p>
+      <p class="f" data-step="3">Not despair: it says where to spend effort — on external, independent, bounded checks.</p>
     </div>
   </div>
   <aside class="notes"><p>The payoff of weeks 8 and 9. Every AI-safety debate that assumes a sufficiently smart system could simply verify itself is refuted by a 1931 theorem. Then the arrow from outside in the figure, which is the same arrow as Thompson's second compiler and the trusted computing base.</p></aside>
@@ -92,19 +92,20 @@
 
 <section class="slide" data-act="V" data-mins="8.0">
   <div class="eyebrow">The loop</div>
-  <h2>A generator supplies <span class="j">notation</span>. The <span class="k">semantics</span> has to come from somewhere else.</h2>
+  <h2>A generator supplies <span class="j">notation</span>. The <span class="k">semantics</span> comes from somewhere else.</h2>
   <div class="fill row mid">
     <div class="fig grow" style="flex:1.4" data-fig="gate"><span class="cap">what the machine supplies · and what it does not</span></div>
     <div class="stack grow">
-      <p class="f" data-step="1">Prompt in English, and what comes back is plausible notation. Unchecked, it is simply accepted — and then there is no semantics anywhere in the loop. Checked, it meets a compiler, a test, a proof, a measurement, and is kept or sent back round.</p>
-      <p class="f" data-step="2">The fourth appearance of one theorem. Cantor's list needed an object built from outside it. Gödel's system needed a stronger one. Thompson's compiler needed a second compiler. The generator needs a check it cannot be.</p>
+      <p class="f" data-step="1">A prompt returns plausible notation. Unchecked, there is no semantics in the loop. Checked, it meets a compiler, a test, a proof, and is kept or sent back.</p>
+      <p class="f" data-step="2">Fourth appearance: Cantor's list needed an outside object, Gödel's system a stronger one, Thompson's compiler a second. The generator needs a check it cannot be.</p>
       <div class="term sm f" data-step="3">
         <span class="l"><span class="p">$</span> <span class="c">./selfie -c generated.c -m 1</span></span>
-        <span class="l o">./selfie: syntax error in generated.c in line 4: unexpected symbol "[" found</span>
+        <span class="l o">./selfie: syntax error in generated.c</span>
+        <span class="l o">  in line 4: unexpected symbol "[" found</span>
       </div>
     </div>
   </div>
-  <aside class="notes"><p>Walk the figure slowly, then run the gate on a real generated program: ask a chat bot for a C* program in front of the room, save it, compile it. It usually fails on something C* does not have, which is itself the lesson: the machine produced C, not C*, fluently. Then the next check, mipster, and next week's third, rotor. None of the three is available to the machine that wrote the program.</p></aside>
+  <aside class="notes"><p>Walk the figure slowly, then run the gate on a real generated program: ask a chat bot for a C* program in front of the room, save it, compile it. It usually fails on something C* does not have, which is itself the lesson: the machine produced C, not C*, fluently. Then the next check, mipster, and the third, last week's rotor. None of the three is available to the machine that wrote the program.</p></aside>
 </section>
 
 <section class="slide" data-act="V" data-mins="5.0">

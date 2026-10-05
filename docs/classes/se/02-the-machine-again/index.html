@@ -41,10 +41,10 @@
   <div class="fill">
     <div class="two">
       <div class="stack">
-        <p class="f" data-step="1">Real RISC-V has privilege levels: user mode, where a program runs, and supervisor mode, where the kernel does. Certain instructions and certain memory are supervisor-only. RISC-U has no mode bits; selfie models the boundary in the emulator instead, which is exactly why emulation is the executable specification of the kernel.</p>
+        <p class="f" data-step="1">Real RISC-V has privilege levels: user mode, where a program runs, and supervisor mode, where the kernel does. RISC-U has no mode bits; selfie models the boundary in the emulator instead, which is why emulation is the executable specification of the kernel.</p>
         <p class="f" data-step="2">An <strong>exception</strong> is the machine stopping the program and jumping to the kernel's handler: division by zero, an access to memory the program does not own, an illegal instruction, a page fault, a timer. The program's state is intact; the kernel decides what happens next.</p>
       </div>
-      <div class="card syn f" data-step="3"><span class="h">The one instruction that asks</span><p><span class="mono">ecall</span> is an exception the program raises on purpose, with a request in <span class="mono">a7</span> and arguments in <span class="mono">a0</span>–<span class="mono">a3</span>: exit, read, write, open, more memory. It is the whole interface between a program and the world, and the reason isolation is possible at all: everything a program cannot be trusted to do goes through one door.</p></div>
+      <div class="card syn f" data-step="3"><span class="h">The one instruction that asks</span><p><span class="mono">ecall</span> is an exception the program raises on purpose, with a request in <span class="mono">a7</span> and arguments in <span class="mono">a0</span>–<span class="mono">a3</span>: exit, read, write, open, more memory. It is the whole interface between a program and the world: everything a program cannot be trusted to do goes through one door.</p></div>
     </div>
   </div>
   <aside class="notes"><p>Say that selfie models privilege by construction: mipster is the supervisor, the guest is the user, and the emulator's exception handling is the kernel. Then the door: one instruction, one register with the request number, and the systems class is about what stands behind the door.</p></aside>
@@ -61,11 +61,14 @@
       </div>
       <div class="term sm f" data-step="3">
         <span class="l o">// selfie.c, machine contexts</span>
-        <span class="l c">uint64_t* create_context(uint64_t* parent, uint64_t* vctxt);</span>
+        <span class="l c">uint64_t* create_context(uint64_t* parent,</span>
+        <span class="l c">                         uint64_t* vctxt);</span>
         <span class="l c">void save_context(uint64_t* context);</span>
         <span class="l c">void restore_context(uint64_t* context);</span>
-        <span class="l c">uint64_t* mipster(uint64_t* to_context, uint64_t timeout);</span>
-        <span class="l c">uint64_t* hypster(uint64_t* to_context, uint64_t timeout);</span>
+        <span class="l c">uint64_t* mipster(uint64_t* to_context,</span>
+        <span class="l c">                  uint64_t timeout);</span>
+        <span class="l c">uint64_t* hypster(uint64_t* to_context,</span>
+        <span class="l c">                  uint64_t timeout);</span>
       </div>
     </div>
   </div>
@@ -87,8 +90,8 @@
         <span class="l c">jal zero,-8</span>
       </div>
       <div class="stack">
-        <p class="f" data-step="1">One instruction per line: a mnemonic, then registers and an immediate in a fixed pattern per format. No nesting, no parentheses to match except the one pair in <span class="mono">imm(rs1)</span>, no recursion. A single EBNF rule describes it, so a scanner is enough; no pushdown automaton needed.</p>
-        <p class="f" data-step="2">Assembling is the machine chapter's encoding, reversed from the disassembler: read the line, encode the instruction, emit the word. Selfie already has the encoders; the assembler reuses them.</p>
+        <p class="f" data-step="1">One instruction per line: a mnemonic, then registers and an immediate in a fixed pattern per format. No nesting, no recursion, only the one pair of parentheses in <span class="mono">imm(rs1)</span>. A single EBNF rule describes it, so a scanner is enough.</p>
+        <p class="f" data-step="2">Assembling is the machine chapter's encoding, reversed from the disassembler: read the line, encode the instruction, emit the word. Selfie already has the encoders.</p>
       </div>
     </div>
     <p class="sm f" data-step="3">Which is the assignment: a loop back to the machine via a bit of compiler frontend, so that by week 4 the machine is familiar enough to virtualize.</p>

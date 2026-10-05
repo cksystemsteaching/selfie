@@ -31,9 +31,13 @@
         <p class="f" data-step="2"><strong>Allocation.</strong> Every call allocates memory for its parameters, its return address, its local variables — on a stack, dynamically, and frees it on return. Procedures are also the most efficient memory management technology ever invented, because deallocation is in reverse order of allocation and costs one addition.</p>
       </div>
       <div class="term sm f" data-step="3">
-        <span class="l c">procedure = ( type | "void" ) identifier "(" [ variable { "," variable } [ "," "..." ] ] ")"</span>
-        <span class="l c">            ( ";" | "{" { variable ";" } { statement } "}" ) .</span>
-        <span class="l c">call      = identifier "(" [ expression { "," expression } ] ")" .</span>
+        <span class="l c">procedure = ( type | "void" ) identifier "("</span>
+        <span class="l c">            [ variable { "," variable }</span>
+        <span class="l c">              [ "," "..." ] ] ")"</span>
+        <span class="l c">            ( ";" | "{" { variable ";" }</span>
+        <span class="l c">                    { statement } "}" ) .</span>
+        <span class="l c">call      = identifier "("</span>
+        <span class="l c">            [ expression { "," expression } ] ")" .</span>
         <span class="l c">return    = "return" [ expression ] .</span>
       </div>
     </div>
@@ -91,11 +95,11 @@
         <span class="l c">}</span>
       </div>
       <div class="stack">
-        <p class="f" data-step="1">Each call gets its own frame with its own <span class="mono">n</span>; the frames stack up until <span class="mono">n</span> is 1 and unwind multiplying on the way back. The code is emitted once. The frames exist only at runtime, as many as the input demands.</p>
-        <p class="f" data-step="2">And that is the second way a C* program fails to halt. Last week's while loop; this week's <span class="mono">factorial(n + 1)</span>. Unbounded recursion is unbounded looping with memory attached — and the machine's memory is finite, so it ends in a stack overflow, which the compiler cannot predict either.</p>
+        <p class="f" data-step="1">Each call gets its own frame with its own <span class="mono">n</span>; the frames stack up until <span class="mono">n</span> is 1 and unwind multiplying on the way back. The code is emitted once; the frames exist only at runtime.</p>
+        <p class="f" data-step="2">And that is the second way a C* program fails to halt: last week's while loop, this week's <span class="mono">factorial(n + 1)</span>. Unbounded recursion is unbounded looping with memory attached, and it ends in a stack overflow the compiler cannot predict.</p>
       </div>
     </div>
-    <p class="sm f" data-step="3">Assignments, loops, procedures: the whole of C* is now on the table. The parser proved every text; the code generator constructed every meaning; and the meaning is now something no analysis of the text fully determines.</p>
+    <p class="sm f" data-step="3">Assignments, loops, procedures: the whole of C* is on the table, and no analysis of the text fully determines what it means any more.</p>
   </div>
   <aside class="notes"><p>Run the book's factorial example under -d and count the frames. Then the point: recursion is the halting problem's other costume, and a stack overflow is the finite machine meeting the unbounded language. Week 8 turns to what the compiler can say about itself.</p></aside>
 </section>

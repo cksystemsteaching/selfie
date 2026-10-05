@@ -27,8 +27,8 @@
   <div class="fill row mid">
     <div class="fig grow" style="flex:1.2" data-fig="btor2"><span class="cap">a BTOR2 model: state, init, next, bad, unrolled k steps</span></div>
     <div class="stack grow">
-      <p class="f" data-step="1">Registers and memory are bit-vectors. Each of the fourteen instructions is a function from state to state, expressible in the theory of bit-vectors and arrays. A program's semantics, from the Meaning chapter, is exactly the transition relation of a BTOR2 model: <em>init</em>, <em>next</em>, and a list of <em>bad</em> states.</p>
-      <p class="f" data-step="2">Unroll <em>next</em> <em>k</em> times, conjoin one bad state, hand the formula to an SMT solver. Satisfiable means an input exists that reaches the bad state at step <em>k</em>, and the satisfying assignment is that input. Unsatisfiable for all <em>k</em> up to a bound means no input reaches it within the bound: a theorem.</p>
+      <p class="f" data-step="1">Registers and memory are bit-vectors. Each of the fourteen instructions is a function from state to state. A program's semantics, from the Meaning chapter, is exactly the transition relation of a BTOR2 model: <em>init</em>, <em>next</em>, and a list of <em>bad</em> states.</p>
+      <p class="f" data-step="2">Unroll <em>next</em> <em>k</em> times, conjoin one bad state, hand the formula to an SMT solver. Satisfiable: an input reaches the bad state at step <em>k</em>, and the assignment is that input. Unsatisfiable up to a bound: no input reaches it within the bound, a theorem.</p>
     </div>
   </div>
   <aside class="notes"><p>Two slides of theory from the sibling classes in one. If students took neither, the book's Cost chapter is the reading. Emphasise the identity: the semantics of the Meaning chapter and the transition relation of the model are the same object.</p></aside>
@@ -40,17 +40,20 @@
   <div class="fill">
     <div class="two">
       <div class="term sm">
-        <span class="l"><span class="p">$</span> <span class="c">./rotor -c examples/symbolic/division-by-zero-3-35.c - 0</span></span>
+        <span class="l"><span class="p">$</span> <span class="c">./rotor -c \</span></span>
+        <span class="l"><span class="c">    examples/symbolic/division-by-zero-3-35.c - 0</span></span>
         <span class="l o">… writing division-by-zero-3-35-rotorized.btor2</span>
         <span class="l o">bad states, among others:</span>
         <span class="l o">  core-0-division-by-zero</span>
-        <span class="l o">  core-0-fetch-seg-fault   core-0-fetch-invalid-address</span>
-        <span class="l o">  core-0-load-seg-fault    core-0-store-seg-fault</span>
-        <span class="l o">  core-0-brk-seg-fault     core-0-bad-exit-code</span>
+        <span class="l o">  core-0-fetch-seg-fault</span>
+        <span class="l o">  core-0-load-seg-fault</span>
+        <span class="l o">  core-0-store-seg-fault</span>
+        <span class="l o">  core-0-brk-seg-fault</span>
+        <span class="l o">  core-0-bad-exit-code</span>
       </div>
       <div class="stack">
-        <p class="f" data-step="1">Rotor is selfie's model generator. It compiles the program, then emits the machine as a formula: the registers, the memory segments, the fourteen instructions, and the system calls <span class="mono">read</span>, <span class="mono">write</span>, <span class="mono">brk</span>, <span class="mono">exit</span> modelled as what the kernel does to the state. Input bytes are the free variables.</p>
-        <p class="f" data-step="2">The bad states are systems properties: an address outside the mapped segments, a fetch from data, a store into code, a program break that moves backwards, an exit code that is not zero. Memory safety, stated as formulas over the same state the kernel manages. Flags <span class="mono">-Pnosegfaults</span> and <span class="mono">-Pnoinvalidaddresses</span> switch families off; the default checks them all.</p>
+        <p class="f" data-step="1">Rotor is selfie's model generator. It compiles the program, then emits the machine as a formula: registers, memory segments, the fourteen instructions, and the system calls as what the kernel does to the state. Input bytes are the free variables.</p>
+        <p class="f" data-step="2">The bad states are systems properties: an address outside the mapped segments, a fetch from data, a store into code, a break that moves backwards, a non-zero exit. Memory safety, as formulas over the state the kernel manages.</p>
       </div>
     </div>
   </div>
@@ -100,13 +103,13 @@
     <div class="two">
       <div class="stack">
         <ol class="steps">
-          <li><strong><span class="mono">rotor-bounds</span>.</strong> Take a small sequential routine from your systems code: your assembler's parser on a short input, or your <span class="mono">malloc</span> driven by a program that allocates until the break moves. Write a C* driver that reads its input with <span class="mono">read</span>.</li>
-          <li>State the property in rotor's terms: which bad state, on which run. Generate the model; run bitme with a bound you choose and justify.</li>
-          <li>Submit the driver, the property, the bound, and either the input the solver found or the bound up to which none exists. One page of notes on what the verdict does and does not establish.</li>
-          <li><strong><span class="mono">treiber-stack</span>.</strong> <span class="mono">init_stack</span>, <span class="mono">push</span>, <span class="mono">pop</span> on a singly linked list with one shared <span class="mono">top</span>, using <span class="mono">lr</span> and <span class="mono">sc</span> rather than compare-and-swap, so the ABA problem cannot arise. Allocate nodes with your thread-safe <span class="mono">malloc</span>. Graded by <span class="mono">./grader/self.py treiber-stack</span>.</li>
+          <li><strong><span class="mono">rotor-bounds</span>.</strong> Take a small sequential routine of your systems code, your assembler's parser or your <span class="mono">malloc</span>, and write a C* driver that reads its input with <span class="mono">read</span>.</li>
+          <li>State the property in rotor's terms: which bad state. Generate the model; run bitme with a bound you justify.</li>
+          <li>Submit driver, property, bound, and the input the solver found or the bound up to which none exists, with a page on what the verdict establishes.</li>
+          <li><strong><span class="mono">treiber-stack</span>.</strong> <span class="mono">init_stack</span>, <span class="mono">push</span>, <span class="mono">pop</span> on a linked list with one shared <span class="mono">top</span>, using <span class="mono">lr</span> and <span class="mono">sc</span>, so the ABA problem cannot arise. Nodes from your thread-safe <span class="mono">malloc</span>.</li>
         </ol>
       </div>
-      <div class="card syn"><span class="h">Grading rotor-bounds</span><p>The grader runs rotor and bitme on your driver with your flags and compares verdict and bound; the exact invocation is in the assignment file. Two weeks for both assignments. The stack is the harder code; the model is the harder thinking.</p></div>
+      <div class="card syn"><span class="h">Grading rotor-bounds</span><p>The grader runs rotor and bitme on your driver and compares verdict and bound; the invocation is in the assignment file. Two weeks for both. The stack is the harder code; the model is the harder thinking.</p></div>
     </div>
   </div>
   <aside class="notes"><p>Two assignments, two weeks. rotor-bounds is new this year; the grader target is described in the assignment file. Treiber stack is the book's final exercise and the reason lr/sc were added. Point out the irony: the one the model checker can verify is the one that is not concurrent.</p></aside>

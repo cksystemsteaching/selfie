@@ -41,7 +41,7 @@
   <div class="fill row mid">
     <div class="fig grow" style="flex:1.2" data-fig="risc-u-machine"><span class="cap">the whole machine state</span></div>
     <div class="stack grow">
-      <p class="f" data-step="1"><strong>Registers</strong>: 32 boxes of 64 bits, the processor's own scratch space. Register <span class="mono">zero</span> is always 0. Selfie uses eighteen: <span class="mono">sp</span> for the stack, <span class="mono">gp</span> for globals, <span class="mono">t0</span>–<span class="mono">t6</span> as temporaries, <span class="mono">a0</span>–<span class="mono">a7</span> for arguments and results, <span class="mono">ra</span> for return addresses.</p>
+      <p class="f" data-step="1"><strong>Registers</strong>: 32 boxes of 64 bits, the processor's own scratch space. Register <span class="mono">zero</span> is always 0. Selfie uses nineteen: <span class="mono">sp</span> and <span class="mono">s0</span> for the stack, <span class="mono">gp</span> for globals, <span class="mono">t0</span>–<span class="mono">t6</span> as temporaries, <span class="mono">a0</span>–<span class="mono">a7</span> for arguments and results, <span class="mono">ra</span> for return addresses.</p>
       <p class="f" data-step="2"><strong>Memory</strong>: 2<sup>32</sup> bytes, addressed 0 to 2<sup>32</sup>−1, read and written eight bytes at a time.</p>
       <p class="f" data-step="3"><strong>The cycle</strong>: fetch the 32 bits at <span class="mono">pc</span> into <span class="mono">ir</span>, decode them, execute them, and set <span class="mono">pc</span> to the next instruction — usually <span class="mono">pc + 4</span>.</p>
     </div>
@@ -56,7 +56,7 @@
     <div class="fig grow" style="flex:1.2" data-fig="layout"><span class="cap">the memory layout of a RISC-U program</span></div>
     <div class="stack grow">
       <p class="f" data-step="1">Code at the bottom, from address 0x10000: the instructions. Then the data: the global variables, such as week 4's <span class="mono">c</span>, addressed relative to <span class="mono">gp</span>.</p>
-      <p class="f" data-step="2">Then the heap, growing upwards, for memory a program asks for while it runs. And the stack at the top, growing downwards, for procedure calls and their local variables, addressed relative to <span class="mono">sp</span>.</p>
+      <p class="f" data-step="2">Then the heap, growing upwards, for memory a program asks for while it runs. And the stack at the top, growing downwards, for procedure calls and their local variables, addressed relative to <span class="mono">s0</span>, the frame pointer.</p>
       <p class="f" data-step="3">The <span class="mono">-16(gp)</span> in week 4's loop is now readable: the global variable <span class="mono">c</span> lives sixteen bytes below the global pointer.</p>
     </div>
   </div>
@@ -95,7 +95,7 @@
         <p class="f" data-step="1">Thirteen instructions move numbers around. The fourteenth stops the machine and hands control to whoever is running it, with a request number in <span class="mono">a7</span>: exit, read, write, open, more memory please.</p>
         <p class="f" data-step="2">That is how a program prints, reads a file, or ends. It cannot do any of it itself; it asks. Whoever answers is the operating system — and in selfie, that is the emulator, or, in week 10, a hypervisor.</p>
       </div>
-      <div class="card syn f" data-step="3"><span class="h">Exceptions</span><p>An <span class="mono">ecall</span> is a request. A division by zero, or an access to memory the program does not own, is the same mechanism uninvited: the machine stops and hands control up. Week 8's third run ended exactly this way, and week 10 builds an operating system out of nothing but handling these.</p></div>
+      <div class="card syn f" data-step="3"><span class="h">Exceptions</span><p>An <span class="mono">ecall</span> is a request. A division by zero, or an access to memory the program does not own, is the same mechanism uninvited: the machine stops and hands control up. Week 8's third run will end exactly this way, and week 10 builds an operating system out of nothing but handling these.</p></div>
     </div>
   </div>
   <aside class="notes"><p>The boundary between a program and the world is one instruction, and that is the whole reason isolation is possible. Everything the program cannot be trusted to do goes through it. Plant that for week 10.</p></aside>
@@ -108,15 +108,16 @@
     <div class="fig grow" style="flex:1.2" data-fig="interp"><span class="cap">one guest instruction, about 2,600 on the host</span></div>
     <div class="stack grow">
       <div class="term sm">
-        <span class="l"><span class="p">$</span> <span class="c">./selfie -c selfie.c -o selfie.m -m 2 -l selfie.m -m 1</span></span>
+        <span class="l"><span class="p">$</span> <span class="c">./selfie -c selfie.c -o selfie.m \</span></span>
+        <span class="l"><span class="c">    -m 2 -l selfie.m -m 1</span></span>
         <span class="l o">…</span>
         <span class="l o">&gt; selfie.m { -c { source } | -o binary | … }</span>
       </div>
-      <p class="f" data-step="1"><span class="mono">mipster</span> is a page of C* per group of instructions: fetch, decode, do what the table of week 4 says, repeat. It is the machine, written down.</p>
-      <p class="f" data-step="2">So it can run any RISC-U program — including selfie, which contains mipster, which then runs selfie. The second command of week 1. Slower by a factor of about 2,600 per level, and semantically identical.</p>
+      <p class="f" data-step="1"><span class="mono">mipster</span> is a page of C* per group of instructions: fetch, decode, execute, repeat. It is the machine, written down.</p>
+      <p class="f" data-step="2">So it can run any RISC-U program, including selfie, which contains mipster, which then runs selfie: the second command of week 1. About 2,600 times slower per level, semantically identical.</p>
     </div>
   </div>
-  <aside class="notes"><p>Run it and let the room hear the slowness. Then the sentence to land: the emulator is one program that runs every program written for its machine, itself included. Next week's counting session will call that the universal machine, and week 9 will show it is Turing's.</p></aside>
+  <aside class="notes"><p>Run it and let the room hear the slowness. Then the sentence to land: the emulator is one program that runs every program written for its machine, itself included. The next slide calls that the universal machine, and week 9 will show it is Turing's.</p></aside>
 </section>
 
 <section class="slide" data-act="II" data-mins="5.0">

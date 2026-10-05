@@ -36,18 +36,18 @@
       </div>
     </div>
   </div>
-  <aside class="notes"><p>Do the addition on the board before showing the figure, carries and all. Then the figure: seven full adders, each of which is two half adders and an OR gate, each of which is a few logic gates. This is the only piece of hardware in the class and it is here to show that arithmetic is circuits, and circuits are formulas, which week 11 will use when a program becomes a formula.</p></aside>
+  <aside class="notes"><p>Do the addition on the board before showing the figure, carries and all. Then the figure: seven full adders, each of which is two half adders and an OR gate, each of which is a few logic gates. This is the only piece of hardware in the class and it is here to show that arithmetic is circuits, and circuits are formulas, which week 12 will use when a program becomes a formula.</p></aside>
 </section>
 
 <section class="slide" data-act="I" data-mins="5.0">
   <div class="eyebrow">Why binary · the mathematics</div>
-  <h2>Any base above one is <span class="k">exponentially</span> shorter than unary. Any base above two is only a <span class="j">constant factor</span> shorter than binary.</h2>
+  <h2>Above base one: <span class="k">exponentially</span> shorter. Above base two: only a <span class="j">constant factor</span>.</h2>
   <div class="fill row mid">
     <div class="fig grow" style="flex:1.3" data-fig="bases"><span class="cap">digits per base · levels per digit</span></div>
     <div class="stack grow">
-      <p class="f" data-step="1">Unary writes n as n bars. Positional notation writes it in ⌈log<sub>b</sub> n⌉ digits: 85 is 85 bars, 7 bits, 5 trits, 2 decimal digits. Going from base 1 to base 2 buys an exponential; going from base 2 to base 10 buys log<sub>2</sub> 10 ≈ 3.3, the same factor for every n.</p>
-      <p class="f" data-step="2">The price of positional notation is arithmetic. In unary, counting is appending a bar and adding is concatenation, constant time per bar. In any positional base an addition walks the digits, log n steps, with carries. Base 2 already pays that price in full; base 3 or base 10 pays it again and gets a constant factor back.</p>
-      <p class="f" data-step="3">So the mathematics settles one thing: leave unary. It does not settle which base, since all of them are within a constant of each other. That is a decision for physics.</p>
+      <p class="f" data-step="1">Unary writes n as n bars; positional notation needs ⌈log<sub>b</sub> n⌉ digits: 85 is 85 bars, 7 bits, 2 decimal digits. Base 1 to 2 buys an exponential; base 2 to 10 buys log<sub>2</sub> 10 ≈ 3.3, for every n.</p>
+      <p class="f" data-step="2">The price is arithmetic. In unary, counting appends a bar: constant time. In a positional base an addition walks the digits: log n steps, with carries.</p>
+      <p class="f" data-step="3">So the mathematics says leave unary, and does not say which base. That is for physics.</p>
     </div>
   </div>
   <aside class="notes"><p>The exponential is the one that matters and the students should say it back: 85 bars against 7 bits. Then the constant factor, log₂ b, which is the same for every n and so cannot ever pay for much. Then the cost, log-time addition, which every positional base pays. The mathematics leaves the base open; the next slide closes it.</p></aside>
@@ -58,12 +58,12 @@
   <h2>A transistor is a <span class="k">switch</span>. Two levels leave the most room for noise, and nothing to calibrate.</h2>
   <div class="fill">
     <div class="three">
-      <div class="card f" data-step="1"><span class="h">b levels per digit</span><p>A base-b digit must hold one of b distinguishable states: b voltage levels, b charge levels. The gap between neighbouring levels is what noise has to cross, and it shrinks with b. Two levels, on and off, put that gap as far apart as the supply voltage allows.</p></div>
-      <div class="card f" data-step="2"><span class="h">Cost per level, not per digit</span><p>Hardware pays per level it can tell apart, not per digit. If cost is b per digit and you need log<sub>b</sub> n digits, the product b / ln b is smallest near e and is 5 percent better at 3 than at 2. Five percent buys no factory; a switch that needs no calibration does.</p></div>
-      <div class="card syn f" data-step="3"><span class="h">Where higher bases do win</span><p>Flash memory stores 2, 3 or 4 bits per cell as 4, 8 or 16 charge levels: a constant-factor saving, paid for in error correction and endurance, which is exactly the trade the mathematics predicted. The cells are still read out as bits.</p></div>
+      <div class="card f" data-step="1"><span class="h">b levels per digit</span><p>A base-b digit must hold one of b distinguishable states. The gap between neighbouring levels is what noise has to cross, and it shrinks with b. Two levels, on and off, put that gap as far apart as the supply voltage allows.</p></div>
+      <div class="card f" data-step="2"><span class="h">Cost per level, not per digit</span><p>Hardware pays per level, not per digit. If a digit costs b and you need log<sub>b</sub> n of them, b / ln b is smallest near e: 3 beats 2 by 5 percent. Five percent buys no factory; a switch that needs no calibration does.</p></div>
+      <div class="card syn f" data-step="3"><span class="h">Where higher bases do win</span><p>Flash memory stores 2 to 4 bits per cell as 4 to 16 charge levels: a constant-factor saving, paid for in error correction, and read back out as bits.</p></div>
     </div>
-    <p class="sm f" data-step="4"><strong>And DNA uses base 4.</strong> Its digits are molecules, not voltage levels: A, C, G and T are four distinct shapes, each pairing with exactly one other, so four states cost nothing in noise margin, and the pairing is what lets a strand be copied and checked against its complement. Four letters read in triplets give 64 codons for twenty amino acids and a stop. A different physics, a different base: the argument is the same.</p>
-    <p class="sm f" data-step="5">Boolean algebra is the abstraction that lets the rest of the machine forget the physics: two values, and every gate a function of them. That is next.</p>
+    <p class="sm f" data-step="4"><strong>And DNA uses base 4.</strong> Its digits are molecules, not voltage levels: four distinct shapes, each pairing with exactly one other, so four states cost nothing in noise margin, and pairing is how a strand is copied and checked. A different physics, a different base.</p>
+    <p class="sm f" data-step="5">Boolean algebra lets the rest of the machine forget the physics: two values, and every gate a function of them.</p>
   </div>
   <aside class="notes"><p>Say it in the order mathematics then physics. The radix-economy argument is worth one sentence: if a b-level digit costs b units and you need log<sub>b</sub> n of them, the cost is (b / ln b) · ln n, and b / ln b is minimised at b = e. The integers next to e: 2 → 2.885, 3 → 2.731, 4 → 2.885, 10 → 4.343. So 3 is the best integer by about five percent, 2 and 4 tie exactly, and decimal is fifty percent worse. The model is generous to ternary, since it charges the third level as if it cost nothing in noise margin or calibration, and a whisker is not an engineering reason. The engineering reason is the switch: two states with nothing in between to calibrate, and the largest noise margin the supply allows. Flash is the honest counterexample, and it confirms the rule, since the cells are read back into bits. DNA is the other one, and the better one: base 4 because a nucleotide is a discrete molecule with no noise band between it and its neighbour, and because complementary pairing, which needs an even alphabet, is the copying and checking mechanism. Base 2 would pair too, but at half the density for the same chemistry, and the triplet code would need five-letter words. The lesson is that the base follows the physics, and silicon and chemistry have different physics.</p></aside>
 </section>
@@ -74,19 +74,19 @@
   <div class="fill">
     <div class="two">
       <div class="stack">
-        <p class="f" data-step="1">Write base 3 with the digits −1, 0 and 1 instead of 0, 1 and 2. Then every integer, negative ones included, has exactly one representation, and −n is n with every digit negated: 85 = 81 + 3 + 1 is 1 0 0 1 1 and −85 is −1 0 0 −1 −1. No two's complement, no sign convention, and rounding is truncation.</p>
-        <p class="f" data-step="2">Setun, built at Moscow State University in 1958, computed in balanced ternary and about fifty were made. Knuth called it the prettiest number system of all. It lost anyway, and not to a better idea: to the transistor, which is a switch, and to a supply chain of parts that were all binary.</p>
+        <p class="f" data-step="1">Write base 3 with digits −1, 0 and 1. Every integer, negative or not, has exactly one representation, and −n is n with every digit negated: 85 = 81 + 3 + 1 is 1 0 0 1 1, and −85 is −1 0 0 −1 −1. No two's complement, no sign convention.</p>
+        <p class="f" data-step="2">Setun, built in Moscow in 1958, computed in balanced ternary. Knuth called it the prettiest number system of all. It lost anyway, not to a better idea but to the transistor, which is a switch.</p>
       </div>
       <div class="stack">
         <table class="t">
           <tr><th></th><th>binary</th><th>balanced ternary</th></tr>
           <tr><td>digits</td><td class="mono">0 1</td><td class="mono">−1 0 1</td></tr>
-          <tr><td>negative numbers</td><td>a convention on top</td><td>built in</td></tr>
-          <tr><td>negation</td><td>invert and add 1</td><td>flip every digit</td></tr>
-          <tr><td>digit count for n</td><td class="mono">log₂ n</td><td class="mono">log₃ n = 0.63 · log₂ n</td></tr>
-          <tr><td>levels a digit holds</td><td>2</td><td>3</td></tr>
+          <tr><td>negatives</td><td>convention</td><td>built in</td></tr>
+          <tr><td>negation</td><td>invert, add 1</td><td>flip digits</td></tr>
+          <tr><td>length</td><td class="mono">log₂ n</td><td class="mono">0.63 · log₂ n</td></tr>
+          <tr><td>levels</td><td>2</td><td>3</td></tr>
         </table>
-        <p class="sm f" data-step="3">Mathematically the nicer system; physically three levels where two would do. The bits do not say which; the transistor does.</p>
+        <p class="sm f" data-step="3">Mathematically the nicer system; physically three levels where two would do. The transistor decides.</p>
       </div>
     </div>
   </div>
@@ -119,8 +119,11 @@
       </div>
       <div class="term">
         <span class="l"><span class="p">$</span> <span class="c">cat examples/overflows.c</span></span>
-        <span class="l o">// … prints UINT64_MAX + 1, INT64_MAX + 1, and what happens</span>
-        <span class="l"><span class="p">$</span> <span class="c">./selfie -c examples/overflows.c -m 1</span></span>
+        <span class="l o">// … prints UINT64_MAX + 1, INT64_MAX + 1,</span>
+        <span class="l o">// and what happens</span>
+        <span class="l"><span class="p">$</span> <span class="c">make selfie.h</span></span>
+        <span class="l"><span class="p">$</span> <span class="c">./selfie -c selfie.h \</span></span>
+        <span class="l"><span class="c">    examples/overflows.c -m 1</span></span>
         <span class="l o">…</span>
       </div>
     </div>
@@ -189,9 +192,9 @@
       <p class="f" data-step="2">That file is bytes at addresses, like a text or an image. The machine reads it and does what it says. Nothing in the bytes tells you whether they are code or data; the machine chapter shows what does.</p>
       <div class="term sm f" data-step="3">
         <span class="l"><span class="p">$</span> <span class="c">./selfie -c examples/hello-world.c -m 1</span></span>
-        <span class="l o">./selfie: selfie compiling examples/hello-world.c to 64-bit RISC-U with 64-bit starc</span>
+        <span class="l o">./selfie: selfie compiling examples/hello-world.c</span>
+        <span class="l o">  to 64-bit RISC-U with 64-bit starc</span>
         <span class="l o">…</span>
-        <span class="l o">./selfie: 64-bit mipster executing 64-bit RISC-U binary examples/hello-world.c with 1MB physical memory</span>
         <span class="l o">Hello World!</span>
       </div>
     </div>
@@ -224,11 +227,11 @@
       <ol class="steps">
         <li>Read the Size chapter from <em>Numbers</em> to <em>Code</em>.</li>
         <li>Write 42, 255, and 1000 in binary and hexadecimal. Add 85 and 42 in binary with carries.</li>
-        <li>How many digits does 1000 need in unary, binary, ternary and decimal? Which of the four ratios stays the same as the number grows, and which does not?</li>
+        <li>How many digits does 1000 need in unary, binary, ternary and decimal? Which ratios stay the same as the number grows?</li>
         <li>What is 1010101 as a signed 7-bit number? What is 11111111 as an unsigned and as a signed byte?</li>
         <li>Write your first name in ASCII, in binary, and count the bits. Then in UTF-8 if it has an umlaut.</li>
         <li>Run <span class="mono">examples/overflows.c</span> and explain each line of output.</li>
-        <li>In the pointers figure, what happens if the byte at address 0 held 7 instead of 85?</li>
+        <li>In the pointers figure, what if the byte at address 0 held 7 instead of 85?</li>
       </ol>
       <div class="card syn"><span class="h">Next week</span><p>Notation: formal languages. EBNF, and the two languages selfie is made of — C* with seven keywords, RISC-U with fourteen instructions — read exactly.</p></div>
     </div>

@@ -66,18 +66,19 @@
 
 <section class="slide" data-act="II" data-mins="6.0">
   <div class="eyebrow">In the terminal</div>
-  <h2>A binary is <span class="j">one number</span>, 188,392 bytes long.</h2>
+  <h2>A binary is <span class="j">one number</span>, 194,648 bytes long.</h2>
   <div class="fill">
     <div class="term">
       <span class="l"><span class="p">$</span> <span class="c">./selfie -c selfie.c -o selfie.m</span></span>
       <span class="l o">./selfie: 188392 bytes generated with 43492 instructions and 14424 bytes of data</span>
-      <span class="l o">./selfie: 188392 bytes with 43492 instructions and 14424 bytes of data written into selfie.m</span>
+      <span class="l o">./selfie: 194648 bytes with 43492 64-bit RISC-U instructions … written into selfie.m</span>
       <span class="l"><span class="p">$</span> <span class="c">od -A d -t x1 selfie.m | head -2</span></span>
       <span class="l o">0000000 7f 45 4c 46 02 01 01 00 00 00 00 00 00 00 00 00</span>
       <span class="l o">0000016 02 00 f3 00 01 00 00 00 00 00 01 00 00 00 00 00</span>
       <span class="l"><span class="p">$</span> <span class="c">./selfie -l selfie.m -m 1</span></span>
-      <span class="l o">./selfie: 188392 bytes with 43492 instructions and 14424 bytes of data loaded from selfie.m</span>
-      <span class="l o">selfie.m { -c { source } | -o binary | [ -s | -S ] assembly | -l binary } [ ( -m | -d | -r | -y ) 0-4096 ... ]</span>
+      <span class="l o">./selfie: 194648 bytes with 43492 64-bit RISC-U instructions … loaded from selfie.m</span>
+      <span class="l o">selfie.m { -c { source } | -o binary | ( -s | -S ) assembly | -l binary }</span>
+      <span class="l o">         [ ( -m | -d | -r | -y ) 0-4096 ... ]</span>
     </div>
     <div class="two">
       <p class="sm f" data-step="1">The <span class="mono">-o</span> option writes the number to a file. The first four bytes, 7f 45 4c 46, spell ELF: the file format every Linux program uses, so this number runs on real RISC-V hardware too.</p>
@@ -91,17 +92,17 @@
   <div class="eyebrow">The fixed point</div>
   <h2>The compiler compiles its own source, and gets the <span class="k">same number twice</span>.</h2>
   <div class="fill row mid">
-    <div class="fig grow" style="flex:1.2" data-fig="bootstrap"><span class="cap">selfie1.m = selfie2.m</span></div>
+    <div class="fig grow" style="flex:1.2" data-fig="bootstrap"><span class="cap">selfie0.m = selfie1.m</span></div>
     <div class="stack grow">
       <div class="term sm">
         <span class="l"><span class="p">$</span> <span class="c">make self-self-check</span></span>
-        <span class="l o">./selfie -c selfie.c -o selfie1.m -s selfie1.s -m 2 -c selfie.c -o selfie2.m -s selfie2.s</span>
-        <span class="l o">…</span>
-        <span class="l o">diff -q selfie1.m selfie2.m</span>
-        <span class="l o">diff -q selfie1.s selfie2.s</span>
+        <span class="l o">./selfie -c selfie.c -o selfie0.m -s selfie0.s</span>
+        <span class="l o">  -m 3 -c selfie.c -o selfie1.m -s selfie1.s</span>
+        <span class="l o">diff -q selfie0.m selfie1.m</span>
+        <span class="l o">diff -q selfie0.s selfie1.s</span>
       </div>
-      <p class="f" data-step="1">Stage one: a C compiler you did not write produces a selfie. Stage two: that selfie compiles selfie.c into selfie1.m. Stage three: selfie1.m, running on the emulator, compiles selfie.c into selfie2.m.</p>
-      <p class="f" data-step="2">selfie1.m and selfie2.m are identical: 188,392 bytes, the same number. The compiler agrees with itself. What that does <em>not</em> prove is the subject of week 8.</p>
+      <p class="f" data-step="1">A C compiler you did not write produces a selfie. That selfie compiles selfie.c into selfie0.m. Then selfie0.m, on the emulator, compiles it again into selfie1.m.</p>
+      <p class="f" data-step="2">The two are identical: 194,648 bytes, the same number. What that does <em>not</em> prove is the subject of week 8.</p>
     </div>
   </div>
   <aside class="notes"><p>Run it, and let it take its minute; the room should see the second compilation happen inside the emulator, slower. The diff prints nothing, which is the point. Say clearly what it proves, self-agreement, and refuse to say more: a compiler that consistently mistranslated one construct would pass this check. Week 8 has Thompson's compiler for that. Today it is the first fixed point they have seen, and it is real.</p></aside>
@@ -116,7 +117,7 @@
         <p class="f" data-step="1">Nothing on this deck needed anything but the fact that texts are numbers. The compiler is a function from one number, selfie.c, to another, selfie.m. The emulator is a function from a number and an input to what the number does.</p>
         <p class="f" data-step="2">Self-reference is not a trick. It is the price of being expressive enough to be useful — and the instrument with which, in two weeks, we find exactly where expressiveness ends.</p>
       </div>
-      <div class="card syn f" data-step="3"><span class="h">Aside · what a number can be</span><p>The same 188,392 bytes are a program to the emulator, data to the compiler that wrote them, and, next week, the tape of a universal machine. Nothing in the bytes says which. You have heard this before.</p></div>
+      <div class="card syn f" data-step="3"><span class="h">Aside · what a number can be</span><p>The same 194,648 bytes are a program to the emulator, data to the compiler that wrote them, and, next week, the tape of a universal machine. Nothing in the bytes says which. You have heard this before.</p></div>
     </div>
   </div>
   <aside class="notes"><p>The thesis of the station. Take the second paragraph slowly: the machine that reads itself is what makes it possible to ask a machine about machines, and that is both the compiler of week 8 and the halting problem of week 9.</p></aside>
@@ -132,7 +133,7 @@
         <p class="f" data-step="2">Week 7 proves that it is not, with an argument three lines long that is the most consequential of the twentieth century. Week 6 first builds the machine that runs the programs, so that we know exactly what a behaviour is.</p>
       </div>
       <div class="stack">
-        <div class="fig grow" data-fig="scale"><span class="cap">we are here: just left of the wall</span></div>
+        <div class="fig grow" data-fig="scale"><span class="cap">we are here: the right edge of the countable</span></div>
       </div>
     </div>
   </div>
@@ -145,7 +146,7 @@
   <div class="fill">
     <div class="two">
       <ol class="steps">
-        <li>Read the Meaning chapter up to <em>Give every text a number</em>, and the Selfie chapter's three commands.</li>
+        <li>Read the Meaning chapter through <em>Give every text a number</em>, and the Selfie chapter's three commands.</li>
         <li>Write down the first sixteen strings over {0, 1} in the order of the enumeration. Where is 1011? What is at position 100?</li>
         <li>Gödel-number the string <span class="mono">c = 7;</span> by writing its ASCII codes one after the other. Then decode 99611032611032555559.</li>
         <li>Run <span class="mono">make self-self-check</span> and time it. Roughly how many instructions did the emulator execute? The output tells you.</li>

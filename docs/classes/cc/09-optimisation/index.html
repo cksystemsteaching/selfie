@@ -27,10 +27,10 @@
   <div class="fill">
     <div class="two">
       <div class="stack">
-        <p class="f" data-step="1">An optimisation replaces a program by another. The claim is that they are equivalent on every input, and that the second is cheaper. Equivalence of programs is a property of behaviour, so by Rice it is undecidable in general. Cost is measured on a machine, so it is a metric, and metrics are approximations too.</p>
-        <p class="f" data-step="2">Hence every optimiser answers a decidable stand-in: not "is this code dead?" but "is there a path in the text to this code?"; not "is this value constant?" but "is it assigned once, from a literal, in this block?". Text questions that imply the behaviour question one way — sound — and miss cases the other way — incomplete.</p>
+        <p class="f" data-step="1">An optimisation replaces a program by another, claiming they are equivalent on every input and the second is cheaper. Equivalence is a property of behaviour, so by Rice it is undecidable in general. Cost is a metric, and metrics are approximations too.</p>
+        <p class="f" data-step="2">Hence every optimiser answers a decidable stand-in: not "is this code dead?" but "is there a path in the text to it?"; not "is this value constant?" but "is it assigned once, from a literal?". Sound one way, incomplete the other.</p>
       </div>
-      <div class="card syn f" data-step="3"><span class="h">Why selfie does not</span><p>Not because it is hard to add. Because every optimisation is a place where the compiler's output stops being a transcription of the source, and the class is about the transcription. The exercises below show what would change.</p></div>
+      <div class="card syn f" data-step="3"><span class="h">Why selfie does not</span><p>Not because it is hard to add. Every optimisation is a place where the compiler's output stops being a transcription of the source, and the class is about the transcription.</p></div>
     </div>
   </div>
   <aside class="notes"><p>Frame the whole session as Rice applied: the optimiser cannot decide the property it cares about, so it decides a syntactic proxy that is sound for that property. Say sound and incomplete again; by now the room should finish the sentence.</p></aside>
@@ -52,11 +52,11 @@
         <span class="l c">while (c != 0) c = c + 2;</span>
       </div>
       <div class="stack">
-        <p class="f" data-step="1"><strong>Folding.</strong> <span class="mono">6 * 7</span> is a term with two literal factors: the compiler can evaluate it at compile time and emit one <span class="mono">addi</span>. Sound, because the machine's arithmetic and the compiler's are the same 64-bit wrap — which is a claim that has to be true of the compiler's own host.</p>
-        <p class="f" data-step="2"><strong>Dead code.</strong> <span class="mono">if (0)</span> never runs; the text says so. <span class="mono">z = 2</span> is dead if nothing reads <span class="mono">z</span> afterwards — and "afterwards" is a path in the text, not an execution. The loop stays: whether it runs forever is not the compiler's to know, and removing a non-terminating loop changes behaviour.</p>
+        <p class="f" data-step="1"><strong>Folding.</strong> <span class="mono">6 * 7</span> is a term with two literal factors: the compiler can evaluate it and emit one <span class="mono">addi</span>. Sound, because the machine's arithmetic and the compiler's are the same 64-bit wrap.</p>
+        <p class="f" data-step="2"><strong>Dead code.</strong> <span class="mono">if (0)</span> never runs; the text says so. <span class="mono">z = 2</span> is dead if nothing reads <span class="mono">z</span> afterwards, and "afterwards" is a path in the text, not an execution. The loop stays: removing a non-terminating loop changes behaviour.</p>
       </div>
     </div>
-    <p class="sm f" data-step="3">Every one of these decisions is about the text, standing in for a fact about behaviour. The optimiser's contract is that the stand-in is sound; its quality is how often it fires.</p>
+    <p class="sm f" data-step="3">Each decision is about the text, standing in for a fact about behaviour. The contract is that the stand-in is sound; its quality is how often it fires.</p>
   </div>
   <aside class="notes"><p>The loop line is the teaching moment: an optimiser that removed loops whose body has no effect would have to know they terminate, which it cannot, so C's standard had to legislate the case. Point at that as a place where a semantics was decided by decree to make an approximation sound.</p></aside>
 </section>
@@ -67,12 +67,12 @@
   <div class="fill">
     <div class="two">
       <div class="stack">
-        <p class="f" data-step="1">Selfie's stack of seven temporaries is the simplest allocator there is, and it fails at nesting depth eight. A real allocator asks: which values are <em>live</em> at the same time, and can two values that are never live together share a register?</p>
-        <p class="f" data-step="2">Draw a node per value and an edge between values live simultaneously. Colouring the graph with k colours, one per register, so that no edge joins two nodes of one colour, is register allocation with k registers. Chaitin, 1981. And k-colouring is NP-complete.</p>
+        <p class="f" data-step="1">Selfie's stack of seven temporaries is the simplest allocator there is, and it fails at nesting depth eight. A real allocator asks which values are <em>live</em> at the same time; two that never are can share a register.</p>
+        <p class="f" data-step="2">A node per value, an edge between values live simultaneously. Colouring the graph with k colours, no edge joining two of one colour, is allocation with k registers. Chaitin, 1981. And k-colouring is NP-complete: one more value, k times the colourings.</p>
       </div>
-      <div class="card syn f" data-step="3"><span class="h">Which is where week 11 begins</span><p>Decidable, and unaffordable in the worst case. Compilers colour greedily, spill to memory when they fail, and get within a few percent of optimal on real code. Hardness in the worst case, structure in the typical one — the whole of station IV in one pass of the compiler.</p></div>
+      <div class="card syn f" data-step="3"><span class="h">Which is where week 11 begins</span><p>Decidable, and unaffordable in the worst case. Compilers colour greedily, spill to memory when they fail, and get within a few percent of optimal on real code. Hardness in the worst case, structure in the typical one.</p></div>
     </div>
-    <p class="sm f" data-step="4">Liveness itself — is this value read again? — is a property of behaviour. The allocator uses the text's paths as the proxy, so the graph is already an approximation before the colouring starts.</p>
+    <p class="sm f" data-step="4">Liveness itself is a property of behaviour. The allocator uses the text's paths as the proxy, so the graph is an approximation before the colouring starts.</p>
   </div>
   <aside class="notes"><p>The bridge to station IV: an everyday compiler task that is NP-hard, solved daily by heuristics. Note the two layers of approximation: liveness by paths, colouring by greed. Both are sound, both leave performance on the table, and nobody can do better in general.</p></aside>
 </section>
@@ -98,12 +98,12 @@
       <div class="stack">
         <ol class="steps">
           <li><strong>Specify.</strong> Extend the grammar so that a variable declaration may be <span class="mono">type identifier [ integer ]</span>, globally and locally.</li>
-          <li><strong>Allocate.</strong> Globally: <span class="mono">n</span> words in the data segment, and the symbol table entry records the size. Locally: <span class="mono">n</span> words in the frame, so the prologue's <span class="mono">addi sp,sp,-locals</span> grows, and offsets from <span class="mono">s0</span> shift.</li>
-          <li><strong>Access.</strong> Last week's <span class="mono">a[i]</span> now has two cases: the identifier is a pointer, or it is an array, whose address is its location rather than its value. The symbol table must say which. Decide the semantics, then implement.</li>
+          <li><strong>Allocate.</strong> Globally: <span class="mono">n</span> words in the data segment, and the symbol table records the size. Locally: <span class="mono">n</span> words in the frame, so the prologue's <span class="mono">addi sp,sp,-locals</span> grows and offsets from <span class="mono">s0</span> shift.</li>
+          <li><strong>Access.</strong> Last week's <span class="mono">a[i]</span> now has two cases: the identifier is a pointer, or an array, whose address is its location rather than its value. The symbol table must say which.</li>
           <li><span class="mono">./grader/self.py array-allocation</span>, <span class="mono">self-compile</span>, and use a global array in selfie.c.</li>
         </ol>
       </div>
-      <div class="card syn"><span class="h">Watch</span><p>Bounds are not checked: <span class="mono">a[n]</span> on an array of <span class="mono">n</span> words reads the neighbour. That is C, it is decided, and week 12 is the first week that can find such an access for you.</p></div>
+      <div class="card syn"><span class="h">Watch</span><p>Bounds are not checked: <span class="mono">a[n]</span> on an array of <span class="mono">n</span> words reads the neighbour. That is C, and week 12 is the first week that can find such an access for you.</p></div>
     </div>
   </div>
   <aside class="notes"><p>The second array assignment, and the one that touches the frame layout from week 7. The array-versus-pointer distinction in the symbol table is the design decision; the missing bounds check is the preview of what the model checker is for.</p></aside>

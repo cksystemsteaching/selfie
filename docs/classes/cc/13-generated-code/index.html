@@ -27,9 +27,9 @@
   <div class="fill row mid">
     <div class="fig grow" style="flex:1.4" data-fig="tokens"><span class="cap">tokens in · a distribution over the next one out · then a sample</span></div>
     <div class="stack grow">
-      <p class="f" data-step="1">Context in, a probability for every next token out, one sampled and appended. Trained on text by predicting the next token: a purely syntactic signal. Meaning never handed to it.</p>
-      <p class="f" data-step="2">It is arithmetic on bits — in principle a C* program, which mipster would run. It computes what a Turing machine computes, and week 8 said what that means about self-certification.</p>
-      <p class="f" data-step="3">Its behaviour on every context is one of week 7's infinite sheets. Only sampled, never enumerated. Testing shows presence.</p>
+      <p class="f" data-step="1">Context in, a probability for every next token out, one sampled and appended. Trained by predicting the next token: a purely syntactic signal.</p>
+      <p class="f" data-step="2">It is arithmetic on bits, in principle a C* program, which mipster would run. It computes what a Turing machine computes, and week 8 said what that means for self-certification.</p>
+      <p class="f" data-step="3">Its behaviour on every context is one of the introduction class's infinite answer sheets: only sampled, never enumerated.</p>
     </div>
   </div>
   <aside class="notes"><p>Mechanical and unpolemical. A compiler class should notice that a language model is, among other things, a scanner and a parser that were never written: it learned a distribution over token sequences, and whether that sequence is a C* program is a question it cannot decide, but starc can.</p></aside>
@@ -42,7 +42,7 @@
     <div class="fig grow" style="flex:1.2" data-fig="venn"><span class="cap">plausible · provable · true</span></div>
     <div class="stack grow">
       <p class="f" data-step="1">Fluency is syntax. Correctness is semantics. A generated program can be perfectly fluent C — indented, idiomatic, commented — and not parse as C*, or parse and divide by zero, or run and compute the wrong thing. Three tests, and they are not the same test.</p>
-      <p class="f" data-step="2">Not a defect to patch away: the gap of week 7 at consumer scale. The response is the same as everywhere in this class: check the notation against a semantics you own.</p>
+      <p class="f" data-step="2">Not a defect to patch away: the gap between notation and meaning, at consumer scale. The response is the same as everywhere in this class: check the notation against a semantics you own.</p>
     </div>
   </div>
   <aside class="notes"><p>The three regions map onto the three checks of the next slide. Say that the same reasoning is why retrieval, tool use and unit tests help these systems: they import an external semantics, which the machine cannot supply.</p></aside>
@@ -55,11 +55,14 @@
     <div class="two">
       <div class="term sm">
         <span class="l"><span class="p">$</span> <span class="c">./selfie -c generated.c</span></span>
-        <span class="l o">./selfie: syntax error in generated.c in line 3: unexpected symbol "[" found</span>
+        <span class="l o">./selfie: syntax error in generated.c in line 3:</span>
+        <span class="l o">  unexpected symbol "[" found</span>
         <span class="l o">// … after asking again for C*, not C:</span>
         <span class="l"><span class="p">$</span> <span class="c">./selfie -c generated.c -m 1 7</span></span>
         <span class="l o">5040</span>
-        <span class="l"><span class="p">$</span> <span class="c">./rotor -c generated.c - 0 &amp;&amp; tools/bitme.py -kmax 1000 generated-rotorized.btor2</span></span>
+        <span class="l"><span class="p">$</span> <span class="c">./rotor -c generated.c - 0</span></span>
+        <span class="l"><span class="p">$</span> <span class="c">tools/bitme.py -kmax 1000 --use-bitwuzla \</span></span>
+        <span class="l"><span class="c">    generated-rotorized.btor2</span></span>
         <span class="l o">… core-0-division-by-zero — satisfiable · input 0</span>
       </div>
       <div class="stack">

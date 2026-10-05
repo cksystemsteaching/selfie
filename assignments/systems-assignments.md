@@ -52,7 +52,7 @@ Complete the implementation of a RISC-U assembler (option `-a` in selfie) with s
 
 ## Assignment `processes`:
 
-Implement support of processes in mipster and hypster.
+Implement support of processes in mipster and hypster: option `-x n` runs `n` instances of the loaded program as time-shared processes on mipster, option `-z n` on hypster.
 
 - Use the `processes` target in the grader to determine your grade.
 
@@ -84,7 +84,7 @@ Implement support of locking (`lock()` and `unlock()`).
 
 ## Assignment `threads`:
 
-Implement support of threads (`phtread_create()`, `pthread_join()`, and `pthread_exit()`).
+Implement support of threads (`pthread_create()`, `pthread_join()`, and `pthread_exit()`).
 
 - Use the `threads` target in the grader to determine your grade.
 
@@ -120,7 +120,7 @@ input: <the input bitme found, or none>
 ```
 
 - The bad state must be one of rotor's memory-safety properties: a segmentation fault, an invalid address, or an invalid program break. Rotor prints the names of the bad states it generates.
-- Generate the model with `./rotor -c assignments/rotor-bounds/program.c - 0` and run `tools/bitme.py -kmax <bound> assignments/rotor-bounds/program-rotorized.btor2`. Do not commit the model; the grader regenerates it.
+- Generate the model with `./rotor -c assignments/rotor-bounds/program.c - 0` and run `tools/bitme.py -kmax <bound> --use-bitwuzla assignments/rotor-bounds/program-rotorized.btor2`. Do not commit the model; the grader regenerates it.
 - Add a file **assignments/rotor-bounds/notes.md**, one page, saying what the verdict establishes and what it does not: about inputs, about steps beyond the bound, about threads.
 - Do not modify any files other than **selfie.c** and the three files above.
 - Use the `rotor-bounds` target in the grader to determine your grade. It compiles and runs your driver, regenerates the model, checks that the named bad state exists and is a memory-safety property, and runs bitme with your bound: a *reachable* verdict must be confirmed by a satisfying assignment within the bound, an *unreachable* one by bitme reaching the bound without one. The notes are read by a person.
