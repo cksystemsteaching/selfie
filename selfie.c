@@ -12386,6 +12386,8 @@ int main(int argc, char** argv) {
   init_system();
   init_target();
   init_kernel();
+   printf("%s: This is Zineb Lazaar's Selfie!\n", selfie_name);
+   
 
   exit_code = selfie(0);
 
