@@ -1,5 +1,22 @@
 # Bachelor Theses on Selfie
 
+## Autos: a Self-Referential System by Sam Crawford, University of Salzburg, Austria, 2026 ([PDF](https://github.com/cksystemsteaching/selfie/blob/main/theses/bachelor_thesis_crawford.pdf), [Repository](https://github.com/scrawfordlk/autos))
+
+This thesis investigates how self-compilation and self-emulation can be achieved using
+minimal subsets of existing formal languages. Inspired by the Selfie project, it presents
+Autos, a self-contained system built around two languages: *Rust, a tiny subset of Rust,
+and LLLVM, a tiny subset of LLVM Intermediate Representation (LLVM-IR).
+Autos is comprised of a compiler, `starustc`, which translates *Rust into LLLVM,
+and an emulator, `llli`, that executes LLLVM through interpretation.
+
+Developing Autos requires designing language subsets suited to self-compilation and self-emulation,
+while addressing the challenges of compiler construction and emulation.
+To implement the system entirely in *Rust, a custom library was also developed to compensate for the absence of a Rust standard library.
+As a result, Autos can compile its own source code into LLLVM and emulate the generated code.
+The executed program can then compile the same source code again, allowing the cycle to be repeated indefinitely in principle.
+Thus, Autos demonstrates how carefully designed language subsets make it possible to build a
+self-referential software system without requiring complete implementations of Rust or LLVM-IR.
+
 ## Exploring Reasoning Performance of RISC-V Software Models in BTOR2 by Nadir Fejzić, University of Salzburg, Austria, 2024 ([PDF](https://github.com/cksystemsteaching/selfie/blob/main/theses/bachelor_thesis_fejzic.pdf), [Release](https://github.com/cksystemsteaching/selfie/releases/tag/bachelor_thesis_fejzic))
 
 When working with software programs, we want to ensure that they do not
