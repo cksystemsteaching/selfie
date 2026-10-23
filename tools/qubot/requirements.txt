@@ -4,7 +4,7 @@ argon2-cffi==21.1.0
 attrs==21.2.0
 backcall==0.2.0
 bleach==6.4.0
-certifi==2024.7.4
+certifi==2026.10.19
 cffi==1.15.0
 charset-normalizer==2.0.6
 click==8.0.1
