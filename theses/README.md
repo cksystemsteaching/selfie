@@ -27,16 +27,16 @@ As we reduced the program correctness problem to satisfiability problem,
 solving it is NP-Complete and computationally expensive. However, model
 generation is linear in the size of the input program. We took advantage of
 this property and generated many equivalent models to analyze impact of
-different configurations on solving performance of \texttt{btormc} model
+different configurations on solving performance of `btormc` model
 checker.
 
-In this thesis, we present a toolbox \texttt{peRISCope} for easy
+In this thesis, we present a toolbox `peRISCope` for easy
 benchmarking of different model configurations. We also present and analyze
 results from benchmarking of solving time for models with different code
 and non-code memory granularity configurations. We found that models with
 smaller memory granularity were solved faster in models generated from
-binaries compiled with \texttt{starc} compiler. On models generated from
-binaries compiled with \texttt{gcc} compiler, models with larger memory
+binaries compiled with `starc` compiler. On models generated from
+binaries compiled with `gcc` compiler, models with larger memory
 granularity were solved faster.
 
 ## Automated Testing of Atomic Instructions (`LR`/`SC`) Implementations in Selfie by Luis Thiele, University of Salzburg, Austria, 2022 ([PDF](https://github.com/cksystemsteaching/selfie/blob/main/theses/bachelor_thesis_thiele.pdf), [Release](https://github.com/cksystemsteaching/selfie/releases/tag/bachelor_thesis_thiele))
