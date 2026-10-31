@@ -1,5 +1,28 @@
 # Bachelor Theses on Selfie
 
+## Autos: A Self-Contained, Self-Compiling Rust Compiler Targeting a Self-Emulating LLVM IR Emulator by Sam Crawford, University of Salzburg, Austria, 2026 ([PDF](https://github.com/cksystemsteaching/selfie/blob/main/theses/bachelor_thesis_crawford.pdf), [Repository](https://github.com/scrawfordlk/autos))
+
+This thesis investigates how a self-contained, self-referential software system can be built
+to compile and emulate itself. The Selfie system demonstrates this concept using C*,
+a subset of C, as its implementation language and RISC-U, a subset of the RISC-V
+instruction set architecture, as its target language. Since Selfie is written in C*,
+it can compile its own source code into RISC-U, which its emulator can then execute,
+producing a program that can compile itself again and, in principle, repeat the process
+indefinitely.
+
+Inspired by Selfie, this thesis presents Autos, a self-contained system that follows the
+same principle using Rust and LLVM Intermediate Representation (LLVM IR) as opposed to C
+and RISC-V. The central challenge lies in defining suitable subsets of both languages
+that enable both self-compilation and self-emulation while preserving the essential
+characteristics of Rust and LLVM IR. An additional challenge was resolving unexpected
+performance issues, which, although not a primary focus of this work,
+were largely addressed by revisiting the design of those subsets. To this end,
+this thesis introduces *Rust, a subset of Rust, and LLLVM, a subset of LLVM IR.
+Like Selfie, Autos is implemented entirely in its source language, *Rust,
+allowing it to compile its own source code into LLLVM and execute the resulting
+program through emulation. This demonstrates how carefully designed language subsets
+can enable self-reference in a self-contained software system.
+
 ## Exploring Reasoning Performance of RISC-V Software Models in BTOR2 by Nadir Fejzić, University of Salzburg, Austria, 2024 ([PDF](https://github.com/cksystemsteaching/selfie/blob/main/theses/bachelor_thesis_fejzic.pdf), [Release](https://github.com/cksystemsteaching/selfie/releases/tag/bachelor_thesis_fejzic))
 
 When working with software programs, we want to ensure that they do not
@@ -27,16 +50,16 @@ As we reduced the program correctness problem to satisfiability problem,
 solving it is NP-Complete and computationally expensive. However, model
 generation is linear in the size of the input program. We took advantage of
 this property and generated many equivalent models to analyze impact of
-different configurations on solving performance of \texttt{btormc} model
+different configurations on solving performance of `btormc` model
 checker.
 
-In this thesis, we present a toolbox \texttt{peRISCope} for easy
+In this thesis, we present a toolbox `peRISCope` for easy
 benchmarking of different model configurations. We also present and analyze
 results from benchmarking of solving time for models with different code
 and non-code memory granularity configurations. We found that models with
 smaller memory granularity were solved faster in models generated from
-binaries compiled with \texttt{starc} compiler. On models generated from
-binaries compiled with \texttt{gcc} compiler, models with larger memory
+binaries compiled with `starc` compiler. On models generated from
+binaries compiled with `gcc` compiler, models with larger memory
 granularity were solved faster.
 
 ## Automated Testing of Atomic Instructions (`LR`/`SC`) Implementations in Selfie by Luis Thiele, University of Salzburg, Austria, 2022 ([PDF](https://github.com/cksystemsteaching/selfie/blob/main/theses/bachelor_thesis_thiele.pdf), [Release](https://github.com/cksystemsteaching/selfie/releases/tag/bachelor_thesis_thiele))
