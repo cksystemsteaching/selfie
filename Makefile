@@ -211,7 +211,7 @@ cache: selfie selfie.m selfie.s examples/cache/dcache-access-[01].c
 .PHONY: sat brr bzz mon smt beat beator-btor2 rot synthesize rotor-btor2 btor2 more all
 
 # Run more that only requires standard tools and is not too slow
-more: sat brr bzz mon smt beat beator-btor2 rot synthesize rotor-btor2
+more: sat brr bzz mon smt beat beator-btor2 rot synthesize rotor-btor2 riscr
 
 # Run all that only requires standard tools and is not too slow
 all: less more
@@ -344,6 +344,25 @@ rotor-btor2: $(rotors) selfie-rotorized.btor2 synthesize
 # Run beator and rotor on *.c files in symbolic folder and even on selfie
 btor2: beator-btor2 rotor-btor2
 
+# Compile riscr-test.c with selfie.h as library into riscr-test executable
+riscr-test: tests/riscr-test.c selfie.h
+	$(CC) $(CFLAGS) --include selfie.h $< -o $@
+
+# Run riscr-test, hand-written RISC-R code executed forward and backward on mipster, natively and as RISC-U executable
+riscr: riscr-test selfie selfie.h
+	echo "RISC-R" | ./riscr-test tests/riscr-test.m
+	echo "RISC-R" | ./selfie -c selfie.h tests/riscr-test.c -m 32 tests/riscr-test-emu.m
+
+# Prevent make from deleting intermediate target riscr-test
+.SECONDARY: riscr-test
+
+# Run selfie executing RISC-R code forward and backward on mipster, exit code is the first input byte
+riscr-rev: selfie riscr
+	-echo "RISC-R" | ./selfie -riscr -l tests/riscr-test.m -rev 1
+
+# Consider these targets as targets, not files
+.PHONY: riscr riscr-rev
+
 # Consider these targets as targets, not files
 .PHONY: spike qemu assemble beator-32 rotor-32 32-bit bitwuzla beator-bitme rotor-bitme bitme extras
 
@@ -457,5 +476,6 @@ clean:
 	rm -f examples/symbolic/*.btor2
 	rm -f tools/*.smt
 	rm -f tools/*.btor2
+	rm -f tests/*.m
 	rm -f selfie selfie-32 selfie.h selfie-gc.h selfie-gc-nomain.h selfie.exe
-	rm -f babysat buzzr monster beator beator-32 rotor rotor-32
+	rm -f babysat buzzr monster beator beator-32 rotor rotor-32 riscr-test

@@ -132,6 +132,9 @@ uint64_t right_shift(uint64_t n, uint64_t b);
 
 uint64_t get_bits(uint64_t n, uint64_t i, uint64_t b);
 
+void     init_xor_table();
+uint64_t bitwise_xor(uint64_t a, uint64_t b);
+
 uint64_t absolute(uint64_t n);
 uint64_t max(uint64_t a, uint64_t b);
 
@@ -225,10 +228,14 @@ uint64_t IS64BITTARGET = 1; // flag indicating 64-bit target
 
 uint64_t ISRISCU = 1; // flag indicating presence of starc-generated RISC-U binary
 
+uint64_t RISCR = 0; // flag indicating RISC-R, the reversible variant of RISC-U, see riscr.md
+
 uint64_t SIZEOFUINT64INBITS     = 64; // sizeof(uint64_t) * 8
 uint64_t SIZEOFUINT64STARINBITS = 64; // sizeof(uint64_t*) * 8
 
 uint64_t* power_of_two_table;
+
+char* xor_table = (char*) 0; // 256x256 table of byte-wise exclusive ors, see init_xor_table()
 
 uint64_t UINT64_MAX; // maximum numerical value of an unsigned 64-bit integer
 
@@ -1042,6 +1049,8 @@ uint64_t funct7 = 0;
 // ---------------------------- BINARY -----------------------------
 // -----------------------------------------------------------------
 
+char* get_isa_name();
+
 uint64_t get_total_number_of_instructions();
 uint64_t get_total_number_of_nops();
 
@@ -1137,6 +1146,8 @@ uint64_t PT_LOAD = 1; // loadable segment
 uint64_t PF_RX   = 5; // readable and executable segment
 uint64_t PF_RW   = 6; // readable and writable segment
 
+uint64_t EF_RISCR = 256; // e_flags bit 8 (reserved in RISC-V) marks RISC-R binaries that do not run on RISC-V
+
 // ELF file header
 
 uint64_t EI_MAG0 = 127; // magic number part 0 is 0x7F
@@ -1163,7 +1174,7 @@ uint64_t e_entry = 65536; // entry point address 0x10000 (according to RISC-V pk
 uint64_t e_phoff = 64; // program header offset 0x40 (ELFCLASS64) or 0x34 (ELFCLASS32)
 uint64_t e_shoff = 0;  // section header offset
 
-uint64_t e_flags     = 0;  // ignored
+uint64_t e_flags     = 0;  // 0 for RISC-U binaries, EF_RISCR for RISC-R binaries
 uint64_t e_ehsize    = 64; // elf header size 64 bytes (ELFCLASS64) or 52 bytes (ELFCLASS32)
 uint64_t e_phentsize = 56; // size of program header entry 56 bytes (ELFCLASS64) or 32 bytes (ELFCLASS32)
 
@@ -1278,6 +1289,13 @@ void     implement_read(uint64_t* context);
 void emit_write();
 void implement_write(uint64_t* context);
 
+void reset_tapes();
+
+uint64_t* tape_buffer_word(uint64_t* context, uint64_t vaddr);
+
+void implement_reversible_read(uint64_t* context);
+void implement_reversible_write(uint64_t* context);
+
 void     emit_open();
 uint64_t down_load_string(uint64_t* context, uint64_t vstring, char* s);
 void     implement_openat(uint64_t* context);
@@ -1311,6 +1329,17 @@ uint64_t DIRFD_AT_FDCWD = -100;
 
 uint64_t* IO_buffer      = (uint64_t*) 0;
 uint64_t  IO_buffer_size = 0;
+
+// RISC-R tapes: input and output are part of the machine state, see riscr.md
+
+uint64_t MAX_TAPE_SIZE = 65536; // 64KB per tape
+
+uint64_t* input_tape        = (uint64_t*) 0; // words exchanged with memory by read
+uint64_t  input_tape_length = 0;             // number of words read from file descriptors onto input tape
+uint64_t  input_tape_head   = 0;             // next word on input tape to exchange
+
+uint64_t* output_tape      = (uint64_t*) 0; // words appended by write
+uint64_t  output_tape_head = 0;             // next word on output tape to append
 
 // -----------------------------------------------------------------
 // ------------------------ HYPSTER SYSCALL ------------------------
@@ -1613,6 +1642,35 @@ void     record_ecall();
 void     do_ecall();
 void     undo_ecall();
 
+// RISC-R instructions, see riscr.md
+
+uint64_t instruction_address();
+void     continue_at(uint64_t address);
+
+void     check_distinct_rd(uint64_t rs);
+uint64_t update_rd(uint64_t value);
+uint64_t flip_rd(uint64_t value);
+
+uint64_t is_come_from(uint64_t target, uint64_t origin);
+
+void do_riscr_lui();
+void do_riscr_addi();
+
+void do_riscr_add();
+void do_riscr_sub();
+void do_riscr_mul();
+void do_riscr_divu();
+void do_riscr_remu();
+void do_riscr_sltu();
+
+uint64_t do_riscr_load();
+
+void do_riscr_beq();
+void do_riscr_jal();
+void do_riscr_jalr();
+
+void do_riscr_ecall();
+
 uint64_t print_data_line_number();
 uint64_t print_data_context();
 uint64_t print_data();
@@ -1725,6 +1783,8 @@ uint64_t is_valid_segment_write(uint64_t vaddr);
 void print_exception(uint64_t exception, uint64_t fault);
 void throw_exception(uint64_t exception, uint64_t fault);
 
+uint64_t fetch_instruction(uint64_t vaddr);
+
 void fetch();
 void decode();
 void execute();
@@ -1770,6 +1830,7 @@ uint64_t EXCEPTION_INVALIDADDRESS        = 6;
 uint64_t EXCEPTION_UNKNOWNINSTRUCTION    = 7;
 uint64_t EXCEPTION_UNINITIALIZEDREGISTER = 8;
 uint64_t EXCEPTION_INTEGEROVERFLOW       = 9;
+uint64_t EXCEPTION_IRREVERSIBLEINSTRUCTION = 10; // RISC-R only
 
 uint64_t* EXCEPTIONS; // textual representation of exceptions
 
@@ -1783,6 +1844,8 @@ uint64_t debug_syscalls = 0; // flag for debugging syscalls
 
 uint64_t record = 0; // flag for recording code execution
 uint64_t redo   = 0; // flag for redoing code execution
+
+uint64_t reverse = 0; // flag for executing RISC-R code backward
 
 uint64_t disassemble_verbose = 0; // flag for disassembling code in more detail
 
@@ -1869,7 +1932,7 @@ uint64_t heap_writes = 0;
 // ------------------------- INITIALIZATION ------------------------
 
 void init_interpreter() {
-  EXCEPTIONS = smalloc((EXCEPTION_INTEGEROVERFLOW + 1) * sizeof(uint64_t*));
+  EXCEPTIONS = smalloc((EXCEPTION_IRREVERSIBLEINSTRUCTION + 1) * sizeof(uint64_t*));
 
   *(EXCEPTIONS + EXCEPTION_NOEXCEPTION)           = (uint64_t) "no exception";
   *(EXCEPTIONS + EXCEPTION_PAGEFAULT)             = (uint64_t) "page fault";
@@ -1881,6 +1944,7 @@ void init_interpreter() {
   *(EXCEPTIONS + EXCEPTION_UNKNOWNINSTRUCTION)    = (uint64_t) "unknown instruction";
   *(EXCEPTIONS + EXCEPTION_UNINITIALIZEDREGISTER) = (uint64_t) "uninitialized register";
   *(EXCEPTIONS + EXCEPTION_INTEGEROVERFLOW)       = (uint64_t) "integer overflow";
+  *(EXCEPTIONS + EXCEPTION_IRREVERSIBLEINSTRUCTION) = (uint64_t) "irreversible instruction";
 }
 
 void reset_interpreter() {
@@ -1925,6 +1989,8 @@ void reset_source_profile() {
 }
 
 void reset_registers_profile() {
+  uint64_t reg;
+
   reads_per_register  = zmalloc(NUMBEROFREGISTERS * sizeof(uint64_t));
   writes_per_register = zmalloc(NUMBEROFREGISTERS * sizeof(uint64_t));
 
@@ -1934,6 +2000,17 @@ void reset_registers_profile() {
   // stack and frame pointer registers are initialized by boot loader
   *(writes_per_register + REG_SP) = 1;
   *(writes_per_register + REG_S0) = 1;
+
+  if (RISCR) {
+    // RISC-R: all registers are initialized to zero
+    reg = 0;
+
+    while (reg < NUMBEROFREGISTERS) {
+      *(writes_per_register + reg) = 1;
+
+      reg = reg + 1;
+    }
+  }
 
   stack_register_reads      = 0;
   stack_register_writes     = 0;
@@ -2393,6 +2470,7 @@ uint64_t handle_timer(uint64_t* context);
 uint64_t handle_exception(uint64_t* context);
 
 uint64_t mipster(uint64_t* to_context);
+uint64_t mipster_backward(uint64_t* to_context, uint64_t steps);
 uint64_t hypster(uint64_t* to_context);
 
 uint64_t mixter(uint64_t* to_context, uint64_t mix);
@@ -2442,6 +2520,7 @@ uint64_t* MACHINES; // named machines
 uint64_t DIPSTER = 5;
 uint64_t RIPSTER = 6;
 uint64_t CAPSTER = 7;
+uint64_t REVSTER = 8; // mipster executing RISC-R code forward and then backward
 
 // ------------------------- INITIALIZATION ------------------------
 
@@ -2703,6 +2782,51 @@ uint64_t get_bits(uint64_t n, uint64_t i, uint64_t b) {
     return right_shift(n, i) % two_to_the_power_of(b);
   else
     return right_shift(n, i);
+}
+
+void init_xor_table() {
+  uint64_t a;
+  uint64_t b;
+
+  // C* has no bitwise operators: tabulate exclusive or of bytes
+  // using bitwise_xor(a, b) == 2 * bitwise_xor(a / 2, b / 2) + (a + b) % 2
+
+  xor_table = (char*) zmalloc(256 * 256);
+
+  a = 0;
+
+  while (a < 256) {
+    b = 0;
+
+    while (b < 256) {
+      store_character(xor_table, a * 256 + b,
+        left_shift(load_character(xor_table, (a / 2) * 256 + b / 2), 1) + (a + b) % 2);
+
+      b = b + 1;
+    }
+
+    a = a + 1;
+  }
+}
+
+uint64_t bitwise_xor(uint64_t a, uint64_t b) {
+  uint64_t x;
+  uint64_t i;
+
+  if (xor_table == (char*) 0)
+    init_xor_table();
+
+  x = 0;
+  i = 0;
+
+  // byte-wise exclusive or
+  while (i < SIZEOFUINT64INBITS) {
+    x = x + left_shift(load_character(xor_table, get_bits(a, i, 8) * 256 + get_bits(b, i, 8)), i);
+
+    i = i + 8;
+  }
+
+  return x;
 }
 
 uint64_t absolute(uint64_t n) {
@@ -6339,6 +6463,13 @@ void selfie_compile() {
 
   fetch_dss_code_location = 0;
 
+  if (RISCR) {
+    // TODO: Bennett-mode compilation to RISC-R
+    printf("%s: compiling to RISC-R is not yet supported\n", selfie_name);
+
+    exit(EXITCODE_BADARGUMENTS);
+  }
+
   // link until next console option
   link = 1;
 
@@ -6896,6 +7027,13 @@ void decode_u_format() {
 // ---------------------------- BINARY -----------------------------
 // -----------------------------------------------------------------
 
+char* get_isa_name() {
+  if (RISCR)
+    return "RISC-R";
+  else
+    return "RISC-U";
+}
+
 uint64_t get_total_number_of_instructions() {
   return ic_lui + ic_addi + ic_add + ic_sub + ic_mul + ic_divu + ic_remu + ic_sltu + ic_load + ic_store + ic_beq + ic_jal + ic_jalr + ic_ecall;
 }
@@ -7326,6 +7464,11 @@ uint64_t* encode_elf_header() {
   store_word(header, 16, 0, e_type + left_shift(e_machine, 16));
   store_word(header, 20, 0, e_version);
 
+  if (RISCR)
+    e_flags = EF_RISCR;
+  else
+    e_flags = 0;
+
   if (EI_CLASS == ELFCLASS64) {
     // RISC-U ELF64 file header
     store_word(header, 24, 1, e_entry);
@@ -7430,6 +7573,7 @@ uint64_t decode_elf_file_header(uint64_t* header) {
     if (get_bits(load_word(header, 48, 1), 32, 16) == e_ehsize)
       if (get_bits(load_word(header, 48, 1), 48, 16) == e_phentsize) {
         e_entry = load_word(header, 24, 1);
+        e_flags = get_bits(load_word(header, 48, 1), 0, 32);
         e_phnum = get_bits(load_word(header, 56, 1), 0, 16);
 
         ISRISCU = 0;
@@ -7444,6 +7588,7 @@ uint64_t decode_elf_file_header(uint64_t* header) {
     if (get_bits(load_word(header, 40, 0), 0, 16) == e_ehsize)
       if (get_bits(load_word(header, 40, 0), 16, 16) == e_phentsize) {
         e_entry = load_word(header, 24, 0);
+        e_flags = load_word(header, 36, 0);
         e_phnum = get_bits(load_word(header, 44, 0), 0, 16);
 
         ISRISCU = 0;
@@ -7563,10 +7708,11 @@ void selfie_output(char* filename) {
     exit(EXITCODE_IOERROR);
   }
 
-  printf("%s: %lu bytes with %lu %lu-bit RISC-U instructions and %lu bytes of data written into %s\n", selfie_name,
+  printf("%s: %lu bytes with %lu %lu-bit %s instructions and %lu bytes of data written into %s\n", selfie_name,
     ELF_HEADER_SIZE + code_size_with_padding + data_size,
     code_size / INSTRUCTIONSIZE,
     WORDSIZEINBITS,
+    get_isa_name(),
     data_size,
     binary_name);
 }
@@ -7613,6 +7759,16 @@ void selfie_load(char* filename) {
 
       if (number_of_read_bytes == e_ehsize - 8) {
         if (decode_elf_file_header(ELF_file_header)) {
+          if ((e_flags / EF_RISCR) % 2 != RISCR) {
+            // binary must match selected instruction set
+            if (RISCR)
+              printf("%s: %s is not a RISC-R binary, do not use -riscr\n", selfie_name, binary_name);
+            else
+              printf("%s: %s is a RISC-R binary, use -riscr\n", selfie_name, binary_name);
+
+            exit(EXITCODE_BADARGUMENTS);
+          }
+
           code_file_offset = 0;
           code_file_size   = 0;
           data_file_offset = 0;
@@ -7688,7 +7844,7 @@ void selfie_load(char* filename) {
 
                           printf("%s: %lu bytes with ", selfie_name, number_of_read_bytes_in_total);
                           if (ISRISCU)
-                            printf("%lu %lu-bit RISC-U instructions ", code_file_size / INSTRUCTIONSIZE, WORDSIZEINBITS);
+                            printf("%lu %lu-bit %s instructions ", code_file_size / INSTRUCTIONSIZE, WORDSIZEINBITS, get_isa_name());
                           else
                             printf("%lu bytes of %lu-bit RISC-V code ", code_file_size, WORDSIZEINBITS);
                           printf("and %lu bytes of data loaded from %s\n", data_file_size, binary_name);
@@ -7744,6 +7900,218 @@ void implement_exit(uint64_t* context) {
   signed_int_exit_code = *(get_regs(context) + REG_A0);
 
   set_exit_code(context, sign_shrink(signed_int_exit_code, SYSCALL_BITWIDTH));
+}
+
+void reset_tapes() {
+  if (input_tape == (uint64_t*) 0) {
+    input_tape  = zmalloc(MAX_TAPE_SIZE);
+    output_tape = zmalloc(MAX_TAPE_SIZE);
+  } else {
+    zero_memory(input_tape, MAX_TAPE_SIZE);
+    zero_memory(output_tape, MAX_TAPE_SIZE);
+  }
+
+  input_tape_length = 0;
+  input_tape_head   = 0;
+
+  output_tape_head = 0;
+}
+
+uint64_t* tape_buffer_word(uint64_t* context, uint64_t vaddr) {
+  // physical address of memory word at vaddr, mapping its page if necessary
+
+  if (is_virtual_address_valid(vaddr, WORDSIZE))
+    if (is_data_stack_heap_address(context, vaddr)) {
+      if (not(is_virtual_address_mapped(get_pt(context), vaddr))) {
+        if (pavailable())
+          map_page(context, page_of_virtual_address(vaddr), (uint64_t) palloc());
+        else {
+          printf("%s: tape buffer at virtual address 0x%08lX out of physical memory\n", selfie_name, vaddr);
+
+          exit(EXITCODE_OUTOFPHYSICALMEMORY);
+        }
+      }
+
+      return translate_virtual_to_physical(get_pt(context), vaddr);
+    }
+
+  printf("%s: tape buffer at virtual address 0x%08lX is invalid\n", selfie_name, vaddr);
+
+  exit(EXITCODE_UNCAUGHTEXCEPTION);
+
+  return (uint64_t*) 0;
+}
+
+void implement_reversible_read(uint64_t* context) {
+  // parameters
+  uint64_t fd;
+  uint64_t vbuffer;
+  uint64_t size;
+
+  uint64_t words;
+  uint64_t bytes;
+  uint64_t i;
+  uint64_t* paddr;
+  uint64_t word;
+
+  if (debug_syscalls) {
+    printf("(read): ");
+    print_register_value(REG_A0);
+    printf(",");
+    print_register_hexadecimal(REG_A1);
+    printf(",");
+    print_register_value(REG_A2);
+    printf(" |- input tape head==%lu", input_tape_head);
+  }
+
+  fd      = *(get_regs(context) + REG_A0);
+  vbuffer = *(get_regs(context) + REG_A1);
+  size    = *(get_regs(context) + REG_A2);
+
+  // RISC-R read exchanges words between memory and input tape, see riscr.md
+
+  words = round_up(size, WORDSIZE) / WORDSIZE;
+
+  if (reverse) {
+    if (input_tape_head < words) {
+      printf("%s: input tape rewound before its beginning\n", selfie_name);
+
+      exit(EXITCODE_UNCAUGHTEXCEPTION);
+    }
+
+    input_tape_head = input_tape_head - words;
+  } else {
+    if (input_tape_head + words > MAX_TAPE_SIZE / WORDSIZE) {
+      printf("%s: input tape is full\n", selfie_name);
+
+      exit(EXITCODE_OUTOFVIRTUALMEMORY);
+    }
+
+    if (input_tape_head + words > input_tape_length) {
+      // read missing bytes from file descriptor onto zeroed input tape
+      if (input_tape_length * WORDSIZE < input_tape_head * WORDSIZE + size) {
+        bytes = input_tape_head * WORDSIZE + size - input_tape_length * WORDSIZE;
+
+        read(fd, (uint64_t*) ((uint64_t) input_tape + input_tape_length * WORDSIZE), bytes);
+      }
+
+      input_tape_length = input_tape_head + words;
+    }
+  }
+
+  i = 0;
+
+  while (i < words) {
+    paddr = tape_buffer_word(context, vbuffer + i * WORDSIZE);
+
+    word = load_physical_memory(paddr);
+
+    store_physical_memory(paddr, load_word(input_tape, (input_tape_head + i) * WORDSIZE, 1));
+
+    store_word(input_tape, (input_tape_head + i) * WORDSIZE, 1, word);
+
+    i = i + 1;
+  }
+
+  if (reverse)
+    set_pc(context, get_pc(context) - INSTRUCTIONSIZE);
+  else {
+    input_tape_head = input_tape_head + words;
+
+    set_pc(context, get_pc(context) + INSTRUCTIONSIZE);
+  }
+
+  if (debug_syscalls)
+    printf(" -> input tape head==%lu\n", input_tape_head);
+}
+
+void implement_reversible_write(uint64_t* context) {
+  // parameters
+  uint64_t fd;
+  uint64_t vbuffer;
+  uint64_t size;
+
+  uint64_t words;
+  uint64_t i;
+  uint64_t word;
+
+  if (debug_syscalls) {
+    printf("(write): ");
+    print_register_value(REG_A0);
+    printf(",");
+    print_register_hexadecimal(REG_A1);
+    printf(",");
+    print_register_value(REG_A2);
+    printf(" |- output tape head==%lu", output_tape_head);
+  }
+
+  fd      = *(get_regs(context) + REG_A0);
+  vbuffer = *(get_regs(context) + REG_A1);
+  size    = *(get_regs(context) + REG_A2);
+
+  // RISC-R write appends words from memory to output tape, see riscr.md
+
+  words = round_up(size, WORDSIZE) / WORDSIZE;
+
+  if (reverse) {
+    if (output_tape_head < words) {
+      printf("%s: output tape rewound before its beginning\n", selfie_name);
+
+      exit(EXITCODE_UNCAUGHTEXCEPTION);
+    }
+
+    output_tape_head = output_tape_head - words;
+
+    i = 0;
+
+    // erase words from output tape, they are still in memory
+    while (i < words) {
+      store_word(output_tape, (output_tape_head + i) * WORDSIZE, 1, 0);
+
+      i = i + 1;
+    }
+
+    set_pc(context, get_pc(context) - INSTRUCTIONSIZE);
+  } else {
+    if (output_tape_head + words > MAX_TAPE_SIZE / WORDSIZE) {
+      printf("%s: output tape is full\n", selfie_name);
+
+      exit(EXITCODE_OUTOFVIRTUALMEMORY);
+    }
+
+    if (size >= IO_buffer_size) {
+      // integer-align and accommodate potentially needed null terminator
+      IO_buffer_size = round_up(size + 1, sizeof(uint64_t));
+
+      // buffer must be fully mapped for subsequent read syscalls with greater sizes
+      IO_buffer = touch(smalloc(IO_buffer_size), IO_buffer_size);
+    }
+
+    // null-terminate buffer
+    *(IO_buffer + size / sizeof(uint64_t)) = 0;
+
+    i = 0;
+
+    while (i < words) {
+      word = load_physical_memory(tape_buffer_word(context, vbuffer + i * WORDSIZE));
+
+      store_word(output_tape, (output_tape_head + i) * WORDSIZE, 1, word);
+
+      store_word(IO_buffer, i * WORDSIZE, 1, word);
+
+      i = i + 1;
+    }
+
+    output_tape_head = output_tape_head + words;
+
+    // output tape is also written to file descriptor
+    write_to_printf(fd, IO_buffer, size);
+
+    set_pc(context, get_pc(context) + INSTRUCTIONSIZE);
+  }
+
+  if (debug_syscalls)
+    printf(" -> output tape head==%lu\n", output_tape_head);
 }
 
 void emit_read() {
@@ -8225,13 +8593,18 @@ void emit_switch() {
 
 void do_switch(uint64_t* to_context, uint64_t timeout) {
   // provide context from which we are switching in REG_A6 to avoid overwriting REG_A0
-  if (get_parent(current_context) != MY_CONTEXT)
+  if (RISCR) {
+    // RISC-R: context switching is unsupported, a6 is part of the reversible state
+  } else if (get_parent(current_context) != MY_CONTEXT) {
     *(registers + REG_A6) = (uint64_t) get_virtual_context(current_context);
-  else
+
+    write_register(REG_A6);
+  } else {
     // TODO: support global machine-context identifiers
     *(registers + REG_A6) = (uint64_t) current_context;
 
-  write_register(REG_A6);
+    write_register(REG_A6);
+  }
 
   if (debug_switch) {
     printf("%s: switching from context %s to context %s", selfie_name,
@@ -8882,6 +9255,12 @@ void do_lui() {
 
   uint64_t next_rd_value;
 
+  if (RISCR) {
+    do_riscr_lui();
+
+    return;
+  }
+
   if (rd != REG_ZR) {
     // semantics of lui
     next_rd_value = left_shift(imm, 12);
@@ -8935,6 +9314,12 @@ void do_addi() {
 
   uint64_t next_rd_value;
 
+  if (RISCR) {
+    do_riscr_addi();
+
+    return;
+  }
+
   // tolerate unwrapped values in register-to-register transfers
   read_register_check_wrap(rs1, imm);
 
@@ -8975,6 +9360,12 @@ void print_add_sub_mul_divu_remu_sltu_before() {
 void do_add() {
   uint64_t next_rd_value;
 
+  if (RISCR) {
+    do_riscr_add();
+
+    return;
+  }
+
   read_register(rs1);
   read_register(rs2);
 
@@ -8999,6 +9390,12 @@ void do_add() {
 void do_sub() {
   uint64_t next_rd_value;
 
+  if (RISCR) {
+    do_riscr_sub();
+
+    return;
+  }
+
   read_register(rs1);
   read_register(rs2);
 
@@ -9022,6 +9419,12 @@ void do_sub() {
 
 void do_mul() {
   uint64_t next_rd_value;
+
+  if (RISCR) {
+    do_riscr_mul();
+
+    return;
+  }
 
   read_register(rs1);
   read_register(rs2);
@@ -9050,6 +9453,12 @@ void do_divu() {
   // division unsigned
 
   uint64_t next_rd_value;
+
+  if (RISCR) {
+    do_riscr_divu();
+
+    return;
+  }
 
   if (*(registers + rs2) != 0) {
     read_register(rs1);
@@ -9080,6 +9489,12 @@ void do_remu() {
 
   uint64_t next_rd_value;
 
+  if (RISCR) {
+    do_riscr_remu();
+
+    return;
+  }
+
   if (*(registers + rs2) != 0) {
     read_register(rs1);
     read_register(rs2);
@@ -9108,6 +9523,12 @@ void do_sltu() {
   // set on less than unsigned
 
   uint64_t next_rd_value;
+
+  if (RISCR) {
+    do_riscr_sltu();
+
+    return;
+  }
 
   read_register(rs1);
   read_register(rs2);
@@ -9191,6 +9612,9 @@ uint64_t do_load() {
   uint64_t a;
 
   // load (double) word
+
+  if (RISCR)
+    return do_riscr_load();
 
   read_register(rs1);
 
@@ -9291,6 +9715,13 @@ uint64_t do_store() {
 
   // store (double) word
 
+  if (RISCR) {
+    // RISC-R has no store, use ld to exchange
+    throw_exception(EXCEPTION_IRREVERSIBLEINSTRUCTION, instruction_address());
+
+    return 0;
+  }
+
   read_register(rs1);
 
   vaddr = *(registers + rs1) + imm;
@@ -9372,6 +9803,12 @@ void record_beq() {
 void do_beq() {
   // branch on equal
 
+  if (RISCR) {
+    do_riscr_beq();
+
+    return;
+  }
+
   read_register(rs1);
   read_register(rs2);
 
@@ -9420,6 +9857,12 @@ void do_jal() {
   uint64_t a;
 
   // jump and link
+
+  if (RISCR) {
+    do_riscr_jal();
+
+    return;
+  }
 
   if (rd != REG_ZR) {
     // first link
@@ -9484,6 +9927,12 @@ void do_jalr() {
 
   // jump and link register
 
+  if (RISCR) {
+    do_riscr_jalr();
+
+    return;
+  }
+
   read_register(rs1);
 
   // prepare jump rs1-relative with LSB reset
@@ -9522,6 +9971,12 @@ void record_ecall() {
 
 void do_ecall() {
   uint64_t a7;
+
+  if (RISCR) {
+    do_riscr_ecall();
+
+    return;
+  }
 
   read_register(REG_A7);
 
@@ -9581,6 +10036,457 @@ void undo_ecall() {
 
   // save register a0 for redoing system call
   *(values + (tc % MAX_REPLAY_LENGTH)) = a0;
+}
+
+// -----------------------------------------------------------------
+// ----------------------- RISC-R INSTRUCTIONS ---------------------
+// -----------------------------------------------------------------
+
+uint64_t instruction_address() {
+  // address of the executing instruction
+  if (reverse)
+    // executing backward: the instruction before pc
+    return pc - INSTRUCTIONSIZE;
+  else
+    return pc;
+}
+
+void continue_at(uint64_t address) {
+  // forward execution continues after address,
+  // backward execution continues at address
+  if (reverse)
+    pc = address;
+  else
+    pc = address + INSTRUCTIONSIZE;
+}
+
+void check_distinct_rd(uint64_t rs) {
+  // rd must be distinct from source register rs unless rd is zero
+  if (rd != REG_ZR)
+    if (rd == rs)
+      throw_exception(EXCEPTION_IRREVERSIBLEINSTRUCTION, instruction_address());
+}
+
+uint64_t update_rd(uint64_t value) {
+  uint64_t next_rd_value;
+
+  // rd += value forward, rd -= value backward, returns 1 if effective nop
+
+  if (rd != REG_ZR) {
+    if (reverse)
+      next_rd_value = *(registers + rd) - value;
+    else
+      next_rd_value = *(registers + rd) + value;
+
+    if (*(registers + rd) != next_rd_value) {
+      *(registers + rd) = next_rd_value;
+
+      return 0;
+    }
+  }
+
+  return 1;
+}
+
+uint64_t flip_rd(uint64_t value) {
+  // rd ^= value, its own inverse, returns 1 if effective nop
+
+  if (rd != REG_ZR)
+    if (value != 0) {
+      *(registers + rd) = bitwise_xor(*(registers + rd), value);
+
+      return 0;
+    }
+
+  return 1;
+}
+
+uint64_t is_come_from(uint64_t target, uint64_t origin) {
+  uint64_t partner;
+
+  // is the instruction at target the come-from of the
+  // control-flow instruction at origin? see riscr.md
+
+  if (is_virtual_address_valid(target, INSTRUCTIONSIZE))
+    if (is_code_address(current_context, target)) {
+      partner = fetch_instruction(target);
+
+      if (is == BEQ) {
+        // beq pointing back whose condition holds
+        if (get_opcode(partner) == OP_BRANCH)
+          if (get_funct3(partner) == F3_BEQ)
+            if (get_immediate_b_format(partner) == origin - target)
+              return *(registers + get_rs1(partner)) == *(registers + get_rs2(partner));
+      } else if (is == JAL) {
+        if (rd == REG_ZR) {
+          // jal zero pointing back
+          if (get_opcode(partner) == OP_JAL)
+            if (get_rd(partner) == REG_ZR)
+              return get_immediate_j_format(partner) == origin - target;
+        } else {
+          // jalr rd,0(rd) uncomputing the link in rd
+          if (get_opcode(partner) == OP_JALR)
+            if (get_funct3(partner) == F3_JALR)
+              if (get_rd(partner) == rd)
+                if (get_rs1(partner) == rd)
+                  return get_immediate_i_format(partner) == 0;
+        }
+      } else if (is == JALR) {
+        // jal rd pointing back
+        if (get_opcode(partner) == OP_JAL)
+          if (get_rd(partner) == rd)
+            return get_immediate_j_format(partner) == origin - target;
+      }
+    }
+
+  return 0;
+}
+
+void do_riscr_lui() {
+  // semantics of RISC-R lui: rd += imm * 2^12, backward rd -= imm * 2^12
+
+  nopc_lui = nopc_lui + update_rd(left_shift(imm, 12));
+
+  write_register(rd);
+
+  continue_at(instruction_address());
+
+  ic_lui = ic_lui + 1;
+}
+
+void do_riscr_addi() {
+  // semantics of RISC-R addi: rd += rs1 + imm, backward rd -= rs1 + imm
+
+  // tolerate unwrapped values in register-to-register transfers
+  read_register_check_wrap(rs1, imm);
+
+  check_distinct_rd(rs1);
+
+  nopc_addi = nopc_addi + update_rd(*(registers + rs1) + imm);
+
+  write_register(rd);
+
+  continue_at(instruction_address());
+
+  ic_addi = ic_addi + 1;
+}
+
+void do_riscr_add() {
+  // semantics of RISC-R add: rd += rs1 + rs2, backward rd -= rs1 + rs2
+
+  read_register(rs1);
+  read_register(rs2);
+
+  check_distinct_rd(rs1);
+  check_distinct_rd(rs2);
+
+  nopc_add = nopc_add + update_rd(*(registers + rs1) + *(registers + rs2));
+
+  write_register(rd);
+
+  continue_at(instruction_address());
+
+  ic_add = ic_add + 1;
+}
+
+void do_riscr_sub() {
+  // semantics of RISC-R sub: rd += rs1 - rs2, backward rd -= rs1 - rs2
+
+  read_register(rs1);
+  read_register(rs2);
+
+  check_distinct_rd(rs1);
+  check_distinct_rd(rs2);
+
+  nopc_sub = nopc_sub + update_rd(*(registers + rs1) - *(registers + rs2));
+
+  write_register(rd);
+
+  continue_at(instruction_address());
+
+  ic_sub = ic_sub + 1;
+}
+
+void do_riscr_mul() {
+  // semantics of RISC-R mul: rd ^= rs1 * rs2, its own inverse
+
+  read_register(rs1);
+  read_register(rs2);
+
+  check_distinct_rd(rs1);
+  check_distinct_rd(rs2);
+
+  // TODO: support of 128-bit resolution
+
+  nopc_mul = nopc_mul + flip_rd(*(registers + rs1) * *(registers + rs2));
+
+  write_register(rd);
+
+  continue_at(instruction_address());
+
+  ic_mul = ic_mul + 1;
+}
+
+void do_riscr_divu() {
+  // semantics of RISC-R divu: rd ^= rs1 / rs2, its own inverse
+
+  if (*(registers + rs2) != 0) {
+    read_register(rs1);
+    read_register(rs2);
+
+    check_distinct_rd(rs1);
+    check_distinct_rd(rs2);
+
+    nopc_divu = nopc_divu + flip_rd(*(registers + rs1) / *(registers + rs2));
+
+    write_register(rd);
+
+    continue_at(instruction_address());
+  } else
+    throw_exception(EXCEPTION_DIVISIONBYZERO, instruction_address());
+
+  ic_divu = ic_divu + 1;
+}
+
+void do_riscr_remu() {
+  // semantics of RISC-R remu: rd ^= rs1 % rs2, its own inverse
+
+  if (*(registers + rs2) != 0) {
+    read_register(rs1);
+    read_register(rs2);
+
+    check_distinct_rd(rs1);
+    check_distinct_rd(rs2);
+
+    nopc_remu = nopc_remu + flip_rd(*(registers + rs1) % *(registers + rs2));
+
+    write_register(rd);
+
+    continue_at(instruction_address());
+  } else
+    throw_exception(EXCEPTION_DIVISIONBYZERO, instruction_address());
+
+  ic_remu = ic_remu + 1;
+}
+
+void do_riscr_sltu() {
+  // semantics of RISC-R sltu: rd ^= (rs1 < rs2), its own inverse
+
+  read_register(rs1);
+  read_register(rs2);
+
+  check_distinct_rd(rs1);
+  check_distinct_rd(rs2);
+
+  nopc_sltu = nopc_sltu + flip_rd(*(registers + rs1) < *(registers + rs2));
+
+  write_register(rd);
+
+  continue_at(instruction_address());
+
+  ic_sltu = ic_sltu + 1;
+}
+
+uint64_t do_riscr_load() {
+  uint64_t vaddr;
+  uint64_t next_rd_value;
+  uint64_t a;
+
+  // semantics of RISC-R ld: exchange rd with memory word, its own inverse
+
+  read_register(rs1);
+
+  check_distinct_rd(rs1);
+
+  vaddr = *(registers + rs1) + imm;
+
+  if (is_virtual_address_valid(vaddr, WORDSIZE)) {
+    if (is_valid_segment_write(vaddr)) {
+      if (is_virtual_address_mapped(pt, vaddr)) {
+        if (rd != REG_ZR) {
+          next_rd_value = load_cached_virtual_memory(pt, vaddr);
+
+          if (*(registers + rd) != next_rd_value) {
+            // tolerate storing unwrapped values
+            read_register_check_wrap(rd, 0);
+
+            store_cached_virtual_memory(pt, vaddr, *(registers + rd));
+
+            *(registers + rd) = next_rd_value;
+          } else
+            nopc_load = nopc_load + 1;
+        } else
+          nopc_load = nopc_load + 1;
+
+        // load values unwrapped
+        write_register_wrap(rd, 0);
+
+        // keep track of instruction address for profiling loads
+        a = (instruction_address() - code_start) / INSTRUCTIONSIZE;
+
+        continue_at(instruction_address());
+
+        // keep track of number of loads in total
+        ic_load = ic_load + 1;
+
+        // and individually
+        *(loads_per_instruction + a) = *(loads_per_instruction + a) + 1;
+      } else
+        throw_exception(EXCEPTION_PAGEFAULT, page_of_virtual_address(vaddr));
+    } else
+      throw_exception(EXCEPTION_SEGMENTATIONFAULT, vaddr);
+  } else
+    throw_exception(EXCEPTION_INVALIDADDRESS, vaddr);
+
+  return vaddr;
+}
+
+void do_riscr_beq() {
+  uint64_t origin;
+
+  // semantics of RISC-R beq: if rs1 == rs2 jump over the come-from at pc + imm,
+  // backward jump onto the come-from, see riscr.md
+
+  read_register(rs1);
+  read_register(rs2);
+
+  origin = instruction_address();
+
+  if (*(registers + rs1) == *(registers + rs2)) {
+    if (is_come_from(origin + imm, origin))
+      continue_at(origin + imm);
+    else
+      throw_exception(EXCEPTION_IRREVERSIBLEINSTRUCTION, origin);
+  } else {
+    continue_at(origin);
+
+    nopc_beq = nopc_beq + 1;
+  }
+
+  ic_beq = ic_beq + 1;
+}
+
+void do_riscr_jal() {
+  uint64_t origin;
+  uint64_t a;
+
+  // semantics of RISC-R jal: link into zeroed rd and jump over the come-from
+  // at pc + imm, backward jump onto the come-from, see riscr.md
+
+  origin = instruction_address();
+
+  if (rd != REG_ZR)
+    if (*(registers + rd) != 0)
+      // link register must be zero
+      throw_exception(EXCEPTION_IRREVERSIBLEINSTRUCTION, origin);
+
+  if (is_come_from(origin + imm, origin)) {
+    if (rd != REG_ZR) {
+      // link to the instruction after the jal, backward to the jal itself
+      // which is where the come-from jalr executed forward jumps over
+      if (reverse)
+        *(registers + rd) = origin;
+      else
+        *(registers + rd) = origin + INSTRUCTIONSIZE;
+
+      // come-from address for profiling procedure calls
+      a = (origin + imm - code_start) / INSTRUCTIONSIZE;
+
+      // keep track of number of procedure calls in total
+      calls = calls + 1;
+
+      // and individually
+      *(calls_per_procedure + a) = *(calls_per_procedure + a) + 1;
+    } else if (signed_less_than(imm, 0)) {
+      // come-from address for profiling loop iterations
+      a = (origin + imm - code_start) / INSTRUCTIONSIZE;
+
+      // keep track of number of loop iterations in total
+      iterations = iterations + 1;
+
+      // and individually
+      *(iterations_per_loop + a) = *(iterations_per_loop + a) + 1;
+    }
+
+    continue_at(origin + imm);
+  } else
+    throw_exception(EXCEPTION_IRREVERSIBLEINSTRUCTION, origin);
+
+  write_register(rd);
+
+  ic_jal = ic_jal + 1;
+}
+
+void do_riscr_jalr() {
+  uint64_t origin;
+  uint64_t target;
+
+  // semantics of RISC-R jalr: rd == rs1 holds the address of the jal that
+  // links here, backward of the instruction after that jal; jump over
+  // that jal, backward jump onto it, and uncompute rd, see riscr.md
+
+  read_register(rs1);
+
+  origin = instruction_address();
+
+  if (rd != rs1)
+    throw_exception(EXCEPTION_IRREVERSIBLEINSTRUCTION, origin);
+  else if (rd == REG_ZR)
+    throw_exception(EXCEPTION_IRREVERSIBLEINSTRUCTION, origin);
+  else if (imm != 0)
+    throw_exception(EXCEPTION_IRREVERSIBLEINSTRUCTION, origin);
+  else {
+    if (reverse)
+      target = *(registers + rs1) - INSTRUCTIONSIZE;
+    else
+      target = *(registers + rs1);
+
+    if (is_come_from(target, origin)) {
+      // uncompute link: rd -= rd
+      *(registers + rd) = 0;
+
+      continue_at(target);
+    } else
+      throw_exception(EXCEPTION_IRREVERSIBLEINSTRUCTION, origin);
+  }
+
+  write_register(rd);
+
+  ic_jalr = ic_jalr + 1;
+}
+
+void do_riscr_ecall() {
+  uint64_t a7;
+
+  // semantics of RISC-R ecall: exit, read, and write on tapes, see riscr.md
+
+  read_register(REG_A7);
+
+  ic_ecall = ic_ecall + 1;
+
+  a7 = *(registers + REG_A7);
+
+  if (a7 == SYSCALL_SWITCH) {
+    printf("%s: context switching is unsupported in RISC-R\n", selfie_name);
+
+    exit(EXITCODE_UNSUPPORTEDSYSCALL);
+  } else if (a7 == SYSCALL_EXIT) {
+    if (reverse)
+      // exit is never executed backward
+      throw_exception(EXCEPTION_IRREVERSIBLEINSTRUCTION, instruction_address());
+    else {
+      read_register(REG_A0);
+
+      throw_exception(EXCEPTION_SYSCALL, a7);
+    }
+  } else {
+    read_register(REG_A0);
+    read_register(REG_A1);
+    read_register(REG_A2);
+
+    // all other system calls are handled by exception, a0 remains unchanged
+    throw_exception(EXCEPTION_SYSCALL, a7);
+  }
 }
 
 uint64_t print_data_line_number() {
@@ -9711,10 +10617,11 @@ void selfie_disassemble(uint64_t verbose) {
   output_name = (char*) 0;
   output_fd   = STDOUT_FD;
 
-  printf("%s: %lu characters of assembly with %lu %lu-bit RISC-U instructions and %lu bytes of data written into %s\n", selfie_name,
+  printf("%s: %lu characters of assembly with %lu %lu-bit %s instructions and %lu bytes of data written into %s\n", selfie_name,
     number_of_written_characters,
     code_size / INSTRUCTIONSIZE,
     WORDSIZEINBITS,
+    get_isa_name(),
     data_size,
     assembly_name);
 }
@@ -9844,6 +10751,8 @@ void print_exception(uint64_t exception, uint64_t fault) {
     printf(" 0x%08lX", (uint64_t) fault);
   else if (exception == EXCEPTION_UNKNOWNINSTRUCTION)
     printf(" at address 0x%08lX", (uint64_t) fault);
+  else if (exception == EXCEPTION_IRREVERSIBLEINSTRUCTION)
+    printf(" at address 0x%08lX", (uint64_t) fault);
   else if (exception == EXCEPTION_UNINITIALIZEDREGISTER) {
     printf(" ");print_register_name(fault);
   }
@@ -9875,21 +10784,32 @@ void throw_exception(uint64_t exception, uint64_t fault) {
   }
 }
 
-void fetch() {
-  if (is_virtual_address_valid(pc, INSTRUCTIONSIZE)) {
-    if (is_code_address(current_context, pc)) {
-      // assert: is_virtual_address_mapped(pt, pc) == 1
+uint64_t fetch_instruction(uint64_t vaddr) {
+  // assert: is_virtual_address_valid(vaddr, INSTRUCTIONSIZE) == 1
+  // assert: is_code_address(current_context, vaddr) == 1
+  // assert: is_virtual_address_mapped(pt, vaddr) == 1
 
-      if (pc % WORDSIZE == 0)
-        ir = get_low_word(load_cached_instruction_word(pt, pc));
-      else
-        ir = get_high_word(load_cached_instruction_word(pt, pc - INSTRUCTIONSIZE));
+  if (vaddr % WORDSIZE == 0)
+    return get_low_word(load_cached_instruction_word(pt, vaddr));
+  else
+    return get_high_word(load_cached_instruction_word(pt, vaddr - INSTRUCTIONSIZE));
+}
+
+void fetch() {
+  uint64_t vaddr;
+
+  // RISC-R executing backward fetches the instruction before pc
+  vaddr = instruction_address();
+
+  if (is_virtual_address_valid(vaddr, INSTRUCTIONSIZE)) {
+    if (is_code_address(current_context, vaddr)) {
+      ir = fetch_instruction(vaddr);
 
       return;
     } else
-      throw_exception(EXCEPTION_SEGMENTATIONFAULT, pc);
+      throw_exception(EXCEPTION_SEGMENTATIONFAULT, vaddr);
   } else
-    throw_exception(EXCEPTION_INVALIDADDRESS, pc);
+    throw_exception(EXCEPTION_INVALIDADDRESS, vaddr);
 
   // reset instruction register
   ir = encode_nop();
@@ -11847,6 +12767,27 @@ uint64_t handle_system_call(uint64_t* context) {
 
   a7 = *(get_regs(context) + REG_A7);
 
+  if (RISCR) {
+    // RISC-R: read and write act on tapes, see riscr.md
+    if (a7 == SYSCALL_READ)
+      implement_reversible_read(context);
+    else if (a7 == SYSCALL_WRITE)
+      implement_reversible_write(context);
+    else if (a7 == SYSCALL_EXIT) {
+      implement_exit(context);
+
+      return EXIT;
+    } else {
+      printf("%s: system call %lu is not reversible\n", selfie_name, a7);
+
+      set_exit_code(context, EXITCODE_UNSUPPORTEDSYSCALL);
+
+      return EXIT;
+    }
+
+    return DONOTEXIT;
+  }
+
   if (a7 == SYSCALL_BRK) {
     if (is_gc_enabled(context))
       implement_gc_brk(context);
@@ -11975,6 +12916,45 @@ uint64_t mipster(uint64_t* to_context) {
   }
 }
 
+uint64_t mipster_backward(uint64_t* to_context, uint64_t steps) {
+  uint64_t timeout;
+  uint64_t executed;
+  uint64_t* from_context;
+
+  // RISC-R: execute steps instructions backward, see riscr.md
+
+  reverse = 1;
+
+  while (steps > 0) {
+    if (steps < TIMESLICE)
+      timeout = steps;
+    else
+      timeout = TIMESLICE;
+
+    executed = get_total_number_of_instructions();
+
+    from_context = mipster_switch(to_context, timeout);
+
+    executed = get_total_number_of_instructions() - executed;
+
+    if (executed < steps)
+      steps = steps - executed;
+    else
+      steps = 0;
+
+    if (handle_exception(from_context) == EXIT) {
+      reverse = 0;
+
+      return get_exit_code(from_context);
+    } else
+      to_context = from_context;
+  }
+
+  reverse = 0;
+
+  return get_exit_code(to_context);
+}
+
 uint64_t hypster(uint64_t* to_context) {
   uint64_t* from_context;
 
@@ -12096,6 +13076,10 @@ uint64_t mobster(uint64_t* to_context) {
 
 uint64_t selfie_run(uint64_t machine) {
   uint64_t exit_code;
+  uint64_t backward;
+  uint64_t steps;
+
+  backward = 0;
 
   if (code_size == 0) {
     printf("%s: nothing to run, debug, or host\n", selfie_name);
@@ -12113,10 +13097,26 @@ uint64_t selfie_run(uint64_t machine) {
 
     machine = MIPSTER;
   } else if (machine == RIPSTER) {
+    if (RISCR) {
+      printf("%s: replay is unsupported in RISC-R, use -rev\n", selfie_name);
+
+      return EXITCODE_BADARGUMENTS;
+    }
+
     init_replay_engine();
 
     debug  = 1;
     record = 1;
+
+    machine = MIPSTER;
+  } else if (machine == REVSTER) {
+    if (not(RISCR)) {
+      printf("%s: backward execution requires RISC-R, use -riscr\n", selfie_name);
+
+      return EXITCODE_BADARGUMENTS;
+    }
+
+    backward = 1;
 
     machine = MIPSTER;
   } else if (machine == CAPSTER) {
@@ -12133,6 +13133,9 @@ uint64_t selfie_run(uint64_t machine) {
 
   init_memory(atoi(peek_argument(0)));
 
+  if (RISCR)
+    reset_tapes();
+
   current_context = create_context(MY_CONTEXT, 0);
 
   // assert: number_of_remaining_arguments() > 0
@@ -12143,10 +13146,11 @@ uint64_t selfie_run(uint64_t machine) {
 
   run = 1;
 
-  printf("%s: %lu-bit %s executing %lu-bit RISC-U binary %s with %luMB physical memory", selfie_name,
+  printf("%s: %lu-bit %s executing %lu-bit %s binary %s with %luMB physical memory", selfie_name,
     SIZEOFUINT64INBITS,
     (char*) *(MACHINES + machine),
     WORDSIZEINBITS,
+    get_isa_name(),
     binary_name,
     PHYSICALMEMORYSIZE / MEGABYTE);
 
@@ -12163,6 +13167,9 @@ uint64_t selfie_run(uint64_t machine) {
     else
       printf(", and debugger");
   }
+
+  if (backward)
+    printf(", forward and then backward");
 
   printf("\n%s: >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n\n", selfie_name);
 
@@ -12182,12 +13189,33 @@ uint64_t selfie_run(uint64_t machine) {
 
   printf("\n%s: <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<\n", selfie_name);
 
-  printf("%s: %lu-bit %s terminating %lu-bit RISC-U binary %s with exit code %ld\n", selfie_name,
+  printf("%s: %lu-bit %s terminating %lu-bit %s binary %s with exit code %ld\n", selfie_name,
     SIZEOFUINT64INBITS,
     (char*) *(MACHINES + machine),
     WORDSIZEINBITS,
+    get_isa_name(),
     binary_name,
     sign_extend(exit_code, SYSCALL_BITWIDTH));
+
+  if (backward) {
+    if (get_exception(current_context) == EXCEPTION_NOEXCEPTION) {
+      // undo all executed instructions but the exit system call
+      steps = get_total_number_of_instructions() - 1;
+
+      printf("%s: %lu-bit %s executing %lu instructions backward\n", selfie_name,
+        SIZEOFUINT64INBITS,
+        (char*) *(MACHINES + machine),
+        steps);
+
+      mipster_backward(current_context, steps);
+
+      printf("%s: %lu-bit %s terminating backward execution at pc==0x%lX\n", selfie_name,
+        SIZEOFUINT64INBITS,
+        (char*) *(MACHINES + machine),
+        get_pc(current_context));
+    } else
+      printf("%s: not executing backward after uncaught exception\n", selfie_name);
+  }
 
   print_profile();
 
@@ -12302,6 +13330,8 @@ uint64_t selfie(uint64_t extras) {
           return selfie_run(DIPSTER);
         else if (string_compare(argument, "-r"))
           return selfie_run(RIPSTER);
+        else if (string_compare(argument, "-rev"))
+          return selfie_run(REVSTER);
         else if (string_compare(argument, "-y"))
           return selfie_run(HYPSTER);
         else if (string_compare(argument, "-min"))
@@ -12341,6 +13371,11 @@ void experimental_features() {
     init_target();
     reset_disassembler();
     reset_binary();
+
+    get_argument();
+  } else if (string_compare(argument, "-riscr")) {
+    // select RISC-R, the reversible variant of RISC-U
+    RISCR = 1;
 
     get_argument();
   } else if (string_compare(argument, "-gc")) {
@@ -12389,5 +13424,5 @@ int main(int argc, char** argv) {
 
   exit_code = selfie(0);
 
-  return exit_selfie(exit_code, " [ ( -m | -d | -r | -y ) 0-4096 ... ]");
+  return exit_selfie(exit_code, " [ ( -m | -d | -r | -rev | -y ) 0-4096 ... ]");
 }
