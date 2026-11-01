@@ -334,6 +334,15 @@ void emit_sd() {
   emit_exit_code(0);
 }
 
+void emit_brk_nonzero_a0() {
+  // brk must find a0 zero
+  emit_addi(REG_A0, REG_ZR, 1);
+  emit_lui(REG_A1, 19);
+  emit_addi(REG_A7, REG_ZR, SYSCALL_BRK);
+  emit_ecall();
+  emit_exit_code(0);
+}
+
 void emit_nonzero_link() {
   uint64_t call;
 
@@ -695,6 +704,10 @@ int main(int argc, char** argv) {
   begin_program();
   emit_nonzero_link();
   test_irreversibility("nonzero link");
+
+  begin_program();
+  emit_brk_nonzero_a0();
+  test_irreversibility("brk with nonzero a0");
 
   begin_program();
   test_reversibility("arithmetic", emit_arithmetic());

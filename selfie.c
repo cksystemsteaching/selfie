@@ -1682,7 +1682,7 @@ void     undo_ecall();
 uint64_t instruction_address();
 void     continue_at(uint64_t address);
 
-void     check_distinct_rd(uint64_t rs);
+uint64_t is_distinct_rd(uint64_t rs1, uint64_t rs2);
 uint64_t update_rd(uint64_t value);
 uint64_t flip_rd(uint64_t value);
 
@@ -10379,11 +10379,22 @@ void continue_at(uint64_t address) {
     pc = address + INSTRUCTIONSIZE;
 }
 
-void check_distinct_rd(uint64_t rs) {
-  // rd must be distinct from source register rs unless rd is zero
-  if (rd != REG_ZR)
-    if (rd == rs)
+uint64_t is_distinct_rd(uint64_t rs1, uint64_t rs2) {
+  // rd must be distinct from source registers rs1 and rs2 unless rd is zero,
+  // otherwise the instruction is irreversible and has no effect
+
+  if (rd != REG_ZR) {
+    if (rd == rs1)
       throw_exception(EXCEPTION_IRREVERSIBLEINSTRUCTION, instruction_address());
+    else if (rd == rs2)
+      throw_exception(EXCEPTION_IRREVERSIBLEINSTRUCTION, instruction_address());
+    else
+      return 1;
+
+    return 0;
+  }
+
+  return 1;
 }
 
 uint64_t update_rd(uint64_t value) {
@@ -10479,13 +10490,13 @@ void do_riscr_addi() {
   // tolerate unwrapped values in register-to-register transfers
   read_register_check_wrap(rs1, imm);
 
-  check_distinct_rd(rs1);
+  if (is_distinct_rd(rs1, rs1)) {
+    nopc_addi = nopc_addi + update_rd(*(registers + rs1) + imm);
 
-  nopc_addi = nopc_addi + update_rd(*(registers + rs1) + imm);
+    write_register(rd);
 
-  write_register(rd);
-
-  continue_at(instruction_address());
+    continue_at(instruction_address());
+  }
 
   ic_addi = ic_addi + 1;
 }
@@ -10496,14 +10507,13 @@ void do_riscr_add() {
   read_register(rs1);
   read_register(rs2);
 
-  check_distinct_rd(rs1);
-  check_distinct_rd(rs2);
+  if (is_distinct_rd(rs1, rs2)) {
+    nopc_add = nopc_add + update_rd(*(registers + rs1) + *(registers + rs2));
 
-  nopc_add = nopc_add + update_rd(*(registers + rs1) + *(registers + rs2));
+    write_register(rd);
 
-  write_register(rd);
-
-  continue_at(instruction_address());
+    continue_at(instruction_address());
+  }
 
   ic_add = ic_add + 1;
 }
@@ -10514,14 +10524,13 @@ void do_riscr_sub() {
   read_register(rs1);
   read_register(rs2);
 
-  check_distinct_rd(rs1);
-  check_distinct_rd(rs2);
+  if (is_distinct_rd(rs1, rs2)) {
+    nopc_sub = nopc_sub + update_rd(*(registers + rs1) - *(registers + rs2));
 
-  nopc_sub = nopc_sub + update_rd(*(registers + rs1) - *(registers + rs2));
+    write_register(rd);
 
-  write_register(rd);
-
-  continue_at(instruction_address());
+    continue_at(instruction_address());
+  }
 
   ic_sub = ic_sub + 1;
 }
@@ -10532,16 +10541,15 @@ void do_riscr_mul() {
   read_register(rs1);
   read_register(rs2);
 
-  check_distinct_rd(rs1);
-  check_distinct_rd(rs2);
-
+  if (is_distinct_rd(rs1, rs2)) {
   // TODO: support of 128-bit resolution
 
-  nopc_mul = nopc_mul + flip_rd(*(registers + rs1) * *(registers + rs2));
+    nopc_mul = nopc_mul + flip_rd(*(registers + rs1) * *(registers + rs2));
 
-  write_register(rd);
+    write_register(rd);
 
-  continue_at(instruction_address());
+    continue_at(instruction_address());
+  }
 
   ic_mul = ic_mul + 1;
 }
@@ -10553,14 +10561,13 @@ void do_riscr_divu() {
     read_register(rs1);
     read_register(rs2);
 
-    check_distinct_rd(rs1);
-    check_distinct_rd(rs2);
+    if (is_distinct_rd(rs1, rs2)) {
+      nopc_divu = nopc_divu + flip_rd(*(registers + rs1) / *(registers + rs2));
 
-    nopc_divu = nopc_divu + flip_rd(*(registers + rs1) / *(registers + rs2));
+      write_register(rd);
 
-    write_register(rd);
-
-    continue_at(instruction_address());
+      continue_at(instruction_address());
+    }
   } else
     throw_exception(EXCEPTION_DIVISIONBYZERO, instruction_address());
 
@@ -10574,14 +10581,13 @@ void do_riscr_remu() {
     read_register(rs1);
     read_register(rs2);
 
-    check_distinct_rd(rs1);
-    check_distinct_rd(rs2);
+    if (is_distinct_rd(rs1, rs2)) {
+      nopc_remu = nopc_remu + flip_rd(*(registers + rs1) % *(registers + rs2));
 
-    nopc_remu = nopc_remu + flip_rd(*(registers + rs1) % *(registers + rs2));
+      write_register(rd);
 
-    write_register(rd);
-
-    continue_at(instruction_address());
+      continue_at(instruction_address());
+    }
   } else
     throw_exception(EXCEPTION_DIVISIONBYZERO, instruction_address());
 
@@ -10594,14 +10600,13 @@ void do_riscr_sltu() {
   read_register(rs1);
   read_register(rs2);
 
-  check_distinct_rd(rs1);
-  check_distinct_rd(rs2);
+  if (is_distinct_rd(rs1, rs2)) {
+    nopc_sltu = nopc_sltu + flip_rd(*(registers + rs1) < *(registers + rs2));
 
-  nopc_sltu = nopc_sltu + flip_rd(*(registers + rs1) < *(registers + rs2));
+    write_register(rd);
 
-  write_register(rd);
-
-  continue_at(instruction_address());
+    continue_at(instruction_address());
+  }
 
   ic_sltu = ic_sltu + 1;
 }
@@ -10615,9 +10620,10 @@ uint64_t do_riscr_load() {
 
   read_register(rs1);
 
-  check_distinct_rd(rs1);
-
   vaddr = *(registers + rs1) + imm;
+
+  if (not(is_distinct_rd(rs1, rs1)))
+    return vaddr;
 
   if (is_virtual_address_valid(vaddr, WORDSIZE)) {
     if (is_valid_segment_write(vaddr)) {
@@ -10695,9 +10701,12 @@ void do_riscr_jal() {
   origin = instruction_address();
 
   if (rd != REG_ZR)
-    if (*(registers + rd) != 0)
+    if (*(registers + rd) != 0) {
       // link register must be zero
       throw_exception(EXCEPTION_IRREVERSIBLEINSTRUCTION, origin);
+
+      return;
+    }
 
   if (is_come_from(origin + imm, origin)) {
     if (rd != REG_ZR) {
@@ -10802,7 +10811,15 @@ void do_riscr_ecall() {
     read_register(REG_A0);
     read_register(REG_A1);
 
-    if (a7 != SYSCALL_BRK) {
+    if (a7 == SYSCALL_BRK) {
+      if (not(reverse))
+        if (*(registers + REG_A0) != 0) {
+          // brk must find a0 zero to be reversible
+          throw_exception(EXCEPTION_IRREVERSIBLEINSTRUCTION, instruction_address());
+
+          return;
+        }
+    } else {
       read_register(REG_A2);
       read_register(REG_A3);
     }

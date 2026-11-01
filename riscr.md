@@ -14,7 +14,7 @@ Executing backward, mipster fetches the instruction at `pc - 4`, applies its inv
 
 ## Instructions
 
-The parameters `rd`, `rs1`, and `rs2` may denote any of the 32 general-purpose registers and `imm` a signed immediate as in RISC-U. In every instruction that updates `rd`, `rd` must be distinct from `rs1` and `rs2` unless `rd` is `zero`; otherwise the instruction throws an irreversible instruction exception. Each instruction below lists its forward semantics and, after the slash, how the inverse differs when executing backward. All pc updates are `pc = pc + 4` forward and `pc = pc - 4` backward unless stated otherwise.
+The parameters `rd`, `rs1`, and `rs2` may denote any of the 32 general-purpose registers and `imm` a signed immediate as in RISC-U. In every instruction that updates `rd`, `rd` must be distinct from `rs1` and `rs2` unless `rd` is `zero`; otherwise the instruction throws an irreversible instruction exception. An instruction that throws has no effect on the state. Each instruction below lists its forward semantics and, after the slash, how the inverse differs when executing backward. All pc updates are `pc = pc + 4` forward and `pc = pc - 4` backward unless stated otherwise.
 
 #### Initialization
 
@@ -41,6 +41,8 @@ The parameters `rd`, `rs1`, and `rs2` may denote any of the 32 general-purpose r
 `divu rd,rs1,rs2`: `rd = rd ^ (rs1 / rs2)` / the same, where the values of `rs1` and `rs2` are interpreted as unsigned integers
 
 `remu rd,rs1,rs2`: `rd = rd ^ (rs1 % rs2)` / the same, where the values of `rs1` and `rs2` are interpreted as unsigned integers
+
+`divu` and `remu` throw a division by zero exception if `rs2` is 0, as in RISC-U.
 
 `add` and `sub` accumulate: `x += y` is `add x,y,zero` and `x -= y` is `sub x,zero,y`, and each is the other's inverse. Multiplication, division, and remainder have no inverse as instructions, so they are defined as exclusive or (`^`) into `rd`: executing the same instruction twice restores `rd`. Into a zeroed `rd` all five simply deposit their result.
 
@@ -89,9 +91,9 @@ System calls never overwrite a register. A program that wants the result alone k
 
 `write(fd, buffer, size)`: appends the words from memory to the tape of `fd`, moves the head forward, and also writes the bytes to the file; the result is `size`. Backward, it moves the head back and erases the words, which are still in memory. The file itself is not rewound, so running forward again after backward writes the output twice.
 
-`openat(filename, flags, mode)`: allocates the next file descriptor, 3 for the first file, and its tape, and opens the file on the host; files opened with `O_RDONLY` get an input tape, all others an output tape. The result is the file descriptor, or -1 if the host cannot open the file, in which case the descriptor is still consumed. Backward, it releases the descriptor again; the tape and the host file stay open, so a forward re-run finds the same tape. Unlike the RISC-U `openat`, there is no directory argument; files are opened relative to the working directory.
+`openat(filename, flags, mode)`: allocates the next file descriptor, 3 for the first file, and its tape, and opens the file on the host; files opened read-only (flags `O_RDONLY` or 0) get an input tape, all others an output tape. The result is the file descriptor, or -1 if the host cannot open the file, in which case the descriptor is still consumed. Backward, it releases the descriptor again; the tape and the host file stay open, so a forward re-run finds the same tape. Unlike the RISC-U `openat`, there is no directory argument; files are opened relative to the working directory.
 
-`brk(break)`: if `break` is above the program break and valid, sets the program break to `break` and adds the previous program break into `a0`; otherwise `a0` is unchanged. Backward, a nonzero `a0` holds the previous program break, which is restored and subtracted from `a0`. Since the previous break is never zero, a nonzero result means success, and it is exactly the start of the newly allocated memory, which is what `malloc` returns. There is no way to shrink the heap or query the break; a program knows its initial break from its binary.
+`brk(break)`: requires `a0 == 0`, otherwise throws an irreversible instruction exception. If `break` is above the program break and valid, sets the program break to `break` and adds the previous program break into `a0`; otherwise `a0` is unchanged. Backward, a nonzero `a0` holds the previous program break, which is restored and subtracted from `a0`. Since the previous break is never zero, a nonzero result means success, and it is exactly the start of the newly allocated memory, which is what `malloc` returns. There is no way to shrink the heap or query the break; a program knows its initial break from its binary.
 
 ## Rules in One Place
 
@@ -99,9 +101,9 @@ System calls never overwrite a register. A program that wants the result alone k
 2. There is no `sd`; `ld` exchanges.
 3. Every taken `beq`, `jal`, and `jalr` lands on a matching come-from and jumps over it.
 4. `jal rd` with `rd` not `zero` requires `rd == 0`; `jalr` requires `rd == rs1 != zero` and immediate 0.
-5. `exit`, `read`, `write`, `openat`, and `brk` are the only system calls; they take arguments in `a1-a3` and add their result into `a0`.
+5. `exit`, `read`, `write`, `openat`, and `brk` are the only system calls; they take arguments in `a1-a3` and add their result into `a0`; `brk` requires `a0 == 0`.
 
-Violating rules 1 to 4 throws an irreversible instruction exception at the address of the instruction. Rule 5 is enforced by the system call handler.
+Violating rules 1 to 4, or calling `brk` with nonzero `a0`, throws an irreversible instruction exception at the address of the instruction. The rest of rule 5 is enforced by the system call handler.
 
 ## With Dedicated Opcodes
 
@@ -117,4 +119,4 @@ RISC-R reuses RISC-U's encodings so that selfie, rotor, and cellfie share one en
 | `jal rd` linking into a zeroed `rd`, `jalr rd,0(rd)` as call come-from and return | `call rd,imm` and `ret rd` that exchange `pc + 4` with `rd` as in Pendulum's `swapbr`, with `cfcall rd` at the callee entry and `cfret rd,imm` after the call site | `rd` need not be zero before a call, so a caller keeps its own return address in `ra` and needs no stack slot for it in leaf procedures; the come-from of a return no longer needs the callee's return address at the call site |
 | `ecall` adding its result into `a0` | `ecall` with the result exchanged into `a0`, and `brk` as an exchange between `a1` and the program break | `a0` need not be cleared between calls; `brk` could shrink the heap |
 
-The alternative to come-froms altogether is Pendulum's branch register: `pc` advances by a register `br` instead of 4, and a taken branch exchanges `br` with its offset, so the paired instruction at the target exchanges it back. That adds a register to the machine state but removes the rule that a come-from must not be fallen into with a true condition. Either design keeps the step function a bijection; RISC-R keeps the state of RISC-U and puts the information into the code instead.
+A branch register does not remove come-froms either. At a join, one bit says which of the two paths arrived, and some later instruction must erase that bit knowing its value; clearing a register unconditionally would merge the paths. Pendulum's branch register, which `pc` advances by and which a taken branch exchanges with its offset, still needs the paired instruction at the target to exchange it back. RISC-R could hold such a register in the `zero` register: with the next `pc` defined as `pc + 4 + x0`, a taken branch adds `imm - 4` to `x0`, lands on the come-from, and the come-from subtracts it again, so `x0` is zero in all straight-line code and `zero` keeps meaning 0. Backward execution reads the instruction at `pc - 4 - x0`. That makes branch and come-from the same instruction with negated immediate in both directions and drops the rule that a transfer lands past its come-from, which may suit cellfie, where the token could carry the pending jump. It does not let an unconditional come-from be fallen into, does not save the callee's return address at the call site, and adds a word of state, so RISC-R keeps the state of RISC-U and puts the information into the code instead.
