@@ -1289,12 +1289,26 @@ void     implement_read(uint64_t* context);
 void emit_write();
 void implement_write(uint64_t* context);
 
-void reset_tapes();
+uint64_t* allocate_tape();
+
+uint64_t* new_tape(uint64_t fd, uint64_t input);
+void      reset_tape(uint64_t* tape);
+void      reset_tapes();
+
+uint64_t* get_tape(uint64_t fd);
 
 uint64_t* tape_buffer_word(uint64_t* context, uint64_t vaddr);
 
+void     fill_input_tape(uint64_t* tape, uint64_t head, uint64_t size);
+uint64_t bytes_on_input_tape(uint64_t* tape, uint64_t head, uint64_t size);
+
+void add_syscall_result(uint64_t* context, uint64_t result);
+
+void implement_reversible_exit(uint64_t* context);
 void implement_reversible_read(uint64_t* context);
 void implement_reversible_write(uint64_t* context);
+void implement_reversible_openat(uint64_t* context);
+void implement_reversible_brk(uint64_t* context);
 
 void     emit_open();
 uint64_t down_load_string(uint64_t* context, uint64_t vstring, char* s);
@@ -1330,16 +1344,37 @@ uint64_t DIRFD_AT_FDCWD = -100;
 uint64_t* IO_buffer      = (uint64_t*) 0;
 uint64_t  IO_buffer_size = 0;
 
-// RISC-R tapes: input and output are part of the machine state, see riscr.md
+// RISC-R tapes: files are part of the machine state, see riscr.md
 
-uint64_t MAX_TAPE_SIZE = 65536; // 64KB per tape
+// tape
+// +---+--------+
+// | 0 | memory | pointer to tape memory of MAX_TAPE_SIZE bytes
+// | 1 | length | number of words transferred between file and tape
+// | 2 | head   | next word on tape to exchange with or append from memory
+// | 3 | end    | size of file in bytes once its end was read, else UINT64_MAX
+// | 4 | fd     | file descriptor on host, -1 if the file is not open
+// | 5 | input  | 1 if tape is filled from file, 0 if tape is written to file
+// +---+--------+
 
-uint64_t* input_tape        = (uint64_t*) 0; // words exchanged with memory by read
-uint64_t  input_tape_length = 0;             // number of words read from file descriptors onto input tape
-uint64_t  input_tape_head   = 0;             // next word on input tape to exchange
+uint64_t* get_tape_memory(uint64_t* tape) { return (uint64_t*) *tape; }
+uint64_t  get_tape_length(uint64_t* tape) { return             *(tape + 1); }
+uint64_t  get_tape_head(uint64_t* tape)   { return             *(tape + 2); }
+uint64_t  get_tape_end(uint64_t* tape)    { return             *(tape + 3); }
+uint64_t  get_tape_fd(uint64_t* tape)     { return             *(tape + 4); }
+uint64_t  is_input_tape(uint64_t* tape)   { return             *(tape + 5); }
 
-uint64_t* output_tape      = (uint64_t*) 0; // words appended by write
-uint64_t  output_tape_head = 0;             // next word on output tape to append
+void set_tape_memory(uint64_t* tape, uint64_t* memory) { *tape       = (uint64_t) memory; }
+void set_tape_length(uint64_t* tape, uint64_t length)  { *(tape + 1) = length; }
+void set_tape_head(uint64_t* tape, uint64_t head)      { *(tape + 2) = head; }
+void set_tape_end(uint64_t* tape, uint64_t end)        { *(tape + 3) = end; }
+void set_tape_fd(uint64_t* tape, uint64_t fd)          { *(tape + 4) = fd; }
+void set_input_tape(uint64_t* tape, uint64_t input)    { *(tape + 5) = input; }
+
+uint64_t MAX_TAPE_SIZE       = 1048576; // 1MB per tape
+uint64_t MAX_NUMBER_OF_TAPES = 64;      // including standard input, output, and error
+
+uint64_t* tapes           = (uint64_t*) 0; // tapes indexed by RISC-R file descriptors
+uint64_t  number_of_tapes = 0;             // next RISC-R file descriptor, 3 after reset
 
 // -----------------------------------------------------------------
 // ------------------------ HYPSTER SYSCALL ------------------------
@@ -7902,19 +7937,75 @@ void implement_exit(uint64_t* context) {
   set_exit_code(context, sign_shrink(signed_int_exit_code, SYSCALL_BITWIDTH));
 }
 
+uint64_t* allocate_tape() {
+  return smalloc(1 * sizeof(uint64_t*) + 5 * sizeof(uint64_t));
+}
+
+uint64_t* new_tape(uint64_t fd, uint64_t input) {
+  uint64_t* tape;
+
+  tape = allocate_tape();
+
+  set_tape_memory(tape, zmalloc(MAX_TAPE_SIZE));
+
+  reset_tape(tape);
+
+  set_tape_fd(tape, fd);
+  set_input_tape(tape, input);
+
+  return tape;
+}
+
+void reset_tape(uint64_t* tape) {
+  zero_memory(get_tape_memory(tape), MAX_TAPE_SIZE);
+
+  set_tape_length(tape, 0);
+  set_tape_head(tape, 0);
+  set_tape_end(tape, UINT64_MAX);
+}
+
 void reset_tapes() {
-  if (input_tape == (uint64_t*) 0) {
-    input_tape  = zmalloc(MAX_TAPE_SIZE);
-    output_tape = zmalloc(MAX_TAPE_SIZE);
-  } else {
-    zero_memory(input_tape, MAX_TAPE_SIZE);
-    zero_memory(output_tape, MAX_TAPE_SIZE);
+  uint64_t fd;
+  uint64_t* tape;
+
+  if (tapes == (uint64_t*) 0)
+    tapes = zmalloc(MAX_NUMBER_OF_TAPES * sizeof(uint64_t*));
+
+  fd = 0;
+
+  while (fd < MAX_NUMBER_OF_TAPES) {
+    tape = (uint64_t*) *(tapes + fd);
+
+    if (tape != (uint64_t*) 0) {
+      reset_tape(tape);
+
+      if (fd >= 3)
+        // files are reopened when opened again
+        set_tape_fd(tape, -1);
+    } else if (fd < 3)
+      // standard input, output, and error of mipster
+      *(tapes + fd) = (uint64_t) new_tape(fd, fd == 0);
+
+    fd = fd + 1;
   }
 
-  input_tape_length = 0;
-  input_tape_head   = 0;
+  number_of_tapes = 3;
+}
 
-  output_tape_head = 0;
+uint64_t* get_tape(uint64_t fd) {
+  uint64_t* tape;
+
+  // tape of open file with RISC-R file descriptor fd, or 0
+
+  if (fd < number_of_tapes) {
+    tape = (uint64_t*) *(tapes + fd);
+
+    if (tape != (uint64_t*) 0)
+      if (not(signed_less_than(get_tape_fd(tape), 0)))
+        return tape;
+  }
+
+  return (uint64_t*) 0;
 }
 
 uint64_t* tape_buffer_word(uint64_t* context, uint64_t vaddr) {
@@ -7942,87 +8033,174 @@ uint64_t* tape_buffer_word(uint64_t* context, uint64_t vaddr) {
   return (uint64_t*) 0;
 }
 
+void fill_input_tape(uint64_t* tape, uint64_t head, uint64_t size) {
+  uint64_t words;
+  uint64_t length;
+  uint64_t bytes;
+  uint64_t read_bytes;
+
+  // read bytes from file onto zeroed input tape up to head + size bytes
+
+  words  = round_up(size, WORDSIZE) / WORDSIZE;
+  length = get_tape_length(tape);
+
+  if (head + words > length) {
+    if (get_tape_end(tape) == UINT64_MAX)
+      if (length * WORDSIZE < head * WORDSIZE + size) {
+        bytes = head * WORDSIZE + size - length * WORDSIZE;
+
+        read_bytes = sign_extend(
+          read(get_tape_fd(tape), (uint64_t*) ((uint64_t) get_tape_memory(tape) + length * WORDSIZE), bytes),
+          SYSCALL_BITWIDTH);
+
+        if (signed_less_than(read_bytes, bytes)) {
+          // end of file
+          if (signed_less_than(read_bytes, 0))
+            read_bytes = 0;
+
+          set_tape_end(tape, length * WORDSIZE + read_bytes);
+        }
+      }
+
+    set_tape_length(tape, head + words);
+  }
+}
+
+uint64_t bytes_on_input_tape(uint64_t* tape, uint64_t head, uint64_t size) {
+  uint64_t end;
+
+  // number of bytes a read of size bytes at head returns, recomputable backward
+
+  end = get_tape_end(tape);
+
+  if (end == UINT64_MAX)
+    return size;
+  else if (head * WORDSIZE >= end)
+    return 0;
+  else if (end - head * WORDSIZE < size)
+    return end - head * WORDSIZE;
+  else
+    return size;
+}
+
+void add_syscall_result(uint64_t* context, uint64_t result) {
+  // RISC-R system calls add their result into a0 forward and
+  // subtract it backward, see riscr.md
+
+  if (reverse) {
+    *(get_regs(context) + REG_A0) = *(get_regs(context) + REG_A0) - result;
+
+    set_pc(context, get_pc(context) - INSTRUCTIONSIZE);
+  } else {
+    *(get_regs(context) + REG_A0) = *(get_regs(context) + REG_A0) + result;
+
+    set_pc(context, get_pc(context) + INSTRUCTIONSIZE);
+  }
+
+  if (debug_syscalls) {
+    printf(" -> ");
+    print_register_value(REG_A0);
+    println();
+  }
+}
+
+void implement_reversible_exit(uint64_t* context) {
+  // parameter
+  uint64_t signed_int_exit_code;
+
+  if (debug_syscalls) {
+    printf("(exit): ");
+    print_register_hexadecimal(REG_A1);
+    printf(" |- ->\n");
+  }
+
+  signed_int_exit_code = *(get_regs(context) + REG_A1);
+
+  set_exit_code(context, sign_shrink(signed_int_exit_code, SYSCALL_BITWIDTH));
+}
+
 void implement_reversible_read(uint64_t* context) {
   // parameters
   uint64_t fd;
   uint64_t vbuffer;
   uint64_t size;
 
+  uint64_t* tape;
   uint64_t words;
-  uint64_t bytes;
+  uint64_t head;
+  uint64_t result;
   uint64_t i;
   uint64_t* paddr;
   uint64_t word;
 
   if (debug_syscalls) {
     printf("(read): ");
+    print_register_value(REG_A1);
+    printf(",");
+    print_register_hexadecimal(REG_A2);
+    printf(",");
+    print_register_value(REG_A3);
+    printf(" |- ");
     print_register_value(REG_A0);
-    printf(",");
-    print_register_hexadecimal(REG_A1);
-    printf(",");
-    print_register_value(REG_A2);
-    printf(" |- input tape head==%lu", input_tape_head);
   }
 
-  fd      = *(get_regs(context) + REG_A0);
-  vbuffer = *(get_regs(context) + REG_A1);
-  size    = *(get_regs(context) + REG_A2);
+  fd      = *(get_regs(context) + REG_A1);
+  vbuffer = *(get_regs(context) + REG_A2);
+  size    = *(get_regs(context) + REG_A3);
 
   // RISC-R read exchanges words between memory and input tape, see riscr.md
 
-  words = round_up(size, WORDSIZE) / WORDSIZE;
+  tape = get_tape(fd);
 
-  if (reverse) {
-    if (input_tape_head < words) {
-      printf("%s: input tape rewound before its beginning\n", selfie_name);
+  if (tape == (uint64_t*) 0)
+    result = sign_shrink(-1, SYSCALL_BITWIDTH);
+  else if (not(is_input_tape(tape)))
+    result = sign_shrink(-1, SYSCALL_BITWIDTH);
+  else {
+    words = round_up(size, WORDSIZE) / WORDSIZE;
+    head  = get_tape_head(tape);
 
-      exit(EXITCODE_UNCAUGHTEXCEPTION);
-    }
+    if (reverse) {
+      if (head < words) {
+        printf("%s: input tape rewound before its beginning\n", selfie_name);
 
-    input_tape_head = input_tape_head - words;
-  } else {
-    if (input_tape_head + words > MAX_TAPE_SIZE / WORDSIZE) {
-      printf("%s: input tape is full\n", selfie_name);
-
-      exit(EXITCODE_OUTOFVIRTUALMEMORY);
-    }
-
-    if (input_tape_head + words > input_tape_length) {
-      // read missing bytes from file descriptor onto zeroed input tape
-      if (input_tape_length * WORDSIZE < input_tape_head * WORDSIZE + size) {
-        bytes = input_tape_head * WORDSIZE + size - input_tape_length * WORDSIZE;
-
-        read(fd, (uint64_t*) ((uint64_t) input_tape + input_tape_length * WORDSIZE), bytes);
+        exit(EXITCODE_UNCAUGHTEXCEPTION);
       }
 
-      input_tape_length = input_tape_head + words;
+      head = head - words;
+    } else {
+      if (head + words > MAX_TAPE_SIZE / WORDSIZE) {
+        printf("%s: input tape is full\n", selfie_name);
+
+        exit(EXITCODE_OUTOFVIRTUALMEMORY);
+      }
+
+      fill_input_tape(tape, head, size);
     }
+
+    result = bytes_on_input_tape(tape, head, size);
+
+    i = 0;
+
+    while (i < words) {
+      paddr = tape_buffer_word(context, vbuffer + i * WORDSIZE);
+
+      word = load_physical_memory(paddr);
+
+      store_physical_memory(paddr, load_word(get_tape_memory(tape), (head + i) * WORDSIZE, 1));
+
+      store_word(get_tape_memory(tape), (head + i) * WORDSIZE, 1, word);
+
+      i = i + 1;
+    }
+
+    if (reverse)
+      set_tape_head(tape, head);
+    else
+      set_tape_head(tape, head + words);
   }
 
-  i = 0;
-
-  while (i < words) {
-    paddr = tape_buffer_word(context, vbuffer + i * WORDSIZE);
-
-    word = load_physical_memory(paddr);
-
-    store_physical_memory(paddr, load_word(input_tape, (input_tape_head + i) * WORDSIZE, 1));
-
-    store_word(input_tape, (input_tape_head + i) * WORDSIZE, 1, word);
-
-    i = i + 1;
-  }
-
-  if (reverse)
-    set_pc(context, get_pc(context) - INSTRUCTIONSIZE);
-  else {
-    input_tape_head = input_tape_head + words;
-
-    set_pc(context, get_pc(context) + INSTRUCTIONSIZE);
-  }
-
-  if (debug_syscalls)
-    printf(" -> input tape head==%lu\n", input_tape_head);
+  add_syscall_result(context, result);
 }
 
 void implement_reversible_write(uint64_t* context) {
@@ -8031,87 +8209,228 @@ void implement_reversible_write(uint64_t* context) {
   uint64_t vbuffer;
   uint64_t size;
 
+  uint64_t* tape;
   uint64_t words;
+  uint64_t head;
+  uint64_t result;
   uint64_t i;
   uint64_t word;
 
   if (debug_syscalls) {
     printf("(write): ");
+    print_register_value(REG_A1);
+    printf(",");
+    print_register_hexadecimal(REG_A2);
+    printf(",");
+    print_register_value(REG_A3);
+    printf(" |- ");
     print_register_value(REG_A0);
-    printf(",");
-    print_register_hexadecimal(REG_A1);
-    printf(",");
-    print_register_value(REG_A2);
-    printf(" |- output tape head==%lu", output_tape_head);
   }
 
-  fd      = *(get_regs(context) + REG_A0);
-  vbuffer = *(get_regs(context) + REG_A1);
-  size    = *(get_regs(context) + REG_A2);
+  fd      = *(get_regs(context) + REG_A1);
+  vbuffer = *(get_regs(context) + REG_A2);
+  size    = *(get_regs(context) + REG_A3);
 
   // RISC-R write appends words from memory to output tape, see riscr.md
 
-  words = round_up(size, WORDSIZE) / WORDSIZE;
+  tape = get_tape(fd);
 
-  if (reverse) {
-    if (output_tape_head < words) {
-      printf("%s: output tape rewound before its beginning\n", selfie_name);
+  if (tape == (uint64_t*) 0)
+    result = sign_shrink(-1, SYSCALL_BITWIDTH);
+  else if (is_input_tape(tape))
+    result = sign_shrink(-1, SYSCALL_BITWIDTH);
+  else {
+    words = round_up(size, WORDSIZE) / WORDSIZE;
+    head  = get_tape_head(tape);
 
-      exit(EXITCODE_UNCAUGHTEXCEPTION);
+    if (reverse) {
+      if (head < words) {
+        printf("%s: output tape rewound before its beginning\n", selfie_name);
+
+        exit(EXITCODE_UNCAUGHTEXCEPTION);
+      }
+
+      head = head - words;
+
+      i = 0;
+
+      // erase words from output tape, they are still in memory
+      while (i < words) {
+        store_word(get_tape_memory(tape), (head + i) * WORDSIZE, 1, 0);
+
+        i = i + 1;
+      }
+
+      set_tape_head(tape, head);
+    } else {
+      if (head + words > MAX_TAPE_SIZE / WORDSIZE) {
+        printf("%s: output tape is full\n", selfie_name);
+
+        exit(EXITCODE_OUTOFVIRTUALMEMORY);
+      }
+
+      if (size >= IO_buffer_size) {
+        // integer-align and accommodate potentially needed null terminator
+        IO_buffer_size = round_up(size + 1, sizeof(uint64_t));
+
+        // buffer must be fully mapped for subsequent read syscalls with greater sizes
+        IO_buffer = touch(smalloc(IO_buffer_size), IO_buffer_size);
+      }
+
+      // null-terminate buffer
+      *(IO_buffer + size / sizeof(uint64_t)) = 0;
+
+      i = 0;
+
+      while (i < words) {
+        word = load_physical_memory(tape_buffer_word(context, vbuffer + i * WORDSIZE));
+
+        store_word(get_tape_memory(tape), (head + i) * WORDSIZE, 1, word);
+
+        store_word(IO_buffer, i * WORDSIZE, 1, word);
+
+        i = i + 1;
+      }
+
+      set_tape_head(tape, head + words);
+
+      // output tape is also written to file
+      write_to_printf(get_tape_fd(tape), IO_buffer, size);
     }
 
-    output_tape_head = output_tape_head - words;
-
-    i = 0;
-
-    // erase words from output tape, they are still in memory
-    while (i < words) {
-      store_word(output_tape, (output_tape_head + i) * WORDSIZE, 1, 0);
-
-      i = i + 1;
-    }
-
-    set_pc(context, get_pc(context) - INSTRUCTIONSIZE);
-  } else {
-    if (output_tape_head + words > MAX_TAPE_SIZE / WORDSIZE) {
-      printf("%s: output tape is full\n", selfie_name);
-
-      exit(EXITCODE_OUTOFVIRTUALMEMORY);
-    }
-
-    if (size >= IO_buffer_size) {
-      // integer-align and accommodate potentially needed null terminator
-      IO_buffer_size = round_up(size + 1, sizeof(uint64_t));
-
-      // buffer must be fully mapped for subsequent read syscalls with greater sizes
-      IO_buffer = touch(smalloc(IO_buffer_size), IO_buffer_size);
-    }
-
-    // null-terminate buffer
-    *(IO_buffer + size / sizeof(uint64_t)) = 0;
-
-    i = 0;
-
-    while (i < words) {
-      word = load_physical_memory(tape_buffer_word(context, vbuffer + i * WORDSIZE));
-
-      store_word(output_tape, (output_tape_head + i) * WORDSIZE, 1, word);
-
-      store_word(IO_buffer, i * WORDSIZE, 1, word);
-
-      i = i + 1;
-    }
-
-    output_tape_head = output_tape_head + words;
-
-    // output tape is also written to file descriptor
-    write_to_printf(fd, IO_buffer, size);
-
-    set_pc(context, get_pc(context) + INSTRUCTIONSIZE);
+    result = size;
   }
 
-  if (debug_syscalls)
-    printf(" -> output tape head==%lu\n", output_tape_head);
+  add_syscall_result(context, result);
+}
+
+void implement_reversible_openat(uint64_t* context) {
+  // parameters
+  uint64_t vfilename;
+  uint64_t flags;
+  uint64_t mode;
+
+  uint64_t* tape;
+  uint64_t fd;
+  uint64_t result;
+
+  if (debug_syscalls) {
+    printf("(openat): ");
+    print_register_hexadecimal(REG_A1);
+    printf(",");
+    print_register_hexadecimal(REG_A2);
+    printf(",");
+    print_register_octal(REG_A3);
+    printf(" |- ");
+    print_register_value(REG_A0);
+  }
+
+  vfilename = *(get_regs(context) + REG_A1);
+  flags     = *(get_regs(context) + REG_A2);
+  mode      = *(get_regs(context) + REG_A3);
+
+  // RISC-R openat allocates the next file descriptor and its tape, see riscr.md
+
+  if (reverse)
+    number_of_tapes = number_of_tapes - 1;
+  else if (number_of_tapes >= MAX_NUMBER_OF_TAPES) {
+    printf("%s: too many open files\n", selfie_name);
+
+    exit(EXITCODE_OUTOFVIRTUALMEMORY);
+  }
+
+  tape = (uint64_t*) *(tapes + number_of_tapes);
+
+  if (not(reverse)) {
+    if (tape != (uint64_t*) 0)
+      if (not(signed_less_than(get_tape_fd(tape), 0)))
+        // tape of a file opened before executing backward, keep it
+        fd = get_tape_fd(tape);
+      else
+        fd = -1;
+    else
+      fd = -1;
+
+    if (signed_less_than(fd, 0)) {
+      // open file on host
+      if (down_load_string(context, vfilename, filename_buffer)) {
+        if (flags == LINUX_O_CREAT_TRUNC_WRONLY)
+          // use correct flags for host operating system
+          flags = O_CREAT_TRUNC_WRONLY;
+
+        fd = sign_extend(open(filename_buffer, flags, mode), SYSCALL_BITWIDTH);
+      }
+
+      if (tape == (uint64_t*) 0) {
+        tape = new_tape(fd, 0);
+
+        *(tapes + number_of_tapes) = (uint64_t) tape;
+      } else {
+        reset_tape(tape);
+
+        set_tape_fd(tape, fd);
+      }
+
+      if (flags == O_RDONLY)
+        set_input_tape(tape, 1);
+      else
+        set_input_tape(tape, flags == 0);
+
+      if (debug_open)
+        printf("%s: opened file %s with flags 0x%lX and mode 0o%lo returning file descriptor %lu\n", selfie_name,
+          filename_buffer, flags, mode, number_of_tapes);
+    }
+  }
+
+  if (signed_less_than(get_tape_fd(tape), 0))
+    result = sign_shrink(-1, SYSCALL_BITWIDTH);
+  else
+    result = number_of_tapes;
+
+  if (not(reverse))
+    number_of_tapes = number_of_tapes + 1;
+
+  add_syscall_result(context, result);
+}
+
+void implement_reversible_brk(uint64_t* context) {
+  // parameter
+  uint64_t new_program_break;
+
+  // local variable
+  uint64_t previous_program_break;
+
+  if (debug_syscalls) {
+    printf("(brk): ");
+    print_register_hexadecimal(REG_A1);
+    printf(" |- ");
+    print_register_hexadecimal(REG_A0);
+  }
+
+  new_program_break      = *(get_regs(context) + REG_A1);
+  previous_program_break = get_program_break(context);
+
+  // RISC-R brk adds the previous program break into a0 if it succeeds, see riscr.md
+
+  if (reverse) {
+    if (*(get_regs(context) + REG_A0) != 0) {
+      // a0 holds the previous program break, restore it
+      set_program_break(context, *(get_regs(context) + REG_A0));
+
+      set_lc_malloc(context, get_lc_malloc(context) - 1);
+
+      add_syscall_result(context, *(get_regs(context) + REG_A0));
+    } else
+      add_syscall_result(context, 0);
+  } else if (new_program_break > previous_program_break) {
+    if (try_brk(context, new_program_break) == new_program_break) {
+      set_lc_malloc(context, get_lc_malloc(context) + 1);
+
+      add_syscall_result(context, previous_program_break);
+    } else
+      add_syscall_result(context, 0);
+  } else
+    add_syscall_result(context, 0);
 }
 
 void emit_read() {
@@ -10458,7 +10777,7 @@ void do_riscr_jalr() {
 void do_riscr_ecall() {
   uint64_t a7;
 
-  // semantics of RISC-R ecall: exit, read, and write on tapes, see riscr.md
+  // semantics of RISC-R ecall: arguments in a1-a3, result added into a0, see riscr.md
 
   read_register(REG_A7);
 
@@ -10475,16 +10794,20 @@ void do_riscr_ecall() {
       // exit is never executed backward
       throw_exception(EXCEPTION_IRREVERSIBLEINSTRUCTION, instruction_address());
     else {
-      read_register(REG_A0);
+      read_register(REG_A1);
 
       throw_exception(EXCEPTION_SYSCALL, a7);
     }
   } else {
     read_register(REG_A0);
     read_register(REG_A1);
-    read_register(REG_A2);
 
-    // all other system calls are handled by exception, a0 remains unchanged
+    if (a7 != SYSCALL_BRK) {
+      read_register(REG_A2);
+      read_register(REG_A3);
+    }
+
+    // all other system calls are handled by exception
     throw_exception(EXCEPTION_SYSCALL, a7);
   }
 }
@@ -12768,13 +13091,17 @@ uint64_t handle_system_call(uint64_t* context) {
   a7 = *(get_regs(context) + REG_A7);
 
   if (RISCR) {
-    // RISC-R: read and write act on tapes, see riscr.md
+    // RISC-R: system calls act on tapes and add results into a0, see riscr.md
     if (a7 == SYSCALL_READ)
       implement_reversible_read(context);
     else if (a7 == SYSCALL_WRITE)
       implement_reversible_write(context);
+    else if (a7 == SYSCALL_OPENAT)
+      implement_reversible_openat(context);
+    else if (a7 == SYSCALL_BRK)
+      implement_reversible_brk(context);
     else if (a7 == SYSCALL_EXIT) {
-      implement_exit(context);
+      implement_reversible_exit(context);
 
       return EXIT;
     } else {

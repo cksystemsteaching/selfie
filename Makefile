@@ -351,7 +351,7 @@ riscr-test: tests/riscr-test.c selfie.h
 # Run riscr-test, hand-written RISC-R code executed forward and backward on mipster, natively and as RISC-U executable
 riscr: riscr-test selfie selfie.h
 	echo "RISC-R" | ./riscr-test tests/riscr-test.m
-	echo "RISC-R" | ./selfie -c selfie.h tests/riscr-test.c -m 32 tests/riscr-test-emu.m
+	echo "RISC-R" | ./selfie -c selfie.h tests/riscr-test.c -m 64 tests/riscr-test-emu.m
 
 # Prevent make from deleting intermediate target riscr-test
 .SECONDARY: riscr-test
@@ -476,6 +476,6 @@ clean:
 	rm -f examples/symbolic/*.btor2
 	rm -f tools/*.smt
 	rm -f tools/*.btor2
-	rm -f tests/*.m
+	rm -f tests/*.m tests/*.txt
 	rm -f selfie selfie-32 selfie.h selfie-gc.h selfie-gc-nomain.h selfie.exe
 	rm -f babysat buzzr monster beator beator-32 rotor rotor-32 riscr-test

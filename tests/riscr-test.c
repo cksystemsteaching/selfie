@@ -14,20 +14,27 @@ It emits hand-written RISC-R code using selfie's machine code
 library, writes the code as RISC-R binary, loads it again, runs it
 forward on mipster until it exits, runs the same number of
 instructions backward, and checks that the initial machine state
-(pc, registers, memory, tapes) is restored bit for bit. Programs
-that violate the RISC-R rules must throw an irreversible instruction
-exception instead. See riscr.md for the instruction set.
+(pc, registers, memory, program break, tapes) is restored bit for
+bit. Programs that violate the RISC-R rules must throw an
+irreversible instruction exception instead. See riscr.md for the
+instruction set.
 
 Usage: riscr-test scratch-binary < input (first byte must be 'R')
+
+The file test creates tests/riscr-test.txt in the working directory.
 */
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
 uint64_t MAX_SNAPSHOT_PAGES = 64;
 
-char* message = (char*) 0; // written and read back by the io test, see main
+uint64_t MESSAGE_OFFSET  = 0; // offset of message in data segment
+uint64_t FILENAME_OFFSET = 8; // offset of filename in data segment
 
 // ------------------------ GLOBAL VARIABLES -----------------------
+
+char* message  = (char*) 0; // written and read back by the io test, see main
+char* filename = (char*) 0; // file created and read by the file test, see main
 
 char* scratch_name = (char*) 0; // scratch file for RISC-R binaries
 
@@ -39,17 +46,16 @@ uint64_t number_of_failed_tests = 0;
 
 // snapshot of machine state
 
-uint64_t  snapshot_pc        = 0;
-uint64_t* snapshot_registers = (uint64_t*) 0;
+uint64_t  snapshot_pc            = 0;
+uint64_t* snapshot_registers     = (uint64_t*) 0;
+uint64_t  snapshot_program_break = 0;
 
 uint64_t  snapshot_number_of_pages = 0;
 uint64_t* snapshot_pages           = (uint64_t*) 0; // page numbers
 uint64_t* snapshot_memory          = (uint64_t*) 0; // page contents
 
-uint64_t  snapshot_input_tape_head  = 0;
-uint64_t  snapshot_output_tape_head = 0;
-uint64_t* snapshot_input_tape       = (uint64_t*) 0;
-uint64_t* snapshot_output_tape      = (uint64_t*) 0;
+uint64_t  snapshot_number_of_tapes = 0;
+uint64_t* snapshot_tape_heads      = (uint64_t*) 0;
 
 // -----------------------------------------------------------------
 // ------------------------- CODE EMISSION -------------------------
@@ -74,34 +80,42 @@ void begin_program() {
 
 void emit_exit_code(uint64_t exit_code) {
   // exit code must fit into 12-bit immediate
-  emit_addi(REG_A0, REG_ZR, exit_code);
+  emit_addi(REG_A1, REG_ZR, exit_code);
   emit_addi(REG_A7, REG_ZR, SYSCALL_EXIT);
   emit_ecall();
 }
 
-void end_program() {
+void emit_string_at(uint64_t offset, char* s) {
   uint64_t i;
 
-  // code segment must be word-aligned for loading binaries on mipster
-  while (code_size % WORDSIZE != 0)
-    emit_nop();
-
-  // binaries need a data segment: emit message as data
   i = 0;
 
-  while (i < 8) {
-    store_data(i, load_word((uint64_t*) message, i, 1));
+  while (i < round_up(string_length(s) + 1, WORDSIZE)) {
+    store_data(offset + i, load_word((uint64_t*) s, i, 1));
 
     i = i + WORDSIZE;
   }
 
-  data_size  = 8;
+  data_size = offset + i;
+}
+
+void end_program() {
+  // code segment must be word-aligned for loading binaries on mipster
+  while (code_size % WORDSIZE != 0)
+    emit_nop();
+
+  // binaries need a data segment: emit message and filename as data
+  emit_string_at(MESSAGE_OFFSET, message);
+  emit_string_at(FILENAME_OFFSET, filename);
+
   data_start = round_up(code_start + code_size, PAGESIZE);
 }
 
 // -----------------------------------------------------------------
 // ------------------------- TEST PROGRAMS -------------------------
 // -----------------------------------------------------------------
+
+// data_start is 0x11000 for all tests, the initial program break is 0x12000
 
 uint64_t emit_arithmetic() {
   // every arithmetic instruction once, see riscr.md for their semantics
@@ -112,10 +126,10 @@ uint64_t emit_arithmetic() {
   emit_mul(REG_T4, REG_T3, REG_T3);     // t4 ^= t3 * t3 == 25
   emit_divu(REG_T5, REG_T4, REG_T3);    // t5 ^= t4 / t3 == 5
   emit_remu(REG_T6, REG_T4, REG_T1);    // t6 ^= t4 % t1 == 25
-  emit_sltu(REG_A1, REG_T3, REG_T4);    // a1 ^= t3 < t4 == 1
-  emit_add(REG_A0, REG_T5, REG_A1);     // a0 += t5 + a1 == 6
-  emit_sub(REG_A0, REG_T3, REG_A1);     // a0 += t3 - a1 == 10
-  emit_mul(REG_A0, REG_A1, REG_T3);     // a0 ^= a1 * t3 == 15
+  emit_sltu(REG_A2, REG_T3, REG_T4);    // a2 ^= t3 < t4 == 1
+  emit_add(REG_A1, REG_T5, REG_A2);     // a1 += t5 + a2 == 6
+  emit_sub(REG_A1, REG_T3, REG_A2);     // a1 += t3 - a2 == 10
+  emit_mul(REG_A1, REG_A2, REG_T3);     // a1 ^= a2 * t3 == 15
   emit_addi(REG_A7, REG_ZR, SYSCALL_EXIT);
   emit_ecall();
 
@@ -131,7 +145,7 @@ uint64_t emit_memory() {
   emit_load(REG_T1, REG_SP, 8);         // t1 <-> mem[sp + 8]: t1 == 0, mem[sp + 8] == 7
   emit_load(REG_T0, REG_SP, 8);         // t0 == 7, mem[sp + 8] == 0
   emit_load(REG_T1, REG_SP, 0);         // t1 == 42, mem[sp] == 0
-  emit_add(REG_A0, REG_T0, REG_T1);     // a0 == 49
+  emit_add(REG_A1, REG_T0, REG_T1);     // a1 == 49
   emit_addi(REG_A7, REG_ZR, SYSCALL_EXIT);
   emit_ecall();
 
@@ -155,7 +169,7 @@ uint64_t emit_loop() {
   emit_sub(REG_T1, REG_ZR, REG_T2);     // c -= t2, c == 0
   emit_sltu(REG_T2, REG_ZR, REG_T0);    // t2 ^= 0 < i, t2 == 0
   emit_addi(REG_T0, REG_ZR, 1);         // i += 1
-  emit_add(REG_A0, REG_T0, REG_ZR);     // a0 += i
+  emit_add(REG_A1, REG_T0, REG_ZR);     // a1 += i
   emit_sltu(REG_T1, REG_T0, REG_T4);    // c ^= i < n
 
   bottom = code_size;
@@ -179,7 +193,7 @@ uint64_t emit_call() {
   // calling a procedure twice: jal links into zeroed ra, the come-from jalr
   // at the procedure uncomputes ra backward, the jalr returning to the
   // come-from jal after the call site uncomputes ra forward
-  emit_addi(REG_A0, REG_ZR, 5);
+  emit_addi(REG_A1, REG_ZR, 5);
 
   call1 = code_size;
 
@@ -197,7 +211,7 @@ uint64_t emit_call() {
   procedure = code_size;
 
   emit_jalr(REG_RA, REG_RA, 0);         // call come-from
-  emit_addi(REG_A0, REG_ZR, 1);         // a0 += 1
+  emit_addi(REG_A1, REG_ZR, 1);         // a1 += 1
 
   epilogue = code_size;
 
@@ -213,28 +227,91 @@ uint64_t emit_call() {
 
 uint64_t emit_io() {
   // write message from data segment to stdout, then read 8 bytes from
-  // stdin onto the stack and exit with the first byte
-  emit_lui(REG_A1, 17);                 // a1 += 0x11000 == data_start
-  emit_addi(REG_A0, REG_ZR, 1);         // stdout
-  emit_addi(REG_A2, REG_ZR, 7);         // 7 bytes
+  // stdin onto the stack and exit with the first byte plus the number
+  // of bytes written and read, which the system calls add into a0
+  emit_addi(REG_A1, REG_ZR, 1);         // stdout
+  emit_lui(REG_A2, 17);                 // a2 += 0x11000 == message
+  emit_addi(REG_A3, REG_ZR, 7);         // 7 bytes
   emit_addi(REG_A7, REG_ZR, SYSCALL_WRITE);
-  emit_ecall();                         // appends message to output tape
-  emit_lui(REG_A1, -17);                // a1 -= 0x11000 == 0
+  emit_ecall();                         // a0 += 7
+  emit_addi(REG_A1, REG_ZR, -1);        // stdin
+  emit_lui(REG_A2, -17);                // a2 == 0
   emit_addi(REG_SP, REG_ZR, -16);       // sp += -16
-  emit_add(REG_A1, REG_SP, REG_ZR);     // a1 += sp
-  emit_addi(REG_A0, REG_ZR, -1);        // stdin
-  emit_addi(REG_A2, REG_ZR, 1);         // 8 bytes
+  emit_add(REG_A2, REG_SP, REG_ZR);     // a2 += sp
+  emit_addi(REG_A3, REG_ZR, 1);         // 8 bytes
   emit_addi(REG_A7, REG_ZR, SYSCALL_READ - SYSCALL_WRITE);
-  emit_ecall();                         // exchanges mem[sp] with input tape
-  emit_load(REG_A0, REG_SP, 0);         // a0 <-> mem[sp]: a0 == input word
-  emit_addi(REG_T0, REG_ZR, 256);
-  emit_remu(REG_T1, REG_A0, REG_T0);    // t1 ^= a0 % 256 == first byte
-  emit_load(REG_A0, REG_SP, 0);         // a0 == 0, mem[sp] == input word
-  emit_add(REG_A0, REG_T1, REG_ZR);     // a0 += t1
+  emit_ecall();                         // a0 += 7 == 14
+  emit_load(REG_T0, REG_SP, 0);         // t0 <-> mem[sp]: t0 == input word
+  emit_addi(REG_T2, REG_ZR, 256);
+  emit_remu(REG_T1, REG_T0, REG_T2);    // t1 ^= t0 % 256 == first byte
+  emit_add(REG_A1, REG_T1, REG_A0);     // a1 += 'R' + 14
   emit_addi(REG_A7, REG_ZR, SYSCALL_EXIT - SYSCALL_READ);
   emit_ecall();
 
-  return 'R';
+  return 'R' + 14;
+}
+
+uint64_t emit_file() {
+  // create a file, write the message into it, open it again, and read
+  // the message back; the exit code is the sum of the system call results
+  emit_lui(REG_A1, 17);                 // a1 += 0x11000
+  emit_addi(REG_A1, REG_ZR, FILENAME_OFFSET);
+  emit_addi(REG_A2, REG_ZR, LINUX_O_CREAT_TRUNC_WRONLY);
+  emit_addi(REG_A3, REG_ZR, S_IRUSR_IWUSR_IRGRP_IROTH);
+  emit_addi(REG_A7, REG_ZR, SYSCALL_OPENAT);
+  emit_ecall();                         // a0 += 3
+  emit_lui(REG_A1, -17);                // a1 == 8
+  emit_addi(REG_A1, REG_ZR, 3 - FILENAME_OFFSET);
+  emit_lui(REG_A2, 17);                 // a2 += 0x11000
+  emit_addi(REG_A2, REG_ZR, MESSAGE_OFFSET - LINUX_O_CREAT_TRUNC_WRONLY);
+  emit_addi(REG_A3, REG_ZR, 7 - S_IRUSR_IWUSR_IRGRP_IROTH);
+  emit_addi(REG_A7, REG_ZR, SYSCALL_WRITE - SYSCALL_OPENAT);
+  emit_ecall();                         // a0 += 7 == 10
+  emit_add(REG_T0, REG_A0, REG_ZR);     // t0 += a0
+  emit_sub(REG_A0, REG_ZR, REG_T0);     // a0 -= t0 == 0
+  emit_lui(REG_A1, 17);                 // a1 += 0x11000
+  emit_addi(REG_A1, REG_ZR, FILENAME_OFFSET - 3);
+  emit_lui(REG_A2, -17);                // a2 == 0
+  emit_lui(REG_A2, 8);                  // a2 == 32768 == O_RDONLY
+  emit_addi(REG_A3, REG_ZR, -7);        // a3 == 0
+  emit_addi(REG_A7, REG_ZR, SYSCALL_OPENAT - SYSCALL_WRITE);
+  emit_ecall();                         // a0 += 4
+  emit_lui(REG_A1, -17);                // a1 == 8
+  emit_addi(REG_A1, REG_ZR, 4 - FILENAME_OFFSET);
+  emit_lui(REG_A2, -8);                 // a2 == 0
+  emit_addi(REG_SP, REG_ZR, -16);       // sp += -16
+  emit_add(REG_A2, REG_SP, REG_ZR);     // a2 += sp
+  emit_addi(REG_A3, REG_ZR, 8);         // 8 bytes
+  emit_addi(REG_A7, REG_ZR, SYSCALL_READ - SYSCALL_OPENAT);
+  emit_ecall();                         // a0 += 7 == 11
+  emit_addi(REG_A1, REG_ZR, -4);        // a1 == 0
+  emit_add(REG_A1, REG_T0, REG_A0);     // a1 == 21
+  emit_addi(REG_A7, REG_ZR, SYSCALL_EXIT - SYSCALL_READ);
+  emit_ecall();
+
+  return 21;
+}
+
+uint64_t emit_brk() {
+  // grow the heap by one page, touch it, then fail to shrink it; the
+  // exit code is the initial program break returned by the first brk
+  emit_lui(REG_A1, 19);                 // a1 += 0x13000
+  emit_addi(REG_A7, REG_ZR, SYSCALL_BRK);
+  emit_ecall();                         // a0 += 0x12000
+  emit_lui(REG_T0, 18);                 // t0 += 0x12000
+  emit_addi(REG_T1, REG_ZR, 5);
+  emit_load(REG_T1, REG_T0, 0);         // t1 <-> mem[0x12000] on a fresh heap page
+  emit_add(REG_A2, REG_A0, REG_ZR);     // a2 += a0 == 0x12000
+  emit_sub(REG_A0, REG_ZR, REG_A2);     // a0 -= a2 == 0
+  emit_lui(REG_A1, -1);                 // a1 == 0x12000
+  emit_ecall();                         // fails, a0 unchanged
+  emit_load(REG_T1, REG_T0, 0);         // t1 == 5, mem[0x12000] == 0
+  emit_add(REG_A1, REG_A2, REG_ZR);     // a1 == 0x24000
+  emit_sub(REG_A1, REG_ZR, REG_A2);     // a1 == 0x12000
+  emit_addi(REG_A7, REG_ZR, SYSCALL_EXIT - SYSCALL_BRK);
+  emit_ecall();
+
+  return 73728;
 }
 
 void emit_aliasing() {
@@ -322,6 +399,8 @@ void take_snapshot() {
     r = r + 1;
   }
 
+  snapshot_program_break = get_program_break(current_context);
+
   snapshot_number_of_pages = 0;
 
   page = page_of_virtual_address(code_start);
@@ -340,26 +419,14 @@ void take_snapshot() {
     page = page - 1;
   }
 
-  snapshot_input_tape_head  = input_tape_head;
-  snapshot_output_tape_head = output_tape_head;
-
-  zero_memory(snapshot_input_tape, MAX_TAPE_SIZE);
-  zero_memory(snapshot_output_tape, MAX_TAPE_SIZE);
+  snapshot_number_of_tapes = number_of_tapes;
 
   r = 0;
 
-  while (r < input_tape_head * WORDSIZE) {
-    store_word(snapshot_input_tape, r, 1, load_word(input_tape, r, 1));
+  while (r < number_of_tapes) {
+    *(snapshot_tape_heads + r) = get_tape_head((uint64_t*) *(tapes + r));
 
-    r = r + WORDSIZE;
-  }
-
-  r = 0;
-
-  while (r < output_tape_head * WORDSIZE) {
-    store_word(snapshot_output_tape, r, 1, load_word(output_tape, r, 1));
-
-    r = r + WORDSIZE;
+    r = r + 1;
   }
 }
 
@@ -436,6 +503,13 @@ uint64_t compare_snapshot() {
     r = r + 1;
   }
 
+  if (get_program_break(current_context) != snapshot_program_break) {
+    printf("%s: program break is 0x%lX, expected 0x%lX\n", selfie_name,
+      get_program_break(current_context), snapshot_program_break);
+
+    return 0;
+  }
+
   page = page_of_virtual_address(code_start);
 
   while (is_page_mapped(get_pt(current_context), page)) {
@@ -454,40 +528,24 @@ uint64_t compare_snapshot() {
     page = page - 1;
   }
 
-  if (input_tape_head != snapshot_input_tape_head) {
-    printf("%s: input tape head is %lu, expected %lu\n", selfie_name, input_tape_head, snapshot_input_tape_head);
-
-    return 0;
-  }
-
-  if (output_tape_head != snapshot_output_tape_head) {
-    printf("%s: output tape head is %lu, expected %lu\n", selfie_name, output_tape_head, snapshot_output_tape_head);
+  if (number_of_tapes != snapshot_number_of_tapes) {
+    printf("%s: %lu open files, expected %lu\n", selfie_name, number_of_tapes, snapshot_number_of_tapes);
 
     return 0;
   }
 
   r = 0;
 
-  while (r < input_tape_head * WORDSIZE) {
-    if (load_word(input_tape, r, 1) != load_word(snapshot_input_tape, r, 1)) {
-      printf("%s: input tape differs at word %lu\n", selfie_name, r / WORDSIZE);
+  // tape contents before the heads are empty in the initial state
+  while (r < number_of_tapes) {
+    if (get_tape_head((uint64_t*) *(tapes + r)) != *(snapshot_tape_heads + r)) {
+      printf("%s: head of tape %lu is at word %lu, expected %lu\n", selfie_name,
+        r, get_tape_head((uint64_t*) *(tapes + r)), *(snapshot_tape_heads + r));
 
       return 0;
     }
 
-    r = r + WORDSIZE;
-  }
-
-  r = 0;
-
-  while (r < output_tape_head * WORDSIZE) {
-    if (load_word(output_tape, r, 1) != load_word(snapshot_output_tape, r, 1)) {
-      printf("%s: output tape differs at word %lu\n", selfie_name, r / WORDSIZE);
-
-      return 0;
-    }
-
-    r = r + WORDSIZE;
+    r = r + 1;
   }
 
   return 1;
@@ -611,7 +669,8 @@ int main(int argc, char** argv) {
 
   RISCR = 1;
 
-  message = "RISC-R\n";
+  message  = "RISC-R\n";
+  filename = "tests/riscr-test.txt";
 
   program_code = zmalloc(MAX_CODE_SIZE);
   program_data = zmalloc(MAX_DATA_SIZE);
@@ -619,8 +678,7 @@ int main(int argc, char** argv) {
   snapshot_registers  = zmalloc(NUMBEROFREGISTERS * sizeof(uint64_t));
   snapshot_pages      = zmalloc(MAX_SNAPSHOT_PAGES * sizeof(uint64_t));
   snapshot_memory     = zmalloc(MAX_SNAPSHOT_PAGES * PAGESIZE);
-  snapshot_input_tape  = zmalloc(MAX_TAPE_SIZE);
-  snapshot_output_tape = zmalloc(MAX_TAPE_SIZE);
+  snapshot_tape_heads = zmalloc(MAX_NUMBER_OF_TAPES * sizeof(uint64_t));
 
   begin_program();
   emit_aliasing();
@@ -649,6 +707,12 @@ int main(int argc, char** argv) {
 
   begin_program();
   test_reversibility("call", emit_call());
+
+  begin_program();
+  test_reversibility("brk", emit_brk());
+
+  begin_program();
+  test_reversibility("file", emit_file());
 
   begin_program();
   test_reversibility("io", emit_io());

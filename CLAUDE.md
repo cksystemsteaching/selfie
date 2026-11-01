@@ -33,7 +33,7 @@ Every change must obey these rules from the plan:
 | M3 | rotor | RISC-R forward and inverse machine models | M1 | inverse after forward is the identity on random states |
 | M4–M15 | see `projects/reversible.md` | | | |
 
-Status: M0 and M1 done (October 31, 2026). `make riscr` runs the harness natively and as a RISC-U executable on mipster; `make riscr-rev` demonstrates `-rev`.
+Status: M0 and M1 done (October 31, 2026), M1 addendum with system call results, `openat` and `brk` done (November 1, 2026). `make riscr` runs the harness natively and as a RISC-U executable on mipster; `make riscr-rev` demonstrates `-rev`.
 
 ## Decisions taken in M1 that refine the plan
 
@@ -41,7 +41,7 @@ Status: M0 and M1 done (October 31, 2026). `make riscr` runs the harness nativel
 - `mul`, `divu`, `remu`, and `sltu` are `rd ^= f(rs1, rs2)` (self-inverse) rather than `rd += f`, because with `+=` no forward program can ever uncompute a comparison or a product, so every loop would leak a register per iteration. `add`, `sub`, `addi`, `lui` stay additive, each invertible by another forward instruction.
 - Paired branches: a taken transfer lands *after* its come-from (`target + 4`), so no extra branch register is needed and the step function is a bijection on all states given the static pairing. The come-from of a `beq` may test different registers; its condition must hold at the transfer, checked dynamically.
 - Calls: `jal rd` requires `rd == 0` and links `pc + 4`; `jalr rd,0(rd)` is the come-from of a call and also the return, uncomputing `rd`; the come-from of a return is a `jal ra` right after the call site pointing at the callee's return `jalr`. The compiler will need the callee's epilogue address at every call site (M2).
-- `exit` leaves the state unchanged; `read` exchanges words with a lazily filled input tape; `write` appends to an output tape and still prints. `a0` is never overwritten by a system call.
+- System calls take arguments in `a1-a3` and add their result into `a0`; backward execution recomputes the result from the tapes and subtracts it. `exit` leaves the state unchanged; `read` exchanges words with a lazily filled input tape that remembers where the file ended; `write` appends to an output tape and still writes the file; `openat` allocates the next descriptor and a tape per file; `brk` grows the heap and returns the previous break in `a0`, zero on failure. This is the M1 addendum of November 1, 2026; it changes the system call convention that M2's wrappers must emit.
 - RISC-R binaries carry `EF_RISCR` (bit 8 of `e_flags`); mipster refuses mismatches instead of switching modes silently.
 - In RISC-R mode mipster does not write the context pointer into `a6` on context switches (hypster is unsupported), so registers are bit for bit reversible.
 
@@ -50,3 +50,6 @@ Status: M0 and M1 done (October 31, 2026). `make riscr` runs the harness nativel
 - `lui` cannot negate the immediate `-2^19`; uncomputing such a constant needs two instructions.
 - Bennett mode needs a history stack and, per call site, the callee's epilogue address (a second fixup chain in starc).
 - The replay engine (`-r`) is refused in RISC-R mode; comparing trace-based undo with trace-free backward execution is a lesson still to be written.
+- `malloc` must learn its initial break from the binary (the heap start is `round_up(data_start + data_size, PAGESIZE)`) since `brk(0)` no longer queries it.
+- Tapes are 1MB each (`MAX_TAPE_SIZE`), enough for selfie.c and selfie's binary, with at most 64 open files.
+- `riscr.md` ends with a table of how each instruction would look with dedicated opcodes, in case the `^=` and come-from encodings hurt in M2.
