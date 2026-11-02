@@ -10,7 +10,7 @@ Every change must obey these rules from the plan:
 2. **One file per tool**, using `selfie.h` as its library. Shared code becomes one header.
 3. **One spec per model of computation.** RISC-R semantics live in rotor's RISC-R machine model (M3); cellfie's cell rule is RISC-R per cell plus token movement. Everything else is checked against these two.
 4. **Files are the only interfaces:** ELF binaries, RLE layouts, BTOR2 models. No tool calls into another tool's internals.
-5. **Extend, don't fork.** RISC-R reuses RISC-U's 14 opcodes and encodings behind one flag. Existing behaviour, make targets and grader tests stay unchanged.
+5. **Extend, don't fork.** RISC-R reuses RISC-U's 14 opcodes and encodings, marks its binaries with one ELF flag, and lives in its own tool, riscr, on top of `selfie.h`. Existing behaviour, make targets and grader tests stay unchanged.
 6. **Every milestone ends in a check a machine runs**, as a make target, not a claim.
 7. **Deferred on purpose:** asynchrony, hardware targets, performance.
 8. **Reversibility is a switch.** Every tool runs with RISC-U and with RISC-R.

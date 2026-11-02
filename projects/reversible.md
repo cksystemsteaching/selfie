@@ -1,10 +1,10 @@
 # selfie · cellfie · bitr — development plan
 
-Oct 30, 2026 · Christoph Kirsch
+Oct 30, 2026 · Christoph Kirsch · updated Nov 2, 2026: RISC-R moved into its own tool, riscr
 
 ## Goal and design rules
 
-Build three C\* tools that evolve side by side: selfie extended with RISC-R, cellfie (an instruction-level reversible cellular machine that runs RISC-R), and bitr (a bounded model checker for BTOR2). They are linked only by files, and there is exactly one executable spec per model of computation. The aim is to show that cellfie is possible and that it sharpens how selfie is taught, not to compete on performance.
+Build three C\* tools that evolve side by side: selfie extended with RISC-R through the tool riscr, cellfie (an instruction-level reversible cellular machine that runs RISC-R), and bitr (a bounded model checker for BTOR2). They are linked only by files, and there is exactly one executable spec per model of computation. The aim is to show that cellfie is possible and that it sharpens how selfie is taught, not to compete on performance.
 
 Rules every change must obey:
 
@@ -12,7 +12,7 @@ Rules every change must obey:
 2. **One file per tool**, using `selfie.h` as its library. Shared code becomes one header, the way `selfie.h` is shared now.
 3. **One spec per model of computation.** RISC-R semantics live in rotor's RISC-R machine model; cellfie's cell rule is RISC-R per cell plus token movement, checked against that model. Everything else is checked against these two, never the other way round.
 4. **Files are the only interfaces:** ELF binaries, RLE layouts, BTOR2 models. No tool calls into another tool's internals.
-5. **Extend, don't fork.** RISC-R reuses RISC-U's 14 opcodes and encodings behind one flag. Existing behaviour, make targets and grader tests stay unchanged.
+5. **Extend, don't fork.** RISC-R reuses RISC-U's 14 opcodes and encodings, marks its binaries with one ELF flag, and lives in its own tool, riscr, on top of `selfie.h`; `selfie.c` only learns to refuse RISC-R binaries. Existing behaviour, make targets and grader tests stay unchanged.
 6. **Every milestone ends in a check a machine runs**, as a make target, not a claim.
 7. **Deferred on purpose:** asynchrony, hardware targets, performance. Each stays a separate layer that can be added later.
 8. **Reversibility is a switch.** Every tool runs with RISC-U and with RISC-R, so each benefit and each cost of reversibility shows up by flipping one flag.
@@ -34,7 +34,7 @@ Reversibility and symbolic execution are two sides of one property. A step that 
 
 ![Reversibility and symbolic execution: 2 directions × 2 modes](figures/reversible-duality.png)
 
-**Turning reversibility off.** Reversibility is a switch, not an assumption. Every tool runs with RISC-U (off) and RISC-R (on), and the same programs compile both ways under selfie's `-r`. Flipping the one flag shows exactly where reversibility enters, and what it costs:
+**Turning reversibility off.** Reversibility is a switch, not an assumption. Every tool runs with RISC-U (off) and RISC-R (on), and the same programs run both ways: as RISC-U binaries on mipster and, translated, as RISC-R binaries on riscr. Flipping the one flag shows exactly where reversibility enters, and what it costs:
 
 | Aspect | RISC-U (off) | RISC-R (on) | Measured as |
 | --- | --- | --- | --- |
@@ -46,9 +46,9 @@ Reversibility and symbolic execution are two sides of one property. A step that 
 
 Asynchrony stays orthogonal in the same way. All semantics are synchronous steps. In v1 only one cell is active per tick, so synchronous and asynchronous execution coincide, and a clockless implementation needs no synchronizer at all. Asynchrony first matters once several signals are in flight: several tokens, v2's bit-level regions, or level 4 of the story. There it enters as a synchronizer layer below the semantics, proven to refine the synchronous steps.
 
-## Selfie extension: RISC-R
+## RISC-R: riscr on top of selfie
 
-RISC-R keeps RISC-U's 14 opcodes and encodings and changes only what they mean, so starc's emitter, the decoder and the disassembler stay almost untouched. One flag (`-r`) selects RISC-R. Without it, selfie behaves exactly as today.
+RISC-R keeps RISC-U's 14 opcodes and encodings and changes only what they mean, so selfie's encoder, decoder and disassembler serve both. RISC-R lives in one tool, riscr (`tools/riscr.c`), built on `selfie.h` and laid out like `selfie.c`: library, compiler, interface, architecture, runtime. `selfie.c` only decodes the ELF flag and refuses to run RISC-R binaries, so selfie behaves exactly as today. M1 first put RISC-R into `selfie.c` behind a flag, which added about 1,380 lines to a file that must stay small enough to teach from; moving it into riscr (November 2, 2026) left about 10.
 
 **The ISA, one rule per instruction class:**
 
@@ -61,7 +61,9 @@ RISC-R keeps RISC-U's 14 opcodes and encodings and changes only what they mean, 
 | `jal jalr` | `jal` adds the return address into a zeroed `ra`; the caller subtracts it after return | `ra` is uncomputed with a known constant |
 | `ecall` | `read`, `write`, `exit` act on input and output tapes held in machine state | no information leaves the state |
 
-Open point: RISC-R binaries look like RISC-V but do not run on RISC-V hardware. The ELF header gets a flag so nothing confuses the two.
+M1 refined this table: `addi` is `rd += rs1 + imm`; `mul divu remu sltu` are `rd ^= op(rs1, rs2)`, since with `+=` no forward program can uncompute a product or a comparison; a taken transfer lands after its paired come-from; `jalr rd,0(rd)` uncomputes the link; and system calls take their arguments in `a1-a3` and add their result into `a0`, with `openat` and `brk` added. `riscr.md` is authoritative.
+
+RISC-R binaries look like RISC-V but do not run on RISC-V hardware, so bit 8 of `e_flags` (`EF_RISCR`) marks them: mipster refuses them, and riscr refuses binaries without it.
 
 One more ISA rule: the code segment is read-only. Fixing a program's code then keeps the step function a bijection on the remaining state, which is what tier-2 compilation relies on.
 
@@ -70,7 +72,9 @@ One more ISA rule: the code segment is read-only. Fixing a program's code then k
 1. **Bennett mode (no language change).** Every destructive assignment `x = e` becomes: compute `e` into zeroed temporaries, exchange `x` with a fresh zero slot on a history stack, add the result into `x`, then run the computation of `e` backwards so every temporary ends at zero again (compute, copy, uncompute). All of C\*, including selfie itself, then compiles to RISC-R unchanged.
 2. **Garbage-free mode (small language change).** Add only `x += e` and `x -= e` to C\*, with `x` not occurring in `e`. These compile without touching the history stack. Both remain valid C, so selfie still compiles with gcc. Reversible conditionals and loops (Janus `fi`/`until`) are not C, so they stay out until there is a clear need.
 
-**The emulator.** Mipster's replay engine already undoes instructions from a recorded trace (`execute_undo`, with `undo_ecall` still a TODO). For RISC-R, add a trace-free reverse mode that executes each instruction's inverse directly. Comparing the two is a lesson in its own right: undo with a trace is Bennett in the emulator, undo without a trace is reversibility in the ISA.
+**Where the compiler lives (proposed, not decided).** Bennett mode becomes a translator from RISC-U binaries to RISC-R binaries in riscr's compiler section, so starc stays unchanged and the ELF binary is the only interface between them. The translator pushes every overwritten register and memory word onto the history stack, gives every jump target a come-from, and records in a history bit which way control arrived. Compute, copy, uncompute then happens once for the whole run: `-rev` runs forward and back while the output stays on its tape. The price is history per instruction rather than per assignment, plausibly 3–5× more than a compiler that uncomputes its temporaries; that needs measuring. Garbage-free mode is harder for a translator, because `x += e` and `x = x + e` compile to the same RISC-U code, so M9 needs either a marker that starc emits or a code generator in starc after all.
+
+**The emulator.** Riscr reuses mipster's loader, memory, contexts and decoder and has its own run loop, as monster does. It runs RISC-R binaries forward (`-m`) and, without any trace, backward (`-rev`), executing each instruction's inverse directly. Mipster's replay engine, by contrast, undoes RISC-U instructions from a recorded trace (`execute_undo`, with `undo_ecall` still a TODO). Comparing the two is a lesson in its own right: undo with a trace is Bennett in the emulator, undo without a trace is reversibility in the ISA.
 
 **The model.** Rotor already generates machine models without code. Add RISC-R forward and inverse machine models, both program-independent, with the history stack and tapes as named state. That pair becomes the RISC-R spec.
 
@@ -83,7 +87,7 @@ Bitr reads BTOR2 and nothing else, so it never needs to know whether a model cam
 3. **Concrete simulator**, the counterpart of btorsim. Rotor's existing evaluator (`eval_line`) moves into a shared header, `tools/btor2.h`, used by both rotor and bitr. That keeps rotor out of bitr as a tool while sharing the code as a library, the way `selfie.h` is shared. The first real check: mipster and the simulator run the same binary and produce the same state at every step.
 4. **Bit-blaster** to CNF using Tseitin encoding. Arrays are handled by read-over-write elimination, which works because k is bounded, together with rotor's existing options for bounding memory segments.
 5. **SAT core.** Babysat stays as the executable spec (plain enumeration). Next to it goes a minimal CDCL solver in C\*: two watched literals, first-UIP learning, restarts only if needed. Both must give the same SAT/UNSAT answer on `examples/sat` and on every CNF bitr generates.
-6. **Forward BMC:** unroll k steps and check `bad`. A satisfying assignment becomes an input trace that mipster replays, which closes the loop.
+6. **Forward BMC:** unroll k steps and check `bad`. A satisfying assignment becomes an input trace that mipster or riscr replays, which closes the loop.
 7. **Backward BMC on the inverse model:** unroll from `bad` backwards to `init`, where each step is plain substitution with no quantifiers. Whether this beats forward BMC on real programs is a research question, not an assumption.
 8. **Product machine:** two BTOR2 models plus an abstraction function, also in BTOR2, give an equivalence check. This is how selfie and cellfie are compared, and it is fully generic.
 9. **Escape hatch:** export the unrolled formula as DIMACS or SMT-LIB, or hand the BTOR2 file straight to btormc, Pono or bitme, for anything beyond toy size.
@@ -114,7 +118,7 @@ Cellfie is one C\* file, `tools/cellfie.c`. Each cell holds one RISC-R instructi
 
 **Layout compiler.** It turns a RISC-R binary into a layout. Instructions go along a path in program order, branch and jump targets are connected by wire, and memory sits as a region beside the code. Code layout is the performance model: distance is time.
 
-**Equivalence with selfie.** An instruction boundary is the token entering an instruction cell. The abstraction function is direct: `pc` is that cell's address, the registers are the token's payload, memory is the memory cells. Bitr's product check against rotor's RISC-R model holds at every step, and any program can be compared with mipster.
+**Equivalence with selfie.** An instruction boundary is the token entering an instruction cell. The abstraction function is direct: `pc` is that cell's address, the registers are the token's payload, memory is the memory cells. Bitr's product check against rotor's RISC-R model holds at every step, and any program can be compared with riscr.
 
 **Running all of selfie.** Event-driven simulation costs tens to thousands of ticks per instruction, mostly memory round trips. Selfie's self-compilation, around 10⁸–10⁹ instructions, should then take hours when run natively. That needs measuring. Hybrid simulation stays as the fallback: abstract RISC-R steps wherever nobody is watching.
 
@@ -136,7 +140,7 @@ Cellfie is one C\* file, `tools/cellfie.c`. Each cell holds one RISC-R instructi
 
 ## The story: software becomes hardware, provably
 
-Cellfie's refinement layers form one continuous slide from software into hardware. Bitr proves every step equivalent to mipster, so the semantics stay fixed while the layout moves. This is the repo's proof-versus-truth, syntax-versus-semantics premise made concrete, and it is Gershenfeld's bits-and-atoms thesis made checkable.
+Cellfie's refinement layers form one continuous slide from software into hardware. Bitr proves every step equivalent to riscr, so the semantics stay fixed while the layout moves. This is the repo's proof-versus-truth, syntax-versus-semantics premise made concrete, and it is Gershenfeld's bits-and-atoms thesis made checkable.
 
 v1's cost is travel, not execution: executing an instruction takes one tick, but jumps, memory round trips and the single token all cost distance. Each level removes some of that travel and gives up some generality:
 
@@ -155,13 +159,13 @@ Selfie's three self-reference properties hold in every tool. At the hardware end
 
 |  | selfie, RISC-R | bitr | cellfie v1 | cellfie, hardware end |
 | --- | --- | --- | --- | --- |
-| **Self-compilation** | fixed point in Bennett mode (M2) | selfie compiles bitr; bitr bounded-checks its own binary | selfie on cellfie compiles selfie to an identical binary (M13); the layout compiler reproduces its own layout (M11) | compiler plus constructor builds itself: self-reproduction |
-| **Self-execution** | mipster on mipster; each level keeps its own history | bitr's simulator runs bitr's binary in the RISC-R model | mipster on cellfie; cellfie's simulator on cellfie | does not survive: a universal interpreter cannot be specialised away |
+| **Self-compilation** | selfie translated to RISC-R compiles itself; riscr's translator, translated by itself, reproduces itself (M2) | selfie compiles bitr; bitr bounded-checks its own binary | selfie on cellfie compiles selfie to an identical binary (M13); the layout compiler reproduces its own layout (M11) | compiler plus constructor builds itself: self-reproduction |
+| **Self-execution** | riscr on riscr, both translated; each level keeps its own history | bitr's simulator runs bitr's binary in the RISC-R model | mipster on cellfie; cellfie's simulator on cellfie | does not survive: a universal interpreter cannot be specialised away |
 | **Self-hosting** | hypster, with the context switch as an exchange | — | the constructor builds guests in walled regions | merges with self-reproduction |
 
 What this reveals about cellfie:
 
-1. **Nested self-execution compounds garbage.** A mipster in Bennett mode logs history for its own state, including every update its guest causes, so each level of nesting multiplies the history. That makes M15 an argument for a reversible interpreter, as Yokoyama and Glück built for Janus, not just a cost table.
+1. **Nested self-execution compounds garbage.** A riscr in Bennett mode logs history for its own state, including every update its guest causes, so each level of nesting multiplies the history. That makes M15 an argument for a reversible interpreter, as Yokoyama and Glück built for Janus, not just a cost table.
 2. **Hosting becomes spatial.** Hypster divides time; cellfie's host divides space into walled regions, and a context switch is reversible for free because it is an exchange. "The isolator cannot isolate itself" turns geometric: the constructor walls in its guests, but nothing walls in the constructor.
 3. **The universal machine is the irreducible software residue.** As programs slide into hardware, self-compilation plus construction becomes von Neumann self-reproduction, and self-hosting folds into it. Self-execution resists. A universal interpreter takes its program as input, so there is nothing static to specialise. Specialising it to a fixed program (the first Futamura projection) produces a compiled program, while the interpreter itself stays software. M14 makes this boundary measurable.
 
@@ -172,20 +176,20 @@ The critical path runs M1 → M3 → M5 → M7 → M8. M7 is the first time cell
 | # | Tool | Milestone | Needs | Done when |
 | --- | --- | --- | --- | --- |
 | M0 | all | Branch, `CLAUDE.md` with the design rules, empty make targets | — | existing `make` targets and grader tests unchanged and green |
-| M1 | selfie | RISC-R in mipster: forward execution and trace-free reverse execution, tested with hand-written RISC-R code | M0 | for every test, N steps forward then N steps back give the initial state bit for bit |
-| M2 | selfie | Bennett-mode compiler behind `-r` | M1 | selfie compiled to RISC-R and run on mipster compiles itself to an identical RISC-R binary, then runs back to its initial state, with Bennett checkpointing if the history stack (possibly gigabytes) does not fit |
+| M1 | riscr | RISC-R emulator: forward execution and trace-free reverse execution, tested with hand-written RISC-R code | M0 | for every test, N steps forward then N steps back give the initial state bit for bit |
+| M2 | riscr | Bennett mode: RISC-U to RISC-R, as a translator in riscr unless measurement says otherwise | M1 | selfie translated to RISC-R and run on riscr compiles itself to an identical binary, riscr's translator reaches a fixed point on itself, then runs back to its initial state, with Bennett checkpointing if the history stack (possibly gigabytes) does not fit |
 | M3 | rotor | RISC-R forward and inverse machine models; evaluator moved into `tools/btor2.h` | M1 | rotor's existing targets unchanged; inverse after forward is the identity on random states |
-| M4 | bitr | Parser, loaders, concrete simulator | M3 | bitr's simulator matches mipster `-r` step by step on all RISC-R examples |
-| M5 | bitr | Bit-blaster, CDCL next to babysat, forward BMC, witness replay | M4 | finds the known bugs in `examples/symbolic`; witnesses replay in mipster; CDCL and babysat agree on every CNF; proves inverse after forward is the identity symbolically for small k |
+| M4 | bitr | Parser, loaders, concrete simulator | M3 | bitr's simulator matches riscr step by step on all RISC-R examples |
+| M5 | bitr | Bit-blaster, CDCL next to babysat, forward BMC, witness replay | M4 | finds the known bugs in `examples/symbolic`; witnesses replay in mipster or riscr; CDCL and babysat agree on every CNF; proves inverse after forward is the identity symbolically for small k |
 | M6 | cellfie | Cell rule (instruction, `beq`, wire, memory and tape cells), event-driven simulator, layout format | M3 | bitr proves inverse after rule is the identity; a forward-then-backward run restores the initial grid |
-| M7 | cellfie | A hand-laid program of a few instructions, including a branch and a memory exchange | M5, M6 | bitr's product check against rotor's model passes at every step up to small k; the run matches mipster |
-| M8 | cellfie | Layout compiler from RISC-R binaries | M7 | selfie-compiled examples run on cellfie identically to mipster, step by step |
+| M7 | cellfie | A hand-laid program of a few instructions, including a branch and a memory exchange | M5, M6 | bitr's product check against rotor's model passes at every step up to small k; the run matches riscr |
+| M8 | cellfie | Layout compiler from RISC-R binaries | M7 | selfie-compiled examples run on cellfie identically to riscr, step by step |
 | M9 | selfie | `+=` and `-=` in C\*, compiled without history | M2 | the history stack stays empty for programs that use only these; selfie still compiles with gcc |
 | M10 | cellfie | Construction ISA, constructor, tape emission | M8 | constructor plus tape plus blank grid reaches exactly the compiled layout plus tape and idle constructor |
 | M11 | cellfie | Self-compilation fixed point: the layout compiler, compiled by selfie to RISC-R, runs on cellfie | M8, M10 | L1 = L0 byte for byte |
 | M12 | bitr | Backward BMC on the inverse model, compared with forward BMC | M5 | a written comparison on the examples (research result, not a pass/fail gate) |
-| M13 | cellfie | All of selfie on cellfie, event-driven, with hybrid simulation as fallback | M8 | selfie compiles itself on cellfie with output identical to mipster's; running time recorded |
-| M14 | cellfie, bitr | Demonstrator: one array kernel at all four levels of the story (v1, v2a, v2b, v2c), next to mipster on cellfie, which should not dissolve | M8, M13 | each level verified against mipster by bitr; one chart of cells used, ticks and active cell-updates per level, with the reprogrammability each level gives up (research result; level 4 needs concurrent elements) |
+| M13 | cellfie | All of selfie on cellfie, event-driven, with hybrid simulation as fallback | M8 | selfie compiles itself on cellfie with output identical to riscr's; running time recorded |
+| M14 | cellfie, bitr | Demonstrator: one array kernel at all four levels of the story (v1, v2a, v2b, v2c), next to riscr on cellfie, which should not dissolve | M8, M13 | each level verified against riscr by bitr; one chart of cells used, ticks and active cell-updates per level, with the reprogrammability each level gives up (research result; level 4 needs concurrent elements) |
 | M15 | all | Reversibility on/off comparison: the same programs as RISC-U and as RISC-R, through every tool | M2, M5, M8, M12 | a written table per example: instruction count, history size, trace bytes, backward symbolic variables and solver time, erased bits (research result) |
 
 Later, each as a layer checked by bitr: several tokens (threads), the dataflow tier 2, bit-level refinement of instruction cells, replication, clockless execution on DICE.
@@ -197,17 +201,18 @@ The biggest risk is routing the token across the grid by address, not whether ce
 **Risks and fallbacks:**
 
 - **Routing.** `jalr` and `ld` need the token steered by address bits to arbitrary cells. Fallback: a fixed routing spine (a tree or bus of wire cells) instead of free placement, at the cost of longer paths.
-- **RISC-R control flow.** Paired come-from branches and uncomputing `ra` are the subtlest change to starc. Fallback: prove the scheme in hand-written RISC-R code in M1 before the compiler touches it.
+- **RISC-R control flow.** Paired come-from branches and uncomputing `ra` are the subtlest part of code generation, in the translator or in starc. Fallback: prove the scheme in hand-written RISC-R code in M1 before the compiler touches it.
 - **Speed.** Memory round trips dominate, so all of selfie on cellfie may take hours or far longer, depending on layout. Fallback: hybrid simulation (abstract RISC-R steps wherever nobody watches), backed by the M7 and M8 equivalence checks.
 - **Bitr's own solver** only reaches toy sizes. Fallback: the escape hatch to external solvers.
 - **Bounded memory.** Every equivalence holds only up to the memory bound in the models. Say so wherever a result is stated.
 - **Drift between selfie and cellfie.** Fallback: rotor's RISC-R model is the single spec, and the M5 and M8 checks run in CI.
 - **Is it still a cellular automaton?** Formally yes: finite states, one uniform rule, local neighbourhoods, synchronous update. In spirit no: the alphabet is astronomically large and each cell is a processor, as in Avida. Fallback: say so plainly in v1, and let v2's bit-level refinement earn the stronger claim one cell kind at a time.
-- **Bennett history at selfie scale.** Selfie compiling itself in Bennett mode writes history for every destructive store, plausibly gigabytes. Fallback: Bennett checkpointing (recompute between checkpoints, trading time for space), and M9's garbage-free `+=` and `-=` in selfie's hot paths.
+- **Bennett history at selfie scale.** Selfie compiling itself in Bennett mode writes history for every destructive store, plausibly gigabytes, and more if the translator logs every overwritten register. Fallback: Bennett checkpointing (recompute between checkpoints, trading time for space), and M9's garbage-free `+=` and `-=` in selfie's hot paths.
 
 **Open questions, with recommendations (tick once agreed):**
 
-- [x] **RISC-U encodings or a separate opcode space for RISC-R?** Recommendation: keep RISC-U's encodings and mark RISC-R binaries with a flag in the ELF header. Mipster, rotor and bitr's loader refuse a binary whose flag doesn't match the selected mode. A separate opcode space would duplicate the encoder, decoder and disassembler in selfie, plus the decode logic in rotor and in cellfie's cell rule, all for a confusion risk that one flag already removes.
+- [x] **RISC-U encodings or a separate opcode space for RISC-R?** Recommendation: keep RISC-U's encodings and mark RISC-R binaries with a flag in the ELF header. Mipster refuses RISC-R binaries; riscr, rotor and bitr's loader refuse a binary whose flag doesn't match the selected mode. A separate opcode space would duplicate the encoder, decoder and disassembler in selfie, plus the decode logic in rotor and in cellfie's cell rule, all for a confusion risk that one flag already removes.
+- [x] **RISC-R inside `selfie.c` behind a flag, or as a tool?** Decided November 2, 2026: a tool, `tools/riscr.c`, on `selfie.h`. M1 had added about 1,380 lines to `selfie.c`, and M2 inside starc would have touched nearly every code generation procedure. As a tool, RISC-R sits beside selfie the way monster and rotor do, and the file interface stays the ELF binary.
 - [x] **Start the block rule from Morita, or design it from scratch?** Recommendation: start from Morita's partitioned CAs built on rotary elements (RLEMs). They come with proven reversibility, proven universality and reversible self-reproduction. This now applies only to the later bit-level refinement: instruction-level cells in v1 need no bit-level rule.
 - [x] **Which branch and file hold this plan?** Recommendation: a `RISC-R` branch off `main`, kept away from the `intelligence` branch. Export this doc to `docs/reversible.md` there, and add a root `CLAUDE.md` on that branch that points to it and repeats the design rules. The repo's `PLAN.md` stays the course plan.
 
