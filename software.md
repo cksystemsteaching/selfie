@@ -10,7 +10,7 @@ The tools Rotor and Bitme in this repository were co-developed at the Department
 - **Project title:** Robotics and Advanced Industrial Production
 - **Project registration number:** CZ.02.01.01/00/22_008/0004590
 - **Type of result:** software
-- **Date of publication:** 26.11.2023 (initial commit)
+- **Date of publication:** 05.01.2024 (first version modeling RISC-V code loaded from binaries)
 - **Authors and contributors:** Christoph Kirsch, University of Salzburg, Department of Computer Sciences, and Czech Technical University in Prague, Faculty of Information Technology, ORCID 0000-0002-0961-0564; contact: christoph.kirsch@fit.cvut.cz
 - **Keywords:** RISC-V; BTOR2; SMT-LIB; bounded model checking; binary code verification; code synthesis
 - **URL of storage location:** https://github.com/cksystemsteaching/selfie/blob/main/tools/rotor.c
@@ -53,7 +53,7 @@ Bitme is the solver side of the RO 12.1 toolchain: it checks Rotor-generated mod
 
 - **Link to technical documentation:** https://github.com/cksystemsteaching/selfie (README, section on bitme)
 - **License:** BSD 2-Clause License
-- **System requirements:** Python 3, no further dependencies; models produced by Rotor
+- **System requirements:** Python 3; Z3 and Bitwuzla Python bindings optional (used as reasoning engines if installed); models produced by Rotor
 - **Type of interface/API:** command-line interface
 - **Links to related publications and/or datasets:** arXiv:2607.14137 (2026)
 - **Naming convention of files/software:** `tools/bitme.py` in the selfie repository; input models in BTOR2 (`.btor2`)

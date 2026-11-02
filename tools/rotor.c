@@ -5,9 +5,16 @@ governed by a BSD license that can be found in the LICENSE file.
 
 Selfie is a project of the Computational Systems Group at the
 Department of Computer Sciences of the University of Salzburg
-in Austria. For further information and code please refer to:
+in Austria and the Faculty of Information Technology of the
+Czech Technical University in Prague (CTU) in the Czech Republic.
+For further information and code please refer to:
 
 selfie.cs.uni-salzburg.at
+
+Rotor was co-developed at the University of Salzburg and at CTU,
+where it was developed under the project
+Robotics and Advanced Industrial Production (Roboprox,
+reg. no. CZ.02.01.01/00/22_008/0004590).
 
 Rotor is a tool for bit-precise reasoning about RISC-V machines
 and RISC-V code using BTOR2 and SMT-LIB as modeling format.
