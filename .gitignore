@@ -19,5 +19,7 @@ rotor-32
 
 # models the rotor assignments regenerate
 assignments/rotor-*/*-rotorized.btor2
+riscr
+riscr.h
 riscr-test
 tests/riscr-test.txt

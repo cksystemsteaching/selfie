@@ -12,12 +12,13 @@ selfie.cs.uni-salzburg.at
 riscr-test is the check for milestone M1 of projects/reversible.md.
 It emits hand-written RISC-R code using selfie's machine code
 library, writes the code as RISC-R binary, loads it again, runs it
-forward on mipster until it exits, runs the same number of
+forward on riscr until it exits, runs the same number of
 instructions backward, and checks that the initial machine state
 (pc, registers, memory, program break, tapes) is restored bit for
 bit. Programs that violate the RISC-R rules must throw an
 irreversible instruction exception instead. See riscr.md for the
-instruction set.
+instruction set. riscr-test is built like a tool with selfie.h and
+riscr.h, the library version of tools/riscr.c, as libraries.
 
 Usage: riscr-test scratch-binary < input (first byte must be 'R')
 
@@ -567,23 +568,19 @@ uint64_t compare_snapshot() {
 void boot() {
   end_program();
 
-  // write RISC-R binary and load it again, checking the ELF flag
+  // write RISC-R binary and load it again
+  e_flags = EF_RISCR;
+
   selfie_output(scratch_name);
   selfie_load(scratch_name);
 
-  reset_interpreter();
-  reset_profiler();
-  reset_microkernel();
+  if ((e_flags / EF_RISCR) % 2 == 0) {
+    printf("%s: %s lost its RISC-R flag\n", selfie_name, scratch_name);
 
-  init_memory(1);
+    exit(EXITCODE_SYSTEMERROR);
+  }
 
-  reset_tapes();
-
-  current_context = create_context(MY_CONTEXT, 0);
-
-  // assert: number_of_remaining_arguments() > 0
-
-  boot_loader(current_context);
+  boot_reversibly(1);
 
   run = 1;
 }
@@ -608,7 +605,7 @@ void test_reversibility(char* name, uint64_t expected_exit_code) {
 
   take_snapshot();
 
-  exit_code = mipster(current_context);
+  exit_code = riscr(current_context);
 
   if (exit_code != expected_exit_code) {
     printf("%s: exit code is %ld, expected %ld\n", selfie_name,
@@ -619,7 +616,7 @@ void test_reversibility(char* name, uint64_t expected_exit_code) {
     // undo all executed instructions but the exit system call
     steps = get_total_number_of_instructions() - 1;
 
-    mipster_backward(current_context, steps);
+    riscr_backward(current_context, steps);
 
     printf("%s: %s: %lu instructions executed forward and backward\n", selfie_name, name, steps);
 
@@ -639,7 +636,7 @@ void test_irreversibility(char* name) {
 
   boot();
 
-  exit_code = mipster(current_context);
+  exit_code = riscr(current_context);
 
   if (exit_code != EXITCODE_UNCAUGHTEXCEPTION)
     fail(name, "no exception thrown");
@@ -667,6 +664,8 @@ int main(int argc, char** argv) {
   init_interpreter();
   init_disassembler();
 
+  init_reversible_interpreter();
+
   if (number_of_remaining_arguments() == 0) {
     printf("%s { scratch binary }\n", selfie_name);
 
@@ -675,8 +674,6 @@ int main(int argc, char** argv) {
 
   // the scratch binary name remains the argument of the tested programs
   scratch_name = peek_argument(0);
-
-  RISCR = 1;
 
   message  = "RISC-R\n";
   filename = "tests/riscr-test.txt";

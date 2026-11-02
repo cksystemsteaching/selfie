@@ -1,6 +1,6 @@
 # Selfie on the RISC-R branch
 
-This branch extends selfie with RISC-R (a reversible variant of RISC-U), and prepares cellfie (an instruction-level reversible cellular machine that runs RISC-R) and bitr (a BTOR2-only bounded model checker). The full development plan is `projects/reversible.md`; read it before changing anything on this branch. The instruction set is specified in `riscr.md`, next to `riscu.md`. The repo's `PLAN.md` is the course plan and belongs to the `intelligence` branch, not to this work.
+This branch adds RISC-R (a reversible variant of RISC-U) to selfie as the tool riscr (`tools/riscr.c`), and prepares cellfie (an instruction-level reversible cellular machine that runs RISC-R) and bitr (a BTOR2-only bounded model checker). The full development plan is `projects/reversible.md`; read it before changing anything on this branch. The instruction set is specified in `riscr.md`, next to `riscu.md`. The repo's `PLAN.md` is the course plan and belongs to the `intelligence` branch, not to this work.
 
 ## Design rules
 
@@ -19,21 +19,21 @@ Every change must obey these rules from the plan:
 ## Conventions
 
 - Selfie's coding style: C\* subset only (no `&&`, `||`, `!`, `+=`, `for`, structs, bitwise operators; use `not()`, `and()`, `or()`, `bitwise_xor()`, `left_shift()`, `get_bits()`), locals declared before statements, section banners, one blank line between statements, comments that state the semantics.
-- RISC-R code in `selfie.c` lives in `do_riscr_*` procedures in the `RISC-R INSTRUCTIONS` section; RISC-U procedures dispatch to them when `RISCR` is set and are otherwise untouched. Backward execution is the `reverse` flag: `instruction_address()` and `continue_at()` hide the direction.
-- Testing code lives in `tests/`, never in `tools/` or `selfie.c`. The M1 harness is `tests/riscr-test.c`, built like a tool with `--include selfie.h`, and must itself be C\*.
-- Options: `-riscr` selects RISC-R (like `-m32`, before `-c`, `-l`, `-m`); `-rev <MB>` runs forward and then backward (`-r` was taken by the replay engine, so the plan's `-r` became `-riscr`).
+- `selfie.c` stays minimal: it only knows `EF_RISCR`, decodes `e_flags`, and refuses to run RISC-R binaries. All RISC-R code lives in `tools/riscr.c`, which follows `selfie.c`'s layout (library, compiler, interface, architecture, runtime, main) and has its own run loop, as monster does. Instructions are `do_riscr_*` procedures in its `RISC-R INSTRUCTIONS` section. Backward execution is the `reverse` flag: `instruction_address()` and `continue_at()` hide the direction.
+- Testing code lives in `tests/`, never in `tools/` or `selfie.c`. The M1 harness is `tests/riscr-test.c`, built like a tool with `--include selfie.h --include riscr.h` (`riscr.h` is generated from `tools/riscr.c` as `selfie.h` is from `selfie.c`), and must itself be C\*.
+- Options: `riscr` takes selfie's options plus `-m <MB>` (forward) and `-rev <MB>` (forward and then backward) for RISC-R binaries; there is no RISC-R flag in selfie.
 
 ## Milestones
 
 | # | Tool | Deliverable | Depends on | Check |
 | --- | --- | --- | --- | --- |
 | M0 | all | Branch, this file, make targets | — | existing `make` targets and grader tests unchanged and green |
-| M1 | selfie | RISC-R in mipster: forward and trace-free backward execution, tested with hand-written RISC-R code | M0 | `make riscr`: for every test, N steps forward then N steps back give the initial state bit for bit |
-| M2 | selfie | Bennett-mode compiler behind `-riscr` | M1 | selfie compiled to RISC-R and run on mipster compiles itself to an identical RISC-R binary, then runs back to its initial state |
+| M1 | riscr | RISC-R emulator: forward and trace-free backward execution, tested with hand-written RISC-R code | M0 | `make rev`: for every test, N steps forward then N steps back give the initial state bit for bit |
+| M2 | riscr | Bennett mode: RISC-U to RISC-R, see the decision of November 2, 2026 below | M1 | selfie compiled to RISC-R and run on riscr compiles itself to an identical RISC-R binary, then runs back to its initial state |
 | M3 | rotor | RISC-R forward and inverse machine models | M1 | inverse after forward is the identity on random states |
 | M4–M15 | see `projects/reversible.md` | | | |
 
-Status: M0 and M1 done (October 31, 2026), M1 addendum with system call results, `openat` and `brk` done (November 1, 2026). `make riscr` runs the harness natively and as a RISC-U executable on mipster; `make riscr-rev` demonstrates `-rev`.
+Status: M0 and M1 done (October 31, 2026), M1 addendum with system call results, `openat` and `brk` done (November 1, 2026). Emulator moved from `selfie.c` to `tools/riscr.c` (November 2, 2026). `make rev` runs the harness natively and as a RISC-U executable on mipster and checks that mipster refuses RISC-R binaries; `make riscr-rev` demonstrates `riscr -rev` natively and with riscr itself running on mipster.
 
 ## Decisions taken in M1 that refine the plan
 
@@ -42,15 +42,16 @@ Status: M0 and M1 done (October 31, 2026), M1 addendum with system call results,
 - Paired branches: a taken transfer lands *after* its come-from (`target + 4`), so no extra branch register is needed and the step function is a bijection on all states given the static pairing. The come-from of a `beq` may test different registers; its condition must hold at the transfer, checked dynamically.
 - Calls: `jal rd` requires `rd == 0` and links `pc + 4`; `jalr rd,0(rd)` is the come-from of a call and also the return, uncomputing `rd`; the come-from of a return is a `jal ra` right after the call site pointing at the callee's return `jalr`. The compiler will need the callee's epilogue address at every call site (M2).
 - System calls take arguments in `a1-a3` and add their result into `a0`; backward execution recomputes the result from the tapes and subtracts it. `exit` leaves the state unchanged; `read` exchanges words with a lazily filled input tape that remembers where the file ended; `write` appends to an output tape and still writes the file; `openat` allocates the next descriptor and a tape per file; `brk` requires `a0 == 0`, grows the heap and returns the previous break in `a0`, zero on failure. This is the M1 addendum of November 1, 2026; it changes the system call convention that M2's wrappers must emit.
-- RISC-R binaries carry `EF_RISCR` (bit 8 of `e_flags`); mipster refuses mismatches instead of switching modes silently.
-- In RISC-R mode mipster does not write the context pointer into `a6` on context switches (hypster is unsupported), so registers are bit for bit reversible.
+- RISC-R binaries carry `EF_RISCR` (bit 8 of `e_flags`); mipster refuses them and riscr refuses binaries without the flag, instead of switching modes silently.
+- Riscr does not write the context pointer into `a6` on context switches (hypster is unsupported), so registers are bit for bit reversible.
+- November 2, 2026: the emulator moved out of `selfie.c` into `tools/riscr.c` to keep `selfie.c` minimal (M1 had added about 1,380 lines; about 10 remain). This refines rule 5: RISC-R is a tool on top of selfie, not a flag inside it. M2 is expected to follow the same way, as a translator from RISC-U to RISC-R binaries in `tools/riscr.c` rather than a second code generator in starc; that is not decided yet.
 - An instruction that throws an irreversible instruction exception has no effect; the control-flow inverses were checked by a randomized round trip (200,000 random states, forward then backward and backward then forward, no mismatch) on November 1, 2026, and `riscr.md` records why a branch register, even one hidden in `zero`, would not remove come-froms.
 
 ## Open for M2
 
 - `lui` cannot negate the immediate `-2^19`; uncomputing such a constant needs two instructions.
 - Bennett mode needs a history stack and, per call site, the callee's epilogue address (a second fixup chain in starc).
-- The replay engine (`-r`) is refused in RISC-R mode; comparing trace-based undo with trace-free backward execution is a lesson still to be written.
+- Riscr has no replay engine (`-r`); comparing trace-based undo with trace-free backward execution is a lesson still to be written.
 - `malloc` must learn its initial break from the binary (the heap start is `round_up(data_start + data_size, PAGESIZE)`) since `brk(0)` no longer queries it.
 - Tapes are 1MB each (`MAX_TAPE_SIZE`), enough for selfie.c and selfie's binary, with at most 64 open files.
 - `riscr.md` ends with a table of how each instruction would look with dedicated opcodes, in case the `^=` and come-from encodings hurt in M2.

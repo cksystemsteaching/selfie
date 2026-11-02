@@ -211,7 +211,7 @@ cache: selfie selfie.m selfie.s examples/cache/dcache-access-[01].c
 .PHONY: sat brr bzz mon smt beat beator-btor2 rot synthesize rotor-btor2 btor2 more all
 
 # Run more that only requires standard tools and is not too slow
-more: sat brr bzz mon smt beat beator-btor2 rot synthesize rotor-btor2 riscr
+more: sat brr bzz mon smt beat beator-btor2 rot synthesize rotor-btor2 rev
 
 # Run all that only requires standard tools and is not too slow
 all: less more
@@ -344,24 +344,35 @@ rotor-btor2: $(rotors) selfie-rotorized.btor2 synthesize
 # Run beator and rotor on *.c files in symbolic folder and even on selfie
 btor2: beator-btor2 rotor-btor2
 
-# Compile riscr-test.c with selfie.h as library into riscr-test executable
-riscr-test: tests/riscr-test.c selfie.h
+# Compile riscr.c with selfie.h as library into riscr executable
+riscr: tools/riscr.c selfie.h
 	$(CC) $(CFLAGS) --include selfie.h $< -o $@
 
-# Run riscr-test, hand-written RISC-R code executed forward and backward on mipster, natively and as RISC-U executable
-riscr: riscr-test selfie selfie.h
+# Generate riscr library as riscr.h
+riscr.h: tools/riscr.c
+	sed 's/main(/riscr_main(/' tools/riscr.c > riscr.h
+
+# Compile riscr-test.c with selfie.h and riscr.h as libraries into riscr-test executable
+riscr-test: tests/riscr-test.c selfie.h riscr.h
+	$(CC) $(CFLAGS) --include selfie.h --include riscr.h $< -o $@
+
+# Run riscr-test, hand-written RISC-R code executed forward and backward on riscr, natively and as RISC-U executable,
+# and check that mipster refuses RISC-R binaries
+rev: riscr-test selfie selfie.h riscr.h
 	echo "RISC-R" | ./riscr-test tests/riscr-test.m
-	echo "RISC-R" | ./selfie -c selfie.h tests/riscr-test.c -m 64 tests/riscr-test-emu.m
+	echo "RISC-R" | ./selfie -c selfie.h riscr.h tests/riscr-test.c -m 64 tests/riscr-test-emu.m
+	! ./selfie -l tests/riscr-test.m -m 1
 
 # Prevent make from deleting intermediate target riscr-test
 .SECONDARY: riscr-test
 
-# Run selfie executing RISC-R code forward and backward on mipster, exit code is the first input byte
-riscr-rev: selfie riscr
-	-echo "RISC-R" | ./selfie -riscr -l tests/riscr-test.m -rev 1
+# Run riscr executing RISC-R code forward and backward, natively and as RISC-U executable, exit code is the first input byte plus 14
+riscr-rev: riscr selfie selfie.h rev
+	-echo "RISC-R" | ./riscr -l tests/riscr-test.m -rev 1
+	-echo "RISC-R" | ./selfie -c selfie.h tools/riscr.c -m 16 -l tests/riscr-test.m -rev 1
 
 # Consider these targets as targets, not files
-.PHONY: riscr riscr-rev
+.PHONY: rev riscr-rev
 
 # Consider these targets as targets, not files
 .PHONY: spike qemu assemble beator-32 rotor-32 32-bit bitwuzla beator-bitme rotor-bitme bitme extras
@@ -478,4 +489,4 @@ clean:
 	rm -f tools/*.btor2
 	rm -f tests/*.m tests/*.txt
 	rm -f selfie selfie-32 selfie.h selfie-gc.h selfie-gc-nomain.h selfie.exe
-	rm -f babysat buzzr monster beator beator-32 rotor rotor-32 riscr-test
+	rm -f babysat buzzr monster beator beator-32 rotor rotor-32 riscr riscr.h riscr-test
