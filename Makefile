@@ -211,7 +211,7 @@ cache: selfie selfie.m selfie.s examples/cache/dcache-access-[01].c
 .PHONY: sat brr bzz mon smt beat beator-btor2 rot synthesize rotor-btor2 btor2 more all
 
 # Run more that only requires standard tools and is not too slow
-more: sat brr bzz mon smt beat beator-btor2 rot synthesize rotor-btor2 rev
+more: sat brr bzz mon smt beat beator-btor2 rot synthesize rotor-btor2 rev trust
 
 # Run all that only requires standard tools and is not too slow
 all: less more
@@ -371,8 +371,26 @@ riscr-rev: riscr selfie selfie.h rev
 	-echo "RISC-R" | ./riscr -l tests/riscr-test.m -rev 1
 	-echo "RISC-R" | ./selfie -c selfie.h tools/riscr.c -m 16 -l tests/riscr-test.m -rev 1
 
+# trusting-trust: Ken Thompson's compiler trojan and Wheeler's diverse
+# double-compiling as a self-checking lesson, see examples/trusting-trust/README.md
+trust: selfie selfie.h
+# an honest identity compiler reproduces its own source byte for byte
+	./selfie -c selfie.h examples/trusting-trust/stamp.c -m 16 examples/trusting-trust/stamp.c examples/trusting-trust/honest-stamp.c
+	diff -q examples/trusting-trust/stamp.c examples/trusting-trust/honest-stamp.c
+# the victim's own source exits 0 under an honest compiler
+	./selfie -c selfie.h examples/trusting-trust/stamp.c -m 16 examples/trusting-trust/victim.c examples/trusting-trust/honest-victim.c
+	./selfie -c selfie.h examples/trusting-trust/honest-victim.c -m 1 ; test $$? -eq 0
+# the trojaned compiler injects exit code 42, found nowhere in victim.c
+	./selfie -c selfie.h examples/trusting-trust/stamp-trojan.c -m 16 examples/trusting-trust/victim.c examples/trusting-trust/trojaned-victim.c
+	./selfie -c selfie.h examples/trusting-trust/trojaned-victim.c -m 1 ; test $$? -eq 42
+# diverse double-compiling: the suspect's output for clean stamp.c differs from the honest compiler's
+	./selfie -c selfie.h examples/trusting-trust/stamp-trojan.c -m 16 examples/trusting-trust/stamp.c examples/trusting-trust/suspect-stamp.c
+	! diff -q examples/trusting-trust/honest-stamp.c examples/trusting-trust/suspect-stamp.c
+	@echo "$@: trojan detected by diverse double-compiling"
+	rm -f examples/trusting-trust/honest-stamp.c examples/trusting-trust/honest-victim.c examples/trusting-trust/trojaned-victim.c examples/trusting-trust/suspect-stamp.c
+
 # Consider these targets as targets, not files
-.PHONY: rev riscr-rev
+.PHONY: rev riscr-rev trust
 
 # Consider these targets as targets, not files
 .PHONY: spike qemu assemble beator-32 rotor-32 32-bit bitwuzla beator-bitme rotor-bitme bitme extras
@@ -488,5 +506,6 @@ clean:
 	rm -f tools/*.smt
 	rm -f tools/*.btor2
 	rm -f tests/*.m tests/*.txt
+	rm -f examples/trusting-trust/honest-stamp.c examples/trusting-trust/honest-victim.c examples/trusting-trust/trojaned-victim.c examples/trusting-trust/suspect-stamp.c
 	rm -f selfie selfie-32 selfie.h selfie-gc.h selfie-gc-nomain.h selfie.exe
 	rm -f babysat buzzr monster beator beator-32 rotor rotor-32 riscr riscr.h riscr-test
