@@ -215,6 +215,13 @@ The biggest risk is routing the token across the grid by address, not whether ce
 
 **Future work: FPGA.** With instruction-level cells, the natural hardware target is a RISC-R core generated as Verilog from rotor's BTOR2 model. Validate the generator by round trip: Yosys reads the Verilog and writes BTOR2 back, and bitr checks it against the source. Bit-level refined cells could go the same way later.
 
+**Future work: how LLMs run (a separate project until M14).** Two phases, kept out of the RISC-R work until they meet at M14:
+
+1. **Integer-only tiny transformer in C\*.** One file running inference on mipster: int8 weights, int32 accumulation, and integer approximations for softmax, layer norm and GELU, following I-BERT. C\* has no floating point, and real inference increasingly runs on integers anyway. The model is character-level, about 2 layers at d = 64 (roughly 100K parameters), trained and quantised outside selfie by a short Python script. That gives a few tokens per second on mipster, and the profiler shows matmul taking nearly all the time.
+2. **SIMT in mipster, not a GPU ISA.** One system call launches N contexts on the same code, each with its thread id in a register and all sharing memory. Mipster steps the contexts in lockstep while their `pc`s agree and masks those that diverge. Rewriting the matmul as a kernel then shows lockstep execution, divergence cost and memory coalescing, reported as counts rather than wall-clock speed.
+
+**The bridge.** Making the int8 matmul M14's array kernel turns it into a systolic array on cellfie, which is what a TPU's matrix unit is. One kernel then shows three execution models: sequential (mipster), SIMT and spatial (cellfie). Sampling a token discards information, which makes inference a natural irreversible contrast in M15.
+
 ## How to develop it
 
 Design here, build in Claude Code in the repo. Implementation is an edit–`make`–run loop over a long series of sessions, and that belongs in a native shell with full git.
