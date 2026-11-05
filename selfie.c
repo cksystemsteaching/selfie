@@ -1648,6 +1648,44 @@ uint64_t print_instruction();
 
 void selfie_disassemble(uint64_t verbose);
 
+// -----------------------------------------------------------------
+// --------------------------- ASSEMBLER ---------------------------
+// -----------------------------------------------------------------
+
+uint64_t is_hex_digit(char c);
+uint64_t hex_digit_value(char c);
+
+void get_assembly_symbol();
+
+void syntax_error_assembly(char* expected);
+
+uint64_t identifier_to_register();
+uint64_t identifier_to_instruction();
+uint64_t is_data_directive();
+
+void     get_expected_assembly_symbol(uint64_t expected, char* name);
+uint64_t get_assembly_register();
+uint64_t get_assembly_immediate();
+uint64_t get_assembly_signed_immediate();
+
+void assemble_instruction();
+void assemble_data();
+void assemble_riscu();
+
+void selfie_assemble();
+
+// ------------------------ GLOBAL VARIABLES -----------------------
+
+// operands of the most recently parsed instruction or data
+uint64_t assembly_instruction = 0;
+uint64_t assembly_rd             = 0;
+uint64_t assembly_rs1            = 0;
+uint64_t assembly_rs2            = 0;
+uint64_t assembly_immediate      = 0;
+
+uint64_t number_of_assembled_instructions = 0;
+uint64_t number_of_assembled_data           = 0;
+
 // ------------------------ GLOBAL VARIABLES -----------------------
 
 char*    assembly_name = (char*) 0; // name of assembly file
@@ -9720,6 +9758,445 @@ void selfie_disassemble(uint64_t verbose) {
 }
 
 // -----------------------------------------------------------------
+// -----------------------------------------------------------------
+// --------------------------- ASSEMBLER ---------------------------
+// -----------------------------------------------------------------
+
+uint64_t is_hex_digit(char c) {
+    if (is_digit(c))
+     return 1;
+    else if (c >= 'A') {
+     if (c <= 'F')
+       return 1;
+     else if (c >= 'a') {
+       if (c <= 'f')
+           return 1;
+       else
+           return 0;
+     } else
+       return 0;
+    } else
+     return 0;
+}
+
+uint64_t hex_digit_value(char c) {
+    // assert: is_hex_digit(c)
+    if (is_digit(c))
+     return c - '0';
+    else if (c >= 'a')
+     return c - 'a' + 10;
+    else
+     return c - 'A' + 10;
+}
+
+void get_assembly_symbol() {
+    uint64_t i;
+
+    // reset previously scanned symbol
+    symbol     = SYM_EOF;
+    identifier = (char*) 0;
+    literal    = 0;
+
+    if (find_next_character() != CHAR_EOF) {
+     if (is_letter(character)) {
+   // mnemonics and register names
+   identifier = string_alloc(MAX_IDENTIFIER_LENGTH);
+
+   i = 0;
+
+   while (is_character_letter_or_digit_or_underscore()) {
+       if (i >= MAX_IDENTIFIER_LENGTH) {
+           syntax_error_message("identifier too long");
+
+           exit(EXITCODE_SCANNERERROR);
+       }
+
+       store_character(identifier, i, character);
+
+       i = i + 1;
+
+       get_character();
+   }
+
+   store_character(identifier, i, 0); // null-terminated string
+
+   symbol = SYM_IDENTIFIER;
+  } else if (character == CHAR_DOT) {
+   // directives such as .8byte are scanned as identifiers including the dot
+   identifier = string_alloc(MAX_IDENTIFIER_LENGTH);
+
+   store_character(identifier, 0, character);
+
+   i = 1;
+
+   get_character();
+
+   while (is_character_letter_or_digit_or_underscore()) {
+       if (i >= MAX_IDENTIFIER_LENGTH) {
+           syntax_error_message("directive too long");
+
+           exit(EXITCODE_SCANNERERROR);
+       }
+
+       store_character(identifier, i, character);
+
+       i = i + 1;
+
+       get_character();
+   }
+
+    store_character(identifier, i, 0); // null-terminated string
+
+    symbol = SYM_IDENTIFIER;
+  } else if (is_digit(character)) {
+    if (character == '0') {
+      get_character();
+
+      if (character == 'x') {
+          // hexadecimal integer
+          get_character();
+
+          if (is_hex_digit(character) == 0) {
+              syntax_error_message("hexadecimal digit expected");
+
+              exit(EXITCODE_SCANNERERROR);
+          }
+
+          i = 0;
+
+          while (is_hex_digit(character)) {
+              if (i >= SIZEOFUINT64INBITS / 4) {
+                  // at most one hexadecimal digit per four bits
+                  syntax_error_message("hexadecimal integer out of bound");
+
+                  exit(EXITCODE_SCANNERERROR);
+              }
+
+              literal = literal * 16 + hex_digit_value(character);
+
+              i = i + 1;
+
+              get_character();
+          }
+      }
+      // else: 0 is 0, not 00, 000, etc.
+    } else {
+      // decimal integer
+      while (is_digit(character)) {
+          if (literal > (UINT64_MAX - (character - '0')) / 10) {
+              syntax_error_message("decimal integer out of bound");
+
+              exit(EXITCODE_SCANNERERROR);
+          }
+
+          literal = literal * 10 + (character - '0');
+
+                    get_character();
+                }
+            }
+
+            symbol = SYM_INTEGER;
+        } else if (character == CHAR_COMMA) {
+            get_character();
+
+            symbol = SYM_COMMA;
+        } else if (character == CHAR_LPARENTHESIS) {
+            get_character();
+
+            symbol = SYM_LPARENTHESIS;
+        } else if (character == CHAR_RPARENTHESIS) {
+            get_character();
+
+            symbol = SYM_RPARENTHESIS;
+        } else if (character == CHAR_DASH) {
+            get_character();
+
+            symbol = SYM_MINUS;
+        } else {
+            print_line_number("syntax error", line_number);
+            printf("found unknown character ");
+            print_character(character);
+            println();
+
+            exit(EXITCODE_SCANNERERROR);
+        }
+
+        number_of_scanned_symbols = number_of_scanned_symbols + 1;
+    }
+}
+
+void syntax_error_assembly(char* expected) {
+    print_line_number("syntax error", line_number);
+    printf("%s expected but ", expected);
+
+    if (symbol == SYM_IDENTIFIER)
+        printf("%s", identifier);
+    else
+        print_symbol(symbol);
+
+    printf(" found\n");
+
+    number_of_syntax_errors = number_of_syntax_errors + 1;
+
+    // the assembler does not recover from syntax errors
+    exit(EXITCODE_SYNTAXERROR);
+}
+
+uint64_t identifier_to_register() {
+    uint64_t reg;
+
+    // assert: symbol == SYM_IDENTIFIER
+    reg = 0;
+
+    while (reg < NUMBEROFREGISTERS) {
+        if (string_compare(identifier, get_register_name(reg)))
+         return reg;
+
+        reg = reg + 1;
+    }
+
+    // no register with that name
+    return NUMBEROFREGISTERS;
+}
+
+uint64_t identifier_to_instruction() {
+    uint64_t ins;
+
+    // assert: symbol == SYM_IDENTIFIER
+    ins = LUI;
+
+    while (ins <= ECALL) {
+        if (string_compare(identifier, get_mnemonic(ins)))
+         return ins;
+
+        ins = ins + 1;
+    }
+
+    // 0 is reserved for unknown instructions
+    return 0;
+}
+
+uint64_t is_data_directive() {
+    // assert: symbol == SYM_IDENTIFIER
+    if (IS64BITTARGET)
+        return string_compare(identifier, ".8byte");
+    else
+        return string_compare(identifier, ".4byte");
+}
+
+void get_expected_assembly_symbol(uint64_t expected, char* name) {
+    if (symbol == expected)
+        get_assembly_symbol();
+    else
+        syntax_error_assembly(name);
+}
+
+uint64_t get_assembly_register() {
+    uint64_t reg;
+
+    if (symbol == SYM_IDENTIFIER) {
+        reg = identifier_to_register();
+
+        if (reg < NUMBEROFREGISTERS) {
+             get_assembly_symbol();
+
+             return reg;
+         }
+     }
+
+     syntax_error_assembly("register");
+
+     return 0;
+}
+
+uint64_t get_assembly_immediate() {
+     uint64_t value;
+
+     if (symbol == SYM_INTEGER) {
+         value = literal;
+
+         get_assembly_symbol();
+
+         return value;
+     }
+
+     syntax_error_assembly("integer");
+
+     return 0;
+}
+
+uint64_t get_assembly_signed_immediate() {
+     if (symbol == SYM_MINUS) {
+         get_assembly_symbol();
+
+        return -get_assembly_immediate();
+    } else
+        return get_assembly_immediate();
+}
+
+void assemble_instruction() {
+    // assert: symbol == SYM_IDENTIFIER
+    assembly_instruction = identifier_to_instruction();
+
+    assembly_rd          = REG_ZR;
+    assembly_rs1         = REG_ZR;
+    assembly_rs2         = REG_ZR;
+    assembly_immediate = 0;
+
+    if (assembly_instruction == 0) {
+        if (string_compare(identifier, "nop")) {
+          // the disassembler prints addi zero,zero,0 as nop
+          assembly_instruction = ADDI;
+
+          get_assembly_symbol();
+
+          number_of_assembled_instructions = number_of_assembled_instructions+ 1;
+
+          return;
+        } else
+          syntax_error_assembly("RISC-U instruction");
+    }
+
+    get_assembly_symbol();
+
+    if (assembly_instruction == LUI) {
+        // lui rd,imm
+        assembly_rd = get_assembly_register();
+        get_expected_assembly_symbol(SYM_COMMA, ",");
+        assembly_immediate = get_assembly_immediate();
+
+        if (assembly_immediate >= two_to_the_power_of(20))
+          syntax_error_assembly("20-bit unsigned integer");
+    } else if (assembly_instruction == ADDI) {
+        // addi rd,rs1,imm
+        assembly_rd = get_assembly_register();
+        get_expected_assembly_symbol(SYM_COMMA, ",");
+        assembly_rs1 = get_assembly_register();
+        get_expected_assembly_symbol(SYM_COMMA, ",");
+    assembly_immediate = get_assembly_signed_immediate();
+
+    if (is_signed_integer(assembly_immediate, 12) == 0)
+      syntax_error_assembly("12-bit signed integer");
+  } else if (assembly_instruction == LOAD) {
+    // ld rd,imm(rs1)
+    assembly_rd = get_assembly_register();
+    get_expected_assembly_symbol(SYM_COMMA, ",");
+    assembly_immediate = get_assembly_signed_immediate();
+    get_expected_assembly_symbol(SYM_LPARENTHESIS, "(");
+    assembly_rs1 = get_assembly_register();
+    get_expected_assembly_symbol(SYM_RPARENTHESIS, ")");
+  } else if (assembly_instruction == STORE) {
+    // sd rs2,imm(rs1)
+    assembly_rs2 = get_assembly_register();
+    get_expected_assembly_symbol(SYM_COMMA, ",");
+    assembly_immediate = get_assembly_signed_immediate();
+    get_expected_assembly_symbol(SYM_LPARENTHESIS, "(");
+    assembly_rs1 = get_assembly_register();
+    get_expected_assembly_symbol(SYM_RPARENTHESIS, ")");
+  } else if (assembly_instruction == BEQ) {
+    // beq rs1,rs2,imm
+    assembly_rs1 = get_assembly_register();
+    get_expected_assembly_symbol(SYM_COMMA, ",");
+    assembly_rs2 = get_assembly_register();
+    get_expected_assembly_symbol(SYM_COMMA, ",");
+    assembly_immediate = get_assembly_signed_immediate();
+  } else if (assembly_instruction == JAL) {
+    // jal rd,imm
+    assembly_rd = get_assembly_register();
+    get_expected_assembly_symbol(SYM_COMMA, ",");
+    assembly_immediate = get_assembly_signed_immediate();
+  } else if (assembly_instruction == JALR) {
+    // jalr rd,imm(rs1)
+    assembly_rd = get_assembly_register();
+    get_expected_assembly_symbol(SYM_COMMA, ",");
+    assembly_immediate = get_assembly_signed_immediate();
+    get_expected_assembly_symbol(SYM_LPARENTHESIS, "(");
+    assembly_rs1 = get_assembly_register();
+    get_expected_assembly_symbol(SYM_RPARENTHESIS, ")");
+  } else if (assembly_instruction != ECALL) {
+    // add, sub, mul, divu, remu, sltu: op rd,rs1,rs2
+    assembly_rd = get_assembly_register();
+    get_expected_assembly_symbol(SYM_COMMA, ",");
+    assembly_rs1 = get_assembly_register();
+    get_expected_assembly_symbol(SYM_COMMA, ",");
+        assembly_rs2 = get_assembly_register();
+    }
+    // else: ecall has no operands
+
+    if (assembly_instruction == LOAD)
+        if (is_signed_integer(assembly_immediate, 12) == 0)
+          syntax_error_assembly("12-bit signed integer");
+
+    if (assembly_instruction == STORE)
+        if (is_signed_integer(assembly_immediate, 12) == 0)
+          syntax_error_assembly("12-bit signed integer");
+
+    if (assembly_instruction == JALR)
+        if (is_signed_integer(assembly_immediate, 12) == 0)
+          syntax_error_assembly("12-bit signed integer");
+
+    number_of_assembled_instructions = number_of_assembled_instructions + 1;
+}
+
+void assemble_data() {
+    // assert: is_data_directive()
+    get_assembly_symbol();
+
+    assembly_immediate = get_assembly_immediate();
+
+    number_of_assembled_data = number_of_assembled_data + 1;
+}
+
+void assemble_riscu() {
+    // assembly: { instruction } { data } EOF
+    get_assembly_symbol();
+
+    while (symbol != SYM_EOF) {
+        if (symbol != SYM_IDENTIFIER)
+          syntax_error_assembly("RISC-U instruction or data");
+        else if (is_data_directive())
+          assemble_data();
+        else if (number_of_assembled_data > 0)
+          // code must come before data
+          syntax_error_assembly("data");
+        else
+          assemble_instruction();
+    }
+}
+
+void selfie_assemble() {
+    source_name = get_argument();
+
+    printf("%s: selfie assembling %s with %lu-bit RISC-U\n", selfie_name, source_name, WORDSIZEINBITS);
+
+    // assert: source_name is mapped and not longer than MAX_FILENAME_LENGTH
+
+    source_fd = open_read_only(source_name);
+
+    if (signed_less_than(source_fd, 0)) {
+        printf("%s: could not open input file %s\n", selfie_name, source_name);
+
+        exit(EXITCODE_IOERROR);
+    }
+
+    reset_scanner();
+
+    number_of_assembled_instructions = 0;
+    number_of_assembled_data           = 0;
+
+    assemble_riscu();
+
+    printf("%s: %lu characters read in %lu lines and %lu comments\n", selfie_name,
+        number_of_read_characters,
+        line_number,
+        number_of_comments);
+
+    printf("%s: %lu RISC-U instructions and %lu bytes of data parsed in %s\n", selfie_name,
+        number_of_assembled_instructions,
+        number_of_assembled_data * WORDSIZE,
+        source_name);
+}
+
 // -------------------------- REPLAY ENGINE ------------------------
 // -----------------------------------------------------------------
 
@@ -12249,7 +12726,7 @@ uint64_t no_or_bad_or_more_arguments(uint64_t exit_code) {
 }
 
 void print_synopsis(char* extras) {
-  printf("%s { -c { source } | -o binary | ( -s | -S ) assembly | -l binary }%s\n", selfie_name, extras);
+  printf("%s { -c { source } | -o binary | ( -s | -S ) assembly | -a assembly | -l binary }%s\n", selfie_name, extras);
 }
 
 // -----------------------------------------------------------------
@@ -12293,6 +12770,8 @@ uint64_t selfie(uint64_t extras) {
         selfie_disassemble(0);
       else if (string_compare(argument, "-S"))
         selfie_disassemble(1);
+      else if (string_compare(argument, "-a"))
+        selfie_assemble();
       else if (string_compare(argument, "-l"))
         selfie_load(get_argument());
       else if (not(extras)) {
@@ -12386,8 +12865,6 @@ int main(int argc, char** argv) {
   init_system();
   init_target();
   init_kernel();
-   printf("%s: This is Zineb Lazaar's Selfie!\n", selfie_name);
-   
 
   exit_code = selfie(0);
 
