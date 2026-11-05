@@ -31,7 +31,7 @@ Every change must obey these rules from the plan:
 | M1 | riscr | RISC-R emulator: forward and trace-free backward execution, tested with hand-written RISC-R code | M0 | `make rev`: for every test, N steps forward then N steps back give the initial state bit for bit |
 | M2 | riscr | Bennett mode: RISC-U to RISC-R, see the decision of November 2, 2026 below | M1 | selfie compiled to RISC-R and run on riscr compiles itself to an identical RISC-R binary, then runs back to its initial state |
 | M3 | rotor | RISC-R forward and inverse machine models | M1 | inverse after forward is the identity on random states |
-| M4–M15 | see `projects/reversible.md` | | | |
+| M4–M17 | see `projects/reversible.md` | | | |
 
 Status: M0 and M1 done (October 31, 2026), M1 addendum with system call results, `openat` and `brk` done (November 1, 2026). Emulator moved from `selfie.c` to `tools/riscr.c` (November 2, 2026). `make rev` runs the harness natively and as a RISC-U executable on mipster and checks that mipster refuses RISC-R binaries; `make riscr-rev` demonstrates `riscr -rev` natively and with riscr itself running on mipster.
 
