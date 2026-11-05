@@ -15,7 +15,7 @@ Rules every change must obey:
 5. **Extend, don't fork.** RISC-R reuses RISC-U's 14 opcodes and encodings, marks its binaries with one ELF flag, and lives in its own tool, riscr, on top of `selfie.h`; `selfie.c` only learns to refuse RISC-R binaries. Existing behaviour, make targets and grader tests stay unchanged.
 6. **Every milestone ends in a check a machine runs**, as a make target, not a claim.
 7. **Deferred on purpose:** asynchrony, hardware targets, performance. Each stays a separate layer that can be added later.
-8. **Reversibility is a switch.** Every tool runs with RISC-U and with RISC-R, so each benefit and each cost of reversibility shows up by flipping one flag.
+8. **Reversibility is a switch.** Every tool runs with RISC-U and with RISC-R, so each benefit and each cost of reversibility shows up by running a program the one way or the other.
 9. **Asynchrony stays below the semantics.** All semantics are synchronous steps. Asynchrony enters only as an implementation layer proven to refine them, and only where several signals are in flight.
 
 ## Architecture
@@ -34,7 +34,7 @@ Reversibility and symbolic execution are two sides of one property. A step that 
 
 ![Reversibility and symbolic execution: 2 directions × 2 modes](figures/reversible-duality.png)
 
-**Turning reversibility off.** Reversibility is a switch, not an assumption. Every tool runs with RISC-U (off) and RISC-R (on), and the same programs run both ways: as RISC-U binaries on mipster and, translated, as RISC-R binaries on riscr. Flipping the one flag shows exactly where reversibility enters, and what it costs:
+**Turning reversibility off.** Reversibility is a switch, not an assumption. Every tool runs with RISC-U (off) and RISC-R (on), and the same programs run both ways: as RISC-U binaries on mipster and, translated, as RISC-R binaries on riscr. Running a program both ways shows exactly where reversibility enters, and what it costs:
 
 | Aspect | RISC-U (off) | RISC-R (on) | Measured as |
 | --- | --- | --- | --- |
@@ -189,7 +189,7 @@ The critical path runs M1 → M3 → M5 → M7 → M8. M7 is the first time cell
 | M11 | cellfie | Self-compilation fixed point: the layout compiler, compiled by selfie to RISC-R, runs on cellfie | M8, M10 | L1 = L0 byte for byte |
 | M12 | bitr | Backward BMC on the inverse model, compared with forward BMC | M5 | a written comparison on the examples (research result, not a pass/fail gate) |
 | M13 | cellfie | All of selfie on cellfie, event-driven, with hybrid simulation as fallback | M8 | selfie compiles itself on cellfie with output identical to riscr's; running time recorded |
-| M14 | cellfie, bitr | Demonstrator: one array kernel at all four levels of the story (v1, v2a, v2b, v2c), next to riscr on cellfie, which should not dissolve | M8, M13 | each level verified against riscr by bitr; one chart of cells used, ticks and active cell-updates per level, with the reprogrammability each level gives up (research result; level 4 needs concurrent elements) |
+| M14 | cellfie, bitr | Demonstrator: one array kernel at all four levels of the story (v1, v2a, v2b, v2c), next to mipster on cellfie, which should not dissolve | M8, M13 | each level verified against riscr by bitr; one chart of cells used, ticks and active cell-updates per level, with the reprogrammability each level gives up (research result; level 4 needs concurrent elements) |
 | M15 | all | Reversibility on/off comparison: the same programs as RISC-U and as RISC-R, through every tool | M2, M5, M8, M12 | a written table per example: instruction count, history size, trace bytes, backward symbolic variables and solver time, erased bits (research result) |
 
 Later, each as a layer checked by bitr: several tokens (threads), the dataflow tier 2, bit-level refinement of instruction cells, replication, clockless execution on DICE.
