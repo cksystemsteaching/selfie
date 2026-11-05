@@ -8,9 +8,9 @@ This document provides an overview of the RISC-R instruction set. RISC-R is a re
 
 ## Machine State
 
-A RISC-R machine has the state of a RISC-U machine, a 64-bit program counter `pc`, 32 general-purpose 64-bit registers, 4GB of byte-addressed memory, and a program break, plus one tape of 64-bit words per open file, with a head per tape. All registers, including `ra`, are zero when a program starts, and only the tapes of standard input, output, and error exist, all empty. Register `zero` always contains the value 0; writes to `zero` are ignored, which makes instructions with `rd` equal to `zero` effective no-ops in both directions. The code segment is read-only, which is what makes the step function a bijection on the remaining state once the program is fixed.
+A RISC-R machine has the state of a RISC-U machine, a 64-bit program counter `pc`, 32 general-purpose 64-bit registers, 4GB of byte-addressed memory, and a program break, plus one tape of 64-bit words per open file, with a head per tape. All registers, including `ra`, are zero when a program starts, except `sp`, which the boot loader points at the arguments on the stack, and only the tapes of standard input, output, and error exist, all empty. Register `zero` always contains the value 0; writes to `zero` are ignored, which makes instructions with `rd` equal to `zero` effective no-ops in both directions. The code segment is read-only, which is what makes the step function a bijection on the remaining state once the program is fixed.
 
-Executing backward, riscr fetches the instruction at `pc - 4`, applies its inverse, and leaves `pc` at that instruction. Riscr runs a RISC-R binary forward with `-m` and forward and then backward with `-rev`: after the program exits, riscr executes as many instructions backward as it executed forward, except the final `exit`, and arrives at the initial state. The `tests/riscr-test.c` harness checks this bit for bit on hand-written RISC-R code with `make rev`.
+Executing backward, riscr fetches the instruction at `pc - 4`, applies its inverse, and leaves `pc` at that instruction. Riscr runs a RISC-R binary forward with `-m`, and with `-rev` forward and then backward: after the program exits, riscr executes as many instructions backward as it executed forward, except the final `exit`, and arrives at the initial state. The `tests/riscr-test.c` harness checks this bit for bit on hand-written RISC-R code with `make rev`.
 
 ## Instructions
 
@@ -22,7 +22,7 @@ The parameters `rd`, `rs1`, and `rs2` may denote any of the 32 general-purpose r
 
 `addi rd,rs1,imm`: `rd = rd + (rs1 + imm)` / `rd = rd - (rs1 + imm)`
 
-`lui` and `addi` with `rs1` equal to `zero` add constants; the inverse of a constant addition is available as a forward instruction with the negated immediate, so RISC-R code can uncompute constants.
+`lui` and `addi` with `rs1` equal to `zero` add constants; the inverse of a constant addition is available as a forward instruction with the negated immediate, so RISC-R code can uncompute constants; only the most negative immediate, `-2^11` for `addi` and `-2^19` for `lui`, cannot be negated in one instruction and takes two.
 
 #### Memory
 
@@ -48,13 +48,13 @@ The parameters `rd`, `rs1`, and `rs2` may denote any of the 32 general-purpose r
 
 #### Comparison
 
-`sltu rd,rs1,rs2`: `if (rs1 < rs2) { rd = rd ^ 1 } ` / the same, where the values of `rs1` and `rs2` are interpreted as unsigned integers
+`sltu rd,rs1,rs2`: `if (rs1 < rs2) { rd = rd ^ 1 }` / the same, where the values of `rs1` and `rs2` are interpreted as unsigned integers
 
 Like `mul`, `sltu` is its own inverse, so a loop can compute its continuation flag into a zeroed register, branch on it, and uncompute it by executing the same `sltu` again.
 
 #### Control
 
-Control flow in RISC-R is paired: every taken branch or jump from an *origin* lands on a *come-from* instruction at the *target* that points back at the origin. Forward execution jumps over the come-from to `target + 4`; backward execution starts from the instruction before `pc`, which is then the come-from, and jumps onto the origin. The come-from is only ever executed forward when execution falls into it, which is why its condition must then be false, as in the Pendulum architecture. Mipster checks the pairing on every taken transfer in both directions and throws an irreversible instruction exception if it fails.
+Control flow in RISC-R is paired: every taken branch or jump from an *origin* lands on a *come-from* instruction at the *target* that points back at the origin. Forward execution jumps over the come-from to `target + 4`; backward execution starts from the instruction before `pc`, which is then the come-from, and jumps onto the origin. The come-from is only ever executed forward when execution falls into it, which is why its condition must then be false, as in the Pendulum architecture. Riscr checks the pairing on every taken transfer in both directions and throws an irreversible instruction exception if it fails.
 
 `beq rs1,rs2,imm`: `if (rs1 == rs2) { pc = pc + imm + 4 } else { pc = pc + 4 }` / `if (rs1 == rs2) { pc = pc - 4 + imm } else { pc = pc - 4 }` with `-2^12 <= imm < 2^12` and `imm % 2 == 0`
 
@@ -107,7 +107,7 @@ Violating rules 1 to 4, or calling `brk` with nonzero `a0`, throws an irreversib
 
 ## With Dedicated Opcodes
 
-RISC-R reuses RISC-U's encodings so that selfie, rotor, and cellfie share one encoder, decoder, and disassembler, and so that a RISC-U and a RISC-R binary differ only in a flag. The price is that four instructions use exclusive or, that `ld` and `sd` are an exchange and nothing, and that come-froms are disguised as branches and jumps. Reversibility itself forces none of these encodings, only the information they preserve. If RISC-R had its own opcodes, the natural choices would be:
+RISC-R reuses RISC-U's encodings so that selfie, rotor, and cellfie share one encoder, decoder, and disassembler, and so that a RISC-U and a RISC-R binary differ only in a flag. The price is that four instructions use exclusive or, that `ld` is an exchange and `sd` is nothing, and that come-froms are disguised as branches and jumps. Reversibility itself forces none of these encodings, only the information they preserve. If RISC-R had its own opcodes, the natural choices would be:
 
 | RISC-R today | With dedicated opcodes | What is gained |
 | --- | --- | --- |

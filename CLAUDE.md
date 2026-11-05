@@ -35,7 +35,7 @@ Every change must obey these rules from the plan:
 
 Status: M0 and M1 done (October 31, 2026), M1 addendum with system call results, `openat` and `brk` done (November 1, 2026). Emulator moved from `selfie.c` to `tools/riscr.c` (November 2, 2026). `make rev` runs the harness natively and as a RISC-U executable on mipster and checks that mipster refuses RISC-R binaries; `make riscr-rev` demonstrates `riscr -rev` natively and with riscr itself running on mipster.
 
-## Decisions taken in M1 that refine the plan
+## Decisions that refine the plan
 
 - `addi rd,rs1,imm` means `rd += rs1 + imm`, not just `rd += imm`, so register moves into zeroed registers stay one instruction.
 - `mul`, `divu`, `remu`, and `sltu` are `rd ^= f(rs1, rs2)` (self-inverse) rather than `rd += f`, because with `+=` no forward program can ever uncompute a comparison or a product, so every loop would leak a register per iteration. `add`, `sub`, `addi`, `lui` stay additive, each invertible by another forward instruction.
@@ -49,7 +49,7 @@ Status: M0 and M1 done (October 31, 2026), M1 addendum with system call results,
 
 ## Open for M2
 
-- `lui` cannot negate the immediate `-2^19`; uncomputing such a constant needs two instructions.
+- The most negative immediate cannot be negated in one instruction, so uncomputing such a constant needs two: `-2^19` for `lui`, `-2^11` for `addi`.
 - Bennett mode needs a history stack and, per call site, the callee's epilogue address (a second fixup chain in starc).
 - Riscr has no replay engine (`-r`); comparing trace-based undo with trace-free backward execution is a lesson still to be written.
 - `malloc` must learn its initial break from the binary (the heap start is `round_up(data_start + data_size, PAGESIZE)`) since `brk(0)` no longer queries it.

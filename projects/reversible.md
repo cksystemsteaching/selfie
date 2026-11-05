@@ -15,7 +15,7 @@ Rules every change must obey:
 5. **Extend, don't fork.** RISC-R reuses RISC-U's 14 opcodes and encodings, marks its binaries with one ELF flag, and lives in its own tool, riscr, on top of `selfie.h`; `selfie.c` only learns to refuse RISC-R binaries. Existing behaviour, make targets and grader tests stay unchanged.
 6. **Every milestone ends in a check a machine runs**, as a make target, not a claim.
 7. **Deferred on purpose:** asynchrony, hardware targets, performance. Each stays a separate layer that can be added later.
-8. **Reversibility is a switch.** Every tool runs with RISC-U and with RISC-R, so each benefit and each cost of reversibility shows up by flipping one flag.
+8. **Reversibility is a switch.** Every tool runs with RISC-U and with RISC-R, so each benefit and each cost of reversibility shows up by running a program the one way or the other.
 9. **Asynchrony stays below the semantics.** All semantics are synchronous steps. Asynchrony enters only as an implementation layer proven to refine them, and only where several signals are in flight.
 
 ## Architecture
@@ -34,7 +34,7 @@ Reversibility and symbolic execution are two sides of one property. A step that 
 
 ![Reversibility and symbolic execution: 2 directions × 2 modes](figures/reversible-duality.png)
 
-**Turning reversibility off.** Reversibility is a switch, not an assumption. Every tool runs with RISC-U (off) and RISC-R (on), and the same programs run both ways: as RISC-U binaries on mipster and, translated, as RISC-R binaries on riscr. Flipping the one flag shows exactly where reversibility enters, and what it costs:
+**Turning reversibility off.** Reversibility is a switch, not an assumption. Every tool runs with RISC-U (off) and RISC-R (on), and the same programs run both ways: as RISC-U binaries on mipster and, translated, as RISC-R binaries on riscr. Running a program both ways shows exactly where reversibility enters, and what it costs:
 
 | Aspect | RISC-U (off) | RISC-R (on) | Measured as |
 | --- | --- | --- | --- |
@@ -189,7 +189,7 @@ The critical path runs M1 → M3 → M5 → M7 → M8. M7 is the first time cell
 | M11 | cellfie | Self-compilation fixed point: the layout compiler, compiled by selfie to RISC-R, runs on cellfie | M8, M10 | L1 = L0 byte for byte |
 | M12 | bitr | Backward BMC on the inverse model, compared with forward BMC | M5 | a written comparison on the examples (research result, not a pass/fail gate) |
 | M13 | cellfie | All of selfie on cellfie, event-driven, with hybrid simulation as fallback | M8 | selfie compiles itself on cellfie with output identical to riscr's; running time recorded |
-| M14 | cellfie, bitr | Demonstrator: one array kernel at all four levels of the story (v1, v2a, v2b, v2c), next to riscr on cellfie, which should not dissolve | M8, M13 | each level verified against riscr by bitr; one chart of cells used, ticks and active cell-updates per level, with the reprogrammability each level gives up (research result; level 4 needs concurrent elements) |
+| M14 | cellfie, bitr | Demonstrator: one array kernel at all four levels of the story (v1, v2a, v2b, v2c), next to mipster on cellfie, which should not dissolve | M8, M13 | each level verified against riscr by bitr; one chart of cells used, ticks and active cell-updates per level, with the reprogrammability each level gives up (research result; level 4 needs concurrent elements) |
 | M15 | all | Reversibility on/off comparison: the same programs as RISC-U and as RISC-R, through every tool | M2, M5, M8, M12 | a written table per example: instruction count, history size, trace bytes, backward symbolic variables and solver time, erased bits (research result) |
 | M16 | riscr | Garbage-free riscr: its run loop written in M9's C\* so that each emulated step uncomputes its own fetch, decode and dispatch, then compiled to RISC-R in garbage-free mode | M9 | riscr on riscr runs every M1 test with the history stack empty after every guest step; running the host backward under the outer `riscr -rev` matches the inner `riscr -rev` on the guest bit for bit; a second level of nesting adds no history (needs a history-free conditional for the opcode dispatch: an exit test equal to the entry test, which M9 must provide as a construct or a compiler check; and a pc update that uncomputes the old pc from the new one by calling riscr's backward control flow, `instruction_address()` and `continue_at()`, inside the forward step, since the old pc is otherwise the one word of garbage per step) |
 | M17 | riscr | Reversible hosting: hypster translated to RISC-R runs its guests as contexts of the bottom riscr, which reverses them with its own `-rev`, without nested interpretation. The switch system call stops overwriting: today `do_switch` writes the from-context into `a6` and sets `timer = timeout`; in riscr the from-context is added into a zeroed `a6` and the remaining timer is exchanged with a per-context counter, so every switch leaves both sides in the state. Context creation allocates the next context deterministically, as `openat` allocates descriptors | M2 | selfie's hypster examples, with guests interleaved by timer expiry and system calls, run on riscr forward and then back to the initial state bit for bit, without a trace, including every context switch |
