@@ -89,7 +89,7 @@ Bitr reads BTOR2 and nothing else, so it never needs to know whether a model cam
 4. **Bit-blaster** to CNF using Tseitin encoding. Arrays are handled by read-over-write elimination, which works because k is bounded, together with rotor's existing options for bounding memory segments.
 5. **SAT core.** Babysat stays as the executable spec (plain enumeration). Next to it goes a minimal CDCL solver in C\*: two watched literals, first-UIP learning, restarts only if needed. Both must give the same SAT/UNSAT answer on `examples/sat` and on every CNF bitr generates.
 6. **Forward BMC:** unroll k steps and check `bad`. A satisfying assignment becomes an input trace that mipster or riscr replays, which closes the loop.
-7. **Backward BMC on the inverse model:** unroll from `bad` backwards to `init`, where each step is plain substitution with no quantifiers. Whether this beats forward BMC on real programs is a research question, not an assumption.
+7. **Backward BMC on the inverse model:** unroll from `bad` backwards to `init`, where each step is plain substitution with no quantifiers. Backward unrolling is functional but not concrete: `init` is mostly concrete (loaded code, zeroed registers), so forward terms collapse under constant propagation, while `bad` constrains a few bits and leaves the rest of the state free. The likely win is therefore meet-in-the-middle, forward from `init` and backward from `bad`, joined on the property's cone of influence rather than on the full state. Whether either beats forward BMC on real programs is a research question, not an assumption.
 8. **Product machine:** two BTOR2 models plus an abstraction function, also in BTOR2, give an equivalence check. This is how selfie and cellfie are compared, and it is fully generic.
 9. **Escape hatch:** export the unrolled formula as DIMACS or SMT-LIB, or hand the BTOR2 file straight to btormc, Pono or bitme, for anything beyond toy size.
 
@@ -98,6 +98,13 @@ Bitr reads BTOR2 and nothing else, so it never needs to know whether a model cam
 **The BTOR2 profile.** BTOR2 itself stays unextended. A short convention document fixes three things: symbol names for architectural state (`pc`, registers, memory segments including the history stack's, program break, tapes); file pairs for forward and inverse models; and the abstraction function as a separate file over cellfie's state.
 
 **Realism.** A naive CDCL solver on bit-blasted RISC-R handles programs of a few dozen instructions at small k. That is enough for teaching and for the selfie-versus-cellfie checks on small cases. Research-scale results go through the escape hatch.
+
+**Propagation by emulation, later.** Whenever the solver has assigned every bit of one frame's state, a propagator computes the neighbouring frames by running the step function forward and, on the inverse model, backward, and assigns them; a computed bit that disagrees with an assigned one is a conflict. Tseitin-encoded arithmetic cannot propagate from outputs back to inputs; the inverse model can. This generalises bitme's domain propagation to both directions. In bitr's own CDCL it is a propagation hook; with an external solver it maps onto CaDiCaL's IPASIR-UP user propagators. Research question: how often frames become fully assigned early enough to matter, and whether propagating on the cone of influence of the assigned bits recovers most of the benefit when they do not.
+
+**Research notes on reversible model checking.**
+
+- **Predecessors in IC3.** On a bijection every full state has exactly one predecessor, so a predecessor query for a full state is one backward step and a membership test, with no SAT call. Cubes, which leave bits free, still need the solver for those bits. Open: what share of IC3's queries are on full or nearly full states, and whether generalisation can exploit the uniqueness of predecessors.
+- **Reachability is symmetric.** A bijection on a finite state space is a permutation, so the state space is a union of cycles. M1 made `exit` and exceptions leave the state unchanged, so they are fixpoints and riscr's whole step stays a bijection. A bad state is then reachable from `init` exactly when `init` is reachable from it, and a checker may start from whichever end is more constrained. This holds only for the full state, tapes included, and only within the models' memory bound; cycles can be astronomically long, so it says nothing about depth.
 
 ## cellfie: an instruction-level cellular machine for RISC-R
 
@@ -188,7 +195,7 @@ The critical path runs M1 → M3 → M5 → M7 → M8. M7 is the first time cell
 | M9 | selfie | `+=`, `-=` and `^=` in C\*, compiled without history | M2 | the history stack stays empty for programs that use only these; selfie still compiles with gcc |
 | M10 | cellfie | Construction ISA, constructor, tape emission | M8 | constructor plus tape plus blank grid reaches exactly the compiled layout plus tape and idle constructor |
 | M11 | cellfie | Self-compilation fixed point: the layout compiler, compiled by selfie to RISC-R, runs on cellfie | M8, M10 | L1 = L0 byte for byte |
-| M12 | bitr | Backward BMC on the inverse model, compared with forward BMC | M5 | a written comparison on the examples (research result, not a pass/fail gate) |
+| M12 | bitr | Backward BMC on the inverse model, compared with forward BMC and with meet-in-the-middle joined on the property's cone of influence | M5 | a written comparison on the examples (research result, not a pass/fail gate) |
 | M13 | cellfie | All of selfie on cellfie, event-driven, with hybrid simulation as fallback | M8 | selfie compiles itself on cellfie with output identical to riscr's; running time recorded |
 | M14 | cellfie, bitr | Demonstrator: one array kernel at all four levels of the story (v1, v2a, v2b, v2c), next to mipster on cellfie, which should not dissolve | M8, M13 | each level verified against riscr by bitr; one chart of cells used, ticks and active cell-updates per level, with the reprogrammability each level gives up (research result; level 4 needs concurrent elements) |
 | M15 | all | Reversibility on/off comparison: the same programs as RISC-U and as RISC-R, through every tool | M2, M5, M8, M12 | a written table per example: instruction count, history size, trace bytes, backward symbolic variables and solver time, erased bits (research result) |
