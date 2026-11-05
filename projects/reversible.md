@@ -1,6 +1,6 @@
 # selfie · cellfie · bitr — development plan
 
-Oct 30, 2026 · Christoph Kirsch · updated Nov 2, 2026: RISC-R moved into its own tool, riscr
+Oct 30, 2026 · Christoph Kirsch · updated Nov 5, 2026: M16 garbage-free riscr, M17 reversible hypster; Nov 2: RISC-R moved into its own tool, riscr
 
 ## Goal and design rules
 
@@ -54,14 +54,15 @@ RISC-R keeps RISC-U's 14 opcodes and encodings and changes only what they mean, 
 
 | RISC-U | RISC-R meaning | Why it is reversible |
 | --- | --- | --- |
-| `add sub mul divu remu sltu` | `rd += op(rs1, rs2)`, with `rd` distinct from `rs1` and `rs2` | `x += f(y, z)` inverts to `x -= f(y, z)` for any f (the Janus trick) |
-| `addi lui` | `rd += imm` | inverse is `rd -= imm` |
-| `ld`, `sd` | `ld` = exchange `rd` with a memory word; `sd` unused | an exchange is its own inverse |
-| `beq` | unchanged forward; every branch target holds a paired come-from `beq` | the pair tells reverse execution which way it came (Pendulum's idea) |
-| `jal jalr` | `jal` adds the return address into a zeroed `ra`; the caller subtracts it after return | `ra` is uncomputed with a known constant |
-| `ecall` | `read`, `write`, `exit` act on input and output tapes held in machine state | no information leaves the state |
+| `add sub` | `rd += rs1 + rs2` and `rd += rs1 - rs2`, with `rd` distinct from `rs1` and `rs2` | each is the other's inverse (the Janus trick) |
+| `mul divu remu sltu` | `rd ^= op(rs1, rs2)` | executing the same instruction again restores `rd`; with `+=` no forward program could uncompute a product or a comparison |
+| `addi lui` | `rd += rs1 + imm` and `rd += imm * 2^12` | inverse is the same instruction with the negated immediate |
+| `ld`, `sd` | `ld` = exchange `rd` with a memory word; `sd` throws | an exchange is its own inverse |
+| `beq` | a taken branch lands after a paired come-from `beq` at its target | the pair tells reverse execution which way it came (Pendulum's idea) |
+| `jal jalr` | `jal` adds the return address into a zeroed `rd`; `jalr rd,0(rd)` is both the come-from of a call and the return, and uncomputes `rd` | the link is uncomputed by the instruction that consumes it |
+| `ecall` | `exit`, `read`, `write`, `openat`, `brk`, with arguments in `a1-a3` and the result added into `a0`; files are tapes in machine state | no information leaves the state |
 
-M1 refined this table: `addi` is `rd += rs1 + imm`; `mul divu remu sltu` are `rd ^= op(rs1, rs2)`, since with `+=` no forward program can uncompute a product or a comparison; a taken transfer lands after its paired come-from; `jalr rd,0(rd)` uncomputes the link; and system calls take their arguments in `a1-a3` and add their result into `a0`, with `openat` and `brk` added. `riscr.md` is authoritative.
+This table summarises `riscr.md`, which is authoritative; the M1 decisions behind it are recorded in `CLAUDE.md`.
 
 RISC-R binaries look like RISC-V but do not run on RISC-V hardware, so bit 8 of `e_flags` (`EF_RISCR`) marks them: mipster refuses them, and riscr refuses binaries without it.
 
@@ -70,13 +71,13 @@ One more ISA rule: the code segment is read-only. Fixing a program's code then k
 **The compiler, in two steps:**
 
 1. **Bennett mode (no language change).** Every destructive assignment `x = e` becomes: compute `e` into zeroed temporaries, exchange `x` with a fresh zero slot on a history stack, add the result into `x`, then run the computation of `e` backwards so every temporary ends at zero again (compute, copy, uncompute). All of C\*, including selfie itself, then compiles to RISC-R unchanged.
-2. **Garbage-free mode (small language change).** Add only `x += e`, `x -= e` and `x ^= e` to C\*, with `x` not occurring in `e`. These compile without touching the history stack. `^=` is needed because M1 made `mul`, `divu`, `remu` and `sltu` exclusive-or into `rd`, so a product or comparison can only be uncomputed by `^=`. All three remain valid C, so selfie still compiles with gcc. Reversible conditionals and loops (Janus `fi`/`until`) are not C, so they stay out until there is a clear need.
+2. **Garbage-free mode (small language change).** Add only `x += e`, `x -= e` and `x ^= e` to C\*, with `x` not occurring in `e`. These compile without touching the history stack. `^=` is needed because M1 made `mul`, `divu`, `remu` and `sltu` exclusive-or into `rd`, so a product or comparison can only be uncomputed by `^=`. All three remain valid C, so selfie still compiles with gcc. Reversible conditionals and loops (Janus `fi`/`until`) are not C, so they stay out of M9; M16's opcode dispatch is the first clear need for one, and M16 provides it.
 
 **Where the compiler lives (proposed, not decided).** Bennett mode becomes a translator from RISC-U binaries to RISC-R binaries in riscr's compiler section, so starc stays unchanged and the ELF binary is the only interface between them. The translator pushes every overwritten register and memory word onto the history stack, gives every jump target a come-from, and records in a history bit which way control arrived. Compute, copy, uncompute then happens once for the whole run: `-rev` runs forward and back while the output stays on its tape. The price is history per instruction rather than per assignment, plausibly 3–5× more than a compiler that uncomputes its temporaries; that needs measuring. Garbage-free mode is harder for a translator, because `x += e` and `x = x + e` compile to the same RISC-U code, so M9 needs either a marker that starc emits or a code generator in starc after all.
 
 **The emulator.** Riscr reuses mipster's loader, memory, contexts and decoder and has its own run loop, as monster does. It runs RISC-R binaries forward (`-m`) and, without any trace, backward (`-rev`), executing each instruction's inverse directly. Mipster's replay engine, by contrast, undoes RISC-U instructions from a recorded trace (`execute_undo`, with `undo_ecall` still a TODO). Comparing the two is a lesson in its own right: undo with a trace is Bennett in the emulator, undo without a trace is reversibility in the ISA.
 
-**The model.** Rotor already generates machine models without code. Add RISC-R forward and inverse machine models, both program-independent, with the history stack and tapes as named state. That pair becomes the RISC-R spec.
+**The model.** Rotor already generates machine models without code. Add RISC-R forward and inverse machine models, both program-independent, with the program break and tapes as named state; the history stack is a memory region that translated code manages, not machine state. That pair becomes the RISC-R spec.
 
 ## bitr: a BTOR2-only bounded model checker in C\*
 
@@ -94,7 +95,7 @@ Bitr reads BTOR2 and nothing else, so it never needs to know whether a model cam
 
 **Specialisation, later (`bitr -specialize`).** Needed only for levels 3 and 4 of the story. Given a model and constant code, this mode partially evaluates the model into a smaller one, then applies scalar replacement. Every pass goes from BTOR2 to BTOR2, and the product machine checks it against its input. Optimisation uses cheap solver-backed passes by default: SAT sweeping, and removing logic that k-induction proves dead.
 
-**The BTOR2 profile.** BTOR2 itself stays unextended. A short convention document fixes three things: symbol names for architectural state (`pc`, registers, memory segments, history stack, tapes); file pairs for forward and inverse models; and the abstraction function as a separate file over cellfie's state.
+**The BTOR2 profile.** BTOR2 itself stays unextended. A short convention document fixes three things: symbol names for architectural state (`pc`, registers, memory segments including the history stack's, program break, tapes); file pairs for forward and inverse models; and the abstraction function as a separate file over cellfie's state.
 
 **Realism.** A naive CDCL solver on bit-blasted RISC-R handles programs of a few dozen instructions at small k. That is enough for teaching and for the selfie-versus-cellfie checks on small cases. Research-scale results go through the escape hatch.
 
@@ -171,7 +172,7 @@ What this reveals about cellfie:
 
 ## Milestones
 
-The critical path runs M1 → M3 → M5 → M7 → M8. M7 is the first time cellfie meets selfie. After M8, the work splits into construction (M10, M11) and running all of selfie (M13). M6 and M9 run alongside. Each row ends in a make target that passes or fails.
+The critical path runs M1 → M3 → M5 → M7 → M8. M7 is the first time cellfie meets selfie. After M8, the work splits into construction (M10, M11) and running all of selfie (M13). M6 and M9 run alongside. M16 follows M9, and M17 runs alongside once M2 is done. Each row ends in a make target that passes or fails.
 
 | # | Tool | Milestone | Needs | Done when |
 | --- | --- | --- | --- | --- |
@@ -191,7 +192,7 @@ The critical path runs M1 → M3 → M5 → M7 → M8. M7 is the first time cell
 | M13 | cellfie | All of selfie on cellfie, event-driven, with hybrid simulation as fallback | M8 | selfie compiles itself on cellfie with output identical to riscr's; running time recorded |
 | M14 | cellfie, bitr | Demonstrator: one array kernel at all four levels of the story (v1, v2a, v2b, v2c), next to mipster on cellfie, which should not dissolve | M8, M13 | each level verified against riscr by bitr; one chart of cells used, ticks and active cell-updates per level, with the reprogrammability each level gives up (research result; level 4 needs concurrent elements) |
 | M15 | all | Reversibility on/off comparison: the same programs as RISC-U and as RISC-R, through every tool | M2, M5, M8, M12 | a written table per example: instruction count, history size, trace bytes, backward symbolic variables and solver time, erased bits (research result) |
-| M16 | riscr | Garbage-free riscr: its run loop written in M9's C\* so that each emulated step uncomputes its own fetch, decode and dispatch, then compiled to RISC-R in garbage-free mode | M9 | riscr on riscr runs every M1 test with the history stack empty after every guest step; running the host backward under the outer `riscr -rev` matches the inner `riscr -rev` on the guest bit for bit; a second level of nesting adds no history (needs a history-free conditional for the opcode dispatch: an exit test equal to the entry test, which M9 must provide as a construct or a compiler check; and a pc update that uncomputes the old pc from the new one by calling riscr's backward control flow, `instruction_address()` and `continue_at()`, inside the forward step, since the old pc is otherwise the one word of garbage per step) |
+| M16 | riscr | Garbage-free riscr: its run loop written in M9's C\* so that each emulated step uncomputes its own fetch, decode and dispatch, then compiled to RISC-R in garbage-free mode. It adds the one construct M9 leaves out, a history-free conditional whose exit test equals its entry test (as a C\* construct or a compiler check), and updates the pc by uncomputing the old pc from the new one with riscr's backward control flow, `instruction_address()` and `continue_at()`, since the old pc is otherwise the one word of garbage per step | M9 | riscr on riscr runs every M1 test with the history stack empty after every guest step; running the host backward under the outer `riscr -rev` matches the inner `riscr -rev` on the guest bit for bit; a second level of nesting adds no history |
 | M17 | riscr | Reversible hosting: hypster translated to RISC-R runs its guests as contexts of the bottom riscr, which reverses them with its own `-rev`, without nested interpretation. The switch system call stops overwriting: today `do_switch` writes the from-context into `a6` and sets `timer = timeout`; in riscr the from-context is added into a zeroed `a6` and the remaining timer is exchanged with a per-context counter, so every switch leaves both sides in the state. Context creation allocates the next context deterministically, as `openat` allocates descriptors | M2 | selfie's hypster examples, with guests interleaved by timer expiry and system calls, run on riscr forward and then back to the initial state bit for bit, without a trace, including every context switch |
 
 Later, each as a layer checked by bitr: several tokens (threads), the dataflow tier 2, bit-level refinement of instruction cells, replication, clockless execution on DICE.
@@ -216,7 +217,7 @@ The biggest risk is routing the token across the grid by address, not whether ce
 - [x] **RISC-U encodings or a separate opcode space for RISC-R?** Recommendation: keep RISC-U's encodings and mark RISC-R binaries with a flag in the ELF header. Mipster refuses RISC-R binaries; riscr, rotor and bitr's loader refuse a binary whose flag doesn't match the selected mode. A separate opcode space would duplicate the encoder, decoder and disassembler in selfie, plus the decode logic in rotor and in cellfie's cell rule, all for a confusion risk that one flag already removes.
 - [x] **RISC-R inside `selfie.c` behind a flag, or as a tool?** Decided November 2, 2026: a tool, `tools/riscr.c`, on `selfie.h`. M1 had added about 1,380 lines to `selfie.c`, and M2 inside starc would have touched nearly every code generation procedure. As a tool, RISC-R sits beside selfie the way monster and rotor do, and the file interface stays the ELF binary.
 - [x] **Start the block rule from Morita, or design it from scratch?** Recommendation: start from Morita's partitioned CAs built on rotary elements (RLEMs). They come with proven reversibility, proven universality and reversible self-reproduction. This now applies only to the later bit-level refinement: instruction-level cells in v1 need no bit-level rule.
-- [x] **Which branch and file hold this plan?** Recommendation: a `RISC-R` branch off `main`, kept away from the `intelligence` branch. Export this doc to `docs/reversible.md` there, and add a root `CLAUDE.md` on that branch that points to it and repeats the design rules. The repo's `PLAN.md` stays the course plan.
+- [x] **Which branch and file hold this plan?** Recommendation: a `RISC-R` branch off `main`, kept away from the `intelligence` branch. Keep this doc as `projects/reversible.md` there, and add a root `CLAUDE.md` on that branch that points to it and repeats the design rules. The repo's `PLAN.md` stays the course plan.
 
 **Deferred, each as a separate layer:** asynchrony, needed only once several signals are in flight, via a synchronizer proven to refine the synchronous steps (Nakamura and Lee–Peper as starting points); physical reversibility; performance.
 
@@ -241,4 +242,4 @@ Design here, build in Claude Code in the repo. Implementation is an edit–`make
 - [x] Add a `CLAUDE.md` next to the existing `GEMINI.md`, holding the design rules above and the milestone table.
 - [x] One milestone per session. A session ends only when its make target passes.
 
-**Which model.** Fable is the stronger model tier. Use it where the design is still open: M1 (RISC-R control flow), M5 (bit-blaster and CDCL correctness), M6–M8 (cell rule, routing and layout compiler). Opus is enough for layers that are already well specified: M0, M3, M4, M9. Nothing measures the difference on this codebase yet, so run M1 with Fable and judge from that.
+**Which model.** Fable is the stronger model tier. Use it where the design is still open: M2 (Bennett translation and RISC-R control flow), M16 (garbage-free interpretation), M5 (bit-blaster and CDCL correctness), M6–M8 (cell rule, routing and layout compiler). Opus is enough for layers that are already well specified: M0, M3, M4, M9.
