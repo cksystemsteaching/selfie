@@ -26,12 +26,13 @@ what was read and written.
 
 Options in addition to selfie's options:
 
+-t binary translates the loaded RISC-U binary into a RISC-R binary
+in Bennett mode and writes it to binary (milestone M2),
 -m 0-4096 ... runs a RISC-R binary forward until it exits,
 -rev 0-4096 ... runs it forward and then all instructions but the
 exit system call backward.
 
-Selfie's own mipster refuses RISC-R binaries. Translating RISC-U
-binaries into RISC-R binaries (milestone M2) is still to be done.
+Selfie's own mipster refuses RISC-R binaries.
 */
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
@@ -57,7 +58,136 @@ char* xor_table = (char*) 0; // 256x256 table of byte-wise exclusive ors, see in
 // -----------------------------------------------------------------
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
 
-// translation of RISC-U binaries into RISC-R binaries goes here (M2)
+// -----------------------------------------------------------------
+// -------------------------- TRANSLATOR ---------------------------
+// -----------------------------------------------------------------
+
+// Bennett mode (milestone M2): translate RISC-U binaries into RISC-R
+// binaries. Every value a RISC-U instruction overwrites is exchanged
+// onto a history stack, every branch target gets a come-from, and a
+// flag pushed at every join records which way control arrived, see
+// projects/reversible.md. The translated program uses six registers
+// that starc never uses.
+
+uint64_t selfie_translate();
+
+void translation_error(uint64_t i, char* message);
+uint64_t is_reserved_register(uint64_t reg);
+
+void put_instruction(uint64_t instruction);
+void put_lui(uint64_t reg, uint64_t immediate);
+void put_addi(uint64_t reg, uint64_t rs, uint64_t immediate);
+void put_op(uint64_t instruction_id, uint64_t reg, uint64_t rs, uint64_t rt);
+void put_add(uint64_t reg, uint64_t rs, uint64_t rt);
+void put_sub(uint64_t reg, uint64_t rs, uint64_t rt);
+void put_ld(uint64_t reg, uint64_t rs, uint64_t immediate);
+void put_beq(uint64_t rs, uint64_t rt, uint64_t immediate);
+void put_jal(uint64_t reg, uint64_t immediate);
+void put_jalr(uint64_t reg, uint64_t rs, uint64_t immediate);
+void put_ecall();
+void put_push(uint64_t reg);
+void put_pop(uint64_t reg);
+void put_source(uint64_t reg);
+
+void     decode_source(uint64_t i);
+uint64_t origin_target(uint64_t i);
+uint64_t syscall_number(uint64_t i);
+
+void load_source();
+void classify_source(uint64_t i);
+void analyze_source();
+
+void put_prologue();
+void put_trailer();
+void put_prefix(uint64_t i);
+void put_origin(uint64_t i);
+void put_syscall(uint64_t i);
+void put_body(uint64_t i);
+
+void layout_translation();
+void emit_translation();
+
+// ------------------------ GLOBAL CONSTANTS -----------------------
+
+uint64_t REG_HP  = 18; // s2: history pointer, next free slot
+uint64_t REG_FL  = 19; // s3: flag, 1 on a taken transfer, 0 otherwise
+uint64_t REG_ONE = 20; // s4: constant 1, the flag's partner in come-froms
+uint64_t REG_BRK = 21; // s5: current program break, what RISC-U brk(0) returns
+uint64_t REG_X   = 22; // s6: scratch, zero between translated instructions
+uint64_t REG_Y   = 23; // s7: scratch, zero between translated instructions
+
+uint64_t HISTORY_GIGABYTES = 3; // size of the history stack at the start of the heap
+
+// kinds of translated instructions
+uint64_t TK_COPY      = 0;  // emitted as is
+uint64_t TK_INPLACE   = 1;  // rd += f(rs) with rd a source, no history
+uint64_t TK_PUSHOP    = 2;  // push rd, then compute into the zeroed rd
+uint64_t TK_SCRATCH   = 3;  // compute into scratch, exchange through the history slot
+uint64_t TK_LOAD      = 4;  // copy a memory word into rd
+uint64_t TK_LOADSAME  = 5;  // the same with rd == rs1
+uint64_t TK_STORE     = 6;  // push the memory word, copy rs2 into it
+uint64_t TK_BEQ       = 7;  // conditional branch to a join
+uint64_t TK_JALZ      = 8;  // unconditional jump to a join
+uint64_t TK_CALL      = 9;  // jal ra
+uint64_t TK_RET       = 10; // jalr zero,0(ra)
+uint64_t TK_ECALL     = 11; // system call
+
+uint64_t ORIGIN_NONE      = 0;
+uint64_t ORIGIN_BEQ       = 1;
+uint64_t ORIGIN_JALZ      = 2;
+uint64_t ORIGIN_SYNTHETIC = 3; // falling into a procedure entry becomes a jump
+
+uint64_t NONE = -1;
+
+// ------------------------ GLOBAL VARIABLES -----------------------
+
+uint64_t* source_code = (uint64_t*) 0; // RISC-U instructions, one per word
+uint64_t  number_of_source_instructions = 0;
+
+// decoded source instructions, see decode_source
+uint64_t* source_is  = (uint64_t*) 0;
+uint64_t* source_rd  = (uint64_t*) 0;
+uint64_t* source_rs1 = (uint64_t*) 0;
+uint64_t* source_rs2 = (uint64_t*) 0;
+uint64_t* source_imm = (uint64_t*) 0;
+
+uint64_t* body_length = (uint64_t*) 0; // per source instruction: bytes of its translation
+
+uint64_t* kind        = (uint64_t*) 0; // TK_* per source instruction
+uint64_t* target_of   = (uint64_t*) 0; // source index of branch target or callee, or NONE
+uint64_t* origin_kind = (uint64_t*) 0; // ORIGIN_* per source instruction
+
+uint64_t* first_origin = (uint64_t*) 0; // per target: first origin in source order, or NONE
+uint64_t* next_origin  = (uint64_t*) 0; // per origin: next origin with the same target, or NONE
+uint64_t* chain_index  = (uint64_t*) 0; // per origin: position in its target's chain of come-froms
+uint64_t* is_long      = (uint64_t*) 0; // per origin: 1 if it needs a jal zero to reach its target
+
+uint64_t* is_call_target = (uint64_t*) 0; // per source instruction: 1 if some jal ra targets it
+uint64_t* return_of      = (uint64_t*) 0; // per call target: source index of its return jalr
+
+uint64_t* prefix_pc   = (uint64_t*) 0; // per source instruction: address of its come-froms
+uint64_t* body_pc     = (uint64_t*) 0; // per source instruction: address of its translation
+uint64_t* origin_pc   = (uint64_t*) 0; // per origin: address of the beq paired with its come-from
+uint64_t* jump_pc     = (uint64_t*) 0; // per long origin: address of its jal zero
+uint64_t* come_from_pc = (uint64_t*) 0; // per origin: address of its come-from in the chain
+uint64_t* island_pc   = (uint64_t*) 0; // per long origin: address of the come-from of its jal zero
+
+uint64_t trailer_pc   = 0; // address of the exit code after the translated code
+uint64_t exit_jump_pc = 0; // address of the jal zero in the prologue that reaches it
+
+uint64_t dry_run         = 0; // 1 while laying out, counting instead of emitting
+uint64_t translated_size = 0; // bytes counted or emitted so far
+uint64_t translated_pc   = 0; // address of the next translated instruction
+
+uint64_t new_code_size  = 0; // code size of the RISC-R binary
+uint64_t new_data_start = 0; // data segment start of the RISC-R binary
+uint64_t new_gp_value   = 0; // global pointer of the RISC-R binary
+uint64_t new_gp_upper   = 0; // its lui immediate
+uint64_t new_gp_lower   = 0; // its addi immediate
+
+uint64_t number_of_long_origins = 0; // for reporting
+uint64_t number_of_history_slots = 0; // static count of pushes
+
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
 // -----------------------------------------------------------------
@@ -118,7 +248,7 @@ void set_input_tape(uint64_t* tape, uint64_t input)    { *(tape + 5) = input; }
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
-uint64_t MAX_TAPE_SIZE       = 1048576; // 1MB per tape
+uint64_t MAX_TAPE_SIZE       = 8388608; // 8MB per tape: selfie reads one byte per read, one word on the tape
 uint64_t MAX_NUMBER_OF_TAPES = 64;      // including standard input, output, and error
 
 // ------------------------ GLOBAL VARIABLES -----------------------
@@ -210,7 +340,26 @@ uint64_t handle_reversible_exception(uint64_t* context);
 uint64_t riscr(uint64_t* to_context);
 uint64_t riscr_backward(uint64_t* to_context, uint64_t steps);
 
+uint64_t next_mapped_page(uint64_t page);
+void     take_initial_snapshot();
+uint64_t is_initial_state_restored();
+
 uint64_t selfie_run_reversibly();
+
+// ------------------------ GLOBAL VARIABLES -----------------------
+
+// snapshot of the initial machine state, see take_initial_snapshot
+
+uint64_t  snapshot_pc            = 0;
+uint64_t* snapshot_registers     = (uint64_t*) 0;
+uint64_t  snapshot_program_break = 0;
+
+uint64_t  snapshot_number_of_pages = 0;
+uint64_t* snapshot_pages           = (uint64_t*) 0; // page numbers, ascending
+uint64_t* snapshot_memory          = (uint64_t*) 0; // page contents
+
+uint64_t  snapshot_number_of_tapes = 0;
+uint64_t* snapshot_tape_heads      = (uint64_t*) 0;
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
 // -----------------------------------------------------------------
@@ -257,14 +406,955 @@ uint64_t bitwise_xor(uint64_t a, uint64_t b) {
   x = 0;
   i = 0;
 
-  // byte-wise exclusive or
+  // byte-wise exclusive or; the loaded character is masked because
+  // with gcc char is signed and bytes >= 128 would be sign-extended
   while (i < SIZEOFUINT64INBITS) {
-    x = x + left_shift(load_character(xor_table, get_bits(a, i, 8) * 256 + get_bits(b, i, 8)), i);
+    x = x + left_shift(get_bits(load_character(xor_table, get_bits(a, i, 8) * 256 + get_bits(b, i, 8)), 0, 8), i);
 
     i = i + 8;
   }
 
   return x;
+}
+
+// *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
+// -----------------------------------------------------------------
+// ---------------------    C O M P I L E R    ---------------------
+// -----------------------------------------------------------------
+// *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
+
+// -----------------------------------------------------------------
+// -------------------------- TRANSLATOR ---------------------------
+// -----------------------------------------------------------------
+
+void translation_error(uint64_t i, char* message) {
+  printf("%s: cannot translate %s: %s at instruction %lu (address 0x%lX)\n", selfie_name,
+    binary_name, message, i, code_start + i * INSTRUCTIONSIZE);
+
+  exit(EXITCODE_COMPILERERROR);
+}
+
+uint64_t is_reserved_register(uint64_t reg) {
+  // the translated program owns s2-s7, which starc never uses
+  if (reg >= REG_HP)
+    if (reg <= REG_Y)
+      return 1;
+
+  return 0;
+}
+
+void put_instruction(uint64_t instruction) {
+  // in a dry run only count, otherwise emit into code_binary
+  if (dry_run == 0)
+    emit_instruction(instruction);
+
+  translated_size = translated_size + INSTRUCTIONSIZE;
+  translated_pc   = translated_pc + INSTRUCTIONSIZE;
+}
+
+void put_lui(uint64_t reg, uint64_t immediate) {
+  if (dry_run)
+    put_instruction(0);
+  else
+    put_instruction(encode_u_format(immediate, reg, OP_LUI));
+}
+
+void put_addi(uint64_t reg, uint64_t rs, uint64_t immediate) {
+  if (dry_run)
+    put_instruction(0);
+  else
+    put_instruction(encode_i_format(immediate, rs, F3_ADDI, reg, OP_IMM));
+}
+
+void put_op(uint64_t instruction_id, uint64_t reg, uint64_t rs, uint64_t rt) {
+  // add, sub, mul, divu, remu, sltu with destination reg and sources rs, rt
+  if (dry_run)
+    put_instruction(0);
+  else if (instruction_id == ADD)
+    put_instruction(encode_r_format(F7_ADD, rt, rs, F3_ADD, reg, OP_OP));
+  else if (instruction_id == SUB)
+    put_instruction(encode_r_format(F7_SUB, rt, rs, F3_SUB, reg, OP_OP));
+  else if (instruction_id == MUL)
+    put_instruction(encode_r_format(F7_MUL, rt, rs, F3_MUL, reg, OP_OP));
+  else if (instruction_id == DIVU)
+    put_instruction(encode_r_format(F7_DIVU, rt, rs, F3_DIVU, reg, OP_OP));
+  else if (instruction_id == REMU)
+    put_instruction(encode_r_format(F7_REMU, rt, rs, F3_REMU, reg, OP_OP));
+  else if (instruction_id == SLTU)
+    put_instruction(encode_r_format(F7_SLTU, rt, rs, F3_SLTU, reg, OP_OP));
+  else
+    translation_error(0, "unknown arithmetic instruction");
+}
+
+void put_add(uint64_t reg, uint64_t rs, uint64_t rt) {
+  put_op(ADD, reg, rs, rt);
+}
+
+void put_sub(uint64_t reg, uint64_t rs, uint64_t rt) {
+  put_op(SUB, reg, rs, rt);
+}
+
+void put_ld(uint64_t reg, uint64_t rs, uint64_t immediate) {
+  // RISC-R ld: exchange reg with the memory word at rs + immediate
+  if (dry_run)
+    put_instruction(0);
+  else
+    put_instruction(encode_i_format(immediate, rs, F3_LD, reg, OP_LOAD));
+}
+
+void put_beq(uint64_t rs, uint64_t rt, uint64_t immediate) {
+  if (dry_run)
+    put_instruction(0);
+  else
+    put_instruction(encode_b_format(immediate, rt, rs, F3_BEQ, OP_BRANCH));
+}
+
+void put_jal(uint64_t reg, uint64_t immediate) {
+  if (dry_run)
+    put_instruction(0);
+  else
+    put_instruction(encode_j_format(immediate, reg, OP_JAL));
+}
+
+void put_jalr(uint64_t reg, uint64_t rs, uint64_t immediate) {
+  if (dry_run)
+    put_instruction(0);
+  else
+    put_instruction(encode_i_format(immediate, rs, F3_JALR, reg, OP_JALR));
+}
+
+void put_ecall() {
+  if (dry_run)
+    put_instruction(0);
+  else
+    put_instruction(encode_i_format(F12_ECALL, REG_ZR, F3_ECALL, REG_ZR, OP_SYSTEM));
+}
+
+void put_push(uint64_t reg) {
+  // exchange reg with the zeroed slot at the history pointer, reg becomes zero
+  put_ld(reg, REG_HP, 0);
+  put_addi(REG_HP, REG_ZR, WORDSIZE);
+
+  if (dry_run == 0)
+    number_of_history_slots = number_of_history_slots + 1;
+}
+
+void put_pop(uint64_t reg) {
+  // inverse of push: reg must be zero, the slot becomes zero
+  put_addi(REG_HP, REG_ZR, -WORDSIZE);
+  put_ld(reg, REG_HP, 0);
+}
+
+void put_source(uint64_t reg) {
+  // the decoded source instruction with destination reg, which must be zero
+  if (is == LUI)
+    put_lui(reg, imm);
+  else if (is == ADDI)
+    put_addi(reg, rs1, imm);
+  else
+    put_op(is, reg, rs1, rs2);
+}
+
+void decode_source(uint64_t i) {
+  // decode instruction i once, then reuse the decoded fields
+  ir = *(source_code + i);
+
+  if (*(source_is + i) == 0) {
+    decode();
+
+    *(source_is + i)  = is;
+    *(source_rd + i)  = rd;
+    *(source_rs1 + i) = rs1;
+    *(source_rs2 + i) = rs2;
+    *(source_imm + i) = imm;
+  } else {
+    is  = *(source_is + i);
+    rd  = *(source_rd + i);
+    rs1 = *(source_rs1 + i);
+    rs2 = *(source_rs2 + i);
+    imm = *(source_imm + i);
+  }
+}
+
+uint64_t origin_target(uint64_t i) {
+  if (*(origin_kind + i) == ORIGIN_SYNTHETIC)
+    return i + 1;
+  else
+    return *(target_of + i);
+}
+
+uint64_t syscall_number(uint64_t i) {
+  // starc loads the system call number right before the ecall
+  if (i > 0) {
+    decode_source(i - 1);
+
+    if (is == ADDI)
+      if (rd == REG_A7)
+        if (rs1 == REG_ZR)
+          return imm;
+  }
+
+  translation_error(i, "ecall without system call number");
+
+  return 0;
+}
+
+void load_source() {
+  uint64_t i;
+
+  number_of_source_instructions = code_size / INSTRUCTIONSIZE;
+
+  source_code = zmalloc(number_of_source_instructions * sizeof(uint64_t));
+
+  i = 0;
+
+  while (i < number_of_source_instructions) {
+    *(source_code + i) = load_instruction(i * INSTRUCTIONSIZE);
+
+    i = i + 1;
+  }
+}
+
+void classify_source(uint64_t i) {
+  uint64_t target;
+
+  decode_source(i);
+
+  *(kind + i)        = TK_COPY;
+  *(target_of + i)   = NONE;
+  *(origin_kind + i) = ORIGIN_NONE;
+
+  if (is == LUI) {
+    if (is_reserved_register(rd))
+      translation_error(i, "reserved register");
+
+    if (rd != REG_ZR)
+      *(kind + i) = TK_PUSHOP;
+  } else if (is == ADDI) {
+    if (or(is_reserved_register(rd), is_reserved_register(rs1)))
+      translation_error(i, "reserved register");
+
+    if (rd == REG_ZR)
+      *(kind + i) = TK_COPY;
+    else if (rd == rs1)
+      *(kind + i) = TK_INPLACE;
+    else
+      *(kind + i) = TK_PUSHOP;
+  } else if (or(or(is == ADD, is == SUB), or(or(is == MUL, is == DIVU), or(is == REMU, is == SLTU)))) {
+    if (or(is_reserved_register(rd), or(is_reserved_register(rs1), is_reserved_register(rs2))))
+      translation_error(i, "reserved register");
+
+    if (rd == REG_ZR)
+      *(kind + i) = TK_COPY;
+    else if (and(rd != rs1, rd != rs2))
+      *(kind + i) = TK_PUSHOP;
+    else if (is == ADD) {
+      // rd += the other source
+      if (rs1 != rs2)
+        *(kind + i) = TK_INPLACE;
+      else
+        *(kind + i) = TK_SCRATCH;
+    } else if (is == SUB) {
+      // rd -= rs2
+      if (and(rd == rs1, rd != rs2))
+        *(kind + i) = TK_INPLACE;
+      else
+        *(kind + i) = TK_SCRATCH;
+    } else
+      *(kind + i) = TK_SCRATCH;
+  } else if (is == LOAD) {
+    if (or(is_reserved_register(rd), is_reserved_register(rs1)))
+      translation_error(i, "reserved register");
+
+    if (rd == REG_ZR)
+      *(kind + i) = TK_COPY;
+    else if (rd != rs1)
+      *(kind + i) = TK_LOAD;
+    else
+      *(kind + i) = TK_LOADSAME;
+  } else if (is == STORE) {
+    if (or(is_reserved_register(rs1), is_reserved_register(rs2)))
+      translation_error(i, "reserved register");
+
+    *(kind + i) = TK_STORE;
+  } else if (is == BEQ) {
+    if (or(is_reserved_register(rs1), is_reserved_register(rs2)))
+      translation_error(i, "reserved register");
+
+    target = (i * INSTRUCTIONSIZE + imm) / INSTRUCTIONSIZE;
+
+    if (target >= number_of_source_instructions)
+      translation_error(i, "branch target outside of code");
+
+    *(kind + i)        = TK_BEQ;
+    *(target_of + i)   = target;
+    *(origin_kind + i) = ORIGIN_BEQ;
+  } else if (is == JAL) {
+    target = (i * INSTRUCTIONSIZE + imm) / INSTRUCTIONSIZE;
+
+    if (target >= number_of_source_instructions)
+      translation_error(i, "jump target outside of code");
+
+    if (rd == REG_ZR) {
+      *(kind + i)        = TK_JALZ;
+      *(target_of + i)   = target;
+      *(origin_kind + i) = ORIGIN_JALZ;
+    } else if (rd == REG_RA) {
+      *(kind + i)      = TK_CALL;
+      *(target_of + i) = target;
+
+      *(is_call_target + target) = 1;
+    } else
+      translation_error(i, "jal with unexpected link register");
+  } else if (is == JALR) {
+    if (and(rd == REG_ZR, and(rs1 == REG_RA, imm == 0)))
+      *(kind + i) = TK_RET;
+    else
+      translation_error(i, "jalr other than return");
+  } else if (is == ECALL) {
+    *(kind + i) = TK_ECALL;
+
+    syscall_number(i);
+  } else
+    translation_error(i, "unknown instruction");
+}
+
+void analyze_source() {
+  uint64_t n;
+  uint64_t i;
+  uint64_t t;
+  uint64_t k;
+  uint64_t o;
+
+  n = number_of_source_instructions;
+
+  kind         = zmalloc(n * sizeof(uint64_t));
+  target_of    = zmalloc(n * sizeof(uint64_t));
+  origin_kind  = zmalloc(n * sizeof(uint64_t));
+  first_origin = zmalloc(n * sizeof(uint64_t));
+  next_origin  = zmalloc(n * sizeof(uint64_t));
+  chain_index  = zmalloc(n * sizeof(uint64_t));
+  is_long      = zmalloc(n * sizeof(uint64_t));
+
+  is_call_target = zmalloc(n * sizeof(uint64_t));
+  return_of      = zmalloc(n * sizeof(uint64_t));
+
+  prefix_pc    = zmalloc(n * sizeof(uint64_t));
+  body_pc      = zmalloc(n * sizeof(uint64_t));
+  origin_pc    = zmalloc(n * sizeof(uint64_t));
+  jump_pc      = zmalloc(n * sizeof(uint64_t));
+  come_from_pc = zmalloc(n * sizeof(uint64_t));
+  island_pc    = zmalloc(n * sizeof(uint64_t));
+
+  // decode and classify, keeping the decoded fields
+  source_is  = zmalloc(n * sizeof(uint64_t));
+  source_rd  = zmalloc(n * sizeof(uint64_t));
+  source_rs1 = zmalloc(n * sizeof(uint64_t));
+  source_rs2 = zmalloc(n * sizeof(uint64_t));
+  source_imm = zmalloc(n * sizeof(uint64_t));
+
+  body_length = zmalloc(n * sizeof(uint64_t));
+
+  i = 0;
+
+  while (i < n) {
+    classify_source(i);
+
+    *(first_origin + i) = NONE;
+
+    i = i + 1;
+  }
+
+  // the global pointer is loaded first, with lui and addi into t0, see emit_bootstrapping
+  decode_source(0);
+
+  if (or(is != LUI, rd != REG_T0))
+    translation_error(0, "expected lui t0 loading the global pointer");
+
+  decode_source(1);
+
+  if (or(is != ADDI, or(rd != REG_T0, rs1 != REG_T0)))
+    translation_error(1, "expected addi t0 loading the global pointer");
+
+  // falling into a procedure entry becomes a jump over its come-from
+  i = 0;
+
+  while (i < n) {
+    if (*(is_call_target + i)) {
+      if (i == 0)
+        translation_error(i, "procedure entry at code start");
+
+      if (and(*(kind + i - 1) != TK_RET, *(kind + i - 1) != TK_JALZ)) {
+        if (*(origin_kind + i - 1) != ORIGIN_NONE)
+          translation_error(i - 1, "branch falls into a procedure entry");
+
+        *(origin_kind + i - 1) = ORIGIN_SYNTHETIC;
+      }
+
+      // the return of the procedure is its first jalr
+      t = i;
+
+      while (t < n) {
+        if (*(kind + t) == TK_RET) {
+          *(return_of + i) = t;
+
+          t = n;
+        } else
+          t = t + 1;
+      }
+
+      if (*(return_of + i) == 0)
+        translation_error(i, "procedure without return");
+    }
+
+    i = i + 1;
+  }
+
+  // origins in source order per target
+  i = n;
+
+  while (i > 0) {
+    i = i - 1;
+
+    if (*(origin_kind + i) != ORIGIN_NONE) {
+      t = origin_target(i);
+
+      if (*(is_call_target + t))
+        if (*(origin_kind + i) != ORIGIN_SYNTHETIC)
+          translation_error(i, "branch to a procedure entry");
+
+      *(next_origin + i)  = *(first_origin + t);
+      *(first_origin + t) = i;
+    }
+  }
+
+  i = 0;
+
+  while (i < n) {
+    o = *(first_origin + i);
+    k = 0;
+
+    while (o != NONE) {
+      *(chain_index + o) = k;
+
+      k = k + 1;
+      o = *(next_origin + o);
+    }
+
+    i = i + 1;
+  }
+}
+
+void put_prologue() {
+  uint64_t g;
+  uint64_t heap_start;
+  uint64_t hop_pc;
+
+  // one, history pointer, and program break register
+  put_addi(REG_ONE, REG_ZR, 1);
+
+  heap_start = round_up(new_data_start + data_size, PAGESIZE);
+
+  if (heap_start >= two_to_the_power_of(31))
+    translation_error(0, "heap start exceeds 2GB");
+
+  put_lui(REG_HP, heap_start / PAGESIZE);
+
+  g = 0;
+
+  while (g < HISTORY_GIGABYTES) {
+    // 2^18 * 2^12 = 1GB
+    put_lui(REG_BRK, two_to_the_power_of(18));
+
+    g = g + 1;
+  }
+
+  put_add(REG_BRK, REG_HP, REG_ZR);
+
+  // allocate the history stack by growing the heap to the program break register
+  put_add(REG_A1, REG_BRK, REG_ZR);
+  put_addi(REG_A7, REG_ZR, SYSCALL_BRK);
+  put_ecall();
+
+  // a0 holds the previous program break, zero if allocation failed:
+  // exit through the trailer at the end of the code
+  put_addi(REG_FL, REG_ZR, 1);
+  put_beq(REG_A0, REG_ZR, 4 * INSTRUCTIONSIZE);
+  put_addi(REG_FL, REG_ZR, -1);
+  put_addi(REG_FL, REG_ZR, 1);
+  hop_pc = translated_pc;
+  put_beq(REG_FL, REG_ONE, 3 * INSTRUCTIONSIZE);
+  put_beq(REG_A0, REG_ZR, -4 * INSTRUCTIONSIZE);
+  exit_jump_pc = translated_pc;
+  put_jal(REG_ZR, trailer_pc - translated_pc);
+  put_beq(REG_FL, REG_ONE, hop_pc - translated_pc);
+  put_addi(REG_FL, REG_ZR, -1);
+
+  // uncompute a0, a1, and a7
+  put_sub(REG_A0, REG_ZR, REG_HP);
+  put_sub(REG_A1, REG_ZR, REG_BRK);
+  put_addi(REG_A7, REG_ZR, -SYSCALL_BRK);
+}
+
+void put_trailer() {
+  // reached from the prologue only if the history stack could not be allocated
+  put_jal(REG_ZR, exit_jump_pc - translated_pc);
+  put_addi(REG_A7, REG_ZR, SYSCALL_EXIT - SYSCALL_BRK);
+  put_sub(REG_A1, REG_ZR, REG_BRK);
+  put_addi(REG_A1, REG_ZR, EXITCODE_OUTOFVIRTUALMEMORY);
+  put_ecall();
+}
+
+void put_prefix(uint64_t i) {
+  uint64_t o;
+  uint64_t m;
+  uint64_t k;
+  uint64_t chain_pc;
+  uint64_t hop_pc;
+  uint64_t island_end_pc;
+
+  // come-froms in front of the translation of instruction i
+
+  if (*(is_call_target + i))
+    // callers land after this come-from
+    put_jalr(REG_RA, REG_RA, 0);
+
+  if (*(first_origin + i) == NONE)
+    return;
+
+  m = 0;
+  o = *(first_origin + i);
+
+  while (o != NONE) {
+    if (*(is_long + o))
+      m = m + 1;
+
+    o = *(next_origin + o);
+  }
+
+  if (m > 0)
+    chain_pc = translated_pc + (4 + 2 * m) * INSTRUCTIONSIZE;
+  else
+    chain_pc = translated_pc;
+
+  o = *(first_origin + i);
+
+  while (o != NONE) {
+    *(come_from_pc + o) = chain_pc + *(chain_index + o) * 2 * INSTRUCTIONSIZE;
+
+    o = *(next_origin + o);
+  }
+
+  if (m > 0) {
+    // islands for long origins, hopped over by the fall-through path
+    put_addi(REG_FL, REG_ZR, 1);
+
+    hop_pc        = translated_pc;
+    island_end_pc = hop_pc + (1 + 2 * m) * INSTRUCTIONSIZE;
+
+    put_beq(REG_FL, REG_ONE, island_end_pc - hop_pc);
+
+    o = *(first_origin + i);
+
+    while (o != NONE) {
+      if (*(is_long + o)) {
+        // come-from of the long jump, then a short hop into the chain
+        *(island_pc + o) = translated_pc;
+
+        put_jal(REG_ZR, *(jump_pc + o) - translated_pc);
+
+        *(origin_pc + o) = translated_pc;
+
+        put_beq(REG_FL, REG_ONE, *(come_from_pc + o) - translated_pc);
+      }
+
+      o = *(next_origin + o);
+    }
+
+    put_beq(REG_FL, REG_ONE, hop_pc - translated_pc);
+    put_addi(REG_FL, REG_ZR, -1);
+  }
+
+  // chain of come-froms, one per origin, with the flag decremented in between
+  o = *(first_origin + i);
+  k = 0;
+
+  while (o != NONE) {
+    if (k > 0)
+      put_addi(REG_FL, REG_ZR, -1);
+
+    put_beq(REG_FL, REG_ONE, *(origin_pc + o) - translated_pc);
+
+    k = k + 1;
+    o = *(next_origin + o);
+  }
+
+  // the flag records which way control arrived
+  put_push(REG_FL);
+}
+
+void put_origin(uint64_t i) {
+  uint64_t conditional;
+  uint64_t cf;
+
+  // a transfer to the come-from of i in the chain of its target
+
+  conditional = *(origin_kind + i) == ORIGIN_BEQ;
+
+  cf = *(come_from_pc + i);
+
+  put_addi(REG_FL, REG_ZR, 1);
+
+  if (*(is_long + i) == 0) {
+    *(origin_pc + i) = translated_pc;
+
+    if (conditional)
+      put_beq(rs1, rs2, cf - translated_pc);
+    else
+      put_beq(REG_FL, REG_ONE, cf - translated_pc);
+
+    if (conditional)
+      put_addi(REG_FL, REG_ZR, -1);
+  } else if (conditional) {
+    // branch into a local island holding the long jump, hopped over by the fall-through path
+    put_beq(rs1, rs2, 4 * INSTRUCTIONSIZE);
+    put_addi(REG_FL, REG_ZR, -1);
+    put_addi(REG_FL, REG_ZR, 1);
+    put_beq(REG_FL, REG_ONE, 3 * INSTRUCTIONSIZE);
+    put_beq(rs1, rs2, -4 * INSTRUCTIONSIZE);
+
+    *(jump_pc + i) = translated_pc;
+
+    put_jal(REG_ZR, *(island_pc + i) - translated_pc);
+    put_beq(REG_FL, REG_ONE, -3 * INSTRUCTIONSIZE);
+    put_addi(REG_FL, REG_ZR, -1);
+  } else {
+    *(jump_pc + i) = translated_pc;
+
+    put_jal(REG_ZR, *(island_pc + i) - translated_pc);
+  }
+}
+
+void put_syscall(uint64_t i) {
+  uint64_t number;
+
+  number = syscall_number(i);
+
+  // RISC-R system calls take their arguments in a1-a3 and add their result into a0, see riscr.md
+
+  if (number == SYSCALL_EXIT) {
+    put_push(REG_A1);
+    put_addi(REG_A1, REG_A0, 0);
+    put_ecall();
+  } else if (or(number == SYSCALL_READ, number == SYSCALL_WRITE)) {
+    put_push(REG_A3);
+    put_addi(REG_A3, REG_A2, 0);
+    put_push(REG_A2);
+    put_addi(REG_A2, REG_A1, 0);
+    put_push(REG_A1);
+    put_addi(REG_A1, REG_A0, 0);
+    put_push(REG_A0);
+    put_ecall();
+  } else if (number == SYSCALL_OPENAT) {
+    // directory descriptor in a0 is dropped, filename, flags, and mode are in a1-a3 already
+    put_push(REG_A0);
+    put_ecall();
+  } else if (number == SYSCALL_BRK) {
+    // RISC-U brk(a0) returns the new break on success and the current break otherwise,
+    // in particular brk(0) returns the current break; RISC-R brk(a1) requires a0 == 0 and
+    // adds the previous break into a0 on success; the program break register tracks the break
+    put_push(REG_A1);
+    put_addi(REG_A1, REG_A0, 0);
+    put_push(REG_A0);
+    put_ecall();
+    put_addi(REG_FL, REG_ZR, 1);
+    put_beq(REG_A0, REG_ZR, 9 * INSTRUCTIONSIZE);
+    put_addi(REG_FL, REG_ZR, -1);
+    // success: a0 == previous break, new break is a1
+    put_sub(REG_A0, REG_ZR, REG_BRK);
+    put_push(REG_BRK);
+    put_add(REG_BRK, REG_A1, REG_ZR);
+    put_add(REG_A0, REG_A1, REG_ZR);
+    put_addi(REG_FL, REG_ZR, 1);
+    put_beq(REG_FL, REG_ONE, 4 * INSTRUCTIONSIZE);
+    // failure: a0 == 0, result is the current break
+    put_beq(REG_FL, REG_ONE, -9 * INSTRUCTIONSIZE);
+    put_addi(REG_FL, REG_ZR, -1);
+    put_add(REG_A0, REG_BRK, REG_ZR);
+    // join
+    put_beq(REG_FL, REG_ONE, -4 * INSTRUCTIONSIZE);
+    put_push(REG_FL);
+  } else
+    // context switching is unsupported, riscr refuses the ecall at run time
+    put_ecall();
+}
+
+void put_body(uint64_t i) {
+  uint64_t k;
+  uint64_t t;
+
+  decode_source(i);
+
+  k = *(kind + i);
+
+  if (k == TK_COPY)
+    put_instruction(ir);
+  else if (k == TK_INPLACE) {
+    if (is == ADDI) {
+      if (i == 1)
+        // global pointer of the RISC-R binary
+        put_addi(rd, REG_ZR, new_gp_lower);
+      else
+        put_addi(rd, REG_ZR, imm);
+    } else if (is == ADD) {
+      if (rd == rs1)
+        put_add(rd, rs2, REG_ZR);
+      else
+        put_add(rd, rs1, REG_ZR);
+    } else
+      put_sub(rd, REG_ZR, rs2);
+  } else if (k == TK_PUSHOP) {
+    put_push(rd);
+
+    if (i == 0)
+      // global pointer of the RISC-R binary
+      put_lui(rd, new_gp_upper);
+    else
+      put_source(rd);
+  } else if (k == TK_SCRATCH) {
+    // compute into the zeroed scratch register, then exchange through the history slot
+    put_source(REG_X);
+    put_ld(REG_X, REG_HP, 0);
+    put_ld(rd, REG_HP, 0);
+    put_addi(REG_HP, REG_ZR, WORDSIZE);
+
+    if (dry_run == 0)
+      number_of_history_slots = number_of_history_slots + 1;
+  } else if (k == TK_LOAD) {
+    // copy the memory word through the scratch register
+    put_push(rd);
+    put_ld(REG_X, rs1, imm);
+    put_add(rd, REG_X, REG_ZR);
+    put_ld(REG_X, rs1, imm);
+  } else if (k == TK_LOADSAME) {
+    // rd is the address register: copy first, then exchange through the history slot
+    put_ld(REG_X, rs1, imm);
+    put_add(REG_Y, REG_X, REG_ZR);
+    put_ld(REG_X, rs1, imm);
+    put_ld(REG_Y, REG_HP, 0);
+    put_ld(rd, REG_HP, 0);
+    put_addi(REG_HP, REG_ZR, WORDSIZE);
+
+    if (dry_run == 0)
+      number_of_history_slots = number_of_history_slots + 1;
+  } else if (k == TK_STORE) {
+    // move the memory word onto the history stack, then copy rs2 into memory
+    put_ld(REG_X, rs1, imm);
+    put_ld(REG_X, REG_HP, 0);
+    put_add(REG_X, rs2, REG_ZR);
+    put_ld(REG_X, rs1, imm);
+    put_addi(REG_HP, REG_ZR, WORDSIZE);
+
+    if (dry_run == 0)
+      number_of_history_slots = number_of_history_slots + 1;
+  } else if (or(k == TK_BEQ, k == TK_JALZ))
+    put_origin(i);
+  else if (k == TK_CALL) {
+    // save the link register, call, come-from of the return, restore the link register
+    t = *(target_of + i);
+
+    put_push(REG_RA);
+    put_jal(REG_RA, *(prefix_pc + t) - translated_pc);
+    put_jal(REG_RA, *(body_pc + *(return_of + t)) - translated_pc);
+    put_pop(REG_RA);
+  } else if (k == TK_RET)
+    put_jalr(REG_RA, REG_RA, 0);
+  else if (k == TK_ECALL)
+    put_syscall(i);
+
+  if (*(origin_kind + i) == ORIGIN_SYNTHETIC)
+    // jump over the come-from of the procedure entry that follows
+    put_origin(i);
+}
+
+void layout_translation() {
+  uint64_t changed;
+  uint64_t pass;
+  uint64_t n;
+  uint64_t i;
+  uint64_t d;
+  uint64_t lower;
+  uint64_t upper;
+
+  n = number_of_source_instructions;
+
+  dry_run = 1;
+  changed = 1;
+  pass    = 0;
+
+  while (changed) {
+    changed = 0;
+
+    translated_pc = code_start;
+
+    put_prologue();
+
+    i = 0;
+
+    while (i < n) {
+      *(prefix_pc + i) = translated_pc;
+
+      put_prefix(i);
+
+      *(body_pc + i) = translated_pc;
+
+      if (pass == 0)
+        put_body(i);
+      else if (*(origin_kind + i) != ORIGIN_NONE)
+        // only origins change their length when they become long
+        put_body(i);
+      else
+        translated_pc = translated_pc + *(body_length + i);
+
+      *(body_length + i) = translated_pc - *(body_pc + i);
+
+      i = i + 1;
+    }
+
+    pass = pass + 1;
+
+    trailer_pc = translated_pc;
+
+    put_trailer();
+
+    // origins whose come-froms are out of reach of a beq become long
+    i = 0;
+
+    while (i < n) {
+      if (*(origin_kind + i) != ORIGIN_NONE)
+        if (*(is_long + i) == 0) {
+          d = *(come_from_pc + i) - *(origin_pc + i);
+
+          if (not(is_signed_integer(d, 13))) {
+            *(is_long + i) = 1;
+
+            number_of_long_origins = number_of_long_origins + 1;
+
+            changed = 1;
+          }
+        }
+
+      i = i + 1;
+    }
+
+    new_code_size  = translated_pc - code_start;
+    new_data_start = round_up(code_start + new_code_size, PAGESIZE);
+    new_gp_value   = new_data_start + data_size;
+  }
+
+  dry_run = 0;
+
+  if (new_code_size > MAX_CODE_SIZE)
+    translation_error(0, "translated code exceeds maximum code size");
+
+  if (new_gp_value >= two_to_the_power_of(31) - two_to_the_power_of(12))
+    translation_error(0, "global pointer exceeds 2GB");
+
+  // load the global pointer as starc does, see load_upper_value
+  lower = get_bits(new_gp_value,  0, 12);
+  upper = get_bits(new_gp_value, 12, 20);
+
+  if (lower >= two_to_the_power_of(11))
+    upper = upper + 1;
+
+  new_gp_upper = sign_extend(upper, 20);
+  new_gp_lower = sign_extend(lower, 12);
+}
+
+void emit_translation() {
+  uint64_t n;
+  uint64_t i;
+
+  n = number_of_source_instructions;
+
+  code_binary      = zmalloc(MAX_CODE_SIZE);
+  code_size        = 0;
+  code_line_number = (uint64_t*) 0;
+
+  translated_pc = code_start;
+
+  put_prologue();
+
+  i = 0;
+
+  while (i < n) {
+    if (translated_pc != *(prefix_pc + i))
+      translation_error(i, "internal error: layout and emission disagree");
+
+    put_prefix(i);
+
+    if (translated_pc != *(body_pc + i))
+      translation_error(i, "internal error: layout and emission disagree");
+
+    put_body(i);
+
+    i = i + 1;
+  }
+
+  if (translated_pc != trailer_pc)
+    translation_error(n, "internal error: layout and emission disagree");
+
+  put_trailer();
+
+  if (code_size != new_code_size)
+    translation_error(n, "internal error: layout and emission disagree");
+
+  data_start = new_data_start;
+  e_flags    = EF_RISCR;
+}
+
+uint64_t selfie_translate() {
+  char* filename;
+  uint64_t n;
+
+  // argument is -t, the next argument names the RISC-R binary
+
+  if (number_of_remaining_arguments() == 0)
+    return EXITCODE_BADARGUMENTS;
+
+  filename = get_argument();
+
+  if (code_size == 0) {
+    printf("%s: nothing to translate\n", selfie_name);
+
+    return EXITCODE_BADARGUMENTS;
+  } else if ((e_flags / EF_RISCR) % 2) {
+    printf("%s: %s is a RISC-R binary already\n", selfie_name, binary_name);
+
+    return EXITCODE_BADARGUMENTS;
+  }
+
+  n = code_size / INSTRUCTIONSIZE;
+
+  printf("%s: translating %lu RISC-U instructions of %s into RISC-R in Bennett mode\n", selfie_name, n, binary_name);
+
+  load_source();
+  analyze_source();
+  layout_translation();
+  emit_translation();
+
+  printf("%s: %lu RISC-R instructions, %lu.%lu per RISC-U instruction, ", selfie_name,
+    code_size / INSTRUCTIONSIZE,
+    code_size / INSTRUCTIONSIZE / n,
+    (code_size / INSTRUCTIONSIZE * 10 / n) % 10);
+  printf("%lu pushes in code, %lu long transfers, %luGB history stack\n",
+    number_of_history_slots,
+    number_of_long_origins,
+    HISTORY_GIGABYTES);
+
+  selfie_output(filename);
+
+  return EXITCODE_NOERROR;
 }
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
@@ -1527,6 +2617,197 @@ uint64_t riscr_backward(uint64_t* to_context, uint64_t steps) {
   return get_exit_code(to_context);
 }
 
+uint64_t next_mapped_page(uint64_t page) {
+  // smallest mapped page >= page, or NUMBEROFPAGES; skips empty leaf page tables
+
+  while (page < NUMBEROFPAGES) {
+    if (PAGETABLETREE)
+      if (*(get_pt(current_context) + root_PDE_offset(page)) == 0) {
+        page = (root_PDE_offset(page) + 1) * NUMBEROFLEAFPTES;
+
+        if (page >= NUMBEROFPAGES)
+          return NUMBEROFPAGES;
+      }
+
+    if (is_page_mapped(get_pt(current_context), page))
+      return page;
+
+    page = page + 1;
+  }
+
+  return NUMBEROFPAGES;
+}
+
+void take_initial_snapshot() {
+  uint64_t r;
+  uint64_t page;
+  uint64_t i;
+  uint64_t vaddr;
+  uint64_t offset;
+
+  // record pc, registers, program break, all mapped pages, and tape heads
+
+  snapshot_pc = get_pc(current_context);
+
+  snapshot_registers = smalloc(NUMBEROFREGISTERS * sizeof(uint64_t));
+
+  r = 0;
+
+  while (r < NUMBEROFREGISTERS) {
+    *(snapshot_registers + r) = *(get_regs(current_context) + r);
+
+    r = r + 1;
+  }
+
+  snapshot_program_break = get_program_break(current_context);
+
+  snapshot_number_of_pages = 0;
+
+  page = next_mapped_page(0);
+
+  while (page < NUMBEROFPAGES) {
+    snapshot_number_of_pages = snapshot_number_of_pages + 1;
+
+    page = next_mapped_page(page + 1);
+  }
+
+  snapshot_pages  = smalloc(snapshot_number_of_pages * sizeof(uint64_t));
+  snapshot_memory = smalloc(snapshot_number_of_pages * PAGESIZE);
+
+  i    = 0;
+  page = next_mapped_page(0);
+
+  while (page < NUMBEROFPAGES) {
+    *(snapshot_pages + i) = page;
+
+    vaddr  = virtual_address_of_page(page);
+    offset = i * PAGESIZE;
+
+    while (offset < (i + 1) * PAGESIZE) {
+      store_word(snapshot_memory, offset, 1, load_virtual_memory(get_pt(current_context), vaddr));
+
+      vaddr  = vaddr + WORDSIZE;
+      offset = offset + WORDSIZE;
+    }
+
+    i = i + 1;
+
+    page = next_mapped_page(page + 1);
+  }
+
+  snapshot_number_of_tapes = number_of_tapes;
+
+  snapshot_tape_heads = smalloc(number_of_tapes * sizeof(uint64_t));
+
+  r = 0;
+
+  while (r < number_of_tapes) {
+    *(snapshot_tape_heads + r) = get_tape_head((uint64_t*) *(tapes + r));
+
+    r = r + 1;
+  }
+}
+
+uint64_t is_initial_state_restored() {
+  uint64_t r;
+  uint64_t page;
+  uint64_t i;
+  uint64_t vaddr;
+  uint64_t offset;
+  uint64_t expected;
+
+  // returns 1 if the machine state is bit for bit the snapshot;
+  // pages mapped after the snapshot must be zero
+
+  if (get_pc(current_context) != snapshot_pc) {
+    printf("%s: pc is 0x%lX, expected 0x%lX\n", selfie_name, get_pc(current_context), snapshot_pc);
+
+    return 0;
+  }
+
+  r = 0;
+
+  while (r < NUMBEROFREGISTERS) {
+    if (*(get_regs(current_context) + r) != *(snapshot_registers + r)) {
+      printf("%s: register %s is 0x%lX, expected 0x%lX\n", selfie_name,
+        get_register_name(r), *(get_regs(current_context) + r), *(snapshot_registers + r));
+
+      return 0;
+    }
+
+    r = r + 1;
+  }
+
+  if (get_program_break(current_context) != snapshot_program_break) {
+    printf("%s: program break is 0x%lX, expected 0x%lX\n", selfie_name,
+      get_program_break(current_context), snapshot_program_break);
+
+    return 0;
+  }
+
+  i    = 0;
+  page = next_mapped_page(0);
+
+  while (page < NUMBEROFPAGES) {
+    vaddr  = virtual_address_of_page(page);
+    offset = 0;
+
+    while (offset < PAGESIZE) {
+      if (i < snapshot_number_of_pages) {
+        if (*(snapshot_pages + i) == page)
+          expected = load_word(snapshot_memory, i * PAGESIZE + offset, 1);
+        else
+          expected = 0;
+      } else
+        expected = 0;
+
+      if (load_virtual_memory(get_pt(current_context), vaddr) != expected) {
+        printf("%s: memory at 0x%lX is 0x%lX, expected 0x%lX\n", selfie_name,
+          vaddr, load_virtual_memory(get_pt(current_context), vaddr), expected);
+
+        return 0;
+      }
+
+      vaddr  = vaddr + WORDSIZE;
+      offset = offset + WORDSIZE;
+    }
+
+    if (i < snapshot_number_of_pages)
+      if (*(snapshot_pages + i) == page)
+        i = i + 1;
+
+    page = next_mapped_page(page + 1);
+  }
+
+  if (i < snapshot_number_of_pages) {
+    printf("%s: page 0x%lX is no longer mapped\n", selfie_name, *(snapshot_pages + i));
+
+    return 0;
+  }
+
+  if (number_of_tapes != snapshot_number_of_tapes) {
+    printf("%s: %lu open files, expected %lu\n", selfie_name, number_of_tapes, snapshot_number_of_tapes);
+
+    return 0;
+  }
+
+  r = 0;
+
+  // tape contents before the heads are empty in the initial state
+  while (r < number_of_tapes) {
+    if (get_tape_head((uint64_t*) *(tapes + r)) != *(snapshot_tape_heads + r)) {
+      printf("%s: head of tape %lu is at word %lu, expected %lu\n", selfie_name,
+        r, get_tape_head((uint64_t*) *(tapes + r)), *(snapshot_tape_heads + r));
+
+      return 0;
+    }
+
+    r = r + 1;
+  }
+
+  return 1;
+}
+
 uint64_t selfie_run_reversibly() {
   uint64_t backward;
   uint64_t exit_code;
@@ -1568,6 +2849,9 @@ uint64_t selfie_run_reversibly() {
 
   printf("\n%s: >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n\n", selfie_name);
 
+  if (backward)
+    take_initial_snapshot();
+
   exit_code = riscr(current_context);
 
   printf("\n%s: <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<\n", selfie_name);
@@ -1592,6 +2876,14 @@ uint64_t selfie_run_reversibly() {
       printf("%s: %lu-bit riscr terminating backward execution at pc==0x%lX\n", selfie_name,
         SIZEOFUINT64INBITS,
         get_pc(current_context));
+
+      if (is_initial_state_restored())
+        printf("%s: initial state restored bit for bit\n", selfie_name);
+      else {
+        printf("%s: initial state NOT restored\n", selfie_name);
+
+        exit_code = EXITCODE_SYSTEMERROR;
+      }
     } else
       printf("%s: not executing backward after uncaught exception\n", selfie_name);
   }
@@ -1619,10 +2911,27 @@ int main(int argc, char** argv) {
   init_target();
   init_kernel();
 
+  // RISC-R binaries are about four times larger than RISC-U binaries
+  MAX_CODE_SIZE   = 4 * MAX_CODE_SIZE;
+  MAX_BINARY_SIZE = 4 * MAX_BINARY_SIZE;
+
   exit_code = selfie(1);
 
-  if (exit_code == EXITCODE_MOREARGUMENTS)
-    exit_code = selfie_run_reversibly();
+  if (exit_code == EXITCODE_MOREARGUMENTS) {
+    if (string_compare(argument, "-t")) {
+      exit_code = selfie_translate();
 
-  return exit_selfie(exit_code, " [ ( -m | -rev ) 0-4096 ... ]");
+      if (exit_code == EXITCODE_NOERROR) {
+        if (number_of_remaining_arguments() > 0) {
+          get_argument();
+
+          exit_code = selfie_run_reversibly();
+        } else
+          printf("%s: ################################################################################\n", selfie_name);
+      }
+    } else
+      exit_code = selfie_run_reversibly();
+  }
+
+  return exit_selfie(exit_code, " [ -t binary ] [ ( -m | -rev ) 0-4096 ... ]");
 }

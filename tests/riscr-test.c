@@ -27,8 +27,6 @@ The file test creates tests/riscr-test.txt in the working directory.
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
-uint64_t MAX_SNAPSHOT_PAGES = 64;
-
 uint64_t MESSAGE_OFFSET  = 0; // offset of message in data segment
 uint64_t FILENAME_OFFSET = 8; // offset of filename in data segment
 
@@ -44,19 +42,6 @@ uint64_t* program_data = (uint64_t*) 0; // data of the tested program
 
 uint64_t number_of_tests        = 0;
 uint64_t number_of_failed_tests = 0;
-
-// snapshot of machine state
-
-uint64_t  snapshot_pc            = 0;
-uint64_t* snapshot_registers     = (uint64_t*) 0;
-uint64_t  snapshot_program_break = 0;
-
-uint64_t  snapshot_number_of_pages = 0;
-uint64_t* snapshot_pages           = (uint64_t*) 0; // page numbers
-uint64_t* snapshot_memory          = (uint64_t*) 0; // page contents
-
-uint64_t  snapshot_number_of_tapes = 0;
-uint64_t* snapshot_tape_heads      = (uint64_t*) 0;
 
 // -----------------------------------------------------------------
 // ------------------------- CODE EMISSION -------------------------
@@ -365,203 +350,6 @@ void emit_nonzero_link() {
 }
 
 // -----------------------------------------------------------------
-// ---------------------------- SNAPSHOT ---------------------------
-// -----------------------------------------------------------------
-
-void snapshot_page(uint64_t page) {
-  uint64_t vaddr;
-  uint64_t offset;
-
-  if (snapshot_number_of_pages >= MAX_SNAPSHOT_PAGES) {
-    printf("%s: too many mapped pages for snapshot\n", selfie_name);
-
-    exit(EXITCODE_SYSTEMERROR);
-  }
-
-  *(snapshot_pages + snapshot_number_of_pages) = page;
-
-  vaddr  = virtual_address_of_page(page);
-  offset = snapshot_number_of_pages * PAGESIZE;
-
-  while (offset < (snapshot_number_of_pages + 1) * PAGESIZE) {
-    store_word(snapshot_memory, offset, 1, load_virtual_memory(get_pt(current_context), vaddr));
-
-    vaddr  = vaddr + WORDSIZE;
-    offset = offset + WORDSIZE;
-  }
-
-  snapshot_number_of_pages = snapshot_number_of_pages + 1;
-}
-
-void take_snapshot() {
-  uint64_t r;
-  uint64_t page;
-
-  // assert: pages are mapped contiguously from code start up and from the top of memory down
-
-  snapshot_pc = get_pc(current_context);
-
-  r = 0;
-
-  while (r < NUMBEROFREGISTERS) {
-    *(snapshot_registers + r) = *(get_regs(current_context) + r);
-
-    r = r + 1;
-  }
-
-  snapshot_program_break = get_program_break(current_context);
-
-  snapshot_number_of_pages = 0;
-
-  page = page_of_virtual_address(code_start);
-
-  while (is_page_mapped(get_pt(current_context), page)) {
-    snapshot_page(page);
-
-    page = page + 1;
-  }
-
-  page = NUMBEROFPAGES - 1;
-
-  while (is_page_mapped(get_pt(current_context), page)) {
-    snapshot_page(page);
-
-    page = page - 1;
-  }
-
-  snapshot_number_of_tapes = number_of_tapes;
-
-  r = 0;
-
-  while (r < number_of_tapes) {
-    *(snapshot_tape_heads + r) = get_tape_head((uint64_t*) *(tapes + r));
-
-    r = r + 1;
-  }
-}
-
-uint64_t find_snapshot_page(uint64_t page) {
-  uint64_t i;
-
-  i = 0;
-
-  while (i < snapshot_number_of_pages) {
-    if (*(snapshot_pages + i) == page)
-      return i;
-
-    i = i + 1;
-  }
-
-  return MAX_SNAPSHOT_PAGES;
-}
-
-uint64_t compare_page(uint64_t page) {
-  uint64_t i;
-  uint64_t vaddr;
-  uint64_t offset;
-  uint64_t expected;
-
-  // pages mapped after the snapshot must be zero
-
-  i = find_snapshot_page(page);
-
-  vaddr  = virtual_address_of_page(page);
-  offset = 0;
-
-  while (offset < PAGESIZE) {
-    if (i < MAX_SNAPSHOT_PAGES)
-      expected = load_word(snapshot_memory, i * PAGESIZE + offset, 1);
-    else
-      expected = 0;
-
-    if (load_virtual_memory(get_pt(current_context), vaddr) != expected) {
-      printf("%s: memory at 0x%lX is 0x%lX, expected 0x%lX\n", selfie_name,
-        vaddr, load_virtual_memory(get_pt(current_context), vaddr), expected);
-
-      return 0;
-    }
-
-    vaddr  = vaddr + WORDSIZE;
-    offset = offset + WORDSIZE;
-  }
-
-  return 1;
-}
-
-uint64_t compare_snapshot() {
-  uint64_t r;
-  uint64_t page;
-
-  // returns 1 if the machine state is bit for bit the snapshot
-
-  if (get_pc(current_context) != snapshot_pc) {
-    printf("%s: pc is 0x%lX, expected 0x%lX\n", selfie_name, get_pc(current_context), snapshot_pc);
-
-    return 0;
-  }
-
-  r = 0;
-
-  while (r < NUMBEROFREGISTERS) {
-    if (*(get_regs(current_context) + r) != *(snapshot_registers + r)) {
-      printf("%s: register %s is 0x%lX, expected 0x%lX\n", selfie_name,
-        get_register_name(r), *(get_regs(current_context) + r), *(snapshot_registers + r));
-
-      return 0;
-    }
-
-    r = r + 1;
-  }
-
-  if (get_program_break(current_context) != snapshot_program_break) {
-    printf("%s: program break is 0x%lX, expected 0x%lX\n", selfie_name,
-      get_program_break(current_context), snapshot_program_break);
-
-    return 0;
-  }
-
-  page = page_of_virtual_address(code_start);
-
-  while (is_page_mapped(get_pt(current_context), page)) {
-    if (not(compare_page(page)))
-      return 0;
-
-    page = page + 1;
-  }
-
-  page = NUMBEROFPAGES - 1;
-
-  while (is_page_mapped(get_pt(current_context), page)) {
-    if (not(compare_page(page)))
-      return 0;
-
-    page = page - 1;
-  }
-
-  if (number_of_tapes != snapshot_number_of_tapes) {
-    printf("%s: %lu open files, expected %lu\n", selfie_name, number_of_tapes, snapshot_number_of_tapes);
-
-    return 0;
-  }
-
-  r = 0;
-
-  // tape contents before the heads are empty in the initial state
-  while (r < number_of_tapes) {
-    if (get_tape_head((uint64_t*) *(tapes + r)) != *(snapshot_tape_heads + r)) {
-      printf("%s: head of tape %lu is at word %lu, expected %lu\n", selfie_name,
-        r, get_tape_head((uint64_t*) *(tapes + r)), *(snapshot_tape_heads + r));
-
-      return 0;
-    }
-
-    r = r + 1;
-  }
-
-  return 1;
-}
-
-// -----------------------------------------------------------------
 // ---------------------------- TESTING ----------------------------
 // -----------------------------------------------------------------
 
@@ -603,7 +391,7 @@ void test_reversibility(char* name, uint64_t expected_exit_code) {
 
   boot();
 
-  take_snapshot();
+  take_initial_snapshot();
 
   exit_code = riscr(current_context);
 
@@ -620,7 +408,7 @@ void test_reversibility(char* name, uint64_t expected_exit_code) {
 
     printf("%s: %s: %lu instructions executed forward and backward\n", selfie_name, name, steps);
 
-    if (compare_snapshot())
+    if (is_initial_state_restored())
       pass(name, "initial state restored bit for bit");
     else
       fail(name, "initial state not restored");
@@ -680,11 +468,6 @@ int main(int argc, char** argv) {
 
   program_code = zmalloc(MAX_CODE_SIZE);
   program_data = zmalloc(MAX_DATA_SIZE);
-
-  snapshot_registers  = zmalloc(NUMBEROFREGISTERS * sizeof(uint64_t));
-  snapshot_pages      = zmalloc(MAX_SNAPSHOT_PAGES * sizeof(uint64_t));
-  snapshot_memory     = zmalloc(MAX_SNAPSHOT_PAGES * PAGESIZE);
-  snapshot_tape_heads = zmalloc(MAX_NUMBER_OF_TAPES * sizeof(uint64_t));
 
   begin_program();
   emit_aliasing();

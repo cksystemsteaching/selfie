@@ -1,5 +1,6 @@
 *__pycache__*
 *.m
+*.r
 *.s
 *.smt2
 *.btor2

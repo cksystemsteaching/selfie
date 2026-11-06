@@ -10,7 +10,7 @@ This document provides an overview of the RISC-R instruction set. RISC-R is a re
 
 A RISC-R machine has the state of a RISC-U machine, a 64-bit program counter `pc`, 32 general-purpose 64-bit registers, 4GB of byte-addressed memory, and a program break, plus one tape of 64-bit words per open file, with a head per tape. All registers, including `ra`, are zero when a program starts, except `sp`, which the boot loader points at the arguments on the stack, and only the tapes of standard input, output, and error exist, all empty. Register `zero` always contains the value 0; writes to `zero` are ignored, which makes instructions with `rd` equal to `zero` effective no-ops in both directions. The code segment is read-only, which is what makes the step function a bijection on the remaining state once the program is fixed.
 
-Executing backward, riscr fetches the instruction at `pc - 4`, applies its inverse, and leaves `pc` at that instruction. Riscr runs a RISC-R binary forward with `-m`, and with `-rev` forward and then backward: after the program exits, riscr executes as many instructions backward as it executed forward, except the final `exit`, and arrives at the initial state. The `tests/riscr-test.c` harness checks this bit for bit on hand-written RISC-R code with `make rev`.
+Executing backward, riscr fetches the instruction at `pc - 4`, applies its inverse, and leaves `pc` at that instruction. Riscr runs a RISC-R binary forward with `-m`, and with `-rev` forward and then backward: after the program exits, riscr executes as many instructions backward as it executed forward, except the final `exit`, and checks that the initial state (`pc`, registers, program break, every mapped page, tape heads) is restored bit for bit, exiting with code 14 if it is not. The `tests/riscr-test.c` harness runs hand-written RISC-R code through this with `make rev`. Riscr also translates RISC-U binaries into RISC-R binaries with `-t`, see the Bennett translation below and `make bennett`.
 
 ## Instructions
 
@@ -104,6 +104,27 @@ System calls never overwrite a register. A program that wants the result alone k
 5. `exit`, `read`, `write`, `openat`, and `brk` are the only system calls; they take arguments in `a1-a3` and add their result into `a0`; `brk` requires `a0 == 0`.
 
 Violating rules 1 to 4, or calling `brk` with nonzero `a0`, throws an irreversible instruction exception at the address of the instruction. The rest of rule 5 is enforced by the system call handler.
+
+## Bennett Translation
+
+`riscr -t` translates a RISC-U binary, as starc emits it, into a RISC-R binary that computes the same thing and additionally records on a history stack everything the RISC-U program would have overwritten (Bennett's compute, copy, uncompute: the history stays until `-rev` runs the program back). The translated program owns six registers that starc never uses: `s2` is the history pointer `hp`, the next free slot; `s3` is a flag `f` that is 1 only on a taken transfer; `s4` holds the constant 1; `s5` is a copy of the program break; `s6` and `s7` are scratch registers that are zero between translated instructions. The history stack is the first part of the heap, allocated by a prologue with one `brk`, 3GB by default; the program break register starts above it, so `malloc` is unaffected. Pushing a register `r` is `ld r,0(hp); addi hp,zero,8`: the exchange moves `r` into the zeroed slot and zeroes `r`. Every RISC-U instruction becomes a fixed sequence:
+
+| RISC-U | RISC-R | Slots |
+| --- | --- | --- |
+| `op rd,rs1,rs2` with `rd` not a source, also `lui`, `addi` | push `rd`, then the same instruction into the zeroed `rd` | 1 |
+| `add rd,rd,rs`, `addi rd,rd,imm`, `sub rd,rd,rs` | `add rd,rs,zero`, `addi rd,zero,imm`, `sub rd,zero,rs`: in place | 0 |
+| `op rd,rs1,rs2` otherwise | compute into `s6`, exchange `s6` with the slot, exchange `rd` with the slot, advance `hp` | 1 |
+| `ld rd,imm(rs1)` | push `rd`; exchange the word into `s6`, add `s6` into `rd`, exchange back | 1 |
+| `sd rs2,imm(rs1)` | exchange the word into `s6`, exchange `s6` with the slot, add `rs2` into `s6`, exchange into memory, advance `hp` | 1 |
+| `beq rs1,rs2,target` | `f = 1`; `beq rs1,rs2` to the come-from at the target; `f = 0` on fall-through | see join |
+| `jal zero,target` | `f = 1`; `beq f,one` to the come-from at the target | see join |
+| every branch target | one come-from `beq f,one` per origin, `f` decremented between them, then push `f` | 1 per pass |
+| `jal ra,F` | push `ra`; `jal ra` to `F`; `jal ra` to `F`'s return (come-from of the return); pop `ra` | 0 |
+| procedure entry `F` | `jalr ra,0(ra)` in front of it, the come-from of calls; falling into an entry becomes a jump | 0 |
+| `jalr zero,0(ra)` | `jalr ra,0(ra)` | 0 |
+| `ecall` | arguments moved from `a0-a2` to `a1-a3` with pushes, `a0` pushed; `brk` additionally reproduces the RISC-U result from the program break register | 1 to 4 |
+
+A come-from `beq f,one` is false when fallen into, because `f` is 0 there, and true when arrived at, because the origin set `f` to 1; the push at the join records which, and resets `f`. Backward, the pop restores `f` and the come-from, executed backward, jumps onto its origin exactly if `f` is 1. Branches whose come-from is out of the 4KB reach of `beq` after translation go through a local island holding a `jal zero` to an island in front of the target, each island hopped over by the fall-through path with an always-taken `beq f,one`; `jal zero` come-froms cannot be fallen into, which is why the islands exist. The translation of selfie is 3.6 instructions per RISC-U instruction and pushes about two thirds of a word per executed RISC-U instruction; selfie compiling itself on riscr in Bennett mode executes 1.39 billion RISC-R instructions and leaves 2GB of history.
 
 ## With Dedicated Opcodes
 

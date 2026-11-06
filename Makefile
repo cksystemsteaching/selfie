@@ -371,6 +371,19 @@ riscr-rev: riscr selfie selfie.h rev
 	-echo "RISC-R" | ./riscr -l tests/riscr-test.m -rev 1
 	-echo "RISC-R" | ./selfie -c selfie.h tools/riscr.c -m 16 -l tests/riscr-test.m -rev 1
 
+# Bennett mode (M2 of projects/reversible.md): selfie translated to RISC-R compiles selfie on riscr
+# to an identical binary and runs back to its initial state; riscr's translator reaches a fixed point
+# on itself; takes about 3GB of memory for the history stack and a few minutes
+bennett: riscr selfie selfie.h
+	./selfie -c selfie.c -o selfie-u.m
+	./riscr -l selfie-u.m -t selfie-r.r -rev 4096 -c selfie.c -o selfie-r.m
+	cmp selfie-u.m selfie-r.m
+	./selfie -c selfie.h tools/riscr.c -o riscr-u.m
+	./riscr -l riscr-u.m -t riscr-r.r
+	./riscr -l riscr-r.r -m 3072 -l riscr-u.m -t riscr-r2.r
+	cmp riscr-r.r riscr-r2.r
+	@echo "$@: self-compilation reproduced in Bennett mode and reversed, translator at its fixed point"
+
 # trusting-trust: Ken Thompson's compiler trojan and Wheeler's diverse
 # double-compiling as a self-checking lesson, see examples/trusting-trust/README.md
 trust: selfie selfie.h
@@ -390,7 +403,7 @@ trust: selfie selfie.h
 	rm -f examples/trusting-trust/honest-stamp.c examples/trusting-trust/honest-victim.c examples/trusting-trust/trojaned-victim.c examples/trusting-trust/suspect-stamp.c
 
 # Consider these targets as targets, not files
-.PHONY: rev riscr-rev trust
+.PHONY: rev riscr-rev bennett trust
 
 # Consider these targets as targets, not files
 .PHONY: spike qemu assemble beator-32 rotor-32 32-bit bitwuzla beator-bitme rotor-bitme bitme extras
@@ -509,3 +522,4 @@ clean:
 	rm -f examples/trusting-trust/honest-stamp.c examples/trusting-trust/honest-victim.c examples/trusting-trust/trojaned-victim.c examples/trusting-trust/suspect-stamp.c
 	rm -f selfie selfie-32 selfie.h selfie-gc.h selfie-gc-nomain.h selfie.exe
 	rm -f babysat buzzr monster beator beator-32 rotor rotor-32 riscr riscr.h riscr-test
+	rm -f selfie-u.m selfie-r.r selfie-r.m riscr-u.m riscr-r.r riscr-r2.r
