@@ -728,6 +728,11 @@ void analyze_source() {
 
   n = number_of_source_instructions;
 
+  // starc replaces the bootstrap by addi a0,zero,0 if procedures are undefined
+  if (get_opcode(*source_code) == OP_IMM)
+    if (get_rd(*source_code) == REG_A0)
+      translation_error(0, "binary has undefined procedures, compile with selfie.h");
+
   kind         = zmalloc(n * sizeof(uint64_t));
   target_of    = zmalloc(n * sizeof(uint64_t));
   origin_kind  = zmalloc(n * sizeof(uint64_t));
@@ -1160,7 +1165,10 @@ void put_body(uint64_t i) {
   } else if (or(k == TK_BEQ, k == TK_JALZ))
     put_origin(i);
   else if (k == TK_CALL) {
-    // save the link register, call, come-from of the return, restore the link register
+    // push the link register, call, come-from of the return, then exchange the
+    // zeroed link register with the word below hp: the callee's last push, which
+    // starc's code never reads after a call, or ra itself if the callee pushed
+    // nothing; either way the slot is freed, see riscr.md
     t = *(target_of + i);
 
     put_push(REG_RA);
