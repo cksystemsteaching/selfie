@@ -1129,7 +1129,7 @@ uint64_t ELFCLASS32 = 1;
 uint64_t MAX_BINARY_SIZE = 1048576; // 1MB
 
 uint64_t MAX_CODE_SIZE = 524288; // 512KB
-uint64_t MAX_DATA_SIZE = 65536;  // 64KB
+uint64_t MAX_DATA_SIZE = 131072; // 128KB
 
 uint64_t PK_CODE_START = 65536; // start of code segment at 0x10000 (according to RISC-V pk)
 

@@ -211,7 +211,7 @@ cache: selfie selfie.m selfie.s examples/cache/dcache-access-[01].c
 .PHONY: sat brr bzz mon smt beat beator-btor2 rot synthesize rotor-btor2 btor2 more all
 
 # Run more that only requires standard tools and is not too slow
-more: sat brr bzz mon smt beat beator-btor2 rot synthesize rotor-btor2 rev trust
+more: sat brr bzz mon smt beat beator-btor2 rot synthesize rotor-btor2 rev trust riscr-model
 
 # Run all that only requires standard tools and is not too slow
 all: less more
@@ -371,6 +371,13 @@ riscr-rev: riscr selfie selfie.h rev
 	-echo "RISC-R" | ./riscr -l tests/riscr-test.m -rev 1
 	-echo "RISC-R" | ./selfie -c selfie.h tools/riscr.c -m 16 -l tests/riscr-test.m -rev 1
 
+# Run rotor to generate the 64-bit RISC-R machine model forward and inverse (M3a of projects/reversible.md), and
+# check on random states that inverse after forward and forward after inverse are the identity
+riscr-model: rotor
+	./rotor - 0 -riscr
+	./rotor - 0 -riscr -inverse
+	./rotor - 0 -riscr -roundtrip 100000
+
 # Bennett mode (M2 of projects/reversible.md): selfie translated to RISC-R compiles selfie on riscr
 # to an identical binary and runs back to its initial state; riscr's translator reaches a fixed point
 # on itself; takes about 3GB of memory for the history stack and a few minutes
@@ -403,7 +410,7 @@ trust: selfie selfie.h
 	rm -f examples/trusting-trust/honest-stamp.c examples/trusting-trust/honest-victim.c examples/trusting-trust/trojaned-victim.c examples/trusting-trust/suspect-stamp.c
 
 # Consider these targets as targets, not files
-.PHONY: rev riscr-rev bennett trust
+.PHONY: rev riscr-rev bennett trust riscr-model
 
 # Consider these targets as targets, not files
 .PHONY: spike qemu assemble beator-32 rotor-32 32-bit bitwuzla beator-bitme rotor-bitme bitme extras

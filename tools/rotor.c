@@ -1638,6 +1638,56 @@ uint64_t* jalr_control_flow(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* regist
 
 uint64_t* core_control_flow(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* register_file_nid);
 
+// RISC-R, the reversible variant of RISC-U, see riscr.md
+
+uint64_t* riscr_instruction_address(uint64_t* pc_nid);
+uint64_t* riscr_continue_at(uint64_t* address_nid);
+uint64_t* riscr_fetch_instruction(uint64_t* pc_nid, uint64_t* code_segment_nid);
+
+uint64_t* riscr_is_opcode(uint64_t* ir_nid, uint64_t* opcode_nid, char* comment);
+uint64_t* riscr_is_funct3(uint64_t* ir_nid, uint64_t* funct3_nid, char* comment);
+uint64_t* riscr_is_funct7(uint64_t* ir_nid, uint64_t* funct7_nid, char* comment);
+
+uint64_t* riscr_is_lui(uint64_t* ir_nid);
+uint64_t* riscr_is_addi(uint64_t* ir_nid);
+uint64_t* riscr_is_op(uint64_t* ir_nid, uint64_t* funct3_nid, uint64_t* funct7_nid, char* comment);
+uint64_t* riscr_is_load(uint64_t* ir_nid);
+uint64_t* riscr_is_store(uint64_t* ir_nid);
+uint64_t* riscr_is_beq(uint64_t* ir_nid);
+uint64_t* riscr_is_jal(uint64_t* ir_nid);
+uint64_t* riscr_is_jalr(uint64_t* ir_nid);
+uint64_t* riscr_is_ecall(uint64_t* ir_nid);
+
+uint64_t* riscr_is_rd_zero(uint64_t* ir_nid);
+
+uint64_t* riscr_accumulate(uint64_t* rd_value_nid, uint64_t* value_nid, char* comment);
+uint64_t* riscr_flip(uint64_t* rd_value_nid, uint64_t* value_nid, char* comment);
+uint64_t* riscr_link_value(uint64_t* pc_nid);
+uint64_t* riscr_load_machine_word(uint64_t* maddr_nid,
+  uint64_t* data_segment_nid, uint64_t* heap_segment_nid, uint64_t* stack_segment_nid);
+uint64_t* riscr_store_machine_word_if_in_segment(uint64_t* maddr_nid, uint64_t* word_nid, uint64_t* segment_nid);
+
+uint64_t* riscr_register_data_flow(uint64_t* pc_nid, uint64_t* ir_nid,
+  uint64_t* register_file_nid, uint64_t* data_segment_nid, uint64_t* heap_segment_nid, uint64_t* stack_segment_nid);
+uint64_t* riscr_memory_data_flow(uint64_t* ir_nid, uint64_t* register_file_nid, uint64_t* segment_nid);
+
+uint64_t* riscr_branch_target(uint64_t* pc_nid, uint64_t* ir_nid);
+uint64_t* riscr_jump_target(uint64_t* pc_nid, uint64_t* ir_nid);
+uint64_t* riscr_return_target(uint64_t* ir_nid, uint64_t* register_file_nid);
+uint64_t* riscr_control_flow(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* register_file_nid);
+
+uint64_t* riscr_points_back(uint64_t* imm_nid, uint64_t* origin_nid, uint64_t* target_nid);
+uint64_t* riscr_is_branch_come_from(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* register_file_nid, uint64_t* code_segment_nid);
+uint64_t* riscr_is_jump_come_from(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* code_segment_nid);
+uint64_t* riscr_is_link_come_from(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* code_segment_nid);
+uint64_t* riscr_is_return_come_from(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* register_file_nid, uint64_t* code_segment_nid);
+
+uint64_t* riscr_is_aliasing(uint64_t* ir_nid);
+uint64_t* riscr_is_unpaired_branch(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* register_file_nid, uint64_t* code_segment_nid);
+uint64_t* riscr_is_unpaired_jump(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* code_segment_nid);
+uint64_t* riscr_is_unpaired_link(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* register_file_nid, uint64_t* code_segment_nid);
+uint64_t* riscr_is_unpaired_return(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* register_file_nid, uint64_t* code_segment_nid);
+
 // compressed instructions
 
 uint64_t is_compressed_instruction_ID(uint64_t instruction_ID);
@@ -3343,6 +3393,41 @@ void kernel_sequential(uint64_t core,
 void kernel_properties(uint64_t core, uint64_t* ir_nid, uint64_t* read_bytes_nid,
   uint64_t* register_file_nid, uint64_t* heap_segment_nid);
 
+// RISC-R kernel: exit and brk with arguments in a1 and results added into a0, see riscr.md
+
+uint64_t* riscr_is_syscall(uint64_t* ir_nid, uint64_t* register_file_nid, uint64_t* syscall_id_nid, char* comment);
+uint64_t* riscr_is_brk_argument_valid(uint64_t* register_file_nid, uint64_t* program_break_nid);
+uint64_t* riscr_does_brk_succeed(uint64_t* register_file_nid, uint64_t* program_break_nid);
+uint64_t* riscr_does_brk_undo(uint64_t* register_file_nid, uint64_t* program_break_nid);
+uint64_t* riscr_is_irreversible_brk(uint64_t* ir_nid, uint64_t* register_file_nid, uint64_t* program_break_nid);
+uint64_t* riscr_is_irreversible_exit(uint64_t* ir_nid, uint64_t* register_file_nid);
+uint64_t* riscr_is_unsupported_syscall(uint64_t* ir_nid, uint64_t* register_file_nid);
+
+uint64_t* riscr_kernel_control_flow(uint64_t* ir_nid, uint64_t* register_file_nid,
+  uint64_t* pc_nid, uint64_t* control_flow_nid);
+uint64_t* riscr_kernel_program_break(uint64_t* ir_nid, uint64_t* register_file_nid, uint64_t* program_break_nid);
+uint64_t* riscr_kernel_register_data_flow(uint64_t* ir_nid, uint64_t* register_file_nid,
+  uint64_t* program_break_nid, uint64_t* register_data_flow_nid);
+
+void riscr_kernel_combinational(uint64_t core, uint64_t* pc_nid, uint64_t* ir_nid,
+  uint64_t* control_flow_nid, uint64_t* register_data_flow_nid,
+  uint64_t* heap_segment_data_flow_nid,
+  uint64_t* program_break_nid, uint64_t* register_file_nid);
+void riscr_kernel_sequential(uint64_t core,
+  uint64_t* program_break_nid, uint64_t* file_descriptor_nid,
+  uint64_t* readable_bytes_nid, uint64_t* read_bytes_nid,
+  uint64_t* new_program_break_nid);
+void riscr_properties(uint64_t core, uint64_t* pc_nid, uint64_t* ir_nid,
+  uint64_t* register_file_nid, uint64_t* code_segment_nid, uint64_t* program_break_nid);
+
+uint64_t* riscr_roundtrip_filter(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* control_flow_nid,
+  uint64_t* register_file_nid, uint64_t* code_segment_nid,
+  uint64_t* data_segment_nid, uint64_t* heap_segment_nid, uint64_t* stack_segment_nid,
+  uint64_t* program_break_nid);
+uint64_t* riscr_roundtrip_exchange(uint64_t* ir_nid, uint64_t* register_file_nid,
+  uint64_t* data_segment_nid, uint64_t* heap_segment_nid, uint64_t* stack_segment_nid);
+void riscr_roundtrip_model();
+
 void rotor_combinational(uint64_t core, uint64_t* pc_nid,
   uint64_t* code_segment_nid, uint64_t* register_file_nid,
   uint64_t* data_segment_nid, uint64_t* heap_segment_nid, uint64_t* stack_segment_nid);
@@ -3410,6 +3495,13 @@ char* riscu_only_option = (char*) 0;
 char* no_RVC_option     = (char*) 0;
 char* no_RVM_option     = (char*) 0;
 
+char* riscr_option         = (char*) 0;
+char* inverse_model_option = (char*) 0;
+char* roundtrip_option     = (char*) 0;
+
+uint64_t ROUNDTRIP_CODE_SIZE = 256;  // 64 instructions
+uint64_t ROUNDTRIP_DATA_SIZE = 4096; // 512 memory words
+
 uint64_t target_exit_code = 0; // model for given exit code
 
 uint64_t number_of_binaries = 0; // number of loaded binaries
@@ -3430,6 +3522,11 @@ uint64_t check_division_overflow = 1;
 
 uint64_t check_invalid_addresses = 1;
 uint64_t check_seg_faults        = 1;
+
+uint64_t RISCR   = 0; // model RISC-R, the reversible variant of RISC-U, see riscr.md
+uint64_t reverse = 0; // model backward execution: the inverse RISC-R model
+
+uint64_t riscr_roundtrip = 0; // number of random states for checking that inverse after forward is the identity
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
@@ -3480,6 +3577,37 @@ uint64_t* prop_brk_seg_faulting_nids    = (uint64_t*) 0;
 uint64_t* prop_openat_seg_faulting_nids = (uint64_t*) 0;
 uint64_t* prop_read_seg_faulting_nids   = (uint64_t*) 0;
 uint64_t* prop_write_seg_faulting_nids  = (uint64_t*) 0;
+
+// RISC-R irreversible instructions, see riscr.md
+
+uint64_t* prop_irreversible_aliasing_nids = (uint64_t*) 0;
+uint64_t* prop_irreversible_store_nids    = (uint64_t*) 0;
+uint64_t* prop_irreversible_branch_nids   = (uint64_t*) 0;
+uint64_t* prop_irreversible_jump_nids     = (uint64_t*) 0;
+uint64_t* prop_irreversible_link_nids     = (uint64_t*) 0;
+uint64_t* prop_irreversible_return_nids   = (uint64_t*) 0;
+uint64_t* prop_irreversible_brk_nids      = (uint64_t*) 0;
+uint64_t* prop_irreversible_exit_nids     = (uint64_t*) 0;
+
+// RISC-R round trip: step function of the other direction over the same state
+
+uint64_t* roundtrip_forward_skip_nid               = (uint64_t*) 0;
+uint64_t* roundtrip_forward_exchange_nid           = (uint64_t*) 0;
+uint64_t* roundtrip_forward_control_flow_nid       = (uint64_t*) 0;
+uint64_t* roundtrip_forward_program_break_nid      = (uint64_t*) 0;
+uint64_t* roundtrip_forward_register_data_flow_nid = (uint64_t*) 0;
+uint64_t* roundtrip_forward_data_segment_nid       = (uint64_t*) 0;
+uint64_t* roundtrip_forward_heap_segment_nid       = (uint64_t*) 0;
+uint64_t* roundtrip_forward_stack_segment_nid      = (uint64_t*) 0;
+
+uint64_t* roundtrip_inverse_skip_nid               = (uint64_t*) 0;
+uint64_t* roundtrip_inverse_exchange_nid           = (uint64_t*) 0;
+uint64_t* roundtrip_inverse_control_flow_nid       = (uint64_t*) 0;
+uint64_t* roundtrip_inverse_program_break_nid      = (uint64_t*) 0;
+uint64_t* roundtrip_inverse_register_data_flow_nid = (uint64_t*) 0;
+uint64_t* roundtrip_inverse_data_segment_nid       = (uint64_t*) 0;
+uint64_t* roundtrip_inverse_heap_segment_nid       = (uint64_t*) 0;
+uint64_t* roundtrip_inverse_stack_segment_nid      = (uint64_t*) 0;
 
 // ------------------------- INITIALIZATION ------------------------
 
@@ -3539,6 +3667,10 @@ void init_rotor(int argc, char** argv) {
   riscu_only_option = "-riscuonly";
   no_RVC_option     = "-noRVC";
   no_RVM_option     = "-noRVM";
+
+  riscr_option         = "-riscr";
+  inverse_model_option = "-inverse";
+  roundtrip_option     = "-roundtrip";
 }
 
 void init_properties(uint64_t number_of_cores) {
@@ -3573,6 +3705,15 @@ void init_properties(uint64_t number_of_cores) {
   prop_openat_seg_faulting_nids = allocate_lines(number_of_cores);
   prop_read_seg_faulting_nids   = allocate_lines(number_of_cores);
   prop_write_seg_faulting_nids  = allocate_lines(number_of_cores);
+
+  prop_irreversible_aliasing_nids = allocate_lines(number_of_cores);
+  prop_irreversible_store_nids    = allocate_lines(number_of_cores);
+  prop_irreversible_branch_nids   = allocate_lines(number_of_cores);
+  prop_irreversible_jump_nids     = allocate_lines(number_of_cores);
+  prop_irreversible_link_nids     = allocate_lines(number_of_cores);
+  prop_irreversible_return_nids   = allocate_lines(number_of_cores);
+  prop_irreversible_brk_nids      = allocate_lines(number_of_cores);
+  prop_irreversible_exit_nids     = allocate_lines(number_of_cores);
 }
 
 // -----------------------------------------------------------------
@@ -3615,6 +3756,30 @@ void eval_rotor();
 
 void disassemble_rotor(uint64_t core);
 
+uint64_t roundtrip_random();
+uint64_t roundtrip_random_below(uint64_t n);
+uint64_t roundtrip_random_word();
+uint64_t roundtrip_random_address();
+uint64_t roundtrip_random_value();
+uint64_t roundtrip_random_register();
+uint64_t roundtrip_random_source(uint64_t rd);
+
+uint64_t roundtrip_get_register(uint64_t reg);
+void     roundtrip_set_register(uint64_t reg, uint64_t value);
+void     roundtrip_set_code(uint64_t address, uint64_t ir);
+void     roundtrip_randomize_array(uint64_t* state_nid);
+void     roundtrip_zero_array(uint64_t* state_nid);
+
+uint64_t roundtrip_random_state();
+
+void     roundtrip_advance();
+void     roundtrip_step(uint64_t* exchange_nid, uint64_t* control_flow_nid, uint64_t* program_break_nid,
+  uint64_t* register_data_flow_nid, uint64_t* data_segment_nid, uint64_t* heap_segment_nid, uint64_t* stack_segment_nid);
+
+uint64_t roundtrip_compare_array(uint64_t* state_nid, uint64_t* saved_array, char* name);
+
+uint64_t eval_riscr_roundtrip();
+
 void print_unrolled_model();
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
@@ -3650,6 +3815,24 @@ uint64_t min_input_to_bad_state = 0;
 uint64_t max_input_to_bad_state = 0;
 
 uint64_t printing_pseudoinstructions = 1; // >1 also prints original non-pseudo instruction
+
+// RISC-R round trip
+
+uint64_t roundtrip_seed = 1; // state of the pseudo-random number generator
+
+uint64_t roundtrip_kind   = 0; // kind of generated instruction, for reporting mismatches
+uint64_t roundtrip_origin = 0; // address of generated instruction
+uint64_t roundtrip_target = 0; // address of its come-from, if any
+uint64_t roundtrip_ir     = 0; // generated instruction
+uint64_t roundtrip_cf     = 0; // generated come-from, if any
+
+char* roundtrip_kinds = (char*) 0; // kind names
+
+uint64_t ROUNDTRIP_KINDS = 14; // number of kinds
+
+uint64_t* roundtrip_passed_forward  = (uint64_t*) 0; // passed forward-then-backward round trips per kind
+uint64_t* roundtrip_passed_backward = (uint64_t*) 0; // passed backward-then-forward round trips per kind
+uint64_t* roundtrip_skipped         = (uint64_t*) 0; // skipped states per kind
 
 // ------------------------- INITIALIZATION ------------------------
 
@@ -4796,9 +4979,14 @@ uint64_t bitwise(uint64_t a, uint64_t b, uint64_t and_xor, uint64_t or_xor) {
   uint64_t r;
   uint64_t i;
 
-  if (a == b)
+  if (a == b) {
+    if (and_xor)
+      if (or_xor)
+        // exclusive or of equal operands
+        return 0;
+
     return a;
-  else if (a < b)
+  } else if (a < b)
     r = b;
   else {
     r = a;
@@ -6592,8 +6780,9 @@ void new_code_segment(uint64_t core) {
     // initialize only for emulator
     eval_init(new_init(SID_CODE_STATE, state_code_segment_nid, NID_CODE_WORD_0, "zeroed code segment"));
 
-    // uninitialized state is symbolic
-    set_symbolic(state_code_segment_nid, SYMBOLIC);
+    // uninitialized state is symbolic unless the round trip fills it with random code
+    if (riscr_roundtrip == 0)
+      set_symbolic(state_code_segment_nid, SYMBOLIC);
 
     next_code_segment_nid = new_next(SID_CODE_STATE,
       state_code_segment_nid, state_code_segment_nid, "read-only uninitialized code segment");
@@ -9447,6 +9636,496 @@ uint64_t* core_control_flow(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* regist
           get_pc_value_plus_4(pc_nid))));
 }
 
+// -----------------------------------------------------------------
+// ----------------------------- RISC-R ----------------------------
+// -----------------------------------------------------------------
+
+// RISC-R reuses the RISC-U encodings and changes their meaning such that
+// every instruction is a bijection on the machine state, see riscr.md.
+// The direction of execution is the reverse flag: the same procedures
+// generate the forward model and, with reverse set, the inverse model.
+
+uint64_t* riscr_instruction_address(uint64_t* pc_nid) {
+  // address of the executing instruction: pc forward, pc - 4 backward
+  if (reverse)
+    return new_binary(OP_SUB, SID_MACHINE_WORD, pc_nid, NID_MACHINE_WORD_4, "pc value - 4");
+  else
+    return pc_nid;
+}
+
+uint64_t* riscr_continue_at(uint64_t* address_nid) {
+  // forward execution continues after address, backward execution continues at address
+  if (reverse)
+    return address_nid;
+  else
+    return get_pc_value_plus_4(address_nid);
+}
+
+uint64_t* riscr_fetch_instruction(uint64_t* pc_nid, uint64_t* code_segment_nid) {
+  return fetch_instruction(riscr_instruction_address(pc_nid), code_segment_nid);
+}
+
+uint64_t* riscr_is_opcode(uint64_t* ir_nid, uint64_t* opcode_nid, char* comment) {
+  return new_binary_boolean(OP_EQ, get_instruction_opcode(ir_nid), opcode_nid, comment);
+}
+
+uint64_t* riscr_is_funct3(uint64_t* ir_nid, uint64_t* funct3_nid, char* comment) {
+  return new_binary_boolean(OP_EQ, get_instruction_funct3(ir_nid), funct3_nid, comment);
+}
+
+uint64_t* riscr_is_funct7(uint64_t* ir_nid, uint64_t* funct7_nid, char* comment) {
+  return new_binary_boolean(OP_EQ, get_instruction_funct7(ir_nid), funct7_nid, comment);
+}
+
+uint64_t* riscr_is_lui(uint64_t* ir_nid) {
+  return riscr_is_opcode(ir_nid, NID_OP_LUI, "opcode == LUI?");
+}
+
+uint64_t* riscr_is_addi(uint64_t* ir_nid) {
+  return new_binary_boolean(OP_AND,
+    riscr_is_opcode(ir_nid, NID_OP_IMM, "opcode == IMM?"),
+    riscr_is_funct3(ir_nid, NID_F3_ADDI, "funct3 == ADDI?"),
+    "addi?");
+}
+
+uint64_t* riscr_is_op(uint64_t* ir_nid, uint64_t* funct3_nid, uint64_t* funct7_nid, char* comment) {
+  return new_binary_boolean(OP_AND,
+    riscr_is_opcode(ir_nid, NID_OP_OP, "opcode == OP?"),
+    new_binary_boolean(OP_AND,
+      riscr_is_funct3(ir_nid, funct3_nid, format_comment("funct3 == %s?", (uint64_t) comment)),
+      riscr_is_funct7(ir_nid, funct7_nid, format_comment("funct7 == %s?", (uint64_t) comment)),
+      format_comment("funct3 and funct7 == %s?", (uint64_t) comment)),
+    format_comment("%s?", (uint64_t) comment));
+}
+
+uint64_t* riscr_is_load(uint64_t* ir_nid) {
+  if (IS64BITTARGET)
+    return new_binary_boolean(OP_AND,
+      riscr_is_opcode(ir_nid, NID_OP_LOAD, "opcode == LOAD?"),
+      riscr_is_funct3(ir_nid, NID_F3_LD, "funct3 == LD?"),
+      "ld?");
+  else
+    return new_binary_boolean(OP_AND,
+      riscr_is_opcode(ir_nid, NID_OP_LOAD, "opcode == LOAD?"),
+      riscr_is_funct3(ir_nid, NID_F3_LW, "funct3 == LW?"),
+      "lw?");
+}
+
+uint64_t* riscr_is_store(uint64_t* ir_nid) {
+  return riscr_is_opcode(ir_nid, NID_OP_STORE, "opcode == STORE?");
+}
+
+uint64_t* riscr_is_beq(uint64_t* ir_nid) {
+  return new_binary_boolean(OP_AND,
+    riscr_is_opcode(ir_nid, NID_OP_BRANCH, "opcode == BRANCH?"),
+    riscr_is_funct3(ir_nid, NID_F3_BEQ, "funct3 == BEQ?"),
+    "beq?");
+}
+
+uint64_t* riscr_is_jal(uint64_t* ir_nid) {
+  return riscr_is_opcode(ir_nid, NID_OP_JAL, "opcode == JAL?");
+}
+
+uint64_t* riscr_is_jalr(uint64_t* ir_nid) {
+  return new_binary_boolean(OP_AND,
+    riscr_is_opcode(ir_nid, NID_OP_JALR, "opcode == JALR?"),
+    riscr_is_funct3(ir_nid, NID_F3_JALR, "funct3 == JALR?"),
+    "jalr?");
+}
+
+uint64_t* riscr_is_ecall(uint64_t* ir_nid) {
+  return new_binary_boolean(OP_EQ, ir_nid, NID_ECALL_I, "ir == ECALL?");
+}
+
+uint64_t* riscr_is_rd_zero(uint64_t* ir_nid) {
+  return new_binary_boolean(OP_EQ, get_instruction_rd(ir_nid), NID_ZR, "rd == register zero?");
+}
+
+uint64_t* riscr_accumulate(uint64_t* rd_value_nid, uint64_t* value_nid, char* comment) {
+  // rd += value forward, rd -= value backward
+  if (reverse)
+    return new_binary(OP_SUB, SID_MACHINE_WORD, rd_value_nid, value_nid, comment);
+  else
+    return new_binary(OP_ADD, SID_MACHINE_WORD, rd_value_nid, value_nid, comment);
+}
+
+uint64_t* riscr_flip(uint64_t* rd_value_nid, uint64_t* value_nid, char* comment) {
+  // rd ^= value in both directions, its own inverse
+  return new_binary(OP_XOR, SID_MACHINE_WORD, rd_value_nid, value_nid, comment);
+}
+
+uint64_t* riscr_link_value(uint64_t* pc_nid) {
+  // jal links the address after the jal forward, the address of the jal backward
+  if (reverse)
+    return riscr_instruction_address(pc_nid);
+  else
+    return get_pc_value_plus_4(pc_nid);
+}
+
+uint64_t* riscr_load_machine_word(uint64_t* maddr_nid,
+  uint64_t* data_segment_nid, uint64_t* heap_segment_nid, uint64_t* stack_segment_nid) {
+  if (IS64BITTARGET)
+    return load_double_word(maddr_nid, data_segment_nid, heap_segment_nid, stack_segment_nid);
+  else
+    return load_single_word(maddr_nid, data_segment_nid, heap_segment_nid, stack_segment_nid);
+}
+
+uint64_t* riscr_store_machine_word_if_in_segment(uint64_t* maddr_nid, uint64_t* word_nid, uint64_t* segment_nid) {
+  if (IS64BITTARGET)
+    return store_double_word_if_in_segment(maddr_nid, word_nid, segment_nid);
+  else
+    return store_single_word_if_in_segment(maddr_nid, word_nid, segment_nid);
+}
+
+uint64_t* riscr_register_data_flow(uint64_t* pc_nid, uint64_t* ir_nid,
+  uint64_t* register_file_nid, uint64_t* data_segment_nid, uint64_t* heap_segment_nid, uint64_t* stack_segment_nid) {
+  uint64_t* rd_nid;
+  uint64_t* rd_value_nid;
+  uint64_t* rs1_value_nid;
+  uint64_t* rs2_value_nid;
+  uint64_t* new_rd_value_nid;
+
+  rd_nid       = get_instruction_rd(ir_nid);
+  rd_value_nid = load_register_value(rd_nid, "current rd value", register_file_nid);
+
+  rs1_value_nid = load_register_value(get_instruction_rs1(ir_nid), "rs1 value", register_file_nid);
+  rs2_value_nid = load_register_value(get_instruction_rs2(ir_nid), "rs2 value", register_file_nid);
+
+  // lui, addi, add, sub accumulate; mul, divu, remu, sltu flip;
+  // ld exchanges; jal links; jalr uncomputes; the rest leaves rd unchanged
+
+  new_rd_value_nid =
+    new_ternary(OP_ITE, SID_MACHINE_WORD, riscr_is_lui(ir_nid),
+      riscr_accumulate(rd_value_nid, get_instruction_U_immediate(ir_nid), "rd value +- U-immediate"),
+    new_ternary(OP_ITE, SID_MACHINE_WORD, riscr_is_addi(ir_nid),
+      riscr_accumulate(rd_value_nid, get_rs1_value_plus_I_immediate(ir_nid, register_file_nid), "rd value +- (rs1 value + I-immediate)"),
+    new_ternary(OP_ITE, SID_MACHINE_WORD, riscr_is_op(ir_nid, NID_F3_ADD_SUB_MUL, NID_F7_ADD, "add"),
+      riscr_accumulate(rd_value_nid,
+        new_binary(OP_ADD, SID_MACHINE_WORD, rs1_value_nid, rs2_value_nid, "rs1 value + rs2 value"),
+        "rd value +- (rs1 value + rs2 value)"),
+    new_ternary(OP_ITE, SID_MACHINE_WORD, riscr_is_op(ir_nid, NID_F3_ADD_SUB_MUL, NID_F7_SUB, "sub"),
+      riscr_accumulate(rd_value_nid,
+        new_binary(OP_SUB, SID_MACHINE_WORD, rs1_value_nid, rs2_value_nid, "rs1 value - rs2 value"),
+        "rd value +- (rs1 value - rs2 value)"),
+    new_ternary(OP_ITE, SID_MACHINE_WORD, riscr_is_op(ir_nid, NID_F3_ADD_SUB_MUL, NID_F7_MUL, "mul"),
+      riscr_flip(rd_value_nid,
+        new_binary(OP_MUL, SID_MACHINE_WORD, rs1_value_nid, rs2_value_nid, "rs1 value * rs2 value"),
+        "rd value ^ (rs1 value * rs2 value)"),
+    new_ternary(OP_ITE, SID_MACHINE_WORD, riscr_is_op(ir_nid, NID_F3_DIVU, NID_F7_DIVU, "divu"),
+      riscr_flip(rd_value_nid,
+        new_binary(OP_UDIV, SID_MACHINE_WORD, rs1_value_nid, rs2_value_nid, "rs1 value / rs2 value (unsigned)"),
+        "rd value ^ (rs1 value / rs2 value)"),
+    new_ternary(OP_ITE, SID_MACHINE_WORD, riscr_is_op(ir_nid, NID_F3_REMU, NID_F7_REMU, "remu"),
+      riscr_flip(rd_value_nid,
+        new_binary(OP_UREM, SID_MACHINE_WORD, rs1_value_nid, rs2_value_nid, "rs1 value % rs2 value (unsigned)"),
+        "rd value ^ (rs1 value % rs2 value)"),
+    new_ternary(OP_ITE, SID_MACHINE_WORD, riscr_is_op(ir_nid, NID_F3_SLTU, NID_F7_SLTU, "sltu"),
+      riscr_flip(rd_value_nid,
+        new_ternary(OP_ITE, SID_MACHINE_WORD,
+          new_binary_boolean(OP_ULT, rs1_value_nid, rs2_value_nid, "rs1 value < rs2 value (unsigned)?"),
+          NID_MACHINE_WORD_1,
+          NID_MACHINE_WORD_0,
+          "unsigned-extend Boolean to machine word"),
+        "rd value ^ (rs1 value < rs2 value)"),
+    new_ternary(OP_ITE, SID_MACHINE_WORD, riscr_is_load(ir_nid),
+      riscr_load_machine_word(get_rs1_value_plus_I_immediate(ir_nid, register_file_nid),
+        data_segment_nid, heap_segment_nid, stack_segment_nid),
+    new_ternary(OP_ITE, SID_MACHINE_WORD, riscr_is_jal(ir_nid),
+      riscr_link_value(pc_nid),
+    new_ternary(OP_ITE, SID_MACHINE_WORD, riscr_is_jalr(ir_nid),
+      NID_MACHINE_WORD_0,
+      rd_value_nid,
+      "jalr uncomputes rd"),
+      "jal links into rd"),
+      "ld exchanges rd with memory word"),
+      "sltu register data flow"),
+      "remu register data flow"),
+      "divu register data flow"),
+      "mul register data flow"),
+      "sub register data flow"),
+      "add register data flow"),
+      "addi register data flow"),
+      "lui register data flow");
+
+  return new_ternary(OP_ITE, SID_REGISTER_STATE,
+    new_binary_boolean(OP_NEQ, rd_nid, NID_ZR, "rd != register zero?"),
+    store_register_value(rd_nid, new_rd_value_nid, "rd update", register_file_nid),
+    register_file_nid,
+    "RISC-R register data flow");
+}
+
+uint64_t* riscr_memory_data_flow(uint64_t* ir_nid, uint64_t* register_file_nid, uint64_t* segment_nid) {
+  uint64_t* rd_nid;
+
+  // ld exchanges rd with the memory word at rs1 + I-immediate, there is no sd
+
+  rd_nid = get_instruction_rd(ir_nid);
+
+  return new_ternary(OP_ITE, get_sid(segment_nid),
+    new_binary_boolean(OP_AND,
+      riscr_is_load(ir_nid),
+      new_binary_boolean(OP_NEQ, rd_nid, NID_ZR, "rd != register zero?"),
+      "ld with rd != register zero?"),
+    riscr_store_machine_word_if_in_segment(
+      get_rs1_value_plus_I_immediate(ir_nid, register_file_nid),
+      load_register_value(rd_nid, "current rd value", register_file_nid),
+      segment_nid),
+    segment_nid,
+    "RISC-R memory data flow");
+}
+
+uint64_t* riscr_branch_target(uint64_t* pc_nid, uint64_t* ir_nid) {
+  return new_binary(OP_ADD, SID_MACHINE_WORD,
+    riscr_instruction_address(pc_nid),
+    get_instruction_SB_immediate(ir_nid),
+    "instruction address + SB-immediate");
+}
+
+uint64_t* riscr_jump_target(uint64_t* pc_nid, uint64_t* ir_nid) {
+  return new_binary(OP_ADD, SID_MACHINE_WORD,
+    riscr_instruction_address(pc_nid),
+    get_instruction_UJ_immediate(ir_nid),
+    "instruction address + UJ-immediate");
+}
+
+uint64_t* riscr_return_target(uint64_t* ir_nid, uint64_t* register_file_nid) {
+  uint64_t* rs1_value_nid;
+
+  // jalr jumps over the jal at rs1 forward, backward onto the jal before rs1
+
+  rs1_value_nid = load_register_value(get_instruction_rs1(ir_nid), "rs1 value", register_file_nid);
+
+  if (reverse)
+    return new_binary(OP_SUB, SID_MACHINE_WORD, rs1_value_nid, NID_MACHINE_WORD_4, "rs1 value - 4");
+  else
+    return rs1_value_nid;
+}
+
+uint64_t* riscr_control_flow(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* register_file_nid) {
+  uint64_t* origin_nid;
+  uint64_t* rs1_value_nid;
+  uint64_t* rs2_value_nid;
+
+  // every taken transfer lands on a come-from and jumps over it forward, onto it backward
+
+  origin_nid = riscr_instruction_address(pc_nid);
+
+  rs1_value_nid = load_register_value(get_instruction_rs1(ir_nid), "rs1 value", register_file_nid);
+  rs2_value_nid = load_register_value(get_instruction_rs2(ir_nid), "rs2 value", register_file_nid);
+
+  return new_ternary(OP_ITE, SID_MACHINE_WORD, riscr_is_beq(ir_nid),
+    new_ternary(OP_ITE, SID_MACHINE_WORD,
+      new_binary_boolean(OP_EQ, rs1_value_nid, rs2_value_nid, "rs1 value == rs2 value?"),
+      riscr_continue_at(riscr_branch_target(pc_nid, ir_nid)),
+      riscr_continue_at(origin_nid),
+      "beq control flow"),
+    new_ternary(OP_ITE, SID_MACHINE_WORD, riscr_is_jal(ir_nid),
+      riscr_continue_at(riscr_jump_target(pc_nid, ir_nid)),
+      new_ternary(OP_ITE, SID_MACHINE_WORD, riscr_is_jalr(ir_nid),
+        riscr_continue_at(riscr_return_target(ir_nid, register_file_nid)),
+        riscr_continue_at(origin_nid),
+        "jalr control flow"),
+      "jal control flow"),
+    "RISC-R control flow");
+}
+
+uint64_t* riscr_points_back(uint64_t* imm_nid, uint64_t* origin_nid, uint64_t* target_nid) {
+  // the immediate of the come-from at target must point back at origin
+  return new_binary_boolean(OP_EQ,
+    imm_nid,
+    new_binary(OP_SUB, SID_MACHINE_WORD, origin_nid, target_nid, "origin - target"),
+    "come-from immediate == origin - target?");
+}
+
+uint64_t* riscr_is_branch_come_from(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* register_file_nid, uint64_t* code_segment_nid) {
+  uint64_t* target_nid;
+  uint64_t* partner_nid;
+
+  // is the instruction at the branch target a beq pointing back whose condition holds?
+
+  target_nid  = riscr_branch_target(pc_nid, ir_nid);
+  partner_nid = fetch_instruction(target_nid, code_segment_nid);
+
+  return new_binary_boolean(OP_AND,
+    is_address_in_machine_word_in_segment(target_nid, code_segment_nid),
+    new_binary_boolean(OP_AND,
+      riscr_is_beq(partner_nid),
+      new_binary_boolean(OP_AND,
+        riscr_points_back(get_instruction_SB_immediate(partner_nid), riscr_instruction_address(pc_nid), target_nid),
+        new_binary_boolean(OP_EQ,
+          load_register_value(get_instruction_rs1(partner_nid), "come-from rs1 value", register_file_nid),
+          load_register_value(get_instruction_rs2(partner_nid), "come-from rs2 value", register_file_nid),
+          "come-from rs1 value == come-from rs2 value?"),
+        "come-from points back and holds?"),
+      "come-from is beq pointing back and holding?"),
+    "beq come-from in code segment?");
+}
+
+uint64_t* riscr_is_jump_come_from(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* code_segment_nid) {
+  uint64_t* target_nid;
+  uint64_t* partner_nid;
+
+  // is the instruction at the jump target a jal zero pointing back?
+
+  target_nid  = riscr_jump_target(pc_nid, ir_nid);
+  partner_nid = fetch_instruction(target_nid, code_segment_nid);
+
+  return new_binary_boolean(OP_AND,
+    is_address_in_machine_word_in_segment(target_nid, code_segment_nid),
+    new_binary_boolean(OP_AND,
+      riscr_is_jal(partner_nid),
+      new_binary_boolean(OP_AND,
+        riscr_is_rd_zero(partner_nid),
+        riscr_points_back(get_instruction_UJ_immediate(partner_nid), riscr_instruction_address(pc_nid), target_nid),
+        "come-from is jal zero pointing back?"),
+      "come-from is jal zero pointing back?"),
+    "jal zero come-from in code segment?");
+}
+
+uint64_t* riscr_is_link_come_from(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* code_segment_nid) {
+  uint64_t* rd_nid;
+  uint64_t* target_nid;
+  uint64_t* partner_nid;
+
+  // is the instruction at the call target a jalr rd,0(rd) uncomputing the link in rd?
+
+  rd_nid = get_instruction_rd(ir_nid);
+
+  target_nid  = riscr_jump_target(pc_nid, ir_nid);
+  partner_nid = fetch_instruction(target_nid, code_segment_nid);
+
+  return new_binary_boolean(OP_AND,
+    is_address_in_machine_word_in_segment(target_nid, code_segment_nid),
+    new_binary_boolean(OP_AND,
+      riscr_is_jalr(partner_nid),
+      new_binary_boolean(OP_AND,
+        new_binary_boolean(OP_EQ, get_instruction_rd(partner_nid), rd_nid, "come-from rd == rd?"),
+        new_binary_boolean(OP_AND,
+          new_binary_boolean(OP_EQ, get_instruction_rs1(partner_nid), rd_nid, "come-from rs1 == rd?"),
+          new_binary_boolean(OP_EQ, get_instruction_I_immediate(partner_nid), NID_MACHINE_WORD_0, "come-from I-immediate == 0?"),
+          "come-from rs1 == rd and immediate 0?"),
+        "come-from registers match?"),
+      "come-from is jalr rd,0(rd)?"),
+    "jalr come-from in code segment?");
+}
+
+uint64_t* riscr_is_return_come_from(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* register_file_nid, uint64_t* code_segment_nid) {
+  uint64_t* target_nid;
+  uint64_t* partner_nid;
+
+  // is the instruction at the return target a jal rd pointing back?
+
+  target_nid  = riscr_return_target(ir_nid, register_file_nid);
+  partner_nid = fetch_instruction(target_nid, code_segment_nid);
+
+  return new_binary_boolean(OP_AND,
+    is_address_in_machine_word_in_segment(target_nid, code_segment_nid),
+    new_binary_boolean(OP_AND,
+      riscr_is_jal(partner_nid),
+      new_binary_boolean(OP_AND,
+        new_binary_boolean(OP_EQ, get_instruction_rd(partner_nid), get_instruction_rd(ir_nid), "come-from rd == rd?"),
+        riscr_points_back(get_instruction_UJ_immediate(partner_nid), riscr_instruction_address(pc_nid), target_nid),
+        "come-from is jal rd pointing back?"),
+      "come-from is jal rd pointing back?"),
+    "jal rd come-from in code segment?");
+}
+
+uint64_t* riscr_is_aliasing(uint64_t* ir_nid) {
+  uint64_t* rd_nid;
+  uint64_t* rs1_nid;
+  uint64_t* rs2_nid;
+
+  // rd must be distinct from rs1 and rs2 unless rd is zero; lui has no rs1
+
+  rd_nid  = get_instruction_rd(ir_nid);
+  rs1_nid = get_instruction_rs1(ir_nid);
+  rs2_nid = get_instruction_rs2(ir_nid);
+
+  return new_binary_boolean(OP_AND,
+    new_binary_boolean(OP_NEQ, rd_nid, NID_ZR, "rd != register zero?"),
+    new_binary_boolean(OP_OR,
+      new_binary_boolean(OP_AND,
+        new_binary_boolean(OP_OR, riscr_is_addi(ir_nid), riscr_is_load(ir_nid), "addi or ld?"),
+        new_binary_boolean(OP_EQ, rd_nid, rs1_nid, "rd == rs1?"),
+        "addi or ld with rd == rs1?"),
+      new_binary_boolean(OP_AND,
+        riscr_is_opcode(ir_nid, NID_OP_OP, "opcode == OP?"),
+        new_binary_boolean(OP_OR,
+          new_binary_boolean(OP_EQ, rd_nid, rs1_nid, "rd == rs1?"),
+          new_binary_boolean(OP_EQ, rd_nid, rs2_nid, "rd == rs2?"),
+          "rd == rs1 or rd == rs2?"),
+        "register-register instruction with rd == rs1 or rd == rs2?"),
+      "rd aliases a source register?"),
+    "irreversible aliasing of rd with rs1 or rs2");
+}
+
+uint64_t* riscr_is_unpaired_branch(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* register_file_nid, uint64_t* code_segment_nid) {
+  return new_binary_boolean(OP_AND,
+    riscr_is_beq(ir_nid),
+    new_binary_boolean(OP_AND,
+      new_binary_boolean(OP_EQ,
+        load_register_value(get_instruction_rs1(ir_nid), "rs1 value", register_file_nid),
+        load_register_value(get_instruction_rs2(ir_nid), "rs2 value", register_file_nid),
+        "rs1 value == rs2 value?"),
+      new_unary_boolean(OP_NOT,
+        riscr_is_branch_come_from(pc_nid, ir_nid, register_file_nid, code_segment_nid),
+        "no beq come-from?"),
+      "taken beq without come-from?"),
+    "irreversible beq without come-from");
+}
+
+uint64_t* riscr_is_unpaired_jump(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* code_segment_nid) {
+  return new_binary_boolean(OP_AND,
+    riscr_is_jal(ir_nid),
+    new_binary_boolean(OP_AND,
+      riscr_is_rd_zero(ir_nid),
+      new_unary_boolean(OP_NOT,
+        riscr_is_jump_come_from(pc_nid, ir_nid, code_segment_nid),
+        "no jal zero come-from?"),
+      "jal zero without come-from?"),
+    "irreversible jal zero without come-from");
+}
+
+uint64_t* riscr_is_unpaired_link(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* register_file_nid, uint64_t* code_segment_nid) {
+  return new_binary_boolean(OP_AND,
+    riscr_is_jal(ir_nid),
+    new_binary_boolean(OP_AND,
+      new_unary_boolean(OP_NOT, riscr_is_rd_zero(ir_nid), "rd != register zero?"),
+      new_binary_boolean(OP_OR,
+        new_binary_boolean(OP_NEQ,
+          load_register_value(get_instruction_rd(ir_nid), "current rd value", register_file_nid),
+          NID_MACHINE_WORD_0,
+          "link register not zero?"),
+        new_unary_boolean(OP_NOT,
+          riscr_is_link_come_from(pc_nid, ir_nid, code_segment_nid),
+          "no jalr come-from?"),
+        "link register not zero or no jalr come-from?"),
+      "jal rd with nonzero link register or without come-from?"),
+    "irreversible jal rd with nonzero link register or without come-from");
+}
+
+uint64_t* riscr_is_unpaired_return(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* register_file_nid, uint64_t* code_segment_nid) {
+  uint64_t* rd_nid;
+
+  rd_nid = get_instruction_rd(ir_nid);
+
+  return new_binary_boolean(OP_AND,
+    riscr_is_jalr(ir_nid),
+    new_binary_boolean(OP_OR,
+      new_binary_boolean(OP_NEQ, rd_nid, get_instruction_rs1(ir_nid), "rd != rs1?"),
+      new_binary_boolean(OP_OR,
+        new_binary_boolean(OP_EQ, rd_nid, NID_ZR, "rd == register zero?"),
+        new_binary_boolean(OP_OR,
+          new_binary_boolean(OP_NEQ, get_instruction_I_immediate(ir_nid), NID_MACHINE_WORD_0, "I-immediate != 0?"),
+          new_unary_boolean(OP_NOT,
+            riscr_is_return_come_from(pc_nid, ir_nid, register_file_nid, code_segment_nid),
+            "no jal rd come-from?"),
+          "I-immediate != 0 or no jal rd come-from?"),
+        "rd == register zero or I-immediate != 0 or no jal rd come-from?"),
+      "malformed jalr or no jal rd come-from?"),
+    "irreversible jalr malformed or without come-from");
+}
+
 // compressed instructions
 
 uint64_t is_compressed_instruction_ID(uint64_t instruction_ID) {
@@ -11488,6 +12167,430 @@ void kernel_properties(uint64_t core, uint64_t* ir_nid, uint64_t* read_bytes_nid
   }
 }
 
+// RISC-R kernel: only exit and brk exist so far; read, write, and openat
+// need tapes as named state, see projects/reversible.md (M3b)
+
+uint64_t* riscr_is_syscall(uint64_t* ir_nid, uint64_t* register_file_nid, uint64_t* syscall_id_nid, char* comment) {
+  return new_binary_boolean(OP_AND,
+    riscr_is_ecall(ir_nid),
+    new_binary_boolean(OP_EQ,
+      load_register_value(NID_A7, "a7 value", register_file_nid),
+      syscall_id_nid,
+      format_comment("a7 == %s syscall ID?", (uint64_t) comment)),
+    format_comment("active %s system call", (uint64_t) comment));
+}
+
+uint64_t* riscr_is_brk_argument_valid(uint64_t* register_file_nid, uint64_t* program_break_nid) {
+  uint64_t* a1_value_nid;
+
+  // a1 is a word-aligned virtual address above the program break and at most at the end of the heap
+
+  a1_value_nid = load_register_value(NID_A1, "a1 value", register_file_nid);
+
+  return new_binary_boolean(OP_AND,
+    new_binary_boolean(OP_EQ,
+      new_binary(OP_AND, SID_MACHINE_WORD, a1_value_nid, NID_MACHINE_WORD_7, "a1 value alignment"),
+      NID_MACHINE_WORD_0,
+      "a1 value word-aligned?"),
+    does_machine_word_work_as_virtual_address(a1_value_nid,
+      new_binary_boolean(OP_AND,
+        new_binary_boolean(OP_UGT,
+          cast_machine_word_to_virtual_address(a1_value_nid),
+          program_break_nid,
+          "new program break > current program break?"),
+        new_binary_boolean(OP_ULTE,
+          cast_machine_word_to_virtual_address(a1_value_nid),
+          NID_HEAP_END,
+          "new program break <= end of heap segment?"),
+        "new program break above current program break and in heap segment?")),
+    "valid new program break in a1?");
+}
+
+uint64_t* riscr_does_brk_succeed(uint64_t* register_file_nid, uint64_t* program_break_nid) {
+  // forward: a0 must be zero to receive the previous program break
+  return new_binary_boolean(OP_AND,
+    new_binary_boolean(OP_EQ,
+      load_register_value(NID_A0, "a0 value", register_file_nid),
+      NID_MACHINE_WORD_0,
+      "a0 value == 0?"),
+    riscr_is_brk_argument_valid(register_file_nid, program_break_nid),
+    "brk succeeds forward?");
+}
+
+uint64_t* riscr_does_brk_undo(uint64_t* register_file_nid, uint64_t* program_break_nid) {
+  uint64_t* a0_value_nid;
+  uint64_t* program_break_value_nid;
+
+  // backward: a0 holds the previous program break below the current one, a1 the current one
+
+  a0_value_nid = load_register_value(NID_A0, "a0 value", register_file_nid);
+
+  program_break_value_nid = cast_virtual_address_to_machine_word(program_break_nid);
+
+  return new_binary_boolean(OP_AND,
+    new_binary_boolean(OP_NEQ, a0_value_nid, NID_MACHINE_WORD_0, "a0 value != 0?"),
+    new_binary_boolean(OP_AND,
+      new_binary_boolean(OP_ULT, a0_value_nid, program_break_value_nid, "a0 value < current program break?"),
+      new_binary_boolean(OP_AND,
+        new_binary_boolean(OP_EQ,
+          load_register_value(NID_A1, "a1 value", register_file_nid),
+          program_break_value_nid,
+          "a1 value == current program break?"),
+        new_binary_boolean(OP_ULTE, program_break_nid, NID_HEAP_END, "current program break <= end of heap segment?"),
+        "a1 value is current program break in heap segment?"),
+      "a0 value is previous program break?"),
+    "brk undoes a successful brk backward?");
+}
+
+uint64_t* riscr_is_irreversible_brk(uint64_t* ir_nid, uint64_t* register_file_nid, uint64_t* program_break_nid) {
+  uint64_t* a0_value_nid;
+
+  a0_value_nid = load_register_value(NID_A0, "a0 value", register_file_nid);
+
+  if (reverse)
+    // backward brk must undo a brk that either succeeded or failed forward
+    return new_binary_boolean(OP_AND,
+      riscr_is_syscall(ir_nid, register_file_nid, NID_BRK_SYSCALL_ID, "brk"),
+      new_unary_boolean(OP_NOT,
+        new_binary_boolean(OP_OR,
+          riscr_does_brk_undo(register_file_nid, program_break_nid),
+          new_binary_boolean(OP_AND,
+            new_binary_boolean(OP_EQ, a0_value_nid, NID_MACHINE_WORD_0, "a0 value == 0?"),
+            new_unary_boolean(OP_NOT,
+              riscr_is_brk_argument_valid(register_file_nid, program_break_nid),
+              "invalid new program break in a1?"),
+            "brk failed forward?"),
+          "brk succeeded or failed forward?"),
+        "brk state not in the image of forward brk?"),
+      "irreversible brk backward");
+  else
+    return new_binary_boolean(OP_AND,
+      riscr_is_syscall(ir_nid, register_file_nid, NID_BRK_SYSCALL_ID, "brk"),
+      new_binary_boolean(OP_NEQ, a0_value_nid, NID_MACHINE_WORD_0, "a0 value != 0?"),
+      "irreversible brk with nonzero a0");
+}
+
+uint64_t* riscr_is_irreversible_exit(uint64_t* ir_nid, uint64_t* register_file_nid) {
+  // exit is never executed backward
+  return riscr_is_syscall(ir_nid, register_file_nid, NID_EXIT_SYSCALL_ID, "exit");
+}
+
+uint64_t* riscr_is_unsupported_syscall(uint64_t* ir_nid, uint64_t* register_file_nid) {
+  uint64_t* a7_value_nid;
+
+  a7_value_nid = load_register_value(NID_A7, "a7 value", register_file_nid);
+
+  return new_binary_boolean(OP_AND,
+    riscr_is_ecall(ir_nid),
+    new_unary_boolean(OP_NOT,
+      new_binary_boolean(OP_OR,
+        new_binary_boolean(OP_EQ, a7_value_nid, NID_EXIT_SYSCALL_ID, "a7 == exit syscall ID?"),
+        new_binary_boolean(OP_EQ, a7_value_nid, NID_BRK_SYSCALL_ID, "a7 == brk syscall ID?"),
+        "a7 == exit or brk syscall ID?"),
+      "a7 != exit and brk syscall ID?"),
+    "unsupported RISC-R system call");
+}
+
+uint64_t* riscr_kernel_control_flow(uint64_t* ir_nid, uint64_t* register_file_nid,
+  uint64_t* pc_nid, uint64_t* control_flow_nid) {
+  // exit stops the machine without changing its state
+  return new_ternary(OP_ITE, SID_MACHINE_WORD,
+    riscr_is_syscall(ir_nid, register_file_nid, NID_EXIT_SYSCALL_ID, "exit"),
+    pc_nid,
+    control_flow_nid,
+    "update program counter unless exiting");
+}
+
+uint64_t* riscr_kernel_program_break(uint64_t* ir_nid, uint64_t* register_file_nid, uint64_t* program_break_nid) {
+  uint64_t* new_program_break_nid;
+
+  if (reverse)
+    // a nonzero a0 holds the previous program break, restore it
+    new_program_break_nid = new_ternary(OP_ITE, SID_VIRTUAL_ADDRESS,
+      new_binary_boolean(OP_NEQ,
+        load_register_value(NID_A0, "a0 value", register_file_nid),
+        NID_MACHINE_WORD_0,
+        "a0 value != 0?"),
+      cast_machine_word_to_virtual_address(load_register_value(NID_A0, "a0 value", register_file_nid)),
+      program_break_nid,
+      "restore previous program break from a0");
+  else
+    new_program_break_nid = new_ternary(OP_ITE, SID_VIRTUAL_ADDRESS,
+      riscr_does_brk_succeed(register_file_nid, program_break_nid),
+      cast_machine_word_to_virtual_address(load_register_value(NID_A1, "a1 value", register_file_nid)),
+      program_break_nid,
+      "set program break to a1 if brk succeeds");
+
+  return new_ternary(OP_ITE, SID_VIRTUAL_ADDRESS,
+    riscr_is_syscall(ir_nid, register_file_nid, NID_BRK_SYSCALL_ID, "brk"),
+    new_program_break_nid,
+    program_break_nid,
+    "new program break");
+}
+
+uint64_t* riscr_kernel_register_data_flow(uint64_t* ir_nid, uint64_t* register_file_nid,
+  uint64_t* program_break_nid, uint64_t* register_data_flow_nid) {
+  uint64_t* a0_value_nid;
+  uint64_t* new_a0_value_nid;
+
+  a0_value_nid = load_register_value(NID_A0, "a0 value", register_file_nid);
+
+  if (reverse)
+    // subtract the previous program break from a0, which is a0 itself
+    new_a0_value_nid = NID_MACHINE_WORD_0;
+  else
+    new_a0_value_nid = new_ternary(OP_ITE, SID_MACHINE_WORD,
+      riscr_does_brk_succeed(register_file_nid, program_break_nid),
+      new_binary(OP_ADD, SID_MACHINE_WORD,
+        a0_value_nid,
+        cast_virtual_address_to_machine_word(program_break_nid),
+        "a0 value + previous program break"),
+      a0_value_nid,
+      "add previous program break into a0 if brk succeeds");
+
+  return new_ternary(OP_ITE, SID_REGISTER_STATE,
+    riscr_is_syscall(ir_nid, register_file_nid, NID_BRK_SYSCALL_ID, "brk"),
+    store_register_value(NID_A0, new_a0_value_nid, "brk result in a0", register_file_nid),
+    register_data_flow_nid,
+    "RISC-R kernel register data flow");
+}
+
+void riscr_kernel_combinational(uint64_t core, uint64_t* pc_nid, uint64_t* ir_nid,
+  uint64_t* control_flow_nid, uint64_t* register_data_flow_nid,
+  uint64_t* heap_segment_data_flow_nid,
+  uint64_t* program_break_nid, uint64_t* register_file_nid) {
+  // new brk kernel state
+
+  eval_program_break_nid = riscr_kernel_program_break(ir_nid, register_file_nid, program_break_nid);
+
+  // kernel and instruction control flow
+
+  eval_control_flow_nid = riscr_kernel_control_flow(ir_nid, register_file_nid, pc_nid, control_flow_nid);
+
+  set_for(core, eval_control_flow_nids, eval_control_flow_nid);
+
+  // kernel and instruction register data flow
+
+  eval_register_data_flow_nid =
+    riscr_kernel_register_data_flow(ir_nid, register_file_nid, program_break_nid, register_data_flow_nid);
+
+  set_for(core, eval_register_data_flow_nids, eval_register_data_flow_nid);
+
+  // no kernel memory data flow without read system call
+
+  eval_heap_segment_data_flow_nid = heap_segment_data_flow_nid;
+
+  set_for(core, eval_heap_segment_data_flow_nids, eval_heap_segment_data_flow_nid);
+}
+
+void riscr_kernel_sequential(uint64_t core,
+  uint64_t* program_break_nid, uint64_t* file_descriptor_nid,
+  uint64_t* readable_bytes_nid, uint64_t* read_bytes_nid,
+  uint64_t* new_program_break_nid) {
+  set_for(core, next_program_break_nids,
+    new_next(SID_VIRTUAL_ADDRESS, program_break_nid, new_program_break_nid, "new program break"));
+
+  // RISC-U read state is unused in RISC-R and stays read-only
+
+  if (core == number_of_cores - 1)
+    next_file_descriptor_nid =
+      new_next(SID_MACHINE_WORD, file_descriptor_nid, file_descriptor_nid, "read-only file descriptor");
+
+  set_for(core, next_readable_bytes_nids,
+    new_next(SID_MACHINE_WORD, readable_bytes_nid, readable_bytes_nid, "read-only readable bytes"));
+
+  set_for(core, next_read_bytes_nids,
+    new_next(SID_MACHINE_WORD, read_bytes_nid, read_bytes_nid, "read-only read bytes"));
+}
+
+void riscr_properties(uint64_t core, uint64_t* pc_nid, uint64_t* ir_nid,
+  uint64_t* register_file_nid, uint64_t* code_segment_nid, uint64_t* program_break_nid) {
+  // an instruction that violates a RISC-R rule is irreversible, see riscr.md;
+  // the step function is still defined but not a bijection on such states
+
+  set_for(core, prop_is_syscall_id_known_nids, state_property(core,
+    UNUSED,
+    riscr_is_unsupported_syscall(ir_nid, register_file_nid),
+    format_comment("core-%lu-unsupported-syscall", core),
+    format_comment("core-%lu unsupported RISC-R system call", core)));
+
+  set_for(core, prop_irreversible_aliasing_nids, state_property(core,
+    UNUSED,
+    riscr_is_aliasing(ir_nid),
+    format_comment("core-%lu-irreversible-aliasing", core),
+    format_comment("core-%lu irreversible instruction: rd equals rs1 or rs2", core)));
+
+  set_for(core, prop_irreversible_store_nids, state_property(core,
+    UNUSED,
+    riscr_is_store(ir_nid),
+    format_comment("core-%lu-irreversible-store", core),
+    format_comment("core-%lu irreversible instruction: sd", core)));
+
+  set_for(core, prop_irreversible_branch_nids, state_property(core,
+    UNUSED,
+    riscr_is_unpaired_branch(pc_nid, ir_nid, register_file_nid, code_segment_nid),
+    format_comment("core-%lu-irreversible-branch", core),
+    format_comment("core-%lu irreversible instruction: taken beq without come-from", core)));
+
+  set_for(core, prop_irreversible_jump_nids, state_property(core,
+    UNUSED,
+    riscr_is_unpaired_jump(pc_nid, ir_nid, code_segment_nid),
+    format_comment("core-%lu-irreversible-jump", core),
+    format_comment("core-%lu irreversible instruction: jal zero without come-from", core)));
+
+  set_for(core, prop_irreversible_link_nids, state_property(core,
+    UNUSED,
+    riscr_is_unpaired_link(pc_nid, ir_nid, register_file_nid, code_segment_nid),
+    format_comment("core-%lu-irreversible-link", core),
+    format_comment("core-%lu irreversible instruction: jal with nonzero link register or without come-from", core)));
+
+  set_for(core, prop_irreversible_return_nids, state_property(core,
+    UNUSED,
+    riscr_is_unpaired_return(pc_nid, ir_nid, register_file_nid, code_segment_nid),
+    format_comment("core-%lu-irreversible-return", core),
+    format_comment("core-%lu irreversible instruction: malformed jalr or without come-from", core)));
+
+  set_for(core, prop_irreversible_brk_nids, state_property(core,
+    UNUSED,
+    riscr_is_irreversible_brk(ir_nid, register_file_nid, program_break_nid),
+    format_comment("core-%lu-irreversible-brk", core),
+    format_comment("core-%lu irreversible instruction: brk with nonzero a0", core)));
+
+  if (reverse)
+    set_for(core, prop_irreversible_exit_nids, state_property(core,
+      UNUSED,
+      riscr_is_irreversible_exit(ir_nid, register_file_nid),
+      format_comment("core-%lu-irreversible-exit", core),
+      format_comment("core-%lu irreversible instruction: exit executed backward", core)));
+}
+
+uint64_t* riscr_roundtrip_filter(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* control_flow_nid,
+  uint64_t* register_file_nid, uint64_t* code_segment_nid,
+  uint64_t* data_segment_nid, uint64_t* heap_segment_nid, uint64_t* stack_segment_nid,
+  uint64_t* program_break_nid) {
+  // states on which the step function need not be a bijection: the instruction is
+  // irreversible, not a RISC-R instruction, faulting, fetched outside the code segment,
+  // or exit, which stops the machine in place
+
+  return new_binary_boolean(OP_OR,
+    new_unary_boolean(OP_NOT,
+      is_address_in_machine_word_in_segment(riscr_instruction_address(pc_nid), code_segment_nid),
+      "fetch outside code segment?"),
+    new_binary_boolean(OP_OR,
+      new_unary_boolean(OP_NOT,
+        is_address_in_machine_word_in_segment(riscr_instruction_address(control_flow_nid), code_segment_nid),
+        "next fetch outside code segment?"),
+      new_binary_boolean(OP_OR,
+        new_binary_boolean(OP_NEQ,
+          new_binary(OP_AND, SID_MACHINE_WORD, control_flow_nid, NID_INSTRUCTION_WORD_SIZE_MASK, "next pc alignment"),
+          NID_MACHINE_WORD_0,
+          "next pc unaligned?"),
+        new_binary_boolean(OP_OR,
+          new_unary_boolean(OP_NOT, is_enabled(decode_instruction(ir_nid)), "unknown instruction?"),
+          new_binary_boolean(OP_OR,
+            is_division_remainder_by_zero(ir_nid, register_file_nid),
+            new_binary_boolean(OP_OR,
+              new_unary_boolean(OP_NOT,
+                load_no_seg_faults(ir_nid, register_file_nid, data_segment_nid, heap_segment_nid, stack_segment_nid),
+                "ld segmentation fault?"),
+              new_binary_boolean(OP_OR,
+                riscr_is_aliasing(ir_nid),
+                new_binary_boolean(OP_OR,
+                  riscr_is_store(ir_nid),
+                  new_binary_boolean(OP_OR,
+                    riscr_is_unpaired_branch(pc_nid, ir_nid, register_file_nid, code_segment_nid),
+                    new_binary_boolean(OP_OR,
+                      riscr_is_unpaired_jump(pc_nid, ir_nid, code_segment_nid),
+                      new_binary_boolean(OP_OR,
+                        riscr_is_unpaired_link(pc_nid, ir_nid, register_file_nid, code_segment_nid),
+                        new_binary_boolean(OP_OR,
+                          riscr_is_unpaired_return(pc_nid, ir_nid, register_file_nid, code_segment_nid),
+                          new_binary_boolean(OP_OR,
+                            riscr_is_irreversible_brk(ir_nid, register_file_nid, program_break_nid),
+                            new_binary_boolean(OP_OR,
+                              riscr_is_syscall(ir_nid, register_file_nid, NID_EXIT_SYSCALL_ID, "exit"),
+                              riscr_is_unsupported_syscall(ir_nid, register_file_nid),
+                              "exit or unsupported system call?"),
+                            "irreversible brk?"),
+                          "irreversible return?"),
+                        "irreversible link?"),
+                      "irreversible jump?"),
+                    "irreversible branch?"),
+                  "irreversible store?"),
+                "irreversible aliasing?"),
+              "ld segmentation fault?"),
+            "division by zero?"),
+          "unknown instruction?"),
+        "next pc unaligned?"),
+      "next fetch outside code segment?"),
+    "skip state in round trip?");
+}
+
+uint64_t* riscr_roundtrip_exchange(uint64_t* ir_nid, uint64_t* register_file_nid,
+  uint64_t* data_segment_nid, uint64_t* heap_segment_nid, uint64_t* stack_segment_nid) {
+  // the evaluator updates arrays in place and evaluates ite lazily: the two
+  // operands of the ld exchange, structurally shared with the register and
+  // memory data flow, are evaluated before either data flow writes
+  return new_binary(OP_ADD, SID_MACHINE_WORD,
+    riscr_load_machine_word(get_rs1_value_plus_I_immediate(ir_nid, register_file_nid),
+      data_segment_nid, heap_segment_nid, stack_segment_nid),
+    load_register_value(get_instruction_rd(ir_nid), "current rd value", register_file_nid),
+    "ld exchange operands");
+}
+
+void riscr_roundtrip_model() {
+  uint64_t* ir_nid;
+  uint64_t* control_flow_nid;
+
+  // the step function of the direction selected by the reverse flag has been
+  // generated into the model; generate the step function of the other direction
+  // over the same state for checking that one after the other is the identity
+
+  roundtrip_forward_control_flow_nid       = eval_control_flow_nid;
+  roundtrip_forward_program_break_nid      = eval_program_break_nid;
+  roundtrip_forward_register_data_flow_nid = eval_register_data_flow_nid;
+  roundtrip_forward_data_segment_nid       = eval_data_segment_data_flow_nid;
+  roundtrip_forward_heap_segment_nid       = eval_heap_segment_data_flow_nid;
+  roundtrip_forward_stack_segment_nid      = eval_stack_segment_data_flow_nid;
+
+  roundtrip_forward_skip_nid = riscr_roundtrip_filter(state_pc_nid, eval_ir_nid, eval_control_flow_nid,
+    state_register_file_nid, state_code_segment_nid,
+    state_data_segment_nid, state_heap_segment_nid, state_stack_segment_nid,
+    state_program_break_nid);
+
+  roundtrip_forward_exchange_nid = riscr_roundtrip_exchange(eval_ir_nid, state_register_file_nid,
+    state_data_segment_nid, state_heap_segment_nid, state_stack_segment_nid);
+
+  reverse = 1 - reverse;
+
+  ir_nid = riscr_fetch_instruction(state_pc_nid, state_code_segment_nid);
+
+  control_flow_nid = riscr_kernel_control_flow(ir_nid, state_register_file_nid, state_pc_nid,
+    riscr_control_flow(state_pc_nid, ir_nid, state_register_file_nid));
+
+  roundtrip_inverse_control_flow_nid  = control_flow_nid;
+  roundtrip_inverse_program_break_nid = riscr_kernel_program_break(ir_nid, state_register_file_nid, state_program_break_nid);
+
+  roundtrip_inverse_register_data_flow_nid =
+    riscr_kernel_register_data_flow(ir_nid, state_register_file_nid, state_program_break_nid,
+      riscr_register_data_flow(state_pc_nid, ir_nid, state_register_file_nid,
+        state_data_segment_nid, state_heap_segment_nid, state_stack_segment_nid));
+
+  roundtrip_inverse_data_segment_nid  = riscr_memory_data_flow(ir_nid, state_register_file_nid, state_data_segment_nid);
+  roundtrip_inverse_heap_segment_nid  = riscr_memory_data_flow(ir_nid, state_register_file_nid, state_heap_segment_nid);
+  roundtrip_inverse_stack_segment_nid = riscr_memory_data_flow(ir_nid, state_register_file_nid, state_stack_segment_nid);
+
+  roundtrip_inverse_skip_nid = riscr_roundtrip_filter(state_pc_nid, ir_nid, control_flow_nid,
+    state_register_file_nid, state_code_segment_nid,
+    state_data_segment_nid, state_heap_segment_nid, state_stack_segment_nid,
+    state_program_break_nid);
+
+  roundtrip_inverse_exchange_nid = riscr_roundtrip_exchange(ir_nid, state_register_file_nid,
+    state_data_segment_nid, state_heap_segment_nid, state_stack_segment_nid);
+
+  reverse = 1 - reverse;
+}
+
 void rotor_combinational(uint64_t core, uint64_t* pc_nid,
   uint64_t* code_segment_nid, uint64_t* register_file_nid,
   uint64_t* data_segment_nid, uint64_t* heap_segment_nid, uint64_t* stack_segment_nid) {
@@ -11499,7 +12602,10 @@ void rotor_combinational(uint64_t core, uint64_t* pc_nid,
 
   // fetch instruction
 
-  eval_ir_nid = fetch_instruction(pc_nid, code_segment_nid);
+  if (RISCR)
+    eval_ir_nid = riscr_fetch_instruction(pc_nid, code_segment_nid);
+  else
+    eval_ir_nid = fetch_instruction(pc_nid, code_segment_nid);
 
   set_for(core, eval_ir_nids, eval_ir_nid);
 
@@ -11532,7 +12638,10 @@ void rotor_combinational(uint64_t core, uint64_t* pc_nid,
 
   // instruction control flow
 
-  instruction_control_flow_nid = core_control_flow(pc_nid, eval_ir_nid, register_file_nid);
+  if (RISCR)
+    instruction_control_flow_nid = riscr_control_flow(pc_nid, eval_ir_nid, register_file_nid);
+  else
+    instruction_control_flow_nid = core_control_flow(pc_nid, eval_ir_nid, register_file_nid);
 
   set_for(core, eval_instruction_control_flow_nids, instruction_control_flow_nid);
 
@@ -11565,9 +12674,14 @@ void rotor_combinational(uint64_t core, uint64_t* pc_nid,
 
   // instruction register data flow
 
-  instruction_register_data_flow_nid =
-    core_register_data_flow(pc_nid, eval_ir_nid,
-      register_file_nid, data_segment_nid, heap_segment_nid, stack_segment_nid);
+  if (RISCR)
+    instruction_register_data_flow_nid =
+      riscr_register_data_flow(pc_nid, eval_ir_nid,
+        register_file_nid, data_segment_nid, heap_segment_nid, stack_segment_nid);
+  else
+    instruction_register_data_flow_nid =
+      core_register_data_flow(pc_nid, eval_ir_nid,
+        register_file_nid, data_segment_nid, heap_segment_nid, stack_segment_nid);
 
   set_for(core, eval_instruction_register_data_flow_nids, instruction_register_data_flow_nid);
 
@@ -11582,8 +12696,12 @@ void rotor_combinational(uint64_t core, uint64_t* pc_nid,
 
   // instruction data segment data flow
 
-  instruction_data_flow_nid =
-    core_memory_data_flow(eval_ir_nid, register_file_nid, data_segment_nid);
+  if (RISCR)
+    instruction_data_flow_nid =
+      riscr_memory_data_flow(eval_ir_nid, register_file_nid, data_segment_nid);
+  else
+    instruction_data_flow_nid =
+      core_memory_data_flow(eval_ir_nid, register_file_nid, data_segment_nid);
 
   set_for(core, eval_instruction_data_segment_data_flow_nids, instruction_data_flow_nid);
 
@@ -11597,8 +12715,12 @@ void rotor_combinational(uint64_t core, uint64_t* pc_nid,
 
   // instruction heap segment data flow
 
-  instruction_data_flow_nid =
-    core_memory_data_flow(eval_ir_nid, register_file_nid, heap_segment_nid);
+  if (RISCR)
+    instruction_data_flow_nid =
+      riscr_memory_data_flow(eval_ir_nid, register_file_nid, heap_segment_nid);
+  else
+    instruction_data_flow_nid =
+      core_memory_data_flow(eval_ir_nid, register_file_nid, heap_segment_nid);
 
   set_for(core, eval_instruction_heap_segment_data_flow_nids, instruction_data_flow_nid);
 
@@ -11612,8 +12734,12 @@ void rotor_combinational(uint64_t core, uint64_t* pc_nid,
 
   // instruction stack segment data flow
 
-  instruction_data_flow_nid =
-    core_memory_data_flow(eval_ir_nid, register_file_nid, stack_segment_nid);
+  if (RISCR)
+    instruction_data_flow_nid =
+      riscr_memory_data_flow(eval_ir_nid, register_file_nid, stack_segment_nid);
+  else
+    instruction_data_flow_nid =
+      core_memory_data_flow(eval_ir_nid, register_file_nid, stack_segment_nid);
 
   set_for(core, eval_instruction_stack_segment_data_flow_nids, instruction_data_flow_nid);
 
@@ -11790,6 +12916,10 @@ void rotor_properties(uint64_t core, uint64_t* ir_nid, uint64_t* c_ir_nid,
   uint64_t* instruction_ID_nids, uint64_t* control_flow_nid,
   uint64_t* register_file_nid, uint64_t* code_segment_nid,
   uint64_t* data_segment_nid, uint64_t* heap_segment_nid, uint64_t* stack_segment_nid) {
+  if (RISCR)
+    // RISC-R fetches at pc forward and at pc - 4 backward
+    control_flow_nid = riscr_instruction_address(control_flow_nid);
+
   // mandatory state properties
 
   set_for(core, prop_illegal_instruction_nids, state_property(core,
@@ -12000,6 +13130,8 @@ void model_rotor() {
   if (custom_model_name == 0) {
     if (number_of_binaries > 0)
       model_name = (char*) get_for(0, binary_names);
+    else if (RISCR)
+      model_name = "64-bit-riscr-machine.m";
     else if (IS64BITTARGET)
       model_name = "64-bit-riscv-machine.m";
     else
@@ -12016,6 +13148,17 @@ void model_rotor() {
     RISCUONLY = riscu_only;
   else if (number_of_binaries == 0)
     RISCUONLY = riscu_only;
+
+  if (RISCR) {
+    // RISC-R reuses the RISC-U encodings on one core
+    RISCUONLY = 1;
+
+    if (number_of_cores > 1) {
+      printf("%s: RISC-R models support one core only\n", selfie_name);
+
+      exit(EXITCODE_BADARGUMENTS);
+    }
+  }
 
   init_model();
 
@@ -12057,13 +13200,20 @@ void model_rotor() {
     rotor_combinational(core, state_pc_nid,
       state_code_segment_nid, state_register_file_nid,
       state_data_segment_nid, state_heap_segment_nid, state_stack_segment_nid);
-    kernel_combinational(core, state_pc_nid, eval_ir_nid,
-      eval_non_kernel_control_flow_nid,
-      eval_non_kernel_register_data_flow_nid,
-      eval_non_kernel_heap_segment_data_flow_nid,
-      next_program_break_nid, next_file_descriptor_nid,
-      state_readable_bytes_nid, state_read_bytes_nid,
-      state_register_file_nid, state_heap_segment_nid);
+    if (RISCR)
+      riscr_kernel_combinational(core, state_pc_nid, eval_ir_nid,
+        eval_non_kernel_control_flow_nid,
+        eval_non_kernel_register_data_flow_nid,
+        eval_non_kernel_heap_segment_data_flow_nid,
+        state_program_break_nid, state_register_file_nid);
+    else
+      kernel_combinational(core, state_pc_nid, eval_ir_nid,
+        eval_non_kernel_control_flow_nid,
+        eval_non_kernel_register_data_flow_nid,
+        eval_non_kernel_heap_segment_data_flow_nid,
+        next_program_break_nid, next_file_descriptor_nid,
+        state_readable_bytes_nid, state_read_bytes_nid,
+        state_register_file_nid, state_heap_segment_nid);
 
     rotor_sequential(core, state_pc_nid,
       state_register_file_nid,
@@ -12075,12 +13225,18 @@ void model_rotor() {
       eval_data_segment_data_flow_nid,
       eval_heap_segment_data_flow_nid,
       eval_stack_segment_data_flow_nid);
-    kernel_sequential(core,
-      state_program_break_nid, state_file_descriptor_nid,
-      state_readable_bytes_nid, state_read_bytes_nid,
-      eval_program_break_nid, eval_file_descriptor_nid,
-      eval_still_reading_active_read_nid, eval_more_than_one_readable_byte_to_read_nid,
-      eval_ir_nid, state_register_file_nid);
+    if (RISCR)
+      riscr_kernel_sequential(core,
+        state_program_break_nid, state_file_descriptor_nid,
+        state_readable_bytes_nid, state_read_bytes_nid,
+        eval_program_break_nid);
+    else
+      kernel_sequential(core,
+        state_program_break_nid, state_file_descriptor_nid,
+        state_readable_bytes_nid, state_read_bytes_nid,
+        eval_program_break_nid, eval_file_descriptor_nid,
+        eval_still_reading_active_read_nid, eval_more_than_one_readable_byte_to_read_nid,
+        eval_ir_nid, state_register_file_nid);
 
     rotor_properties(core,
       eval_ir_nid, eval_c_ir_nid,
@@ -12091,14 +13247,25 @@ void model_rotor() {
       state_data_segment_nid,
       state_heap_segment_nid,
       state_stack_segment_nid);
-    kernel_properties(core,
-      eval_ir_nid,
-      state_read_bytes_nid,
-      state_register_file_nid,
-      state_heap_segment_nid);
+    if (RISCR)
+      riscr_properties(core,
+        state_pc_nid,
+        eval_ir_nid,
+        state_register_file_nid,
+        state_code_segment_nid,
+        state_program_break_nid);
+    else
+      kernel_properties(core,
+        eval_ir_nid,
+        state_read_bytes_nid,
+        state_register_file_nid,
+        state_heap_segment_nid);
 
     core = core + 1;
   }
+
+  if (riscr_roundtrip)
+    riscr_roundtrip_model();
 
   printf("%s: %lu lines of model formulae generated\n", selfie_name, number_of_lines);
 
@@ -12120,12 +13287,22 @@ void open_model_file() {
         suffix = string_copy(string_buffer);
       }
 
-      if (RISCUONLY) {
+      if (RISCR) {
+        sprintf(string_buffer, "%s-riscr", suffix);
+        suffix = string_copy(string_buffer);
+      } else if (RISCUONLY) {
         sprintf(string_buffer, "%s-riscuonly", suffix);
         suffix = string_copy(string_buffer);
       }
-    } else
+    } else if (RISCR)
+      suffix = "";
+    else
       suffix = "-synthesize";
+
+    if (reverse) {
+      sprintf(string_buffer, "%s-inverse", suffix);
+      suffix = string_copy(string_buffer);
+    }
 
     if (printing_unrolled_model) {
       sprintf(string_buffer, "-kmin-%lu-kmax-%lu%s",
@@ -12209,7 +13386,12 @@ void open_model_file() {
     + dprintf(output_fd, "; with %s %lu (core-0 %lu bytes initial stack size)\n\n",
         stack_allowance_option, stack_allowance, stack_initial_size);
 
-  if (RISCUONLY)
+  if (RISCR) {
+    w = w + dprintf(output_fd, "; with %s (RISC-R, the reversible variant of RISC-U, see riscr.md)\n", riscr_option);
+    if (reverse)
+      w = w + dprintf(output_fd, "; with %s (inverse model: fetches at pc - 4 and undoes the instruction)\n", inverse_model_option);
+    w = w + dprintf(output_fd, "\n");
+  } else if (RISCUONLY)
     w = w + dprintf(output_fd, "; with %s\n\n", riscu_only_option);
   else {
     if (not(RVC))
@@ -12363,6 +13545,17 @@ void print_model_for(uint64_t core) {
   print_break_line_for(core, prop_openat_seg_faulting_nids);
   print_break_line_for(core, prop_read_seg_faulting_nids);
   print_break_line_for(core, prop_write_seg_faulting_nids);
+
+  // RISC-R irreversible instructions
+
+  print_break_line_for(core, prop_irreversible_aliasing_nids);
+  print_break_line_for(core, prop_irreversible_store_nids);
+  print_break_line_for(core, prop_irreversible_branch_nids);
+  print_break_line_for(core, prop_irreversible_jump_nids);
+  print_break_line_for(core, prop_irreversible_link_nids);
+  print_break_line_for(core, prop_irreversible_return_nids);
+  print_break_line_for(core, prop_irreversible_brk_nids);
+  print_break_line_for(core, prop_irreversible_exit_nids);
 
   // synchronizing program counters
 
@@ -12945,6 +14138,17 @@ uint64_t eval_properties(uint64_t core, uint64_t bad) {
   halt = halt + eval_property_for(core, prop_read_seg_faulting_nids, bad);
   halt = halt + eval_property_for(core, prop_write_seg_faulting_nids, bad);
 
+  // RISC-R irreversible instructions
+
+  halt = halt + eval_property_for(core, prop_irreversible_aliasing_nids, bad);
+  halt = halt + eval_property_for(core, prop_irreversible_store_nids, bad);
+  halt = halt + eval_property_for(core, prop_irreversible_branch_nids, bad);
+  halt = halt + eval_property_for(core, prop_irreversible_jump_nids, bad);
+  halt = halt + eval_property_for(core, prop_irreversible_link_nids, bad);
+  halt = halt + eval_property_for(core, prop_irreversible_return_nids, bad);
+  halt = halt + eval_property_for(core, prop_irreversible_brk_nids, bad);
+  halt = halt + eval_property_for(core, prop_irreversible_exit_nids, bad);
+
   // synchronizing program counters
 
   halt = halt + eval_property_for(core, sync_pc_nids, bad);
@@ -13388,6 +14592,522 @@ void disassemble_rotor(uint64_t core) {
   }
 }
 
+// -----------------------------------------------------------------
+// ------------------------ RISC-R ROUND TRIP ----------------------
+// -----------------------------------------------------------------
+
+// M3 check, see projects/reversible.md: on random states, the inverse model
+// after the forward model and the forward model after the inverse model are
+// the identity, bit for bit, unless the state is excluded by a property
+
+uint64_t roundtrip_random() {
+  // linear congruential generator with Knuth's MMIX constants, high bits only
+  roundtrip_seed = roundtrip_seed * 6364136223846793005 + 1442695040888963407;
+
+  return right_shift(roundtrip_seed, 16);
+}
+
+uint64_t roundtrip_random_below(uint64_t n) {
+  return roundtrip_random() % n;
+}
+
+uint64_t roundtrip_random_word() {
+  return left_shift(roundtrip_random(), 32) + roundtrip_random();
+}
+
+uint64_t roundtrip_random_address() {
+  uint64_t r;
+
+  // word-aligned address in the data, heap, or stack segment
+
+  r = roundtrip_random_below(3);
+
+  if (r == 0)
+    return data_start + roundtrip_random_below(data_size / WORDSIZE) * WORDSIZE;
+  else if (r == 1)
+    return heap_start + roundtrip_random_below(heap_size / WORDSIZE) * WORDSIZE;
+  else
+    return stack_start + roundtrip_random_below(stack_size / WORDSIZE) * WORDSIZE;
+}
+
+uint64_t roundtrip_random_value() {
+  uint64_t r;
+
+  // mix of full words, small numbers, addresses, and zeros
+
+  r = roundtrip_random_below(4);
+
+  if (r == 0)
+    return roundtrip_random_word();
+  else if (r == 1)
+    return roundtrip_random_below(16);
+  else if (r == 2)
+    return roundtrip_random_address();
+  else
+    return 0;
+}
+
+uint64_t roundtrip_random_register() {
+  return roundtrip_random_below(NUMBEROFREGISTERS);
+}
+
+uint64_t roundtrip_random_source(uint64_t rd) {
+  uint64_t rs;
+
+  // source register distinct from rd unless rd is zero
+
+  rs = roundtrip_random_register();
+
+  if (rd != REG_ZR)
+    while (rs == rd)
+      rs = roundtrip_random_register();
+
+  return rs;
+}
+
+uint64_t roundtrip_get_register(uint64_t reg) {
+  return read_array_raw(state_register_file_nid, reg);
+}
+
+void roundtrip_set_register(uint64_t reg, uint64_t value) {
+  if (reg != REG_ZR)
+    write_array_raw(state_register_file_nid, reg, value);
+}
+
+void roundtrip_set_code(uint64_t address, uint64_t ir) {
+  // assert: one instruction per code word
+  write_array_raw(state_code_segment_nid, (address - code_start) / INSTRUCTIONSIZE, ir);
+}
+
+void roundtrip_randomize_array(uint64_t* state_nid) {
+  uint64_t n;
+  uint64_t i;
+
+  n = two_to_the_power_of(eval_array_size(get_sid(state_nid)));
+  i = 0;
+
+  while (i < n) {
+    write_array_raw(state_nid, i, roundtrip_random_value());
+
+    i = i + 1;
+  }
+}
+
+void roundtrip_zero_array(uint64_t* state_nid) {
+  uint64_t n;
+  uint64_t i;
+
+  n = two_to_the_power_of(eval_array_size(get_sid(state_nid)));
+  i = 0;
+
+  while (i < n) {
+    write_array_raw(state_nid, i, 0);
+
+    i = i + 1;
+  }
+}
+
+uint64_t roundtrip_random_state() {
+  uint64_t after;
+  uint64_t lawless;
+  uint64_t words;
+  uint64_t i;
+  uint64_t j;
+  uint64_t rd;
+  uint64_t rs1;
+  uint64_t rs2;
+  uint64_t imm;
+  uint64_t pc;
+  uint64_t brk;
+
+  // generates a random state with one RISC-R instruction and its come-from
+  // in the code segment; returns 1 if the state is the state after the
+  // instruction, so that the inverse step is taken first, and 0 otherwise
+
+  after   = roundtrip_random_below(2);
+  lawless = roundtrip_random_below(16) == 0; // skip making the state legal
+
+  // registers and memory
+
+  i = 1;
+
+  while (i < NUMBEROFREGISTERS) {
+    roundtrip_set_register(i, roundtrip_random_value());
+
+    i = i + 1;
+  }
+
+  roundtrip_randomize_array(state_data_segment_nid);
+  roundtrip_randomize_array(state_heap_segment_nid);
+  roundtrip_randomize_array(state_stack_segment_nid);
+
+  // program break anywhere in the heap segment
+
+  brk = heap_start + roundtrip_random_below(heap_size / WORDSIZE + 1) * WORDSIZE;
+
+  set_state(state_program_break_nid, brk);
+
+  // code
+
+  roundtrip_zero_array(state_code_segment_nid);
+
+  words = two_to_the_power_of(CODE_ADDRESS_SPACE);
+
+  i = roundtrip_random_below(words);
+  j = roundtrip_random_below(words);
+
+  while (j == i)
+    j = roundtrip_random_below(words);
+
+  roundtrip_origin = code_start + i * INSTRUCTIONSIZE;
+  roundtrip_target = code_start + j * INSTRUCTIONSIZE;
+
+  rd  = roundtrip_random_register();
+  rs1 = roundtrip_random_source(rd);
+  rs2 = roundtrip_random_source(rd);
+
+  if (lawless) {
+    rs1 = roundtrip_random_register();
+    rs2 = roundtrip_random_register();
+  }
+
+  roundtrip_kind = roundtrip_random_below(14);
+  roundtrip_cf   = 0;
+
+  if (after)
+    pc = roundtrip_origin + INSTRUCTIONSIZE;
+  else
+    pc = roundtrip_origin;
+
+  if (roundtrip_kind == 0)
+    roundtrip_ir = encode_u_format(roundtrip_random_below(1048576) - 524288, rd, OP_LUI);
+  else if (roundtrip_kind == 1)
+    roundtrip_ir = encode_i_format(roundtrip_random_below(4096) - 2048, rs1, F3_ADDI, rd, OP_IMM);
+  else if (roundtrip_kind == 2)
+    roundtrip_ir = encode_r_format(F7_ADD, rs2, rs1, F3_ADD, rd, OP_OP);
+  else if (roundtrip_kind == 3)
+    roundtrip_ir = encode_r_format(F7_SUB, rs2, rs1, F3_SUB, rd, OP_OP);
+  else if (roundtrip_kind == 4)
+    roundtrip_ir = encode_r_format(F7_MUL, rs2, rs1, F3_MUL, rd, OP_OP);
+  else if (roundtrip_kind == 5) {
+    roundtrip_ir = encode_r_format(F7_DIVU, rs2, rs1, F3_DIVU, rd, OP_OP);
+
+    if (not(lawless))
+      if (roundtrip_get_register(rs2) == 0)
+        roundtrip_set_register(rs2, 1 + roundtrip_random_below(100));
+  } else if (roundtrip_kind == 6) {
+    roundtrip_ir = encode_r_format(F7_REMU, rs2, rs1, F3_REMU, rd, OP_OP);
+
+    if (not(lawless))
+      if (roundtrip_get_register(rs2) == 0)
+        roundtrip_set_register(rs2, 1 + roundtrip_random_below(100));
+  } else if (roundtrip_kind == 7)
+    roundtrip_ir = encode_r_format(F7_SLTU, rs2, rs1, F3_SLTU, rd, OP_OP);
+  else if (roundtrip_kind == 8) {
+    // ld rd,imm(rs1) exchanging rd with a word in a segment, mostly
+    imm = (roundtrip_random_below(512) - 256) * WORDSIZE;
+
+    roundtrip_ir = encode_i_format(imm, rs1, F3_LD, rd, OP_LOAD);
+
+    if (not(lawless))
+      roundtrip_set_register(rs1, roundtrip_random_address() - imm);
+  } else if (roundtrip_kind == 9) {
+    // beq rs1,rs2 with come-from beq at target, taken half of the time
+    roundtrip_ir = encode_b_format(roundtrip_target - roundtrip_origin, rs2, rs1, F3_BEQ, OP_BRANCH);
+
+    if (roundtrip_random_below(2)) {
+      if (rs2 == REG_ZR)
+        roundtrip_set_register(rs1, 0);
+      else
+        roundtrip_set_register(rs2, roundtrip_get_register(rs1));
+    }
+
+    rd  = roundtrip_random_register();
+    rs1 = roundtrip_random_register();
+
+    roundtrip_cf = encode_b_format(roundtrip_origin - roundtrip_target, rs1, rd, F3_BEQ, OP_BRANCH);
+
+    if (not(lawless)) {
+      // the come-from's condition must hold
+      if (rs1 == REG_ZR)
+        roundtrip_set_register(rd, 0);
+      else
+        roundtrip_set_register(rs1, roundtrip_get_register(rd));
+    }
+
+    if (after)
+      if (roundtrip_get_register(get_rs1(roundtrip_ir)) == roundtrip_get_register(get_rs2(roundtrip_ir)))
+        pc = roundtrip_target + INSTRUCTIONSIZE;
+  } else if (roundtrip_kind == 10) {
+    // jal zero with come-from jal zero at target
+    roundtrip_ir = encode_j_format(roundtrip_target - roundtrip_origin, REG_ZR, OP_JAL);
+    roundtrip_cf = encode_j_format(roundtrip_origin - roundtrip_target, REG_ZR, OP_JAL);
+
+    if (after)
+      pc = roundtrip_target + INSTRUCTIONSIZE;
+  } else if (roundtrip_kind == 11) {
+    // call: jal rd with come-from jalr rd,0(rd) at target
+    if (rd == REG_ZR)
+      rd = 1 + roundtrip_random_below(NUMBEROFREGISTERS - 1);
+
+    roundtrip_ir = encode_j_format(roundtrip_target - roundtrip_origin, rd, OP_JAL);
+    roundtrip_cf = encode_i_format(0, rd, F3_JALR, rd, OP_JALR);
+
+    if (after) {
+      pc = roundtrip_target + INSTRUCTIONSIZE;
+
+      if (not(lawless))
+        roundtrip_set_register(rd, roundtrip_origin + INSTRUCTIONSIZE);
+    } else if (not(lawless))
+      roundtrip_set_register(rd, 0);
+  } else if (roundtrip_kind == 12) {
+    // return: jalr rd,0(rd) with come-from jal rd at target pointing back
+    if (rd == REG_ZR)
+      rd = 1 + roundtrip_random_below(NUMBEROFREGISTERS - 1);
+
+    roundtrip_ir = encode_i_format(0, rd, F3_JALR, rd, OP_JALR);
+    roundtrip_cf = encode_j_format(roundtrip_origin - roundtrip_target, rd, OP_JAL);
+
+    if (after) {
+      pc = roundtrip_target + INSTRUCTIONSIZE;
+
+      if (not(lawless))
+        roundtrip_set_register(rd, 0);
+    } else if (not(lawless))
+      roundtrip_set_register(rd, roundtrip_target);
+  } else {
+    // brk with a1 around the heap and a0 zero before, result after
+    roundtrip_ir = encode_i_format(0, REG_ZR, F3_ECALL, REG_ZR, OP_SYSTEM);
+
+    roundtrip_set_register(REG_A7, SYSCALL_BRK);
+    roundtrip_set_register(REG_A1, heap_start + (roundtrip_random_below(heap_size / WORDSIZE + 4) - 2) * WORDSIZE);
+
+    if (not(lawless)) {
+      if (after) {
+        if (roundtrip_random_below(2)) {
+          // brk succeeded: a0 holds the previous break below the current one, a1 the current one
+          if (brk > heap_start) {
+            roundtrip_set_register(REG_A0, heap_start + roundtrip_random_below((brk - heap_start) / WORDSIZE) * WORDSIZE);
+            roundtrip_set_register(REG_A1, brk);
+          } else
+            roundtrip_set_register(REG_A0, 0);
+        } else
+          // brk failed: a0 is zero and a1 not above the break
+          roundtrip_set_register(REG_A0, 0);
+      } else
+        roundtrip_set_register(REG_A0, 0);
+    }
+  }
+
+  roundtrip_set_code(roundtrip_origin, roundtrip_ir);
+
+  if (roundtrip_cf != 0)
+    roundtrip_set_code(roundtrip_target, roundtrip_cf);
+
+  set_state(state_pc_nid, pc);
+
+  return after;
+}
+
+void roundtrip_advance() {
+  // states move to the next step, the next step is one ahead of it
+  set_step(state_pc_nid, next_step);
+  set_step(state_program_break_nid, next_step);
+  set_step(state_register_file_nid, next_step);
+  set_step(state_code_segment_nid, next_step);
+  set_step(state_data_segment_nid, next_step);
+  set_step(state_heap_segment_nid, next_step);
+  set_step(state_stack_segment_nid, next_step);
+
+  current_step = next_step;
+
+  next_step = current_step + 1;
+}
+
+void roundtrip_step(uint64_t* exchange_nid, uint64_t* control_flow_nid, uint64_t* program_break_nid,
+  uint64_t* register_data_flow_nid, uint64_t* data_segment_nid, uint64_t* heap_segment_nid, uint64_t* stack_segment_nid) {
+  uint64_t pc;
+  uint64_t brk;
+
+  // reads first: arrays are updated in place when evaluated
+
+  eval_line(exchange_nid);
+
+  pc  = eval_line(control_flow_nid);
+  brk = eval_line(program_break_nid);
+
+  eval_line(register_data_flow_nid);
+  eval_line(data_segment_nid);
+  eval_line(heap_segment_nid);
+  eval_line(stack_segment_nid);
+
+  set_state(state_pc_nid, pc);
+  set_state(state_program_break_nid, brk);
+
+  roundtrip_advance();
+}
+
+uint64_t roundtrip_compare_array(uint64_t* state_nid, uint64_t* saved_array, char* name) {
+  uint64_t n;
+  uint64_t i;
+
+  n = two_to_the_power_of(eval_array_size(get_sid(state_nid)));
+  i = 0;
+
+  while (i < n) {
+    if (read_array_raw(state_nid, i) != *(saved_array + i)) {
+      printf("%s: %s[%lu] is 0x%lX but was 0x%lX\n", selfie_name, name, i, read_array_raw(state_nid, i), *(saved_array + i));
+
+      return 0;
+    }
+
+    i = i + 1;
+  }
+
+  return 1;
+}
+
+uint64_t eval_riscr_roundtrip() {
+  uint64_t* saved_registers;
+  uint64_t* saved_data;
+  uint64_t* saved_heap;
+  uint64_t* saved_stack;
+  uint64_t  saved_pc;
+  uint64_t  saved_brk;
+  uint64_t  n;
+  uint64_t  passed;
+  uint64_t  skipped;
+  uint64_t  failed;
+  uint64_t  after;
+  uint64_t  ok;
+
+  roundtrip_kinds = "lui addi add sub mul divu remu sltu ld beq jal call return brk";
+
+  roundtrip_passed_forward  = zmalloc(ROUNDTRIP_KINDS * sizeof(uint64_t));
+  roundtrip_passed_backward = zmalloc(ROUNDTRIP_KINDS * sizeof(uint64_t));
+  roundtrip_skipped         = zmalloc(ROUNDTRIP_KINDS * sizeof(uint64_t));
+
+  saved_registers = allocate_array(get_sid(state_register_file_nid));
+  saved_data      = allocate_array(get_sid(state_data_segment_nid));
+  saved_heap      = allocate_array(get_sid(state_heap_segment_nid));
+  saved_stack     = allocate_array(get_sid(state_stack_segment_nid));
+
+  printf("%s: ********************************************************************************\n", selfie_name);
+  printf("%s: RISC-R round trip on %lu random states with code at 0x%lX-0x%lX\n", selfie_name,
+    riscr_roundtrip, code_start, code_start + code_size);
+
+  n       = 0;
+  passed  = 0;
+  skipped = 0;
+  failed  = 0;
+
+  // assert: states are initialized at step 0
+
+  next_step = current_step + 1;
+
+  while (n < riscr_roundtrip) {
+    after = roundtrip_random_state();
+
+    saved_pc  = get_state(state_pc_nid);
+    saved_brk = get_state(state_program_break_nid);
+
+    copy_array(get_sid(state_register_file_nid), (uint64_t*) get_state(state_register_file_nid), saved_registers);
+    copy_array(get_sid(state_data_segment_nid), (uint64_t*) get_state(state_data_segment_nid), saved_data);
+    copy_array(get_sid(state_heap_segment_nid), (uint64_t*) get_state(state_heap_segment_nid), saved_heap);
+    copy_array(get_sid(state_stack_segment_nid), (uint64_t*) get_state(state_stack_segment_nid), saved_stack);
+
+    if (after)
+      ok = eval_line(roundtrip_inverse_skip_nid);
+    else
+      ok = eval_line(roundtrip_forward_skip_nid);
+
+    if (ok) {
+      // state is excluded by a property
+      skipped = skipped + 1;
+
+      *(roundtrip_skipped + roundtrip_kind) = *(roundtrip_skipped + roundtrip_kind) + 1;
+
+      roundtrip_advance();
+    } else {
+      if (after) {
+        roundtrip_step(roundtrip_inverse_exchange_nid, roundtrip_inverse_control_flow_nid, roundtrip_inverse_program_break_nid,
+          roundtrip_inverse_register_data_flow_nid,
+          roundtrip_inverse_data_segment_nid, roundtrip_inverse_heap_segment_nid, roundtrip_inverse_stack_segment_nid);
+        roundtrip_step(roundtrip_forward_exchange_nid, roundtrip_forward_control_flow_nid, roundtrip_forward_program_break_nid,
+          roundtrip_forward_register_data_flow_nid,
+          roundtrip_forward_data_segment_nid, roundtrip_forward_heap_segment_nid, roundtrip_forward_stack_segment_nid);
+      } else {
+        roundtrip_step(roundtrip_forward_exchange_nid, roundtrip_forward_control_flow_nid, roundtrip_forward_program_break_nid,
+          roundtrip_forward_register_data_flow_nid,
+          roundtrip_forward_data_segment_nid, roundtrip_forward_heap_segment_nid, roundtrip_forward_stack_segment_nid);
+        roundtrip_step(roundtrip_inverse_exchange_nid, roundtrip_inverse_control_flow_nid, roundtrip_inverse_program_break_nid,
+          roundtrip_inverse_register_data_flow_nid,
+          roundtrip_inverse_data_segment_nid, roundtrip_inverse_heap_segment_nid, roundtrip_inverse_stack_segment_nid);
+      }
+
+      ok = 1;
+
+      if (get_state(state_pc_nid) != saved_pc) {
+        printf("%s: pc is 0x%lX but was 0x%lX\n", selfie_name, get_state(state_pc_nid), saved_pc);
+
+        ok = 0;
+      }
+
+      if (get_state(state_program_break_nid) != saved_brk) {
+        printf("%s: program break is 0x%lX but was 0x%lX\n", selfie_name, get_state(state_program_break_nid), saved_brk);
+
+        ok = 0;
+      }
+
+      ok = ok * roundtrip_compare_array(state_register_file_nid, saved_registers, "register");
+      ok = ok * roundtrip_compare_array(state_data_segment_nid, saved_data, "data segment word");
+      ok = ok * roundtrip_compare_array(state_heap_segment_nid, saved_heap, "heap segment word");
+      ok = ok * roundtrip_compare_array(state_stack_segment_nid, saved_stack, "stack segment word");
+
+      if (ok) {
+        passed = passed + 1;
+
+        if (after)
+          *(roundtrip_passed_backward + roundtrip_kind) = *(roundtrip_passed_backward + roundtrip_kind) + 1;
+        else
+          *(roundtrip_passed_forward + roundtrip_kind) = *(roundtrip_passed_forward + roundtrip_kind) + 1;
+      } else {
+        failed = failed + 1;
+
+        printf("%s: round trip %lu failed on kind %lu (%s) at 0x%lX: instruction 0x%08lX", selfie_name,
+          n, roundtrip_kind, roundtrip_kinds, roundtrip_origin, roundtrip_ir);
+        if (roundtrip_cf != 0)
+          printf(" with come-from 0x%08lX at 0x%lX", roundtrip_cf, roundtrip_target);
+        if (after) printf(" backward then forward\n"); else printf(" forward then backward\n");
+
+        if (failed >= 10) {
+          printf("%s: giving up after %lu failed round trips\n", selfie_name, failed);
+
+          n = riscr_roundtrip;
+        }
+      }
+    }
+
+    n = n + 1;
+  }
+
+  printf("%s: %lu round trips passed, %lu states skipped by properties, %lu round trips failed\n", selfie_name,
+    passed, skipped, failed);
+
+  printf("%s: per kind (%s): forward-then-backward, backward-then-forward, skipped\n", selfie_name, roundtrip_kinds);
+
+  n = 0;
+
+  while (n < ROUNDTRIP_KINDS) {
+    printf("%s: kind %lu: %lu, %lu, %lu\n", selfie_name, n,
+      *(roundtrip_passed_forward + n), *(roundtrip_passed_backward + n), *(roundtrip_skipped + n));
+
+    n = n + 1;
+  }
+
+  return failed;
+}
+
 void print_unrolled_model() {
   open_model_file();
 
@@ -13514,6 +15234,10 @@ uint64_t parse_engine_arguments() {
 
         if (RISCUONLY)
           RISCUONLY = ISRISCU;
+
+        if ((e_flags / EF_RISCR) % 2)
+          // RISC-R binaries are modeled as RISC-R, see riscr.md
+          RISCR = 1;
 
         get_argument();
       } else
@@ -13707,6 +15431,25 @@ uint64_t parse_model_arguments() {
     RV32M = 0;
 
     get_argument();
+  } else if (string_compare(peek_argument(1), riscr_option)) {
+    // generate the RISC-R machine model
+    RISCR = 1;
+
+    get_argument();
+  } else if (string_compare(peek_argument(1), inverse_model_option)) {
+    // generate the inverse RISC-R model that executes backward
+    reverse = 1;
+
+    get_argument();
+  } else if (string_compare(peek_argument(1), roundtrip_option)) {
+    get_argument();
+
+    if (number_of_remaining_arguments() > 1) {
+      riscr_roundtrip = atoi(peek_argument(1));
+
+      get_argument();
+    } else
+      return EXITCODE_BADARGUMENTS;
   } else
     return EXITCODE_MOREARGUMENTS;
 
@@ -13770,7 +15513,39 @@ uint64_t selfie_model() {
       if (exit_code != EXITCODE_NOERROR)
         return exit_code;
 
+      if (not(RISCR))
+        if (or(reverse, riscr_roundtrip)) {
+          printf("%s: %s and %s require %s or a RISC-R binary\n", selfie_name,
+            inverse_model_option, roundtrip_option, riscr_option);
+
+          return EXITCODE_BADARGUMENTS;
+        }
+
+      if (riscr_roundtrip) {
+        if (or(number_of_binaries > 0, not(IS64BITTARGET))) {
+          printf("%s: %s checks the 64-bit RISC-R machine model without binary\n", selfie_name, roundtrip_option);
+
+          return EXITCODE_BADARGUMENTS;
+        }
+
+        // random code and data need room, one instruction per code word
+        max_code_size = ROUNDTRIP_CODE_SIZE;
+        max_data_size = ROUNDTRIP_DATA_SIZE;
+
+        CODEWORDSIZEINBITS   = INSTRUCTIONSIZEINBITS;
+        MEMORYWORDSIZEINBITS = WORDSIZEINBITS;
+      }
+
       model_rotor();
+
+      if (riscr_roundtrip) {
+        if (eval_riscr_roundtrip())
+          return EXITCODE_SYSTEMERROR;
+
+        printf("%s: ################################################################################\n", selfie_name);
+
+        return EXITCODE_NOERROR;
+      }
 
       if (printing_unrolled_model) {
         if (evaluate_model) {
