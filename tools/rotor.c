@@ -3470,6 +3470,7 @@ void init_riscr_tape_sorts();
 void riscr_new_tape_state();
 void riscr_print_tape_state();
 
+uint64_t* riscr_tape_flag(uint64_t* flags_nid, uint64_t* index_nid, char* comment);
 uint64_t* riscr_fd_index(uint64_t* fd_nid);
 uint64_t* riscr_tape_index(uint64_t* fd_nid, uint64_t* position_nid);
 uint64_t* riscr_syscall_words(uint64_t* register_file_nid);
@@ -12445,7 +12446,7 @@ void init_riscr_tape_sorts() {
 
   SID_TAPE_STATE      = new_array(SID_TAPE_ADDRESS, SID_MACHINE_WORD, "tape state");
   SID_TAPE_HEAD_STATE = new_array(SID_FD_ADDRESS, SID_MACHINE_WORD, "tape head state");
-  SID_TAPE_FLAG_STATE = new_array(SID_FD_ADDRESS, SID_BOOLEAN, "tape flag state");
+  SID_TAPE_FLAG_STATE = new_array(SID_FD_ADDRESS, SID_MACHINE_WORD, "tape flag state, 0 or 1 per tape");
 
   reuse_lines = saved_reuse_lines;
 
@@ -12492,7 +12493,7 @@ void riscr_new_tape_state() {
   next_tape_ends_nid = new_next(SID_TAPE_HEAD_STATE, state_tape_ends_nid, state_tape_ends_nid, "read-only file sizes");
 
   state_zeroed_tape_flags_nid = new_input(OP_STATE, SID_TAPE_FLAG_STATE, "zeroed-tape-flags", "zeroed tape flags");
-  init_zeroed_tape_flags_nid  = new_init(SID_TAPE_FLAG_STATE, state_zeroed_tape_flags_nid, NID_FALSE, "zeroing tape flags");
+  init_zeroed_tape_flags_nid  = new_init(SID_TAPE_FLAG_STATE, state_zeroed_tape_flags_nid, NID_MACHINE_WORD_0, "zeroing tape flags");
 
   eval_init(init_zeroed_tape_flags_nid);
 
@@ -12501,7 +12502,7 @@ void riscr_new_tape_state() {
 
   state_tape_inputs_nid = new_input(OP_STATE, SID_TAPE_FLAG_STATE, "tape-inputs", "which tapes are input tapes");
   init_tape_inputs_nid  = new_init(SID_TAPE_FLAG_STATE, state_tape_inputs_nid,
-    new_ternary(OP_WRITE, SID_TAPE_FLAG_STATE, state_zeroed_tape_flags_nid, NID_FD_0, NID_TRUE, "standard input is an input tape"),
+    new_ternary(OP_WRITE, SID_TAPE_FLAG_STATE, state_zeroed_tape_flags_nid, NID_FD_0, NID_MACHINE_WORD_1, "standard input is an input tape"),
     "initializing tape kinds");
 
   eval_init(init_tape_inputs_nid);
@@ -12510,7 +12511,7 @@ void riscr_new_tape_state() {
 
   state_tape_opens_nid = new_input(OP_STATE, SID_TAPE_FLAG_STATE, "tape-opens", "uninitialized: which files the host can open");
 
-  eval_init(new_init(SID_TAPE_FLAG_STATE, state_tape_opens_nid, NID_FALSE, "zeroed host opens"));
+  eval_init(new_init(SID_TAPE_FLAG_STATE, state_tape_opens_nid, NID_MACHINE_WORD_0, "zeroed host opens"));
 
   if (riscr_roundtrip == 0)
     set_symbolic(state_tape_opens_nid, SYMBOLIC);
@@ -12531,12 +12532,24 @@ void riscr_print_tape_state() {
   print_break_line(init_open_files_nid);
   print_break_line(init_zeroed_tape_flags_nid);
   print_break_line(next_zeroed_tape_flags_nid);
+
+  // print initial value before state
+  print_break_line(get_arg2(init_tape_inputs_nid));
+
   print_break_line(init_tape_inputs_nid);
   print_break_line(next_tape_opens_nid);
   print_break_line(init_tape_heads_nid);
   print_break_line(next_tape_ends_nid);
   print_break_line(state_input_tapes_nid);
   print_break_line(init_output_tapes_nid);
+}
+
+uint64_t* riscr_tape_flag(uint64_t* flags_nid, uint64_t* index_nid, char* comment) {
+  // flags are machine words 0 or 1, since arrays of Booleans trip some BTOR2 parsers
+  return new_binary_boolean(OP_NEQ,
+    new_binary(OP_READ, SID_MACHINE_WORD, flags_nid, index_nid, "tape flag"),
+    NID_MACHINE_WORD_0,
+    comment);
 }
 
 uint64_t* riscr_fd_index(uint64_t* fd_nid) {
@@ -12574,15 +12587,15 @@ uint64_t* riscr_is_open_file(uint64_t* register_file_nid) {
     new_binary_boolean(OP_ULT, a1_value_nid, state_open_files_nid, "a1 value < open files?"),
     new_binary_boolean(OP_OR,
       new_binary_boolean(OP_ULT, a1_value_nid, NID_STANDARD_FILES, "a1 value < 3?"),
-      new_binary(OP_READ, SID_BOOLEAN, state_tape_opens_nid, riscr_fd_index(a1_value_nid), "host opened file a1"),
+      riscr_tape_flag(state_tape_opens_nid, riscr_fd_index(a1_value_nid), "host opened file a1?"),
       "standard file or opened by host?"),
     "file a1 is open?");
 }
 
 uint64_t* riscr_is_input_file(uint64_t* register_file_nid) {
-  return new_binary(OP_READ, SID_BOOLEAN, state_tape_inputs_nid,
+  return riscr_tape_flag(state_tape_inputs_nid,
     riscr_fd_index(load_register_value(NID_A1, "a1 value", register_file_nid)),
-    "file a1 is an input tape");
+    "file a1 is an input tape?");
 }
 
 uint64_t* riscr_is_active_read(uint64_t* ir_nid, uint64_t* register_file_nid) {
@@ -12740,7 +12753,7 @@ uint64_t* riscr_syscall_result(uint64_t* ir_nid, uint64_t* register_file_nid) {
         NID_SYSCALL_FAILURE,
         "write result or failure"),
       new_ternary(OP_ITE, SID_MACHINE_WORD,
-        new_binary(OP_READ, SID_BOOLEAN, state_tape_opens_nid, riscr_fd_index(index_nid), "host opens file"),
+        riscr_tape_flag(state_tape_opens_nid, riscr_fd_index(index_nid), "host opens file?"),
         index_nid,
         NID_SYSCALL_FAILURE,
         "openat result or failure"),
@@ -12858,9 +12871,13 @@ uint64_t* riscr_tape_inputs_data_flow(uint64_t* ir_nid, uint64_t* register_file_
   return new_ternary(OP_ITE, SID_TAPE_FLAG_STATE,
     riscr_is_syscall(ir_nid, register_file_nid, NID_OPENAT_SYSCALL_ID, "openat"),
     new_ternary(OP_WRITE, SID_TAPE_FLAG_STATE, state_tape_inputs_nid, index_nid,
-      new_binary_boolean(OP_XOR,
-        new_binary(OP_READ, SID_BOOLEAN, state_tape_inputs_nid, index_nid, "kind of allocated tape"),
-        riscr_opens_file_kind(register_file_nid),
+      new_binary(OP_XOR, SID_MACHINE_WORD,
+        new_binary(OP_READ, SID_MACHINE_WORD, state_tape_inputs_nid, index_nid, "kind of allocated tape"),
+        new_ternary(OP_ITE, SID_MACHINE_WORD,
+          riscr_opens_file_kind(register_file_nid),
+          NID_MACHINE_WORD_1,
+          NID_MACHINE_WORD_0,
+          "kind selected by flags"),
         "kind of allocated tape flipped by flags"),
       "set kind of allocated tape"),
     state_tape_inputs_nid,
