@@ -738,6 +738,61 @@ uint64_t* next_read_bytes_nids = (uint64_t*) 0;
 
 uint64_t* eval_more_than_one_readable_byte_to_read_nid = (uint64_t*) 0;
 
+// RISC-R tapes as named state, see riscr.md
+
+uint64_t NUMBER_OF_TAPES = 4;  // open files including standard input, output, and error, power of two
+uint64_t TAPE_WORDS      = 16; // words per tape, power of two
+uint64_t SYSCALL_WORDS   = 2;  // words exchanged by one read or write at most
+
+uint64_t* SID_FD_ADDRESS      = (uint64_t*) 0;
+uint64_t* SID_TAPE_ADDRESS    = (uint64_t*) 0;
+uint64_t* SID_TAPE_STATE      = (uint64_t*) 0;
+uint64_t* SID_TAPE_HEAD_STATE = (uint64_t*) 0;
+uint64_t* SID_TAPE_FLAG_STATE = (uint64_t*) 0;
+
+uint64_t* NID_NUMBER_OF_TAPES = (uint64_t*) 0;
+uint64_t* NID_TAPE_WORDS      = (uint64_t*) 0;
+uint64_t* NID_SYSCALL_WORDS   = (uint64_t*) 0;
+uint64_t* NID_STANDARD_FILES  = (uint64_t*) 0; // 3
+uint64_t* NID_SYSCALL_FAILURE = (uint64_t*) 0; // -1 as 32-bit system call result
+uint64_t* NID_O_RDONLY        = (uint64_t*) 0;
+uint64_t* NID_FD_0            = (uint64_t*) 0;
+
+uint64_t* state_input_tapes_nid = (uint64_t*) 0; // uninitialized: the files
+uint64_t* next_input_tapes_nid  = (uint64_t*) 0;
+
+uint64_t* state_output_tapes_nid = (uint64_t*) 0; // zeroed
+uint64_t* init_output_tapes_nid  = (uint64_t*) 0;
+uint64_t* next_output_tapes_nid  = (uint64_t*) 0;
+
+uint64_t* state_tape_heads_nid = (uint64_t*) 0; // zeroed
+uint64_t* init_tape_heads_nid  = (uint64_t*) 0;
+uint64_t* next_tape_heads_nid  = (uint64_t*) 0;
+
+uint64_t* state_tape_ends_nid = (uint64_t*) 0; // uninitialized, read-only: where the files end
+uint64_t* next_tape_ends_nid  = (uint64_t*) 0;
+
+uint64_t* state_zeroed_tape_flags_nid = (uint64_t*) 0; // zeroed, read-only
+uint64_t* init_zeroed_tape_flags_nid  = (uint64_t*) 0;
+uint64_t* next_zeroed_tape_flags_nid  = (uint64_t*) 0;
+
+uint64_t* state_tape_inputs_nid = (uint64_t*) 0; // standard input is an input tape
+uint64_t* init_tape_inputs_nid  = (uint64_t*) 0;
+uint64_t* next_tape_inputs_nid  = (uint64_t*) 0;
+
+uint64_t* state_tape_opens_nid = (uint64_t*) 0; // uninitialized, read-only: which files the host can open
+uint64_t* next_tape_opens_nid  = (uint64_t*) 0;
+
+uint64_t* state_open_files_nid = (uint64_t*) 0; // next file descriptor, 3 initially
+uint64_t* init_open_files_nid  = (uint64_t*) 0;
+uint64_t* next_open_files_nid  = (uint64_t*) 0;
+
+uint64_t* eval_input_tapes_nid  = (uint64_t*) 0;
+uint64_t* eval_output_tapes_nid = (uint64_t*) 0;
+uint64_t* eval_tape_heads_nid   = (uint64_t*) 0;
+uint64_t* eval_tape_inputs_nid  = (uint64_t*) 0;
+uint64_t* eval_open_files_nid   = (uint64_t*) 0;
+
 // ------------------------- INITIALIZATION ------------------------
 
 void init_kernel_interface() {
@@ -3409,16 +3464,59 @@ uint64_t* riscr_kernel_program_break(uint64_t* ir_nid, uint64_t* register_file_n
 uint64_t* riscr_kernel_register_data_flow(uint64_t* ir_nid, uint64_t* register_file_nid,
   uint64_t* program_break_nid, uint64_t* register_data_flow_nid);
 
+// RISC-R tapes
+
+void init_riscr_tape_sorts();
+void riscr_new_tape_state();
+void riscr_print_tape_state();
+
+uint64_t* riscr_fd_index(uint64_t* fd_nid);
+uint64_t* riscr_tape_index(uint64_t* fd_nid, uint64_t* position_nid);
+uint64_t* riscr_syscall_words(uint64_t* register_file_nid);
+uint64_t* riscr_is_open_file(uint64_t* register_file_nid);
+uint64_t* riscr_is_input_file(uint64_t* register_file_nid);
+uint64_t* riscr_is_active_read(uint64_t* ir_nid, uint64_t* register_file_nid);
+uint64_t* riscr_is_active_write(uint64_t* ir_nid, uint64_t* register_file_nid);
+uint64_t* riscr_is_active_exchange(uint64_t* ir_nid, uint64_t* register_file_nid);
+uint64_t* riscr_exchange_head(uint64_t* register_file_nid);
+uint64_t* riscr_is_exchanged_word(uint64_t i, uint64_t* register_file_nid);
+uint64_t* riscr_buffer_address(uint64_t i, uint64_t* register_file_nid);
+uint64_t* riscr_buffer_word(uint64_t i, uint64_t* register_file_nid,
+  uint64_t* data_segment_nid, uint64_t* heap_segment_nid, uint64_t* stack_segment_nid);
+uint64_t* riscr_tape_word(uint64_t i, uint64_t* register_file_nid);
+uint64_t* riscr_read_result(uint64_t* register_file_nid);
+uint64_t* riscr_openat_index();
+uint64_t* riscr_opens_file_kind(uint64_t* register_file_nid);
+uint64_t* riscr_syscall_result(uint64_t* ir_nid, uint64_t* register_file_nid);
+uint64_t* riscr_is_tape_syscall(uint64_t* ir_nid, uint64_t* register_file_nid);
+
+uint64_t* riscr_tape_memory_data_flow(uint64_t* ir_nid, uint64_t* register_file_nid,
+  uint64_t* segment_nid, uint64_t* other_data_flow_nid);
+uint64_t* riscr_tapes_data_flow(uint64_t* register_file_nid, uint64_t* active_nid,
+  uint64_t* data_segment_nid, uint64_t* heap_segment_nid, uint64_t* stack_segment_nid, uint64_t* tapes_nid);
+uint64_t* riscr_tape_heads_data_flow(uint64_t* ir_nid, uint64_t* register_file_nid);
+uint64_t* riscr_tape_inputs_data_flow(uint64_t* ir_nid, uint64_t* register_file_nid);
+uint64_t* riscr_open_files_data_flow(uint64_t* ir_nid, uint64_t* register_file_nid);
+
+uint64_t* riscr_is_irreversible_tape(uint64_t* ir_nid, uint64_t* register_file_nid);
+uint64_t* riscr_is_irreversible_openat(uint64_t* ir_nid, uint64_t* register_file_nid);
+uint64_t* riscr_is_buffer_seg_faulting(uint64_t* ir_nid, uint64_t* register_file_nid,
+  uint64_t* data_segment_nid, uint64_t* heap_segment_nid, uint64_t* stack_segment_nid);
+uint64_t* riscr_is_filename_seg_faulting(uint64_t* ir_nid, uint64_t* register_file_nid,
+  uint64_t* data_segment_nid, uint64_t* heap_segment_nid, uint64_t* stack_segment_nid);
+
 void riscr_kernel_combinational(uint64_t core, uint64_t* pc_nid, uint64_t* ir_nid,
   uint64_t* control_flow_nid, uint64_t* register_data_flow_nid,
-  uint64_t* heap_segment_data_flow_nid,
-  uint64_t* program_break_nid, uint64_t* register_file_nid);
+  uint64_t* data_segment_data_flow_nid, uint64_t* heap_segment_data_flow_nid, uint64_t* stack_segment_data_flow_nid,
+  uint64_t* program_break_nid, uint64_t* register_file_nid,
+  uint64_t* data_segment_nid, uint64_t* heap_segment_nid, uint64_t* stack_segment_nid);
 void riscr_kernel_sequential(uint64_t core,
   uint64_t* program_break_nid, uint64_t* file_descriptor_nid,
   uint64_t* readable_bytes_nid, uint64_t* read_bytes_nid,
   uint64_t* new_program_break_nid);
 void riscr_properties(uint64_t core, uint64_t* pc_nid, uint64_t* ir_nid,
-  uint64_t* register_file_nid, uint64_t* code_segment_nid, uint64_t* program_break_nid);
+  uint64_t* register_file_nid, uint64_t* code_segment_nid, uint64_t* program_break_nid,
+  uint64_t* data_segment_nid, uint64_t* heap_segment_nid, uint64_t* stack_segment_nid);
 
 uint64_t* riscr_roundtrip_filter(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* control_flow_nid,
   uint64_t* register_file_nid, uint64_t* code_segment_nid,
@@ -3498,6 +3596,9 @@ char* no_RVM_option     = (char*) 0;
 char* riscr_option         = (char*) 0;
 char* inverse_model_option = (char*) 0;
 char* roundtrip_option     = (char*) 0;
+char* tapes_option         = (char*) 0;
+char* tape_words_option    = (char*) 0;
+char* syscall_words_option = (char*) 0;
 
 uint64_t ROUNDTRIP_CODE_SIZE = 256;  // 64 instructions
 uint64_t ROUNDTRIP_DATA_SIZE = 4096; // 512 memory words
@@ -3588,6 +3689,8 @@ uint64_t* prop_irreversible_link_nids     = (uint64_t*) 0;
 uint64_t* prop_irreversible_return_nids   = (uint64_t*) 0;
 uint64_t* prop_irreversible_brk_nids      = (uint64_t*) 0;
 uint64_t* prop_irreversible_exit_nids     = (uint64_t*) 0;
+uint64_t* prop_irreversible_tape_nids     = (uint64_t*) 0;
+uint64_t* prop_irreversible_openat_nids   = (uint64_t*) 0;
 
 // RISC-R round trip: step function of the other direction over the same state
 
@@ -3599,6 +3702,11 @@ uint64_t* roundtrip_forward_register_data_flow_nid = (uint64_t*) 0;
 uint64_t* roundtrip_forward_data_segment_nid       = (uint64_t*) 0;
 uint64_t* roundtrip_forward_heap_segment_nid       = (uint64_t*) 0;
 uint64_t* roundtrip_forward_stack_segment_nid      = (uint64_t*) 0;
+uint64_t* roundtrip_forward_input_tapes_nid        = (uint64_t*) 0;
+uint64_t* roundtrip_forward_output_tapes_nid       = (uint64_t*) 0;
+uint64_t* roundtrip_forward_tape_heads_nid         = (uint64_t*) 0;
+uint64_t* roundtrip_forward_tape_inputs_nid        = (uint64_t*) 0;
+uint64_t* roundtrip_forward_open_files_nid         = (uint64_t*) 0;
 
 uint64_t* roundtrip_inverse_skip_nid               = (uint64_t*) 0;
 uint64_t* roundtrip_inverse_exchange_nid           = (uint64_t*) 0;
@@ -3608,6 +3716,11 @@ uint64_t* roundtrip_inverse_register_data_flow_nid = (uint64_t*) 0;
 uint64_t* roundtrip_inverse_data_segment_nid       = (uint64_t*) 0;
 uint64_t* roundtrip_inverse_heap_segment_nid       = (uint64_t*) 0;
 uint64_t* roundtrip_inverse_stack_segment_nid      = (uint64_t*) 0;
+uint64_t* roundtrip_inverse_input_tapes_nid        = (uint64_t*) 0;
+uint64_t* roundtrip_inverse_output_tapes_nid       = (uint64_t*) 0;
+uint64_t* roundtrip_inverse_tape_heads_nid         = (uint64_t*) 0;
+uint64_t* roundtrip_inverse_tape_inputs_nid        = (uint64_t*) 0;
+uint64_t* roundtrip_inverse_open_files_nid         = (uint64_t*) 0;
 
 // ------------------------- INITIALIZATION ------------------------
 
@@ -3671,6 +3784,9 @@ void init_rotor(int argc, char** argv) {
   riscr_option         = "-riscr";
   inverse_model_option = "-inverse";
   roundtrip_option     = "-roundtrip";
+  tapes_option         = "-tapes";
+  tape_words_option    = "-tapewords";
+  syscall_words_option = "-syscallwords";
 }
 
 void init_properties(uint64_t number_of_cores) {
@@ -3714,6 +3830,8 @@ void init_properties(uint64_t number_of_cores) {
   prop_irreversible_return_nids   = allocate_lines(number_of_cores);
   prop_irreversible_brk_nids      = allocate_lines(number_of_cores);
   prop_irreversible_exit_nids     = allocate_lines(number_of_cores);
+  prop_irreversible_tape_nids     = allocate_lines(number_of_cores);
+  prop_irreversible_openat_nids   = allocate_lines(number_of_cores);
 }
 
 // -----------------------------------------------------------------
@@ -3773,8 +3891,7 @@ void     roundtrip_zero_array(uint64_t* state_nid);
 uint64_t roundtrip_random_state();
 
 void     roundtrip_advance();
-void     roundtrip_step(uint64_t* exchange_nid, uint64_t* control_flow_nid, uint64_t* program_break_nid,
-  uint64_t* register_data_flow_nid, uint64_t* data_segment_nid, uint64_t* heap_segment_nid, uint64_t* stack_segment_nid);
+void     roundtrip_step(uint64_t inverse);
 
 uint64_t roundtrip_compare_array(uint64_t* state_nid, uint64_t* saved_array, char* name);
 
@@ -3828,7 +3945,7 @@ uint64_t roundtrip_cf     = 0; // generated come-from, if any
 
 char* roundtrip_kinds = (char*) 0; // kind names
 
-uint64_t ROUNDTRIP_KINDS = 14; // number of kinds
+uint64_t ROUNDTRIP_KINDS = 17; // number of kinds
 
 uint64_t* roundtrip_passed_forward  = (uint64_t*) 0; // passed forward-then-backward round trips per kind
 uint64_t* roundtrip_passed_backward = (uint64_t*) 0; // passed backward-then-forward round trips per kind
@@ -6374,6 +6491,9 @@ void print_kernel_state(uint64_t core) {
   print_break_line_for(core, init_readable_bytes_nids);
 
   print_break_line_for(core, init_read_bytes_nids);
+
+  if (RISCR)
+    riscr_print_tape_state();
 }
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
@@ -12285,10 +12405,577 @@ uint64_t* riscr_is_unsupported_syscall(uint64_t* ir_nid, uint64_t* register_file
     new_unary_boolean(OP_NOT,
       new_binary_boolean(OP_OR,
         new_binary_boolean(OP_EQ, a7_value_nid, NID_EXIT_SYSCALL_ID, "a7 == exit syscall ID?"),
-        new_binary_boolean(OP_EQ, a7_value_nid, NID_BRK_SYSCALL_ID, "a7 == brk syscall ID?"),
-        "a7 == exit or brk syscall ID?"),
-      "a7 != exit and brk syscall ID?"),
+        new_binary_boolean(OP_OR,
+          new_binary_boolean(OP_EQ, a7_value_nid, NID_BRK_SYSCALL_ID, "a7 == brk syscall ID?"),
+          new_binary_boolean(OP_OR,
+            new_binary_boolean(OP_EQ, a7_value_nid, NID_READ_SYSCALL_ID, "a7 == read syscall ID?"),
+            new_binary_boolean(OP_OR,
+              new_binary_boolean(OP_EQ, a7_value_nid, NID_WRITE_SYSCALL_ID, "a7 == write syscall ID?"),
+              new_binary_boolean(OP_EQ, a7_value_nid, NID_OPENAT_SYSCALL_ID, "a7 == openat syscall ID?"),
+              "a7 == write or openat syscall ID?"),
+            "a7 == read, write, or openat syscall ID?"),
+          "a7 == brk, read, write, or openat syscall ID?"),
+        "a7 == exit, brk, read, write, or openat syscall ID?"),
+      "a7 is not a RISC-R syscall ID?"),
     "unsupported RISC-R system call");
+}
+
+// RISC-R tapes: files are part of the machine state, see riscr.md
+
+void init_riscr_tape_sorts() {
+  uint64_t saved_reuse_lines;
+
+  NID_NUMBER_OF_TAPES = new_constant(OP_CONSTD, SID_MACHINE_WORD, NUMBER_OF_TAPES, "number of tapes");
+  NID_TAPE_WORDS      = new_constant(OP_CONSTD, SID_MACHINE_WORD, TAPE_WORDS, "words per tape");
+  NID_SYSCALL_WORDS   = new_constant(OP_CONSTD, SID_MACHINE_WORD, SYSCALL_WORDS, "words per read or write at most");
+  NID_STANDARD_FILES  = new_constant(OP_CONSTD, SID_MACHINE_WORD, 3, "standard input, output, and error");
+  NID_SYSCALL_FAILURE = new_constant(OP_CONSTD, SID_MACHINE_WORD, 4294967295, "system call result -1 in 32 bits");
+  NID_O_RDONLY        = new_constant(OP_CONSTD, SID_MACHINE_WORD, O_RDONLY, "O_RDONLY");
+
+  saved_reuse_lines = reuse_lines;
+
+  // make sure to have unique SIDs for tape addresses and states
+  reuse_lines = 0;
+
+  SID_FD_ADDRESS = new_bitvec(log_two(NUMBER_OF_TAPES),
+    format_comment("%lu-bit file descriptor", log_two(NUMBER_OF_TAPES)));
+
+  SID_TAPE_ADDRESS = new_bitvec(log_two(NUMBER_OF_TAPES * TAPE_WORDS),
+    format_comment("%lu-bit tape address", log_two(NUMBER_OF_TAPES * TAPE_WORDS)));
+
+  SID_TAPE_STATE      = new_array(SID_TAPE_ADDRESS, SID_MACHINE_WORD, "tape state");
+  SID_TAPE_HEAD_STATE = new_array(SID_FD_ADDRESS, SID_MACHINE_WORD, "tape head state");
+  SID_TAPE_FLAG_STATE = new_array(SID_FD_ADDRESS, SID_BOOLEAN, "tape flag state");
+
+  reuse_lines = saved_reuse_lines;
+
+  NID_FD_0 = new_constant(OP_CONSTD, SID_FD_ADDRESS, 0, "standard input");
+}
+
+void riscr_new_tape_state() {
+  // tapes: input tapes hold the files, output tapes start zeroed; one head per
+  // tape, one end per input tape, one kind flag per tape, one host-open flag
+  // per tape, and the next file descriptor
+
+  state_input_tapes_nid = new_input(OP_STATE, SID_TAPE_STATE, "input-tapes", "uninitialized input tapes");
+
+  // initialize only for emulator
+  eval_init(new_init(SID_TAPE_STATE, state_input_tapes_nid, NID_MACHINE_WORD_0, "zeroed input tapes"));
+
+  // uninitialized state is symbolic unless the round trip fills it with random words
+  if (riscr_roundtrip == 0)
+    set_symbolic(state_input_tapes_nid, SYMBOLIC);
+
+  next_input_tapes_nid = state_input_tapes_nid;
+
+  state_output_tapes_nid = new_input(OP_STATE, SID_TAPE_STATE, "output-tapes", "zeroed output tapes");
+  init_output_tapes_nid  = new_init(SID_TAPE_STATE, state_output_tapes_nid, NID_MACHINE_WORD_0, "zeroing output tapes");
+
+  eval_init(init_output_tapes_nid);
+
+  next_output_tapes_nid = state_output_tapes_nid;
+
+  state_tape_heads_nid = new_input(OP_STATE, SID_TAPE_HEAD_STATE, "tape-heads", "zeroed tape heads");
+  init_tape_heads_nid  = new_init(SID_TAPE_HEAD_STATE, state_tape_heads_nid, NID_MACHINE_WORD_0, "zeroing tape heads");
+
+  eval_init(init_tape_heads_nid);
+
+  next_tape_heads_nid = state_tape_heads_nid;
+
+  state_tape_ends_nid = new_input(OP_STATE, SID_TAPE_HEAD_STATE, "tape-ends", "uninitialized file sizes in bytes, -1 if unknown");
+
+  eval_init(new_init(SID_TAPE_HEAD_STATE, state_tape_ends_nid, NID_MACHINE_WORD_0, "zeroed file sizes"));
+
+  if (riscr_roundtrip == 0)
+    set_symbolic(state_tape_ends_nid, SYMBOLIC);
+
+  next_tape_ends_nid = new_next(SID_TAPE_HEAD_STATE, state_tape_ends_nid, state_tape_ends_nid, "read-only file sizes");
+
+  state_zeroed_tape_flags_nid = new_input(OP_STATE, SID_TAPE_FLAG_STATE, "zeroed-tape-flags", "zeroed tape flags");
+  init_zeroed_tape_flags_nid  = new_init(SID_TAPE_FLAG_STATE, state_zeroed_tape_flags_nid, NID_FALSE, "zeroing tape flags");
+
+  eval_init(init_zeroed_tape_flags_nid);
+
+  next_zeroed_tape_flags_nid = new_next(SID_TAPE_FLAG_STATE,
+    state_zeroed_tape_flags_nid, state_zeroed_tape_flags_nid, "read-only zeroed tape flags");
+
+  state_tape_inputs_nid = new_input(OP_STATE, SID_TAPE_FLAG_STATE, "tape-inputs", "which tapes are input tapes");
+  init_tape_inputs_nid  = new_init(SID_TAPE_FLAG_STATE, state_tape_inputs_nid,
+    new_ternary(OP_WRITE, SID_TAPE_FLAG_STATE, state_zeroed_tape_flags_nid, NID_FD_0, NID_TRUE, "standard input is an input tape"),
+    "initializing tape kinds");
+
+  eval_init(init_tape_inputs_nid);
+
+  next_tape_inputs_nid = state_tape_inputs_nid;
+
+  state_tape_opens_nid = new_input(OP_STATE, SID_TAPE_FLAG_STATE, "tape-opens", "uninitialized: which files the host can open");
+
+  eval_init(new_init(SID_TAPE_FLAG_STATE, state_tape_opens_nid, NID_FALSE, "zeroed host opens"));
+
+  if (riscr_roundtrip == 0)
+    set_symbolic(state_tape_opens_nid, SYMBOLIC);
+
+  next_tape_opens_nid = new_next(SID_TAPE_FLAG_STATE, state_tape_opens_nid, state_tape_opens_nid, "read-only host opens");
+
+  state_open_files_nid = new_input(OP_STATE, SID_MACHINE_WORD, "open-files", "next RISC-R file descriptor");
+  init_open_files_nid  = new_init(SID_MACHINE_WORD, state_open_files_nid, NID_STANDARD_FILES, "standard files are open");
+
+  eval_init(init_open_files_nid);
+
+  next_open_files_nid = state_open_files_nid;
+}
+
+void riscr_print_tape_state() {
+  print_nobreak_comment("tape state");
+
+  print_break_line(init_open_files_nid);
+  print_break_line(init_zeroed_tape_flags_nid);
+  print_break_line(next_zeroed_tape_flags_nid);
+  print_break_line(init_tape_inputs_nid);
+  print_break_line(next_tape_opens_nid);
+  print_break_line(init_tape_heads_nid);
+  print_break_line(next_tape_ends_nid);
+  print_break_line(state_input_tapes_nid);
+  print_break_line(init_output_tapes_nid);
+}
+
+uint64_t* riscr_fd_index(uint64_t* fd_nid) {
+  return new_slice(SID_FD_ADDRESS, fd_nid, log_two(NUMBER_OF_TAPES) - 1, 0, "file descriptor as tape index");
+}
+
+uint64_t* riscr_tape_index(uint64_t* fd_nid, uint64_t* position_nid) {
+  return new_slice(SID_TAPE_ADDRESS,
+    new_binary(OP_ADD, SID_MACHINE_WORD,
+      new_binary(OP_MUL, SID_MACHINE_WORD, fd_nid, NID_TAPE_WORDS, "fd * words per tape"),
+      position_nid,
+      "fd * words per tape + position"),
+    log_two(NUMBER_OF_TAPES * TAPE_WORDS) - 1, 0, "tape address");
+}
+
+uint64_t* riscr_syscall_words(uint64_t* register_file_nid) {
+  // a3 bytes rounded up to words
+  return new_binary(OP_UDIV, SID_MACHINE_WORD,
+    new_binary(OP_ADD, SID_MACHINE_WORD,
+      load_register_value(NID_A3, "a3 value", register_file_nid),
+      NID_MACHINE_WORD_7,
+      "a3 value + 7"),
+    NID_MACHINE_WORD_8,
+    "(a3 value + 7) / 8 words to exchange");
+}
+
+uint64_t* riscr_is_open_file(uint64_t* register_file_nid) {
+  uint64_t* a1_value_nid;
+
+  // a1 is an allocated descriptor whose file the host could open; standard files are always open
+
+  a1_value_nid = load_register_value(NID_A1, "a1 value", register_file_nid);
+
+  return new_binary_boolean(OP_AND,
+    new_binary_boolean(OP_ULT, a1_value_nid, state_open_files_nid, "a1 value < open files?"),
+    new_binary_boolean(OP_OR,
+      new_binary_boolean(OP_ULT, a1_value_nid, NID_STANDARD_FILES, "a1 value < 3?"),
+      new_binary(OP_READ, SID_BOOLEAN, state_tape_opens_nid, riscr_fd_index(a1_value_nid), "host opened file a1"),
+      "standard file or opened by host?"),
+    "file a1 is open?");
+}
+
+uint64_t* riscr_is_input_file(uint64_t* register_file_nid) {
+  return new_binary(OP_READ, SID_BOOLEAN, state_tape_inputs_nid,
+    riscr_fd_index(load_register_value(NID_A1, "a1 value", register_file_nid)),
+    "file a1 is an input tape");
+}
+
+uint64_t* riscr_is_active_read(uint64_t* ir_nid, uint64_t* register_file_nid) {
+  return new_binary_boolean(OP_AND,
+    riscr_is_syscall(ir_nid, register_file_nid, NID_READ_SYSCALL_ID, "read"),
+    new_binary_boolean(OP_AND,
+      riscr_is_open_file(register_file_nid),
+      riscr_is_input_file(register_file_nid),
+      "open input file?"),
+    "read exchanging with input tape");
+}
+
+uint64_t* riscr_is_active_write(uint64_t* ir_nid, uint64_t* register_file_nid) {
+  return new_binary_boolean(OP_AND,
+    riscr_is_syscall(ir_nid, register_file_nid, NID_WRITE_SYSCALL_ID, "write"),
+    new_binary_boolean(OP_AND,
+      riscr_is_open_file(register_file_nid),
+      new_unary_boolean(OP_NOT, riscr_is_input_file(register_file_nid), "output tape?"),
+      "open output file?"),
+    "write exchanging with output tape");
+}
+
+uint64_t* riscr_is_active_exchange(uint64_t* ir_nid, uint64_t* register_file_nid) {
+  return new_binary_boolean(OP_OR,
+    riscr_is_active_read(ir_nid, register_file_nid),
+    riscr_is_active_write(ir_nid, register_file_nid),
+    "read or write exchanging memory with tape");
+}
+
+uint64_t* riscr_exchange_head(uint64_t* register_file_nid) {
+  uint64_t* head_nid;
+
+  // first tape word exchanged: the head forward, the head moved back backward
+
+  head_nid = new_binary(OP_READ, SID_MACHINE_WORD, state_tape_heads_nid,
+    riscr_fd_index(load_register_value(NID_A1, "a1 value", register_file_nid)),
+    "head of tape a1");
+
+  if (reverse)
+    return new_binary(OP_SUB, SID_MACHINE_WORD, head_nid, riscr_syscall_words(register_file_nid), "head - words");
+  else
+    return head_nid;
+}
+
+uint64_t* riscr_is_exchanged_word(uint64_t i, uint64_t* register_file_nid) {
+  return new_binary_boolean(OP_ULT,
+    new_constant(OP_CONSTD, SID_MACHINE_WORD, i, format_comment("word %lu", i)),
+    riscr_syscall_words(register_file_nid),
+    format_comment("word %lu is exchanged?", i));
+}
+
+uint64_t* riscr_buffer_address(uint64_t i, uint64_t* register_file_nid) {
+  return new_binary(OP_ADD, SID_MACHINE_WORD,
+    load_register_value(NID_A2, "a2 value", register_file_nid),
+    new_constant(OP_CONSTD, SID_MACHINE_WORD, i * WORDSIZE, format_comment("offset of word %lu", i)),
+    format_comment("address of buffer word %lu", i));
+}
+
+uint64_t* riscr_buffer_word(uint64_t i, uint64_t* register_file_nid,
+  uint64_t* data_segment_nid, uint64_t* heap_segment_nid, uint64_t* stack_segment_nid) {
+  return riscr_load_machine_word(riscr_buffer_address(i, register_file_nid),
+    data_segment_nid, heap_segment_nid, stack_segment_nid);
+}
+
+uint64_t* riscr_tape_word(uint64_t i, uint64_t* register_file_nid) {
+  uint64_t* index_nid;
+
+  index_nid = riscr_tape_index(load_register_value(NID_A1, "a1 value", register_file_nid),
+    new_binary(OP_ADD, SID_MACHINE_WORD,
+      riscr_exchange_head(register_file_nid),
+      new_constant(OP_CONSTD, SID_MACHINE_WORD, i, format_comment("word %lu", i)),
+      format_comment("head + %lu", i)));
+
+  return new_ternary(OP_ITE, SID_MACHINE_WORD,
+    riscr_is_input_file(register_file_nid),
+    new_binary(OP_READ, SID_MACHINE_WORD, state_input_tapes_nid, index_nid, format_comment("input tape word %lu", i)),
+    new_binary(OP_READ, SID_MACHINE_WORD, state_output_tapes_nid, index_nid, format_comment("output tape word %lu", i)),
+    format_comment("tape word %lu", i));
+}
+
+uint64_t* riscr_read_result(uint64_t* register_file_nid) {
+  uint64_t* size_nid;
+  uint64_t* end_nid;
+  uint64_t* position_nid;
+
+  // bytes available before the end of the file, as with a RISC-U read
+
+  size_nid = load_register_value(NID_A3, "a3 value", register_file_nid);
+
+  end_nid = new_binary(OP_READ, SID_MACHINE_WORD, state_tape_ends_nid,
+    riscr_fd_index(load_register_value(NID_A1, "a1 value", register_file_nid)),
+    "end of file a1 in bytes");
+
+  position_nid = new_binary(OP_MUL, SID_MACHINE_WORD,
+    riscr_exchange_head(register_file_nid), NID_MACHINE_WORD_8, "head in bytes");
+
+  return new_ternary(OP_ITE, SID_MACHINE_WORD,
+    new_binary_boolean(OP_EQ, end_nid, NID_MACHINE_WORD_MINUS_1, "end of file unknown?"),
+    size_nid,
+    new_ternary(OP_ITE, SID_MACHINE_WORD,
+      new_binary_boolean(OP_UGTE, position_nid, end_nid, "head at or beyond end of file?"),
+      NID_MACHINE_WORD_0,
+      new_ternary(OP_ITE, SID_MACHINE_WORD,
+        new_binary_boolean(OP_ULT,
+          new_binary(OP_SUB, SID_MACHINE_WORD, end_nid, position_nid, "bytes before end of file"),
+          size_nid,
+          "fewer bytes before end of file than requested?"),
+        new_binary(OP_SUB, SID_MACHINE_WORD, end_nid, position_nid, "bytes before end of file"),
+        size_nid,
+        "bytes before end of file or requested bytes"),
+      "no bytes at or beyond end of file"),
+    "read result");
+}
+
+uint64_t* riscr_openat_index() {
+  // the descriptor openat allocates forward and releases backward
+  if (reverse)
+    return new_unary(OP_DEC, SID_MACHINE_WORD, state_open_files_nid, "open files - 1");
+  else
+    return state_open_files_nid;
+}
+
+uint64_t* riscr_opens_file_kind(uint64_t* register_file_nid) {
+  uint64_t* a2_value_nid;
+
+  // flags O_RDONLY or 0 open an input tape, all others an output tape
+
+  a2_value_nid = load_register_value(NID_A2, "a2 value", register_file_nid);
+
+  return new_binary_boolean(OP_OR,
+    new_binary_boolean(OP_EQ, a2_value_nid, NID_O_RDONLY, "a2 value == O_RDONLY?"),
+    new_binary_boolean(OP_EQ, a2_value_nid, NID_MACHINE_WORD_0, "a2 value == 0?"),
+    "opening input tape?");
+}
+
+uint64_t* riscr_syscall_result(uint64_t* ir_nid, uint64_t* register_file_nid) {
+  uint64_t* index_nid;
+
+  // result of read, write, and openat, recomputable in both directions
+
+  index_nid = riscr_openat_index();
+
+  return new_ternary(OP_ITE, SID_MACHINE_WORD,
+    riscr_is_syscall(ir_nid, register_file_nid, NID_READ_SYSCALL_ID, "read"),
+    new_ternary(OP_ITE, SID_MACHINE_WORD,
+      riscr_is_active_read(ir_nid, register_file_nid),
+      riscr_read_result(register_file_nid),
+      NID_SYSCALL_FAILURE,
+      "read result or failure"),
+    new_ternary(OP_ITE, SID_MACHINE_WORD,
+      riscr_is_syscall(ir_nid, register_file_nid, NID_WRITE_SYSCALL_ID, "write"),
+      new_ternary(OP_ITE, SID_MACHINE_WORD,
+        riscr_is_active_write(ir_nid, register_file_nid),
+        load_register_value(NID_A3, "a3 value", register_file_nid),
+        NID_SYSCALL_FAILURE,
+        "write result or failure"),
+      new_ternary(OP_ITE, SID_MACHINE_WORD,
+        new_binary(OP_READ, SID_BOOLEAN, state_tape_opens_nid, riscr_fd_index(index_nid), "host opens file"),
+        index_nid,
+        NID_SYSCALL_FAILURE,
+        "openat result or failure"),
+      "write or openat result"),
+    "tape system call result");
+}
+
+uint64_t* riscr_is_tape_syscall(uint64_t* ir_nid, uint64_t* register_file_nid) {
+  return new_binary_boolean(OP_OR,
+    riscr_is_syscall(ir_nid, register_file_nid, NID_READ_SYSCALL_ID, "read"),
+    new_binary_boolean(OP_OR,
+      riscr_is_syscall(ir_nid, register_file_nid, NID_WRITE_SYSCALL_ID, "write"),
+      riscr_is_syscall(ir_nid, register_file_nid, NID_OPENAT_SYSCALL_ID, "openat"),
+      "write or openat system call"),
+    "read, write, or openat system call");
+}
+
+uint64_t* riscr_tape_memory_data_flow(uint64_t* ir_nid, uint64_t* register_file_nid,
+  uint64_t* segment_nid, uint64_t* other_data_flow_nid) {
+  uint64_t  i;
+  uint64_t* flow_nid;
+
+  // read and write exchange up to SYSCALL_WORDS buffer words with tape words;
+  // on output tapes the words ahead of the head are zero, so write copies
+
+  flow_nid = segment_nid;
+
+  i = 0;
+
+  while (i < SYSCALL_WORDS) {
+    flow_nid = new_ternary(OP_ITE, get_sid(segment_nid),
+      riscr_is_exchanged_word(i, register_file_nid),
+      riscr_store_machine_word_if_in_segment(
+        riscr_buffer_address(i, register_file_nid),
+        riscr_tape_word(i, register_file_nid),
+        flow_nid),
+      flow_nid,
+      format_comment("exchange buffer word %lu", i));
+
+    i = i + 1;
+  }
+
+  return new_ternary(OP_ITE, get_sid(segment_nid),
+    riscr_is_active_exchange(ir_nid, register_file_nid),
+    flow_nid,
+    other_data_flow_nid,
+    "RISC-R kernel memory data flow");
+}
+
+uint64_t* riscr_tapes_data_flow(uint64_t* register_file_nid, uint64_t* active_nid,
+  uint64_t* data_segment_nid, uint64_t* heap_segment_nid, uint64_t* stack_segment_nid, uint64_t* tapes_nid) {
+  uint64_t  i;
+  uint64_t* flow_nid;
+
+  flow_nid = tapes_nid;
+
+  i = 0;
+
+  while (i < SYSCALL_WORDS) {
+    flow_nid = new_ternary(OP_ITE, SID_TAPE_STATE,
+      riscr_is_exchanged_word(i, register_file_nid),
+      new_ternary(OP_WRITE, SID_TAPE_STATE,
+        flow_nid,
+        riscr_tape_index(load_register_value(NID_A1, "a1 value", register_file_nid),
+          new_binary(OP_ADD, SID_MACHINE_WORD,
+            riscr_exchange_head(register_file_nid),
+            new_constant(OP_CONSTD, SID_MACHINE_WORD, i, format_comment("word %lu", i)),
+            format_comment("head + %lu", i))),
+        riscr_buffer_word(i, register_file_nid, data_segment_nid, heap_segment_nid, stack_segment_nid),
+        format_comment("tape word %lu exchanged with buffer word", i)),
+      flow_nid,
+      format_comment("exchange tape word %lu", i));
+
+    i = i + 1;
+  }
+
+  return new_ternary(OP_ITE, SID_TAPE_STATE,
+    active_nid,
+    flow_nid,
+    tapes_nid,
+    "tapes data flow");
+}
+
+uint64_t* riscr_tape_heads_data_flow(uint64_t* ir_nid, uint64_t* register_file_nid) {
+  uint64_t* fd_nid;
+  uint64_t* new_head_nid;
+
+  fd_nid = riscr_fd_index(load_register_value(NID_A1, "a1 value", register_file_nid));
+
+  // the head moves forward by the exchanged words, backward it moves back
+
+  if (reverse)
+    new_head_nid = riscr_exchange_head(register_file_nid);
+  else
+    new_head_nid = new_binary(OP_ADD, SID_MACHINE_WORD,
+      riscr_exchange_head(register_file_nid),
+      riscr_syscall_words(register_file_nid),
+      "head + words");
+
+  return new_ternary(OP_ITE, SID_TAPE_HEAD_STATE,
+    riscr_is_active_exchange(ir_nid, register_file_nid),
+    new_ternary(OP_WRITE, SID_TAPE_HEAD_STATE, state_tape_heads_nid, fd_nid, new_head_nid, "move head of tape a1"),
+    state_tape_heads_nid,
+    "tape heads data flow");
+}
+
+uint64_t* riscr_tape_inputs_data_flow(uint64_t* ir_nid, uint64_t* register_file_nid) {
+  uint64_t* index_nid;
+
+  // openat flips the kind of the allocated tape by the kind the flags select,
+  // which sets it on a zeroed flag forward and clears it backward
+
+  index_nid = riscr_fd_index(riscr_openat_index());
+
+  return new_ternary(OP_ITE, SID_TAPE_FLAG_STATE,
+    riscr_is_syscall(ir_nid, register_file_nid, NID_OPENAT_SYSCALL_ID, "openat"),
+    new_ternary(OP_WRITE, SID_TAPE_FLAG_STATE, state_tape_inputs_nid, index_nid,
+      new_binary_boolean(OP_XOR,
+        new_binary(OP_READ, SID_BOOLEAN, state_tape_inputs_nid, index_nid, "kind of allocated tape"),
+        riscr_opens_file_kind(register_file_nid),
+        "kind of allocated tape flipped by flags"),
+      "set kind of allocated tape"),
+    state_tape_inputs_nid,
+    "tape kinds data flow");
+}
+
+uint64_t* riscr_open_files_data_flow(uint64_t* ir_nid, uint64_t* register_file_nid) {
+  uint64_t* new_open_files_nid;
+
+  if (reverse)
+    new_open_files_nid = new_unary(OP_DEC, SID_MACHINE_WORD, state_open_files_nid, "open files - 1");
+  else
+    new_open_files_nid = new_unary(OP_INC, SID_MACHINE_WORD, state_open_files_nid, "open files + 1");
+
+  return new_ternary(OP_ITE, SID_MACHINE_WORD,
+    riscr_is_syscall(ir_nid, register_file_nid, NID_OPENAT_SYSCALL_ID, "openat"),
+    new_open_files_nid,
+    state_open_files_nid,
+    "open files data flow");
+}
+
+uint64_t* riscr_is_irreversible_tape(uint64_t* ir_nid, uint64_t* register_file_nid) {
+  uint64_t* words_nid;
+  uint64_t* head_nid;
+  uint64_t* bounds_nid;
+
+  // a read or write that exchanges more words than the model has, or moves
+  // the head beyond the end of the tape forward or before its beginning backward
+
+  words_nid = riscr_syscall_words(register_file_nid);
+
+  head_nid = new_binary(OP_READ, SID_MACHINE_WORD, state_tape_heads_nid,
+    riscr_fd_index(load_register_value(NID_A1, "a1 value", register_file_nid)),
+    "head of tape a1");
+
+  if (reverse)
+    bounds_nid = new_binary_boolean(OP_ULT, head_nid, words_nid, "head before beginning of tape?");
+  else
+    bounds_nid = new_binary_boolean(OP_UGT,
+      new_binary(OP_ADD, SID_MACHINE_WORD, head_nid, words_nid, "head + words"),
+      NID_TAPE_WORDS,
+      "head beyond end of tape?");
+
+  return new_binary_boolean(OP_AND,
+    riscr_is_active_exchange(ir_nid, register_file_nid),
+    new_binary_boolean(OP_OR,
+      new_binary_boolean(OP_UGT, words_nid, NID_SYSCALL_WORDS, "more words than the model exchanges?"),
+      bounds_nid,
+      "too many words or head out of bounds?"),
+    "irreversible read or write beyond tape");
+}
+
+uint64_t* riscr_is_irreversible_openat(uint64_t* ir_nid, uint64_t* register_file_nid) {
+  uint64_t* bounds_nid;
+
+  // openat with all descriptors allocated forward, or none to release backward
+
+  if (reverse)
+    bounds_nid = new_binary_boolean(OP_ULTE, state_open_files_nid, NID_STANDARD_FILES, "no file to close?");
+  else
+    bounds_nid = new_binary_boolean(OP_UGTE, state_open_files_nid, NID_NUMBER_OF_TAPES, "too many open files?");
+
+  return new_binary_boolean(OP_AND,
+    riscr_is_syscall(ir_nid, register_file_nid, NID_OPENAT_SYSCALL_ID, "openat"),
+    bounds_nid,
+    "irreversible openat beyond tapes");
+}
+
+uint64_t* riscr_is_buffer_seg_faulting(uint64_t* ir_nid, uint64_t* register_file_nid,
+  uint64_t* data_segment_nid, uint64_t* heap_segment_nid, uint64_t* stack_segment_nid) {
+  uint64_t  i;
+  uint64_t* faulting_nid;
+
+  // the buffer of a read or write must be word-aligned and in main memory
+
+  faulting_nid = new_binary_boolean(OP_NEQ,
+    new_binary(OP_AND, SID_MACHINE_WORD,
+      load_register_value(NID_A2, "a2 value", register_file_nid),
+      NID_MACHINE_WORD_7,
+      "a2 value alignment"),
+    NID_MACHINE_WORD_0,
+    "buffer unaligned?");
+
+  i = 0;
+
+  while (i < SYSCALL_WORDS) {
+    faulting_nid = new_binary_boolean(OP_OR,
+      faulting_nid,
+      new_binary_boolean(OP_AND,
+        riscr_is_exchanged_word(i, register_file_nid),
+        new_unary_boolean(OP_NOT,
+          is_address_in_machine_word_in_main_memory(riscr_buffer_address(i, register_file_nid),
+            data_segment_nid, heap_segment_nid, stack_segment_nid),
+          format_comment("buffer word %lu outside main memory?", i)),
+        format_comment("exchanged buffer word %lu outside main memory?", i)),
+      format_comment("buffer faulting up to word %lu?", i));
+
+    i = i + 1;
+  }
+
+  return new_binary_boolean(OP_AND,
+    riscr_is_active_exchange(ir_nid, register_file_nid),
+    faulting_nid,
+    "read or write buffer segmentation fault");
+}
+
+uint64_t* riscr_is_filename_seg_faulting(uint64_t* ir_nid, uint64_t* register_file_nid,
+  uint64_t* data_segment_nid, uint64_t* heap_segment_nid, uint64_t* stack_segment_nid) {
+  return new_binary_boolean(OP_AND,
+    riscr_is_syscall(ir_nid, register_file_nid, NID_OPENAT_SYSCALL_ID, "openat"),
+    new_unary_boolean(OP_NOT,
+      is_address_in_machine_word_in_main_memory(load_register_value(NID_A1, "a1 value", register_file_nid),
+        data_segment_nid, heap_segment_nid, stack_segment_nid),
+      "filename outside main memory?"),
+    "openat filename segmentation fault");
 }
 
 uint64_t* riscr_kernel_control_flow(uint64_t* ir_nid, uint64_t* register_file_nid,
@@ -12351,14 +13038,22 @@ uint64_t* riscr_kernel_register_data_flow(uint64_t* ir_nid, uint64_t* register_f
   return new_ternary(OP_ITE, SID_REGISTER_STATE,
     riscr_is_syscall(ir_nid, register_file_nid, NID_BRK_SYSCALL_ID, "brk"),
     store_register_value(NID_A0, new_a0_value_nid, "brk result in a0", register_file_nid),
-    register_data_flow_nid,
+    new_ternary(OP_ITE, SID_REGISTER_STATE,
+      riscr_is_tape_syscall(ir_nid, register_file_nid),
+      store_register_value(NID_A0,
+        riscr_accumulate(a0_value_nid, riscr_syscall_result(ir_nid, register_file_nid), "a0 value +- system call result"),
+        "system call result added into a0",
+        register_file_nid),
+      register_data_flow_nid,
+      "RISC-R tape system call register data flow"),
     "RISC-R kernel register data flow");
 }
 
 void riscr_kernel_combinational(uint64_t core, uint64_t* pc_nid, uint64_t* ir_nid,
   uint64_t* control_flow_nid, uint64_t* register_data_flow_nid,
-  uint64_t* heap_segment_data_flow_nid,
-  uint64_t* program_break_nid, uint64_t* register_file_nid) {
+  uint64_t* data_segment_data_flow_nid, uint64_t* heap_segment_data_flow_nid, uint64_t* stack_segment_data_flow_nid,
+  uint64_t* program_break_nid, uint64_t* register_file_nid,
+  uint64_t* data_segment_nid, uint64_t* heap_segment_nid, uint64_t* stack_segment_nid) {
   // new brk kernel state
 
   eval_program_break_nid = riscr_kernel_program_break(ir_nid, register_file_nid, program_break_nid);
@@ -12376,11 +13071,36 @@ void riscr_kernel_combinational(uint64_t core, uint64_t* pc_nid, uint64_t* ir_ni
 
   set_for(core, eval_register_data_flow_nids, eval_register_data_flow_nid);
 
-  // no kernel memory data flow without read system call
+  // kernel and instruction memory data flow: read and write exchange with tapes
 
-  eval_heap_segment_data_flow_nid = heap_segment_data_flow_nid;
+  eval_data_segment_data_flow_nid =
+    riscr_tape_memory_data_flow(ir_nid, register_file_nid, data_segment_nid, data_segment_data_flow_nid);
+
+  set_for(core, eval_data_segment_data_flow_nids, eval_data_segment_data_flow_nid);
+
+  eval_heap_segment_data_flow_nid =
+    riscr_tape_memory_data_flow(ir_nid, register_file_nid, heap_segment_nid, heap_segment_data_flow_nid);
 
   set_for(core, eval_heap_segment_data_flow_nids, eval_heap_segment_data_flow_nid);
+
+  eval_stack_segment_data_flow_nid =
+    riscr_tape_memory_data_flow(ir_nid, register_file_nid, stack_segment_nid, stack_segment_data_flow_nid);
+
+  set_for(core, eval_stack_segment_data_flow_nids, eval_stack_segment_data_flow_nid);
+
+  // tape data flow
+
+  eval_input_tapes_nid = riscr_tapes_data_flow(register_file_nid,
+    riscr_is_active_read(ir_nid, register_file_nid),
+    data_segment_nid, heap_segment_nid, stack_segment_nid, state_input_tapes_nid);
+
+  eval_output_tapes_nid = riscr_tapes_data_flow(register_file_nid,
+    riscr_is_active_write(ir_nid, register_file_nid),
+    data_segment_nid, heap_segment_nid, stack_segment_nid, state_output_tapes_nid);
+
+  eval_tape_heads_nid  = riscr_tape_heads_data_flow(ir_nid, register_file_nid);
+  eval_tape_inputs_nid = riscr_tape_inputs_data_flow(ir_nid, register_file_nid);
+  eval_open_files_nid  = riscr_open_files_data_flow(ir_nid, register_file_nid);
 }
 
 void riscr_kernel_sequential(uint64_t core,
@@ -12401,10 +13121,19 @@ void riscr_kernel_sequential(uint64_t core,
 
   set_for(core, next_read_bytes_nids,
     new_next(SID_MACHINE_WORD, read_bytes_nid, read_bytes_nid, "read-only read bytes"));
+
+  // update tape state
+
+  next_input_tapes_nid  = new_next(SID_TAPE_STATE, state_input_tapes_nid, eval_input_tapes_nid, "input tapes");
+  next_output_tapes_nid = new_next(SID_TAPE_STATE, state_output_tapes_nid, eval_output_tapes_nid, "output tapes");
+  next_tape_heads_nid   = new_next(SID_TAPE_HEAD_STATE, state_tape_heads_nid, eval_tape_heads_nid, "tape heads");
+  next_tape_inputs_nid  = new_next(SID_TAPE_FLAG_STATE, state_tape_inputs_nid, eval_tape_inputs_nid, "tape kinds");
+  next_open_files_nid   = new_next(SID_MACHINE_WORD, state_open_files_nid, eval_open_files_nid, "open files");
 }
 
 void riscr_properties(uint64_t core, uint64_t* pc_nid, uint64_t* ir_nid,
-  uint64_t* register_file_nid, uint64_t* code_segment_nid, uint64_t* program_break_nid) {
+  uint64_t* register_file_nid, uint64_t* code_segment_nid, uint64_t* program_break_nid,
+  uint64_t* data_segment_nid, uint64_t* heap_segment_nid, uint64_t* stack_segment_nid) {
   // an instruction that violates a RISC-R rule is irreversible, see riscr.md;
   // the step function is still defined but not a bijection on such states
 
@@ -12462,6 +13191,44 @@ void riscr_properties(uint64_t core, uint64_t* pc_nid, uint64_t* ir_nid,
       riscr_is_irreversible_exit(ir_nid, register_file_nid),
       format_comment("core-%lu-irreversible-exit", core),
       format_comment("core-%lu irreversible instruction: exit executed backward", core)));
+
+  set_for(core, prop_irreversible_tape_nids, state_property(core,
+    UNUSED,
+    riscr_is_irreversible_tape(ir_nid, register_file_nid),
+    format_comment("core-%lu-irreversible-tape", core),
+    format_comment("core-%lu irreversible instruction: read or write beyond the tape or the model's words", core)));
+
+  set_for(core, prop_irreversible_openat_nids, state_property(core,
+    UNUSED,
+    riscr_is_irreversible_openat(ir_nid, register_file_nid),
+    format_comment("core-%lu-irreversible-openat", core),
+    format_comment("core-%lu irreversible instruction: openat beyond the tapes", core)));
+
+  if (check_seg_faults) {
+    set_for(core, prop_read_seg_faulting_nids, state_property(core,
+      UNUSED,
+      new_binary_boolean(OP_AND,
+        riscr_is_syscall(ir_nid, register_file_nid, NID_READ_SYSCALL_ID, "read"),
+        riscr_is_buffer_seg_faulting(ir_nid, register_file_nid, data_segment_nid, heap_segment_nid, stack_segment_nid),
+        "read buffer segmentation fault"),
+      format_comment("core-%lu-read-seg-fault", core),
+      format_comment("core-%lu read segmentation fault", core)));
+
+    set_for(core, prop_write_seg_faulting_nids, state_property(core,
+      UNUSED,
+      new_binary_boolean(OP_AND,
+        riscr_is_syscall(ir_nid, register_file_nid, NID_WRITE_SYSCALL_ID, "write"),
+        riscr_is_buffer_seg_faulting(ir_nid, register_file_nid, data_segment_nid, heap_segment_nid, stack_segment_nid),
+        "write buffer segmentation fault"),
+      format_comment("core-%lu-write-seg-fault", core),
+      format_comment("core-%lu write segmentation fault", core)));
+
+    set_for(core, prop_openat_seg_faulting_nids, state_property(core,
+      UNUSED,
+      riscr_is_filename_seg_faulting(ir_nid, register_file_nid, data_segment_nid, heap_segment_nid, stack_segment_nid),
+      format_comment("core-%lu-openat-seg-fault", core),
+      format_comment("core-%lu openat segmentation fault", core)));
+  }
 }
 
 uint64_t* riscr_roundtrip_filter(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* control_flow_nid,
@@ -12509,8 +13276,25 @@ uint64_t* riscr_roundtrip_filter(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* c
                             riscr_is_irreversible_brk(ir_nid, register_file_nid, program_break_nid),
                             new_binary_boolean(OP_OR,
                               riscr_is_syscall(ir_nid, register_file_nid, NID_EXIT_SYSCALL_ID, "exit"),
-                              riscr_is_unsupported_syscall(ir_nid, register_file_nid),
-                              "exit or unsupported system call?"),
+                              new_binary_boolean(OP_OR,
+                                riscr_is_unsupported_syscall(ir_nid, register_file_nid),
+                                new_binary_boolean(OP_OR,
+                                  riscr_is_irreversible_tape(ir_nid, register_file_nid),
+                                  new_binary_boolean(OP_OR,
+                                    riscr_is_irreversible_openat(ir_nid, register_file_nid),
+                                    new_binary_boolean(OP_OR,
+                                      riscr_is_buffer_seg_faulting(ir_nid, register_file_nid,
+                                        data_segment_nid, heap_segment_nid, stack_segment_nid),
+                                      new_binary_boolean(OP_OR,
+                                        riscr_is_filename_seg_faulting(ir_nid, register_file_nid,
+                                          data_segment_nid, heap_segment_nid, stack_segment_nid),
+                                        new_binary_boolean(OP_UGT, state_open_files_nid, NID_NUMBER_OF_TAPES, "more open files than tapes?"),
+                                        "openat segmentation fault?"),
+                                      "buffer segmentation fault?"),
+                                    "irreversible openat?"),
+                                  "irreversible tape?"),
+                                "unsupported system call?"),
+                              "exit?"),
                             "irreversible brk?"),
                           "irreversible return?"),
                         "irreversible link?"),
@@ -12528,14 +13312,39 @@ uint64_t* riscr_roundtrip_filter(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* c
 
 uint64_t* riscr_roundtrip_exchange(uint64_t* ir_nid, uint64_t* register_file_nid,
   uint64_t* data_segment_nid, uint64_t* heap_segment_nid, uint64_t* stack_segment_nid) {
-  // the evaluator updates arrays in place and evaluates ite lazily: the two
-  // operands of the ld exchange, structurally shared with the register and
-  // memory data flow, are evaluated before either data flow writes
-  return new_binary(OP_ADD, SID_MACHINE_WORD,
+  uint64_t  i;
+  uint64_t* operands_nid;
+
+  // the evaluator updates arrays in place and evaluates ite lazily: the
+  // operands of the ld exchange and of the tape exchanges, structurally shared
+  // with the data flows, are evaluated before any data flow writes
+
+  operands_nid = new_binary(OP_ADD, SID_MACHINE_WORD,
     riscr_load_machine_word(get_rs1_value_plus_I_immediate(ir_nid, register_file_nid),
       data_segment_nid, heap_segment_nid, stack_segment_nid),
     load_register_value(get_instruction_rd(ir_nid), "current rd value", register_file_nid),
     "ld exchange operands");
+
+  operands_nid = new_binary(OP_ADD, SID_MACHINE_WORD,
+    operands_nid,
+    riscr_syscall_result(ir_nid, register_file_nid),
+    "system call result");
+
+  i = 0;
+
+  while (i < SYSCALL_WORDS) {
+    operands_nid = new_binary(OP_ADD, SID_MACHINE_WORD,
+      operands_nid,
+      new_binary(OP_ADD, SID_MACHINE_WORD,
+        riscr_tape_word(i, register_file_nid),
+        riscr_buffer_word(i, register_file_nid, data_segment_nid, heap_segment_nid, stack_segment_nid),
+        format_comment("tape exchange operands of word %lu", i)),
+      "exchange operands");
+
+    i = i + 1;
+  }
+
+  return operands_nid;
 }
 
 void riscr_roundtrip_model() {
@@ -12552,6 +13361,11 @@ void riscr_roundtrip_model() {
   roundtrip_forward_data_segment_nid       = eval_data_segment_data_flow_nid;
   roundtrip_forward_heap_segment_nid       = eval_heap_segment_data_flow_nid;
   roundtrip_forward_stack_segment_nid      = eval_stack_segment_data_flow_nid;
+  roundtrip_forward_input_tapes_nid        = eval_input_tapes_nid;
+  roundtrip_forward_output_tapes_nid       = eval_output_tapes_nid;
+  roundtrip_forward_tape_heads_nid         = eval_tape_heads_nid;
+  roundtrip_forward_tape_inputs_nid        = eval_tape_inputs_nid;
+  roundtrip_forward_open_files_nid         = eval_open_files_nid;
 
   roundtrip_forward_skip_nid = riscr_roundtrip_filter(state_pc_nid, eval_ir_nid, eval_control_flow_nid,
     state_register_file_nid, state_code_segment_nid,
@@ -12576,9 +13390,22 @@ void riscr_roundtrip_model() {
       riscr_register_data_flow(state_pc_nid, ir_nid, state_register_file_nid,
         state_data_segment_nid, state_heap_segment_nid, state_stack_segment_nid));
 
-  roundtrip_inverse_data_segment_nid  = riscr_memory_data_flow(ir_nid, state_register_file_nid, state_data_segment_nid);
-  roundtrip_inverse_heap_segment_nid  = riscr_memory_data_flow(ir_nid, state_register_file_nid, state_heap_segment_nid);
-  roundtrip_inverse_stack_segment_nid = riscr_memory_data_flow(ir_nid, state_register_file_nid, state_stack_segment_nid);
+  roundtrip_inverse_data_segment_nid = riscr_tape_memory_data_flow(ir_nid, state_register_file_nid, state_data_segment_nid,
+    riscr_memory_data_flow(ir_nid, state_register_file_nid, state_data_segment_nid));
+  roundtrip_inverse_heap_segment_nid = riscr_tape_memory_data_flow(ir_nid, state_register_file_nid, state_heap_segment_nid,
+    riscr_memory_data_flow(ir_nid, state_register_file_nid, state_heap_segment_nid));
+  roundtrip_inverse_stack_segment_nid = riscr_tape_memory_data_flow(ir_nid, state_register_file_nid, state_stack_segment_nid,
+    riscr_memory_data_flow(ir_nid, state_register_file_nid, state_stack_segment_nid));
+
+  roundtrip_inverse_input_tapes_nid = riscr_tapes_data_flow(state_register_file_nid,
+    riscr_is_active_read(ir_nid, state_register_file_nid),
+    state_data_segment_nid, state_heap_segment_nid, state_stack_segment_nid, state_input_tapes_nid);
+  roundtrip_inverse_output_tapes_nid = riscr_tapes_data_flow(state_register_file_nid,
+    riscr_is_active_write(ir_nid, state_register_file_nid),
+    state_data_segment_nid, state_heap_segment_nid, state_stack_segment_nid, state_output_tapes_nid);
+  roundtrip_inverse_tape_heads_nid  = riscr_tape_heads_data_flow(ir_nid, state_register_file_nid);
+  roundtrip_inverse_tape_inputs_nid = riscr_tape_inputs_data_flow(ir_nid, state_register_file_nid);
+  roundtrip_inverse_open_files_nid  = riscr_open_files_data_flow(ir_nid, state_register_file_nid);
 
   roundtrip_inverse_skip_nid = riscr_roundtrip_filter(state_pc_nid, ir_nid, control_flow_nid,
     state_register_file_nid, state_code_segment_nid,
@@ -13165,6 +13992,9 @@ void model_rotor() {
   init_machine_interface();
   init_kernel_interface();
 
+  if (RISCR)
+    init_riscr_tape_sorts();
+
   init_register_file_sorts();
   init_memory_sorts();
 
@@ -13191,6 +14021,8 @@ void model_rotor() {
     new_segmentation(core);
 
     new_kernel_state(core);
+    if (RISCR)
+      riscr_new_tape_state();
     new_core_state(core);
     new_register_file_state(core);
 
@@ -13204,8 +14036,11 @@ void model_rotor() {
       riscr_kernel_combinational(core, state_pc_nid, eval_ir_nid,
         eval_non_kernel_control_flow_nid,
         eval_non_kernel_register_data_flow_nid,
+        eval_data_segment_data_flow_nid,
         eval_non_kernel_heap_segment_data_flow_nid,
-        state_program_break_nid, state_register_file_nid);
+        eval_stack_segment_data_flow_nid,
+        state_program_break_nid, state_register_file_nid,
+        state_data_segment_nid, state_heap_segment_nid, state_stack_segment_nid);
     else
       kernel_combinational(core, state_pc_nid, eval_ir_nid,
         eval_non_kernel_control_flow_nid,
@@ -13253,7 +14088,10 @@ void model_rotor() {
         eval_ir_nid,
         state_register_file_nid,
         state_code_segment_nid,
-        state_program_break_nid);
+        state_program_break_nid,
+        state_data_segment_nid,
+        state_heap_segment_nid,
+        state_stack_segment_nid);
     else
       kernel_properties(core,
         eval_ir_nid,
@@ -13473,6 +14311,16 @@ void print_model_for(uint64_t core) {
   print_break_line_for(core, next_readable_bytes_nids);
   print_break_line_for(core, next_read_bytes_nids);
 
+  if (RISCR) {
+    print_nobreak_comment_for(core, "update tape state");
+
+    print_break_line(next_open_files_nid);
+    print_break_line(next_tape_inputs_nid);
+    print_break_line(next_tape_heads_nid);
+    print_break_line(next_input_tapes_nid);
+    print_break_line(next_output_tapes_nid);
+  }
+
   print_break_comment_line_for(core, "kernel and instruction control flow", eval_control_flow_nids);
   print_break_comment_line_for(core, "update program counter", next_pc_nids);
 
@@ -13556,6 +14404,8 @@ void print_model_for(uint64_t core) {
   print_break_line_for(core, prop_irreversible_return_nids);
   print_break_line_for(core, prop_irreversible_brk_nids);
   print_break_line_for(core, prop_irreversible_exit_nids);
+  print_break_line_for(core, prop_irreversible_tape_nids);
+  print_break_line_for(core, prop_irreversible_openat_nids);
 
   // synchronizing program counters
 
@@ -14148,6 +14998,8 @@ uint64_t eval_properties(uint64_t core, uint64_t bad) {
   halt = halt + eval_property_for(core, prop_irreversible_return_nids, bad);
   halt = halt + eval_property_for(core, prop_irreversible_brk_nids, bad);
   halt = halt + eval_property_for(core, prop_irreversible_exit_nids, bad);
+  halt = halt + eval_property_for(core, prop_irreversible_tape_nids, bad);
+  halt = halt + eval_property_for(core, prop_irreversible_openat_nids, bad);
 
   // synchronizing program counters
 
@@ -14195,6 +15047,17 @@ uint64_t eval_sequential(uint64_t core) {
   if (core == number_of_cores - 1) {
     halt = halt * eval_next(next_file_descriptor_nid);
     eval_next(next_input_buffer_nid);
+
+    if (RISCR) {
+      halt = halt * eval_next(next_open_files_nid);
+      halt = halt * eval_next(next_tape_inputs_nid);
+      halt = halt * eval_next(next_tape_heads_nid);
+      halt = halt * eval_next(next_input_tapes_nid);
+      halt = halt * eval_next(next_output_tapes_nid);
+      eval_next(next_tape_ends_nid);
+      eval_next(next_tape_opens_nid);
+      eval_next(next_zeroed_tape_flags_nid);
+    }
   }
   halt = halt * eval_next_for(core, next_readable_bytes_nids);
   halt = halt * eval_next_for(core, next_read_bytes_nids);
@@ -14250,6 +15113,17 @@ void apply_sequential(uint64_t core) {
   if (core == number_of_cores - 1) {
     apply_next(next_file_descriptor_nid);
     apply_next(next_input_buffer_nid);
+
+    if (RISCR) {
+      apply_next(next_open_files_nid);
+      apply_next(next_tape_inputs_nid);
+      apply_next(next_tape_heads_nid);
+      apply_next(next_input_tapes_nid);
+      apply_next(next_output_tapes_nid);
+      apply_next(next_tape_ends_nid);
+      apply_next(next_tape_opens_nid);
+      apply_next(next_zeroed_tape_flags_nid);
+    }
   }
   apply_next_for(core, next_readable_bytes_nids);
   apply_next_for(core, next_read_bytes_nids);
@@ -14280,6 +15154,14 @@ void save_states(uint64_t core) {
   if (core == number_of_cores - 1) {
     save_state(next_file_descriptor_nid);
     save_state(next_input_buffer_nid);
+
+    if (RISCR) {
+      save_state(next_open_files_nid);
+      save_state(next_tape_inputs_nid);
+      save_state(next_tape_heads_nid);
+      save_state(next_input_tapes_nid);
+      save_state(next_output_tapes_nid);
+    }
   }
   save_state_for(core, next_readable_bytes_nids);
   save_state_for(core, next_read_bytes_nids);
@@ -14310,6 +15192,14 @@ void restore_states(uint64_t core) {
   if (core == number_of_cores - 1) {
     restore_state(next_file_descriptor_nid);
     restore_state(next_input_buffer_nid);
+
+    if (RISCR) {
+      restore_state(next_open_files_nid);
+      restore_state(next_tape_inputs_nid);
+      restore_state(next_tape_heads_nid);
+      restore_state(next_input_tapes_nid);
+      restore_state(next_output_tapes_nid);
+    }
   }
   restore_state_for(core, next_readable_bytes_nids);
   restore_state_for(core, next_read_bytes_nids);
@@ -14340,6 +15230,13 @@ void reset_states(uint64_t core) {
   if (core == number_of_cores - 1) {
     reset_state(init_file_descriptor_nid);
     reset_state(init_input_buffer_nid);
+
+    if (RISCR) {
+      reset_state(init_open_files_nid);
+      reset_state(init_tape_inputs_nid);
+      reset_state(init_tape_heads_nid);
+      reset_state(init_output_tapes_nid);
+    }
   }
   reset_state_for(core, init_readable_bytes_nids);
   reset_state_for(core, init_read_bytes_nids);
@@ -14719,6 +15616,7 @@ uint64_t roundtrip_random_state() {
   uint64_t imm;
   uint64_t pc;
   uint64_t brk;
+  uint64_t fd;
 
   // generates a random state with one RISC-R instruction and its come-from
   // in the code segment; returns 1 if the state is the state after the
@@ -14747,6 +15645,29 @@ uint64_t roundtrip_random_state() {
 
   set_state(state_program_break_nid, brk);
 
+  // tapes: random words, heads anywhere on the tape, random file sizes and kinds
+
+  roundtrip_randomize_array(state_input_tapes_nid);
+  roundtrip_randomize_array(state_output_tapes_nid);
+
+  fd = 0;
+
+  while (fd < NUMBER_OF_TAPES) {
+    write_array_raw(state_tape_heads_nid, fd, roundtrip_random_below(TAPE_WORDS + 1));
+
+    if (roundtrip_random_below(3) == 0)
+      write_array_raw(state_tape_ends_nid, fd, -1);
+    else
+      write_array_raw(state_tape_ends_nid, fd, roundtrip_random_below(TAPE_WORDS * WORDSIZE + 2 * WORDSIZE));
+
+    write_array_raw(state_tape_inputs_nid, fd, roundtrip_random_below(2));
+    write_array_raw(state_tape_opens_nid, fd, roundtrip_random_below(2));
+
+    fd = fd + 1;
+  }
+
+  set_state(state_open_files_nid, 3 + roundtrip_random_below(NUMBER_OF_TAPES - 2));
+
   // code
 
   roundtrip_zero_array(state_code_segment_nid);
@@ -14771,7 +15692,7 @@ uint64_t roundtrip_random_state() {
     rs2 = roundtrip_random_register();
   }
 
-  roundtrip_kind = roundtrip_random_below(14);
+  roundtrip_kind = roundtrip_random_below(ROUNDTRIP_KINDS);
   roundtrip_cf   = 0;
 
   if (after)
@@ -14875,6 +15796,38 @@ uint64_t roundtrip_random_state() {
         roundtrip_set_register(rd, 0);
     } else if (not(lawless))
       roundtrip_set_register(rd, roundtrip_target);
+  } else if (roundtrip_kind >= 14) {
+    // read, write, or openat on a random descriptor with a random buffer
+    roundtrip_ir = encode_i_format(0, REG_ZR, F3_ECALL, REG_ZR, OP_SYSTEM);
+
+    if (roundtrip_kind == 14)
+      roundtrip_set_register(REG_A7, SYSCALL_READ);
+    else if (roundtrip_kind == 15)
+      roundtrip_set_register(REG_A7, SYSCALL_WRITE);
+    else
+      roundtrip_set_register(REG_A7, SYSCALL_OPENAT);
+
+    roundtrip_set_register(REG_A1, roundtrip_random_below(NUMBER_OF_TAPES + 1));
+
+    if (roundtrip_kind == 16) {
+      // filename, flags, mode
+      roundtrip_set_register(REG_A1, roundtrip_random_address());
+
+      fd = roundtrip_random_below(4);
+
+      if (fd == 0)
+        roundtrip_set_register(REG_A2, O_RDONLY);
+      else if (fd == 1)
+        roundtrip_set_register(REG_A2, 0);
+      else if (fd == 2)
+        roundtrip_set_register(REG_A2, 577);
+    } else {
+      // buffer and size
+      if (not(lawless))
+        roundtrip_set_register(REG_A2, roundtrip_random_address());
+
+      roundtrip_set_register(REG_A3, roundtrip_random_below(SYSCALL_WORDS * WORDSIZE + WORDSIZE + 1));
+    }
   } else {
     // brk with a1 around the heap and a0 zero before, result after
     roundtrip_ir = encode_i_format(0, REG_ZR, F3_ECALL, REG_ZR, OP_SYSTEM);
@@ -14918,31 +15871,62 @@ void roundtrip_advance() {
   set_step(state_data_segment_nid, next_step);
   set_step(state_heap_segment_nid, next_step);
   set_step(state_stack_segment_nid, next_step);
+  set_step(state_input_tapes_nid, next_step);
+  set_step(state_output_tapes_nid, next_step);
+  set_step(state_tape_heads_nid, next_step);
+  set_step(state_tape_ends_nid, next_step);
+  set_step(state_tape_inputs_nid, next_step);
+  set_step(state_tape_opens_nid, next_step);
+  set_step(state_open_files_nid, next_step);
 
   current_step = next_step;
 
   next_step = current_step + 1;
 }
 
-void roundtrip_step(uint64_t* exchange_nid, uint64_t* control_flow_nid, uint64_t* program_break_nid,
-  uint64_t* register_data_flow_nid, uint64_t* data_segment_nid, uint64_t* heap_segment_nid, uint64_t* stack_segment_nid) {
+void roundtrip_step(uint64_t inverse) {
   uint64_t pc;
   uint64_t brk;
+  uint64_t open_files;
 
-  // reads first: arrays are updated in place when evaluated
+  // one step of the inverse or the forward model; reads first since
+  // arrays are updated in place when evaluated
 
-  eval_line(exchange_nid);
+  if (inverse) {
+    eval_line(roundtrip_inverse_exchange_nid);
 
-  pc  = eval_line(control_flow_nid);
-  brk = eval_line(program_break_nid);
+    pc         = eval_line(roundtrip_inverse_control_flow_nid);
+    brk        = eval_line(roundtrip_inverse_program_break_nid);
+    open_files = eval_line(roundtrip_inverse_open_files_nid);
 
-  eval_line(register_data_flow_nid);
-  eval_line(data_segment_nid);
-  eval_line(heap_segment_nid);
-  eval_line(stack_segment_nid);
+    eval_line(roundtrip_inverse_register_data_flow_nid);
+    eval_line(roundtrip_inverse_data_segment_nid);
+    eval_line(roundtrip_inverse_heap_segment_nid);
+    eval_line(roundtrip_inverse_stack_segment_nid);
+    eval_line(roundtrip_inverse_input_tapes_nid);
+    eval_line(roundtrip_inverse_output_tapes_nid);
+    eval_line(roundtrip_inverse_tape_inputs_nid);
+    eval_line(roundtrip_inverse_tape_heads_nid);
+  } else {
+    eval_line(roundtrip_forward_exchange_nid);
+
+    pc         = eval_line(roundtrip_forward_control_flow_nid);
+    brk        = eval_line(roundtrip_forward_program_break_nid);
+    open_files = eval_line(roundtrip_forward_open_files_nid);
+
+    eval_line(roundtrip_forward_register_data_flow_nid);
+    eval_line(roundtrip_forward_data_segment_nid);
+    eval_line(roundtrip_forward_heap_segment_nid);
+    eval_line(roundtrip_forward_stack_segment_nid);
+    eval_line(roundtrip_forward_input_tapes_nid);
+    eval_line(roundtrip_forward_output_tapes_nid);
+    eval_line(roundtrip_forward_tape_inputs_nid);
+    eval_line(roundtrip_forward_tape_heads_nid);
+  }
 
   set_state(state_pc_nid, pc);
   set_state(state_program_break_nid, brk);
+  set_state(state_open_files_nid, open_files);
 
   roundtrip_advance();
 }
@@ -14972,8 +15956,15 @@ uint64_t eval_riscr_roundtrip() {
   uint64_t* saved_data;
   uint64_t* saved_heap;
   uint64_t* saved_stack;
+  uint64_t* saved_input_tapes;
+  uint64_t* saved_output_tapes;
+  uint64_t* saved_tape_heads;
+  uint64_t* saved_tape_ends;
+  uint64_t* saved_tape_inputs;
+  uint64_t* saved_tape_opens;
   uint64_t  saved_pc;
   uint64_t  saved_brk;
+  uint64_t  saved_open_files;
   uint64_t  n;
   uint64_t  passed;
   uint64_t  skipped;
@@ -14981,7 +15972,7 @@ uint64_t eval_riscr_roundtrip() {
   uint64_t  after;
   uint64_t  ok;
 
-  roundtrip_kinds = "lui addi add sub mul divu remu sltu ld beq jal call return brk";
+  roundtrip_kinds = "lui addi add sub mul divu remu sltu ld beq jal call return brk read write openat";
 
   roundtrip_passed_forward  = zmalloc(ROUNDTRIP_KINDS * sizeof(uint64_t));
   roundtrip_passed_backward = zmalloc(ROUNDTRIP_KINDS * sizeof(uint64_t));
@@ -14991,6 +15982,13 @@ uint64_t eval_riscr_roundtrip() {
   saved_data      = allocate_array(get_sid(state_data_segment_nid));
   saved_heap      = allocate_array(get_sid(state_heap_segment_nid));
   saved_stack     = allocate_array(get_sid(state_stack_segment_nid));
+
+  saved_input_tapes  = allocate_array(get_sid(state_input_tapes_nid));
+  saved_output_tapes = allocate_array(get_sid(state_output_tapes_nid));
+  saved_tape_heads   = allocate_array(get_sid(state_tape_heads_nid));
+  saved_tape_ends    = allocate_array(get_sid(state_tape_ends_nid));
+  saved_tape_inputs  = allocate_array(get_sid(state_tape_inputs_nid));
+  saved_tape_opens   = allocate_array(get_sid(state_tape_opens_nid));
 
   printf("%s: ********************************************************************************\n", selfie_name);
   printf("%s: RISC-R round trip on %lu random states with code at 0x%lX-0x%lX\n", selfie_name,
@@ -15016,6 +16014,15 @@ uint64_t eval_riscr_roundtrip() {
     copy_array(get_sid(state_heap_segment_nid), (uint64_t*) get_state(state_heap_segment_nid), saved_heap);
     copy_array(get_sid(state_stack_segment_nid), (uint64_t*) get_state(state_stack_segment_nid), saved_stack);
 
+    saved_open_files = get_state(state_open_files_nid);
+
+    copy_array(get_sid(state_input_tapes_nid), (uint64_t*) get_state(state_input_tapes_nid), saved_input_tapes);
+    copy_array(get_sid(state_output_tapes_nid), (uint64_t*) get_state(state_output_tapes_nid), saved_output_tapes);
+    copy_array(get_sid(state_tape_heads_nid), (uint64_t*) get_state(state_tape_heads_nid), saved_tape_heads);
+    copy_array(get_sid(state_tape_ends_nid), (uint64_t*) get_state(state_tape_ends_nid), saved_tape_ends);
+    copy_array(get_sid(state_tape_inputs_nid), (uint64_t*) get_state(state_tape_inputs_nid), saved_tape_inputs);
+    copy_array(get_sid(state_tape_opens_nid), (uint64_t*) get_state(state_tape_opens_nid), saved_tape_opens);
+
     if (after)
       ok = eval_line(roundtrip_inverse_skip_nid);
     else
@@ -15030,19 +16037,11 @@ uint64_t eval_riscr_roundtrip() {
       roundtrip_advance();
     } else {
       if (after) {
-        roundtrip_step(roundtrip_inverse_exchange_nid, roundtrip_inverse_control_flow_nid, roundtrip_inverse_program_break_nid,
-          roundtrip_inverse_register_data_flow_nid,
-          roundtrip_inverse_data_segment_nid, roundtrip_inverse_heap_segment_nid, roundtrip_inverse_stack_segment_nid);
-        roundtrip_step(roundtrip_forward_exchange_nid, roundtrip_forward_control_flow_nid, roundtrip_forward_program_break_nid,
-          roundtrip_forward_register_data_flow_nid,
-          roundtrip_forward_data_segment_nid, roundtrip_forward_heap_segment_nid, roundtrip_forward_stack_segment_nid);
+        roundtrip_step(1);
+        roundtrip_step(0);
       } else {
-        roundtrip_step(roundtrip_forward_exchange_nid, roundtrip_forward_control_flow_nid, roundtrip_forward_program_break_nid,
-          roundtrip_forward_register_data_flow_nid,
-          roundtrip_forward_data_segment_nid, roundtrip_forward_heap_segment_nid, roundtrip_forward_stack_segment_nid);
-        roundtrip_step(roundtrip_inverse_exchange_nid, roundtrip_inverse_control_flow_nid, roundtrip_inverse_program_break_nid,
-          roundtrip_inverse_register_data_flow_nid,
-          roundtrip_inverse_data_segment_nid, roundtrip_inverse_heap_segment_nid, roundtrip_inverse_stack_segment_nid);
+        roundtrip_step(0);
+        roundtrip_step(1);
       }
 
       ok = 1;
@@ -15063,6 +16062,19 @@ uint64_t eval_riscr_roundtrip() {
       ok = ok * roundtrip_compare_array(state_data_segment_nid, saved_data, "data segment word");
       ok = ok * roundtrip_compare_array(state_heap_segment_nid, saved_heap, "heap segment word");
       ok = ok * roundtrip_compare_array(state_stack_segment_nid, saved_stack, "stack segment word");
+
+      if (get_state(state_open_files_nid) != saved_open_files) {
+        printf("%s: open files is %lu but was %lu\n", selfie_name, get_state(state_open_files_nid), saved_open_files);
+
+        ok = 0;
+      }
+
+      ok = ok * roundtrip_compare_array(state_input_tapes_nid, saved_input_tapes, "input tape word");
+      ok = ok * roundtrip_compare_array(state_output_tapes_nid, saved_output_tapes, "output tape word");
+      ok = ok * roundtrip_compare_array(state_tape_heads_nid, saved_tape_heads, "tape head");
+      ok = ok * roundtrip_compare_array(state_tape_ends_nid, saved_tape_ends, "file size");
+      ok = ok * roundtrip_compare_array(state_tape_inputs_nid, saved_tape_inputs, "tape kind");
+      ok = ok * roundtrip_compare_array(state_tape_opens_nid, saved_tape_opens, "host open");
 
       if (ok) {
         passed = passed + 1;
@@ -15446,6 +16458,43 @@ uint64_t parse_model_arguments() {
 
     if (number_of_remaining_arguments() > 1) {
       riscr_roundtrip = atoi(peek_argument(1));
+
+      get_argument();
+    } else
+      return EXITCODE_BADARGUMENTS;
+  } else if (string_compare(peek_argument(1), tapes_option)) {
+    get_argument();
+
+    if (number_of_remaining_arguments() > 1) {
+      // at least the standard files and one more, rounded up to a power of two
+      NUMBER_OF_TAPES = two_to_the_power_of(log_two(atoi(peek_argument(1)) * 2 - 1));
+
+      if (NUMBER_OF_TAPES < 4)
+        NUMBER_OF_TAPES = 4;
+
+      get_argument();
+    } else
+      return EXITCODE_BADARGUMENTS;
+  } else if (string_compare(peek_argument(1), tape_words_option)) {
+    get_argument();
+
+    if (number_of_remaining_arguments() > 1) {
+      TAPE_WORDS = two_to_the_power_of(log_two(atoi(peek_argument(1)) * 2 - 1));
+
+      if (TAPE_WORDS < 2)
+        TAPE_WORDS = 2;
+
+      get_argument();
+    } else
+      return EXITCODE_BADARGUMENTS;
+  } else if (string_compare(peek_argument(1), syscall_words_option)) {
+    get_argument();
+
+    if (number_of_remaining_arguments() > 1) {
+      SYSCALL_WORDS = atoi(peek_argument(1));
+
+      if (SYSCALL_WORDS == 0)
+        SYSCALL_WORDS = 1;
 
       get_argument();
     } else
