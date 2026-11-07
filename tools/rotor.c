@@ -3088,8 +3088,6 @@ uint64_t* riscr_roundtrip_filter(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* c
   uint64_t* register_file_nid, uint64_t* code_segment_nid,
   uint64_t* data_segment_nid, uint64_t* heap_segment_nid, uint64_t* stack_segment_nid,
   uint64_t* program_break_nid);
-uint64_t* riscr_roundtrip_exchange(uint64_t* ir_nid, uint64_t* register_file_nid,
-  uint64_t* data_segment_nid, uint64_t* heap_segment_nid, uint64_t* stack_segment_nid);
 void riscr_roundtrip_model();
 
 void rotor_combinational(uint64_t core, uint64_t* pc_nid,
@@ -3258,7 +3256,6 @@ uint64_t* prop_irreversible_openat_nids   = (uint64_t*) 0;
 // RISC-R round trip: step function of the other direction over the same state
 
 uint64_t* roundtrip_forward_skip_nid               = (uint64_t*) 0;
-uint64_t* roundtrip_forward_exchange_nid           = (uint64_t*) 0;
 uint64_t* roundtrip_forward_control_flow_nid       = (uint64_t*) 0;
 uint64_t* roundtrip_forward_program_break_nid      = (uint64_t*) 0;
 uint64_t* roundtrip_forward_register_data_flow_nid = (uint64_t*) 0;
@@ -3272,7 +3269,6 @@ uint64_t* roundtrip_forward_tape_inputs_nid        = (uint64_t*) 0;
 uint64_t* roundtrip_forward_open_files_nid         = (uint64_t*) 0;
 
 uint64_t* roundtrip_inverse_skip_nid               = (uint64_t*) 0;
-uint64_t* roundtrip_inverse_exchange_nid           = (uint64_t*) 0;
 uint64_t* roundtrip_inverse_control_flow_nid       = (uint64_t*) 0;
 uint64_t* roundtrip_inverse_program_break_nid      = (uint64_t*) 0;
 uint64_t* roundtrip_inverse_register_data_flow_nid = (uint64_t*) 0;
@@ -3834,6 +3830,9 @@ void new_register_file_state(uint64_t core) {
 
       exit(EXITCODE_SYSTEMERROR);
     }
+
+    // keep the write log short
+    apply_writes();
   } else {
     initial_register_file_nid = state_register_file_nid;
 
@@ -3860,6 +3859,9 @@ void new_register_file_state(uint64_t core) {
 
           exit(EXITCODE_SYSTEMERROR);
         }
+
+        // keep the write log short
+        apply_writes();
       }
 
       reg = reg + 1;
@@ -4213,6 +4215,9 @@ void new_code_segment(uint64_t core) {
 
           exit(EXITCODE_SYSTEMERROR);
         }
+
+        // keep the write log short
+        apply_writes();
       }
 
       pc = pc + INSTRUCTIONSIZE;
@@ -4342,6 +4347,9 @@ void initialize_memory_segment(uint64_t core, uint64_t* state_segment_nid,
 
         exit(EXITCODE_SYSTEMERROR);
       }
+
+      // keep the write log short
+      apply_writes();
     }
 
     vaddr = vaddr + WORDSIZE;
@@ -10589,6 +10597,40 @@ void riscr_properties(uint64_t core, uint64_t* pc_nid, uint64_t* ir_nid,
       format_comment("core-%lu-irreversible-exit", core),
       format_comment("core-%lu irreversible instruction: exit executed backward", core)));
 
+  // RISC-R exit takes the exit code in a1
+
+  if (check_bad_exit_code) {
+    prop_bad_exit_code_nid = new_property(OP_BAD,
+      new_binary_boolean(OP_AND,
+        riscr_is_syscall(ir_nid, register_file_nid, NID_EXIT_SYSCALL_ID, "exit"),
+        new_binary_boolean(OP_EQ,
+          load_register_value(NID_A1, "a1 value", register_file_nid),
+          new_constant(OP_CONSTD, SID_MACHINE_WORD, target_exit_code,
+            format_comment("bad exit code %ld", target_exit_code)),
+          "actual exit code == bad exit code?"),
+        "active exit system call with bad exit code"),
+      format_comment("core-%lu-bad-exit-code", core),
+      format_comment("exit(%ld)", target_exit_code));
+
+    set_for(core, prop_bad_exit_code_nids, prop_bad_exit_code_nid);
+  }
+
+  if (check_good_exit_code) {
+    prop_good_exit_code_nid = new_property(OP_BAD,
+      new_binary_boolean(OP_AND,
+        riscr_is_syscall(ir_nid, register_file_nid, NID_EXIT_SYSCALL_ID, "exit"),
+        new_binary_boolean(OP_NEQ,
+          load_register_value(NID_A1, "a1 value", register_file_nid),
+          new_constant(OP_CONSTD, SID_MACHINE_WORD, target_exit_code,
+            format_comment("good exit code %ld", target_exit_code)),
+          "actual exit code != good exit code?"),
+        "active exit system call with good exit code"),
+      format_comment("core-%lu-good-exit-code", core),
+      format_comment("exit(%ld)", target_exit_code));
+
+    set_for(core, prop_good_exit_code_nids, prop_good_exit_code_nid);
+  }
+
   set_for(core, prop_irreversible_tape_nids, state_property(core,
     UNUSED,
     riscr_is_irreversible_tape(ir_nid, register_file_nid),
@@ -10707,43 +10749,6 @@ uint64_t* riscr_roundtrip_filter(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* c
     "skip state in round trip?");
 }
 
-uint64_t* riscr_roundtrip_exchange(uint64_t* ir_nid, uint64_t* register_file_nid,
-  uint64_t* data_segment_nid, uint64_t* heap_segment_nid, uint64_t* stack_segment_nid) {
-  uint64_t  i;
-  uint64_t* operands_nid;
-
-  // the evaluator updates arrays in place and evaluates ite lazily: the
-  // operands of the ld exchange and of the tape exchanges, structurally shared
-  // with the data flows, are evaluated before any data flow writes
-
-  operands_nid = new_binary(OP_ADD, SID_MACHINE_WORD,
-    riscr_load_machine_word(get_rs1_value_plus_I_immediate(ir_nid, register_file_nid),
-      data_segment_nid, heap_segment_nid, stack_segment_nid),
-    load_register_value(get_instruction_rd(ir_nid), "current rd value", register_file_nid),
-    "ld exchange operands");
-
-  operands_nid = new_binary(OP_ADD, SID_MACHINE_WORD,
-    operands_nid,
-    riscr_syscall_result(ir_nid, register_file_nid),
-    "system call result");
-
-  i = 0;
-
-  while (i < SYSCALL_WORDS) {
-    operands_nid = new_binary(OP_ADD, SID_MACHINE_WORD,
-      operands_nid,
-      new_binary(OP_ADD, SID_MACHINE_WORD,
-        riscr_tape_word(i, register_file_nid),
-        riscr_buffer_word(i, register_file_nid, data_segment_nid, heap_segment_nid, stack_segment_nid),
-        format_comment("tape exchange operands of word %lu", i)),
-      "exchange operands");
-
-    i = i + 1;
-  }
-
-  return operands_nid;
-}
-
 void riscr_roundtrip_model() {
   uint64_t* ir_nid;
   uint64_t* control_flow_nid;
@@ -10768,9 +10773,6 @@ void riscr_roundtrip_model() {
     state_register_file_nid, state_code_segment_nid,
     state_data_segment_nid, state_heap_segment_nid, state_stack_segment_nid,
     state_program_break_nid);
-
-  roundtrip_forward_exchange_nid = riscr_roundtrip_exchange(eval_ir_nid, state_register_file_nid,
-    state_data_segment_nid, state_heap_segment_nid, state_stack_segment_nid);
 
   reverse = 1 - reverse;
 
@@ -10808,9 +10810,6 @@ void riscr_roundtrip_model() {
     state_register_file_nid, state_code_segment_nid,
     state_data_segment_nid, state_heap_segment_nid, state_stack_segment_nid,
     state_program_break_nid);
-
-  roundtrip_inverse_exchange_nid = riscr_roundtrip_exchange(ir_nid, state_register_file_nid,
-    state_data_segment_nid, state_heap_segment_nid, state_stack_segment_nid);
 
   reverse = 1 - reverse;
 }
@@ -11233,12 +11232,14 @@ void rotor_properties(uint64_t core, uint64_t* ir_nid, uint64_t* c_ir_nid,
 
     // TODO: check stack pointer invalid address earlier upon sp update
 
-    set_for(core, prop_stack_pointer_invalid_address_nids, state_property(core,
-      is_machine_word_virtual_address(
-        load_register_value(NID_SP, "sp value", register_file_nid)),
-      UNUSED,
-      format_comment("core-%lu-stack-pointer-invalid-address", core),
-      format_comment("core-%lu stack pointer invalid address", core)));
+    if (not(RISCR))
+      // RISC-R exchanges sp with memory, so sp transiently holds non-addresses
+      set_for(core, prop_stack_pointer_invalid_address_nids, state_property(core,
+        is_machine_word_virtual_address(
+          load_register_value(NID_SP, "sp value", register_file_nid)),
+        UNUSED,
+        format_comment("core-%lu-stack-pointer-invalid-address", core),
+        format_comment("core-%lu stack pointer invalid address", core)));
   }
 
   // optional segmentation fault checks in main memory
@@ -11274,13 +11275,15 @@ void rotor_properties(uint64_t core, uint64_t* ir_nid, uint64_t* c_ir_nid,
 
     // TODO: check stack pointer segfault earlier upon sp update
 
-    set_for(core, prop_stack_pointer_seg_faulting_nids, state_property(core,
-      is_address_in_machine_word_in_segment(
-        load_register_value(NID_SP, "sp value", register_file_nid),
-        stack_segment_nid),
-      UNUSED,
-      format_comment("core-%lu-stack-pointer-seg-fault", core),
-      format_comment("core-%lu stack pointer segmentation fault", core)));
+    if (not(RISCR))
+      // RISC-R exchanges sp with memory, so sp transiently holds non-addresses
+      set_for(core, prop_stack_pointer_seg_faulting_nids, state_property(core,
+        is_address_in_machine_word_in_segment(
+          load_register_value(NID_SP, "sp value", register_file_nid),
+          stack_segment_nid),
+        UNUSED,
+        format_comment("core-%lu-stack-pointer-seg-fault", core),
+        format_comment("core-%lu stack pointer segmentation fault", core)));
   }
 }
 
@@ -13292,12 +13295,10 @@ void roundtrip_step(uint64_t inverse) {
   uint64_t brk;
   uint64_t open_files;
 
-  // one step of the inverse or the forward model; reads first since
-  // arrays are updated in place when evaluated
+  // one step of the inverse or the forward model; array writes are
+  // logged while evaluating and applied afterwards
 
   if (inverse) {
-    eval_line(roundtrip_inverse_exchange_nid);
-
     pc         = eval_line(roundtrip_inverse_control_flow_nid);
     brk        = eval_line(roundtrip_inverse_program_break_nid);
     open_files = eval_line(roundtrip_inverse_open_files_nid);
@@ -13311,8 +13312,6 @@ void roundtrip_step(uint64_t inverse) {
     eval_line(roundtrip_inverse_tape_inputs_nid);
     eval_line(roundtrip_inverse_tape_heads_nid);
   } else {
-    eval_line(roundtrip_forward_exchange_nid);
-
     pc         = eval_line(roundtrip_forward_control_flow_nid);
     brk        = eval_line(roundtrip_forward_program_break_nid);
     open_files = eval_line(roundtrip_forward_open_files_nid);
@@ -13326,6 +13325,8 @@ void roundtrip_step(uint64_t inverse) {
     eval_line(roundtrip_forward_tape_inputs_nid);
     eval_line(roundtrip_forward_tape_heads_nid);
   }
+
+  apply_writes();
 
   set_state(state_pc_nid, pc);
   set_state(state_program_break_nid, brk);

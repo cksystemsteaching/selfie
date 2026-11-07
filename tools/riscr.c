@@ -116,7 +116,7 @@ uint64_t REG_BRK = 21; // s5: current program break, what RISC-U brk(0) returns
 uint64_t REG_X   = 22; // s6: scratch, zero between translated instructions
 uint64_t REG_Y   = 23; // s7: scratch, zero between translated instructions
 
-uint64_t HISTORY_GIGABYTES = 3; // size of the history stack at the start of the heap
+uint64_t HISTORY_MEGABYTES = 3072; // size of the history stack at the start of the heap, 3GB by default, see -history
 
 // kinds of translated instructions
 uint64_t TK_COPY      = 0;  // emitted as is
@@ -865,14 +865,18 @@ void put_prologue() {
 
   put_lui(REG_HP, heap_start / PAGESIZE);
 
-  g = 0;
+  g = HISTORY_MEGABYTES;
 
-  while (g < HISTORY_GIGABYTES) {
+  while (g >= 1024) {
     // 2^18 * 2^12 = 1GB
     put_lui(REG_BRK, two_to_the_power_of(18));
 
-    g = g + 1;
+    g = g - 1024;
   }
+
+  if (g > 0)
+    // 2^8 * 2^12 = 1MB
+    put_lui(REG_BRK, g * two_to_the_power_of(8));
 
   put_add(REG_BRK, REG_HP, REG_ZR);
 
@@ -1355,10 +1359,10 @@ uint64_t selfie_translate() {
     code_size / INSTRUCTIONSIZE,
     code_size / INSTRUCTIONSIZE / n,
     (code_size / INSTRUCTIONSIZE * 10 / n) % 10);
-  printf("%lu pushes in code, %lu long transfers, %luGB history stack\n",
+  printf("%lu pushes in code, %lu long transfers, %luMB history stack\n",
     number_of_history_slots,
     number_of_long_origins,
-    HISTORY_GIGABYTES);
+    HISTORY_MEGABYTES);
 
   selfie_output(filename);
 
@@ -2926,6 +2930,23 @@ int main(int argc, char** argv) {
   exit_code = selfie(1);
 
   if (exit_code == EXITCODE_MOREARGUMENTS) {
+    if (string_compare(argument, "-history"))
+      // size of the history stack in MB, for translating programs that run in small models
+      if (number_of_remaining_arguments() > 0) {
+        HISTORY_MEGABYTES = atoi(get_argument());
+
+        if (HISTORY_MEGABYTES == 0)
+          HISTORY_MEGABYTES = 1;
+
+        if (number_of_remaining_arguments() > 0)
+          get_argument();
+        else
+          exit_code = EXITCODE_BADARGUMENTS;
+      } else
+        exit_code = EXITCODE_BADARGUMENTS;
+  }
+
+  if (exit_code == EXITCODE_MOREARGUMENTS) {
     if (string_compare(argument, "-t")) {
       exit_code = selfie_translate();
 
@@ -2941,5 +2962,5 @@ int main(int argc, char** argv) {
       exit_code = selfie_run_reversibly();
   }
 
-  return exit_selfie(exit_code, " [ -t binary ] [ ( -m | -rev ) 0-4096 ... ]");
+  return exit_selfie(exit_code, " [ -history MB ] [ -t binary ] [ ( -m | -rev ) 0-4096 ... ]");
 }

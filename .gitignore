@@ -18,6 +18,7 @@ beator
 beator-32
 rotor
 rotor-32
+bitr
 
 # models the rotor assignments regenerate
 assignments/rotor-*/*-rotorized.btor2

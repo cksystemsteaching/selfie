@@ -211,7 +211,7 @@ cache: selfie selfie.m selfie.s examples/cache/dcache-access-[01].c
 .PHONY: sat brr bzz mon smt beat beator-btor2 rot synthesize rotor-btor2 btor2 more all
 
 # Run more that only requires standard tools and is not too slow
-more: sat brr bzz mon smt beat beator-btor2 rot synthesize rotor-btor2 rev trust riscr-model
+more: sat brr bzz mon smt beat beator-btor2 rot synthesize rotor-btor2 rev trust riscr-model sim
 
 # Run all that only requires standard tools and is not too slow
 all: less more
@@ -378,6 +378,37 @@ riscr-model: rotor
 	./rotor - 0 -riscr -inverse
 	./rotor - 0 -riscr -roundtrip 100000
 
+# Compile bitr.c with selfie.h and btor2.h as libraries into bitr executable
+bitr: tools/bitr.c tools/btor2.h selfie.h
+	$(CC) $(CFLAGS) --include selfie.h --include tools/btor2.h $< -o $@
+
+# Check bitr's simulator against mipster and riscr (M4 of projects/reversible.md): every symbolic example,
+# compiled to RISC-U and translated to RISC-R with a 1MB history stack, reads tests/bitr-input.txt and must
+# stop in rotor's model of it with the emulator's exit code after the emulator's number of instructions, or,
+# if the emulator throws an exception, with a bad state after that number of instructions
+sim: bitr selfie riscr rotor
+	for f in $(wildcard examples/symbolic/*.c); do \
+	  b=$${f%.c}; \
+	  ./selfie -c $$f -o $$b.m > /dev/null && \
+	  ./riscr -l $$b.m -history 1 -t $$b.r > /dev/null || exit 1; \
+	  for x in m r; do \
+	    if [ $$x = m ]; then run="./selfie -l $$b.m -m 1"; model=$$b-rotorized.btor2; \
+	    else run="./riscr -l $$b.r -m 1"; model=$$b-rotorized-riscr.btor2; fi; \
+	    out=$$($$run < tests/bitr-input.txt 2>&1); \
+	    e=$$(echo "$$out" | sed -n 's/.*with exit code \([0-9]*\).*/\1/p'); \
+	    n=$$(echo "$$out" | sed -n 's/.*summary: \([0-9]*\) executed instructions.*/\1/p'); \
+	    ./rotor -l $$b.$$x - $$e -heapallowance 2097152 -stackallowance 65536 > /dev/null || exit 1; \
+	    if [ $$e -lt 11 ]; then expected="bad core-0-bad-exit-code after $$n instructions"; \
+	    else expected="after $$((n + 1)) instructions"; fi; \
+	    ./bitr $$model -l $$b.$$x -i tests/bitr-input.txt | grep -q "$$expected" || \
+	      { echo "$$model: bitr disagrees with emulator, expected $$expected"; exit 1; }; \
+	    echo "$$model: exit code $$e after $$n instructions as in emulator"; \
+	  done; \
+	done
+
+# Prevent make from deleting intermediate target bitr
+.SECONDARY: bitr
+
 # Bennett mode (M2 of projects/reversible.md): selfie translated to RISC-R compiles selfie on riscr
 # to an identical binary and runs back to its initial state; riscr's translator reaches a fixed point
 # on itself; takes about 3GB of memory for the history stack and a few minutes
@@ -410,7 +441,7 @@ trust: selfie selfie.h
 	rm -f examples/trusting-trust/honest-stamp.c examples/trusting-trust/honest-victim.c examples/trusting-trust/trojaned-victim.c examples/trusting-trust/suspect-stamp.c
 
 # Consider these targets as targets, not files
-.PHONY: rev riscr-rev bennett trust riscr-model
+.PHONY: rev riscr-rev bennett trust riscr-model sim
 
 # Consider these targets as targets, not files
 .PHONY: spike qemu assemble beator-32 rotor-32 32-bit bitwuzla beator-bitme rotor-bitme bitme extras
@@ -528,5 +559,5 @@ clean:
 	rm -f tests/*.m tests/*.txt
 	rm -f examples/trusting-trust/honest-stamp.c examples/trusting-trust/honest-victim.c examples/trusting-trust/trojaned-victim.c examples/trusting-trust/suspect-stamp.c
 	rm -f selfie selfie-32 selfie.h selfie-gc.h selfie-gc-nomain.h selfie.exe
-	rm -f babysat buzzr monster beator beator-32 rotor rotor-32 riscr riscr.h riscr-test
+	rm -f babysat buzzr monster beator beator-32 rotor rotor-32 riscr riscr.h riscr-test bitr
 	rm -f selfie-u.m selfie-r.r selfie-r.m riscr-u.m riscr-r.r riscr-r2.r

@@ -383,6 +383,10 @@ void     write_array(uint64_t* state_nid, uint64_t index, uint64_t value);
 uint64_t is_symbolic_array_element(uint64_t* state_nid, uint64_t index);
 void     set_symbolic_array_element(uint64_t* state_nid, uint64_t index, uint64_t is_symbolic);
 
+void     log_write(uint64_t* state_nid, uint64_t index, uint64_t value, uint64_t is_symbolic);
+uint64_t find_logged_write(uint64_t* state_nid, uint64_t index);
+void     apply_writes();
+
 uint64_t is_bitwise_logical_operator(char* op);
 uint64_t is_logical_operator(char *op, uint64_t* sid);
 uint64_t is_bitwise_operator(char* op);
@@ -449,6 +453,20 @@ uint64_t INITIALIZED   = 0;  // initialized state
 
 uint64_t current_step = 0; // first step in evaluation is 0
 uint64_t next_step    = 0; // initial next step in evaluation is 0
+
+// writes are logged when evaluated and applied with the next state, so that
+// all reads of states in one step see the state before the step; only reads
+// through write expressions see the logged writes
+
+uint64_t* write_log_states   = (uint64_t*) 0; // written state per logged write
+uint64_t* write_log_indices  = (uint64_t*) 0; // written index
+uint64_t* write_log_values   = (uint64_t*) 0; // written value
+uint64_t* write_log_symbolic = (uint64_t*) 0; // written symbolic status
+
+uint64_t write_log_size     = 0; // number of logged writes
+uint64_t write_log_capacity = 0;
+
+uint64_t  write_log_found = 0; // result of the most recent find_logged_write
 
 uint64_t current_offset = 0; // keeps track of absolute current step
 
@@ -1488,6 +1506,89 @@ void set_symbolic_array_element(uint64_t* state_nid, uint64_t index, uint64_t is
     is_symbolic);
 }
 
+void log_write(uint64_t* state_nid, uint64_t index, uint64_t value, uint64_t is_symbolic) {
+  uint64_t* bigger;
+
+  if (write_log_size == write_log_capacity) {
+    if (write_log_capacity == 0)
+      write_log_capacity = 1024;
+    else
+      write_log_capacity = 2 * write_log_capacity;
+
+    bigger = zmalloc(write_log_capacity * sizeof(uint64_t*));
+    if (write_log_size > 0) memcopy(bigger, write_log_states, write_log_size * sizeof(uint64_t*));
+    write_log_states = bigger;
+
+    bigger = zmalloc(write_log_capacity * sizeof(uint64_t));
+    if (write_log_size > 0) memcopy(bigger, write_log_indices, write_log_size * sizeof(uint64_t));
+    write_log_indices = bigger;
+
+    bigger = zmalloc(write_log_capacity * sizeof(uint64_t));
+    if (write_log_size > 0) memcopy(bigger, write_log_values, write_log_size * sizeof(uint64_t));
+    write_log_values = bigger;
+
+    bigger = zmalloc(write_log_capacity * sizeof(uint64_t));
+    if (write_log_size > 0) memcopy(bigger, write_log_symbolic, write_log_size * sizeof(uint64_t));
+    write_log_symbolic = bigger;
+  }
+
+  *(write_log_states + write_log_size)   = (uint64_t) state_nid;
+  *(write_log_indices + write_log_size)  = index;
+  *(write_log_values + write_log_size)   = value;
+  *(write_log_symbolic + write_log_size) = is_symbolic;
+
+  write_log_size = write_log_size + 1;
+}
+
+uint64_t find_logged_write(uint64_t* state_nid, uint64_t index) {
+  uint64_t i;
+
+  // the most recent logged write of the state at the index, if any;
+  // write_log_found tells, the symbolic status is at the returned entry
+
+  i = write_log_size;
+
+  while (i > 0) {
+    i = i - 1;
+
+    if (*(write_log_states + i) == (uint64_t) state_nid)
+      if (*(write_log_indices + i) == index) {
+        write_log_found = 1;
+
+        return i;
+      }
+  }
+
+  write_log_found = 0;
+
+  return 0;
+}
+
+void apply_writes() {
+  uint64_t i;
+  uint64_t* state_nid;
+
+  // applies the logged writes in order and clears the log
+
+  i = 0;
+
+  while (i < write_log_size) {
+    state_nid = (uint64_t*) *(write_log_states + i);
+
+    if (*(write_log_symbolic + i))
+      set_symbolic_array_element(state_nid, *(write_log_indices + i), 1);
+    else {
+      set_symbolic_array_element(state_nid, *(write_log_indices + i), 0);
+
+      write_array(state_nid, *(write_log_indices + i), *(write_log_values + i));
+    }
+
+    i = i + 1;
+  }
+
+  write_log_size = 0;
+}
+
 uint64_t is_bitwise_logical_operator(char* op) {
   if (op == OP_AND)
     return 1;
@@ -1918,6 +2019,7 @@ uint64_t eval_read(uint64_t* line) {
   uint64_t* index_nid;
   uint64_t* state_nid;
   uint64_t index;
+  uint64_t i;
 
   read_nid = get_arg1(line);
 
@@ -1940,10 +2042,22 @@ uint64_t eval_read(uint64_t* line) {
           set_state(line, 1);
 
           if (not(has_symbolic_state(line))) {
-            if (is_symbolic_array_element(state_nid, index))
+            if (get_op(read_nid) != OP_STATE) {
+              // reading through write expressions sees their logged writes
+              i = find_logged_write(state_nid, index);
+
+              if (write_log_found) {
+                if (*(write_log_symbolic + i))
+                  set_symbolic(line, SYMBOLIC);
+                else
+                  set_state(line, *(write_log_values + i));
+              } else if (is_symbolic_array_element(state_nid, index))
+                set_symbolic(line, SYMBOLIC);
+              else
+                set_state(line, read_array(state_nid, index));
+            } else if (is_symbolic_array_element(state_nid, index))
               set_symbolic(line, SYMBOLIC);
             else
-              // TODO: non-symbolic read after unrelated non-symbolic write may be incorrect
               set_state(line, read_array(state_nid, index));
           }
         } else {
@@ -1999,17 +2113,10 @@ uint64_t eval_write(uint64_t* line) {
 
           propagate_symbolic_state(line, state_nid, index_nid, NONSYMBOLIC);
 
-          if (not(has_symbolic_state(line))) {
-            if (has_symbolic_state(value_nid))
-              set_symbolic_array_element(state_nid, index, 1);
-            else {
-              set_symbolic_array_element(state_nid, index, 0);
+          if (not(has_symbolic_state(line)))
+            // applied with the next state, see apply_writes
+            log_write(state_nid, index, value, has_symbolic_state(value_nid));
 
-              write_array(state_nid, index, value);
-            }
-          }
-
-          // TODO: log writes and only apply with init and next
           set_step(state_nid, next_step);
 
           set_state(line, (uint64_t) state_nid);
@@ -2353,6 +2460,9 @@ void eval_init(uint64_t* line) {
 
                   value_nid = (uint64_t*) eval_line(value_nid);
 
+                  // the initial value is the array with its writes applied
+                  apply_writes();
+
                   if (get_state(state_nid) != get_state(value_nid)) {
                     set_state(state_nid, get_state(value_nid));
                     set_state(line, get_state(state_nid));
@@ -2432,7 +2542,7 @@ uint64_t eval_next(uint64_t* line) {
 
                     no_update = get_state(state_nid) == value;
                   } else {
-                    printf("%s: next reupdating bitvector state error\n", selfie_name);
+                    printf("%s: next reupdating bitvector state error: %s\n", selfie_name, get_comment(line));
 
                     exit(EXITCODE_SYSTEMERROR);
                   }
@@ -2506,19 +2616,22 @@ void apply_next(uint64_t* line) {
 
     if (is_bitvector(get_sid(state_nid)))
       set_state(state_nid, get_state(value_nid));
-    // TODO: else log writes and only apply with init and next
+    else
+      // all logged writes of this step, those of other arrays included
+      apply_writes();
 
     if (state_nid != value_nid) {
       // state is only symbolic if the next value is symbolic
       set_symbolic(state_nid, line);
-
-      set_step(state_nid, next_step);
 
       if (printing_unrolled_model) {
         set_nid(state_nid, get_nid(value_nid));
         set_prefix(state_nid, get_prefix(value_nid));
       }
     } // else: symbolic state remains unchanged
+
+    // a read-only state advances with the step as well
+    set_step(state_nid, next_step);
 
     return;
   }
