@@ -211,7 +211,7 @@ cache: selfie selfie.m selfie.s examples/cache/dcache-access-[01].c
 .PHONY: sat brr bzz mon smt beat beator-btor2 rot synthesize rotor-btor2 btor2 more all
 
 # Run more that only requires standard tools and is not too slow
-more: sat brr bzz mon smt beat beator-btor2 rot synthesize rotor-btor2 rev trust riscr-model sim
+more: sat brr bzz mon smt beat beator-btor2 rot synthesize rotor-btor2 rev trust riscr-model sim bmc cdcl identity
 
 # Run all that only requires standard tools and is not too slow
 all: less more
@@ -406,6 +406,67 @@ sim: bitr selfie riscr rotor
 	  done; \
 	done
 
+# Check bitr's bounded model checker (M5 of projects/reversible.md): in rotor's model of every symbolic example,
+# compiled to RISC-U and translated to RISC-R, bitr finds an input that leads to a non-zero exit code, a division
+# by zero, or an invalid memory access, and the emulator, run on that input, does the same after the same number
+# of instructions; on one example bitr then enumerates all such inputs and proves that all others halt
+bmc: bitr selfie riscr rotor
+	for f in $(wildcard examples/symbolic/*.c); do \
+	  b=$${f%.c}; \
+	  ./selfie -c $$f -o $$b.m > /dev/null && \
+	  ./riscr -l $$b.m -history 1 -t $$b.r > /dev/null || exit 1; \
+	  for x in m r; do \
+	    if [ $$x = m ]; then run="./selfie -l $$b.m -m 1"; model=$$b-rotorized-riscuonly.btor2; isa=-riscuonly; \
+	    else run="./riscr -l $$b.r -m 1"; model=$$b-rotorized-riscr.btor2; isa=; fi; \
+	    ./rotor -l $$b.$$x - 0 -Pnobadexitcode -Pgoodexitcode -heapallowance 2097152 -stackallowance 65536 $$isa > /dev/null || exit 1; \
+	    bad=$$(./bitr $$model -l $$b.$$x -bmc 5000 -w $$b.witness | sed -n 's/.*: bad core-0-\([a-z-]*\) after \([0-9]*\) instructions/\1 \2/p' | head -1); \
+	    [ -n "$$bad" ] || { echo "$$model: no bad state found"; exit 1; }; \
+	    out=$$($$run < $$b.witness 2>&1); \
+	    e=$$(echo "$$out" | sed -n 's/.*with exit code \([0-9]*\).*/\1/p'); \
+	    n=$$(echo "$$out" | sed -n 's/.*summary: \([0-9]*\) executed instructions.*/\1/p'); \
+	    case "$$bad" in \
+	      good-exit-code*) [ $$e -gt 0 ] && [ $$e -lt 11 ] && [ "$${bad#* }" = $$n ] ;; \
+	      division-by-zero*) [ $$e = 22 ] && [ "$${bad#* }" = $$n ] ;; \
+	      *) [ $$e = 27 ] && [ "$${bad#* }" = $$((n + 1)) ] ;; \
+	    esac || { echo "$$model: witness does not replay: bitr found $$bad, emulator exits with $$e after $$n instructions"; exit 1; }; \
+	    echo "$$model: $$bad instructions, replayed in emulator with exit code $$e"; \
+	  done; \
+	done
+	./bitr examples/symbolic/division-by-zero-3-35-rotorized-riscuonly.btor2 -l examples/symbolic/division-by-zero-3-35.m -bmc 5000 -all | tee division-by-zero.bmc
+	[ $$(grep -c "bad core-0-division-by-zero" division-by-zero.bmc) = 2 ]
+	[ $$(grep -c "bad core-0-good-exit-code" division-by-zero.bmc) = 1 ]
+	grep -q "halted after 107 instructions on all inputs that reach no bad state" division-by-zero.bmc
+
+# CDCL and babysat agree (M5 of projects/reversible.md): on the instances in examples/sat and on every CNF with
+# at most 100 variables that bitr generates when model checking the symbolic examples, which is as far as
+# babysat's enumeration reaches
+cdcl: bitr babysat selfie rotor
+	rm -f examples/symbolic/*.cnf
+	for f in $(wildcard examples/symbolic/*.c); do \
+	  b=$${f%.c}; \
+	  ./selfie -c $$f -o $$b.m > /dev/null && \
+	  ./rotor -l $$b.m - 0 -Pnobadexitcode -Pgoodexitcode -riscuonly > /dev/null && \
+	  ./bitr $$b-rotorized-riscuonly.btor2 -l $$b.m -bmc 300 -all -dimacs $$b 100 > /dev/null || exit 1; \
+	done
+	n=0; for f in examples/sat/*.cnf examples/symbolic/*.cnf; do \
+	  a=$$(./babysat $$f | grep -o "is [un]*satisfiable"); \
+	  c=$$(./bitr -sat $$f | grep -o "is [un]*satisfiable"); \
+	  [ -n "$$a" ] && [ "$$a" = "$$c" ] || { echo "$$f: babysat says it $$a, CDCL says it $$c"; exit 1; }; \
+	  n=$$((n + 1)); \
+	done; echo "$@: babysat and CDCL agree on $$n instances"
+
+# Inverse after forward is the identity (M5 of projects/reversible.md): proven symbolically by bitr for one step
+# of the RISC-R machine model from every state that satisfies the model's constraints, and forward after inverse
+# as well; more steps follow by induction, each step of a run that reaches no bad state satisfies the constraints
+identity: bitr rotor
+	./rotor - 0 -riscr > /dev/null
+	./rotor - 0 -riscr -inverse > /dev/null
+	./bitr 64-bit-riscr-machine.btor2 -identity 64-bit-riscr-machine-inverse.btor2 | tee riscr-identity.txt
+	grep -q "64-bit-riscr-machine-inverse.btor2 after 64-bit-riscr-machine.btor2 is the identity on all 20 states" riscr-identity.txt
+	./bitr 64-bit-riscr-machine-inverse.btor2 -identity 64-bit-riscr-machine.btor2 | tee riscr-identity.txt
+	grep -q "64-bit-riscr-machine.btor2 after 64-bit-riscr-machine-inverse.btor2 is the identity on all 20 states" riscr-identity.txt
+	@echo "$@: the inverse RISC-R machine model undoes the forward model and the forward model the inverse, on all states"
+
 # Prevent make from deleting intermediate target bitr
 .SECONDARY: bitr
 
@@ -441,7 +502,7 @@ trust: selfie selfie.h
 	rm -f examples/trusting-trust/honest-stamp.c examples/trusting-trust/honest-victim.c examples/trusting-trust/trojaned-victim.c examples/trusting-trust/suspect-stamp.c
 
 # Consider these targets as targets, not files
-.PHONY: rev riscr-rev bennett trust riscr-model sim
+.PHONY: rev riscr-rev bennett trust riscr-model sim bmc cdcl identity
 
 # Consider these targets as targets, not files
 .PHONY: spike qemu assemble beator-32 rotor-32 32-bit bitwuzla beator-bitme rotor-bitme bitme extras
@@ -554,9 +615,11 @@ clean:
 	rm -f examples/*.s
 	rm -f examples/symbolic/*.smt
 	rm -f examples/symbolic/*.btor2
+	rm -f examples/symbolic/*.r examples/symbolic/*.witness examples/symbolic/*.cnf
+	rm -f division-by-zero.bmc riscr-identity.txt
 	rm -f tools/*.smt
 	rm -f tools/*.btor2
-	rm -f tests/*.m tests/*.txt
+	rm -f tests/*.m tests/riscr-test.txt
 	rm -f examples/trusting-trust/honest-stamp.c examples/trusting-trust/honest-victim.c examples/trusting-trust/trojaned-victim.c examples/trusting-trust/suspect-stamp.c
 	rm -f selfie selfie-32 selfie.h selfie-gc.h selfie-gc-nomain.h selfie.exe
 	rm -f babysat buzzr monster beator beator-32 rotor rotor-32 riscr riscr.h riscr-test bitr

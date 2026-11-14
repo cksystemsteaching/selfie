@@ -1283,6 +1283,8 @@ uint64_t* riscr_is_rd_zero(uint64_t* ir_nid);
 uint64_t* riscr_accumulate(uint64_t* rd_value_nid, uint64_t* value_nid, char* comment);
 uint64_t* riscr_flip(uint64_t* rd_value_nid, uint64_t* value_nid, char* comment);
 uint64_t* riscr_link_value(uint64_t* pc_nid);
+uint64_t  riscr_is_word_memory(uint64_t* segment_nid);
+uint64_t* riscr_is_unaligned(uint64_t* maddr_nid);
 uint64_t* riscr_load_machine_word(uint64_t* maddr_nid,
   uint64_t* data_segment_nid, uint64_t* heap_segment_nid, uint64_t* stack_segment_nid);
 uint64_t* riscr_store_machine_word_if_in_segment(uint64_t* maddr_nid, uint64_t* word_nid, uint64_t* segment_nid);
@@ -3064,6 +3066,7 @@ uint64_t* riscr_tape_heads_data_flow(uint64_t* ir_nid, uint64_t* register_file_n
 uint64_t* riscr_tape_inputs_data_flow(uint64_t* ir_nid, uint64_t* register_file_nid);
 uint64_t* riscr_open_files_data_flow(uint64_t* ir_nid, uint64_t* register_file_nid);
 
+uint64_t* riscr_is_input_zero_beyond_end(uint64_t* ir_nid, uint64_t* register_file_nid);
 uint64_t* riscr_is_irreversible_tape(uint64_t* ir_nid, uint64_t* register_file_nid);
 uint64_t* riscr_is_irreversible_openat(uint64_t* ir_nid, uint64_t* register_file_nid);
 uint64_t* riscr_is_buffer_seg_faulting(uint64_t* ir_nid, uint64_t* register_file_nid,
@@ -3252,6 +3255,8 @@ uint64_t* prop_irreversible_brk_nids      = (uint64_t*) 0;
 uint64_t* prop_irreversible_exit_nids     = (uint64_t*) 0;
 uint64_t* prop_irreversible_tape_nids     = (uint64_t*) 0;
 uint64_t* prop_irreversible_openat_nids   = (uint64_t*) 0;
+uint64_t* prop_input_beyond_end_nids      = (uint64_t*) 0;
+uint64_t* prop_unaligned_address_nids     = (uint64_t*) 0;
 
 // RISC-R round trip: step function of the other direction over the same state
 
@@ -3391,6 +3396,8 @@ void init_properties(uint64_t number_of_cores) {
   prop_irreversible_exit_nids     = allocate_lines(number_of_cores);
   prop_irreversible_tape_nids     = allocate_lines(number_of_cores);
   prop_irreversible_openat_nids   = allocate_lines(number_of_cores);
+  prop_input_beyond_end_nids      = allocate_lines(number_of_cores);
+  prop_unaligned_address_nids     = allocate_lines(number_of_cores);
 }
 
 // -----------------------------------------------------------------
@@ -7143,8 +7150,41 @@ uint64_t* riscr_link_value(uint64_t* pc_nid) {
     return get_pc_value_plus_4(pc_nid);
 }
 
+uint64_t riscr_is_word_memory(uint64_t* segment_nid) {
+  // RISC-R only accesses whole machine words at word-aligned addresses, so
+  // with memory words of that size an access is one read or write of the
+  // word that contains the address; unaligned addresses are a bad state
+  if (IS64BITTARGET)
+    return is_double_word_memory(segment_nid);
+  else
+    return 0;
+}
+
+uint64_t* riscr_is_unaligned(uint64_t* maddr_nid) {
+  return new_binary_boolean(OP_NEQ,
+    new_binary(OP_AND, SID_MACHINE_WORD, maddr_nid, NID_MACHINE_WORD_7, "address alignment"),
+    NID_MACHINE_WORD_0,
+    "address not word-aligned?");
+}
+
 uint64_t* riscr_load_machine_word(uint64_t* maddr_nid,
   uint64_t* data_segment_nid, uint64_t* heap_segment_nid, uint64_t* stack_segment_nid) {
+  uint64_t* vaddr_nid;
+
+  if (riscr_is_word_memory(data_segment_nid)) {
+    vaddr_nid = cast_machine_word_to_virtual_address(maddr_nid);
+
+    return new_ternary(OP_ITE, SID_MACHINE_WORD,
+      is_virtual_address_in_segment(vaddr_nid, stack_segment_nid),
+      load_aligned_memory_word(vaddr_to_laddr(vaddr_nid, stack_segment_nid), stack_segment_nid),
+      new_ternary(OP_ITE, SID_MACHINE_WORD,
+        is_virtual_address_in_segment(vaddr_nid, heap_segment_nid),
+        load_aligned_memory_word(vaddr_to_laddr(vaddr_nid, heap_segment_nid), heap_segment_nid),
+        load_aligned_memory_word(vaddr_to_laddr(vaddr_nid, data_segment_nid), data_segment_nid),
+        "load machine word from heap or data segment"),
+      "load machine word from stack, heap, or data segment");
+  }
+
   if (IS64BITTARGET)
     return load_double_word(maddr_nid, data_segment_nid, heap_segment_nid, stack_segment_nid);
   else
@@ -7152,6 +7192,16 @@ uint64_t* riscr_load_machine_word(uint64_t* maddr_nid,
 }
 
 uint64_t* riscr_store_machine_word_if_in_segment(uint64_t* maddr_nid, uint64_t* word_nid, uint64_t* segment_nid) {
+  uint64_t* vaddr_nid;
+
+  if (riscr_is_word_memory(segment_nid)) {
+    vaddr_nid = cast_machine_word_to_virtual_address(maddr_nid);
+
+    return store_if_in_segment(vaddr_nid,
+      store_aligned_memory_word(vaddr_to_laddr(vaddr_nid, segment_nid), word_nid, segment_nid),
+      segment_nid);
+  }
+
   if (IS64BITTARGET)
     return store_double_word_if_in_segment(maddr_nid, word_nid, segment_nid);
   else
@@ -9728,11 +9778,14 @@ uint64_t* riscr_does_brk_succeed(uint64_t* register_file_nid, uint64_t* program_
 
 uint64_t* riscr_does_brk_undo(uint64_t* register_file_nid, uint64_t* program_break_nid) {
   uint64_t* a0_value_nid;
+  uint64_t* a1_value_nid;
   uint64_t* program_break_value_nid;
 
-  // backward: a0 holds the previous program break below the current one, a1 the current one
+  // backward: a0 holds the previous program break below the current one,
+  // a1 the current one, which is word-aligned as forward brk only sets such
 
   a0_value_nid = load_register_value(NID_A0, "a0 value", register_file_nid);
+  a1_value_nid = load_register_value(NID_A1, "a1 value", register_file_nid);
 
   program_break_value_nid = cast_virtual_address_to_machine_word(program_break_nid);
 
@@ -9741,10 +9794,13 @@ uint64_t* riscr_does_brk_undo(uint64_t* register_file_nid, uint64_t* program_bre
     new_binary_boolean(OP_AND,
       new_binary_boolean(OP_ULT, a0_value_nid, program_break_value_nid, "a0 value < current program break?"),
       new_binary_boolean(OP_AND,
-        new_binary_boolean(OP_EQ,
-          load_register_value(NID_A1, "a1 value", register_file_nid),
-          program_break_value_nid,
-          "a1 value == current program break?"),
+        new_binary_boolean(OP_AND,
+          new_binary_boolean(OP_EQ, a1_value_nid, program_break_value_nid, "a1 value == current program break?"),
+          new_binary_boolean(OP_EQ,
+            new_binary(OP_AND, SID_MACHINE_WORD, a1_value_nid, NID_MACHINE_WORD_7, "a1 value alignment"),
+            NID_MACHINE_WORD_0,
+            "a1 value word-aligned?"),
+          "a1 value is word-aligned current program break?"),
         new_binary_boolean(OP_ULTE, program_break_nid, NID_HEAP_END, "current program break <= end of heap segment?"),
         "a1 value is current program break in heap segment?"),
       "a0 value is previous program break?"),
@@ -9773,10 +9829,15 @@ uint64_t* riscr_is_irreversible_brk(uint64_t* ir_nid, uint64_t* register_file_ni
         "brk state not in the image of forward brk?"),
       "irreversible brk backward");
   else
+    // the previous program break is the result: backward, a zero result means
+    // that brk failed, so brk is irreversible if the program break is zero
     return new_binary_boolean(OP_AND,
       riscr_is_syscall(ir_nid, register_file_nid, NID_BRK_SYSCALL_ID, "brk"),
-      new_binary_boolean(OP_NEQ, a0_value_nid, NID_MACHINE_WORD_0, "a0 value != 0?"),
-      "irreversible brk with nonzero a0");
+      new_binary_boolean(OP_OR,
+        new_binary_boolean(OP_NEQ, a0_value_nid, NID_MACHINE_WORD_0, "a0 value != 0?"),
+        new_binary_boolean(OP_EQ, program_break_nid, NID_VIRTUAL_ADDRESS_0, "program break == 0?"),
+        "a0 value != 0 or program break == 0?"),
+      "irreversible brk with nonzero a0 or zero program break");
 }
 
 uint64_t* riscr_is_irreversible_exit(uint64_t* ir_nid, uint64_t* register_file_nid) {
@@ -9955,12 +10016,12 @@ uint64_t* riscr_tape_index(uint64_t* fd_nid, uint64_t* position_nid) {
 
 uint64_t* riscr_syscall_words(uint64_t* register_file_nid) {
   // a3 bytes rounded up to words
-  return new_binary(OP_UDIV, SID_MACHINE_WORD,
+  return new_binary(OP_SRL, SID_MACHINE_WORD,
     new_binary(OP_ADD, SID_MACHINE_WORD,
       load_register_value(NID_A3, "a3 value", register_file_nid),
       NID_MACHINE_WORD_7,
       "a3 value + 7"),
-    NID_MACHINE_WORD_8,
+    NID_MACHINE_WORD_3,
     "(a3 value + 7) / 8 words to exchange");
 }
 
@@ -10285,6 +10346,60 @@ uint64_t* riscr_open_files_data_flow(uint64_t* ir_nid, uint64_t* register_file_n
     new_open_files_nid,
     state_open_files_nid,
     "open files data flow");
+}
+
+uint64_t* riscr_is_input_zero_beyond_end(uint64_t* ir_nid, uint64_t* register_file_nid) {
+  uint64_t  i;
+  uint64_t  b;
+  uint64_t* end_nid;
+  uint64_t* position_nid;
+  uint64_t* zero_nid;
+
+  // the bytes a read takes from an input tape are zero at and beyond the end
+  // of the file, as on riscr's tapes, which are filled from the file and
+  // zero elsewhere; this constrains the input, not the program
+
+  end_nid = new_binary(OP_READ, SID_MACHINE_WORD, state_tape_ends_nid,
+    riscr_fd_index(load_register_value(NID_A1, "a1 value", register_file_nid)),
+    "end of file a1 in bytes");
+
+  zero_nid = NID_TRUE;
+
+  i = 0;
+
+  while (i < SYSCALL_WORDS) {
+    b = 0;
+
+    while (b < WORDSIZE) {
+      position_nid = new_binary(OP_ADD, SID_MACHINE_WORD,
+        new_binary(OP_MUL, SID_MACHINE_WORD, riscr_exchange_head(register_file_nid), NID_MACHINE_WORD_8, "head in bytes"),
+        new_constant(OP_CONSTD, SID_MACHINE_WORD, i * WORDSIZE + b, format_comment("offset of byte %lu", i * WORDSIZE + b)),
+        "position of byte on tape");
+
+      zero_nid = new_binary_boolean(OP_AND,
+        zero_nid,
+        new_binary_boolean(OP_OR,
+          new_unary_boolean(OP_NOT, riscr_is_exchanged_word(i, register_file_nid), "word not exchanged?"),
+          new_binary_boolean(OP_OR,
+            new_binary_boolean(OP_ULT, position_nid, end_nid, "byte before end of file?"),
+            new_binary_boolean(OP_EQ,
+              new_slice(SID_BYTE, riscr_tape_word(i, register_file_nid), b * 8 + 7, b * 8, "byte of tape word"),
+              NID_BYTE_0,
+              "byte is zero?"),
+            "byte before end of file or zero?"),
+          "byte not read, before end of file, or zero?"),
+        "bytes so far zero beyond end of file?");
+
+      b = b + 1;
+    }
+
+    i = i + 1;
+  }
+
+  return new_binary_boolean(OP_IMPLIES,
+    riscr_is_active_read(ir_nid, register_file_nid),
+    zero_nid,
+    "read takes zero bytes beyond end of file");
 }
 
 uint64_t* riscr_is_irreversible_tape(uint64_t* ir_nid, uint64_t* register_file_nid) {
@@ -10615,6 +10730,15 @@ void riscr_properties(uint64_t core, uint64_t* pc_nid, uint64_t* ir_nid,
     set_for(core, prop_bad_exit_code_nids, prop_bad_exit_code_nid);
   }
 
+  if (check_exit_codes)
+    if (core == number_of_cores - 1)
+      if (number_of_binaries < number_of_cores)
+        // without code the machine exiting is the bad state, as in RISC-U
+        prop_all_cores_exited_nid = new_property(OP_BAD,
+          riscr_is_syscall(ir_nid, register_file_nid, NID_EXIT_SYSCALL_ID, "exit"),
+          "all-cores-exited",
+          "all cores exited");
+
   if (check_good_exit_code) {
     prop_good_exit_code_nid = new_property(OP_BAD,
       new_binary_boolean(OP_AND,
@@ -10642,6 +10766,22 @@ void riscr_properties(uint64_t core, uint64_t* pc_nid, uint64_t* ir_nid,
     riscr_is_irreversible_openat(ir_nid, register_file_nid),
     format_comment("core-%lu-irreversible-openat", core),
     format_comment("core-%lu irreversible instruction: openat beyond the tapes", core)));
+
+  set_for(core, prop_unaligned_address_nids, state_property(core,
+    UNUSED,
+    new_binary_boolean(OP_AND,
+      riscr_is_load(ir_nid),
+      riscr_is_unaligned(get_rs1_value_plus_I_immediate(ir_nid, register_file_nid)),
+      "ld at address that is not word-aligned"),
+    format_comment("core-%lu-unaligned-address", core),
+    format_comment("core-%lu ld at address that is not word-aligned", core)));
+
+  if (not(reverse))
+    // an assumption about the input, whether or not a binary is loaded
+    set_for(core, prop_input_beyond_end_nids, new_property(OP_CONSTRAINT,
+      riscr_is_input_zero_beyond_end(ir_nid, register_file_nid),
+      format_comment("core-%lu-input-zero-beyond-end", core),
+      format_comment("core-%lu input tapes are zero beyond the end of their files", core)));
 
   if (check_seg_faults) {
     set_for(core, prop_read_seg_faulting_nids, state_property(core,
@@ -10696,9 +10836,15 @@ uint64_t* riscr_roundtrip_filter(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* c
           new_binary_boolean(OP_OR,
             is_division_remainder_by_zero(ir_nid, register_file_nid),
             new_binary_boolean(OP_OR,
-              new_unary_boolean(OP_NOT,
-                load_no_seg_faults(ir_nid, register_file_nid, data_segment_nid, heap_segment_nid, stack_segment_nid),
-                "ld segmentation fault?"),
+              new_binary_boolean(OP_OR,
+                new_unary_boolean(OP_NOT,
+                  load_no_seg_faults(ir_nid, register_file_nid, data_segment_nid, heap_segment_nid, stack_segment_nid),
+                  "ld segmentation fault?"),
+                new_binary_boolean(OP_AND,
+                  riscr_is_load(ir_nid),
+                  riscr_is_unaligned(get_rs1_value_plus_I_immediate(ir_nid, register_file_nid)),
+                  "ld at unaligned address?"),
+                "ld faulting?"),
               new_binary_boolean(OP_OR,
                 riscr_is_aliasing(ir_nid),
                 new_binary_boolean(OP_OR,
@@ -11812,6 +11958,8 @@ void print_model_for(uint64_t core) {
   print_break_line_for(core, prop_irreversible_exit_nids);
   print_break_line_for(core, prop_irreversible_tape_nids);
   print_break_line_for(core, prop_irreversible_openat_nids);
+  print_break_line_for(core, prop_input_beyond_end_nids);
+  print_break_line_for(core, prop_unaligned_address_nids);
 
   // synchronizing program counters
 
@@ -12406,6 +12554,8 @@ uint64_t eval_properties(uint64_t core, uint64_t bad) {
   halt = halt + eval_property_for(core, prop_irreversible_exit_nids, bad);
   halt = halt + eval_property_for(core, prop_irreversible_tape_nids, bad);
   halt = halt + eval_property_for(core, prop_irreversible_openat_nids, bad);
+  halt = halt + eval_property_for(core, prop_input_beyond_end_nids, bad);
+  halt = halt + eval_property_for(core, prop_unaligned_address_nids, bad);
 
   // synchronizing program counters
 

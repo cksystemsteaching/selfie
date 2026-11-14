@@ -26,3 +26,9 @@ riscr
 riscr.h
 riscr-test
 tests/riscr-test.txt
+
+# what bitr writes when model checking
+*.witness
+*.bmc
+examples/symbolic/*.cnf
+riscr-identity.txt
