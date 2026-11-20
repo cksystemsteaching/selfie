@@ -41,7 +41,7 @@ If you subsequently invoke the autograder in bulk mode on `student-repos` again,
 
 ## Submitting Solutions for Grading
 
-Solutions of assignments must be submitted as git commit links to a private clone of the selfie repository hosted on GitHub and exclusively shared with your teacher such as the GitHub user [ckirsch](https://github.com/ckirsch) and the teaching assistant.
+Solutions of assignments are submitted by pushing a tagged commit to the main branch of a private clone of the selfie repository hosted on GitHub and exclusively shared with your teacher such as the GitHub user [ckirsch](https://github.com/ckirsch) and the teaching assistant. There is no form to fill in: your push is your submission, see [Submitting your solution](#submitting-your-solution).
 
 ### Creating a private clone of selfie
 
@@ -90,7 +90,7 @@ Create a development branch in your selfie installation and work on your solutio
 2. Make sure the main branch in your selfie installation is checked out: `git checkout main`
 3. Create the development branch off the main branch and check it out: `git checkout -b <developmentbranch>`
 4. Work on your solution and use the autograder for feedback. Do not change the autograder in any way! If you discover a bug, please report it to your teacher.
-5. Commit your changes regularly using `git add` and `git commit` with the commit messages formatted as `"message [assignment]"` which triggers the autograder on the `<assignment>` as [GitHub Action](https://github.com/cksystemsteaching/selfie/actions) on the next push.
+5. Commit your changes regularly using `git add` and `git commit` with the commit messages formatted as `"message [assignment]"` which triggers the autograder on the `<assignment>` as [GitHub Action](https://github.com/cksystemsteaching/selfie/actions) on the next push. Commits on your development branch are not submissions, only commits on the main branch are.
 6. Push your changes to your `myselfie` repository on GitHub for backup: `git push -u origin <developmentbranch>`
 7. Update your selfie installation to the latest version of the official selfie repository regularly using the above instructions.
 8. If you fetched and merged updates go back to the `<developmentbranch>`: `git checkout <developmentbranch>`
@@ -98,26 +98,28 @@ Create a development branch in your selfie installation and work on your solutio
 
 ### Submitting your solution
 
+Your submission of an `<assignment>` is the last commit on the main branch of your `myselfie` repository on GitHub that is tagged with the `<assignment>` and that GitHub receives before the deadline.
+
 In a terminal where your selfie installation is:
 
 1. Change directory to the root directory of your selfie installation.
 2. Make sure the main branch of your selfie installation is checked out: `git checkout main`
 3. Merge the `<developmentbranch>` with your solution into the main branch of your selfie installation: `git merge --squash <developmentbranch>`
-4. Commit the merged changes: `git commit`
-5. Push your updated main branch to your `myselfie` repository on GitHub: `git push origin`
+4. Determine your grade with the autograder: `./grader/self.py <assignment>`
+5. Commit the merged changes with the tag of the `<assignment>`, the grade you claim, and, optionally, your person-hours at the end of the first line of the commit message: `git commit -m "<message> [<assignment>] grade <grade>, <hours> hours"`, for example, `git commit -m "implement processes [processes] grade 2, 6 hours"` or, without person-hours, `git commit -m "implement processes [processes] grade 2"`
+6. Push your updated main branch to your `myselfie` repository on GitHub: `git push origin`
 
 Note that the option `--squash` in step 3 is important. It makes sure that all commits on the `<developmentbranch>` are squashed into one commit which improves readability of your solution.
 
-Finally, on the web:
+The rules:
 
-With your solution committed into the main branch of your `myselfie` repository on GibHub in accordance to the above instructions:
+- The tag is the name of the `<assignment>` as used by the autograder in square brackets, for example, `[processes]`, not the number of the assignment, and must appear in the first line of the commit message. The tag also triggers the autograder as GitHub Action.
+- The grade you claim is the grade reported by the autograder. If the autograder reports grade 2, you may claim grade 1 provided that, in a code review, you are able to demonstrate that your code matches the code quality and conventions of selfie.
+- Only commits on the main branch count. Commits on any other branch are not submissions.
+- The deadline applies to the time when GitHub receives your push, not to the date of your commit. GitHub records the time of every push. A push after the deadline is a late submission.
+- If you push several tagged commits for the same `<assignment>` before the deadline, the last one counts. To resubmit unchanged code, for example, with a different grade, push an empty commit: `git commit --allow-empty -m "[processes] grade 2"` and then `git push origin`
+- If you have not done anything for an `<assignment>`, push an empty commit with grade 5, for example: `git commit --allow-empty -m "[processes] grade 5"` and then `git push origin`
 
-1. Go to your `myselfie` repository on GitHub in a browser and click on the `Latest commit` link.
-2. Copy the link and make sure that the link is in the form `https://github.com/<yourusername>/myselfie/commit/<commithash>`.
-3. Submit the link along with the grade reported by the autograder to your teacher as discussed in class.
+For each assignment we provide a summary of the results to all students. If you have not received any individual feedback from us by that time, your grade is the grade you claimed!
 
-If the autograder reports grade 2, you may submit grade 1 provided that, in a code review, you are able to demonstrate that your code matches the code quality and conventions of selfie.
-
-For each assignment we provide a summary of the results to all students. If you have not received any individual feedback from us by that time, your grade is the grade you submitted!
-
-Solutions of assignments must be submitted before the deadline stated in class or online. Moreover, submitted commit links must refer to a private repository that is accessible to you and us (teacher and teaching assistant) and no one else throughout the semester. Late submissions or submissions that violate these rules will be failed.
+Solutions of assignments must be submitted before the deadline stated in class or online. Moreover, your `myselfie` repository must be private and accessible to you and us (teacher and teaching assistant) and no one else throughout the semester. Late submissions or submissions that violate these rules will be failed.

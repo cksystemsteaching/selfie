@@ -9,7 +9,7 @@
 
 ## Important:
 
-Always submit something for each assignment by the due date and time, even if you have not done anything. In that case, your self-grade is 5. If you fail to submit anything on time you will be failed (unless you provide proof of a medical or family emergency in a DM to me, no email please!).
+Always submit something for each assignment by the due date and time, even if you have not done anything. In that case, your self-grade is 5. Submitting means pushing a commit tagged with the assignment and your self-grade to the main branch of your private selfie repository on GitHub, see [Submitting your solution](../grader/README.md#submitting-your-solution). If you fail to submit anything on time you will be failed (unless you provide proof of a medical or family emergency in a DM to me, no email please!).
 
 ## Essential for every assignment
 
