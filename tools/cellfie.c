@@ -507,7 +507,15 @@ uint64_t region_height(uint64_t lo, uint64_t hi);
 void     plan_path();
 void     plan_regions();
 uint64_t initial_word(uint64_t address);
+uint64_t count_strips(uint64_t bits);
+void     plan_strips();
 void     plan_rows();
+
+uint64_t get_word_strip(uint64_t address, uint64_t region);
+uint64_t get_word_column(uint64_t address);
+uint64_t get_word_row(uint64_t strip);
+
+void lay_column_comb(uint64_t* keys, uint64_t* ys, uint64_t lo, uint64_t hi, uint64_t x, uint64_t field);
 void     boot_token();
 
 uint64_t differing_bit(uint64_t a, uint64_t b);
@@ -533,6 +541,8 @@ uint64_t TAPE_WORDS = 16; // words per tape, as in rotor's model
 
 uint64_t MAX_HEAP_REGIONS = 8;
 uint64_t MAX_REGIONS      = 64; // data, heap, stack, tapes
+
+uint64_t COMB_COLUMN = 3; // first column of the combs over the strips of words
 
 uint64_t CLASS_CONTROL = 1; // beq, jal, jalr
 uint64_t CLASS_ACCESS  = 2; // ld with rd not zero, ecall
@@ -585,18 +595,32 @@ uint64_t last_region = 0; // the region found last
 
 // the rows of the layout
 
-uint64_t control_out_row    = 0;
-uint64_t access_in_row      = 0;
-uint64_t path_row           = 0;
-uint64_t control_in_row     = 0;
-uint64_t access_out_row     = 0;
-uint64_t control_spine_row  = 0;
-uint64_t access_spine_row   = 0;
-uint64_t memory_in_row      = 0;
-uint64_t memory_row         = 0;
-uint64_t memory_out_row     = 0;
-uint64_t access_return_row  = 0;
-uint64_t control_return_row = 0;
+uint64_t control_turn_row  = 0;
+uint64_t access_turn_row   = 0;
+uint64_t control_out_row   = 0;
+uint64_t access_in_row     = 0;
+uint64_t path_row          = 0;
+uint64_t control_in_row    = 0;
+uint64_t access_out_row    = 0;
+uint64_t control_spine_row = 0;
+uint64_t access_spine_row  = 0;
+uint64_t memory_in_row     = 0; // the first row of the first strip
+
+// the strips of words: a strip is a row of the words whose addresses differ
+// in their lower bits only, with a comb to them above and one from them below
+
+uint64_t strip_bits   = 0; // the bits of a word address that select the column
+uint64_t strip_height = 0; // rows of a comb of a strip
+uint64_t strip_pitch  = 0; // rows of a strip
+
+uint64_t* region_strips = (uint64_t*) 0; // the strip of the first word of each region
+uint64_t* strip_keys    = (uint64_t*) 0; // the address of the first word of each strip
+uint64_t* strip_lasts   = (uint64_t*) 0; // the address of the last word of each strip
+
+uint64_t number_of_strips = 0;
+
+uint64_t column_comb_height = 0; // columns of a comb over the strips
+uint64_t word_column        = 0; // column of the words that are first in their strip
 
 // the words of memory and tapes that have a cell, by ascending address
 
@@ -4898,6 +4922,34 @@ void lay_comb(uint64_t* keys, uint64_t* xs, uint64_t lo, uint64_t hi, uint64_t y
   lay_comb(keys, xs, mid, hi, y, down, field);
 }
 
+void lay_column_comb(uint64_t* keys, uint64_t* ys, uint64_t lo, uint64_t hi, uint64_t x, uint64_t field) {
+  uint64_t bit;
+  uint64_t mid;
+
+  // a comb on its side, over the keys from lo to hi - 1 with its root in
+  // column x and its leaves in the rows ys east of it: a token heading
+  // east for the leaves is turned south by a router if the bit is set
+  // and east again in the row of its half, and a token heading west from
+  // the leaves is turned north in its row and west again by the router
+
+  if (hi < lo + 2)
+    return;
+
+  bit = differing_bit(*(keys + lo), *(keys + hi - 1));
+
+  mid = lo + 1;
+
+  while (get_bits(*(keys + mid), bit, 1) == 0)
+    mid = mid + 1;
+
+  lay_cell(x, *(ys + lo), encode_cell(CELL_ROUTER, 0, BACKSLASH), bit + field * 64);
+
+  lay_mirror(x, *(ys + mid), BACKSLASH);
+
+  lay_column_comb(keys, ys, lo, mid, x + 1, field);
+  lay_column_comb(keys, ys, mid, hi, x + 1, field);
+}
+
 void add_memory_word(uint64_t address, uint64_t value, uint64_t kind) {
   // assert: addresses are added in ascending order
 
@@ -5208,22 +5260,168 @@ uint64_t initial_word(uint64_t address) {
   return 0;
 }
 
+uint64_t count_strips(uint64_t bits) {
+  uint64_t strips;
+  uint64_t first;
+  uint64_t last;
+  uint64_t previous;
+  uint64_t i;
+
+  // the number of strips if the lower bits of a word address select the
+  // column and the others the strip, and the strip of each region's first word
+
+  strips   = 0;
+  previous = 0;
+
+  i = 0;
+
+  while (i < number_of_regions) {
+    first = right_shift(*(region_starts + i), bits + 3);
+    last  = right_shift(*(region_starts + i) + (*(region_words + i) - 1) * WORDSIZE, bits + 3);
+
+    if (and(strips > 0, first == previous))
+      // the region begins in the strip in which the region before ends
+      strips = strips - 1;
+
+    *(region_strips + i) = strips;
+
+    strips = strips + last - first + 1;
+
+    previous = last;
+
+    i = i + 1;
+  }
+
+  return strips;
+}
+
+void plan_strips() {
+  uint64_t i;
+  uint64_t strip;
+  uint64_t prefix;
+  uint64_t first;
+  uint64_t last;
+  uint64_t end;
+  uint64_t height;
+  uint64_t cost;
+  uint64_t best;
+
+  // memory in two dimensions: as many bits select the column that the
+  // width of a strip plus the height of all strips is least, which is
+  // how far the last word is from the first
+
+  region_strips = zmalloc(MAX_REGIONS * sizeof(uint64_t));
+
+  strip_bits = 1;
+
+  best = count_strips(1) * 5 + 2;
+
+  i = 2;
+
+  while (i < 30) {
+    cost = count_strips(i) * (2 * i + 3) + two_to_the_power_of(i);
+
+    if (cost < best) {
+      best = cost;
+
+      strip_bits = i;
+    }
+
+    i = i + 1;
+  }
+
+  number_of_strips = count_strips(strip_bits);
+
+  // the first and the last word of each strip
+
+  strip_keys  = zmalloc(number_of_strips * sizeof(uint64_t));
+  strip_lasts = zmalloc(number_of_strips * sizeof(uint64_t));
+
+  i = 0;
+
+  while (i < number_of_regions) {
+    end = *(region_starts + i) + (*(region_words + i) - 1) * WORDSIZE;
+
+    prefix = right_shift(*(region_starts + i), strip_bits + 3);
+
+    strip = *(region_strips + i);
+
+    while (prefix <= right_shift(end, strip_bits + 3)) {
+      first = left_shift(prefix, strip_bits + 3);
+      last  = first + (two_to_the_power_of(strip_bits) - 1) * WORDSIZE;
+
+      if (first < *(region_starts + i))
+        first = *(region_starts + i);
+
+      if (last > end)
+        last = end;
+
+      if (*(strip_keys + strip) == 0)
+        *(strip_keys + strip) = first;
+
+      *(strip_lasts + strip) = last;
+
+      prefix = prefix + 1;
+      strip  = strip + 1;
+    }
+
+    i = i + 1;
+  }
+
+  // all strips have the rows of the highest comb, the strips have a comb of columns
+
+  strip_height = 0;
+
+  i = 0;
+
+  while (i < number_of_strips) {
+    height = region_height(*(strip_keys + i), *(strip_lasts + i));
+
+    if (height > strip_height)
+      strip_height = height;
+
+    i = i + 1;
+  }
+
+  strip_pitch = 2 * strip_height + 3;
+
+  column_comb_height = comb_height(strip_keys, 0, number_of_strips);
+
+  word_column = COMB_COLUMN + 2 * column_comb_height;
+}
+
+uint64_t get_word_strip(uint64_t address, uint64_t region) {
+  // the strip of the word at address, which is in region
+  return *(region_strips + region) + right_shift(address, strip_bits + 3) - right_shift(*(region_starts + region), strip_bits + 3);
+}
+
+uint64_t get_word_column(uint64_t address) {
+  return word_column + get_bits(address, 3, strip_bits);
+}
+
+uint64_t get_word_row(uint64_t strip) {
+  // the words of a strip are below the comb to them
+  return memory_in_row + strip * strip_pitch + strip_height + 1;
+}
+
 void plan_rows() {
   uint64_t control_height;
   uint64_t access_height;
-  uint64_t memory_height;
-  uint64_t last;
 
-  // the rows, from north to south, and around the torus back north
+  // the rows, from north to south: two rows in which wire turns to the
+  // combs below, the combs north of the path, the path, the combs south
+  // of it, two rows in which wire turns to the combs above and to memory,
+  // and the strips of words
 
   control_height = comb_height(control_keys, 0, controls);
   access_height  = comb_height(access_keys, 0, accesses);
 
-  last = number_of_regions - 1;
+  plan_strips();
 
-  memory_height = region_height(*region_starts, *(region_starts + last) + (*(region_words + last) - 1) * WORDSIZE);
+  control_turn_row = 0;
+  access_turn_row  = 1;
 
-  control_out_row = 0;
+  control_out_row = 2;
   access_in_row   = control_out_row + control_height;
 
   // one row north and one south of the path lead from the next column into a cell
@@ -5238,12 +5436,7 @@ void plan_rows() {
   control_spine_row = access_out_row + 1;
   access_spine_row  = control_spine_row + 1;
 
-  memory_in_row  = access_spine_row + 1;
-  memory_row     = memory_in_row + memory_height + 1;
-  memory_out_row = memory_row + memory_height + 1;
-
-  access_return_row  = memory_out_row + 1;
-  control_return_row = access_return_row + 1;
+  memory_in_row = access_spine_row + 1;
 }
 
 void boot_token() {
@@ -5281,7 +5474,13 @@ void compile_layout(char* name) {
   uint64_t x;
   uint64_t address;
   uint64_t value;
+  uint64_t lo;
+  uint64_t hi;
   uint64_t* word_xs;
+  uint64_t* word_ys;
+  uint64_t* word_strips;
+  uint64_t* strip_entries;
+  uint64_t* strip_exits;
 
   boot_binary(name, 0);
 
@@ -5298,6 +5497,11 @@ void compile_layout(char* name) {
   word_kinds     = zmalloc(number_of_region_words * sizeof(uint64_t));
   word_cells     = zmalloc(number_of_region_words * sizeof(uint64_t));
   word_xs        = zmalloc(number_of_region_words * sizeof(uint64_t));
+  word_ys        = zmalloc(number_of_region_words * sizeof(uint64_t));
+  word_strips    = zmalloc(number_of_region_words * sizeof(uint64_t));
+
+  strip_entries = zmalloc(number_of_strips * sizeof(uint64_t));
+  strip_exits   = zmalloc(number_of_strips * sizeof(uint64_t));
 
   number_of_words = 0;
 
@@ -5309,6 +5513,11 @@ void compile_layout(char* name) {
     while (i < *(region_words + j)) {
       address = *(region_starts + j) + i * WORDSIZE;
 
+      *(word_strips + number_of_words) = get_word_strip(address, j);
+
+      *(word_xs + number_of_words) = get_word_column(address);
+      *(word_ys + number_of_words) = get_word_row(get_word_strip(address, j));
+
       add_memory_word(address, initial_word(address), *(region_kinds + j));
 
       i = i + 1;
@@ -5317,20 +5526,12 @@ void compile_layout(char* name) {
     j = j + 1;
   }
 
-  i = 0;
-
-  while (i < number_of_words) {
-    *(word_xs + i) = CODE_COLUMN + i;
-
-    i = i + 1;
-  }
-
   x = CODE_COLUMN + 2 * n + 2;
 
-  if (x < CODE_COLUMN + number_of_words + 1)
-    x = CODE_COLUMN + number_of_words + 1;
+  if (x < word_column + two_to_the_power_of(strip_bits) + 1)
+    x = word_column + two_to_the_power_of(strip_bits) + 1;
 
-  allocate_grid(x, control_return_row + 1);
+  allocate_grid(x, memory_in_row + number_of_strips * strip_pitch);
 
   // the path
 
@@ -5354,10 +5555,11 @@ void compile_layout(char* name) {
     i = i + 1;
   }
 
-  // control: north out of the cell to the root of the comb of departures,
-  // west to column 0, north around the torus to the row south of the
-  // combs south of the path, east to the root of the comb of arrivals,
-  // north to the row south of the path, and west and north into the cell
+  // control: north out of the cell to the root of the comb of departures
+  // and on to the northern row, west to column 0, south past the path to
+  // the row south of the combs south of it, east to the root of the comb
+  // of arrivals, north to the row south of the path, and west and north
+  // into the cell
 
   if (controls > 0) {
     lay_comb(control_keys, control_out, 0, controls, control_out_row, 1, FIELD_ADDRESS);
@@ -5372,18 +5574,20 @@ void compile_layout(char* name) {
       i = i + 1;
     }
 
-    lay_mirror(*control_out, control_return_row, BACKSLASH);
-    lay_mirror(0, control_return_row, BACKSLASH);
-    lay_mirror(0, control_spine_row, SLASH);
+    lay_mirror(*control_out, control_turn_row, BACKSLASH);
+    lay_mirror(0, control_turn_row, SLASH);
+    lay_mirror(0, control_spine_row, BACKSLASH);
     lay_mirror(*control_in, control_spine_row, SLASH);
   }
 
   // memory: south out of the cell to the root of the comb of departures,
-  // west to column 1, south and east to the root of the comb to the words,
-  // through the cell of the word, to the root of the comb back from the
-  // words, west to column 2, south and east to the root of the comb of
-  // returns, south around the torus to the row north of the path, and
-  // west and south into the cell
+  // west to column 1, south and east to the root of the comb over the
+  // strips, east in the row of the strip to the root of its comb to the
+  // words, through the cell of the word and the comb back from the words
+  // of the strip, west through the comb back from the strips to column 2,
+  // north past the path to the second row, east to the root of the comb
+  // of returns, south to the row north of the path, and west and south
+  // into the cell
 
   if (accesses > 0) {
     lay_comb(access_keys, access_out, 0, accesses, access_out_row, 0, FIELD_PC);
@@ -5401,23 +5605,46 @@ void compile_layout(char* name) {
     lay_mirror(*access_out, access_spine_row, SLASH);
     lay_mirror(1, access_spine_row, SLASH);
     lay_mirror(1, memory_in_row, BACKSLASH);
-    lay_mirror(*word_xs, memory_in_row, BACKSLASH);
 
-    lay_comb(word_addresses, word_xs, 0, number_of_words, memory_in_row + 1, 1, FIELD_ADDRESS);
-    lay_comb(word_addresses, word_xs, 0, number_of_words, memory_out_row - 1, 0, FIELD_ADDRESS);
+    lo = 0;
 
-    lay_mirror(*word_xs, memory_out_row, SLASH);
-    lay_mirror(2, memory_out_row, SLASH);
-    lay_mirror(2, access_return_row, BACKSLASH);
-    lay_mirror(*access_in, access_return_row, BACKSLASH);
+    while (lo < number_of_words) {
+      // the words of a strip
+
+      j = *(word_strips + lo);
+
+      hi = lo + 1;
+
+      while (and(hi < number_of_words, *(word_strips + hi) == j))
+        hi = hi + 1;
+
+      *(strip_entries + j) = memory_in_row + j * strip_pitch;
+      *(strip_exits + j)   = *(strip_entries + j) + strip_pitch - 1;
+
+      lay_mirror(*(word_xs + lo), *(strip_entries + j), BACKSLASH);
+
+      lay_comb(word_addresses, word_xs, lo, hi, *(strip_entries + j) + 1, 1, FIELD_ADDRESS);
+      lay_comb(word_addresses, word_xs, lo, hi, *(strip_exits + j) - 1, 0, FIELD_ADDRESS);
+
+      lay_mirror(*(word_xs + lo), *(strip_exits + j), SLASH);
+
+      lo = hi;
+    }
+
+    lay_column_comb(strip_keys, strip_entries, 0, number_of_strips, COMB_COLUMN + column_comb_height, FIELD_ADDRESS);
+    lay_column_comb(strip_keys, strip_exits, 0, number_of_strips, COMB_COLUMN, FIELD_ADDRESS);
+
+    lay_mirror(2, *strip_exits, BACKSLASH);
+    lay_mirror(2, access_turn_row, SLASH);
+    lay_mirror(*access_in, access_turn_row, BACKSLASH);
   }
 
   i = 0;
 
   while (i < number_of_words) {
-    lay_tagged_cell(*(word_xs + i), memory_row, encode_cell(*(word_kinds + i), 0, 0), *(word_values + i), *(word_addresses + i));
+    lay_tagged_cell(*(word_xs + i), *(word_ys + i), encode_cell(*(word_kinds + i), 0, 0), *(word_values + i), *(word_addresses + i));
 
-    *(word_cells + i) = cell_index(*(word_xs + i), memory_row);
+    *(word_cells + i) = cell_index(*(word_xs + i), *(word_ys + i));
 
     i = i + 1;
   }
@@ -5676,16 +5903,16 @@ void write_abstraction(char* name, uint64_t heap_allowance, uint64_t stack_allow
 // and the cells of the words act on the token by the procedures of the
 // cell rule, and the wire in between is not followed but measured. The
 // compiler lays wire on which the token never turns back, so the ticks
-// of a transfer are the distance between its ends around the torus,
-// with instruction i in column CODE_COLUMN + 2 * i, word r in column
-// CODE_COLUMN + r, and a grid of height H:
+// of a transfer are the distance along its wire, with instruction i
+// in column CODE_COLUMN + 2 * i, the row S in which control turns
+// south of the path, and combs of h rows in the strips of words:
 //
 //   from an instruction in column x to the one after the come-from
-//   in column y: H + x + y + 4 ticks
+//   in column y: 2 * S + x + y + 4 ticks
 //
-//   from an instruction in column x to the word in column w and back
-//   to its side: H + 2 * x + 2 * w - 4 ticks, and 2 more to the next
-//   instruction after the last such leg
+//   from an instruction in column x to the word in column w and row v
+//   and back to its side: 2 * x + 2 * w + 2 * v + 2 * h - 4 ticks, and
+//   2 more to the next instruction after the last such leg
 //
 // See cellfie.md. Words are allocated when first accessed. Files are
 // the host's, as in riscr: openat opens the file, read moves its bytes
@@ -5989,10 +6216,10 @@ void run_hybrid(char* name) {
 
   x = CODE_COLUMN + 2 * n + 2;
 
-  if (x < CODE_COLUMN + number_of_region_words + 1)
-    x = CODE_COLUMN + number_of_region_words + 1;
+  if (x < word_column + two_to_the_power_of(strip_bits) + 1)
+    x = word_column + two_to_the_power_of(strip_bits) + 1;
 
-  set_grid_size(x, control_return_row + 1);
+  set_grid_size(x, memory_in_row + number_of_strips * strip_pitch);
 
   boot_token();
   boot_store();
@@ -6049,12 +6276,11 @@ void run_hybrid(char* name) {
             else
               act_memory(word_in_store(address));
 
-            // the column of the word
+            // the column and the row of the word
 
-            j = (address - *(region_starts + r)) / WORDSIZE;
-            j = CODE_COLUMN + *(region_ranks + r) + j;
+            j = get_word_column(address) + get_word_row(get_word_strip(address, r));
 
-            executed_ticks = executed_ticks + grid_height + 2 * x + 2 * j - 4;
+            executed_ticks = executed_ticks + 2 * x + 2 * j + 2 * strip_height - 4;
 
             act_instruction(EAST, BACKSLASH, word);
           }
@@ -6076,7 +6302,7 @@ void run_hybrid(char* name) {
           else if (*(instruction_classes + j) != CLASS_CONTROL)
             property = PROPERTY_INVALID_PC;
           else {
-            executed_ticks = executed_ticks + grid_height + x + CODE_COLUMN + 2 * j + 2;
+            executed_ticks = executed_ticks + 2 * control_spine_row + x + CODE_COLUMN + 2 * j + 2;
 
             token_x = CODE_COLUMN + 2 * j;
 

@@ -587,7 +587,6 @@ tapes: cellfie cellfie-test bitr riscr rotor selfie selfie.h
 # So does the most recursive example with 512 words of history, where the grid is what is too small. The first
 # example is also compiled and run with cellfie on mipster.
 layouts: cellfie bitr riscr rotor selfie selfie.h
-	./cellfie -btor2 4096 128 > /dev/null
 	m=0; for f in $(wildcard examples/symbolic/*.c); do \
 	  b=$${f%.c}; \
 	  ./selfie -c $$f -o $$b.m > /dev/null && \
@@ -606,14 +605,19 @@ layouts: cellfie bitr riscr rotor selfie selfie.h
 	  grep -q "initial state restored" $$b.cells || \
 	    { echo "$$b.rle: cellfie disagrees with riscr, expected exit code $$e after $$((n - 1)) instructions"; exit 1; }; \
 	  ./rotor -l $$b.r - $$e -heapallowance 2097152 -stackallowance 65536 > /dev/null || exit 1; \
-	  ./bitr $$b-rotorized-riscr.btor2 -l $$b.r -i tests/bitr-input.txt -product cellfie-4096x128.btor2 -grid $$b.rle -abstraction $$b-abstraction.btor2 | \
+	  w=$$(sed -n 's/^x = \([0-9]*\), y = \([0-9]*\),.*/\1/p' $$b.rle); \
+	  h=$$(sed -n 's/^x = \([0-9]*\), y = \([0-9]*\),.*/\2/p' $$b.rle); \
+	  [ -f cellfie-$${w}x$$h.btor2 ] || ./cellfie -btor2 $$w $$h > /dev/null || exit 1; \
+	  ./bitr $$b-rotorized-riscr.btor2 -l $$b.r -i tests/bitr-input.txt -product cellfie-$${w}x$$h.btor2 -grid $$b.rle -abstraction $$b-abstraction.btor2 | \
 	    grep -q "agree at all $$((n - 1)) steps of .*, and stop together" || \
 	    { echo "$$b.rle: cellfie's rule on the layout disagrees with rotor's model"; exit 1; }; \
 	  echo "$$b.rle: exit code $$e after $$((n - 1)) instructions and $$(sed -n 's/.*exit with exit code [0-9]* after \([0-9]*\) ticks.*/\1/p' $$b.cells | head -1) ticks as riscr, and as rotor's model at every instruction"; \
 	  m=$$((m + 1)); \
 	done; [ $$m -ge 17 ] || { echo "only $$m layouts checked"; exit 1; }
-	./selfie -c selfie.h tools/btor2.h tools/cellfie.c -m 512 -heap 0 2048 -heap 1048576 64 -stack 128 -i tests/bitr-input.txt -c examples/symbolic/division-by-zero-3-35.r -f 100000000 | tee cellfie-product.txt
-	grep -q "exit with exit code 1 after 567686 ticks and 430 instructions" cellfie-product.txt
+	n=$$(./cellfie -heap 0 2048 -heap 1048576 64 -stack 128 -i tests/bitr-input.txt -c examples/symbolic/division-by-zero-3-35.r -f 100000000 | sed -n 's/.* with pc \(.*: exit with exit code .*\)/\1/p'); \
+	m=$$(./selfie -c selfie.h tools/btor2.h tools/cellfie.c -m 512 -heap 0 2048 -heap 1048576 64 -stack 128 -i tests/bitr-input.txt -c examples/symbolic/division-by-zero-3-35.r -f 100000000 | sed -n 's/.* with pc \(.*: exit with exit code .*\)/\1/p'); \
+	[ -n "$$n" ] && [ "$$n" = "$$m" ] || { echo "cellfie on mipster: $$m, natively: $$n"; exit 1; }; \
+	echo "cellfie on mipster: $$m, as natively"
 	./cellfie -heap 0 512 -heap 1048576 64 -stack 128 -i tests/bitr-input.txt -c examples/symbolic/nested-recursion-fail-1-35.r -f 100000000 | tee cellfie-product.txt
 	grep -q "invalid-address 0x13000 after" cellfie-product.txt
 	@echo "$@: the layouts of the symbolic examples run as riscr runs their binaries and as rotor's model does at every instruction"
@@ -634,8 +638,10 @@ hybrid: cellfie riscr selfie selfie.h
 	  echo "$$b.r: $$h, as event-driven"; \
 	  m=$$((m + 1)); \
 	done; [ $$m -ge 17 ] || { echo "only $$m examples checked"; exit 1; }
-	./selfie -c selfie.h tools/btor2.h tools/cellfie.c -m 512 -heap 0 2048 -heap 1048576 64 -stack 128 -i tests/bitr-input.txt -h examples/symbolic/division-by-zero-3-35.r | tee cellfie-product.txt
-	grep -q "exit with exit code 1 after 567686 ticks and 430 instructions" cellfie-product.txt
+	n=$$(./cellfie -heap 0 2048 -heap 1048576 64 -stack 128 -i tests/bitr-input.txt -h examples/symbolic/division-by-zero-3-35.r | sed -n 's/.* with pc \(.*: exit with exit code .*\)/\1/p'); \
+	m=$$(./selfie -c selfie.h tools/btor2.h tools/cellfie.c -m 512 -heap 0 2048 -heap 1048576 64 -stack 128 -i tests/bitr-input.txt -h examples/symbolic/division-by-zero-3-35.r | sed -n 's/.* with pc \(.*: exit with exit code .*\)/\1/p'); \
+	[ -n "$$n" ] && [ "$$n" = "$$m" ] || { echo "cellfie on mipster: $$m, natively: $$n"; exit 1; }; \
+	echo "cellfie on mipster: $$m, as natively"
 	@echo "$@: hybrid and event-driven simulation agree on exit code, instructions, and ticks"
 
 # All of selfie on cellfie (M13 of projects/reversible.md): selfie translated to RISC-R compiles selfie on
