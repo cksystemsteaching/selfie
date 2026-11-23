@@ -1,0 +1,47 @@
+#C Hand-laid RISC-R program for cellfie, see cellfie.md and make cells.
+#C
+#C The program runs on row 1 from west to east, its procedure on row 7:
+#C
+#C   0x00  addi s4,zero,1     one
+#C   0x04  addi t0,zero,3     n = 3
+#C   0x08  addi s1,zero,256   memory is at 0x100 and 0x108
+#C   0x0c  addi a7,zero,93    exit
+#C   0x10  beq t2,s4,24       loop head, come-from of the branch at 0x28
+#C   0x14  sltu t2,zero,t1    uncompute the flag in t2: it is 0 < i on both ways in
+#C   0x18  ld a2,0(s1)        exchange a2 with the word at 0x100, which is 7
+#C   0x1c  add a0,a2,zero     a0 += a2
+#C   0x20  addi t1,zero,1     i += 1
+#C   0x24  sltu t2,t1,t0      flag: i < n
+#C   0x28  beq t2,s4,-24      back to the loop head
+#C   0x2c  ld a0,8(s1)        the word at 0x108 becomes 7 + 0 + 7, a0 becomes 0
+#C   0x30  jal ra,16          call the procedure at 0x40
+#C   0x34  jal ra,28          come-from of the return at 0x50
+#C   0x38  ecall              exit(a1), with a1 == 42
+#C
+#C   0x40  jalr ra,0(ra)      come-from of calls
+#C   0x44  ld a3,8(s1)        a3 becomes 14, the word at 0x108 becomes 0
+#C   0x48  add a1,a3,a3       a1 += 28
+#C   0x4c  add a1,a3,zero     a1 += 14
+#C   0x50  jalr ra,0(ra)      return
+#C
+#C Wire: the branch at 0x28 leaves south and reaches the loop head from the
+#C south on row 2. The call leaves south, turns on row 3, and reaches the
+#C procedure from the north; the return leaves south across the edge of the
+#C torus and reaches its come-from from the north. An ld leaves for row 0,
+#C where a router on a bit of its pc turns it east, the two on row 1 north
+#C and the one on row 7 south across the edge. Column 15 leads south to a
+#C router on bit 3 of the address, to the memory cell of 0x108 on row 4 or
+#C of 0x100 on row 5, and row 5 leads back west, where a router on the same
+#C bit of the pc turns the token into the column of its ld, from the side.
+#T 0 1 E 0 0 0
+x = 16, y = 8, rule = RISC-R
+6.R/p043.R\p06R/p053.\$
+E/00100a13E/00300293E/10000493E/05d00893E/01438c63E/006033b3E/0004b603
+E/00060533E/00100313E/005333b3E\ff4384e3E/0084b503E\010000efE\01c000ef
+E/00000073$
+4.\5./$
+9./2./$
+13./M0000000000000000R/a03$
+6.R\p043.R/p06R\p05.R/a03M0000000000000007/$
+$
+9.E\000080e7E\0084b683E/00d685b3E/000685b3E\000080e7!

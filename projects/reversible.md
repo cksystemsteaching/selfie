@@ -1,6 +1,6 @@
 # selfie · cellfie · bitr — development plan
 
-Oct 30, 2026 · Christoph Kirsch · updated Nov 6, 2026: M2 done; Nov 5: M16 garbage-free riscr, M17 reversible hypster; Nov 2: RISC-R moved into its own tool, riscr
+Oct 30, 2026 · Christoph Kirsch · updated Nov 23, 2026: encodings frozen, M6a done, cellfie before the rest of RISC-R; Nov 6: M2 done; Nov 5: M16 garbage-free riscr, M17 reversible hypster; Nov 2: RISC-R moved into its own tool, riscr
 
 ## Goal and design rules
 
@@ -121,19 +121,21 @@ Bitr reads BTOR2 and nothing else, so it never needs to know whether a model cam
 
 Cellfie is one C\* file, `tools/cellfie.c`. Each cell holds one RISC-R instruction, one memory word, or a piece of wire. A single token carries `pc` and the register file from cell to cell. The cell rule is simply RISC-R semantics applied where the token is, so there is no microcode and no interpreter layout. The machine is synchronous and reversible. V1 is deliberately coarse; bit-level cells come later as a checked refinement.
 
+`cellfie.md` specifies what M6a built (November 23, 2026) and is authoritative; the list below is the plan as written before, with what M6a decided added in parentheses.
+
 **Cells and token.**
 
-- **Instruction cell:** one RISC-R instruction plus an outgoing direction. When the token enters, the cell applies the instruction to the token's registers and passes the token on.
-- **`beq` cell:** two outgoing paths, chosen by the condition. Its paired come-from cell sits where the paths merge, so reverse execution knows which way the token arrived.
-- **Wire cells:** move the token one cell per tick, including turns and crossings. `jal` and `jalr` route the token along wires, steered by address bits.
-- **Memory cells:** one 64-bit word each. `ld` (exchange) sends the token to the word and back.
-- **Tape cells:** input and output for `read` and `write`, following RISC-R's system-call model.
+- **Instruction cell:** one RISC-R instruction plus an outgoing direction. When the token enters, the cell applies the instruction to the token's registers and passes the token on. (M6a: an orientation, which is the heading of its path, and a mirror. A token on the path executes the instruction; a token that takes a branch, jumps, returns, or exchanges with memory is turned by the mirror, off the path where it leaves and onto the path where it arrives.)
+- **`beq` cell:** two outgoing paths, chosen by the condition. Its paired come-from cell sits where the paths merge, so reverse execution knows which way the token arrived. (M6a: origin and come-from are the same cell seen from its two ends, a mirror if its condition holds and transparent if not.)
+- **Wire cells:** move the token one cell per tick, including turns and crossings. `jal` and `jalr` route the token along wires, steered by address bits. (M6a: blank cells are wire and crossings, mirrors `/` and `\` are turns, and a router is a mirror only if one bit of the token's pc or address is set. In transit the token has its target in `pc` and its origin in a second word, the address, so the same router merges by origin and splits by target.)
+- **Memory cells:** one 64-bit word each. `ld` (exchange) sends the token to the word and back. (M6a: the token carries the register as a third word, the datum, which the memory cell exchanges with its word.)
+- **Tape cells:** input and output for `read` and `write`, following RISC-R's system-call model. (Not in M6a; M6b.)
 
-**Rule and reversibility.** The rule is a bijection because every instruction is a bijection on the registers and every wire move is a permutation. Bitr checks this symbolically: rotor's per-instruction inverses give the inverse rule, and inverse after rule must be the identity. Only the token's cell changes per tick, so an event-driven simulator costs path length per instruction.
+**Rule and reversibility.** The rule is a bijection because every instruction is a bijection on the registers and every wire move is a permutation. Bitr checks this symbolically: rotor's per-instruction inverses give the inverse rule, and inverse after rule must be the identity. Only the token's cell changes per tick, so an event-driven simulator costs path length per instruction. (M6a: proven by bitr in both orders, on all states of a grid and without any constraint, since every cell is total: where a program stops is a property of a state, not a hole in the rule. Cellfie states its inverse rule itself, as its simulator run backward and as a second model; rotor's inverses meet it in M7's product check.)
 
 **Reversibility off.** Cellfie also accepts RISC-U layouts, whose instruction cells overwrite `rd`. That rule is not a bijection, and bitr's check finds two states with the same successor. Running backwards then needs a recorded trace. This is the switch from rule 8, at cell level.
 
-**Formats.** A layout is RLE extended with cell contents (instruction words, memory words). `cellfie -btor2` emits the cell machine as BTOR2 for a given grid size. Layouts enter only as `init`, through bitr's loader.
+**Formats.** A layout is RLE extended with cell contents (instruction words, memory words). `cellfie -btor2` emits the cell machine as BTOR2 for a given grid size. Layouts enter only as `init`, through bitr's loader. (M6a: the format is in `cellfie.md` and holds the token as well, so a layout is a whole state; bitr's loader for it is M7.)
 
 **Layout compiler.** It turns a RISC-R binary into a layout. Instructions go along a path in program order, branch and jump targets are connected by wire, and memory sits as a region beside the code. Code layout is the performance model: distance is time.
 
@@ -190,7 +192,7 @@ What this reveals about cellfie:
 
 ## Milestones
 
-The critical path runs M1 → M3 → M5 → M7 → M8. M7 is the first time cellfie meets selfie. After M8, the work splits into construction (M10, M11) and running all of selfie (M13). M6 and M9 run alongside. M16 follows M9, and M17 runs alongside once M2 is done. Each row ends in a make target that passes or fails.
+The critical path runs M1 → M3 → M5 → M7 → M8. M7 is the first time cellfie meets selfie. After M8, the work splits into construction (M10, M11) and running all of selfie (M13). M6 and M9 run alongside. M16 follows M9, and M17 runs alongside once M2 is done. Decided November 23, 2026: cellfie (M6, M7, M8) comes before the remaining RISC-R work (M9, M16, M17), since nothing in cellfie depends on it, M15 needs M8, and routing is the largest open risk; M9 returns before M13, where history words become memory round trips. Each row ends in a make target that passes or fails.
 
 | # | Tool | Milestone | Needs | Done when |
 | --- | --- | --- | --- | --- |
@@ -200,7 +202,7 @@ The critical path runs M1 → M3 → M5 → M7 → M8. M7 is the first time cell
 | M3 | rotor | RISC-R forward and inverse machine models; evaluator moved into `tools/btor2.h` | M1 | rotor's existing targets unchanged; inverse after forward is the identity on random states |
 | M4 | bitr | Parser, loaders, concrete simulator | M3 | bitr's simulator matches riscr step by step on all RISC-R examples |
 | M5 | bitr | Bit-blaster, CDCL next to babysat, forward BMC, witness replay | M4 | finds the known bugs in `examples/symbolic`; witnesses replay in mipster or riscr; CDCL and babysat agree on every CNF; proves inverse after forward is the identity symbolically for small k |
-| M6 | cellfie | Cell rule (instruction, `beq`, wire, memory and tape cells), event-driven simulator, layout format | M3 | bitr proves inverse after rule is the identity; a forward-then-backward run restores the initial grid |
+| M6 | cellfie | Cell rule (instruction, `beq`, wire, memory and tape cells), event-driven simulator, layout format; M6a, all but tapes and the system calls beyond `exit`, done November 23, 2026; M6b, tapes with `read`, `write`, `openat`, `brk`, open | M3 | `make cells`: bitr proves inverse after rule and rule after inverse are the identity; a forward-then-backward run restores the initial grid; simulator and model agree on random states |
 | M7 | cellfie | A hand-laid program of a few instructions, including a branch and a memory exchange | M5, M6 | bitr's product check against rotor's model passes at every step up to small k; the run matches riscr |
 | M8 | cellfie | Layout compiler from RISC-R binaries | M7 | selfie-compiled examples run on cellfie identically to riscr, step by step |
 | M9 | selfie | `+=`, `-=` and `^=` in C\*, compiled without history | M2 | the history stack stays empty for programs that use only these; selfie still compiles with gcc |
@@ -221,7 +223,7 @@ The biggest risk is routing the token across the grid by address, not whether ce
 
 **Risks and fallbacks:**
 
-- **Routing.** `jalr` and `ld` need the token steered by address bits to arbitrary cells. Fallback: a fixed routing spine (a tree or bus of wire cells) instead of free placement, at the cost of longer paths.
+- **Routing.** `jalr` and `ld` need the token steered by address bits to arbitrary cells. Fallback: a fixed routing spine (a tree or bus of wire cells) instead of free placement, at the cost of longer paths. After M6a the cell rule is no longer the risk: a router is one conditional mirror and reversible for free. What is open is the layout: the hand-laid test uses a bus with one router per `ld` and one bit of the pc each, chosen by hand so that the bit tells that `ld` from the others on the bus; a compiler needs trees over all address bits, and their size and the ticks they cost are M8's measurement.
 - **RISC-R control flow.** Paired come-from branches and uncomputing `ra` are the subtlest part of code generation, in the translator or in starc. Fallback: prove the scheme in hand-written RISC-R code in M1 before the compiler touches it.
 - **Speed.** Memory round trips dominate, so all of selfie on cellfie may take hours or far longer, depending on layout. Fallback: hybrid simulation (abstract RISC-R steps wherever nobody watches), backed by the M7 and M8 equivalence checks.
 - **Bitr's own solver** only reaches toy sizes. Fallback: the escape hatch to external solvers.
@@ -232,7 +234,7 @@ The biggest risk is routing the token across the grid by address, not whether ce
 
 **Open questions, with recommendations (tick once agreed):**
 
-- [x] **RISC-U encodings or a separate opcode space for RISC-R?** Recommendation: keep RISC-U's encodings and mark RISC-R binaries with a flag in the ELF header. Mipster refuses RISC-R binaries; riscr, rotor and bitr's loader refuse a binary whose flag doesn't match the selected mode. A separate opcode space would duplicate the encoder, decoder and disassembler in selfie, plus the decode logic in rotor and in cellfie's cell rule, all for a confusion risk that one flag already removes.
+- [x] **RISC-U encodings or a separate opcode space for RISC-R?** Frozen November 23, 2026, before cellfie: RISC-U's encodings stay. Recommendation: keep RISC-U's encodings and mark RISC-R binaries with a flag in the ELF header. Mipster refuses RISC-R binaries; riscr, rotor and bitr's loader refuse a binary whose flag doesn't match the selected mode. A separate opcode space would duplicate the encoder, decoder and disassembler in selfie, plus the decode logic in rotor and in cellfie's cell rule, all for a confusion risk that one flag already removes.
 - [x] **RISC-R inside `selfie.c` behind a flag, or as a tool?** Decided November 2, 2026: a tool, `tools/riscr.c`, on `selfie.h`. M1 had added about 1,380 lines to `selfie.c`, and M2 inside starc would have touched nearly every code generation procedure. As a tool, RISC-R sits beside selfie the way monster and rotor do, and the file interface stays the ELF binary.
 - [x] **Start the block rule from Morita, or design it from scratch?** Recommendation: start from Morita's partitioned CAs built on rotary elements (RLEMs). They come with proven reversibility, proven universality and reversible self-reproduction. This now applies only to the later bit-level refinement: instruction-level cells in v1 need no bit-level rule.
 - [x] **Which branch and file hold this plan?** Recommendation: a `RISC-R` branch off `main`, kept away from the `intelligence` branch. Keep this doc as `projects/reversible.md` there, and add a root `CLAUDE.md` on that branch that points to it and repeats the design rules. The repo's `PLAN.md` stays the course plan.

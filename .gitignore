@@ -32,3 +32,10 @@ tests/riscr-test.txt
 *.bmc
 examples/symbolic/*.cnf
 riscr-identity.txt
+
+# cellfie and what make cells writes
+cellfie
+cellfie-test-*.rle
+cellfie-check-failed.rle
+cellfie-test.txt
+cellfie-identity.txt

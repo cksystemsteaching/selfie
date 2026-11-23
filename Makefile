@@ -211,7 +211,7 @@ cache: selfie selfie.m selfie.s examples/cache/dcache-access-[01].c
 .PHONY: sat brr bzz mon smt beat beator-btor2 rot synthesize rotor-btor2 btor2 more all
 
 # Run more that only requires standard tools and is not too slow
-more: sat brr bzz mon smt beat beator-btor2 rot synthesize rotor-btor2 rev trust riscr-model sim bmc cdcl identity
+more: sat brr bzz mon smt beat beator-btor2 rot synthesize rotor-btor2 rev trust riscr-model sim bmc cdcl identity cells
 
 # Run all that only requires standard tools and is not too slow
 all: less more
@@ -470,6 +470,43 @@ identity: bitr rotor
 # Prevent make from deleting intermediate target bitr
 .SECONDARY: bitr
 
+# Compile cellfie.c with selfie.h and btor2.h as libraries into cellfie executable
+cellfie: tools/cellfie.c tools/btor2.h selfie.h
+	$(CC) $(CFLAGS) --include selfie.h --include tools/btor2.h $< -o $@
+
+# Cell rule of cellfie (M6 of projects/reversible.md, without tapes and system calls): the hand-laid RISC-R
+# program in tests/cellfie-test.rle runs on the grid until it exits with exit code 42, and then as many ticks
+# backward, natively and on mipster, which restores the initial layout bit for bit, also across files; the
+# simulator agrees with the BTOR2 model of the rule, forward and backward, on random states; and bitr proves
+# that the inverse rule undoes the rule and the rule the inverse rule, on all states of a grid, with no
+# constraint on the states, for the grid of the test and for the smallest grid
+cells: cellfie bitr selfie selfie.h
+	./cellfie -l tests/cellfie-test.rle -o cellfie-test-initial.rle -rev 10000 -o cellfie-test-restored.rle -f 10000 -o cellfie-test-final.rle | tee cellfie-test.txt
+	grep -q "exit with exit code 42 after 176 ticks and 29 instructions" cellfie-test.txt
+	grep -q "initial state restored after 176 ticks forward and 176 ticks backward" cellfie-test.txt
+	cmp cellfie-test-initial.rle cellfie-test-restored.rle
+	! cmp -s cellfie-test-initial.rle cellfie-test-final.rle
+	./cellfie -l cellfie-test-final.rle -b 176 -o cellfie-test-restored.rle
+	cmp cellfie-test-initial.rle cellfie-test-restored.rle
+	./selfie -c selfie.h tools/btor2.h tools/cellfie.c -m 64 -l tests/cellfie-test.rle -rev 10000 -o cellfie-test-restored.rle -check 100
+	cmp cellfie-test-initial.rle cellfie-test-restored.rle
+	./cellfie -check 100000
+	./cellfie -btor2 16 8
+	./bitr cellfie-16x8.btor2 -k 1 > /dev/null
+	for g in "2 2" "16 8"; do \
+	  set -- $$g; \
+	  ./cellfie -noproperties -btor2 $$1 $$2 > /dev/null && \
+	  ./cellfie -inverse -btor2 $$1 $$2 > /dev/null || exit 1; \
+	  ./bitr cellfie-$$1x$$2-noproperties.btor2 -identity cellfie-$$1x$$2-inverse.btor2 | tee cellfie-identity.txt; \
+	  grep -q "cellfie-$$1x$$2-inverse.btor2 after cellfie-$$1x$$2-noproperties.btor2 is the identity on all 9 states" cellfie-identity.txt || exit 1; \
+	  ./bitr cellfie-$$1x$$2-inverse.btor2 -identity cellfie-$$1x$$2-noproperties.btor2 | tee cellfie-identity.txt; \
+	  grep -q "cellfie-$$1x$$2-noproperties.btor2 after cellfie-$$1x$$2-inverse.btor2 is the identity on all 9 states" cellfie-identity.txt || exit 1; \
+	done
+	@echo "$@: the hand-laid program runs forward and back to its initial layout, simulator and model agree, the cell rule is a bijection"
+
+# Prevent make from deleting intermediate target cellfie
+.SECONDARY: cellfie
+
 # Bennett mode (M2 of projects/reversible.md): selfie translated to RISC-R compiles selfie on riscr
 # to an identical binary and runs back to its initial state; riscr's translator reaches a fixed point
 # on itself; takes about 3GB of memory for the history stack and a few minutes
@@ -502,7 +539,7 @@ trust: selfie selfie.h
 	rm -f examples/trusting-trust/honest-stamp.c examples/trusting-trust/honest-victim.c examples/trusting-trust/trojaned-victim.c examples/trusting-trust/suspect-stamp.c
 
 # Consider these targets as targets, not files
-.PHONY: rev riscr-rev bennett trust riscr-model sim bmc cdcl identity
+.PHONY: rev riscr-rev bennett trust riscr-model sim bmc cdcl identity cells
 
 # Consider these targets as targets, not files
 .PHONY: spike qemu assemble beator-32 rotor-32 32-bit bitwuzla beator-bitme rotor-bitme bitme extras
@@ -622,5 +659,6 @@ clean:
 	rm -f tests/*.m tests/riscr-test.txt
 	rm -f examples/trusting-trust/honest-stamp.c examples/trusting-trust/honest-victim.c examples/trusting-trust/trojaned-victim.c examples/trusting-trust/suspect-stamp.c
 	rm -f selfie selfie-32 selfie.h selfie-gc.h selfie-gc-nomain.h selfie.exe
-	rm -f babysat buzzr monster beator beator-32 rotor rotor-32 riscr riscr.h riscr-test bitr
+	rm -f babysat buzzr monster beator beator-32 rotor rotor-32 riscr riscr.h riscr-test bitr cellfie
+	rm -f cellfie-test-*.rle cellfie-check-failed.rle cellfie-test.txt cellfie-identity.txt
 	rm -f selfie-u.m selfie-r.r selfie-r.m riscr-u.m riscr-r.r riscr-r2.r
