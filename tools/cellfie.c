@@ -511,11 +511,19 @@ uint64_t count_strips(uint64_t bits);
 void     plan_strips();
 void     plan_rows();
 
+uint64_t is_stack_strip(uint64_t strip);
+uint64_t has_stack_strip(uint64_t lo, uint64_t hi);
+uint64_t split_strips(uint64_t lo, uint64_t hi);
+
+void     lay_strip_cell(uint64_t x, uint64_t y, uint64_t kind, uint64_t word);
+uint64_t place_strips(uint64_t lo, uint64_t hi, uint64_t x, uint64_t y);
+
 uint64_t get_word_strip(uint64_t address, uint64_t region);
-uint64_t get_word_column(uint64_t address);
+uint64_t get_descending_column(uint64_t address);
+uint64_t get_word_column(uint64_t address, uint64_t strip);
 uint64_t get_word_row(uint64_t strip);
 
-void lay_column_comb(uint64_t* keys, uint64_t* ys, uint64_t lo, uint64_t hi, uint64_t x, uint64_t field);
+void lay_descending_comb(uint64_t* keys, uint64_t* xs, uint64_t lo, uint64_t hi, uint64_t x, uint64_t y, uint64_t down);
 void     boot_token();
 
 uint64_t differing_bit(uint64_t a, uint64_t b);
@@ -616,11 +624,18 @@ uint64_t strip_pitch  = 0; // rows of a strip
 uint64_t* region_strips = (uint64_t*) 0; // the strip of the first word of each region
 uint64_t* strip_keys    = (uint64_t*) 0; // the address of the first word of each strip
 uint64_t* strip_lasts   = (uint64_t*) 0; // the address of the last word of each strip
+uint64_t* strip_entries = (uint64_t*) 0; // the first row of each strip, from memory_in_row
 
 uint64_t number_of_strips = 0;
 
-uint64_t column_comb_height = 0; // columns of a comb over the strips
-uint64_t word_column        = 0; // column of the words that are first in their strip
+uint64_t stack_start = 0; // address of the first word of the stack that has a cell
+
+uint64_t laying_strips = 0; // the combs over the strips are laid, not only placed
+uint64_t split_bit     = 0; // the bit that split the strips last
+
+uint64_t comb_columns = 0; // columns of a comb over the strips
+uint64_t memory_rows  = 0; // rows of all strips
+uint64_t word_column  = 0; // first column of the words
 
 // the words of memory and tapes that have a cell, by ascending address
 
@@ -4922,18 +4937,33 @@ void lay_comb(uint64_t* keys, uint64_t* xs, uint64_t lo, uint64_t hi, uint64_t y
   lay_comb(keys, xs, mid, hi, y, down, field);
 }
 
-void lay_column_comb(uint64_t* keys, uint64_t* ys, uint64_t lo, uint64_t hi, uint64_t x, uint64_t field) {
+void lay_descending_comb(uint64_t* keys, uint64_t* xs, uint64_t lo, uint64_t hi, uint64_t x, uint64_t y, uint64_t down) {
   uint64_t bit;
   uint64_t mid;
+  uint64_t mirror_kind;
+  uint64_t column;
 
-  // a comb on its side, over the keys from lo to hi - 1 with its root in
-  // column x and its leaves in the rows ys east of it: a token heading
-  // east for the leaves is turned south by a router if the bit is set
-  // and east again in the row of its half, and a token heading west from
-  // the leaves is turned north in its row and west again by the router
+  // the comb of a strip of the stack over the keys from lo to hi - 1, with
+  // the words in the columns xs, which descend by address, entered by a
+  // token heading south in column x and row y if down, and left by one
+  // there otherwise: the token is turned east, a router turns it south
+  // if the bit is set, and a mirror further east if not
 
-  if (hi < lo + 2)
+  if (down)
+    mirror_kind = BACKSLASH;
+  else
+    mirror_kind = SLASH;
+
+  if (hi == lo + 1) {
+    // the way east to the column of the word, if the strip has no word in between
+
+    if (*(xs + lo) != x) {
+      lay_mirror(x, y, mirror_kind);
+      lay_mirror(*(xs + lo), y, mirror_kind);
+    }
+
     return;
+  }
 
   bit = differing_bit(*(keys + lo), *(keys + hi - 1));
 
@@ -4942,12 +4972,26 @@ void lay_column_comb(uint64_t* keys, uint64_t* ys, uint64_t lo, uint64_t hi, uin
   while (get_bits(*(keys + mid), bit, 1) == 0)
     mid = mid + 1;
 
-  lay_cell(x, *(ys + lo), encode_cell(CELL_ROUTER, 0, BACKSLASH), bit + field * 64);
+  // the column in which the comb of all words that differ from these keys
+  // in this bit and the bits below would begin: that of its first word,
+  // which has them all set, less its rows
 
-  lay_mirror(x, *(ys + mid), BACKSLASH);
+  column = left_shift(right_shift(*(keys + lo), bit + 1), bit + 1) + two_to_the_power_of(bit + 1) - WORDSIZE;
+  column = word_column + get_descending_column(column) - (bit - 2);
 
-  lay_column_comb(keys, ys, lo, mid, x + 1, field);
-  lay_column_comb(keys, ys, mid, hi, x + 1, field);
+  lay_mirror(x, y, mirror_kind);
+
+  lay_cell(column + 1, y, encode_cell(CELL_ROUTER, 0, mirror_kind), bit + FIELD_ADDRESS * 64);
+
+  lay_mirror(column + two_to_the_power_of(bit - 2), y, mirror_kind);
+
+  if (down)
+    y = y + 1;
+  else
+    y = y - 1;
+
+  lay_descending_comb(keys, xs, mid, hi, column + 1, y, down);
+  lay_descending_comb(keys, xs, lo, mid, column + two_to_the_power_of(bit - 2), y, down);
 }
 
 void add_memory_word(uint64_t address, uint64_t value, uint64_t kind) {
@@ -5368,14 +5412,18 @@ void plan_strips() {
     i = i + 1;
   }
 
-  // all strips have the rows of the highest comb, the strips have a comb of columns
+  // all strips have the rows of the highest comb; a comb of a strip of
+  // the stack has one more row, in which wire reaches a word whose strip
+  // has few words
+
+  stack_start = VIRTUALMEMORYSIZE * GIGABYTE - stack_words * WORDSIZE;
 
   strip_height = 0;
 
   i = 0;
 
   while (i < number_of_strips) {
-    height = region_height(*(strip_keys + i), *(strip_lasts + i));
+    height = region_height(*(strip_keys + i), *(strip_lasts + i)) + is_stack_strip(i);
 
     if (height > strip_height)
       strip_height = height;
@@ -5385,9 +5433,165 @@ void plan_strips() {
 
   strip_pitch = 2 * strip_height + 3;
 
-  column_comb_height = comb_height(strip_keys, 0, number_of_strips);
+  // the rows of the strips and the columns of the combs over them
 
-  word_column = COMB_COLUMN + 2 * column_comb_height;
+  strip_entries = zmalloc(number_of_strips * sizeof(uint64_t));
+
+  laying_strips = 0;
+
+  comb_columns = 0;
+
+  memory_rows = place_strips(0, number_of_strips, 0, 0);
+
+  word_column = COMB_COLUMN + 2 * comb_columns;
+}
+
+uint64_t is_stack_strip(uint64_t strip) {
+  // a strip with a word of the stack
+  if (*(strip_lasts + strip) >= stack_start)
+    return *(strip_lasts + strip) < VIRTUALMEMORYSIZE * GIGABYTE;
+  else
+    return 0;
+}
+
+uint64_t has_stack_strip(uint64_t lo, uint64_t hi) {
+  // the strips of the stack are the last of memory
+  while (lo < hi) {
+    if (is_stack_strip(lo))
+      return 1;
+
+    lo = lo + 1;
+  }
+
+  return 0;
+}
+
+uint64_t split_strips(uint64_t lo, uint64_t hi) {
+  uint64_t mid;
+
+  // the first of the strips from lo to hi - 1 in whose addresses the
+  // highest differing bit of all of them is set, which is split_bit
+
+  split_bit = differing_bit(*(strip_keys + lo), *(strip_keys + hi - 1));
+
+  mid = lo + 1;
+
+  while (get_bits(*(strip_keys + mid), split_bit, 1) == 0)
+    mid = mid + 1;
+
+  return mid;
+}
+
+void lay_strip_cell(uint64_t x, uint64_t y, uint64_t kind, uint64_t word) {
+  // a cell of the comb to the strips, in its column x and row y from
+  // memory_in_row, and the same cell of the comb from the strips, which
+  // is the same comb west of it and as many rows south as a strip has
+  // between its first and its last: what turns a token heading east
+  // south and east again turns one heading west north and west again
+
+  if (x >= comb_columns)
+    comb_columns = x + 1;
+
+  if (laying_strips) {
+    lay_cell(COMB_COLUMN + comb_columns + x, memory_in_row + y, encode_cell(kind, 0, BACKSLASH), word);
+    lay_cell(COMB_COLUMN + x, memory_in_row + y + strip_pitch - 1, encode_cell(kind, 0, BACKSLASH), word);
+  }
+}
+
+uint64_t place_strips(uint64_t lo, uint64_t hi, uint64_t x, uint64_t y) {
+  uint64_t mid;
+  uint64_t rows;
+  uint64_t length;
+  uint64_t stair;
+  uint64_t l;
+
+  // The comb over the strips from lo to hi - 1, entered by a token heading
+  // east in its column x and row y: places the strips in rows, lays the
+  // comb if laying_strips, and returns the number of rows. A router turns
+  // a token south if a bit of its address is set, so the strips with the
+  // bit set are south of the others. The strips of the stack have all
+  // such bits set and would be last, and its top the last word of the
+  // last strip, where a program has its most used words. For the stack
+  // the comb is another: a token is turned south first, so that a router
+  // turns it east if the bit is set, and south is where the others go.
+
+  if (hi == lo + 1) {
+    *(strip_entries + lo) = y;
+
+    return strip_pitch;
+  }
+
+  mid = split_strips(lo, hi);
+
+  if (not(has_stack_strip(mid, hi))) {
+    // strips without the bit continue east, strips with the bit are south of them
+
+    lay_strip_cell(x, y, CELL_ROUTER, split_bit + FIELD_ADDRESS * 64);
+
+    rows = place_strips(lo, mid, x + 1, y);
+
+    lay_strip_cell(x, y + rows, CELL_MIRROR, 0);
+
+    return rows + place_strips(mid, hi, x + 1, y + rows);
+  } else if (has_stack_strip(lo, mid)) {
+    // within the stack: strips with the bit first
+
+    lay_strip_cell(x, y, CELL_MIRROR, 0);
+    lay_strip_cell(x, y + 1, CELL_ROUTER, split_bit + FIELD_ADDRESS * 64);
+
+    rows = 1 + place_strips(mid, hi, x + 1, y + 1);
+
+    lay_strip_cell(x, y + rows, CELL_MIRROR, 0);
+
+    return rows + place_strips(lo, mid, x + 1, y + rows);
+  }
+
+  // the way to the stack: a stair of routers, each a column east and a
+  // row south of the one before, that tokens for the stack descend, and
+  // that others leave south, each in the column of its router
+
+  length = 0;
+
+  l = lo;
+
+  mid = split_strips(l, hi);
+
+  while (and(has_stack_strip(mid, hi), not(has_stack_strip(l, mid)))) {
+    lay_strip_cell(x + length, y + length, CELL_MIRROR, 0);
+    lay_strip_cell(x + length, y + length + 1, CELL_ROUTER, split_bit + FIELD_ADDRESS * 64);
+
+    length = length + 1;
+
+    l = mid;
+
+    if (hi > l + 1)
+      mid = split_strips(l, hi);
+    else
+      // one strip is left, the stack: the stair ends
+      mid = hi;
+  }
+
+  // the stack first, then the others by ascending address, all east of the stair
+
+  rows = length + place_strips(l, hi, x + length, y + length);
+
+  stair = 0;
+
+  l = lo;
+
+  while (stair < length) {
+    mid = split_strips(l, hi);
+
+    lay_strip_cell(x + stair, y + rows, CELL_MIRROR, 0);
+
+    rows = rows + place_strips(l, mid, x + length, y + rows);
+
+    stair = stair + 1;
+
+    l = mid;
+  }
+
+  return rows;
 }
 
 uint64_t get_word_strip(uint64_t address, uint64_t region) {
@@ -5395,13 +5599,40 @@ uint64_t get_word_strip(uint64_t address, uint64_t region) {
   return *(region_strips + region) + right_shift(address, strip_bits + 3) - right_shift(*(region_starts + region), strip_bits + 3);
 }
 
-uint64_t get_word_column(uint64_t address) {
-  return word_column + get_bits(address, 3, strip_bits);
+uint64_t get_descending_column(uint64_t address) {
+  uint64_t column;
+  uint64_t j;
+
+  // the column, from the first, of a word in a strip of the stack, where
+  // the words with a bit set come first: one column for a set bit, two
+  // to the power of its number, from 1, for another
+
+  column = 0;
+
+  j = 1;
+
+  while (j <= strip_bits) {
+    if (get_bits(address, j + 2, 1))
+      column = column + 1;
+    else
+      column = column + two_to_the_power_of(j);
+
+    j = j + 1;
+  }
+
+  return column;
+}
+
+uint64_t get_word_column(uint64_t address, uint64_t strip) {
+  if (is_stack_strip(strip))
+    return word_column + get_descending_column(address);
+  else
+    return word_column + get_bits(address, 3, strip_bits);
 }
 
 uint64_t get_word_row(uint64_t strip) {
   // the words of a strip are below the comb to them
-  return memory_in_row + strip * strip_pitch + strip_height + 1;
+  return memory_in_row + *(strip_entries + strip) + strip_height + 1;
 }
 
 void plan_rows() {
@@ -5479,8 +5710,8 @@ void compile_layout(char* name) {
   uint64_t* word_xs;
   uint64_t* word_ys;
   uint64_t* word_strips;
-  uint64_t* strip_entries;
-  uint64_t* strip_exits;
+  uint64_t entry;
+  uint64_t exit_row;
 
   boot_binary(name, 0);
 
@@ -5500,9 +5731,6 @@ void compile_layout(char* name) {
   word_ys        = zmalloc(number_of_region_words * sizeof(uint64_t));
   word_strips    = zmalloc(number_of_region_words * sizeof(uint64_t));
 
-  strip_entries = zmalloc(number_of_strips * sizeof(uint64_t));
-  strip_exits   = zmalloc(number_of_strips * sizeof(uint64_t));
-
   number_of_words = 0;
 
   j = 0;
@@ -5515,7 +5743,7 @@ void compile_layout(char* name) {
 
       *(word_strips + number_of_words) = get_word_strip(address, j);
 
-      *(word_xs + number_of_words) = get_word_column(address);
+      *(word_xs + number_of_words) = get_word_column(address, get_word_strip(address, j));
       *(word_ys + number_of_words) = get_word_row(get_word_strip(address, j));
 
       add_memory_word(address, initial_word(address), *(region_kinds + j));
@@ -5528,10 +5756,10 @@ void compile_layout(char* name) {
 
   x = CODE_COLUMN + 2 * n + 2;
 
-  if (x < word_column + two_to_the_power_of(strip_bits) + 1)
-    x = word_column + two_to_the_power_of(strip_bits) + 1;
+  if (x < word_column + two_to_the_power_of(strip_bits + 1) + 1)
+    x = word_column + two_to_the_power_of(strip_bits + 1) + 1;
 
-  allocate_grid(x, memory_in_row + number_of_strips * strip_pitch);
+  allocate_grid(x, memory_in_row + memory_rows);
 
   // the path
 
@@ -5618,23 +5846,37 @@ void compile_layout(char* name) {
       while (and(hi < number_of_words, *(word_strips + hi) == j))
         hi = hi + 1;
 
-      *(strip_entries + j) = memory_in_row + j * strip_pitch;
-      *(strip_exits + j)   = *(strip_entries + j) + strip_pitch - 1;
+      entry    = memory_in_row + *(strip_entries + j);
+      exit_row = entry + strip_pitch - 1;
 
-      lay_mirror(*(word_xs + lo), *(strip_entries + j), BACKSLASH);
+      if (is_stack_strip(j)) {
+        lay_mirror(word_column, entry, BACKSLASH);
 
-      lay_comb(word_addresses, word_xs, lo, hi, *(strip_entries + j) + 1, 1, FIELD_ADDRESS);
-      lay_comb(word_addresses, word_xs, lo, hi, *(strip_exits + j) - 1, 0, FIELD_ADDRESS);
+        lay_descending_comb(word_addresses, word_xs, lo, hi, word_column, entry + 1, 1);
+        lay_descending_comb(word_addresses, word_xs, lo, hi, word_column, exit_row - 1, 0);
 
-      lay_mirror(*(word_xs + lo), *(strip_exits + j), SLASH);
+        lay_mirror(word_column, exit_row, SLASH);
+      } else {
+        lay_mirror(*(word_xs + lo), entry, BACKSLASH);
+
+        lay_comb(word_addresses, word_xs, lo, hi, entry + 1, 1, FIELD_ADDRESS);
+        lay_comb(word_addresses, word_xs, lo, hi, exit_row - 1, 0, FIELD_ADDRESS);
+
+        lay_mirror(*(word_xs + lo), exit_row, SLASH);
+      }
 
       lo = hi;
     }
 
-    lay_column_comb(strip_keys, strip_entries, 0, number_of_strips, COMB_COLUMN + column_comb_height, FIELD_ADDRESS);
-    lay_column_comb(strip_keys, strip_exits, 0, number_of_strips, COMB_COLUMN, FIELD_ADDRESS);
+    // the combs to and from the strips
 
-    lay_mirror(2, *strip_exits, BACKSLASH);
+    laying_strips = 1;
+
+    place_strips(0, number_of_strips, 0, 0);
+
+    laying_strips = 0;
+
+    lay_mirror(2, memory_in_row + strip_pitch - 1, BACKSLASH);
     lay_mirror(2, access_turn_row, SLASH);
     lay_mirror(*access_in, access_turn_row, BACKSLASH);
   }
@@ -6216,10 +6458,10 @@ void run_hybrid(char* name) {
 
   x = CODE_COLUMN + 2 * n + 2;
 
-  if (x < word_column + two_to_the_power_of(strip_bits) + 1)
-    x = word_column + two_to_the_power_of(strip_bits) + 1;
+  if (x < word_column + two_to_the_power_of(strip_bits + 1) + 1)
+    x = word_column + two_to_the_power_of(strip_bits + 1) + 1;
 
-  set_grid_size(x, memory_in_row + number_of_strips * strip_pitch);
+  set_grid_size(x, memory_in_row + memory_rows);
 
   boot_token();
   boot_store();
@@ -6278,7 +6520,8 @@ void run_hybrid(char* name) {
 
             // the column and the row of the word
 
-            j = get_word_column(address) + get_word_row(get_word_strip(address, r));
+            j = get_word_strip(address, r);
+            j = get_word_column(address, j) + get_word_row(j);
 
             executed_ticks = executed_ticks + 2 * x + 2 * j + 2 * strip_height - 4;
 

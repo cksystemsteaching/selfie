@@ -150,7 +150,7 @@ Cellfie is one C\* file, `tools/cellfie.c`. Each cell holds one RISC-R instructi
 | Analogy | cellfie version | Target |
 | --- | --- | --- |
 | Self-compilation | the layout compiler, compiled by selfie to RISC-R, runs on cellfie and reproduces its own layout: L1 = L0 | M11 |
-| Self-execution | all of selfie runs on cellfie, cell by cell | M13, done by hybrid simulation: 1.39 billion instructions, 3.8·10^17 ticks, 271 million ticks per instruction on the layout of M8's compiler |
+| Self-execution | all of selfie runs on cellfie, cell by cell | M13, done by hybrid simulation: 1.39 billion instructions; 3.8·10^17 ticks, 271 million per instruction, on the layout of M8's compiler, 1.5·10^14 ticks, 107,000 per instruction, with memory in two dimensions and the stack first |
 | Self-hosting | the constructor builds guest programs in walled regions; replication = it builds itself plus its tape | after M10 |
 
 **Later layers**, each checked by bitr against the layer above:
