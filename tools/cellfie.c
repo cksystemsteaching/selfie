@@ -38,7 +38,8 @@ generates of its rule and its inverse rule for a given grid size.
 Usage: cellfie { -l layout | -o layout | -f ticks | -b ticks | -rev ticks |
                  -inverse | -noproperties | -btor2 width height | -check states |
                  -heap offset words | -stack words | -i file | -c binary |
-                 -a abstraction heap-allowance stack-allowance }
+                 -a abstraction heap-allowance stack-allowance |
+                 -tapes descriptors | -tapewords words } [ -h binary ... ]
 
 -c compiles a RISC-R binary into a layout: its instructions in a row,
 memory cells for its data segment, for the regions of its heap given
@@ -49,6 +50,16 @@ with -i as its standard input, all wired by combs of routers. -a
 then writes the abstraction that relates the layout to rotor's
 RISC-R model of the binary with the given allowances in bytes, for
 bitr's product of the two.
+
+-h runs a RISC-R binary with the remaining arguments on the layout
+that -c would write, without laying it out: the hybrid simulator has
+the instruction cells and the cells of the words act on the token as
+the rule says, and adds the ticks that the wire in between takes,
+which the layout determines. Words are allocated when accessed, so
+the grid can have a cell for every word of a large heap. Files are
+the host's. -tapes before it sets the number of file descriptors, a
+power of two, 4 by default, and gives each of them tapes, not only
+the standard ones; -tapewords sets the words per tape, 16 by default.
 
 -l loads a layout, -o writes the grid and the token as layout; -f
 runs at most ticks forward, stopping where a property holds for the
@@ -71,6 +82,7 @@ simulator with the model, forward and backward, on random states.
 // ----------------------------- GRID ------------------------------
 // -----------------------------------------------------------------
 
+void set_grid_size(uint64_t width, uint64_t height);
 void allocate_grid(uint64_t width, uint64_t height);
 
 uint64_t cell_index(uint64_t x, uint64_t y);
@@ -138,7 +150,7 @@ void      set_token_register(uint64_t reg, uint64_t value);
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
-uint64_t NUMBER_OF_TAPES = 4; // file descriptors, standard input, output, and error included
+uint64_t NUMBER_OF_TAPES = 4; // file descriptors, standard input, output, and error included; a power of two, see -tapes
 
 // what a token in a read or write is on its way to, or back from
 
@@ -203,12 +215,15 @@ uint64_t cell_transfer(uint64_t on_path);
 uint64_t cell_system_call(uint64_t on_path);
 
 void act_instruction(uint64_t orientation, uint64_t mirror_kind, uint64_t word);
+void act_memory(uint64_t* word);
+void act_tape(uint64_t* word);
 void act();
 
 void move_token();
 
 void tick();
 
+uint64_t instruction_property(uint64_t word);
 uint64_t token_property();
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
@@ -319,6 +334,7 @@ uint64_t  is_snapshot(uint64_t* snapshot, uint64_t reporting);
 
 void print_token();
 void print_property(uint64_t property);
+void print_stop(uint64_t property);
 
 uint64_t run_forward(uint64_t ticks);
 void     run_backward(uint64_t ticks);
@@ -480,7 +496,19 @@ uint64_t* next_values = (uint64_t*) 0; // next value of each bit-vector state of
 // --------------------------- COMPILER ----------------------------
 // -----------------------------------------------------------------
 
-void boot_binary(char* name);
+void boot_binary(char* name, uint64_t arguments);
+
+uint64_t ceiling_log_two(uint64_t n);
+
+void     add_region(uint64_t start, uint64_t words, uint64_t kind);
+uint64_t find_region(uint64_t address);
+uint64_t region_height(uint64_t lo, uint64_t hi);
+
+void     plan_path();
+void     plan_regions();
+uint64_t initial_word(uint64_t address);
+void     plan_rows();
+void     boot_token();
 
 uint64_t differing_bit(uint64_t a, uint64_t b);
 uint64_t comb_height(uint64_t* keys, uint64_t lo, uint64_t hi);
@@ -504,6 +532,10 @@ uint64_t CODE_COLUMN = 4; // column of the first instruction and of the first me
 uint64_t TAPE_WORDS = 16; // words per tape, as in rotor's model
 
 uint64_t MAX_HEAP_REGIONS = 8;
+uint64_t MAX_REGIONS      = 64; // data, heap, stack, tapes
+
+uint64_t CLASS_CONTROL = 1; // beq, jal, jalr
+uint64_t CLASS_ACCESS  = 2; // ld with rd not zero, ecall
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
@@ -514,9 +546,57 @@ uint64_t* heap_words   = (uint64_t*) 0;
 
 uint64_t number_of_heap_regions = 0;
 
+uint64_t tape_files = 3; // the file descriptors below have tapes: the standard ones, or all with -tapes
+
 uint64_t stack_words = 64; // the stack has memory cells for that many words below its top
 
 char* input_name = (char*) 0; // file whose bytes are on the tape of standard input
+
+uint64_t* input_words = (uint64_t*) 0; // its bytes
+uint64_t  input_size  = 0;             // its size in bytes
+
+// the instructions that leave the path, by ascending address, and their columns
+
+uint64_t* instruction_classes = (uint64_t*) 0; // of all instructions
+
+uint64_t* control_keys = (uint64_t*) 0;
+uint64_t* control_out  = (uint64_t*) 0;
+uint64_t* control_in   = (uint64_t*) 0;
+
+uint64_t controls = 0;
+
+uint64_t* access_keys = (uint64_t*) 0;
+uint64_t* access_out  = (uint64_t*) 0;
+uint64_t* access_in   = (uint64_t*) 0;
+
+uint64_t accesses = 0;
+
+// the regions of words of memory and tapes that have a cell, by ascending address
+
+uint64_t* region_starts = (uint64_t*) 0; // address of the first word
+uint64_t* region_words  = (uint64_t*) 0; // number of words
+uint64_t* region_kinds  = (uint64_t*) 0; // memory or tape cells
+uint64_t* region_ranks  = (uint64_t*) 0; // number of words in the regions before
+
+uint64_t number_of_regions      = 0;
+uint64_t number_of_region_words = 0;
+
+uint64_t last_region = 0; // the region found last
+
+// the rows of the layout
+
+uint64_t control_out_row    = 0;
+uint64_t access_in_row      = 0;
+uint64_t path_row           = 0;
+uint64_t control_in_row     = 0;
+uint64_t access_out_row     = 0;
+uint64_t control_spine_row  = 0;
+uint64_t access_spine_row   = 0;
+uint64_t memory_in_row      = 0;
+uint64_t memory_row         = 0;
+uint64_t memory_out_row     = 0;
+uint64_t access_return_row  = 0;
+uint64_t control_return_row = 0;
 
 // the words of memory and tapes that have a cell, by ascending address
 
@@ -533,6 +613,38 @@ uint64_t abstraction_nid  = 0; // next nid of the abstraction being written
 uint64_t abstraction_step = 0; // nid of its output step
 
 // -----------------------------------------------------------------
+// ---------------------------- HYBRID -----------------------------
+// -----------------------------------------------------------------
+
+uint64_t* word_in_store(uint64_t address);
+void      boot_store();
+
+uint64_t* allocate_host_buffer(uint64_t words);
+
+void host_openat();
+void host_read();
+void host_write();
+void host_system_call();
+
+void run_hybrid(char* name);
+
+// ------------------------ GLOBAL CONSTANTS -----------------------
+
+uint64_t PAGE_WORDS  = 4096;   // words of memory or of a tape are allocated in pages
+uint64_t STORE_PAGES = 131072; // 4GB of memory and of each tape
+
+// ------------------------ GLOBAL VARIABLES -----------------------
+
+// the words of memory, of the input tapes, and of the output tapes, in pages
+
+uint64_t* store = (uint64_t*) 0;
+
+uint64_t* host_fds = (uint64_t*) 0; // file descriptors of the host by file descriptor
+
+uint64_t* host_buffer       = (uint64_t*) 0; // bytes on their way from and to the host
+uint64_t  host_buffer_words = 0;
+
+// -----------------------------------------------------------------
 // ----------------------------- MAIN ------------------------------
 // -----------------------------------------------------------------
 
@@ -544,9 +656,9 @@ uint64_t cellfie();
 // -----------------------------------------------------------------
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
 
-void allocate_grid(uint64_t width, uint64_t height) {
-  // the grid is a torus of blank cells, its width and height are the
-  // powers of two of at least two cells that width and height fit in
+void set_grid_size(uint64_t width, uint64_t height) {
+  // the width and height of the grid are the powers of two of at least
+  // two cells that width and height fit in
 
   grid_width = 2;
 
@@ -557,6 +669,12 @@ void allocate_grid(uint64_t width, uint64_t height) {
 
   while (grid_height < height)
     grid_height = grid_height * 2;
+}
+
+void allocate_grid(uint64_t width, uint64_t height) {
+  // the grid is a torus of blank cells
+
+  set_grid_size(width, height);
 
   grid_size = grid_width * grid_height;
 
@@ -1318,6 +1436,24 @@ void act_instruction(uint64_t orientation, uint64_t mirror_kind, uint64_t word) 
   token_heading = mirror_heading(token_heading, mirror_kind);
 }
 
+void act_memory(uint64_t* word) {
+  uint64_t datum;
+
+  // a memory cell exchanges its word with the datum
+
+  datum = token_data;
+
+  token_data = *word;
+
+  *word = datum;
+}
+
+void act_tape(uint64_t* word) {
+  // a tape cell flips the bits of its word by the datum
+
+  *word = bitwise_xor(*word, token_data);
+}
+
 void act() {
   uint64_t index;
   uint64_t cell;
@@ -1345,14 +1481,10 @@ void act() {
 
     if (bit)
       token_heading = mirror_heading(token_heading, get_cell_mirror(cell));
-  } else if (kind == CELL_MEMORY) {
-    // exchange the word with the datum
-    *(cell_words + index) = token_data;
-
-    token_data = word;
-  } else if (kind == CELL_TAPE)
-    // flip the bits of the word by the datum
-    *(cell_words + index) = bitwise_xor(word, token_data);
+  } else if (kind == CELL_MEMORY)
+    act_memory(cell_words + index);
+  else if (kind == CELL_TAPE)
+    act_tape(cell_words + index);
   else if (kind == CELL_INSTRUCTION)
     act_instruction(get_cell_orientation(cell), get_cell_mirror(cell), word);
 }
@@ -1395,13 +1527,57 @@ void tick() {
   }
 }
 
+uint64_t instruction_property(uint64_t word) {
+  uint64_t a7;
+
+  // the token is about to enter, on its path, an instruction cell with
+  // this instruction, which is not RISC-R, links into a nonzero register,
+  // divides by zero, or is a system call
+
+  decode_cell(word);
+
+  if (not(is_reversible_instruction()))
+    return PROPERTY_ILLEGAL_INSTRUCTION;
+
+  if (is == JAL) {
+    if (get_token_register(rd) != 0)
+      return PROPERTY_IRREVERSIBLE_LINK;
+  } else if (is == DIVU) {
+    if (get_token_register(rs2) == 0)
+      return PROPERTY_DIVISION_BY_ZERO;
+  } else if (is == REMU) {
+    if (get_token_register(rs2) == 0)
+      return PROPERTY_DIVISION_BY_ZERO;
+  } else if (is == ECALL) {
+    a7 = get_token_register(REG_A7);
+
+    if (a7 == SYSCALL_EXIT)
+      return PROPERTY_EXIT;
+    else if (a7 == SYSCALL_BRK) {
+      if (get_token_register(REG_A0) != 0)
+        return PROPERTY_IRREVERSIBLE_BRK;
+      else if (token_break == 0)
+        return PROPERTY_IRREVERSIBLE_BRK;
+    } else if (a7 == SYSCALL_OPENAT) {
+      if (token_open_files >= NUMBER_OF_TAPES)
+        return PROPERTY_IRREVERSIBLE_OPENAT;
+    } else if (or(a7 == SYSCALL_READ, a7 == SYSCALL_WRITE)) {
+      if (get_token_register(REG_A3) >= LARGEST_TRANSFER)
+        return PROPERTY_IRREVERSIBLE_TAPE;
+    } else
+      return PROPERTY_UNSUPPORTED_SYSCALL;
+  }
+
+  return PROPERTY_NONE;
+}
+
 uint64_t token_property() {
   uint64_t cell;
 
-  // where a RISC-R program stops: the token is about to enter, on its
-  // path, an instruction cell whose instruction is not RISC-R, links
-  // into a nonzero register, divides by zero, or is a system call; the
-  // rule is defined for these states as well, they are not constraints
+  // where a RISC-R program stops: the token is where a tagged cell says
+  // it should not be, or about to enter an instruction cell on its path
+  // that stops it; the rule is defined for these states as well, they
+  // are not constraints
 
   cell = *(cell_kinds + cell_index(token_x, token_y));
 
@@ -1424,41 +1600,7 @@ uint64_t token_property() {
     if (token_pc != *(cell_tags + cell_index(token_x, token_y)))
       return PROPERTY_INVALID_PC;
 
-  decode_cell(*(cell_words + cell_index(token_x, token_y)));
-
-  if (not(is_reversible_instruction()))
-    return PROPERTY_ILLEGAL_INSTRUCTION;
-
-  if (is == JAL) {
-    if (get_token_register(rd) != 0)
-      return PROPERTY_IRREVERSIBLE_LINK;
-  } else if (is == DIVU) {
-    if (get_token_register(rs2) == 0)
-      return PROPERTY_DIVISION_BY_ZERO;
-  } else if (is == REMU) {
-    if (get_token_register(rs2) == 0)
-      return PROPERTY_DIVISION_BY_ZERO;
-  } else if (is == ECALL) {
-    cell = get_token_register(REG_A7);
-
-    if (cell == SYSCALL_EXIT)
-      return PROPERTY_EXIT;
-    else if (cell == SYSCALL_BRK) {
-      if (get_token_register(REG_A0) != 0)
-        return PROPERTY_IRREVERSIBLE_BRK;
-      else if (token_break == 0)
-        return PROPERTY_IRREVERSIBLE_BRK;
-    } else if (cell == SYSCALL_OPENAT) {
-      if (token_open_files >= NUMBER_OF_TAPES)
-        return PROPERTY_IRREVERSIBLE_OPENAT;
-    } else if (or(cell == SYSCALL_READ, cell == SYSCALL_WRITE)) {
-      if (get_token_register(REG_A3) >= LARGEST_TRANSFER)
-        return PROPERTY_IRREVERSIBLE_TAPE;
-    } else
-      return PROPERTY_UNSUPPORTED_SYSCALL;
-  }
-
-  return PROPERTY_NONE;
+  return instruction_property(*(cell_words + cell_index(token_x, token_y)));
 }
 
 // -----------------------------------------------------------------
@@ -2530,6 +2672,22 @@ void print_property(uint64_t property) {
     printf("invalid-pc");
 }
 
+void print_stop(uint64_t property) {
+  // where the token is, and the property that stopped it, if any
+
+  printf("%s: ", selfie_name);
+
+  print_token();
+
+  if (property != PROPERTY_NONE) {
+    printf(": ");
+
+    print_property(property);
+  }
+
+  printf(" after %lu ticks and %lu instructions\n", executed_ticks, executed_instructions);
+}
+
 uint64_t run_forward(uint64_t ticks) {
   uint64_t property;
   uint64_t start;
@@ -2549,19 +2707,7 @@ uint64_t run_forward(uint64_t ticks) {
     property = token_property();
   }
 
-  printf("%s: ", selfie_name);
-
-  print_token();
-
-  if (property == PROPERTY_NONE)
-    printf(" after %lu ticks and %lu instructions\n", executed_ticks, executed_instructions);
-  else {
-    printf(": ");
-
-    print_property(property);
-
-    printf(" after %lu ticks and %lu instructions\n", executed_ticks, executed_instructions);
-  }
+  print_stop(property);
 
   return executed_ticks - start;
 }
@@ -2785,7 +2931,10 @@ void model_sorts(uint64_t xbits, uint64_t ybits) {
 
   SID_REGISTERS = new_array(SID_REGISTER, SID_WORD, "register file");
 
-  SID_FD = new_bitvec(2, "heading: east 0, north 1, west 2, south 3; file descriptor; leg of a transfer");
+  if (NUMBER_OF_TAPES == 4)
+    SID_FD = SID_HEADING;
+  else
+    SID_FD = new_bitvec(log_two(NUMBER_OF_TAPES), "file descriptor");
 
   SID_TAPES = new_array(SID_FD, SID_WORD, "a word per file descriptor");
 
@@ -2831,7 +2980,7 @@ void model_states() {
     else if (state == STATE_OPEN_FILES)
       comment = "next file descriptor";
     else if (state == STATE_LEG) {
-      sid = SID_FD;
+      sid = SID_HEADING;
 
       comment = "leg of a transfer: none 0, to the buffer 1, to the tape 2, to the buffer again 3";
     } else if (state == STATE_WORD)
@@ -2979,7 +3128,7 @@ void model_transfer(uint64_t reading) {
     // of the first word: undo the departure
 
     *(start_effect + STATE_PC)   = *(advance + STATE_PC);
-    *(start_effect + STATE_LEG)  = (uint64_t) new_number(SID_FD, LEG_BUFFER_BACK);
+    *(start_effect + STATE_LEG)  = (uint64_t) new_number(SID_HEADING, LEG_BUFFER_BACK);
     *(start_effect + STATE_WORD) = (uint64_t) last_word_nid;
 
     *(start_effect + STATE_HEADS) = (uint64_t)
@@ -2989,14 +3138,14 @@ void model_transfer(uint64_t reading) {
 
     *(start_effect + STATE_ADDRESS) = (uint64_t) new_add(address_nid, value_nid);
 
-    *(last_effect + STATE_LEG)     = (uint64_t) new_number(SID_FD, LEG_NONE);
+    *(last_effect + STATE_LEG)     = (uint64_t) new_number(SID_HEADING, LEG_NONE);
     *(last_effect + STATE_ADDRESS) = (uint64_t) new_sub(address_nid, buffer_nid);
   } else {
-    *(start_effect + STATE_LEG)     = (uint64_t) new_number(SID_FD, LEG_BUFFER);
+    *(start_effect + STATE_LEG)     = (uint64_t) new_number(SID_HEADING, LEG_BUFFER);
     *(start_effect + STATE_ADDRESS) = (uint64_t) new_add(address_nid, buffer_nid);
 
     *(last_effect + STATE_PC)   = *(advance + STATE_PC);
-    *(last_effect + STATE_LEG)  = (uint64_t) new_number(SID_FD, LEG_NONE);
+    *(last_effect + STATE_LEG)  = (uint64_t) new_number(SID_HEADING, LEG_NONE);
     *(last_effect + STATE_WORD) = (uint64_t) new_number(SID_WORD, 0);
 
     *(last_effect + STATE_HEADS) = (uint64_t)
@@ -3019,28 +3168,28 @@ void model_transfer(uint64_t reading) {
 
     value_nid = new_sub(number_nid, new_number(SID_WORD, 1));
 
-    *(buffer_effect + STATE_LEG)     = (uint64_t) new_number(SID_FD, LEG_BUFFER_BACK);
+    *(buffer_effect + STATE_LEG)     = (uint64_t) new_number(SID_HEADING, LEG_BUFFER_BACK);
     *(buffer_effect + STATE_WORD)    = (uint64_t) value_nid;
     *(buffer_effect + STATE_ADDRESS) = (uint64_t) new_add(new_sub(address_nid, buffer_nid),
       new_add(a2_nid, new_binary(OP_SLL, SID_WORD, value_nid, new_number(SID_WORD, 3), "word before in bytes")));
 
-    *(tape_effect + STATE_LEG)     = (uint64_t) new_number(SID_FD, LEG_BUFFER);
+    *(tape_effect + STATE_LEG)     = (uint64_t) new_number(SID_HEADING, LEG_BUFFER);
     *(tape_effect + STATE_ADDRESS) = (uint64_t) new_add(new_sub(address_nid, tape_nid), buffer_nid);
 
-    *(back_effect + STATE_LEG)     = (uint64_t) new_number(SID_FD, LEG_TAPE);
+    *(back_effect + STATE_LEG)     = (uint64_t) new_number(SID_HEADING, LEG_TAPE);
     *(back_effect + STATE_ADDRESS) = (uint64_t) new_add(new_sub(address_nid, buffer_nid), tape_nid);
   } else {
-    *(buffer_effect + STATE_LEG)     = (uint64_t) new_number(SID_FD, LEG_TAPE);
+    *(buffer_effect + STATE_LEG)     = (uint64_t) new_number(SID_HEADING, LEG_TAPE);
     *(buffer_effect + STATE_ADDRESS) = (uint64_t) new_add(new_sub(address_nid, buffer_nid), tape_nid);
 
-    *(tape_effect + STATE_LEG)     = (uint64_t) new_number(SID_FD, LEG_BUFFER_BACK);
+    *(tape_effect + STATE_LEG)     = (uint64_t) new_number(SID_HEADING, LEG_BUFFER_BACK);
     *(tape_effect + STATE_ADDRESS) = (uint64_t) new_add(new_sub(address_nid, tape_nid), buffer_nid);
 
     // back from the buffer, last leg: on to the first leg of the next word
 
     value_nid = new_add(number_nid, new_number(SID_WORD, 1));
 
-    *(back_effect + STATE_LEG)     = (uint64_t) new_number(SID_FD, LEG_BUFFER);
+    *(back_effect + STATE_LEG)     = (uint64_t) new_number(SID_HEADING, LEG_BUFFER);
     *(back_effect + STATE_WORD)    = (uint64_t) value_nid;
     *(back_effect + STATE_ADDRESS) = (uint64_t) new_add(new_sub(address_nid, buffer_nid),
       new_add(a2_nid, new_binary(OP_SLL, SID_WORD, value_nid, new_number(SID_WORD, 3), "next word in bytes")));
@@ -3548,7 +3697,7 @@ void model_rule() {
   else
     next_nid = open_files_nid;
 
-  fd_nid = new_slice(SID_FD, next_nid, 1, 0, "next file descriptor");
+  fd_nid = new_slice(SID_FD, next_nid, log_two(NUMBER_OF_TAPES) - 1, 0, "next file descriptor");
 
   result_nid = new_ite(
     new_is_field(new_binary(OP_READ, SID_WORD, (uint64_t*) *(state_nids + STATE_OPENS), fd_nid, "host opens next file"), 0),
@@ -3581,7 +3730,7 @@ void model_rule() {
   // read and write: on an open tape of the right kind and of less than 4GB;
   // the standard files are open, others if the host opened them
 
-  fd_nid = new_slice(SID_FD, a1_nid, 1, 0, "file descriptor");
+  fd_nid = new_slice(SID_FD, a1_nid, log_two(NUMBER_OF_TAPES) - 1, 0, "file descriptor");
 
   head_nid = new_binary(OP_READ, SID_WORD, heads_nid, fd_nid, "head of tape");
 
@@ -4596,12 +4745,12 @@ uint64_t check_rule(uint64_t states) {
 // instruction that neither transfers control nor accesses memory needs
 // no wire. Distance is time: the compiler does not try to save any.
 
-void boot_binary(char* name) {
+void boot_binary(char* name, uint64_t arguments) {
   uint64_t  saved_argc;
   uint64_t* saved_argv;
 
-  // the machine as riscr and rotor boot it: the binary loaded, its name
-  // as only argument on the stack
+  // the machine as riscr and rotor boot it: the binary loaded, and on the
+  // stack its name as only argument, or with all remaining arguments
 
   selfie_load(name);
 
@@ -4614,8 +4763,15 @@ void boot_binary(char* name) {
   saved_argc = selfie_argc;
   saved_argv = selfie_argv;
 
-  selfie_argc = 1;
-  selfie_argv = smalloc(sizeof(uint64_t*));
+  if (arguments) {
+    // the boot loader replaces the argument before the remaining ones
+
+    selfie_argc = selfie_argc + 1;
+    selfie_argv = selfie_argv - 1;
+  } else {
+    selfie_argc = 1;
+    selfie_argv = smalloc(sizeof(uint64_t*));
+  }
 
   reset_interpreter();
   reset_profiler();
@@ -4627,8 +4783,15 @@ void boot_binary(char* name) {
 
   boot_loader(current_context);
 
-  selfie_argc = saved_argc;
-  selfie_argv = saved_argv;
+  if (arguments) {
+    // the arguments are the program's
+
+    selfie_argv = saved_argv + saved_argc;
+    selfie_argc = 0;
+  } else {
+    selfie_argc = saved_argc;
+    selfie_argv = saved_argv;
+  }
 }
 
 uint64_t differing_bit(uint64_t a, uint64_t b) {
@@ -4752,53 +4915,167 @@ void add_memory_word(uint64_t address, uint64_t value, uint64_t kind) {
   number_of_words = number_of_words + 1;
 }
 
-void compile_layout(char* name) {
+uint64_t ceiling_log_two(uint64_t n) {
+  uint64_t l;
+  uint64_t p;
+
+  // the least l with n <= 2^l
+
+  l = 0;
+  p = 1;
+
+  while (p < n) {
+    l = l + 1;
+    p = p * 2;
+  }
+
+  return l;
+}
+
+void add_region(uint64_t start, uint64_t words, uint64_t kind) {
+  uint64_t previous;
+
+  // words of memory or of a tape that have a cell, from start on;
+  // assert: regions are added in ascending order
+
+  if (words == 0)
+    return;
+
+  if (number_of_regions >= MAX_REGIONS) {
+    printf("%s: more than %lu regions of memory and tapes\n", selfie_name, MAX_REGIONS);
+
+    exit(EXITCODE_BADARGUMENTS);
+  }
+
+  if (number_of_regions > 0) {
+    previous = number_of_regions - 1;
+
+    if (start < *(region_starts + previous) + *(region_words + previous) * WORDSIZE) {
+      printf("%s: memory regions overlap or are not in ascending order at 0x%lX\n", selfie_name, start);
+
+      exit(EXITCODE_BADARGUMENTS);
+    }
+  }
+
+  *(region_starts + number_of_regions) = start;
+  *(region_words + number_of_regions)  = words;
+  *(region_kinds + number_of_regions)  = kind;
+  *(region_ranks + number_of_regions)  = number_of_region_words;
+
+  number_of_regions = number_of_regions + 1;
+
+  number_of_region_words = number_of_region_words + words;
+}
+
+uint64_t find_region(uint64_t address) {
+  uint64_t i;
+
+  // the region with the word at address, number_of_regions if there is none
+
+  if (address % WORDSIZE != 0)
+    return number_of_regions;
+
+  i = last_region;
+
+  if (address >= *(region_starts + i))
+    if ((address - *(region_starts + i)) / WORDSIZE < *(region_words + i))
+      return i;
+
+  i = 0;
+
+  while (i < number_of_regions) {
+    if (address >= *(region_starts + i))
+      if ((address - *(region_starts + i)) / WORDSIZE < *(region_words + i)) {
+        last_region = i;
+
+        return i;
+      }
+
+    i = i + 1;
+  }
+
+  return number_of_regions;
+}
+
+uint64_t region_height(uint64_t lo, uint64_t hi) {
+  uint64_t bit;
+  uint64_t split;
+  uint64_t below;
+  uint64_t above;
+  uint64_t i;
+  uint64_t left;
+  uint64_t right;
+
+  // number of levels of the comb over the words from address lo to hi,
+  // which is comb_height of their addresses: the comb splits where the
+  // highest differing bit of lo and hi is set; assert: lo and hi have cells
+
+  if (lo == hi)
+    return 0;
+
+  bit = differing_bit(lo, hi);
+
+  split = left_shift(right_shift(hi, bit), bit);
+
+  if (find_region(lo) == find_region(hi)) {
+    // contiguous words: a comb over the n words up to a multiple of a power
+    // of two no less than n, or from one on, has as many levels as n has bits
+
+    left  = ceiling_log_two((split - lo) / WORDSIZE);
+    right = ceiling_log_two((hi - split) / WORDSIZE + 1);
+  } else {
+    // the last word below the split and the first word from the split on
+
+    below = lo;
+    above = hi;
+
+    i = 0;
+
+    while (i < number_of_regions) {
+      if (*(region_starts + i) < split) {
+        below = *(region_starts + i) + (*(region_words + i) - 1) * WORDSIZE;
+
+        if (below >= split)
+          below = split - WORDSIZE;
+      }
+
+      i = i + 1;
+    }
+
+    i = number_of_regions;
+
+    while (i > 0) {
+      i = i - 1;
+
+      if (*(region_starts + i) + (*(region_words + i) - 1) * WORDSIZE >= split) {
+        above = *(region_starts + i);
+
+        if (above < split)
+          above = split;
+      }
+    }
+
+    left  = region_height(lo, below);
+    right = region_height(above, hi);
+  }
+
+  if (left > right)
+    return left + 1;
+  else
+    return right + 1;
+}
+
+void plan_path() {
   uint64_t n;
   uint64_t i;
-  uint64_t j;
   uint64_t x;
-  uint64_t address;
-  uint64_t value;
-  uint64_t* input;
-  uint64_t input_size;
-
-  uint64_t* control_keys;
-  uint64_t* control_out;
-  uint64_t* control_in;
-  uint64_t  controls;
-
-  uint64_t* access_keys;
-  uint64_t* access_out;
-  uint64_t* access_in;
-  uint64_t  accesses;
-
-  uint64_t* word_xs;
-
-  uint64_t control_out_height;
-  uint64_t control_in_height;
-  uint64_t access_out_height;
-  uint64_t access_in_height;
-  uint64_t memory_height;
-
-  uint64_t control_out_row;
-  uint64_t access_in_row;
-  uint64_t path_row;
-  uint64_t control_in_row;
-  uint64_t access_out_row;
-  uint64_t control_spine_row;
-  uint64_t access_spine_row;
-  uint64_t memory_in_row;
-  uint64_t memory_row;
-  uint64_t memory_out_row;
-  uint64_t access_return_row;
-  uint64_t control_return_row;
-
-  boot_binary(name);
 
   // the instructions: beq, jal, and jalr transfer control, ld with rd not
   // zero and ecall access memory, both leave and join the path sideways
 
   n = code_size / INSTRUCTIONSIZE;
+
+  instruction_classes = zmalloc(n * sizeof(uint64_t));
 
   control_keys = zmalloc(n * sizeof(uint64_t));
   control_out  = zmalloc(n * sizeof(uint64_t));
@@ -4822,6 +5099,8 @@ void compile_layout(char* name) {
       if (or(is == BEQ, or(is == JAL, is == JALR))) {
         // leaves north in its column, arrives from the south from the next column
 
+        *(instruction_classes + i) = CLASS_CONTROL;
+
         *(control_keys + controls) = code_start + i * INSTRUCTIONSIZE;
         *(control_out + controls)  = x;
         *(control_in + controls)   = x + 1;
@@ -4829,6 +5108,8 @@ void compile_layout(char* name) {
         controls = controls + 1;
       } else if (or(is == ECALL, and(is == LOAD, rd != REG_ZR))) {
         // leaves south in its column, returns from the north from the next column
+
+        *(instruction_classes + i) = CLASS_ACCESS;
 
         *(access_keys + accesses) = code_start + i * INSTRUCTIONSIZE;
         *(access_out + accesses)  = x;
@@ -4840,17 +5121,22 @@ void compile_layout(char* name) {
 
     i = i + 1;
   }
+}
+
+void plan_regions() {
+  uint64_t i;
 
   // the words that have a cell, by ascending address: the data segment,
-  // the regions of the heap, the top of the stack, the tapes of standard
-  // output and error, and the tape of standard input with the input
+  // the regions of the heap, the top of the stack, the output tapes of
+  // the file descriptors that have tapes, and the input tapes of standard
+  // input, with the input, and of the other files that have tapes
 
-  input      = (uint64_t*) 0;
-  input_size = 0;
+  input_words = (uint64_t*) 0;
+  input_size  = 0;
 
   if (input_name != (char*) 0) {
-    input      = read_file(input_name);
-    input_size = layout_size;
+    input_words = read_file(input_name);
+    input_size  = layout_size;
 
     if (input_size > TAPE_WORDS * WORDSIZE) {
       printf("%s: %s has more than the %lu bytes of a tape\n", selfie_name, input_name, TAPE_WORDS * WORDSIZE);
@@ -4861,123 +5147,93 @@ void compile_layout(char* name) {
 
   heap_start_address = get_program_break(current_context);
 
-  i = data_size / WORDSIZE + stack_words + 3 * TAPE_WORDS;
+  region_starts = zmalloc(MAX_REGIONS * sizeof(uint64_t));
+  region_words  = zmalloc(MAX_REGIONS * sizeof(uint64_t));
+  region_kinds  = zmalloc(MAX_REGIONS * sizeof(uint64_t));
+  region_ranks  = zmalloc(MAX_REGIONS * sizeof(uint64_t));
 
-  j = 0;
+  number_of_regions      = 0;
+  number_of_region_words = 0;
 
-  while (j < number_of_heap_regions) {
-    i = i + *(heap_words + j);
+  last_region = 0;
 
-    j = j + 1;
-  }
-
-  word_addresses = zmalloc(i * sizeof(uint64_t));
-  word_values    = zmalloc(i * sizeof(uint64_t));
-  word_kinds     = zmalloc(i * sizeof(uint64_t));
-  word_cells     = zmalloc(i * sizeof(uint64_t));
-  word_xs        = zmalloc(i * sizeof(uint64_t));
-
-  number_of_words = 0;
+  add_region(data_start, data_size / WORDSIZE, CELL_MEMORY);
 
   i = 0;
 
-  while (i < data_size / WORDSIZE) {
-    add_memory_word(data_start + i * WORDSIZE, load_data(i * WORDSIZE), CELL_MEMORY);
+  while (i < number_of_heap_regions) {
+    add_region(heap_start_address + *(heap_offsets + i), *(heap_words + i), CELL_MEMORY);
 
     i = i + 1;
   }
 
-  j = 0;
-
-  while (j < number_of_heap_regions) {
-    i = 0;
-
-    while (i < *(heap_words + j)) {
-      add_memory_word(heap_start_address + *(heap_offsets + j) + i * WORDSIZE, 0, CELL_MEMORY);
-
-      i = i + 1;
-    }
-
-    j = j + 1;
-  }
-
-  i = 0;
-
-  while (i < stack_words) {
-    // the boot loader put the arguments on the stack
-
-    address = VIRTUALMEMORYSIZE * GIGABYTE - (stack_words - i) * WORDSIZE;
-
-    value = 0;
-
-    if (is_virtual_address_mapped(get_pt(current_context), address))
-      value = load_virtual_memory(get_pt(current_context), address);
-
-    add_memory_word(address, value, CELL_MEMORY);
-
-    i = i + 1;
-  }
+  add_region(VIRTUALMEMORYSIZE * GIGABYTE - stack_words * WORDSIZE, stack_words, CELL_MEMORY);
 
   if (*(get_regs(current_context) + REG_SP) < VIRTUALMEMORYSIZE * GIGABYTE - stack_words * WORDSIZE) {
-    printf("%s: the stack of %s needs more than %lu words\n", selfie_name, name, stack_words);
+    printf("%s: the stack of %s needs more than %lu words\n", selfie_name, binary_name, stack_words);
 
     exit(EXITCODE_BADARGUMENTS);
   }
 
-  j = 1;
+  i = 1;
 
-  while (j < 3) {
-    i = 0;
-
-    while (i < TAPE_WORDS) {
-      add_memory_word(OUTPUT_TAPES + left_shift(j, 32) + i * WORDSIZE, 0, CELL_TAPE);
-
-      i = i + 1;
-    }
-
-    j = j + 1;
-  }
-
-  i = 0;
-
-  while (i < TAPE_WORDS) {
-    value = 0;
-
-    if (i * WORDSIZE < input_size)
-      value = *(input + i);
-
-    add_memory_word(INPUT_TAPES + i * WORDSIZE, value, CELL_MEMORY);
+  while (i < tape_files) {
+    add_region(OUTPUT_TAPES + left_shift(i, 32), TAPE_WORDS, CELL_TAPE);
 
     i = i + 1;
   }
 
-  i = 0;
+  add_region(INPUT_TAPES, TAPE_WORDS, CELL_MEMORY);
 
-  while (i < number_of_words) {
-    *(word_xs + i) = CODE_COLUMN + i;
+  i = 3;
+
+  while (i < tape_files) {
+    add_region(INPUT_TAPES + left_shift(i, 32), TAPE_WORDS, CELL_MEMORY);
 
     i = i + 1;
   }
+}
+
+uint64_t initial_word(uint64_t address) {
+  // the word at address as the boot loader left the machine: the data
+  // segment and the arguments on the stack, and the input on its tape
+
+  if (address >= INPUT_TAPES) {
+    if (address - INPUT_TAPES < input_size)
+      return *(input_words + (address - INPUT_TAPES) / WORDSIZE);
+  } else if (address < OUTPUT_TAPES)
+    if (is_virtual_address_mapped(get_pt(current_context), address))
+      return load_virtual_memory(get_pt(current_context), address);
+
+  return 0;
+}
+
+void plan_rows() {
+  uint64_t control_height;
+  uint64_t access_height;
+  uint64_t memory_height;
+  uint64_t last;
 
   // the rows, from north to south, and around the torus back north
 
-  control_out_height = comb_height(control_keys, 0, controls);
-  control_in_height  = control_out_height;
-  access_out_height  = comb_height(access_keys, 0, accesses);
-  access_in_height   = access_out_height;
-  memory_height      = comb_height(word_addresses, 0, number_of_words);
+  control_height = comb_height(control_keys, 0, controls);
+  access_height  = comb_height(access_keys, 0, accesses);
+
+  last = number_of_regions - 1;
+
+  memory_height = region_height(*region_starts, *(region_starts + last) + (*(region_words + last) - 1) * WORDSIZE);
 
   control_out_row = 0;
-  access_in_row   = control_out_row + control_out_height;
+  access_in_row   = control_out_row + control_height;
 
   // one row north and one south of the path lead from the next column into a cell
 
-  path_row = access_in_row + access_in_height + 1;
+  path_row = access_in_row + access_height + 1;
 
   // the roots of the combs south of the path are in their southern rows
 
-  control_in_row = path_row + 1 + control_in_height;
-  access_out_row = control_in_row + access_out_height;
+  control_in_row = path_row + 1 + control_height;
+  access_out_row = control_in_row + access_height;
 
   control_spine_row = access_out_row + 1;
   access_spine_row  = control_spine_row + 1;
@@ -4988,6 +5244,86 @@ void compile_layout(char* name) {
 
   access_return_row  = memory_out_row + 1;
   control_return_row = access_return_row + 1;
+}
+
+void boot_token() {
+  uint64_t i;
+
+  // the token: at the first instruction, as the boot loader left the machine
+
+  reset_token();
+
+  token_x = CODE_COLUMN;
+  token_y = path_row;
+
+  token_pc = get_pc(current_context);
+
+  i = 1;
+
+  while (i < NUMBEROFREGISTERS) {
+    *(token_registers + i) = *(get_regs(current_context) + i);
+
+    i = i + 1;
+  }
+
+  token_break = heap_start_address;
+
+  *token_ends = input_size;
+
+  executed_ticks        = 0;
+  executed_instructions = 0;
+}
+
+void compile_layout(char* name) {
+  uint64_t n;
+  uint64_t i;
+  uint64_t j;
+  uint64_t x;
+  uint64_t address;
+  uint64_t value;
+  uint64_t* word_xs;
+
+  boot_binary(name, 0);
+
+  plan_path();
+  plan_regions();
+  plan_rows();
+
+  n = code_size / INSTRUCTIONSIZE;
+
+  // the words of the regions
+
+  word_addresses = zmalloc(number_of_region_words * sizeof(uint64_t));
+  word_values    = zmalloc(number_of_region_words * sizeof(uint64_t));
+  word_kinds     = zmalloc(number_of_region_words * sizeof(uint64_t));
+  word_cells     = zmalloc(number_of_region_words * sizeof(uint64_t));
+  word_xs        = zmalloc(number_of_region_words * sizeof(uint64_t));
+
+  number_of_words = 0;
+
+  j = 0;
+
+  while (j < number_of_regions) {
+    i = 0;
+
+    while (i < *(region_words + j)) {
+      address = *(region_starts + j) + i * WORDSIZE;
+
+      add_memory_word(address, initial_word(address), *(region_kinds + j));
+
+      i = i + 1;
+    }
+
+    j = j + 1;
+  }
+
+  i = 0;
+
+  while (i < number_of_words) {
+    *(word_xs + i) = CODE_COLUMN + i;
+
+    i = i + 1;
+  }
 
   x = CODE_COLUMN + 2 * n + 2;
 
@@ -4995,8 +5331,6 @@ void compile_layout(char* name) {
     x = CODE_COLUMN + number_of_words + 1;
 
   allocate_grid(x, control_return_row + 1);
-
-  reset_token();
 
   // the path
 
@@ -5088,27 +5422,7 @@ void compile_layout(char* name) {
     i = i + 1;
   }
 
-  // the token: at the first instruction, as the boot loader left the machine
-
-  token_x = CODE_COLUMN;
-  token_y = path_row;
-
-  token_pc = get_pc(current_context);
-
-  i = 1;
-
-  while (i < NUMBEROFREGISTERS) {
-    *(token_registers + i) = *(get_regs(current_context) + i);
-
-    i = i + 1;
-  }
-
-  token_break = heap_start_address;
-
-  *token_ends = input_size;
-
-  executed_ticks        = 0;
-  executed_instructions = 0;
+  boot_token();
 
   printf("%s: %lu instructions of %s on a grid of %lux%lu cells: %lu transfer control, %lu access memory, %lu words of memory and tapes\n", selfie_name,
     n, name, grid_width, grid_height, controls, accesses, number_of_words);
@@ -5354,6 +5668,439 @@ void write_abstraction(char* name, uint64_t heap_allowance, uint64_t stack_allow
 }
 
 // -----------------------------------------------------------------
+// ---------------------------- HYBRID -----------------------------
+// -----------------------------------------------------------------
+
+// The hybrid simulator runs a RISC-R binary on the layout that the
+// compiler would write, without laying it out: the instruction cells
+// and the cells of the words act on the token by the procedures of the
+// cell rule, and the wire in between is not followed but measured. The
+// compiler lays wire on which the token never turns back, so the ticks
+// of a transfer are the distance between its ends around the torus,
+// with instruction i in column CODE_COLUMN + 2 * i, word r in column
+// CODE_COLUMN + r, and a grid of height H:
+//
+//   from an instruction in column x to the one after the come-from
+//   in column y: H + x + y + 4 ticks
+//
+//   from an instruction in column x to the word in column w and back
+//   to its side: H + 2 * x + 2 * w - 4 ticks, and 2 more to the next
+//   instruction after the last such leg
+//
+// See cellfie.md. Words are allocated when first accessed. Files are
+// the host's, as in riscr: openat opens the file, read moves its bytes
+// onto the input tape before the token gets there, write also writes
+// the bytes to the file. Forward only.
+
+uint64_t* word_in_store(uint64_t address) {
+  uint64_t table;
+  uint64_t offset;
+  uint64_t* pages;
+  uint64_t* page;
+
+  // the word of memory or of a tape at address; assert: it has a cell
+
+  if (address >= INPUT_TAPES)
+    table = 1 + right_shift(address - INPUT_TAPES, 32);
+  else if (address >= OUTPUT_TAPES)
+    table = 1 + NUMBER_OF_TAPES + right_shift(address - OUTPUT_TAPES, 32);
+  else
+    table = 0;
+
+  offset = get_bits(address, 3, 29);
+
+  pages = (uint64_t*) *(store + table);
+
+  if (pages == (uint64_t*) 0) {
+    pages = zmalloc(STORE_PAGES * sizeof(uint64_t*));
+
+    *(store + table) = (uint64_t) pages;
+  }
+
+  page = (uint64_t*) *(pages + offset / PAGE_WORDS);
+
+  if (page == (uint64_t*) 0) {
+    page = zmalloc(PAGE_WORDS * sizeof(uint64_t));
+
+    *(pages + offset / PAGE_WORDS) = (uint64_t) page;
+  }
+
+  return page + offset % PAGE_WORDS;
+}
+
+void boot_store() {
+  uint64_t i;
+  uint64_t address;
+  uint64_t value;
+
+  // the words as the boot loader left the machine: the data segment, the
+  // arguments on the stack, and the input on the tape of standard input
+
+  store = zmalloc((1 + 2 * NUMBER_OF_TAPES) * sizeof(uint64_t*));
+
+  i = 0;
+
+  while (i < data_size / WORDSIZE) {
+    *(word_in_store(data_start + i * WORDSIZE)) = initial_word(data_start + i * WORDSIZE);
+
+    i = i + 1;
+  }
+
+  i = 0;
+
+  while (i < stack_words) {
+    address = VIRTUALMEMORYSIZE * GIGABYTE - (stack_words - i) * WORDSIZE;
+
+    value = initial_word(address);
+
+    if (value != 0)
+      *(word_in_store(address)) = value;
+
+    i = i + 1;
+  }
+
+  i = 0;
+
+  while (i * WORDSIZE < input_size) {
+    *(word_in_store(INPUT_TAPES + i * WORDSIZE)) = initial_word(INPUT_TAPES + i * WORDSIZE);
+
+    i = i + 1;
+  }
+
+  // standard output and standard error are the host's
+
+  host_fds = zmalloc(NUMBER_OF_TAPES * sizeof(uint64_t));
+
+  *(host_fds + 1) = 1;
+  *(host_fds + 2) = 2;
+}
+
+uint64_t* allocate_host_buffer(uint64_t words) {
+  uint64_t i;
+
+  // a buffer of that many words, all zero
+
+  if (words > host_buffer_words) {
+    host_buffer = smalloc(words * sizeof(uint64_t));
+
+    host_buffer_words = words;
+  }
+
+  i = 0;
+
+  while (i < words) {
+    *(host_buffer + i) = 0;
+
+    i = i + 1;
+  }
+
+  return host_buffer;
+}
+
+void host_openat() {
+  uint64_t fd;
+  uint64_t* filename;
+  uint64_t address;
+  uint64_t word;
+  uint64_t flags;
+  uint64_t i;
+  uint64_t j;
+  uint64_t found;
+  uint64_t host_fd;
+
+  // openat: whether the host can open the file whose name is in memory
+  // at a1 is what the cell of the ecall goes by; the file descriptor of
+  // the host is remembered, and the end of the file is not known yet
+
+  fd = token_open_files % NUMBER_OF_TAPES;
+
+  *(token_opens + fd) = 0;
+
+  filename = allocate_host_buffer(MAX_FILENAME_LENGTH / WORDSIZE);
+
+  address = get_token_register(REG_A1);
+
+  found = 0;
+
+  i = 0;
+
+  while (and(found == 0, i < MAX_FILENAME_LENGTH / WORDSIZE)) {
+    if (find_region(address + i * WORDSIZE) == number_of_regions)
+      // the name is not in words that have a cell
+      return;
+
+    word = *(word_in_store(address + i * WORDSIZE));
+
+    *(filename + i) = word;
+
+    j = 0;
+
+    while (j < WORDSIZE) {
+      if (get_bits(word, j * 8, 8) == 0)
+        found = 1;
+
+      j = j + 1;
+    }
+
+    i = i + 1;
+  }
+
+  if (found == 0)
+    return;
+
+  flags = get_token_register(REG_A2);
+
+  if (flags == LINUX_O_CREAT_TRUNC_WRONLY)
+    // use correct flags for host operating system
+    flags = O_CREAT_TRUNC_WRONLY;
+
+  host_fd = sign_extend(open((char*) filename, flags, get_token_register(REG_A3)), SYSCALL_BITWIDTH);
+
+  if (signed_less_than(host_fd, 0))
+    return;
+
+  *(host_fds + fd) = host_fd;
+
+  *(token_opens + fd) = 1;
+  *(token_ends + fd)  = -1;
+}
+
+void host_read() {
+  uint64_t fd;
+  uint64_t words;
+  uint64_t size;
+  uint64_t head;
+  uint64_t* buffer;
+  uint64_t bytes;
+  uint64_t address;
+  uint64_t i;
+
+  // read: the bytes that the token is about to read from a file of the
+  // host go onto its input tape at the head, zero beyond the end of the
+  // file, which is known when fewer bytes are there than asked for
+
+  if (not(is_transfer()))
+    return;
+
+  fd    = get_token_register(REG_A1) % NUMBER_OF_TAPES;
+  words = transfer_words();
+  size  = get_token_register(REG_A3);
+  head  = *(token_heads + fd);
+
+  if (fd < 3)
+    // the input of standard input is on its tape
+    return;
+  else if (*(token_ends + fd) != (uint64_t) -1)
+    return;
+
+  buffer = allocate_host_buffer(words);
+
+  bytes = sign_extend(read(*(host_fds + fd), buffer, size), SYSCALL_BITWIDTH);
+
+  if (signed_less_than(bytes, 0))
+    bytes = 0;
+
+  i = 0;
+
+  while (i < words) {
+    address = INPUT_TAPES + left_shift(fd, 32) + (head + i) * WORDSIZE;
+
+    // the token stops at a word of the tape that has no cell
+
+    if (find_region(address) < number_of_regions)
+      *(word_in_store(address)) = *(buffer + i);
+
+    i = i + 1;
+  }
+
+  if (bytes < size)
+    *(token_ends + fd) = head * WORDSIZE + bytes;
+}
+
+void host_write() {
+  uint64_t fd;
+  uint64_t words;
+  uint64_t* buffer;
+  uint64_t address;
+  uint64_t i;
+
+  // write: the bytes that the token is about to copy from memory onto
+  // an output tape are written to the file of the host as well
+
+  if (not(is_transfer()))
+    return;
+
+  fd    = get_token_register(REG_A1) % NUMBER_OF_TAPES;
+  words = transfer_words();
+
+  buffer = allocate_host_buffer(words);
+
+  i = 0;
+
+  while (i < words) {
+    address = get_token_register(REG_A2) + i * WORDSIZE;
+
+    if (find_region(address) == number_of_regions)
+      // the token stops at a word of the buffer that has no cell
+      return;
+
+    *(buffer + i) = *(word_in_store(address));
+
+    i = i + 1;
+  }
+
+  write(*(host_fds + fd), buffer, get_token_register(REG_A3));
+}
+
+void host_system_call() {
+  uint64_t a7;
+
+  // what the host does for a token on the path of an ecall cell
+
+  a7 = get_token_register(REG_A7);
+
+  if (a7 == SYSCALL_OPENAT)
+    host_openat();
+  else if (a7 == SYSCALL_READ)
+    host_read();
+  else if (a7 == SYSCALL_WRITE)
+    host_write();
+}
+
+void run_hybrid(char* name) {
+  uint64_t n;
+  uint64_t i;
+  uint64_t j;
+  uint64_t x;
+  uint64_t r;
+  uint64_t address;
+  uint64_t word;
+  uint64_t property;
+
+  word = 0;
+
+  boot_binary(name, 1);
+
+  plan_path();
+  plan_regions();
+  plan_rows();
+
+  n = code_size / INSTRUCTIONSIZE;
+
+  x = CODE_COLUMN + 2 * n + 2;
+
+  if (x < CODE_COLUMN + number_of_region_words + 1)
+    x = CODE_COLUMN + number_of_region_words + 1;
+
+  set_grid_size(x, control_return_row + 1);
+
+  boot_token();
+  boot_store();
+
+  printf("%s: %lu instructions of %s on a grid of %lux%lu cells, not laid out: %lu transfer control, %lu access memory, %lu words\n", selfie_name,
+    n, name, grid_width, grid_height, controls, accesses, number_of_region_words);
+
+  reverse = 0;
+
+  property = PROPERTY_NONE;
+
+  while (property == PROPERTY_NONE) {
+    // the token is on the path of the instruction cell of its pc, if there is one
+
+    i = (token_pc - code_start) / INSTRUCTIONSIZE;
+
+    if (token_pc < code_start)
+      property = PROPERTY_INVALID_PC;
+    else if (token_pc % INSTRUCTIONSIZE != 0)
+      property = PROPERTY_INVALID_PC;
+    else if (i >= n)
+      property = PROPERTY_INVALID_PC;
+    else {
+      x = CODE_COLUMN + 2 * i;
+
+      token_x = x;
+
+      word = load_instruction(i * INSTRUCTIONSIZE);
+
+      property = instruction_property(word);
+    }
+
+    if (property == PROPERTY_NONE) {
+      if (is == ECALL)
+        host_system_call();
+
+      if (*(instruction_classes + i) == CLASS_ACCESS) {
+        act_instruction(EAST, BACKSLASH, word);
+
+        while (token_heading == SOUTH) {
+          // a leg to the word at the address of the token and back to the side of the cell
+
+          address = token_address;
+
+          r = find_region(address);
+
+          if (r == number_of_regions) {
+            property = PROPERTY_INVALID_ADDRESS;
+
+            token_heading = EAST;
+          } else {
+            if (*(region_kinds + r) == CELL_TAPE)
+              act_tape(word_in_store(address));
+            else
+              act_memory(word_in_store(address));
+
+            // the column of the word
+
+            j = (address - *(region_starts + r)) / WORDSIZE;
+            j = CODE_COLUMN + *(region_ranks + r) + j;
+
+            executed_ticks = executed_ticks + grid_height + 2 * x + 2 * j - 4;
+
+            act_instruction(EAST, BACKSLASH, word);
+          }
+        }
+      } else {
+        act_instruction(EAST, SLASH, word);
+
+        if (token_heading == NORTH) {
+          // to the come-from at the pc of the token, which must be one
+
+          j = (token_pc - code_start) / INSTRUCTIONSIZE;
+
+          if (token_pc < code_start)
+            property = PROPERTY_INVALID_PC;
+          else if (token_pc % INSTRUCTIONSIZE != 0)
+            property = PROPERTY_INVALID_PC;
+          else if (j >= n)
+            property = PROPERTY_INVALID_PC;
+          else if (*(instruction_classes + j) != CLASS_CONTROL)
+            property = PROPERTY_INVALID_PC;
+          else {
+            executed_ticks = executed_ticks + grid_height + x + CODE_COLUMN + 2 * j + 2;
+
+            token_x = CODE_COLUMN + 2 * j;
+
+            act_instruction(EAST, SLASH, load_instruction(j * INSTRUCTIONSIZE));
+
+            if (token_heading != EAST)
+              // the come-from does not take the token
+              property = PROPERTY_INVALID_PC;
+          }
+        }
+      }
+
+      if (property == PROPERTY_NONE)
+        // to the next instruction on the path
+        executed_ticks = executed_ticks + 2;
+    }
+  }
+
+  token_heading = EAST;
+
+  print_stop(property);
+}
+
+// -----------------------------------------------------------------
 // ----------------------------- MAIN ------------------------------
 // -----------------------------------------------------------------
 
@@ -5380,6 +6127,22 @@ uint64_t cellfie() {
       compile_layout(get_argument());
     else if (string_compare(argument, "-i"))
       input_name = get_argument();
+    else if (string_compare(argument, "-h"))
+      run_hybrid(get_argument());
+    else if (string_compare(argument, "-tapes")) {
+      NUMBER_OF_TAPES = atoi(get_argument());
+
+      if (NUMBER_OF_TAPES < 4)
+        return EXITCODE_BADARGUMENTS;
+      else if (NUMBER_OF_TAPES != two_to_the_power_of(log_two(NUMBER_OF_TAPES)))
+        return EXITCODE_BADARGUMENTS;
+      else if (token_registers != (uint64_t*) 0)
+        // the token has its tapes already
+        return EXITCODE_BADARGUMENTS;
+
+      tape_files = NUMBER_OF_TAPES;
+    } else if (string_compare(argument, "-tapewords"))
+      TAPE_WORDS = atoi(get_argument());
     else if (string_compare(argument, "-stack"))
       stack_words = atoi(get_argument());
     else if (string_compare(argument, "-heap")) {
@@ -5486,5 +6249,5 @@ int main(int argc, char** argv) {
   exit_code = cellfie();
 
   // selfie's strings are short, the options are in the comment at the top
-  return exit_selfie(exit_code, " { -l layout | -c binary | -o layout | -f ticks | -b ticks | -rev ticks | -btor2 width height | -check states }");
+  return exit_selfie(exit_code, " { -l layout | -c binary | -o layout | -f ticks | -b ticks | -rev ticks | -btor2 width height | -check states | -h binary ... }");
 }

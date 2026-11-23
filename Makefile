@@ -211,7 +211,7 @@ cache: selfie selfie.m selfie.s examples/cache/dcache-access-[01].c
 .PHONY: sat brr bzz mon smt beat beator-btor2 rot synthesize rotor-btor2 btor2 more all
 
 # Run more that only requires standard tools and is not too slow
-more: sat brr bzz mon smt beat beator-btor2 rot synthesize rotor-btor2 rev trust riscr-model sim bmc cdcl identity cells product tapes layouts
+more: sat brr bzz mon smt beat beator-btor2 rot synthesize rotor-btor2 rev trust riscr-model sim bmc cdcl identity cells product tapes layouts hybrid
 
 # Run all that only requires standard tools and is not too slow
 all: less more
@@ -618,6 +618,44 @@ layouts: cellfie bitr riscr rotor selfie selfie.h
 	grep -q "invalid-address 0x13000 after" cellfie-product.txt
 	@echo "$@: the layouts of the symbolic examples run as riscr runs their binaries and as rotor's model does at every instruction"
 
+# Hybrid simulation of cellfie (M13 of projects/reversible.md): the hybrid simulator, which runs the cells
+# of a layout without laying it out and measures the wire instead of following it, stops every symbolic
+# example where the event-driven simulator stops it on the compiled layout, with the same exit code after
+# the same number of instructions and the same number of ticks, natively and for one example on mipster
+hybrid: cellfie riscr selfie selfie.h
+	m=0; for f in $(wildcard examples/symbolic/*.c); do \
+	  b=$${f%.c}; \
+	  ./selfie -c $$f -o $$b.m > /dev/null && \
+	  ./riscr -l $$b.m -history 1 -t $$b.r > /dev/null || exit 1; \
+	  e=$$(./cellfie -heap 0 2048 -heap 1048576 64 -stack 128 -i tests/bitr-input.txt -c $$b.r -f 100000000 | sed -n 's/.* with pc \(.*: exit with exit code .*\)/\1/p'); \
+	  h=$$(./cellfie -heap 0 2048 -heap 1048576 64 -stack 128 -i tests/bitr-input.txt -h $$b.r | sed -n 's/.* with pc \(.*: exit with exit code .*\)/\1/p'); \
+	  if [ -z "$$e" ]; then echo "$$b.r: skipped, it does not exit"; continue; fi; \
+	  [ "$$e" = "$$h" ] || { echo "$$b.r: event-driven $$e, hybrid $$h"; exit 1; }; \
+	  echo "$$b.r: $$h, as event-driven"; \
+	  m=$$((m + 1)); \
+	done; [ $$m -ge 17 ] || { echo "only $$m examples checked"; exit 1; }
+	./selfie -c selfie.h tools/btor2.h tools/cellfie.c -m 512 -heap 0 2048 -heap 1048576 64 -stack 128 -i tests/bitr-input.txt -h examples/symbolic/division-by-zero-3-35.r | tee cellfie-product.txt
+	grep -q "exit with exit code 1 after 567686 ticks and 430 instructions" cellfie-product.txt
+	@echo "$@: hybrid and event-driven simulation agree on exit code, instructions, and ticks"
+
+# All of selfie on cellfie (M13 of projects/reversible.md): selfie translated to RISC-R compiles selfie on
+# cellfie's hybrid simulator, on a grid with a cell for every word of the heap and 8MB of stack, to the
+# binary that it compiles to on riscr and that selfie compiles itself to, in riscr's number of instructions;
+# takes about 4GB of memory and 10 minutes, and reports the ticks and the seconds
+selfie-on-cellfie: cellfie riscr selfie selfie.h
+	./selfie -c selfie.c -o selfie-u.m
+	./riscr -l selfie-u.m -t selfie-r.r -m 4096 -c selfie.c -o selfie-r.m > cellfie-product.txt
+	cmp selfie-u.m selfie-r.m
+	n=$$(sed -n 's/.*summary: \([0-9]*\) executed instructions.*/\1/p' cellfie-product.txt); \
+	s=$$(date +%s); \
+	./cellfie -tapes 8 -tapewords 1048576 -heap 0 535000000 -stack 1000000 -h selfie-r.r -c selfie.c -o selfie-c.m > cellfie-product.txt || exit 1; \
+	tail -2 cellfie-product.txt; \
+	grep -q "exit with exit code 0 after [0-9]* ticks and $$((n - 1)) instructions" cellfie-product.txt || \
+	  { echo "cellfie does not exit with exit code 0 after the $$((n - 1)) instructions of riscr"; exit 1; }; \
+	echo "$@: $$(($$(date +%s) - s)) seconds on cellfie"
+	cmp selfie-r.m selfie-c.m
+	@echo "$@: selfie compiles itself on cellfie to the binary it compiles itself to on riscr"
+
 # Bennett mode (M2 of projects/reversible.md): selfie translated to RISC-R compiles selfie on riscr
 # to an identical binary and runs back to its initial state; riscr's translator reaches a fixed point
 # on itself; takes about 3GB of memory for the history stack and a few minutes
@@ -650,7 +688,7 @@ trust: selfie selfie.h
 	rm -f examples/trusting-trust/honest-stamp.c examples/trusting-trust/honest-victim.c examples/trusting-trust/trojaned-victim.c examples/trusting-trust/suspect-stamp.c
 
 # Consider these targets as targets, not files
-.PHONY: rev riscr-rev bennett trust riscr-model sim bmc cdcl identity cells product tapes layouts
+.PHONY: rev riscr-rev bennett trust riscr-model sim bmc cdcl identity cells product tapes layouts hybrid selfie-on-cellfie
 
 # Consider these targets as targets, not files
 .PHONY: spike qemu assemble beator-32 rotor-32 32-bit bitwuzla beator-bitme rotor-bitme bitme extras

@@ -1,6 +1,6 @@
 # selfie · cellfie · bitr — development plan
 
-Oct 30, 2026 · Christoph Kirsch · updated Nov 23, 2026: encodings frozen, M6, M7, and M8 done, rotor's `write` corrected, cellfie before the rest of RISC-R; Nov 6: M2 done; Nov 5: M16 garbage-free riscr, M17 reversible hypster; Nov 2: RISC-R moved into its own tool, riscr
+Oct 30, 2026 · Christoph Kirsch · updated Nov 23, 2026: encodings frozen, M6, M7, M8, and M13 done, by hybrid simulation, rotor's `write` corrected, cellfie before the rest of RISC-R; Nov 6: M2 done; Nov 5: M16 garbage-free riscr, M17 reversible hypster; Nov 2: RISC-R moved into its own tool, riscr
 
 ## Goal and design rules
 
@@ -150,7 +150,7 @@ Cellfie is one C\* file, `tools/cellfie.c`. Each cell holds one RISC-R instructi
 | Analogy | cellfie version | Target |
 | --- | --- | --- |
 | Self-compilation | the layout compiler, compiled by selfie to RISC-R, runs on cellfie and reproduces its own layout: L1 = L0 | M11 |
-| Self-execution | all of selfie runs on cellfie, cell by cell | M13, pending the speed measurement |
+| Self-execution | all of selfie runs on cellfie, cell by cell | M13, done by hybrid simulation: 1.39 billion instructions, 3.8·10^17 ticks, 271 million ticks per instruction on the layout of M8's compiler |
 | Self-hosting | the constructor builds guest programs in walled regions; replication = it builds itself plus its tape | after M10 |
 
 **Later layers**, each checked by bitr against the layer above:
@@ -209,7 +209,7 @@ The critical path runs M1 → M3 → M5 → M7 → M8. M7 is the first time cell
 | M10 | cellfie | Construction ISA, constructor, tape emission | M8 | constructor plus tape plus blank grid reaches exactly the compiled layout plus tape and idle constructor |
 | M11 | cellfie | Self-compilation fixed point: the layout compiler, compiled by selfie to RISC-R, runs on cellfie | M8, M10 | L1 = L0 byte for byte |
 | M12 | bitr | Backward BMC on the inverse model, compared with forward BMC and with meet-in-the-middle joined on the property's cone of influence | M5 | a written comparison on the examples (research result, not a pass/fail gate), with solver time, trimmed DRAT proof size, and the proof's variables per frame split into free and defined bits, see information as proof size; branching unrestricted, restricted to free bits, and prioritised by free bits and by sampled influence |
-| M13 | cellfie | All of selfie on cellfie, event-driven, with hybrid simulation as fallback | M8 | selfie compiles itself on cellfie with output identical to riscr's; running time recorded |
+| M13 | cellfie | All of selfie on cellfie; done November 23, 2026, by hybrid simulation (`cellfie -h`), since the layout has 550 million words and cannot be laid out; cells can be tagged with their address, so that an access without a cell is a property | M8 | `make hybrid`: hybrid and event-driven simulation agree on exit code, instructions, and ticks for the symbolic examples; `make selfie-on-cellfie`: selfie compiles itself on cellfie with output identical to riscr's, in riscr's number of instructions; ticks and seconds reported |
 | M14 | cellfie, bitr | Demonstrator: one array kernel at all four levels of the story (v1, v2a, v2b, v2c), next to mipster on cellfie, which should not dissolve | M8, M13 | each level verified against riscr by bitr; one chart of cells used, ticks and active cell-updates per level, with the reprogrammability each level gives up (research result; level 4 needs concurrent elements) |
 | M15 | all | Reversibility on/off comparison: the same programs as RISC-U and as RISC-R, through every tool | M2, M5, M8, M12 | a written table per example: instruction count, history size, trace bytes, backward symbolic variables split into free bits (the independent support, which should track the intrinsic count for garbage-free code) and defined bits (determined by the free ones, which cost no search space but give the solver intermediate values to learn over), solver time, erased bits (research result); encodings with equal free bits but different solver times measure the effect of the defined bits, and their trimmed DRAT proofs show which defined bits the solver used; the first worked example is the bit-length loop above, as RISC-U with a trace, Bennett and garbage-free, each run forward and backward |
 | M16 | riscr | Garbage-free riscr: its run loop written in M9's C\* so that each emulated step uncomputes its own fetch, decode and dispatch, then compiled to RISC-R in garbage-free mode. It adds the one construct M9 leaves out, a history-free conditional whose exit test equals its entry test (as a C\* construct or a compiler check), and updates the pc by uncomputing the old pc from the new one with riscr's backward control flow, `instruction_address()` and `continue_at()`, since the old pc is otherwise the one word of garbage per step | M9 | riscr on riscr runs every M1 test with the history stack empty after every guest step; running the host backward under the outer `riscr -rev` matches the inner `riscr -rev` on the guest bit for bit; a second level of nesting adds no history |
