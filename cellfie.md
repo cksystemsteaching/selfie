@@ -6,7 +6,7 @@ selfie.cs.uni-salzburg.at
 
 This document specifies cellfie, an instruction-level reversible cellular machine that runs [RISC-R](riscr.md). The tool is `tools/cellfie.c`, the development plan is `projects/reversible.md`. The machine is a grid of cells and one token. A cell holds one RISC-R instruction, one memory word, or a piece of wire. The token carries the program counter and the register file from cell to cell. The rule of the machine is RISC-R applied where the token is, plus the movement of the token, and it is a bijection on all states: running it backward needs no trace. For details on the exact semantics see the `cell_*` procedures and `model_rule` in `tools/cellfie.c`.
 
-This is the state after milestones M6 and M7: all thirteen instructions and the five system calls, wire, routers, memory and tape cells, and two hand-laid programs on which the rule is compared with rotor's RISC-R model and with riscr. What is missing is in the last section.
+This is the state after milestones M6, M7, and M8: all thirteen instructions and the five system calls, wire, routers, memory and tape cells, two hand-laid programs on which the rule is compared with rotor's RISC-R model and with riscr, and a layout compiler from RISC-R binaries, with which selfie-compiled programs are compared the same way. What is missing is in the last section.
 
 ## Machine State
 
@@ -131,7 +131,7 @@ The cells follow row by row. A decimal number in front of a cell repeats it, `$`
 
 ## Running
 
-`./cellfie -l layout -f ticks` runs at most that many ticks forward and stops where a property holds, `-b ticks` runs backward, and `-o layout` writes the state. `-rev ticks` runs forward and then as many ticks backward as it ran forward and checks that the grid and the token are restored bit for bit. Options are processed in order, as in selfie.
+`./cellfie -l layout` loads a layout and `./cellfie -c binary` compiles one, see the layout compiler below. `-f ticks` runs at most that many ticks forward and stops where a property holds, `-b ticks` runs backward, and `-o layout` writes the state. `-rev ticks` runs forward and then as many ticks backward as it ran forward and checks that the grid and the token are restored bit for bit. Options are processed in order, as in selfie.
 
 ## Model
 
@@ -165,12 +165,42 @@ The product is concrete: the program reads no input, so there is one run, and th
 
 That last one is what rotor's model did until this milestone: its `write` exchanged the buffer with the tape, which zeroes the buffer, where riscr and `riscr.md` leave the buffer as it is. Deciding what a tape cell does made the difference visible; the model was changed, see `riscr.md`.
 
+## The Layout Compiler
+
+`./cellfie -c binary` compiles a RISC-R binary into a layout that runs it, which `-o layout` writes. The compiler boots the binary as riscr and rotor do, with selfie's boot loader and the name of the binary as only argument, and lays out what it finds: the instructions, the data segment, the stack with the arguments on it, and the token with the `pc`, `sp`, and program break of the booted machine.
+
+The instructions are one row of cells, the *path*, in the order of their addresses and in every other column, all oriented east. Every instruction that transfers control, `beq`, `jal`, and `jalr`, has a `/` mirror: it sends the token north and receives it from the south. Every instruction that accesses memory, `ld` with `rd` not `zero` and `ecall`, has a `\` mirror: it sends the token south and receives it from the north. All other instructions need no wire.
+
+All wire is *combs*. A comb is a binary tree over the addresses of its leaves, with one row per level. A node is a router in the column of its first leaf, on the highest bit in which the addresses below it differ, and a mirror in the column of the first leaf that has that bit set. A token that enters at the root is turned east by each router whose bit is set in its `pc` or address, and south or north again by the mirror, and so reaches the leaf with its address; a token that enters at a leaf is turned west by the same mirrors and routers and reaches the root. A comb is as high as its tree is deep, about the logarithm of the number of its leaves when the addresses are dense, and it has no cell where the addresses have a gap, so memory can be sparse.
+
+There are six combs, from north to south:
+
+| Comb | Leaves | Routers look at | A token travels |
+| --- | --- | --- | --- |
+| departures of control | the columns of `beq`, `jal`, `jalr` | the address, which is the origin | from the cell north to the root |
+| returns from memory | the columns east of `ld` and `ecall` | the `pc` | from the root south, then west and south into the cell |
+| the path | | | |
+| arrivals of control | the columns east of `beq`, `jal`, `jalr` | the `pc`, which is the target | from the root north, then west and north into the cell |
+| departures to memory | the columns of `ld` and `ecall` | the `pc` | from the cell south to the root |
+| to the words | one column per word of memory and tapes | the address | from the root south through the cell of the word |
+| from the words | the same columns | the address | on south to the root |
+
+The roots are connected through columns 0 to 2 and around the edge of the torus: the root of the departures of control with the root of the arrivals, the root of the departures to memory with the root of the comb to the words, and the root of the comb from the words with the root of the returns. The first four combs share rows without sharing cells because departures use the columns of the cells and arrivals the columns in between. The wire has no direction of its own: an `ld` cell with the other mirror sends the token the other way round through the same cells, and the layout still runs the program.
+
+The words that get a cell are the data segment, the regions of the heap given with `-heap offset words` before `-c`, each an offset in bytes from the start of the heap, `-stack words` words below the top of the stack, 64 by default, sixteen words each for the output tapes of standard output and standard error, as tape cells, and sixteen words for the input tape of standard input, as memory cells that hold the bytes of the file given with `-i file`. A translated program needs a region at offset 0 for its history stack and one at the size of the history stack for its own heap.
+
+`-a abstraction heap-allowance stack-allowance` after `-c` writes the abstraction for bitr's product of the layout with rotor's model of the same binary, generated with these allowances in bytes: `step` and the bad states as in the hand-written ones, with one bad state per word that has a cell, since the compiler knows which cell has which address.
+
+`make layouts` compiles all 18 examples in `examples/symbolic`, compiled by selfie and translated by riscr with a history stack of 1MB, with cells for 2048 words of history, 64 words of heap, and 128 words of stack, on grids of 4096 times 128 cells with between 557 and 837 instruction cells and 2,289 words. For 17 of them cellfie runs the layout to the exit code of riscr in the number of instructions of riscr, 375 to 2,719, and back to the layout, and bitr's product agrees with rotor's model at every instruction on the pc, the registers, the state of the system calls, and all 2,289 words. The runs take 466,538 to 5,270,296 ticks, around 1,200 to 1,900 ticks per instruction: the token crosses half the grid for most transfers, and the compiler does nothing about that. The 18th example accesses memory that is not there, on purpose, and riscr stops it with an exception; it is skipped, see below.
+
+The compiler was tested by mutation on one example: arrivals routed by the address instead of the `pc`, routers one bit too high, and a stack without the arguments each fail, the first two in cellfie's run and in the product, the third in the product at the first instruction. An output tape of memory cells and a data segment that is not loaded do not fail on that example, which writes nothing and has one data word that is zero.
+
 ## Not There Yet
 
 - Files of the host: input is what the layout holds, output stays on its tape. A layout of a real program needs its input put onto the grid and its output read off it.
-- Bounds: a tape or memory word exists if a cell is wired to its address; a `read`, `write`, or `ld` beyond that is not a property, and neither is a `brk` beyond what there are memory cells for. Rotor's model bounds the same things with its allowances, and the two bounds are not related yet.
+- Words without a cell: a comb looks only at the bits in which its leaves differ, so a token on its way to an address that has no cell arrives at the cell of another address, without a property. With 512 instead of 2048 words of history the most recursive example exits with another exit code two instructions early. The product with rotor's model sees it, as a word that differs, where rotor's model has the word; cellfie alone does not. An access that riscr stops with an exception, to memory that does not exist, is the same case with no remedy: one of the 18 examples does that and is not compared. The same holds for a `brk` beyond the cells of the heap.
 - RISC-U cells, which overwrite `rd` and join paths without a come-from. Their rule is no bijection, and bitr should find two states with the same successor.
-- The comparison with RISC-R is two programs and one run each, with one input. The cell rule and rotor's model are not compared on all states: an instruction takes one step in one and a number of ticks without bound in the other, so that proof needs the cells of a transfer and the wire between them, not the rule alone.
-- The abstraction is written by hand. The layout compiler will have to write it, since it places the memory cells.
-- An `ld` at an address that is not word-aligned or that has no memory cell is not a property: routers ignore the bits they are not given, and a token that no router turns stays on its wire around the torus.
-- The layout compiler from RISC-R binaries (M8). Routing is by hand so far.
+- The comparison with RISC-R is 19 programs and one run each, with one input. The cell rule and rotor's model are not compared on all states: an instruction takes one step in one and a number of ticks without bound in the other, so that proof needs the cells of a transfer and the wire between them, not the rule alone. The examples read one byte, so nothing has been compared for other inputs.
+- An `ld` at an address that is not word-aligned is not a property: no router looks at the lowest three bits.
+- Distance. The path is one row and every transfer goes around the torus. Folding the path, placing the words a region uses next to it, and direct wire for the branches of a loop are what a compiler that cared would do, and what running all of selfie will need.
+- Files other than the standard ones, and tapes of more than sixteen words, which is also the limit of rotor's model by default.

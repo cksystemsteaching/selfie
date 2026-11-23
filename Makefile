@@ -211,7 +211,7 @@ cache: selfie selfie.m selfie.s examples/cache/dcache-access-[01].c
 .PHONY: sat brr bzz mon smt beat beator-btor2 rot synthesize rotor-btor2 btor2 more all
 
 # Run more that only requires standard tools and is not too slow
-more: sat brr bzz mon smt beat beator-btor2 rot synthesize rotor-btor2 rev trust riscr-model sim bmc cdcl identity cells product tapes
+more: sat brr bzz mon smt beat beator-btor2 rot synthesize rotor-btor2 rev trust riscr-model sim bmc cdcl identity cells product tapes layouts
 
 # Run all that only requires standard tools and is not too slow
 all: less more
@@ -575,6 +575,40 @@ tapes: cellfie cellfie-test bitr riscr rotor selfie selfie.h
 	grep -q "agree at all 26 steps of tests/cellfie-io-test-rotorized-riscr.btor2, in 344 steps of cellfie-32x8.btor2, and stop together" cellfie-product.txt
 	@echo "$@: cellfie's system calls on the hand-laid layout do what rotor's RISC-R model of the binary does, instruction by instruction, and what riscr does"
 
+# Layout compiler of cellfie (M8 of projects/reversible.md): every symbolic example, compiled by selfie to RISC-U
+# and translated by riscr to RISC-R with a 1MB history stack, is compiled by cellfie into a layout, with cells
+# for 2048 words of history, 64 words of heap, and 128 words of stack, and with tests/bitr-input.txt on the
+# tape of standard input; cellfie runs the layout to the exit code of riscr in the number of instructions of
+# riscr and back to the layout; and bitr's product of rotor's model of the binary and cellfie's model with the
+# layout, by the abstraction that cellfie writes, finds pc, registers, the state of the system calls, and all
+# words of memory and tapes that have a cell equal at every instruction. An example that riscr stops for
+# accessing memory that is not there is skipped: the grid has no cell for it and no way to say so. The first
+# example is also compiled and run with cellfie on mipster.
+layouts: cellfie bitr riscr rotor selfie selfie.h
+	./cellfie -btor2 4096 128 > /dev/null
+	m=0; for f in $(wildcard examples/symbolic/*.c); do \
+	  b=$${f%.c}; \
+	  ./selfie -c $$f -o $$b.m > /dev/null && \
+	  ./riscr -l $$b.m -history 1 -t $$b.r > /dev/null || exit 1; \
+	  out=$$(./riscr -l $$b.r -m 1 < tests/bitr-input.txt 2>&1); \
+	  e=$$(echo "$$out" | sed -n 's/.*with exit code \([0-9]*\).*/\1/p'); \
+	  n=$$(echo "$$out" | sed -n 's/.*summary: \([0-9]*\) executed instructions.*/\1/p'); \
+	  if [ $$e -ge 11 ]; then echo "$$b.r: skipped, riscr stops it with exit code $$e"; continue; fi; \
+	  ./cellfie -heap 0 2048 -heap 1048576 64 -stack 128 -i tests/bitr-input.txt -c $$b.r -o $$b.rle -a $$b-abstraction.btor2 2097152 65536 -rev 100000000 > $$b.cells || exit 1; \
+	  grep -q "exit with exit code $$e after [0-9]* ticks and $$((n - 1)) instructions" $$b.cells && \
+	  grep -q "initial state restored" $$b.cells || \
+	    { echo "$$b.rle: cellfie disagrees with riscr, expected exit code $$e after $$((n - 1)) instructions"; exit 1; }; \
+	  ./rotor -l $$b.r - $$e -heapallowance 2097152 -stackallowance 65536 > /dev/null || exit 1; \
+	  ./bitr $$b-rotorized-riscr.btor2 -l $$b.r -i tests/bitr-input.txt -product cellfie-4096x128.btor2 -grid $$b.rle -abstraction $$b-abstraction.btor2 | \
+	    grep -q "agree at all $$((n - 1)) steps of .*, and stop together" || \
+	    { echo "$$b.rle: cellfie's rule on the layout disagrees with rotor's model"; exit 1; }; \
+	  echo "$$b.rle: exit code $$e after $$((n - 1)) instructions and $$(sed -n 's/.*exit with exit code [0-9]* after \([0-9]*\) ticks.*/\1/p' $$b.cells | head -1) ticks as riscr, and as rotor's model at every instruction"; \
+	  m=$$((m + 1)); \
+	done; [ $$m -ge 17 ] || { echo "only $$m layouts checked"; exit 1; }
+	./selfie -c selfie.h tools/btor2.h tools/cellfie.c -m 512 -heap 0 2048 -heap 1048576 64 -stack 128 -i tests/bitr-input.txt -c examples/symbolic/division-by-zero-3-35.r -f 100000000 | tee cellfie-product.txt
+	grep -q "exit with exit code 1 after 567686 ticks and 430 instructions" cellfie-product.txt
+	@echo "$@: the layouts of the symbolic examples run as riscr runs their binaries and as rotor's model does at every instruction"
+
 # Bennett mode (M2 of projects/reversible.md): selfie translated to RISC-R compiles selfie on riscr
 # to an identical binary and runs back to its initial state; riscr's translator reaches a fixed point
 # on itself; takes about 3GB of memory for the history stack and a few minutes
@@ -607,7 +641,7 @@ trust: selfie selfie.h
 	rm -f examples/trusting-trust/honest-stamp.c examples/trusting-trust/honest-victim.c examples/trusting-trust/trojaned-victim.c examples/trusting-trust/suspect-stamp.c
 
 # Consider these targets as targets, not files
-.PHONY: rev riscr-rev bennett trust riscr-model sim bmc cdcl identity cells product tapes
+.PHONY: rev riscr-rev bennett trust riscr-model sim bmc cdcl identity cells product tapes layouts
 
 # Consider these targets as targets, not files
 .PHONY: spike qemu assemble beator-32 rotor-32 32-bit bitwuzla beator-bitme rotor-bitme bitme extras
@@ -721,6 +755,7 @@ clean:
 	rm -f examples/symbolic/*.smt
 	rm -f examples/symbolic/*.btor2
 	rm -f examples/symbolic/*.r examples/symbolic/*.witness examples/symbolic/*.cnf
+	rm -f examples/symbolic/*.rle examples/symbolic/*.cells
 	rm -f division-by-zero.bmc riscr-identity.txt
 	rm -f tools/*.smt
 	rm -f tools/*.btor2

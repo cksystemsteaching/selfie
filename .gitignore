@@ -46,3 +46,7 @@ cellfie-identity.txt
 tests/cellfie-io-test.txt
 cellfie-test
 cellfie-product.txt
+
+# what make layouts writes
+examples/symbolic/*.rle
+examples/symbolic/*.cells

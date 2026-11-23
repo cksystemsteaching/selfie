@@ -174,6 +174,8 @@ void     init_states();
 uint64_t check_properties();
 uint64_t simulate();
 
+void collect_lines();
+
 uint64_t* violated_property();
 
 void parse_next_model(char* name);
@@ -200,7 +202,18 @@ char* OP_OUTPUT = (char*) 0; // output lines name what an abstraction computes
 char* product_model_name     = (char*) 0;
 char* abstraction_model_name = (char*) 0;
 
-uint64_t MODEL_RECORD_SIZE = 16;
+uint64_t MODEL_RECORD_SIZE = 22;
+
+// the next, state, and property lines of the current model, collected
+// once, since a product takes many steps of models with many lines
+
+uint64_t* next_lines     = (uint64_t*) 0;
+uint64_t* state_lines    = (uint64_t*) 0;
+uint64_t* property_lines = (uint64_t*) 0;
+
+uint64_t number_of_next_lines     = 0;
+uint64_t number_of_state_lines    = 0;
+uint64_t number_of_property_lines = 0;
 
 uint64_t* abstraction_states = (uint64_t*) 0; // states of the abstraction
 uint64_t* abstracted_states  = (uint64_t*) 0; // and the states of the models they stand for
@@ -2133,11 +2146,19 @@ uint64_t simulate() {
 // of the two models by name, its output step says whether the first model
 // takes a step, and its bad states are where the two models differ.
 
-uint64_t* violated_property() {
+void collect_lines() {
   uint64_t nid;
   uint64_t* line;
 
-  // the first bad state or violated constraint of the current model, or 0
+  // the next, state, and property lines of the current model in the order of their nids
+
+  next_lines     = zmalloc((max_nid + 1) * sizeof(uint64_t*));
+  state_lines    = zmalloc((max_nid + 1) * sizeof(uint64_t*));
+  property_lines = zmalloc((max_nid + 1) * sizeof(uint64_t*));
+
+  number_of_next_lines     = 0;
+  number_of_state_lines    = 0;
+  number_of_property_lines = 0;
 
   nid = 1;
 
@@ -2145,15 +2166,43 @@ uint64_t* violated_property() {
     line = line_of_nid(nid);
 
     if (line != UNUSED) {
-      if (get_op(line) == OP_BAD) {
-        if (eval_line(get_arg1(line)))
-          return line;
-      } else if (get_op(line) == OP_CONSTRAINT)
-        if (not(eval_line(get_arg1(line))))
-          return line;
+      if (get_op(line) == OP_NEXT) {
+        *(next_lines + number_of_next_lines) = (uint64_t) line;
+
+        number_of_next_lines = number_of_next_lines + 1;
+      } else if (get_op(line) == OP_STATE) {
+        *(state_lines + number_of_state_lines) = (uint64_t) line;
+
+        number_of_state_lines = number_of_state_lines + 1;
+      } else if (is_property_op(get_op(line))) {
+        *(property_lines + number_of_property_lines) = (uint64_t) line;
+
+        number_of_property_lines = number_of_property_lines + 1;
+      }
     }
 
     nid = nid + 1;
+  }
+}
+
+uint64_t* violated_property() {
+  uint64_t i;
+  uint64_t* line;
+
+  // the first bad state or violated constraint of the current model, or 0
+
+  i = 0;
+
+  while (i < number_of_property_lines) {
+    line = (uint64_t*) *(property_lines + i);
+
+    if (get_op(line) == OP_BAD) {
+      if (eval_line(get_arg1(line)))
+        return line;
+    } else if (not(eval_line(get_arg1(line))))
+      return line;
+
+    i = i + 1;
   }
 
   return UNUSED;
@@ -2204,59 +2253,49 @@ void bind_abstraction() {
 }
 
 void eval_nexts() {
-  uint64_t nid;
-  uint64_t* line;
+  uint64_t i;
 
-  nid = 1;
+  i = 0;
 
-  while (nid <= max_nid) {
-    line = line_of_nid(nid);
+  while (i < number_of_next_lines) {
+    eval_next((uint64_t*) *(next_lines + i));
 
-    if (line != UNUSED)
-      if (get_op(line) == OP_NEXT)
-        eval_next(line);
-
-    nid = nid + 1;
+    i = i + 1;
   }
 }
 
 void apply_nexts() {
-  uint64_t nid;
-  uint64_t* line;
+  uint64_t i;
 
-  nid = 1;
+  i = 0;
 
-  while (nid <= max_nid) {
-    line = line_of_nid(nid);
+  while (i < number_of_next_lines) {
+    apply_next((uint64_t*) *(next_lines + i));
 
-    if (line != UNUSED)
-      if (get_op(line) == OP_NEXT)
-        apply_next(line);
-
-    nid = nid + 1;
+    i = i + 1;
   }
 }
 
 void skip_nexts() {
-  uint64_t nid;
-  uint64_t* line;
+  uint64_t i;
 
   // the current model does not take this step: its states keep their
   // values and move to the next step with all others
 
-  nid = 1;
+  i = 0;
 
-  while (nid <= max_nid) {
-    line = line_of_nid(nid);
+  while (i < number_of_next_lines) {
+    set_step((uint64_t*) *(next_lines + i), next_step);
 
-    if (line != UNUSED) {
-      if (get_op(line) == OP_NEXT)
-        set_step(line, next_step);
-      else if (get_op(line) == OP_STATE)
-        set_step(line, next_step);
-    }
+    i = i + 1;
+  }
 
-    nid = nid + 1;
+  i = 0;
+
+  while (i < number_of_state_lines) {
+    set_step((uint64_t*) *(state_lines + i), next_step);
+
+    i = i + 1;
   }
 }
 
@@ -2284,6 +2323,8 @@ uint64_t product() {
   init_states();
   load_files();
 
+  collect_lines();
+
   save_model(first);
 
   parse_next_model(product_model_name);
@@ -2291,11 +2332,15 @@ uint64_t product() {
   init_states();
   load_files();
 
+  collect_lines();
+
   save_model(second);
 
   parse_next_model(abstraction_model_name);
 
   init_states();
+
+  collect_lines();
 
   save_model(abstraction);
 
@@ -6207,6 +6252,13 @@ void save_model(uint64_t* model) {
   *(model + 13) = (uint64_t) SID_CODE_STATE;
   *(model + 14) = (uint64_t) uninitialized_states;
   *(model + 15) = (uint64_t) pc_state_nid;
+
+  *(model + 16) = (uint64_t) next_lines;
+  *(model + 17) = (uint64_t) state_lines;
+  *(model + 18) = (uint64_t) property_lines;
+  *(model + 19) = number_of_next_lines;
+  *(model + 20) = number_of_state_lines;
+  *(model + 21) = number_of_property_lines;
 }
 
 void restore_model(uint64_t* model) {
@@ -6229,6 +6281,14 @@ void restore_model(uint64_t* model) {
   uninitialized_states = (uint64_t*) *(model + 14);
 
   pc_state_nid = (uint64_t*) *(model + 15);
+
+  next_lines     = (uint64_t*) *(model + 16);
+  state_lines    = (uint64_t*) *(model + 17);
+  property_lines = (uint64_t*) *(model + 18);
+
+  number_of_next_lines     = *(model + 19);
+  number_of_state_lines    = *(model + 20);
+  number_of_property_lines = *(model + 21);
 }
 
 void assume(uint64_t l) {

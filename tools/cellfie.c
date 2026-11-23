@@ -36,7 +36,19 @@ without a trace. Bitr proves both, on the BTOR2 models that cellfie
 generates of its rule and its inverse rule for a given grid size.
 
 Usage: cellfie { -l layout | -o layout | -f ticks | -b ticks | -rev ticks |
-                 -inverse | -noproperties | -btor2 width height | -check states }
+                 -inverse | -noproperties | -btor2 width height | -check states |
+                 -heap offset words | -stack words | -i file | -c binary |
+                 -a abstraction heap-allowance stack-allowance }
+
+-c compiles a RISC-R binary into a layout: its instructions in a row,
+memory cells for its data segment, for the regions of its heap given
+with -heap before, as offset in bytes and number of words, and for
+the top of its stack, 64 words or as many as given with -stack, tape
+cells for standard output and error, and the bytes of the file given
+with -i as its standard input, all wired by combs of routers. -a
+then writes the abstraction that relates the layout to rotor's
+RISC-R model of the binary with the given allowances in bytes, for
+bitr's product of the two.
 
 -l loads a layout, -o writes the grid and the token as layout; -f
 runs at most ticks forward, stopping where a property holds for the
@@ -460,6 +472,61 @@ uint64_t random_seed = 1;
 uint64_t* next_values = (uint64_t*) 0; // next value of each bit-vector state of the model
 
 // -----------------------------------------------------------------
+// --------------------------- COMPILER ----------------------------
+// -----------------------------------------------------------------
+
+void boot_binary(char* name);
+
+uint64_t differing_bit(uint64_t a, uint64_t b);
+uint64_t comb_height(uint64_t* keys, uint64_t lo, uint64_t hi);
+
+void lay_cell(uint64_t x, uint64_t y, uint64_t cell, uint64_t word);
+void lay_mirror(uint64_t x, uint64_t y, uint64_t mirror_kind);
+void lay_comb(uint64_t* keys, uint64_t* xs, uint64_t lo, uint64_t hi, uint64_t y, uint64_t down, uint64_t field);
+
+void add_memory_word(uint64_t address, uint64_t value, uint64_t kind);
+
+void compile_layout(char* name);
+
+void print_difference(uint64_t index_sid, uint64_t state_nid, uint64_t index, uint64_t cell_state_nid, uint64_t cell_index);
+void write_abstraction(char* name, uint64_t heap_allowance, uint64_t stack_allowance);
+
+// ------------------------ GLOBAL CONSTANTS -----------------------
+
+uint64_t CODE_COLUMN = 4; // column of the first instruction and of the first memory word
+
+uint64_t TAPE_WORDS = 16; // words per tape, as in rotor's model
+
+uint64_t MAX_HEAP_REGIONS = 8;
+
+// ------------------------ GLOBAL VARIABLES -----------------------
+
+// the heap has memory cells for regions of words, each an offset from its start
+
+uint64_t* heap_offsets = (uint64_t*) 0;
+uint64_t* heap_words   = (uint64_t*) 0;
+
+uint64_t number_of_heap_regions = 0;
+
+uint64_t stack_words = 64; // the stack has memory cells for that many words below its top
+
+char* input_name = (char*) 0; // file whose bytes are on the tape of standard input
+
+// the words of memory and tapes that have a cell, by ascending address
+
+uint64_t* word_addresses = (uint64_t*) 0;
+uint64_t* word_values    = (uint64_t*) 0;
+uint64_t* word_kinds     = (uint64_t*) 0; // memory or tape cell
+uint64_t* word_cells     = (uint64_t*) 0; // index of the cell on the grid
+
+uint64_t number_of_words = 0;
+
+uint64_t heap_start_address = 0; // start of the heap of the compiled binary
+
+uint64_t abstraction_nid  = 0; // next nid of the abstraction being written
+uint64_t abstraction_step = 0; // nid of its output step
+
+// -----------------------------------------------------------------
 // ----------------------------- MAIN ------------------------------
 // -----------------------------------------------------------------
 
@@ -516,9 +583,6 @@ void reset_token() {
     token_ends   = zmalloc(NUMBER_OF_TAPES * sizeof(uint64_t));
     token_inputs = zmalloc(NUMBER_OF_TAPES * sizeof(uint64_t));
     token_opens  = zmalloc(NUMBER_OF_TAPES * sizeof(uint64_t));
-
-    INPUT_TAPES  = two_to_the_power_of(63);
-    OUTPUT_TAPES = two_to_the_power_of(62);
   }
 
   token_x = 0;
@@ -4393,6 +4457,780 @@ uint64_t check_rule(uint64_t states) {
 }
 
 // -----------------------------------------------------------------
+// --------------------------- COMPILER ----------------------------
+// -----------------------------------------------------------------
+
+// The layout compiler turns a RISC-R binary into a layout that runs it.
+// The instructions are a row of cells, the path, in the order of their
+// addresses, every other column. All wire is combs. A comb is a binary
+// tree over the addresses of its leaves, one row per level: a node is
+// a router on the highest bit in which the addresses below it differ,
+// in the column of its first leaf, and a mirror in the column of the
+// first leaf with that bit set. A token that enters at the root is
+// turned east by the routers whose bit is set in its pc or address and
+// reaches the leaf with that address; a token that enters at a leaf
+// is turned west by the same routers and reaches the root. Six combs:
+//
+// north of the path  the departures of beq, jal, jalr, by origin (address)
+//                    the returns to ld and ecall, by pc
+// south of the path  the arrivals at beq, jal, jalr, by target (pc)
+//                    the departures of ld and ecall, by pc
+// south of those     to the words of memory and tapes, by address
+//                    and back from them, by address
+//
+// The roots are connected around the torus through columns 0 to 2. An
+// instruction that neither transfers control nor accesses memory needs
+// no wire. Distance is time: the compiler does not try to save any.
+
+void boot_binary(char* name) {
+  uint64_t  saved_argc;
+  uint64_t* saved_argv;
+
+  // the machine as riscr and rotor boot it: the binary loaded, its name
+  // as only argument on the stack
+
+  selfie_load(name);
+
+  if ((e_flags / EF_RISCR) % 2 == 0) {
+    printf("%s: %s is a RISC-U binary, cells of RISC-U are not supported yet\n", selfie_name, name);
+
+    exit(EXITCODE_BADARGUMENTS);
+  }
+
+  saved_argc = selfie_argc;
+  saved_argv = selfie_argv;
+
+  selfie_argc = 1;
+  selfie_argv = smalloc(sizeof(uint64_t*));
+
+  reset_interpreter();
+  reset_profiler();
+  reset_microkernel();
+
+  init_memory(1);
+
+  current_context = create_context(MY_CONTEXT, 0);
+
+  boot_loader(current_context);
+
+  selfie_argc = saved_argc;
+  selfie_argv = saved_argv;
+}
+
+uint64_t differing_bit(uint64_t a, uint64_t b) {
+  uint64_t bit;
+
+  // the highest bit in which a and b differ, assert: a != b
+
+  bit = 63;
+
+  while (get_bits(a, bit, 1) == get_bits(b, bit, 1))
+    bit = bit - 1;
+
+  return bit;
+}
+
+uint64_t comb_height(uint64_t* keys, uint64_t lo, uint64_t hi) {
+  uint64_t bit;
+  uint64_t mid;
+  uint64_t left;
+  uint64_t right;
+
+  // number of levels of the comb over the ascending keys from lo to hi - 1
+
+  if (hi < lo + 2)
+    return 0;
+
+  bit = differing_bit(*(keys + lo), *(keys + hi - 1));
+
+  mid = lo + 1;
+
+  while (get_bits(*(keys + mid), bit, 1) == 0)
+    mid = mid + 1;
+
+  left  = comb_height(keys, lo, mid);
+  right = comb_height(keys, mid, hi);
+
+  if (left > right)
+    return left + 1;
+  else
+    return right + 1;
+}
+
+void lay_cell(uint64_t x, uint64_t y, uint64_t cell, uint64_t word) {
+  // every cell is laid once
+
+  if (*(cell_kinds + cell_index(x, y)) != 0) {
+    printf("%s: cell (%lu,%lu) is laid twice\n", selfie_name, x, y);
+
+    exit(EXITCODE_COMPILERERROR);
+  }
+
+  *(cell_kinds + cell_index(x, y)) = cell;
+  *(cell_words + cell_index(x, y)) = word;
+}
+
+void lay_mirror(uint64_t x, uint64_t y, uint64_t mirror_kind) {
+  lay_cell(x, y, encode_cell(CELL_MIRROR, 0, mirror_kind), 0);
+}
+
+void lay_comb(uint64_t* keys, uint64_t* xs, uint64_t lo, uint64_t hi, uint64_t y, uint64_t down, uint64_t field) {
+  uint64_t bit;
+  uint64_t mid;
+  uint64_t mirror_kind;
+
+  // the comb over the keys from lo to hi - 1 with its root in row y and
+  // its leaves in the columns xs, south of the root if down and north of
+  // it otherwise: a token heading for the leaves is turned east by a
+  // backslash if they are south and by a slash if they are north
+
+  if (hi < lo + 2)
+    return;
+
+  bit = differing_bit(*(keys + lo), *(keys + hi - 1));
+
+  mid = lo + 1;
+
+  while (get_bits(*(keys + mid), bit, 1) == 0)
+    mid = mid + 1;
+
+  if (down)
+    mirror_kind = BACKSLASH;
+  else
+    mirror_kind = SLASH;
+
+  lay_cell(*(xs + lo), y, encode_cell(CELL_ROUTER, 0, mirror_kind), bit + field * 64);
+
+  lay_mirror(*(xs + mid), y, mirror_kind);
+
+  if (down)
+    y = y + 1;
+  else
+    y = y - 1;
+
+  lay_comb(keys, xs, lo, mid, y, down, field);
+  lay_comb(keys, xs, mid, hi, y, down, field);
+}
+
+void add_memory_word(uint64_t address, uint64_t value, uint64_t kind) {
+  // assert: addresses are added in ascending order
+
+  if (number_of_words > 0)
+    if (address <= *(word_addresses + number_of_words - 1)) {
+      printf("%s: memory regions overlap or are not in ascending order at 0x%lX\n", selfie_name, address);
+
+      exit(EXITCODE_BADARGUMENTS);
+    }
+
+  *(word_addresses + number_of_words) = address;
+  *(word_values + number_of_words)    = value;
+  *(word_kinds + number_of_words)     = kind;
+
+  number_of_words = number_of_words + 1;
+}
+
+void compile_layout(char* name) {
+  uint64_t n;
+  uint64_t i;
+  uint64_t j;
+  uint64_t x;
+  uint64_t address;
+  uint64_t value;
+  uint64_t* input;
+  uint64_t input_size;
+
+  uint64_t* control_keys;
+  uint64_t* control_out;
+  uint64_t* control_in;
+  uint64_t  controls;
+
+  uint64_t* access_keys;
+  uint64_t* access_out;
+  uint64_t* access_in;
+  uint64_t  accesses;
+
+  uint64_t* word_xs;
+
+  uint64_t control_out_height;
+  uint64_t control_in_height;
+  uint64_t access_out_height;
+  uint64_t access_in_height;
+  uint64_t memory_height;
+
+  uint64_t control_out_row;
+  uint64_t access_in_row;
+  uint64_t path_row;
+  uint64_t control_in_row;
+  uint64_t access_out_row;
+  uint64_t control_spine_row;
+  uint64_t access_spine_row;
+  uint64_t memory_in_row;
+  uint64_t memory_row;
+  uint64_t memory_out_row;
+  uint64_t access_return_row;
+  uint64_t control_return_row;
+
+  boot_binary(name);
+
+  // the instructions: beq, jal, and jalr transfer control, ld with rd not
+  // zero and ecall access memory, both leave and join the path sideways
+
+  n = code_size / INSTRUCTIONSIZE;
+
+  control_keys = zmalloc(n * sizeof(uint64_t));
+  control_out  = zmalloc(n * sizeof(uint64_t));
+  control_in   = zmalloc(n * sizeof(uint64_t));
+
+  access_keys = zmalloc(n * sizeof(uint64_t));
+  access_out  = zmalloc(n * sizeof(uint64_t));
+  access_in   = zmalloc(n * sizeof(uint64_t));
+
+  controls = 0;
+  accesses = 0;
+
+  i = 0;
+
+  while (i < n) {
+    decode_cell(load_instruction(i * INSTRUCTIONSIZE));
+
+    x = CODE_COLUMN + 2 * i;
+
+    if (is_reversible_instruction()) {
+      if (or(is == BEQ, or(is == JAL, is == JALR))) {
+        // leaves north in its column, arrives from the south from the next column
+
+        *(control_keys + controls) = code_start + i * INSTRUCTIONSIZE;
+        *(control_out + controls)  = x;
+        *(control_in + controls)   = x + 1;
+
+        controls = controls + 1;
+      } else if (or(is == ECALL, and(is == LOAD, rd != REG_ZR))) {
+        // leaves south in its column, returns from the north from the next column
+
+        *(access_keys + accesses) = code_start + i * INSTRUCTIONSIZE;
+        *(access_out + accesses)  = x;
+        *(access_in + accesses)   = x + 1;
+
+        accesses = accesses + 1;
+      }
+    }
+
+    i = i + 1;
+  }
+
+  // the words that have a cell, by ascending address: the data segment,
+  // the regions of the heap, the top of the stack, the tapes of standard
+  // output and error, and the tape of standard input with the input
+
+  input      = (uint64_t*) 0;
+  input_size = 0;
+
+  if (input_name != (char*) 0) {
+    input      = read_file(input_name);
+    input_size = layout_size;
+
+    if (input_size > TAPE_WORDS * WORDSIZE) {
+      printf("%s: %s has more than the %lu bytes of a tape\n", selfie_name, input_name, TAPE_WORDS * WORDSIZE);
+
+      exit(EXITCODE_BADARGUMENTS);
+    }
+  }
+
+  heap_start_address = get_program_break(current_context);
+
+  i = data_size / WORDSIZE + stack_words + 3 * TAPE_WORDS;
+
+  j = 0;
+
+  while (j < number_of_heap_regions) {
+    i = i + *(heap_words + j);
+
+    j = j + 1;
+  }
+
+  word_addresses = zmalloc(i * sizeof(uint64_t));
+  word_values    = zmalloc(i * sizeof(uint64_t));
+  word_kinds     = zmalloc(i * sizeof(uint64_t));
+  word_cells     = zmalloc(i * sizeof(uint64_t));
+  word_xs        = zmalloc(i * sizeof(uint64_t));
+
+  number_of_words = 0;
+
+  i = 0;
+
+  while (i < data_size / WORDSIZE) {
+    add_memory_word(data_start + i * WORDSIZE, load_data(i * WORDSIZE), CELL_MEMORY);
+
+    i = i + 1;
+  }
+
+  j = 0;
+
+  while (j < number_of_heap_regions) {
+    i = 0;
+
+    while (i < *(heap_words + j)) {
+      add_memory_word(heap_start_address + *(heap_offsets + j) + i * WORDSIZE, 0, CELL_MEMORY);
+
+      i = i + 1;
+    }
+
+    j = j + 1;
+  }
+
+  i = 0;
+
+  while (i < stack_words) {
+    // the boot loader put the arguments on the stack
+
+    address = VIRTUALMEMORYSIZE * GIGABYTE - (stack_words - i) * WORDSIZE;
+
+    value = 0;
+
+    if (is_virtual_address_mapped(get_pt(current_context), address))
+      value = load_virtual_memory(get_pt(current_context), address);
+
+    add_memory_word(address, value, CELL_MEMORY);
+
+    i = i + 1;
+  }
+
+  if (*(get_regs(current_context) + REG_SP) < VIRTUALMEMORYSIZE * GIGABYTE - stack_words * WORDSIZE) {
+    printf("%s: the stack of %s needs more than %lu words\n", selfie_name, name, stack_words);
+
+    exit(EXITCODE_BADARGUMENTS);
+  }
+
+  j = 1;
+
+  while (j < 3) {
+    i = 0;
+
+    while (i < TAPE_WORDS) {
+      add_memory_word(OUTPUT_TAPES + left_shift(j, 32) + i * WORDSIZE, 0, CELL_TAPE);
+
+      i = i + 1;
+    }
+
+    j = j + 1;
+  }
+
+  i = 0;
+
+  while (i < TAPE_WORDS) {
+    value = 0;
+
+    if (i * WORDSIZE < input_size)
+      value = *(input + i);
+
+    add_memory_word(INPUT_TAPES + i * WORDSIZE, value, CELL_MEMORY);
+
+    i = i + 1;
+  }
+
+  i = 0;
+
+  while (i < number_of_words) {
+    *(word_xs + i) = CODE_COLUMN + i;
+
+    i = i + 1;
+  }
+
+  // the rows, from north to south, and around the torus back north
+
+  control_out_height = comb_height(control_keys, 0, controls);
+  control_in_height  = control_out_height;
+  access_out_height  = comb_height(access_keys, 0, accesses);
+  access_in_height   = access_out_height;
+  memory_height      = comb_height(word_addresses, 0, number_of_words);
+
+  control_out_row = 0;
+  access_in_row   = control_out_row + control_out_height;
+
+  // one row north and one south of the path lead from the next column into a cell
+
+  path_row = access_in_row + access_in_height + 1;
+
+  // the roots of the combs south of the path are in their southern rows
+
+  control_in_row = path_row + 1 + control_in_height;
+  access_out_row = control_in_row + access_out_height;
+
+  control_spine_row = access_out_row + 1;
+  access_spine_row  = control_spine_row + 1;
+
+  memory_in_row  = access_spine_row + 1;
+  memory_row     = memory_in_row + memory_height + 1;
+  memory_out_row = memory_row + memory_height + 1;
+
+  access_return_row  = memory_out_row + 1;
+  control_return_row = access_return_row + 1;
+
+  x = CODE_COLUMN + 2 * n + 2;
+
+  if (x < CODE_COLUMN + number_of_words + 1)
+    x = CODE_COLUMN + number_of_words + 1;
+
+  allocate_grid(x, control_return_row + 1);
+
+  reset_token();
+
+  // the path
+
+  i = 0;
+
+  while (i < n) {
+    value = load_instruction(i * INSTRUCTIONSIZE);
+
+    decode_cell(value);
+
+    x = CODE_COLUMN + 2 * i;
+
+    j = SLASH;
+
+    if (is_reversible_instruction())
+      if (or(is == ECALL, and(is == LOAD, rd != REG_ZR)))
+        j = BACKSLASH;
+
+    lay_cell(x, path_row, encode_cell(CELL_INSTRUCTION, EAST, j), value);
+
+    i = i + 1;
+  }
+
+  // control: north out of the cell to the root of the comb of departures,
+  // west to column 0, north around the torus to the row south of the
+  // combs south of the path, east to the root of the comb of arrivals,
+  // north to the row south of the path, and west and north into the cell
+
+  if (controls > 0) {
+    lay_comb(control_keys, control_out, 0, controls, control_out_row, 1, FIELD_ADDRESS);
+    lay_comb(control_keys, control_in, 0, controls, control_in_row, 0, FIELD_PC);
+
+    i = 0;
+
+    while (i < controls) {
+      lay_mirror(*(control_in + i), path_row + 1, BACKSLASH);
+      lay_mirror(*(control_out + i), path_row + 1, BACKSLASH);
+
+      i = i + 1;
+    }
+
+    lay_mirror(*control_out, control_return_row, BACKSLASH);
+    lay_mirror(0, control_return_row, BACKSLASH);
+    lay_mirror(0, control_spine_row, SLASH);
+    lay_mirror(*control_in, control_spine_row, SLASH);
+  }
+
+  // memory: south out of the cell to the root of the comb of departures,
+  // west to column 1, south and east to the root of the comb to the words,
+  // through the cell of the word, to the root of the comb back from the
+  // words, west to column 2, south and east to the root of the comb of
+  // returns, south around the torus to the row north of the path, and
+  // west and south into the cell
+
+  if (accesses > 0) {
+    lay_comb(access_keys, access_out, 0, accesses, access_out_row, 0, FIELD_PC);
+    lay_comb(access_keys, access_in, 0, accesses, access_in_row, 1, FIELD_PC);
+
+    i = 0;
+
+    while (i < accesses) {
+      lay_mirror(*(access_in + i), path_row - 1, SLASH);
+      lay_mirror(*(access_out + i), path_row - 1, SLASH);
+
+      i = i + 1;
+    }
+
+    lay_mirror(*access_out, access_spine_row, SLASH);
+    lay_mirror(1, access_spine_row, SLASH);
+    lay_mirror(1, memory_in_row, BACKSLASH);
+    lay_mirror(*word_xs, memory_in_row, BACKSLASH);
+
+    lay_comb(word_addresses, word_xs, 0, number_of_words, memory_in_row + 1, 1, FIELD_ADDRESS);
+    lay_comb(word_addresses, word_xs, 0, number_of_words, memory_out_row - 1, 0, FIELD_ADDRESS);
+
+    lay_mirror(*word_xs, memory_out_row, SLASH);
+    lay_mirror(2, memory_out_row, SLASH);
+    lay_mirror(2, access_return_row, BACKSLASH);
+    lay_mirror(*access_in, access_return_row, BACKSLASH);
+  }
+
+  i = 0;
+
+  while (i < number_of_words) {
+    lay_cell(*(word_xs + i), memory_row, encode_cell(*(word_kinds + i), 0, 0), *(word_values + i));
+
+    *(word_cells + i) = cell_index(*(word_xs + i), memory_row);
+
+    i = i + 1;
+  }
+
+  // the token: at the first instruction, as the boot loader left the machine
+
+  token_x = CODE_COLUMN;
+  token_y = path_row;
+
+  token_pc = get_pc(current_context);
+
+  i = 1;
+
+  while (i < NUMBEROFREGISTERS) {
+    *(token_registers + i) = *(get_regs(current_context) + i);
+
+    i = i + 1;
+  }
+
+  token_break = heap_start_address;
+
+  *token_ends = input_size;
+
+  executed_ticks        = 0;
+  executed_instructions = 0;
+
+  printf("%s: %lu instructions of %s on a grid of %lux%lu cells: %lu transfer control, %lu access memory, %lu words of memory and tapes\n", selfie_name,
+    n, name, grid_width, grid_height, controls, accesses, number_of_words);
+}
+
+// The abstraction relates the layout to rotor's RISC-R model of the binary
+// for bitr's product, see cellfie.md: rotor's model takes a step when the
+// token is on the path of an instruction cell, and the two must then agree
+// on the pc, the registers, the state of the system calls, and all words
+// of memory and tapes that have a cell. Rotor's model must be generated
+// with the given heap and stack allowance in bytes and its default tapes.
+
+void print_difference(uint64_t index_sid, uint64_t state_nid, uint64_t index, uint64_t cell_state_nid, uint64_t cell_index) {
+  // a word of a state of rotor's model and a word of a state of cellfie's
+  // model, of a cell or by the same index, differ when a step is due;
+  // the symbol of the bad state follows
+
+  dprintf(output_fd, "%lu constd %lu %lu\n", abstraction_nid, index_sid, index);
+  dprintf(output_fd, "%lu read 2 %lu %lu\n", abstraction_nid + 1, state_nid, abstraction_nid);
+
+  if (cell_state_nid == 56) {
+    dprintf(output_fd, "%lu constd 23 %lu\n", abstraction_nid + 2, cell_index);
+    dprintf(output_fd, "%lu read 2 56 %lu\n", abstraction_nid + 3, abstraction_nid + 2);
+  } else
+    dprintf(output_fd, "%lu read 2 %lu %lu\n", abstraction_nid + 3, cell_state_nid, abstraction_nid);
+
+  dprintf(output_fd, "%lu neq 1 %lu %lu\n", abstraction_nid + 4, abstraction_nid + 1, abstraction_nid + 3);
+  dprintf(output_fd, "%lu and 1 %lu %lu\n", abstraction_nid + 5, abstraction_step, abstraction_nid + 4);
+  dprintf(output_fd, "%lu bad %lu ", abstraction_nid + 6, abstraction_nid + 5);
+
+  abstraction_nid = abstraction_nid + 10;
+}
+
+void write_abstraction(char* name, uint64_t heap_allowance, uint64_t stack_allowance) {
+  uint64_t fd;
+  uint64_t i;
+  uint64_t address;
+  uint64_t bits;
+  uint64_t loaded;
+  uint64_t stack_start_address;
+
+  if (number_of_words == 0) {
+    printf("%s: no binary compiled\n", selfie_name);
+
+    exit(EXITCODE_BADARGUMENTS);
+  }
+
+  fd = open_write_only(name, S_IRUSR_IWUSR_IRGRP_IROTH);
+
+  if (signed_less_than(fd, 0)) {
+    printf("%s: could not create %s\n", selfie_name, name);
+
+    exit(EXITCODE_IOERROR);
+  }
+
+  output_name = name;
+  output_fd   = fd;
+
+  dprintf(output_fd, "; %s\n\n", SELFIE_URL);
+  dprintf(output_fd, "; abstraction for bitr's product of rotor's RISC-R model of a binary, with\n");
+  dprintf(output_fd, "; %lu bytes heap and %lu bytes stack allowance, with cellfie's cell rule on\n", heap_allowance, stack_allowance);
+  dprintf(output_fd, "; the layout of the binary on a grid of %lux%lu cells, see cellfie.md\n\n", grid_width, grid_height);
+
+  dprintf(output_fd, "1 sort bitvec 1\n2 sort bitvec 64\n3 sort bitvec 5\n4 sort array 3 2\n");
+
+  // the segments of rotor's model: as many words as the data has and the
+  // allowances allow, two at least, addressed by word
+
+  bits = log_two(data_size / WORDSIZE);
+
+  if (two_to_the_power_of(bits) < data_size / WORDSIZE)
+    bits = bits + 1;
+
+  if (bits == 0)
+    bits = 1;
+
+  dprintf(output_fd, "5 sort bitvec %lu\n6 sort array 5 2\n", bits);
+
+  bits = log_two(heap_allowance / WORDSIZE);
+
+  if (two_to_the_power_of(bits) < heap_allowance / WORDSIZE)
+    bits = bits + 1;
+
+  if (bits == 0)
+    bits = 1;
+
+  dprintf(output_fd, "7 sort bitvec %lu\n8 sort array 7 2\n", bits);
+
+  bits = log_two(stack_allowance / WORDSIZE);
+
+  if (two_to_the_power_of(bits) < stack_allowance / WORDSIZE)
+    bits = bits + 1;
+
+  if (bits == 0)
+    bits = 1;
+
+  dprintf(output_fd, "9 sort bitvec %lu\n10 sort array 9 2\n", bits);
+
+  dprintf(output_fd, "11 sort bitvec 32\n12 sort bitvec 2\n13 sort array 12 2\n");
+  dprintf(output_fd, "14 sort bitvec %lu\n15 sort array 14 2\n", log_two(NUMBER_OF_TAPES * TAPE_WORDS));
+
+  // the grid
+
+  dprintf(output_fd, "20 sort bitvec %lu\n21 sort bitvec %lu\n", log_two(grid_width), log_two(grid_height));
+  dprintf(output_fd, "22 sort bitvec 8\n23 sort bitvec %lu\n", log_two(grid_size));
+  dprintf(output_fd, "24 sort array 23 22\n25 sort array 23 2\n26 sort bitvec 3\n\n");
+
+  // rotor's states: a segment is loaded if the boot loader put a word into it
+
+  dprintf(output_fd, "30 state 2 core-0-pc\n31 state 4 core-0-initialized-register-file\n");
+
+  loaded = 0;
+
+  i = 0;
+
+  while (i < data_size / WORDSIZE) {
+    if (load_data(i * WORDSIZE) != 0)
+      loaded = 1;
+
+    i = i + 1;
+  }
+
+  if (loaded)
+    dprintf(output_fd, "32 state 6 core-0-loaded-data-segment\n");
+  else
+    dprintf(output_fd, "32 state 6 core-0-zeroed-data-segment\n");
+
+  dprintf(output_fd, "33 state 8 core-0-zeroed-heap-segment\n34 state 10 core-0-loaded-stack-segment\n");
+  dprintf(output_fd, "35 state 11 core-0-program-break\n36 state 2 open-files\n");
+  dprintf(output_fd, "37 state 13 tape-heads\n38 state 13 tape-ends\n39 state 13 tape-inputs\n40 state 13 tape-opens\n");
+  dprintf(output_fd, "41 state 15 input-tapes\n42 state 15 output-tapes\n\n");
+
+  // cellfie's states
+
+  dprintf(output_fd, "43 state 20 token-x\n44 state 21 token-y\n45 state 12 token-heading\n");
+  dprintf(output_fd, "46 state 2 token-pc\n47 state 2 token-address\n48 state 2 token-data\n");
+  dprintf(output_fd, "49 state 2 token-break\n50 state 2 token-open-files\n51 state 12 token-leg\n52 state 2 token-word\n");
+  dprintf(output_fd, "53 state 4 token-registers\n");
+  dprintf(output_fd, "54 state 13 token-tape-heads\n57 state 13 token-tape-ends\n58 state 13 token-tape-inputs\n59 state 13 token-tape-opens\n");
+  dprintf(output_fd, "55 state 24 cell-kinds\n56 state 25 cell-words\n\n");
+
+  // step: the token is on the path of an instruction cell
+
+  dprintf(output_fd, "60 concat 23 44 43\n61 read 22 55 60\n62 slice 26 61 2 0\n63 constd 26 %lu\n64 eq 1 62 63\n", CELL_INSTRUCTION);
+  dprintf(output_fd, "65 slice 12 61 4 3\n66 eq 1 45 65\n67 and 1 64 66\n68 output 67 step\n\n");
+
+  abstraction_step = 67;
+
+  // nothing is in transit
+
+  dprintf(output_fd, "70 zero 2\n71 zero 12\n72 neq 1 47 70\n73 neq 1 48 70\n74 neq 1 51 71\n75 neq 1 52 70\n");
+  dprintf(output_fd, "76 or 1 72 73\n77 or 1 74 75\n78 or 1 76 77\n79 and 1 67 78\n80 bad 79 token-in-transit\n\n");
+
+  // pc, program break, next file descriptor
+
+  dprintf(output_fd, "81 neq 1 30 46\n82 and 1 67 81\n83 bad 82 pc-differs\n");
+  dprintf(output_fd, "84 uext 2 35 32\n85 neq 1 84 49\n86 and 1 67 85\n87 bad 86 program-break-differs\n");
+  dprintf(output_fd, "88 neq 1 36 50\n89 and 1 67 88\n90 bad 89 open-files-differ\n\n");
+
+  abstraction_nid = 100;
+
+  // registers and tapes by the same index in both models
+
+  i = 0;
+
+  while (i < NUMBEROFREGISTERS) {
+    print_difference(3, 31, i, 53, 0);
+
+    dprintf(output_fd, "register-%lu-differs\n", i);
+
+    i = i + 1;
+  }
+
+  i = 0;
+
+  while (i < NUMBER_OF_TAPES) {
+    print_difference(12, 37, i, 54, 0);
+
+    dprintf(output_fd, "head-of-tape-%lu-differs\n", i);
+
+    print_difference(12, 38, i, 57, 0);
+
+    dprintf(output_fd, "end-of-tape-%lu-differs\n", i);
+
+    print_difference(12, 39, i, 58, 0);
+
+    dprintf(output_fd, "kind-of-tape-%lu-differs\n", i);
+
+    print_difference(12, 40, i, 59, 0);
+
+    dprintf(output_fd, "host-flag-of-tape-%lu-differs\n", i);
+
+    i = i + 1;
+  }
+
+  // the words of memory and tapes, each in its segment or on its tape
+
+  stack_start_address = VIRTUALMEMORYSIZE * GIGABYTE - stack_allowance;
+
+  i = 0;
+
+  while (i < number_of_words) {
+    address = *(word_addresses + i);
+
+    if (address >= INPUT_TAPES) {
+      // tape of standard input
+      print_difference(14, 41, (address - INPUT_TAPES) / WORDSIZE, 56, *(word_cells + i));
+
+      dprintf(output_fd, "input-word-%lu-differs\n", (address - INPUT_TAPES) / WORDSIZE);
+    } else if (address >= OUTPUT_TAPES) {
+      // tape of the file descriptor times 4GB
+      address = address - OUTPUT_TAPES;
+
+      print_difference(14, 42, address / two_to_the_power_of(32) * TAPE_WORDS + address % two_to_the_power_of(32) / WORDSIZE, 56, *(word_cells + i));
+
+      dprintf(output_fd, "output-word-%lu-of-tape-%lu-differs\n", address % two_to_the_power_of(32) / WORDSIZE, address / two_to_the_power_of(32));
+    } else {
+      if (address >= stack_start_address)
+        print_difference(9, 34, (address - stack_start_address) / WORDSIZE, 56, *(word_cells + i));
+      else if (address >= heap_start_address) {
+        if (address - heap_start_address >= heap_allowance) {
+          output_fd = STDOUT_FD;
+
+          printf("%s: the word at 0x%lX is beyond the heap allowance of %lu bytes\n", selfie_name, address, heap_allowance);
+
+          exit(EXITCODE_BADARGUMENTS);
+        }
+
+        print_difference(7, 33, (address - heap_start_address) / WORDSIZE, 56, *(word_cells + i));
+      } else
+        print_difference(5, 32, (address - data_start) / WORDSIZE, 56, *(word_cells + i));
+
+      dprintf(output_fd, "word-at-0x%lX-differs\n", address);
+    }
+
+    i = i + 1;
+  }
+
+  output_name = (char*) 0;
+  output_fd   = STDOUT_FD;
+
+  printf("%s: abstraction for %lu words of memory and tapes written to %s\n", selfie_name, number_of_words, name);
+}
+
+// -----------------------------------------------------------------
 // ----------------------------- MAIN ------------------------------
 // -----------------------------------------------------------------
 
@@ -4415,6 +5253,38 @@ uint64_t cellfie() {
       return EXITCODE_BADARGUMENTS;
     else if (string_compare(argument, "-l"))
       load_layout(get_argument());
+    else if (string_compare(argument, "-c"))
+      compile_layout(get_argument());
+    else if (string_compare(argument, "-i"))
+      input_name = get_argument();
+    else if (string_compare(argument, "-stack"))
+      stack_words = atoi(get_argument());
+    else if (string_compare(argument, "-heap")) {
+      if (number_of_remaining_arguments() < 2)
+        return EXITCODE_BADARGUMENTS;
+      else if (number_of_heap_regions >= MAX_HEAP_REGIONS)
+        return EXITCODE_BADARGUMENTS;
+
+      if (heap_offsets == (uint64_t*) 0) {
+        heap_offsets = zmalloc(MAX_HEAP_REGIONS * sizeof(uint64_t));
+        heap_words   = zmalloc(MAX_HEAP_REGIONS * sizeof(uint64_t));
+      }
+
+      *(heap_offsets + number_of_heap_regions) = atoi(get_argument());
+      *(heap_words + number_of_heap_regions)   = atoi(get_argument());
+
+      number_of_heap_regions = number_of_heap_regions + 1;
+    } else if (string_compare(argument, "-a")) {
+      if (number_of_remaining_arguments() < 3)
+        return EXITCODE_BADARGUMENTS;
+
+      name = get_argument();
+
+      width  = atoi(get_argument());
+      height = atoi(get_argument());
+
+      write_abstraction(name, width, height);
+    }
     else if (string_compare(argument, "-check")) {
       if (not(check_rule(atoi(get_argument()))))
         return EXITCODE_SYSTEMERROR;
@@ -4478,10 +5348,20 @@ int main(int argc, char** argv) {
   init_library();
   init_system();
   init_target();
+  init_kernel();
+
+  // the layout compiler uses selfie's binary and boot loader
+  init_register();
+  init_interpreter();
+  init_disassembler();
 
   init_model();
 
+  INPUT_TAPES  = two_to_the_power_of(63);
+  OUTPUT_TAPES = two_to_the_power_of(62);
+
   exit_code = cellfie();
 
-  return exit_selfie(exit_code, " { -l layout | -o layout | -f ticks | -b ticks | -rev ticks | -inverse | -noproperties | -btor2 width height | -check states }");
+  // selfie's strings are short, the options are in the comment at the top
+  return exit_selfie(exit_code, " { -l layout | -c binary | -o layout | -f ticks | -b ticks | -rev ticks | -btor2 width height | -check states }");
 }
