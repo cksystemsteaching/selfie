@@ -1,6 +1,6 @@
 # selfie · cellfie · bitr — development plan
 
-Oct 30, 2026 · Christoph Kirsch · updated Nov 23, 2026: encodings frozen, M6a done, cellfie before the rest of RISC-R; Nov 6: M2 done; Nov 5: M16 garbage-free riscr, M17 reversible hypster; Nov 2: RISC-R moved into its own tool, riscr
+Oct 30, 2026 · Christoph Kirsch · updated Nov 23, 2026: encodings frozen, M6a and M7 done, cellfie before the rest of RISC-R; Nov 6: M2 done; Nov 5: M16 garbage-free riscr, M17 reversible hypster; Nov 2: RISC-R moved into its own tool, riscr
 
 ## Goal and design rules
 
@@ -94,13 +94,13 @@ One more ISA rule: the code segment is read-only. Fixing a program's code then k
 Bitr reads BTOR2 and nothing else, so it never needs to know whether a model came from selfie, cellfie or anywhere else. It is one C\* file, `tools/bitr.c`, built up in layers. Each layer is a mode of the same tool and is checked before the next one starts.
 
 1. **Parser** for the BTOR2 subset rotor emits: bit-vector and array sorts, constants, operators, `state` / `init` / `next`, `input`, `bad`, `constraint`. bitme's `btor2.py` serves as the reference parser for differential tests.
-2. **Loaders** that only turn data into `init` fragments, the write chains rotor already produces. One loader takes an ELF binary (RISC-U or RISC-R), the other an RLE layout for the CA grid. No semantics lives here.
+2. **Loaders** that only turn data into `init` fragments, the write chains rotor already produces. One loader takes an ELF binary (RISC-U or RISC-R), the other an RLE layout for the CA grid. No semantics lives here. (The layout loader is `-grid`, since M7.)
 3. **Concrete simulator**, the counterpart of btorsim. Rotor's existing evaluator (`eval_line`) moves into a shared header, `tools/btor2.h`, used by both rotor and bitr. That keeps rotor out of bitr as a tool while sharing the code as a library, the way `selfie.h` is shared. The first real check: mipster and the simulator run the same binary and produce the same state at every step.
 4. **Bit-blaster** to CNF using Tseitin encoding. Arrays are handled by read-over-write elimination, which works because k is bounded, together with rotor's existing options for bounding memory segments.
 5. **SAT core.** Babysat stays as the executable spec (plain enumeration). Next to it goes a minimal CDCL solver in C\*: two watched literals, first-UIP learning, restarts only if needed. Both must give the same SAT/UNSAT answer on `examples/sat` and on every CNF bitr generates.
 6. **Forward BMC:** unroll k steps and check `bad`. A satisfying assignment becomes an input trace that mipster or riscr replays, which closes the loop.
 7. **Backward BMC on the inverse model:** unroll from `bad` backwards to `init`, where each step is plain substitution with no quantifiers. Backward unrolling is functional but not concrete: `init` is mostly concrete (loaded code, zeroed registers), so forward terms collapse under constant propagation, while `bad` constrains a few bits and leaves the rest of the state free. The likely win is therefore meet-in-the-middle, forward from `init` and backward from `bad`, joined on the property's cone of influence rather than on the full state. Whether either beats forward BMC on real programs is a research question, not an assumption.
-8. **Product machine:** two BTOR2 models plus an abstraction function, also in BTOR2, give an equivalence check. This is how selfie and cellfie are compared, and it is fully generic.
+8. **Product machine:** two BTOR2 models plus an abstraction function, also in BTOR2, give an equivalence check. This is how selfie and cellfie are compared, and it is fully generic. (M7: `bitr model -product other -abstraction map`, in the concrete simulator, where one model may take many steps per step of the other. The symbolic product, for programs with input, is open.)
 9. **Escape hatch:** export the unrolled formula as DIMACS or SMT-LIB, or hand the BTOR2 file straight to btormc, Pono or bitme, for anything beyond toy size.
 
 **Specialisation, later (`bitr -specialize`).** Needed only for levels 3 and 4 of the story. Given a model and constant code, this mode partially evaluates the model into a smaller one, then applies scalar replacement. Every pass goes from BTOR2 to BTOR2, and the product machine checks it against its input. Optimisation uses cheap solver-backed passes by default: SAT sweeping, and removing logic that k-induction proves dead.
@@ -139,7 +139,7 @@ Cellfie is one C\* file, `tools/cellfie.c`. Each cell holds one RISC-R instructi
 
 **Layout compiler.** It turns a RISC-R binary into a layout. Instructions go along a path in program order, branch and jump targets are connected by wire, and memory sits as a region beside the code. Code layout is the performance model: distance is time.
 
-**Equivalence with selfie.** An instruction boundary is the token entering an instruction cell. The abstraction function is direct: `pc` is that cell's address, the registers are the token's payload, memory is the memory cells. Bitr's product check against rotor's RISC-R model holds at every step, and any program can be compared with riscr.
+**Equivalence with selfie.** An instruction boundary is the token entering an instruction cell. The abstraction function is direct: `pc` is that cell's address, the registers are the token's payload, memory is the memory cells. Bitr's product check against rotor's RISC-R model holds at every step, and any program can be compared with riscr. (M7: done for the hand-laid program. The boundary is the token on the path of an instruction cell, the abstraction is a BTOR2 file whose output `step` is that boundary and whose bad states are the differences, and `pc` is the token's. Memory is what depends on the layout, so the abstraction lists the cell of each address. The product is concrete, which is exact for a program without input; see `cellfie.md`.)
 
 **Running all of selfie.** Event-driven simulation costs tens to thousands of ticks per instruction, mostly memory round trips. Selfie's self-compilation, around 10⁸–10⁹ instructions, should then take hours when run natively. That needs measuring. Hybrid simulation stays as the fallback: abstract RISC-R steps wherever nobody is watching.
 
@@ -203,7 +203,7 @@ The critical path runs M1 → M3 → M5 → M7 → M8. M7 is the first time cell
 | M4 | bitr | Parser, loaders, concrete simulator | M3 | bitr's simulator matches riscr step by step on all RISC-R examples |
 | M5 | bitr | Bit-blaster, CDCL next to babysat, forward BMC, witness replay | M4 | finds the known bugs in `examples/symbolic`; witnesses replay in mipster or riscr; CDCL and babysat agree on every CNF; proves inverse after forward is the identity symbolically for small k |
 | M6 | cellfie | Cell rule (instruction, `beq`, wire, memory and tape cells), event-driven simulator, layout format; M6a, all but tapes and the system calls beyond `exit`, done November 23, 2026; M6b, tapes with `read`, `write`, `openat`, `brk`, open | M3 | `make cells`: bitr proves inverse after rule and rule after inverse are the identity; a forward-then-backward run restores the initial grid; simulator and model agree on random states |
-| M7 | cellfie | A hand-laid program of a few instructions, including a branch and a memory exchange | M5, M6 | bitr's product check against rotor's model passes at every step up to small k; the run matches riscr |
+| M7 | cellfie | A hand-laid program of a few instructions, including a branch and a memory exchange; done November 23, 2026, on M6a, with a loop, three memory exchanges, and a call | M5, M6 | `make product`: bitr's product check against rotor's model passes at every instruction of the run, to the end; the run matches riscr in exit code and number of instructions |
 | M8 | cellfie | Layout compiler from RISC-R binaries | M7 | selfie-compiled examples run on cellfie identically to riscr, step by step |
 | M9 | selfie | `+=`, `-=` and `^=` in C\*, compiled without history | M2 | the history stack stays empty for programs that use only these; selfie still compiles with gcc |
 | M10 | cellfie | Construction ISA, constructor, tape emission | M8 | constructor plus tape plus blank grid reaches exactly the compiled layout plus tape and idle constructor |

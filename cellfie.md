@@ -6,7 +6,7 @@ selfie.cs.uni-salzburg.at
 
 This document specifies cellfie, an instruction-level reversible cellular machine that runs [RISC-R](riscr.md). The tool is `tools/cellfie.c`, the development plan is `projects/reversible.md`. The machine is a grid of cells and one token. A cell holds one RISC-R instruction, one memory word, or a piece of wire. The token carries the program counter and the register file from cell to cell. The rule of the machine is RISC-R applied where the token is, plus the movement of the token, and it is a bijection on all states: running it backward needs no trace. For details on the exact semantics see the `cell_*` procedures and `model_rule` in `tools/cellfie.c`.
 
-This is the state after milestone M6a: all thirteen instructions and `exit`, wire, routers, and memory. Tapes and the system calls `read`, `write`, `openat`, and `brk` are M6b and missing, see the last section.
+This is the state after milestones M6a and M7: all thirteen instructions and `exit`, wire, routers, and memory, and a hand-laid program on which the rule is compared with rotor's RISC-R model and with riscr. Tapes and the system calls `read`, `write`, `openat`, and `brk` are M6b and missing, see the last section.
 
 ## Machine State
 
@@ -94,7 +94,7 @@ Lines starting with `#C` are comments. `#T x y heading pc address datum` is the 
 
 The cells follow row by row. A decimal number in front of a cell repeats it, `$` ends a row, a number in front of `$` ends that many rows, the rest of a row is blank, and `!` ends the layout. Line breaks and spaces between cells are ignored. A router is `R`, its mirror, `p` or `a`, and the bit as two decimal digits. An instruction cell is its orientation `E`, `N`, `W`, or `S`, its mirror, and its instruction as eight hexadecimal digits.
 
-`tests/cellfie-test.rle` is a hand-laid program with a loop, three exchanges with two memory words, and a procedure call, on a grid of 16 times 8 cells, with its wiring described in its comments.
+`tests/cellfie-test.rle` is a hand-laid program with a loop, three exchanges with two memory words, and a procedure call, on a grid of 16 times 8 cells, with its wiring described in its comments. Its addresses are those of the RISC-R binary of the same program, which `tests/cellfie-test.c` writes: code from 0x10000, the two memory words at the start of the data segment at 0x11000.
 
 ## Running
 
@@ -112,12 +112,27 @@ A cell of `cell-kinds` is 8 bits: the kind in bits 0 to 2 (blank 0, mirror 1, ro
 2. `./cellfie -check N` compares one tick of the simulator with one step of the model, forward and backward, and the properties, on N random states with cells of all kinds, kinds and instructions that do not exist included.
 3. Bitr proves that one step of the inverse rule after one step of the rule restores all nine states, and one step of the rule after one step of the inverse rule as well, from every state of the grid: `./bitr cellfie-16x8-noproperties.btor2 -identity cellfie-16x8-inverse.btor2`. There is no constraint to assume. The proof takes 80 paths and less than a second per direction, and 45 seconds for both on a grid of 64 times 64 cells.
 
+Bitr loads layouts itself, with `-grid layout`, into the states of the model, with a reader of its own: `./bitr cellfie-16x8.btor2 -grid tests/cellfie-test.rle` stops at the bad state `exit` after 177 steps, the 176 ticks of the simulator and the step that stops.
+
 The proof is about the model and the check ties the simulator to the model. Both were tested by mutation on November 23, 2026: each of thirteen wrong rules, four in the simulator and nine in the model, fails the check on 20,000 states. Of eight of the wrong models, the seven that are no bijections fail the proof, an `addi` whose `rd` is its source, a `jalr` that zeroes `rd`, and a memory cell that overwrites its word among them. The eighth, a router that ignores its mirror in both directions, is a different rule but still a bijection: it passes the proof and fails the check.
+
+## Cellfie and RISC-R
+
+That the rule is a bijection says nothing about whether it is RISC-R. `make product` checks that on the test program, three ways.
+
+1. Riscr runs the binary `tests/cellfie-test.r` to exit code 42 in 30 instructions and back to its initial state; cellfie runs the layout to exit code 42 in 29 instructions before the `exit`, which the simulator does not execute.
+2. Bitr stops in rotor's model of the binary after 30 instructions, as riscr does, and in cellfie's model with the layout after 177 steps, as the simulator does.
+3. Bitr runs the two models as a product: `./bitr tests/cellfie-test-rotorized-riscr.btor2 -l tests/cellfie-test.r -product cellfie-16x8.btor2 -grid tests/cellfie-test.rle -abstraction tests/cellfie-test-abstraction.btor2`. Cellfie's model takes every step, rotor's model only the steps in which a RISC-R instruction begins. At each of the 29 instructions the two agree on the pc, all 32 registers, and both memory words, and they stop together, rotor's model at `exit(42)` and cellfie's at `exit`.
+
+The *abstraction* is what relates the two models. It is a BTOR2 file without initial or next states, here `tests/cellfie-test-abstraction.btor2`, written by hand as the layout is. Its states are states of the two models by name, `core-0-pc` and `token-pc` for instance. Its output `step` holds when the cell under the token is an instruction cell and the token is on its path: that is where a RISC-R instruction begins. Its bad states are where the models differ in such a step: `pc-differs`, one `register-...-differs` per register, one `word-at-...-differs` per memory word, with the cell of each address in it, and `token-in-transit` if address or datum of the token are not zero. Memory is the one part that depends on the layout: a memory cell does not know its address, the wire that leads to it does.
+
+The product is concrete: the program reads no input, so there is one run, and the check covers all of it rather than a bound. It was tested by mutation on November 23, 2026: another instruction in a cell, another memory word, another `sp`, the memory cells exchanged in the abstraction, a mirror missing on the call wire, a wrong immediate in a come-from, two wrong rules in cellfie's model, and another exit code in rotor's model each fail it, with the bad state that names the difference. A router on a wrong bit did not: the token took a detour of 30 ticks around the torus and arrived where it should, which is still the same program.
 
 ## Not There Yet
 
 - Tapes and the system calls `read`, `write`, `openat`, and `brk` (M6b). They need a tour of the token between memory and tape, the head of a tape as a mark that the token carries from one tape cell to the next, and the program break somewhere, most likely in the token.
 - RISC-U cells, which overwrite `rd` and join paths without a come-from. Their rule is no bijection, and bitr should find two states with the same successor.
-- Bitr's loader for layouts, and with it the comparison with rotor's RISC-R model and with riscr, step by step (M7). The rule has not been compared with riscr on any program yet.
+- The comparison with RISC-R is one program and one run. The cell rule and rotor's model are not compared on all states: an instruction takes one step in one and a number of ticks without bound in the other, so that proof needs the cells of a transfer and the wire between them, not the rule alone.
+- The abstraction is written by hand. The layout compiler will have to write it, since it places the memory cells.
 - An `ld` at an address that is not word-aligned or that has no memory cell is not a property: routers ignore the bits they are not given, and a token that no router turns stays on its wire around the torus.
 - The layout compiler from RISC-R binaries (M8). Routing is by hand so far.

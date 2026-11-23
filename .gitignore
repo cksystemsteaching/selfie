@@ -39,3 +39,8 @@ cellfie-test-*.rle
 cellfie-check-failed.rle
 cellfie-test.txt
 cellfie-identity.txt
+
+# the abstraction of make product is written by hand, what else it needs is generated
+!tests/cellfie-test-abstraction.btor2
+cellfie-test
+cellfie-product.txt
