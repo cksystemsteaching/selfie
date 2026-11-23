@@ -211,7 +211,7 @@ cache: selfie selfie.m selfie.s examples/cache/dcache-access-[01].c
 .PHONY: sat brr bzz mon smt beat beator-btor2 rot synthesize rotor-btor2 btor2 more all
 
 # Run more that only requires standard tools and is not too slow
-more: sat brr bzz mon smt beat beator-btor2 rot synthesize rotor-btor2 rev trust riscr-model sim bmc cdcl identity cells product
+more: sat brr bzz mon smt beat beator-btor2 rot synthesize rotor-btor2 rev trust riscr-model sim bmc cdcl identity cells product tapes
 
 # Run all that only requires standard tools and is not too slow
 all: less more
@@ -474,12 +474,12 @@ identity: bitr rotor
 cellfie: tools/cellfie.c tools/btor2.h selfie.h
 	$(CC) $(CFLAGS) --include selfie.h --include tools/btor2.h $< -o $@
 
-# Cell rule of cellfie (M6 of projects/reversible.md, without tapes and system calls): the hand-laid RISC-R
-# program in tests/cellfie-test.rle runs on the grid until it exits with exit code 42, and then as many ticks
-# backward, natively and on mipster, which restores the initial layout bit for bit, also across files; the
-# simulator agrees with the BTOR2 model of the rule, forward and backward, on random states; and bitr proves
-# that the inverse rule undoes the rule and the rule the inverse rule, on all states of a grid, with no
-# constraint on the states, for the grid of the test and for the smallest grid
+# Cell rule of cellfie (M6 of projects/reversible.md): the hand-laid RISC-R programs in tests/cellfie-test.rle
+# and, with all system calls, in tests/cellfie-io-test.rle run on the grid until they exit with exit code 42,
+# and then as many ticks backward, natively and on mipster, which restores the initial layout bit for bit, also
+# across files; the simulator agrees with the BTOR2 model of the rule, forward and backward, on random states;
+# and bitr proves that the inverse rule undoes the rule and the rule the inverse rule, on all states of a
+# grid, with no constraint on the states, for the grid of the first test and for the smallest grid
 cells: cellfie bitr selfie selfie.h
 	./cellfie -l tests/cellfie-test.rle -o cellfie-test-initial.rle -rev 10000 -o cellfie-test-restored.rle -f 10000 -o cellfie-test-final.rle | tee cellfie-test.txt
 	grep -q "exit with exit code 42 after 176 ticks and 29 instructions" cellfie-test.txt
@@ -488,6 +488,12 @@ cells: cellfie bitr selfie selfie.h
 	! cmp -s cellfie-test-initial.rle cellfie-test-final.rle
 	./cellfie -l cellfie-test-final.rle -b 176 -o cellfie-test-restored.rle
 	cmp cellfie-test-initial.rle cellfie-test-restored.rle
+	./cellfie -l tests/cellfie-io-test.rle -o cellfie-test-initial-io.rle -rev 10000 -o cellfie-test-restored.rle -f 150 -o cellfie-test-final.rle | tee cellfie-test.txt
+	grep -q "exit with exit code 42 after 344 ticks and 26 instructions" cellfie-test.txt
+	grep -q "initial state restored after 344 ticks forward and 344 ticks backward" cellfie-test.txt
+	cmp cellfie-test-initial-io.rle cellfie-test-restored.rle
+	./cellfie -l cellfie-test-final.rle -b 150 -o cellfie-test-restored.rle
+	cmp cellfie-test-initial-io.rle cellfie-test-restored.rle
 	./selfie -c selfie.h tools/btor2.h tools/cellfie.c -m 64 -l tests/cellfie-test.rle -rev 10000 -o cellfie-test-restored.rle -check 100
 	cmp cellfie-test-initial.rle cellfie-test-restored.rle
 	./cellfie -check 100000
@@ -498,11 +504,11 @@ cells: cellfie bitr selfie selfie.h
 	  ./cellfie -noproperties -btor2 $$1 $$2 > /dev/null && \
 	  ./cellfie -inverse -btor2 $$1 $$2 > /dev/null || exit 1; \
 	  ./bitr cellfie-$$1x$$2-noproperties.btor2 -identity cellfie-$$1x$$2-inverse.btor2 | tee cellfie-identity.txt; \
-	  grep -q "cellfie-$$1x$$2-inverse.btor2 after cellfie-$$1x$$2-noproperties.btor2 is the identity on all 9 states" cellfie-identity.txt || exit 1; \
+	  grep -q "cellfie-$$1x$$2-inverse.btor2 after cellfie-$$1x$$2-noproperties.btor2 is the identity on all 17 states" cellfie-identity.txt || exit 1; \
 	  ./bitr cellfie-$$1x$$2-inverse.btor2 -identity cellfie-$$1x$$2-noproperties.btor2 | tee cellfie-identity.txt; \
-	  grep -q "cellfie-$$1x$$2-noproperties.btor2 after cellfie-$$1x$$2-inverse.btor2 is the identity on all 9 states" cellfie-identity.txt || exit 1; \
+	  grep -q "cellfie-$$1x$$2-noproperties.btor2 after cellfie-$$1x$$2-inverse.btor2 is the identity on all 17 states" cellfie-identity.txt || exit 1; \
 	done
-	@echo "$@: the hand-laid program runs forward and back to its initial layout, simulator and model agree, the cell rule is a bijection"
+	@echo "$@: the hand-laid programs run forward and back to their initial layouts, simulator and model agree, the cell rule is a bijection"
 
 # Prevent make from deleting intermediate target cellfie
 .SECONDARY: cellfie
@@ -519,7 +525,7 @@ cellfie-test: tests/cellfie-test.c selfie.h
 # an instruction, finds pc, all registers, and both memory words equal at every instruction and both models
 # stopping together, natively and with bitr running on mipster
 product: cellfie cellfie-test bitr riscr rotor selfie selfie.h
-	./cellfie-test tests/cellfie-test.r
+	./cellfie-test tests/cellfie-test.r tests/cellfie-io-test.r
 	./riscr -l tests/cellfie-test.r -rev 1 | tee cellfie-product.txt
 	grep -q "with exit code 42" cellfie-product.txt
 	grep -q "executing 29 instructions backward" cellfie-product.txt
@@ -540,6 +546,34 @@ product: cellfie cellfie-test bitr riscr rotor selfie selfie.h
 
 # Prevent make from deleting intermediate target cellfie-test
 .SECONDARY: cellfie-test
+
+# Tapes and system calls on cellfie (M6b of projects/reversible.md): as make product, for the hand-laid program
+# in tests/cellfie-io-test.rle that sets the program break, reads the byte * from standard input, writes it to
+# standard output, opens a file that does not exist, reads from it, and exits with the byte: riscr and cellfie
+# run it to exit code 42 in 26 instructions before the exit and back, bitr stops in rotor's model and in
+# cellfie's model after as many steps, and bitr's product finds pc, registers, program break, file descriptors,
+# tape heads, and the buffer, input, and output word equal at every instruction, natively and on mipster
+tapes: cellfie cellfie-test bitr riscr rotor selfie selfie.h
+	./cellfie-test tests/cellfie-test.r tests/cellfie-io-test.r
+	printf '*' > tests/cellfie-io-test.txt
+	./riscr -l tests/cellfie-io-test.r -rev 1 < tests/cellfie-io-test.txt | tee cellfie-product.txt
+	grep -q "with exit code 42" cellfie-product.txt
+	grep -q "executing 26 instructions backward" cellfie-product.txt
+	grep -q "initial state restored bit for bit" cellfie-product.txt
+	./cellfie -l tests/cellfie-io-test.rle -rev 10000 | tee cellfie-product.txt
+	grep -q "exit with exit code 42 after 344 ticks and 26 instructions" cellfie-product.txt
+	grep -q "initial state restored after 344 ticks forward and 344 ticks backward" cellfie-product.txt
+	./rotor -l tests/cellfie-io-test.r - 42 > /dev/null
+	./bitr tests/cellfie-io-test-rotorized-riscr.btor2 -l tests/cellfie-io-test.r -i tests/cellfie-io-test.txt | tee cellfie-product.txt
+	grep -q "bad core-0-bad-exit-code after 27 instructions" cellfie-product.txt
+	./cellfie -btor2 32 8
+	./bitr cellfie-32x8.btor2 -grid tests/cellfie-io-test.rle | tee cellfie-product.txt
+	grep -q "bad exit after 345 instructions" cellfie-product.txt
+	./bitr tests/cellfie-io-test-rotorized-riscr.btor2 -l tests/cellfie-io-test.r -i tests/cellfie-io-test.txt -product cellfie-32x8.btor2 -grid tests/cellfie-io-test.rle -abstraction tests/cellfie-io-test-abstraction.btor2 -k 10000 | tee cellfie-product.txt
+	grep -q "agree at all 26 steps of tests/cellfie-io-test-rotorized-riscr.btor2, in 344 steps of cellfie-32x8.btor2, and stop together" cellfie-product.txt
+	./selfie -c selfie.h tools/btor2.h tools/bitr.c -m 128 tests/cellfie-io-test-rotorized-riscr.btor2 -l tests/cellfie-io-test.r -i tests/cellfie-io-test.txt -product cellfie-32x8.btor2 -grid tests/cellfie-io-test.rle -abstraction tests/cellfie-io-test-abstraction.btor2 -k 10000 | tee cellfie-product.txt
+	grep -q "agree at all 26 steps of tests/cellfie-io-test-rotorized-riscr.btor2, in 344 steps of cellfie-32x8.btor2, and stop together" cellfie-product.txt
+	@echo "$@: cellfie's system calls on the hand-laid layout do what rotor's RISC-R model of the binary does, instruction by instruction, and what riscr does"
 
 # Bennett mode (M2 of projects/reversible.md): selfie translated to RISC-R compiles selfie on riscr
 # to an identical binary and runs back to its initial state; riscr's translator reaches a fixed point
@@ -573,7 +607,7 @@ trust: selfie selfie.h
 	rm -f examples/trusting-trust/honest-stamp.c examples/trusting-trust/honest-victim.c examples/trusting-trust/trojaned-victim.c examples/trusting-trust/suspect-stamp.c
 
 # Consider these targets as targets, not files
-.PHONY: rev riscr-rev bennett trust riscr-model sim bmc cdcl identity cells product
+.PHONY: rev riscr-rev bennett trust riscr-model sim bmc cdcl identity cells product tapes
 
 # Consider these targets as targets, not files
 .PHONY: spike qemu assemble beator-32 rotor-32 32-bit bitwuzla beator-bitme rotor-bitme bitme extras
@@ -696,4 +730,5 @@ clean:
 	rm -f babysat buzzr monster beator beator-32 rotor rotor-32 riscr riscr.h riscr-test bitr cellfie cellfie-test
 	rm -f cellfie-test-*.rle cellfie-check-failed.rle cellfie-test.txt cellfie-identity.txt cellfie-product.txt
 	rm -f tests/cellfie-test.r tests/cellfie-test-rotorized-riscr.btor2
+	rm -f tests/cellfie-io-test.r tests/cellfie-io-test.txt tests/cellfie-io-test-rotorized-riscr.btor2
 	rm -f selfie-u.m selfie-r.r selfie-r.m riscr-u.m riscr-r.r riscr-r2.r

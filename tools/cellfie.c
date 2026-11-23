@@ -83,6 +83,7 @@ uint64_t CELL_MIRROR      = 1; // turns the token
 uint64_t CELL_ROUTER      = 2; // turns the token if a bit of its pc or address is set
 uint64_t CELL_MEMORY      = 3; // exchanges its word with the datum of the token
 uint64_t CELL_INSTRUCTION = 4; // applies its RISC-R instruction to the token
+uint64_t CELL_TAPE        = 5; // flips the bits of its word by the datum of the token
 
 // headings and orientations, counterclockwise; row 0 is the northern row
 
@@ -116,8 +117,21 @@ uint64_t* cell_words = (uint64_t*) 0; // instruction, memory word, or router bit
 // ----------------------------- TOKEN -----------------------------
 // -----------------------------------------------------------------
 
+void reset_token();
+
 uint64_t  get_token_register(uint64_t reg);
 void      set_token_register(uint64_t reg, uint64_t value);
+
+// ------------------------ GLOBAL CONSTANTS -----------------------
+
+uint64_t NUMBER_OF_TAPES = 4; // file descriptors, standard input, output, and error included
+
+// what a token in a read or write is on its way to, or back from
+
+uint64_t LEG_NONE        = 0;
+uint64_t LEG_BUFFER      = 1; // the buffer word, to fetch it
+uint64_t LEG_TAPE        = 2; // the tape word
+uint64_t LEG_BUFFER_BACK = 3; // the buffer word again, to put back what is its now
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
@@ -130,6 +144,21 @@ uint64_t token_address = 0; // in transit: address of the memory word, or of the
 uint64_t token_data    = 0; // in transit: register value on its way to memory, or back
 
 uint64_t* token_registers = (uint64_t*) 0; // register file
+
+// the state of RISC-R's system calls, see riscr.md
+
+uint64_t token_break      = 0; // program break
+uint64_t token_open_files = 3; // next file descriptor
+
+uint64_t* token_heads  = (uint64_t*) 0; // head of each tape, in words
+uint64_t* token_ends   = (uint64_t*) 0; // end of each input file, in bytes, -1 if unknown
+uint64_t* token_inputs = (uint64_t*) 0; // 1 for an input tape, 0 for an output tape
+uint64_t* token_opens  = (uint64_t*) 0; // 1 if the host can open the file, for descriptors from 3 on
+
+// in a read or write, between the cell of the ecall and memory or tape
+
+uint64_t token_leg  = 0; // what the token is on its way to, LEG_NONE on a path
+uint64_t token_word = 0; // which word of the buffer the token transfers
 
 // -----------------------------------------------------------------
 // --------------------------- CELL RULE ---------------------------
@@ -149,6 +178,16 @@ void cell_branch(uint64_t on_path);
 void cell_jump(uint64_t on_path);
 void cell_return(uint64_t on_path);
 
+uint64_t transfer_words();
+uint64_t is_transfer();
+uint64_t transfer_result(uint64_t head);
+uint64_t leg_address(uint64_t head);
+
+void     cell_brk();
+void     cell_openat();
+uint64_t cell_transfer(uint64_t on_path);
+uint64_t cell_system_call(uint64_t on_path);
+
 void act_instruction(uint64_t orientation, uint64_t mirror_kind, uint64_t word);
 void act();
 
@@ -167,9 +206,18 @@ uint64_t PROPERTY_ILLEGAL_INSTRUCTION = 1; // not RISC-R: unknown, sd, rd is a s
 uint64_t PROPERTY_IRREVERSIBLE_LINK   = 2; // jal with nonzero link register
 uint64_t PROPERTY_DIVISION_BY_ZERO    = 3;
 uint64_t PROPERTY_EXIT                = 4; // exit system call
-uint64_t PROPERTY_UNSUPPORTED_SYSCALL = 5; // any other system call
+uint64_t PROPERTY_UNSUPPORTED_SYSCALL = 5; // system call other than exit, read, write, openat, brk
+uint64_t PROPERTY_IRREVERSIBLE_BRK    = 6; // brk with nonzero a0 or zero program break
+uint64_t PROPERTY_IRREVERSIBLE_TAPE   = 7; // read or write of 4GB or more
+uint64_t PROPERTY_IRREVERSIBLE_OPENAT = 8; // openat with all file descriptors allocated
 
-uint64_t NUMBER_OF_PROPERTIES = 5;
+uint64_t NUMBER_OF_PROPERTIES = 8;
+
+uint64_t SYSCALL_FAILURE = 4294967295; // -1 as 32-bit system call result
+uint64_t LARGEST_TRANSFER = 4294967296; // a read or write transfers less than 4GB
+
+uint64_t INPUT_TAPES  = 0; // addresses of input tape words: 2^63 + descriptor * 2^32 + position * 8
+uint64_t OUTPUT_TAPES = 0; // addresses of output tape words: 2^62 + descriptor * 2^32 + position * 8
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
@@ -177,6 +225,13 @@ uint64_t reverse = 0; // flag for running the rule backward and for generating t
 
 uint64_t executed_ticks        = 0; // ticks forward minus ticks backward
 uint64_t executed_instructions = 0; // instructions forward minus instructions backward
+
+// what cells did, in both directions, for the check to report what it covers
+
+uint64_t acted_instructions = 0; // instruction cells that acted on a token on their path or side
+uint64_t acted_breaks       = 0; // brk that changed the program break
+uint64_t acted_opens        = 0; // openat
+uint64_t acted_legs         = 0; // read or write that began, went on, or ended a transfer
 
 // -----------------------------------------------------------------
 // ---------------------------- LAYOUT -----------------------------
@@ -203,6 +258,8 @@ uint64_t scan_heading();
 
 void load_token();
 void load_register();
+void load_system_state();
+void load_file_descriptor();
 void load_header();
 void load_cells();
 void load_layout(char* name);
@@ -233,6 +290,11 @@ uint64_t  layout_line = 1;
 // -----------------------------------------------------------------
 // --------------------------- SIMULATOR ---------------------------
 // -----------------------------------------------------------------
+
+uint64_t state_length(uint64_t state);
+uint64_t get_state_word(uint64_t state, uint64_t i);
+void     set_state_word(uint64_t state, uint64_t i, uint64_t value);
+char*    state_name(uint64_t state);
 
 uint64_t  snapshot_size();
 uint64_t* take_snapshot(uint64_t* snapshot);
@@ -279,7 +341,11 @@ uint64_t* new_arithmetic_choice(uint64_t* funct3_nid, uint64_t* funct7_nid, uint
 
 void model_sorts(uint64_t xbits, uint64_t ybits);
 void model_states();
+void model_transfer(uint64_t reading);
 void model_rule();
+
+char* property_name(uint64_t property);
+char* property_comment(uint64_t property);
 
 void print_model(char* name, uint64_t properties);
 
@@ -287,17 +353,25 @@ void print_model(char* name, uint64_t properties);
 
 // states of the model, in the order of the state of the simulator
 
-uint64_t STATE_X         = 0;
-uint64_t STATE_Y         = 1;
-uint64_t STATE_HEADING   = 2;
-uint64_t STATE_PC        = 3;
-uint64_t STATE_ADDRESS   = 4;
-uint64_t STATE_DATA      = 5;
-uint64_t STATE_REGISTERS = 6;
-uint64_t STATE_KINDS     = 7;
-uint64_t STATE_WORDS     = 8;
+uint64_t STATE_X          = 0;
+uint64_t STATE_Y          = 1;
+uint64_t STATE_HEADING    = 2;
+uint64_t STATE_PC         = 3;
+uint64_t STATE_ADDRESS    = 4;
+uint64_t STATE_DATA       = 5;
+uint64_t STATE_BREAK      = 6;
+uint64_t STATE_OPEN_FILES = 7;
+uint64_t STATE_LEG        = 8;
+uint64_t STATE_WORD       = 9;
+uint64_t STATE_REGISTERS  = 10;
+uint64_t STATE_HEADS      = 11;
+uint64_t STATE_ENDS       = 12;
+uint64_t STATE_INPUTS     = 13;
+uint64_t STATE_OPENS      = 14;
+uint64_t STATE_KINDS      = 15;
+uint64_t STATE_WORDS      = 16;
 
-uint64_t NUMBER_OF_STATES = 9;
+uint64_t NUMBER_OF_STATES = 17;
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
@@ -309,6 +383,8 @@ uint64_t* SID_CELL      = (uint64_t*) 0;
 uint64_t* SID_WORD      = (uint64_t*) 0;
 uint64_t* SID_REGISTER  = (uint64_t*) 0;
 uint64_t* SID_REGISTERS = (uint64_t*) 0;
+uint64_t* SID_FD        = (uint64_t*) 0;
+uint64_t* SID_TAPES     = (uint64_t*) 0;
 uint64_t* SID_KINDS     = (uint64_t*) 0;
 uint64_t* SID_WORDS     = (uint64_t*) 0;
 
@@ -321,6 +397,39 @@ uint64_t* forward_nids = (uint64_t*) 0; // next value of each state in the rule
 uint64_t* inverse_nids = (uint64_t*) 0; // next value of each state in the inverse rule
 
 uint64_t* property_nids = (uint64_t*) 0; // condition of each property, forward only
+
+// lines and effects of the rule that its parts share
+
+uint64_t* registers_nid = (uint64_t*) 0; // register file
+uint64_t* address_nid   = (uint64_t*) 0; // address of the token
+uint64_t* mirrored_nid  = (uint64_t*) 0; // heading of the token turned by the mirror of the cell
+
+uint64_t* a0_index_nid = (uint64_t*) 0;
+uint64_t* a0_nid       = (uint64_t*) 0; // values of the registers of a system call
+uint64_t* a1_nid       = (uint64_t*) 0;
+uint64_t* a2_nid       = (uint64_t*) 0;
+uint64_t* a3_nid       = (uint64_t*) 0;
+uint64_t* a7_nid       = (uint64_t*) 0;
+
+uint64_t* heads_nid  = (uint64_t*) 0; // heads of the tapes
+uint64_t* leg_nid    = (uint64_t*) 0; // leg of a transfer
+uint64_t* number_nid = (uint64_t*) 0; // number of the word in transfer
+
+uint64_t* fd_nid       = (uint64_t*) 0; // file descriptor in a1
+uint64_t* head_nid     = (uint64_t*) 0; // head of its tape
+uint64_t* count_nid    = (uint64_t*) 0; // words to transfer
+uint64_t* last_word_nid     = (uint64_t*) 0; // number of the last word
+uint64_t* buffer_nid   = (uint64_t*) 0; // address of the buffer word in transfer
+uint64_t* is_open_nid  = (uint64_t*) 0;
+uint64_t* is_input_nid = (uint64_t*) 0;
+uint64_t* fits_nid     = (uint64_t*) 0; // transfer of less than 4GB
+uint64_t* failure_nid  = (uint64_t*) 0; // -1 as system call result
+
+uint64_t* same    = (uint64_t*) 0; // no effect
+uint64_t* advance = (uint64_t*) 0; // the pc moves to the next instruction
+
+uint64_t* system_on_path = (uint64_t*) 0; // system call by a token on the path
+uint64_t* system_on_side = (uint64_t*) 0; // and on the side
 
 uint64_t printing_properties = 1; // flag for printing the properties into the model
 
@@ -347,6 +456,8 @@ uint64_t check_rule(uint64_t states);
 // ------------------------ GLOBAL VARIABLES -----------------------
 
 uint64_t random_seed = 1;
+
+uint64_t* next_values = (uint64_t*) 0; // next value of each bit-vector state of the model
 
 // -----------------------------------------------------------------
 // ----------------------------- MAIN ------------------------------
@@ -380,7 +491,7 @@ void allocate_grid(uint64_t width, uint64_t height) {
   cell_words = zmalloc(grid_size * sizeof(uint64_t));
 
   if (token_registers == (uint64_t*) 0)
-    token_registers = zmalloc(NUMBEROFREGISTERS * sizeof(uint64_t));
+    reset_token();
 }
 
 uint64_t cell_index(uint64_t x, uint64_t y) {
@@ -390,6 +501,60 @@ uint64_t cell_index(uint64_t x, uint64_t y) {
 // -----------------------------------------------------------------
 // ----------------------------- TOKEN -----------------------------
 // -----------------------------------------------------------------
+
+void reset_token() {
+  uint64_t i;
+
+  // the token as a RISC-R machine starts, without a program: at the
+  // northwestern cell heading east, all registers zero, no program break,
+  // the three standard files open with standard input the only input tape
+
+  if (token_registers == (uint64_t*) 0) {
+    token_registers = zmalloc(NUMBEROFREGISTERS * sizeof(uint64_t));
+
+    token_heads  = zmalloc(NUMBER_OF_TAPES * sizeof(uint64_t));
+    token_ends   = zmalloc(NUMBER_OF_TAPES * sizeof(uint64_t));
+    token_inputs = zmalloc(NUMBER_OF_TAPES * sizeof(uint64_t));
+    token_opens  = zmalloc(NUMBER_OF_TAPES * sizeof(uint64_t));
+
+    INPUT_TAPES  = two_to_the_power_of(63);
+    OUTPUT_TAPES = two_to_the_power_of(62);
+  }
+
+  token_x = 0;
+  token_y = 0;
+
+  token_heading = EAST;
+
+  token_pc      = 0;
+  token_address = 0;
+  token_data    = 0;
+
+  i = 0;
+
+  while (i < NUMBEROFREGISTERS) {
+    *(token_registers + i) = 0;
+
+    i = i + 1;
+  }
+
+  token_break      = 0;
+  token_open_files = 3;
+
+  i = 0;
+
+  while (i < NUMBER_OF_TAPES) {
+    *(token_heads + i)  = 0;
+    *(token_ends + i)   = 0;
+    *(token_inputs + i) = i == 0;
+    *(token_opens + i)  = 0;
+
+    i = i + 1;
+  }
+
+  token_leg  = LEG_NONE;
+  token_word = 0;
+}
 
 uint64_t get_token_register(uint64_t reg) {
   return *(token_registers + reg);
@@ -747,6 +912,289 @@ void cell_return(uint64_t on_path) {
   }
 }
 
+uint64_t transfer_words() {
+  // a3 bytes rounded up to words
+  return right_shift(get_token_register(REG_A3) + 7, 3);
+}
+
+uint64_t is_transfer() {
+  uint64_t fd;
+
+  // read from an open input tape, or write to an open output tape, of
+  // less than 4GB; standard files are open, others if the host opened them
+
+  fd = get_token_register(REG_A1);
+
+  if (get_token_register(REG_A3) >= LARGEST_TRANSFER)
+    return 0;
+  else if (fd >= token_open_files)
+    return 0;
+  else if (fd >= 3)
+    if (*(token_opens + fd % NUMBER_OF_TAPES) == 0)
+      return 0;
+
+  if (get_token_register(REG_A7) == SYSCALL_READ)
+    return *(token_inputs + fd % NUMBER_OF_TAPES) != 0;
+  else
+    return *(token_inputs + fd % NUMBER_OF_TAPES) == 0;
+}
+
+uint64_t transfer_result(uint64_t head) {
+  uint64_t size;
+  uint64_t end;
+
+  // write: the size; read: the bytes before the end of the file from
+  // the head on, at most the size, as with a RISC-U read
+
+  size = get_token_register(REG_A3);
+
+  if (get_token_register(REG_A7) == SYSCALL_READ) {
+    end = *(token_ends + get_token_register(REG_A1) % NUMBER_OF_TAPES);
+
+    if (end == (uint64_t) -1)
+      return size;
+    else if (head * WORDSIZE >= end)
+      return 0;
+    else if (end - head * WORDSIZE < size)
+      return end - head * WORDSIZE;
+  }
+
+  return size;
+}
+
+uint64_t leg_address(uint64_t head) {
+  // where the token is on its way to, or back from: the word of the tape
+  // at the head plus the number of the word, or the word of the buffer
+
+  if (token_leg == LEG_TAPE) {
+    if (get_token_register(REG_A7) == SYSCALL_READ)
+      head = INPUT_TAPES + (head + token_word) * WORDSIZE;
+    else
+      head = OUTPUT_TAPES + (head + token_word) * WORDSIZE;
+
+    return head + left_shift(get_token_register(REG_A1), 32);
+  } else
+    return get_token_register(REG_A2) + token_word * WORDSIZE;
+}
+
+void cell_brk() {
+  uint64_t a0;
+  uint64_t a1;
+
+  // brk: if a0 is zero and a1 is a word-aligned address above the program
+  // break, which is not zero, a1 becomes the program break and a0 the
+  // previous one. This exchanges such states with the states in which a0 is
+  // not zero and below the program break, and a1 is the word-aligned program
+  // break, so backward the same undoes it, and forward on such a state as
+  // well, where a0 is not zero, which is a property of the token.
+
+  a0 = get_token_register(REG_A0);
+  a1 = get_token_register(REG_A1);
+
+  if (a1 % WORDSIZE == 0) {
+    if (a0 == 0) {
+      if (token_break != 0)
+        if (a1 > token_break) {
+          set_token_register(REG_A0, token_break);
+
+          token_break = a1;
+
+          acted_breaks = acted_breaks + 1;
+        }
+    } else if (a1 == token_break)
+      if (a0 < token_break) {
+        token_break = a0;
+
+        set_token_register(REG_A0, 0);
+
+        acted_breaks = acted_breaks + 1;
+      }
+  }
+}
+
+void cell_openat() {
+  uint64_t fd;
+  uint64_t kind;
+  uint64_t result;
+
+  // openat: allocates the next file descriptor, flips the kind of its tape
+  // if the flags in a2 open an input tape, O_RDONLY or 0, and adds the
+  // descriptor into a0, or -1 if the host cannot open the file; backward
+  // it releases the descriptor, flips the kind, and subtracts
+
+  acted_opens = acted_opens + 1;
+
+  if (reverse)
+    token_open_files = token_open_files - 1;
+
+  fd = token_open_files % NUMBER_OF_TAPES;
+
+  kind = get_token_register(REG_A2) == O_RDONLY;
+
+  if (get_token_register(REG_A2) == 0)
+    kind = 1;
+
+  *(token_inputs + fd) = bitwise_xor(*(token_inputs + fd), kind);
+
+  if (*(token_opens + fd) != 0)
+    result = token_open_files;
+  else
+    result = SYSCALL_FAILURE;
+
+  if (reverse)
+    set_token_register(REG_A0, get_token_register(REG_A0) - result);
+  else {
+    set_token_register(REG_A0, get_token_register(REG_A0) + result);
+
+    token_open_files = token_open_files + 1;
+  }
+}
+
+uint64_t cell_transfer(uint64_t on_path) {
+  uint64_t fd;
+  uint64_t words;
+  uint64_t head;
+
+  // read and write of at least one word: the token leaves the path and
+  // travels three legs for each word of the buffer, to the buffer word,
+  // whose memory cell exchanges it with the datum, to the tape word at
+  // the head plus the number of the word, and to the buffer word again.
+  // The tape word of a read is a memory cell, so the two words end up
+  // exchanged; that of a write is a tape cell, which flips its bits by
+  // the datum, so the buffer word ends up where it was. After each leg
+  // the token is back at this cell, on its side, and crosses it for the
+  // next leg; after the last leg the head of the tape advances by the
+  // words, the result is added into a0, and the token joins the path.
+  // Backward the same happens the other way round. Returns 1 if the
+  // cell turns the token.
+
+  fd    = get_token_register(REG_A1) % NUMBER_OF_TAPES;
+  words = transfer_words();
+  head  = *(token_heads + fd);
+
+  if (on_path) {
+    if (and(token_leg == LEG_NONE, token_word == 0)) {
+      acted_legs = acted_legs + 1;
+
+      if (reverse) {
+        // undo the return: the head moves back, the result is subtracted
+
+        token_pc = token_pc - INSTRUCTIONSIZE;
+
+        head = head - words;
+
+        *(token_heads + fd) = head;
+
+        set_token_register(REG_A0, get_token_register(REG_A0) - transfer_result(head));
+
+        token_leg  = LEG_BUFFER_BACK;
+        token_word = words - 1;
+
+        token_address = token_address + leg_address(head);
+      } else {
+        token_leg = LEG_BUFFER;
+
+        token_address = token_address + leg_address(head);
+
+        executed_instructions = executed_instructions + 1;
+      }
+
+      return 1;
+    }
+  } else if (and(token_leg != LEG_NONE, token_word < words)) {
+    acted_legs = acted_legs + 1;
+
+    token_address = token_address - leg_address(head);
+
+    if (reverse) {
+      if (token_leg == LEG_BUFFER) {
+        if (token_word == 0) {
+          // undo the departure
+
+          token_leg = LEG_NONE;
+
+          executed_instructions = executed_instructions - 1;
+
+          return 1;
+        }
+
+        token_leg  = LEG_BUFFER_BACK;
+        token_word = token_word - 1;
+      } else
+        token_leg = token_leg - 1;
+    } else if (token_leg == LEG_BUFFER_BACK) {
+      if (token_word == words - 1) {
+        // the last leg: the head advances, the result is added
+
+        token_leg  = LEG_NONE;
+        token_word = 0;
+
+        *(token_heads + fd) = head + words;
+
+        set_token_register(REG_A0, get_token_register(REG_A0) + transfer_result(head));
+
+        token_pc = token_pc + INSTRUCTIONSIZE;
+
+        return 1;
+      }
+
+      token_leg  = LEG_BUFFER;
+      token_word = token_word + 1;
+    } else
+      token_leg = token_leg + 1;
+
+    token_address = token_address + leg_address(head);
+  }
+
+  return 0;
+}
+
+uint64_t cell_system_call(uint64_t on_path) {
+  uint64_t a7;
+  uint64_t result;
+
+  // ecall: exit is a property of the token and has no effect, and neither
+  // has an unknown system call; brk and openat happen on the path; so do a
+  // read or write that fails, which adds -1 into a0, or transfers no word;
+  // any other read or write is a tour of the token. Returns 1 if the cell
+  // turns the token.
+
+  a7 = get_token_register(REG_A7);
+
+  if (a7 == SYSCALL_BRK) {
+    if (on_path) {
+      cell_brk();
+
+      advance_on_path();
+    }
+  } else if (a7 == SYSCALL_OPENAT) {
+    if (on_path) {
+      cell_openat();
+
+      advance_on_path();
+    }
+  } else if (or(a7 == SYSCALL_READ, a7 == SYSCALL_WRITE)) {
+    if (is_transfer()) {
+      if (transfer_words() > 0)
+        return cell_transfer(on_path);
+
+      result = transfer_result(*(token_heads + get_token_register(REG_A1) % NUMBER_OF_TAPES));
+    } else
+      result = SYSCALL_FAILURE;
+
+    if (on_path) {
+      if (reverse)
+        set_token_register(REG_A0, get_token_register(REG_A0) - result);
+      else
+        set_token_register(REG_A0, get_token_register(REG_A0) + result);
+
+      advance_on_path();
+    }
+  }
+
+  return 0;
+}
+
 void act_instruction(uint64_t orientation, uint64_t mirror_kind, uint64_t word) {
   uint64_t on_path;
 
@@ -765,10 +1213,12 @@ void act_instruction(uint64_t orientation, uint64_t mirror_kind, uint64_t word) 
   if (not(is_reversible_instruction()))
     return;
 
-  if (is == ECALL)
-    // a system call is a property of the token
-    return;
-  else if (is == BEQ) {
+  acted_instructions = acted_instructions + 1;
+
+  if (is == ECALL) {
+    if (not(cell_system_call(on_path)))
+      return;
+  } else if (is == BEQ) {
     if (get_token_register(rs1) != get_token_register(rs2)) {
       // not taken: the token stays on the path, or crosses it
       if (on_path)
@@ -829,7 +1279,10 @@ void act() {
     *(cell_words + index) = token_data;
 
     token_data = word;
-  } else if (kind == CELL_INSTRUCTION)
+  } else if (kind == CELL_TAPE)
+    // flip the bits of the word by the datum
+    *(cell_words + index) = bitwise_xor(word, token_data);
+  else if (kind == CELL_INSTRUCTION)
     act_instruction(get_cell_orientation(cell), get_cell_mirror(cell), word);
 }
 
@@ -902,9 +1355,22 @@ uint64_t token_property() {
     if (get_token_register(rs2) == 0)
       return PROPERTY_DIVISION_BY_ZERO;
   } else if (is == ECALL) {
-    if (get_token_register(REG_A7) == SYSCALL_EXIT)
+    cell = get_token_register(REG_A7);
+
+    if (cell == SYSCALL_EXIT)
       return PROPERTY_EXIT;
-    else
+    else if (cell == SYSCALL_BRK) {
+      if (get_token_register(REG_A0) != 0)
+        return PROPERTY_IRREVERSIBLE_BRK;
+      else if (token_break == 0)
+        return PROPERTY_IRREVERSIBLE_BRK;
+    } else if (cell == SYSCALL_OPENAT) {
+      if (token_open_files >= NUMBER_OF_TAPES)
+        return PROPERTY_IRREVERSIBLE_OPENAT;
+    } else if (or(cell == SYSCALL_READ, cell == SYSCALL_WRITE)) {
+      if (get_token_register(REG_A3) >= LARGEST_TRANSFER)
+        return PROPERTY_IRREVERSIBLE_TAPE;
+    } else
       return PROPERTY_UNSUPPORTED_SYSCALL;
   }
 
@@ -921,15 +1387,18 @@ uint64_t token_property() {
 // #C comment
 // #T x y heading pc address data      the token, heading is E, N, W, or S
 // #R register value                   a register that is not zero
+// #S break open-files leg word        program break, next descriptor, transfer
+// #F descriptor head end input open   a file descriptor and its tape
 // x = width, y = height, rule = RISC-R
 // 2.E/00100a13M0000000000000007$     cells, row by row, ended by !
 //
 // A cell is . (blank), / or \ (mirror), R with mirror, p or a, and two
 // decimal digits (router on that bit of the pc or the address), M with
-// 16 hexadecimal digits (memory word), or E, N, W, S with mirror and 8
-// hexadecimal digits (instruction with orientation). A decimal number
-// in front of a cell repeats it, $ ends a row, the rest of a row is
-// blank. Numbers after #T and #R are hexadecimal, except x, y, register.
+// 16 hexadecimal digits (memory word), T with 16 hexadecimal digits
+// (tape word), or E, N, W, S with mirror and 8 hexadecimal digits
+// (instruction with orientation). A decimal number in front of a cell
+// repeats it, $ ends a row, the rest of a row is blank. Numbers after
+// #T, #R, #S, and #F are hexadecimal, except x, y, register, descriptor.
 
 uint64_t* read_file(char* name) {
   uint64_t fd;
@@ -1189,6 +1658,35 @@ void load_register() {
   set_token_register(reg, scan_hexadecimal(0));
 }
 
+void load_system_state() {
+  // #S break open-files leg word
+
+  token_break      = scan_hexadecimal(0);
+  token_open_files = scan_hexadecimal(0);
+
+  token_leg  = scan_hexadecimal(0);
+  token_word = scan_hexadecimal(0);
+
+  if (token_leg > LEG_BUFFER_BACK)
+    layout_error("no such leg");
+}
+
+void load_file_descriptor() {
+  uint64_t fd;
+
+  // #F descriptor head end input open
+
+  fd = scan_decimal();
+
+  if (fd >= NUMBER_OF_TAPES)
+    layout_error("no such file descriptor");
+
+  *(token_heads + fd)  = scan_hexadecimal(0);
+  *(token_ends + fd)   = scan_hexadecimal(0);
+  *(token_inputs + fd) = scan_hexadecimal(0);
+  *(token_opens + fd)  = scan_hexadecimal(0);
+}
+
 void load_header() {
   uint64_t width;
   uint64_t height;
@@ -1309,6 +1807,10 @@ void load_cells() {
       cell = encode_cell(CELL_MEMORY, 0, 0);
 
       word = scan_hexadecimal(16);
+    } else if (c == 'T') {
+      cell = encode_cell(CELL_TAPE, 0, 0);
+
+      word = scan_hexadecimal(16);
     } else {
       // instruction cell: orientation, mirror, instruction
 
@@ -1345,8 +1847,6 @@ void load_cells() {
 }
 
 void load_layout(char* name) {
-  uint64_t i;
-
   layout_name = name;
 
   layout_text = read_file(name);
@@ -1354,28 +1854,9 @@ void load_layout(char* name) {
   layout_pos  = 0;
   layout_line = 1;
 
-  // the token is at the northwestern cell heading east, with pc 0
-  // and all registers zero, unless the layout says otherwise
+  // the token is as a RISC-R machine starts unless the layout says otherwise
 
-  token_x = 0;
-  token_y = 0;
-
-  token_heading = EAST;
-
-  token_pc      = 0;
-  token_address = 0;
-  token_data    = 0;
-
-  if (token_registers == (uint64_t*) 0)
-    token_registers = zmalloc(NUMBEROFREGISTERS * sizeof(uint64_t));
-
-  i = 0;
-
-  while (i < NUMBEROFREGISTERS) {
-    *(token_registers + i) = 0;
-
-    i = i + 1;
-  }
+  reset_token();
 
   executed_ticks        = 0;
   executed_instructions = 0;
@@ -1393,6 +1874,14 @@ void load_layout(char* name) {
       next_layout_character();
 
       load_register();
+    } else if (layout_character() == 'S') {
+      next_layout_character();
+
+      load_system_state();
+    } else if (layout_character() == 'F') {
+      next_layout_character();
+
+      load_file_descriptor();
     }
 
     skip_layout_line();
@@ -1472,6 +1961,10 @@ void print_cell(uint64_t index) {
     put_character('M');
 
     print_hexadecimal_digits(word, 16);
+  } else if (kind == CELL_TAPE) {
+    put_character('T');
+
+    print_hexadecimal_digits(word, 16);
   } else if (kind == CELL_INSTRUCTION) {
     print_heading(get_cell_orientation(cell));
     print_mirror(get_cell_mirror(cell));
@@ -1491,7 +1984,7 @@ uint64_t is_blank_cell(uint64_t index) {
   if (kind < CELL_MIRROR)
     return 1;
   else
-    return kind > CELL_INSTRUCTION;
+    return kind > CELL_TAPE;
 }
 
 uint64_t are_cells_equal(uint64_t i, uint64_t j) {
@@ -1565,6 +2058,38 @@ void write_layout(char* name) {
     i = i + 1;
   }
 
+  if (or(token_break != 0, or(token_open_files != 3, or(token_leg != LEG_NONE, token_word != 0)))) {
+    dprintf(output_fd, "#S ");
+
+    print_hexadecimal_digits(token_break, 16);
+    put_character(' ');
+    print_hexadecimal_digits(token_open_files, 16);
+    put_character(' ');
+    print_hexadecimal_digits(token_leg, 1);
+    put_character(' ');
+    print_hexadecimal_digits(token_word, 16);
+    put_character(10);
+  }
+
+  i = 0;
+
+  while (i < NUMBER_OF_TAPES) {
+    if (or(*(token_heads + i) != 0, or(*(token_ends + i) != 0, or(*(token_inputs + i) != (i == 0), *(token_opens + i) != 0)))) {
+      dprintf(output_fd, "#F %lu ", i);
+
+      print_hexadecimal_digits(*(token_heads + i), 16);
+      put_character(' ');
+      print_hexadecimal_digits(*(token_ends + i), 16);
+      put_character(' ');
+      print_hexadecimal_digits(*(token_inputs + i), 16);
+      put_character(' ');
+      print_hexadecimal_digits(*(token_opens + i), 16);
+      put_character(10);
+    }
+
+    i = i + 1;
+  }
+
   dprintf(output_fd, "x = %lu, y = %lu, rule = RISC-R\n", grid_width, grid_height);
 
   y = 0;
@@ -1620,143 +2145,235 @@ void write_layout(char* name) {
 // --------------------------- SIMULATOR ---------------------------
 // -----------------------------------------------------------------
 
+uint64_t state_length(uint64_t state) {
+  // number of words of a state of the machine
+
+  if (state < STATE_REGISTERS)
+    return 1;
+  else if (state == STATE_REGISTERS)
+    return NUMBEROFREGISTERS;
+  else if (state < STATE_KINDS)
+    return NUMBER_OF_TAPES;
+  else
+    return grid_size;
+}
+
+uint64_t get_state_word(uint64_t state, uint64_t i) {
+  if (state == STATE_X)
+    return token_x;
+  else if (state == STATE_Y)
+    return token_y;
+  else if (state == STATE_HEADING)
+    return token_heading;
+  else if (state == STATE_PC)
+    return token_pc;
+  else if (state == STATE_ADDRESS)
+    return token_address;
+  else if (state == STATE_DATA)
+    return token_data;
+  else if (state == STATE_BREAK)
+    return token_break;
+  else if (state == STATE_OPEN_FILES)
+    return token_open_files;
+  else if (state == STATE_LEG)
+    return token_leg;
+  else if (state == STATE_WORD)
+    return token_word;
+  else if (state == STATE_REGISTERS)
+    return *(token_registers + i);
+  else if (state == STATE_HEADS)
+    return *(token_heads + i);
+  else if (state == STATE_ENDS)
+    return *(token_ends + i);
+  else if (state == STATE_INPUTS)
+    return *(token_inputs + i);
+  else if (state == STATE_OPENS)
+    return *(token_opens + i);
+  else if (state == STATE_KINDS)
+    return *(cell_kinds + i);
+  else
+    return *(cell_words + i);
+}
+
+void set_state_word(uint64_t state, uint64_t i, uint64_t value) {
+  if (state == STATE_X)
+    token_x = value;
+  else if (state == STATE_Y)
+    token_y = value;
+  else if (state == STATE_HEADING)
+    token_heading = value;
+  else if (state == STATE_PC)
+    token_pc = value;
+  else if (state == STATE_ADDRESS)
+    token_address = value;
+  else if (state == STATE_DATA)
+    token_data = value;
+  else if (state == STATE_BREAK)
+    token_break = value;
+  else if (state == STATE_OPEN_FILES)
+    token_open_files = value;
+  else if (state == STATE_LEG)
+    token_leg = value;
+  else if (state == STATE_WORD)
+    token_word = value;
+  else if (state == STATE_REGISTERS)
+    *(token_registers + i) = value;
+  else if (state == STATE_HEADS)
+    *(token_heads + i) = value;
+  else if (state == STATE_ENDS)
+    *(token_ends + i) = value;
+  else if (state == STATE_INPUTS)
+    *(token_inputs + i) = value;
+  else if (state == STATE_OPENS)
+    *(token_opens + i) = value;
+  else if (state == STATE_KINDS)
+    *(cell_kinds + i) = value;
+  else
+    *(cell_words + i) = value;
+}
+
+char* state_name(uint64_t state) {
+  // the names of the states in the model
+
+  if (state == STATE_X)
+    return "token-x";
+  else if (state == STATE_Y)
+    return "token-y";
+  else if (state == STATE_HEADING)
+    return "token-heading";
+  else if (state == STATE_PC)
+    return "token-pc";
+  else if (state == STATE_ADDRESS)
+    return "token-address";
+  else if (state == STATE_DATA)
+    return "token-data";
+  else if (state == STATE_BREAK)
+    return "token-break";
+  else if (state == STATE_OPEN_FILES)
+    return "token-open-files";
+  else if (state == STATE_LEG)
+    return "token-leg";
+  else if (state == STATE_WORD)
+    return "token-word";
+  else if (state == STATE_REGISTERS)
+    return "token-registers";
+  else if (state == STATE_HEADS)
+    return "token-tape-heads";
+  else if (state == STATE_ENDS)
+    return "token-tape-ends";
+  else if (state == STATE_INPUTS)
+    return "token-tape-inputs";
+  else if (state == STATE_OPENS)
+    return "token-tape-opens";
+  else if (state == STATE_KINDS)
+    return "cell-kinds";
+  else
+    return "cell-words";
+}
+
 uint64_t snapshot_size() {
-  // the cells, the registers, and six words of the token
-  return 2 * grid_size + NUMBEROFREGISTERS + 6;
+  uint64_t state;
+  uint64_t size;
+
+  // all words of all states
+
+  size = 0;
+
+  state = 0;
+
+  while (state < NUMBER_OF_STATES) {
+    size = size + state_length(state);
+
+    state = state + 1;
+  }
+
+  return size;
 }
 
 uint64_t* take_snapshot(uint64_t* snapshot) {
+  uint64_t state;
   uint64_t i;
+  uint64_t n;
 
   // the whole state, into the given snapshot or a new one
 
   if (snapshot == (uint64_t*) 0)
     snapshot = zmalloc(snapshot_size() * sizeof(uint64_t));
 
-  i = 0;
+  n = 0;
 
-  while (i < grid_size) {
-    *(snapshot + i)             = *(cell_kinds + i);
-    *(snapshot + grid_size + i) = *(cell_words + i);
+  state = 0;
 
-    i = i + 1;
+  while (state < NUMBER_OF_STATES) {
+    i = 0;
+
+    while (i < state_length(state)) {
+      *(snapshot + n) = get_state_word(state, i);
+
+      n = n + 1;
+      i = i + 1;
+    }
+
+    state = state + 1;
   }
-
-  i = 0;
-
-  while (i < NUMBEROFREGISTERS) {
-    *(snapshot + 2 * grid_size + i) = *(token_registers + i);
-
-    i = i + 1;
-  }
-
-  i = 2 * grid_size + NUMBEROFREGISTERS;
-
-  *(snapshot + i)     = token_x;
-  *(snapshot + i + 1) = token_y;
-  *(snapshot + i + 2) = token_heading;
-  *(snapshot + i + 3) = token_pc;
-  *(snapshot + i + 4) = token_address;
-  *(snapshot + i + 5) = token_data;
 
   return snapshot;
 }
 
 void restore_snapshot(uint64_t* snapshot) {
+  uint64_t state;
   uint64_t i;
+  uint64_t n;
 
-  i = 0;
+  n = 0;
 
-  while (i < grid_size) {
-    *(cell_kinds + i) = *(snapshot + i);
-    *(cell_words + i) = *(snapshot + grid_size + i);
+  state = 0;
 
-    i = i + 1;
+  while (state < NUMBER_OF_STATES) {
+    i = 0;
+
+    while (i < state_length(state)) {
+      set_state_word(state, i, *(snapshot + n));
+
+      n = n + 1;
+      i = i + 1;
+    }
+
+    state = state + 1;
   }
-
-  i = 0;
-
-  while (i < NUMBEROFREGISTERS) {
-    *(token_registers + i) = *(snapshot + 2 * grid_size + i);
-
-    i = i + 1;
-  }
-
-  i = 2 * grid_size + NUMBEROFREGISTERS;
-
-  token_x       = *(snapshot + i);
-  token_y       = *(snapshot + i + 1);
-  token_heading = *(snapshot + i + 2);
-  token_pc      = *(snapshot + i + 3);
-  token_address = *(snapshot + i + 4);
-  token_data    = *(snapshot + i + 5);
 }
 
 uint64_t is_snapshot(uint64_t* snapshot, uint64_t reporting) {
+  uint64_t state;
   uint64_t i;
-  uint64_t is_same;
+  uint64_t n;
 
   // is the state the state of the snapshot, bit for bit?
 
-  i = 0;
+  n = 0;
 
-  while (i < grid_size) {
-    if (*(cell_kinds + i) != *(snapshot + i)) {
-      if (reporting)
-        printf("%s: cell (%lu,%lu) is 0x%lX but was 0x%lX\n", selfie_name,
-          i % grid_width, i / grid_width, *(cell_kinds + i), *(snapshot + i));
+  state = 0;
 
-      return 0;
-    } else if (*(cell_words + i) != *(snapshot + grid_size + i)) {
-      if (reporting)
-        printf("%s: word of cell (%lu,%lu) is 0x%lX but was 0x%lX\n", selfie_name,
-          i % grid_width, i / grid_width, *(cell_words + i), *(snapshot + grid_size + i));
+  while (state < NUMBER_OF_STATES) {
+    i = 0;
 
-      return 0;
+    while (i < state_length(state)) {
+      if (get_state_word(state, i) != *(snapshot + n)) {
+        if (reporting)
+          printf("%s: %s[%lu] is 0x%lX but was 0x%lX\n", selfie_name,
+            state_name(state), i, get_state_word(state, i), *(snapshot + n));
+
+        return 0;
+      }
+
+      n = n + 1;
+      i = i + 1;
     }
 
-    i = i + 1;
+    state = state + 1;
   }
 
-  i = 0;
-
-  while (i < NUMBEROFREGISTERS) {
-    if (*(token_registers + i) != *(snapshot + 2 * grid_size + i)) {
-      if (reporting)
-        printf("%s: register %lu is 0x%lX but was 0x%lX\n", selfie_name,
-          i, *(token_registers + i), *(snapshot + 2 * grid_size + i));
-
-      return 0;
-    }
-
-    i = i + 1;
-  }
-
-  i = 2 * grid_size + NUMBEROFREGISTERS;
-
-  is_same = token_x == *(snapshot + i);
-  is_same = is_same * (token_y == *(snapshot + i + 1));
-  is_same = is_same * (token_heading == *(snapshot + i + 2));
-  is_same = is_same * (token_pc == *(snapshot + i + 3));
-  is_same = is_same * (token_address == *(snapshot + i + 4));
-  is_same = is_same * (token_data == *(snapshot + i + 5));
-
-  if (not(is_same))
-    if (reporting) {
-      printf("%s: ", selfie_name);
-
-      print_token();
-
-      printf(", address 0x%lX, and datum 0x%lX but was at (%lu,%lu) heading ", token_address, token_data,
-        *(snapshot + i), *(snapshot + i + 1));
-
-      print_heading(*(snapshot + i + 2));
-
-      printf(" with pc 0x%lX, address 0x%lX, and datum 0x%lX\n",
-        *(snapshot + i + 3), *(snapshot + i + 4), *(snapshot + i + 5));
-    }
-
-  return is_same;
+  return 1;
 }
 
 void print_token() {
@@ -1778,6 +2395,12 @@ void print_property(uint64_t property) {
     printf("exit with exit code %ld", sign_extend(get_bits(get_token_register(REG_A1), 0, SYSCALL_BITWIDTH), SYSCALL_BITWIDTH));
   else if (property == PROPERTY_UNSUPPORTED_SYSCALL)
     printf("unsupported-syscall");
+  else if (property == PROPERTY_IRREVERSIBLE_BRK)
+    printf("irreversible-brk");
+  else if (property == PROPERTY_IRREVERSIBLE_TAPE)
+    printf("irreversible-tape");
+  else if (property == PROPERTY_IRREVERSIBLE_OPENAT)
+    printf("irreversible-openat");
 }
 
 uint64_t run_forward(uint64_t ticks) {
@@ -2021,7 +2644,7 @@ uint64_t* new_arithmetic_choice(uint64_t* funct3_nid, uint64_t* funct7_nid, uint
 void model_sorts(uint64_t xbits, uint64_t ybits) {
   SID_BOOLEAN = new_bitvec(1, "Boolean");
 
-  SID_HEADING = new_bitvec(2, "heading: east 0, north 1, west 2, south 3");
+  SID_HEADING = new_bitvec(2, "heading: east 0, north 1, west 2, south 3; file descriptor; leg of a transfer");
 
   SID_X = new_sort(xbits);
   SID_Y = new_sort(ybits);
@@ -2035,6 +2658,10 @@ void model_sorts(uint64_t xbits, uint64_t ybits) {
 
   SID_REGISTERS = new_array(SID_REGISTER, SID_WORD, "register file");
 
+  SID_FD = new_bitvec(2, "heading: east 0, north 1, west 2, south 3; file descriptor; leg of a transfer");
+
+  SID_TAPES = new_array(SID_FD, SID_WORD, "a word per file descriptor");
+
   SID_KINDS = new_array(SID_INDEX, SID_CELL, "cells by row and column");
   SID_WORDS = new_array(SID_INDEX, SID_WORD, "cell words by row and column");
 
@@ -2043,24 +2670,282 @@ void model_sorts(uint64_t xbits, uint64_t ybits) {
 }
 
 void model_states() {
+  uint64_t state;
+  uint64_t* sid;
+  char* comment;
+
   state_nids = zmalloc(NUMBER_OF_STATES * sizeof(uint64_t*));
 
-  *(state_nids + STATE_X)       = (uint64_t) new_input(OP_STATE, SID_X, "token-x", "column of the token");
-  *(state_nids + STATE_Y)       = (uint64_t) new_input(OP_STATE, SID_Y, "token-y", "row of the token");
-  *(state_nids + STATE_HEADING) = (uint64_t) new_input(OP_STATE, SID_HEADING, "token-heading", "heading of the token");
-  *(state_nids + STATE_PC)      = (uint64_t) new_input(OP_STATE, SID_WORD, "token-pc", "program counter");
-  *(state_nids + STATE_ADDRESS) = (uint64_t) new_input(OP_STATE, SID_WORD, "token-address", "address in transit");
-  *(state_nids + STATE_DATA)    = (uint64_t) new_input(OP_STATE, SID_WORD, "token-data", "datum in transit");
+  state = 0;
 
-  *(state_nids + STATE_REGISTERS) = (uint64_t) new_input(OP_STATE, SID_REGISTERS, "token-registers", "register file");
+  while (state < NUMBER_OF_STATES) {
+    sid = SID_WORD;
 
-  *(state_nids + STATE_KINDS) = (uint64_t) new_input(OP_STATE, SID_KINDS, "cell-kinds", "kind, orientation, mirror of each cell");
-  *(state_nids + STATE_WORDS) = (uint64_t) new_input(OP_STATE, SID_WORDS, "cell-words", "instruction, memory word, or router bit of each cell");
+    if (state == STATE_X) {
+      sid = SID_X;
+
+      comment = "column of the token";
+    } else if (state == STATE_Y) {
+      sid = SID_Y;
+
+      comment = "row of the token";
+    } else if (state == STATE_HEADING) {
+      sid = SID_HEADING;
+
+      comment = "heading of the token";
+    } else if (state == STATE_PC)
+      comment = "program counter";
+    else if (state == STATE_ADDRESS)
+      comment = "address in transit";
+    else if (state == STATE_DATA)
+      comment = "datum in transit";
+    else if (state == STATE_BREAK)
+      comment = "program break";
+    else if (state == STATE_OPEN_FILES)
+      comment = "next file descriptor";
+    else if (state == STATE_LEG) {
+      sid = SID_FD;
+
+      comment = "leg of a transfer: none 0, to the buffer 1, to the tape 2, to the buffer again 3";
+    } else if (state == STATE_WORD)
+      comment = "number of the word in transfer";
+    else if (state == STATE_REGISTERS) {
+      sid = SID_REGISTERS;
+
+      comment = "register file";
+    } else if (state == STATE_HEADS) {
+      sid = SID_TAPES;
+
+      comment = "head of each tape in words";
+    } else if (state == STATE_ENDS) {
+      sid = SID_TAPES;
+
+      comment = "end of each input file in bytes, -1 if unknown";
+    } else if (state == STATE_INPUTS) {
+      sid = SID_TAPES;
+
+      comment = "1 for an input tape, 0 for an output tape";
+    } else if (state == STATE_OPENS) {
+      sid = SID_TAPES;
+
+      comment = "1 if the host can open the file";
+    } else if (state == STATE_KINDS) {
+      sid = SID_KINDS;
+
+      comment = "kind, orientation, mirror of each cell";
+    } else {
+      sid = SID_WORDS;
+
+      comment = "instruction, memory or tape word, or router bit of each cell";
+    }
+
+    *(state_nids + state) = (uint64_t) new_input(OP_STATE, sid, state_name(state), comment);
+
+    state = state + 1;
+  }
 
   forward_nids = zmalloc(NUMBER_OF_STATES * sizeof(uint64_t*));
   inverse_nids = zmalloc(NUMBER_OF_STATES * sizeof(uint64_t*));
 
   property_nids = zmalloc((NUMBER_OF_PROPERTIES + 1) * sizeof(uint64_t*));
+}
+
+void model_transfer(uint64_t reading) {
+  uint64_t* is_active_nid;
+  uint64_t* tape_nid;
+  uint64_t* next_nid;
+  uint64_t* result_nid;
+  uint64_t* value_nid;
+
+  uint64_t* direct_effect;
+  uint64_t* failure_effect;
+  uint64_t* start_effect;
+  uint64_t* last_effect;
+  uint64_t* buffer_effect;
+  uint64_t* tape_effect;
+  uint64_t* back_effect;
+
+  // read, if reading, or write, as part of the rule or the inverse rule:
+  // what a token on the path and on the side of an ecall cell does
+
+  if (reading) {
+    is_active_nid = new_and(fits_nid, new_and(is_open_nid, is_input_nid));
+
+    tape_nid = new_constant(OP_CONSTH, SID_WORD, INPUT_TAPES, "input tapes");
+  } else {
+    is_active_nid = new_and(fits_nid, new_and(is_open_nid, new_not(is_input_nid)));
+
+    tape_nid = new_constant(OP_CONSTH, SID_WORD, OUTPUT_TAPES, "output tapes");
+  }
+
+  // the tape word in transfer: at the head plus the number of the word
+
+  tape_nid = new_add(
+    new_add(tape_nid, new_binary(OP_SLL, SID_WORD, a1_nid, new_number(SID_WORD, 32), "descriptor times 4GB")),
+    new_binary(OP_SLL, SID_WORD, new_add(head_nid, number_nid), new_number(SID_WORD, 3), "position in bytes"));
+
+  // the head when the transfer began, and the result from there: write
+  // returns the size; read the bytes before the end of the file from
+  // the head on, at most the size
+
+  if (reverse)
+    next_nid = new_sub(head_nid, count_nid);
+  else
+    next_nid = head_nid;
+
+  if (reading) {
+    result_nid = new_binary(OP_READ, SID_WORD, (uint64_t*) *(state_nids + STATE_ENDS), fd_nid, "end of file");
+
+    value_nid = new_binary(OP_SLL, SID_WORD, next_nid, new_number(SID_WORD, 3), "head in bytes");
+
+    result_nid = new_ite(new_is_field(result_nid, -1),
+      a3_nid,
+      new_ite(new_binary_boolean(OP_UGTE, value_nid, result_nid, "head at or beyond end of file"),
+        new_number(SID_WORD, 0),
+        new_ite(new_binary_boolean(OP_ULT, new_sub(result_nid, value_nid), a3_nid, "fewer bytes than requested"),
+          new_sub(result_nid, value_nid),
+          a3_nid)));
+  } else
+    result_nid = a3_nid;
+
+  if (reverse)
+    result_nid = new_sub(a0_nid, result_nid);
+  else
+    result_nid = new_add(a0_nid, result_nid);
+
+  // no transfer: the result of a transfer of no word, with the head
+  // where it is, or -1, is added into a0 on the path
+
+  direct_effect = new_effect(advance);
+
+  *(direct_effect + STATE_REGISTERS) = (uint64_t)
+    new_ternary(OP_WRITE, SID_REGISTERS, registers_nid, a0_index_nid, result_nid, "result of empty transfer");
+
+  failure_effect = new_effect(advance);
+
+  if (reverse)
+    *(failure_effect + STATE_REGISTERS) = (uint64_t)
+      new_ternary(OP_WRITE, SID_REGISTERS, registers_nid, a0_index_nid, new_sub(a0_nid, failure_nid), "failure");
+  else
+    *(failure_effect + STATE_REGISTERS) = (uint64_t)
+      new_ternary(OP_WRITE, SID_REGISTERS, registers_nid, a0_index_nid, new_add(a0_nid, failure_nid), "failure");
+
+  // a transfer: the token leaves the path for the first buffer word, and
+  // after the last leg the head advances, the result is added into a0,
+  // and the token joins the path; backward the other way round
+
+  start_effect = new_effect(same);
+  last_effect  = new_effect(same);
+
+  *(start_effect + STATE_HEADING) = (uint64_t) mirrored_nid;
+  *(last_effect + STATE_HEADING)  = (uint64_t) mirrored_nid;
+
+  value_nid = new_add(a2_nid,
+    new_binary(OP_SLL, SID_WORD, last_word_nid, new_number(SID_WORD, 3), "last word in bytes"));
+
+  if (reverse) {
+    // on the path: undo the return; on the side with the first leg
+    // of the first word: undo the departure
+
+    *(start_effect + STATE_PC)   = *(advance + STATE_PC);
+    *(start_effect + STATE_LEG)  = (uint64_t) new_number(SID_FD, LEG_BUFFER_BACK);
+    *(start_effect + STATE_WORD) = (uint64_t) last_word_nid;
+
+    *(start_effect + STATE_HEADS) = (uint64_t)
+      new_ternary(OP_WRITE, SID_TAPES, heads_nid, fd_nid, next_nid, "head moved back");
+    *(start_effect + STATE_REGISTERS) = (uint64_t)
+      new_ternary(OP_WRITE, SID_REGISTERS, registers_nid, a0_index_nid, result_nid, "result subtracted");
+
+    *(start_effect + STATE_ADDRESS) = (uint64_t) new_add(address_nid, value_nid);
+
+    *(last_effect + STATE_LEG)     = (uint64_t) new_number(SID_FD, LEG_NONE);
+    *(last_effect + STATE_ADDRESS) = (uint64_t) new_sub(address_nid, buffer_nid);
+  } else {
+    *(start_effect + STATE_LEG)     = (uint64_t) new_number(SID_FD, LEG_BUFFER);
+    *(start_effect + STATE_ADDRESS) = (uint64_t) new_add(address_nid, buffer_nid);
+
+    *(last_effect + STATE_PC)   = *(advance + STATE_PC);
+    *(last_effect + STATE_LEG)  = (uint64_t) new_number(SID_FD, LEG_NONE);
+    *(last_effect + STATE_WORD) = (uint64_t) new_number(SID_WORD, 0);
+
+    *(last_effect + STATE_HEADS) = (uint64_t)
+      new_ternary(OP_WRITE, SID_TAPES, heads_nid, fd_nid, new_add(head_nid, count_nid), "head advanced");
+    *(last_effect + STATE_REGISTERS) = (uint64_t)
+      new_ternary(OP_WRITE, SID_REGISTERS, registers_nid, a0_index_nid, result_nid, "result added");
+
+    *(last_effect + STATE_ADDRESS) = (uint64_t) new_sub(address_nid, value_nid);
+  }
+
+  // between two legs the token crosses the cell: the address of the leg
+  // it returns from is uncomputed, that of the next leg computed
+
+  buffer_effect = new_effect(same);
+  tape_effect   = new_effect(same);
+  back_effect   = new_effect(same);
+
+  if (reverse) {
+    // back from the buffer, first leg: on to the last leg of the word before
+
+    value_nid = new_sub(number_nid, new_number(SID_WORD, 1));
+
+    *(buffer_effect + STATE_LEG)     = (uint64_t) new_number(SID_FD, LEG_BUFFER_BACK);
+    *(buffer_effect + STATE_WORD)    = (uint64_t) value_nid;
+    *(buffer_effect + STATE_ADDRESS) = (uint64_t) new_add(new_sub(address_nid, buffer_nid),
+      new_add(a2_nid, new_binary(OP_SLL, SID_WORD, value_nid, new_number(SID_WORD, 3), "word before in bytes")));
+
+    *(tape_effect + STATE_LEG)     = (uint64_t) new_number(SID_FD, LEG_BUFFER);
+    *(tape_effect + STATE_ADDRESS) = (uint64_t) new_add(new_sub(address_nid, tape_nid), buffer_nid);
+
+    *(back_effect + STATE_LEG)     = (uint64_t) new_number(SID_FD, LEG_TAPE);
+    *(back_effect + STATE_ADDRESS) = (uint64_t) new_add(new_sub(address_nid, buffer_nid), tape_nid);
+  } else {
+    *(buffer_effect + STATE_LEG)     = (uint64_t) new_number(SID_FD, LEG_TAPE);
+    *(buffer_effect + STATE_ADDRESS) = (uint64_t) new_add(new_sub(address_nid, buffer_nid), tape_nid);
+
+    *(tape_effect + STATE_LEG)     = (uint64_t) new_number(SID_FD, LEG_BUFFER_BACK);
+    *(tape_effect + STATE_ADDRESS) = (uint64_t) new_add(new_sub(address_nid, tape_nid), buffer_nid);
+
+    // back from the buffer, last leg: on to the first leg of the next word
+
+    value_nid = new_add(number_nid, new_number(SID_WORD, 1));
+
+    *(back_effect + STATE_LEG)     = (uint64_t) new_number(SID_FD, LEG_BUFFER);
+    *(back_effect + STATE_WORD)    = (uint64_t) value_nid;
+    *(back_effect + STATE_ADDRESS) = (uint64_t) new_add(new_sub(address_nid, buffer_nid),
+      new_add(a2_nid, new_binary(OP_SLL, SID_WORD, value_nid, new_number(SID_WORD, 3), "next word in bytes")));
+  }
+
+  if (reverse)
+    // the first leg of the first word ends the transfer backward
+    buffer_effect = new_choice(new_is_field(number_nid, 0), last_effect, buffer_effect);
+  else
+    // the last leg of the last word ends the transfer forward
+    back_effect = new_choice(new_eq(number_nid, last_word_nid), last_effect, back_effect);
+
+  if (reading)
+    value_nid = new_is_field(a7_nid, SYSCALL_READ);
+  else
+    value_nid = new_is_field(a7_nid, SYSCALL_WRITE);
+
+  system_on_path = new_choice(value_nid,
+    new_choice(is_active_nid,
+      new_choice(new_is_field(count_nid, 0),
+        direct_effect,
+        new_choice(new_and(new_is_field(leg_nid, LEG_NONE), new_is_field(number_nid, 0)), start_effect, same)),
+      failure_effect),
+    system_on_path);
+
+  system_on_side = new_choice(value_nid,
+    new_choice(is_active_nid,
+      new_choice(new_is_field(count_nid, 0),
+        same,
+        new_choice(new_binary_boolean(OP_ULT, number_nid, count_nid, "word in transfer"),
+          new_choice(new_is_field(leg_nid, LEG_BUFFER), buffer_effect,
+            new_choice(new_is_field(leg_nid, LEG_TAPE), tape_effect,
+              new_choice(new_is_field(leg_nid, LEG_BUFFER_BACK), back_effect, same))),
+          same)),
+      same),
+    system_on_side);
 }
 
 void model_rule() {
@@ -2070,9 +2955,7 @@ void model_rule() {
   uint64_t* y_nid;
   uint64_t* heading_nid;
   uint64_t* pc_nid;
-  uint64_t* address_nid;
   uint64_t* data_nid;
-  uint64_t* registers_nid;
   uint64_t* words_nid;
 
   uint64_t* index_nid;
@@ -2081,7 +2964,6 @@ void model_rule() {
   uint64_t* kind_nid;
   uint64_t* orientation_nid;
   uint64_t* mirror_nid;
-  uint64_t* mirrored_nid;
   uint64_t* router_bit_nid;
 
   uint64_t* ir_nid;
@@ -2113,8 +2995,6 @@ void model_rule() {
   uint64_t* origin_nid;
   uint64_t* value_nid;
 
-  uint64_t* same;
-  uint64_t* advance;
   uint64_t* effect;
 
   uint64_t* lui_effect;
@@ -2141,6 +3021,17 @@ void model_rule() {
   uint64_t* is_instruction_nid;
   uint64_t* is_reversible_nid;
   uint64_t* is_arithmetic_nid;
+
+  uint64_t* break_nid;
+  uint64_t* open_files_nid;
+  uint64_t* inputs_nid;
+
+  uint64_t* result_nid;
+  uint64_t* next_nid;
+
+  uint64_t* brk_effect;
+  uint64_t* openat_effect;
+  uint64_t* tape_effect;
 
   uint64_t i;
 
@@ -2244,17 +3135,10 @@ void model_rule() {
 
   // no effect: every state stays as it is, the position is dealt with below
 
-  same = zmalloc(NUMBER_OF_STATES * sizeof(uint64_t*));
+  same = new_effect(state_nids);
 
-  *(same + STATE_X)         = (uint64_t) x_nid;
-  *(same + STATE_Y)         = (uint64_t) y_nid;
-  *(same + STATE_HEADING)   = (uint64_t) heading_nid;
-  *(same + STATE_PC)        = (uint64_t) pc_nid;
-  *(same + STATE_ADDRESS)   = (uint64_t) address_nid;
-  *(same + STATE_DATA)      = (uint64_t) data_nid;
-  *(same + STATE_REGISTERS) = (uint64_t) registers_nid;
-  *(same + STATE_KINDS)     = *(state_nids + STATE_KINDS);
-  *(same + STATE_WORDS)     = (uint64_t) words_nid;
+  *(same + STATE_X) = (uint64_t) x_nid;
+  *(same + STATE_Y) = (uint64_t) y_nid;
 
   // an instruction that stays on the path: the pc advances by one
   // instruction, backward it goes back by one
@@ -2475,9 +3359,135 @@ void model_rule() {
       new_sub(address_nid, new_sub(rd_value_nid, four_nid));
   }
 
+  // system calls: the number is in a7, the arguments are in a1 to a3,
+  // the result is added into a0, see riscr.md
+
+  a0_index_nid = new_number(SID_REGISTER, REG_A0);
+
+  a0_nid = new_binary(OP_READ, SID_WORD, registers_nid, a0_index_nid, "a0 value");
+  a1_nid = new_binary(OP_READ, SID_WORD, registers_nid, new_number(SID_REGISTER, REG_A1), "a1 value");
+  a2_nid = new_binary(OP_READ, SID_WORD, registers_nid, new_number(SID_REGISTER, REG_A2), "a2 value");
+  a3_nid = new_binary(OP_READ, SID_WORD, registers_nid, new_number(SID_REGISTER, REG_A3), "a3 value");
+  a7_nid = new_binary(OP_READ, SID_WORD, registers_nid, new_number(SID_REGISTER, REG_A7), "a7 value");
+
+  break_nid      = (uint64_t*) *(state_nids + STATE_BREAK);
+  open_files_nid = (uint64_t*) *(state_nids + STATE_OPEN_FILES);
+  leg_nid        = (uint64_t*) *(state_nids + STATE_LEG);
+  number_nid     = (uint64_t*) *(state_nids + STATE_WORD);
+  heads_nid      = (uint64_t*) *(state_nids + STATE_HEADS);
+  inputs_nid     = (uint64_t*) *(state_nids + STATE_INPUTS);
+
+  failure_nid = new_constant(OP_CONSTD, SID_WORD, SYSCALL_FAILURE, "-1 as 32-bit system call result");
+
+  // brk exchanges the states in which a0 is zero and a1 a word-aligned
+  // address above the program break, which is not zero, with the states
+  // in which a0 is not zero and below the program break and a1 is the
+  // word-aligned program break: a1 becomes the program break and a0 the
+  // previous one, or the other way round, in both directions
+
+  brk_effect = new_effect(advance);
+
+  *(brk_effect + STATE_BREAK)     = (uint64_t) a1_nid;
+  *(brk_effect + STATE_REGISTERS) = (uint64_t)
+    new_ternary(OP_WRITE, SID_REGISTERS, registers_nid, a0_index_nid, break_nid, "brk");
+
+  effect = new_effect(advance);
+
+  *(effect + STATE_BREAK)     = (uint64_t) a0_nid;
+  *(effect + STATE_REGISTERS) = (uint64_t)
+    new_ternary(OP_WRITE, SID_REGISTERS, registers_nid, a0_index_nid, new_number(SID_WORD, 0), "brk undone");
+
+  brk_effect = new_choice(new_is_field(new_bits(a1_nid, 2, 0), 0),
+    new_choice(new_is_field(a0_nid, 0),
+      new_choice(new_is_field(break_nid, 0),
+        advance,
+        new_choice(new_binary_boolean(OP_ULT, break_nid, a1_nid, "a1 above program break"), brk_effect, advance)),
+      new_choice(new_eq(a1_nid, break_nid),
+        new_choice(new_binary_boolean(OP_ULT, a0_nid, break_nid, "a0 below program break"), effect, advance),
+        advance)),
+    advance);
+
+  // openat allocates the next file descriptor, flips the kind of its tape
+  // if the flags in a2 open an input tape, and adds the descriptor into
+  // a0, or -1 if the host cannot open the file; backward it releases the
+  // descriptor, flips, and subtracts
+
+  if (reverse)
+    next_nid = new_sub(open_files_nid, new_number(SID_WORD, 1));
+  else
+    next_nid = open_files_nid;
+
+  fd_nid = new_slice(SID_FD, next_nid, 1, 0, "next file descriptor");
+
+  result_nid = new_ite(
+    new_is_field(new_binary(OP_READ, SID_WORD, (uint64_t*) *(state_nids + STATE_OPENS), fd_nid, "host opens next file"), 0),
+    failure_nid,
+    next_nid);
+
+  openat_effect = new_effect(advance);
+
+  *(openat_effect + STATE_INPUTS) = (uint64_t)
+    new_ternary(OP_WRITE, SID_TAPES, inputs_nid, fd_nid,
+      new_binary(OP_XOR, SID_WORD,
+        new_binary(OP_READ, SID_WORD, inputs_nid, fd_nid, "kind of next tape"),
+        new_ext(OP_UEXT, SID_WORD,
+          new_or(new_is_field(a2_nid, O_RDONLY), new_is_field(a2_nid, 0)), 63, "flags open an input tape"),
+        NOCOMMENT),
+      "openat");
+
+  if (reverse) {
+    *(openat_effect + STATE_OPEN_FILES) = (uint64_t) next_nid;
+
+    *(openat_effect + STATE_REGISTERS) = (uint64_t)
+      new_ternary(OP_WRITE, SID_REGISTERS, registers_nid, a0_index_nid, new_sub(a0_nid, result_nid), "openat");
+  } else {
+    *(openat_effect + STATE_OPEN_FILES) = (uint64_t) new_add(open_files_nid, new_number(SID_WORD, 1));
+
+    *(openat_effect + STATE_REGISTERS) = (uint64_t)
+      new_ternary(OP_WRITE, SID_REGISTERS, registers_nid, a0_index_nid, new_add(a0_nid, result_nid), "openat");
+  }
+
+  // read and write: on an open tape of the right kind and of less than 4GB;
+  // the standard files are open, others if the host opened them
+
+  fd_nid = new_slice(SID_FD, a1_nid, 1, 0, "file descriptor");
+
+  head_nid = new_binary(OP_READ, SID_WORD, heads_nid, fd_nid, "head of tape");
+
+  is_input_nid = new_not(new_is_field(new_binary(OP_READ, SID_WORD, inputs_nid, fd_nid, "kind of tape"), 0));
+
+  is_open_nid = new_and(new_binary_boolean(OP_ULT, a1_nid, open_files_nid, "descriptor allocated"),
+    new_or(new_binary_boolean(OP_ULT, a1_nid, new_number(SID_WORD, 3), "standard file"),
+      new_not(new_is_field(
+        new_binary(OP_READ, SID_WORD, (uint64_t*) *(state_nids + STATE_OPENS), fd_nid, "host opened file"), 0))));
+
+  fits_nid = new_binary_boolean(OP_ULT, a3_nid, new_number(SID_WORD, LARGEST_TRANSFER), "less than 4GB");
+
+  count_nid = new_binary(OP_SRL, SID_WORD,
+    new_add(a3_nid, new_number(SID_WORD, 7)), new_number(SID_WORD, 3), "a3 bytes rounded up to words");
+
+  last_word_nid = new_sub(count_nid, new_number(SID_WORD, 1));
+
+  // the buffer word in transfer, and the buffer word of an arriving token:
+  // the same word, named twice to tell the legs apart below
+
+  buffer_nid = new_add(a2_nid,
+    new_binary(OP_SLL, SID_WORD, number_nid, new_number(SID_WORD, 3), "word in bytes"));
+
+  system_on_path = same;
+  system_on_side = same;
+
+  model_transfer(0);
+  model_transfer(1);
+
+  // exit and unknown system calls have no effect, they are properties
+
+  system_on_path = new_choice(new_is_field(a7_nid, SYSCALL_BRK), brk_effect,
+    new_choice(new_is_field(a7_nid, SYSCALL_OPENAT), openat_effect, system_on_path));
+
   // a token on the path of an instruction cell: by instruction, and
   // within an instruction by the rules of RISC-R; an instruction that
-  // is not RISC-R has no effect, and neither has a system call
+  // is not RISC-R has no effect
 
   on_path =
     new_choice(new_is_field(opcode_nid, OP_LUI),
@@ -2508,7 +3518,9 @@ void model_rule() {
       jump_on_path,
     new_choice(new_is_field(opcode_nid, OP_JALR),
       new_choice(is_jalr_nid, return_on_path, same),
-      same)))))));
+    new_choice(new_is_field(opcode_nid, OP_SYSTEM),
+      new_choice(new_is_field(funct3_nid, F3_ECALL), system_on_path, same),
+      same))))))));
 
   // a token on the side: the cell acts if the token leaves or joins its path there
 
@@ -2526,7 +3538,9 @@ void model_rule() {
       jump_on_side,
     new_choice(new_is_field(opcode_nid, OP_JALR),
       new_choice(is_jalr_nid, return_on_side, same),
-      same))));
+    new_choice(new_is_field(opcode_nid, OP_SYSTEM),
+      new_choice(new_is_field(funct3_nid, F3_ECALL), system_on_side, same),
+      same)))));
 
   effect = new_choice(new_eq(heading_nid, orientation_nid), on_path,
     new_choice(new_eq(heading_nid,
@@ -2555,12 +3569,21 @@ void model_rule() {
     new_binary(OP_CONCAT, SID_HEADING, new_and(router_bit_nid, mirror_nid), router_bit_nid, NOCOMMENT),
     "heading mirrored if router bit is set");
 
+  // tape cell: the bits of its word are flipped by the datum
+
+  tape_effect = new_effect(same);
+
+  *(tape_effect + STATE_WORDS) = (uint64_t)
+    new_ternary(OP_WRITE, SID_WORDS, words_nid, index_nid,
+      new_binary(OP_XOR, SID_WORD, word_nid, data_nid, NOCOMMENT), "tape word flipped");
+
   // the cell by kind, all other kinds are blank
 
   effect = new_choice(new_is_field(kind_nid, CELL_INSTRUCTION), effect,
     new_choice(new_is_field(kind_nid, CELL_MEMORY), on_path,
-      new_choice(new_is_field(kind_nid, CELL_MIRROR), on_side,
-        new_choice(new_is_field(kind_nid, CELL_ROUTER), advance, same))));
+      new_choice(new_is_field(kind_nid, CELL_TAPE), tape_effect,
+        new_choice(new_is_field(kind_nid, CELL_MIRROR), on_side,
+          new_choice(new_is_field(kind_nid, CELL_ROUTER), advance, same)))));
 
   // position: forward one cell along the new heading, backward the cell moved back to
 
@@ -2630,14 +3653,69 @@ void model_rule() {
         new_and(new_or(new_is_field(funct3_nid, F3_DIVU), new_is_field(funct3_nid, F3_REMU)),
           is_division_by_zero_nid)));
 
-  value_nid = new_is_field(
-    new_binary(OP_READ, SID_WORD, registers_nid, new_number(SID_REGISTER, REG_A7), "a7 value"), SYSCALL_EXIT);
+  is_instruction_nid = new_and(is_instruction_nid, new_is_field(opcode_nid, OP_SYSTEM));
 
   *(property_nids + PROPERTY_EXIT) = (uint64_t)
-    new_and(is_instruction_nid, new_and(new_is_field(opcode_nid, OP_SYSTEM), value_nid));
+    new_and(is_instruction_nid, new_is_field(a7_nid, SYSCALL_EXIT));
+
+  *(property_nids + PROPERTY_IRREVERSIBLE_BRK) = (uint64_t)
+    new_and(is_instruction_nid,
+      new_and(new_is_field(a7_nid, SYSCALL_BRK),
+        new_or(new_not(new_is_field(a0_nid, 0)), new_is_field(break_nid, 0))));
+
+  *(property_nids + PROPERTY_IRREVERSIBLE_OPENAT) = (uint64_t)
+    new_and(is_instruction_nid,
+      new_and(new_is_field(a7_nid, SYSCALL_OPENAT),
+        new_binary_boolean(OP_UGTE, open_files_nid, new_number(SID_WORD, NUMBER_OF_TAPES), "all descriptors allocated")));
+
+  value_nid = new_or(new_is_field(a7_nid, SYSCALL_READ), new_is_field(a7_nid, SYSCALL_WRITE));
+
+  *(property_nids + PROPERTY_IRREVERSIBLE_TAPE) = (uint64_t)
+    new_and(is_instruction_nid, new_and(value_nid, new_not(fits_nid)));
 
   *(property_nids + PROPERTY_UNSUPPORTED_SYSCALL) = (uint64_t)
-    new_and(is_instruction_nid, new_and(new_is_field(opcode_nid, OP_SYSTEM), new_not(value_nid)));
+    new_and(is_instruction_nid,
+      new_not(new_or(value_nid,
+        new_or(new_is_field(a7_nid, SYSCALL_EXIT),
+          new_or(new_is_field(a7_nid, SYSCALL_BRK), new_is_field(a7_nid, SYSCALL_OPENAT))))));
+}
+
+char* property_name(uint64_t property) {
+  if (property == PROPERTY_ILLEGAL_INSTRUCTION)
+    return "illegal-instruction";
+  else if (property == PROPERTY_IRREVERSIBLE_LINK)
+    return "irreversible-link";
+  else if (property == PROPERTY_DIVISION_BY_ZERO)
+    return "division-by-zero";
+  else if (property == PROPERTY_EXIT)
+    return "exit";
+  else if (property == PROPERTY_UNSUPPORTED_SYSCALL)
+    return "unsupported-syscall";
+  else if (property == PROPERTY_IRREVERSIBLE_BRK)
+    return "irreversible-brk";
+  else if (property == PROPERTY_IRREVERSIBLE_TAPE)
+    return "irreversible-tape";
+  else
+    return "irreversible-openat";
+}
+
+char* property_comment(uint64_t property) {
+  if (property == PROPERTY_ILLEGAL_INSTRUCTION)
+    return "token enters an instruction cell whose instruction is not RISC-R";
+  else if (property == PROPERTY_IRREVERSIBLE_LINK)
+    return "jal with nonzero link register";
+  else if (property == PROPERTY_DIVISION_BY_ZERO)
+    return "divu or remu by zero";
+  else if (property == PROPERTY_EXIT)
+    return "exit system call";
+  else if (property == PROPERTY_UNSUPPORTED_SYSCALL)
+    return "system call other than exit, read, write, openat, brk";
+  else if (property == PROPERTY_IRREVERSIBLE_BRK)
+    return "brk with nonzero a0 or zero program break";
+  else if (property == PROPERTY_IRREVERSIBLE_TAPE)
+    return "read or write of 4GB or more";
+  else
+    return "openat with all file descriptors allocated";
 }
 
 void print_model(char* name, uint64_t properties) {
@@ -2702,28 +3780,15 @@ void print_model(char* name, uint64_t properties) {
   if (properties) {
     print_break_comment("properties: where a RISC-R program stops");
 
-    print_line(new_property(OP_BAD, (uint64_t*) *(property_nids + PROPERTY_ILLEGAL_INSTRUCTION),
-      "illegal-instruction", "token enters an instruction cell whose instruction is not RISC-R"));
+    i = 1;
 
-    print_break();
+    while (i <= NUMBER_OF_PROPERTIES) {
+      print_line(new_property(OP_BAD, (uint64_t*) *(property_nids + i), property_name(i), property_comment(i)));
 
-    print_line(new_property(OP_BAD, (uint64_t*) *(property_nids + PROPERTY_IRREVERSIBLE_LINK),
-      "irreversible-link", "jal with nonzero link register"));
+      print_break();
 
-    print_break();
-
-    print_line(new_property(OP_BAD, (uint64_t*) *(property_nids + PROPERTY_DIVISION_BY_ZERO),
-      "division-by-zero", "divu or remu by zero"));
-
-    print_break();
-
-    print_line(new_property(OP_BAD, (uint64_t*) *(property_nids + PROPERTY_EXIT),
-      "exit", "exit system call"));
-
-    print_break();
-
-    print_line(new_property(OP_BAD, (uint64_t*) *(property_nids + PROPERTY_UNSUPPORTED_SYSCALL),
-      "unsupported-syscall", "any other system call"));
+      i = i + 1;
+    }
   }
 
   output_name = (char*) 0;
@@ -2790,6 +3855,8 @@ uint64_t random_instruction() {
 
   if (r == 0)
     return left_shift(random_number(), 32) + random_number();
+  else if (r < 8)
+    return left_shift(F3_ECALL, 12) + OP_SYSTEM;
 
   rd_field  = random_register();
   rs1_field = random_register();
@@ -2918,37 +3985,156 @@ void random_state() {
     i = i + 1;
   }
 
-  if (random_below(4) == 0)
-    *(token_registers + REG_A7) = SYSCALL_EXIT;
-}
+  // the state of the system calls: often what a system call is about
 
-void set_model_state() {
-  uint64_t i;
+  token_break = random_below(64) * WORDSIZE;
 
-  // the state of the simulator becomes the state of the model
+  r = random_below(8);
 
-  set_state((uint64_t*) *(state_nids + STATE_X), token_x);
-  set_state((uint64_t*) *(state_nids + STATE_Y), token_y);
-  set_state((uint64_t*) *(state_nids + STATE_HEADING), token_heading);
-  set_state((uint64_t*) *(state_nids + STATE_PC), token_pc);
-  set_state((uint64_t*) *(state_nids + STATE_ADDRESS), token_address);
-  set_state((uint64_t*) *(state_nids + STATE_DATA), token_data);
+  if (r == 0)
+    token_break = 0;
+  else if (r == 1)
+    token_break = random_value();
 
-  i = 0;
+  token_open_files = random_below(6);
 
-  while (i < NUMBEROFREGISTERS) {
-    write_array_raw((uint64_t*) *(state_nids + STATE_REGISTERS), i, *(token_registers + i));
+  if (random_below(8) == 0)
+    token_open_files = random_value();
 
-    i = i + 1;
+  token_leg  = LEG_NONE;
+  token_word = 0;
+
+  if (random_below(2) == 0) {
+    token_leg  = random_below(4);
+    token_word = random_below(4);
   }
 
   i = 0;
 
-  while (i < grid_size) {
-    write_array_raw((uint64_t*) *(state_nids + STATE_KINDS), i, *(cell_kinds + i));
-    write_array_raw((uint64_t*) *(state_nids + STATE_WORDS), i, *(cell_words + i));
+  while (i < NUMBER_OF_TAPES) {
+    *(token_heads + i)  = random_below(4);
+    *(token_ends + i)   = random_below(24);
+    *(token_inputs + i) = random_below(2);
+    *(token_opens + i)  = random_below(2);
+
+    r = random_below(8);
+
+    if (r == 0)
+      *(token_heads + i) = random_value();
+    else if (r == 1)
+      *(token_ends + i) = (uint64_t) -1;
+    else if (r == 2)
+      *(token_ends + i) = random_value();
+    else if (r == 3)
+      *(token_inputs + i) = random_below(4);
 
     i = i + 1;
+  }
+
+  r = random_below(8);
+
+  if (r < 6) {
+    if (r == 0)
+      *(token_registers + REG_A7) = SYSCALL_EXIT;
+    else if (r == 1)
+      *(token_registers + REG_A7) = SYSCALL_BRK;
+    else if (r == 2)
+      *(token_registers + REG_A7) = SYSCALL_OPENAT;
+    else if (r < 5)
+      *(token_registers + REG_A7) = SYSCALL_READ;
+    else
+      *(token_registers + REG_A7) = SYSCALL_WRITE;
+
+    // a0 often zero; a1 a file descriptor, or an address at or near the
+    // program break; a2 flags or a buffer; a3 a small size
+
+    if (random_below(2) == 0)
+      *(token_registers + REG_A0) = 0;
+    else if (random_below(2) == 0)
+      *(token_registers + REG_A0) = random_below(64) * WORDSIZE;
+
+    r = random_below(8);
+
+    if (r < 4)
+      *(token_registers + REG_A1) = random_below(5);
+    else if (r < 6)
+      *(token_registers + REG_A1) = token_break;
+    else if (r < 7)
+      *(token_registers + REG_A1) = token_break + random_below(4) * WORDSIZE;
+
+    r = random_below(4);
+
+    if (r == 0)
+      *(token_registers + REG_A2) = 0;
+    else if (r == 1)
+      *(token_registers + REG_A2) = O_RDONLY;
+
+    if (random_below(8) > 0)
+      *(token_registers + REG_A3) = random_below(40);
+
+    // half of the time a state that brk exchanges, or a transfer on its way
+
+    r = *(token_registers + REG_A7);
+
+    if (random_below(2) == 0) {
+      if (r == SYSCALL_BRK) {
+        token_break = (1 + random_below(64)) * WORDSIZE;
+
+        if (random_below(2) == 0) {
+          *(token_registers + REG_A0) = 0;
+          *(token_registers + REG_A1) = token_break + (1 + random_below(4)) * WORDSIZE;
+        } else {
+          *(token_registers + REG_A0) = random_below(token_break);
+          *(token_registers + REG_A1) = token_break;
+        }
+      } else if (or(r == SYSCALL_READ, r == SYSCALL_WRITE)) {
+        i = random_below(NUMBER_OF_TAPES);
+
+        *(token_registers + REG_A1) = i;
+        *(token_registers + REG_A3) = 1 + random_below(24);
+
+        token_open_files = i + 1 + random_below(2);
+
+        *(token_opens + i)  = 1;
+        *(token_inputs + i) = r == SYSCALL_READ;
+
+        if (random_below(4) > 0) {
+          token_leg  = 1 + random_below(3);
+          token_word = random_below(right_shift(*(token_registers + REG_A3) + 7, 3));
+        } else {
+          token_leg  = LEG_NONE;
+          token_word = 0;
+        }
+      }
+    }
+  }
+}
+
+void set_model_state() {
+  uint64_t state;
+  uint64_t* line;
+  uint64_t i;
+
+  // the state of the simulator becomes the state of the model
+
+  state = 0;
+
+  while (state < NUMBER_OF_STATES) {
+    line = (uint64_t*) *(state_nids + state);
+
+    if (is_bitvector(get_sid(line)))
+      set_state(line, get_state_word(state, 0));
+    else {
+      i = 0;
+
+      while (i < state_length(state)) {
+        write_array_raw(line, i, get_state_word(state, i));
+
+        i = i + 1;
+      }
+    }
+
+    state = state + 1;
   }
 }
 
@@ -2971,111 +4157,84 @@ void advance_model() {
 }
 
 void step_model(uint64_t* next_nids) {
-  uint64_t x;
-  uint64_t y;
-  uint64_t heading;
-  uint64_t pc_value;
-  uint64_t address;
-  uint64_t data;
+  uint64_t state;
+  uint64_t* line;
+  uint64_t* values;
 
-  // one step of the rule or the inverse rule: array writes are
-  // logged while evaluating and applied afterwards
+  // one step of the rule or the inverse rule: all next values are
+  // evaluated before any is applied, array writes are logged while
+  // evaluating and applied afterwards
 
-  x        = eval_line((uint64_t*) *(next_nids + STATE_X));
-  y        = eval_line((uint64_t*) *(next_nids + STATE_Y));
-  heading  = eval_line((uint64_t*) *(next_nids + STATE_HEADING));
-  pc_value = eval_line((uint64_t*) *(next_nids + STATE_PC));
-  address  = eval_line((uint64_t*) *(next_nids + STATE_ADDRESS));
-  data     = eval_line((uint64_t*) *(next_nids + STATE_DATA));
+  if (next_values == (uint64_t*) 0)
+    next_values = zmalloc(NUMBER_OF_STATES * sizeof(uint64_t));
 
-  eval_line((uint64_t*) *(next_nids + STATE_REGISTERS));
-  eval_line((uint64_t*) *(next_nids + STATE_WORDS));
+  values = next_values;
+
+  state = 0;
+
+  while (state < NUMBER_OF_STATES) {
+    line = (uint64_t*) *(state_nids + state);
+
+    if (*(next_nids + state) != (uint64_t) line)
+      *(values + state) = eval_line((uint64_t*) *(next_nids + state));
+    else
+      // a state that the rule never changes
+      *(values + state) = get_state(line);
+
+    state = state + 1;
+  }
 
   apply_writes();
 
-  set_state((uint64_t*) *(state_nids + STATE_X), x);
-  set_state((uint64_t*) *(state_nids + STATE_Y), y);
-  set_state((uint64_t*) *(state_nids + STATE_HEADING), heading);
-  set_state((uint64_t*) *(state_nids + STATE_PC), pc_value);
-  set_state((uint64_t*) *(state_nids + STATE_ADDRESS), address);
-  set_state((uint64_t*) *(state_nids + STATE_DATA), data);
+  state = 0;
+
+  while (state < NUMBER_OF_STATES) {
+    line = (uint64_t*) *(state_nids + state);
+
+    if (is_bitvector(get_sid(line)))
+      set_state(line, *(values + state));
+
+    state = state + 1;
+  }
 
   advance_model();
 }
 
 uint64_t is_model_state(char* direction) {
+  uint64_t state;
+  uint64_t* line;
   uint64_t i;
-  uint64_t expected;
-  uint64_t actual;
-  char* what;
+  uint64_t value;
 
   // is the state of the model the state of the simulator?
 
-  what = (char*) 0;
+  state = 0;
 
-  expected = 0;
-  actual   = 0;
+  while (state < NUMBER_OF_STATES) {
+    line = (uint64_t*) *(state_nids + state);
 
-  if (get_state((uint64_t*) *(state_nids + STATE_X)) != token_x) {
-    what     = "token-x";
-    expected = token_x;
-    actual   = get_state((uint64_t*) *(state_nids + STATE_X));
-  } else if (get_state((uint64_t*) *(state_nids + STATE_Y)) != token_y) {
-    what     = "token-y";
-    expected = token_y;
-    actual   = get_state((uint64_t*) *(state_nids + STATE_Y));
-  } else if (get_state((uint64_t*) *(state_nids + STATE_HEADING)) != token_heading) {
-    what     = "token-heading";
-    expected = token_heading;
-    actual   = get_state((uint64_t*) *(state_nids + STATE_HEADING));
-  } else if (get_state((uint64_t*) *(state_nids + STATE_PC)) != token_pc) {
-    what     = "token-pc";
-    expected = token_pc;
-    actual   = get_state((uint64_t*) *(state_nids + STATE_PC));
-  } else if (get_state((uint64_t*) *(state_nids + STATE_ADDRESS)) != token_address) {
-    what     = "token-address";
-    expected = token_address;
-    actual   = get_state((uint64_t*) *(state_nids + STATE_ADDRESS));
-  } else if (get_state((uint64_t*) *(state_nids + STATE_DATA)) != token_data) {
-    what     = "token-data";
-    expected = token_data;
-    actual   = get_state((uint64_t*) *(state_nids + STATE_DATA));
-  }
+    i = 0;
 
-  i = 0;
+    while (i < state_length(state)) {
+      if (is_bitvector(get_sid(line)))
+        value = get_state(line);
+      else
+        value = read_array_raw(line, i);
 
-  while (i < NUMBEROFREGISTERS) {
-    if (read_array_raw((uint64_t*) *(state_nids + STATE_REGISTERS), i) != *(token_registers + i)) {
-      what     = "token-registers";
-      expected = *(token_registers + i);
-      actual   = read_array_raw((uint64_t*) *(state_nids + STATE_REGISTERS), i);
+      if (value != get_state_word(state, i)) {
+        printf("%s: %s: %s[%lu] is 0x%lX in the model and 0x%lX in the simulator\n", selfie_name,
+          direction, state_name(state), i, value, get_state_word(state, i));
+
+        return 0;
+      }
+
+      i = i + 1;
     }
 
-    i = i + 1;
+    state = state + 1;
   }
 
-  i = 0;
-
-  while (i < grid_size) {
-    if (read_array_raw((uint64_t*) *(state_nids + STATE_KINDS), i) != *(cell_kinds + i)) {
-      what     = "cell-kinds";
-      expected = *(cell_kinds + i);
-      actual   = read_array_raw((uint64_t*) *(state_nids + STATE_KINDS), i);
-    } else if (read_array_raw((uint64_t*) *(state_nids + STATE_WORDS), i) != *(cell_words + i)) {
-      what     = "cell-words";
-      expected = *(cell_words + i);
-      actual   = read_array_raw((uint64_t*) *(state_nids + STATE_WORDS), i);
-    }
-
-    i = i + 1;
-  }
-
-  if (what == (char*) 0)
-    return 1;
-
-  printf("%s: %s: %s is 0x%lX in the model and 0x%lX in the simulator\n", selfie_name, direction, what, actual, expected);
-
-  return 0;
+  return 1;
 }
 
 uint64_t check_rule(uint64_t states) {
@@ -3226,6 +4385,9 @@ uint64_t check_rule(uint64_t states) {
 
   printf("%s: simulator and model agree forward and backward on %lu of %lu random states,\n", selfie_name, states - failed, states);
   printf("%s: and one tick is undone by the other; a property holds in %lu states\n", selfie_name, stopped);
+  printf("%s: in 4 ticks per state, %lu times a RISC-R instruction cell had a token on its path or side,\n", selfie_name, acted_instructions);
+  printf("%s: %lu times brk changed the program break, %lu times openat ran, %lu times a read or write moved a transfer on\n", selfie_name,
+    acted_breaks, acted_opens, acted_legs);
 
   return failed == 0;
 }

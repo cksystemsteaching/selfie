@@ -1,0 +1,64 @@
+#C Hand-laid RISC-R program for cellfie that makes every system call, see
+#C cellfie.md and make tapes. The same program as RISC-R binary is the
+#C second program of tests/cellfie-test.c.
+#C
+#C The program runs on row 1 from west to east:
+#C
+#C   0x10000  lui s1,0x11        the buffer is the word at 0x11000
+#C   0x10004  lui a1,0x12
+#C   0x10008  addi a1,zero,8     a1 = 0x12008, the new program break
+#C   0x1000c  addi a7,zero,214   brk
+#C   0x10010  ecall              a0 = 0x12000, the previous program break
+#C   0x10014  addi a1,zero,-8
+#C   0x10018  lui a1,0xfffee     a1 = 0, standard input
+#C   0x1001c  add a2,s1,zero     a2 = buffer
+#C   0x10020  addi a3,zero,1     one byte
+#C   0x10024  addi a7,zero,-151  read
+#C   0x10028  ecall              buffer word and input word are exchanged, a0 += 1
+#C   0x1002c  addi a1,zero,1     standard output
+#C   0x10030  addi a7,zero,1     write
+#C   0x10034  ecall              the output word is flipped by the buffer word, a0 += 1
+#C   0x10038  addi a1,zero,7
+#C   0x1003c  add a1,s1,zero     a1 = 0x11008, the name of a file that does not exist
+#C   0x10040  sub a2,zero,s1     a2 = 0, read-only
+#C   0x10044  addi a7,zero,-8    openat
+#C   0x10048  ecall              file descriptor 3 is allocated but not open, a0 += -1
+#C   0x1004c  sub a1,zero,s1
+#C   0x10050  addi a1,zero,-5    a1 = 3
+#C   0x10054  addi a7,zero,7     read
+#C   0x10058  ecall              fails, a0 += -1
+#C   0x1005c  addi a1,zero,-3    a1 = 0
+#C   0x10060  ld a1,0(s1)        a1 = the byte read
+#C   0x10064  addi a7,zero,30    exit
+#C   0x10068  ecall              exit(a1), with a1 == 42, the byte * of the input
+#C
+#C Wire: the read at 0x10028, the write at 0x10034, and the ld at 0x10060
+#C send the token north to row 0, where a router on a bit of the pc turns
+#C it east. Column 31 leads south: a router on bit 63 of the address turns
+#C the token west on row 2 to the first word of the input tape of standard
+#C input, a memory cell that holds the input; a router on bit 62 turns it
+#C west on row 3 to the first word of the output tape of standard output,
+#C a tape cell; all other tokens reach the memory cell of the buffer at
+#C 0x11000 on row 5. The three ways join on row 5, by routers on the same
+#C bits, and row 5 leads back west, where a router on the same bit of the
+#C pc turns the token north into the column of its instruction. A read or
+#C a write sends the token on three such round trips: to the buffer, to
+#C the tape, and to the buffer again.
+#C
+#C The token starts as a RISC-R machine does that has loaded the binary,
+#C with sp and program break where rotor's model of
+#C tests/cellfie-io-test.r has them, and with one byte of input.
+#T 0 1 E 10000 0 0
+#R 2 ffffffc0
+#S 12000 3 0 0
+#F 0 0 1 1 0
+x = 32, y = 8, rule = RISC-R
+10.R/p032.R/p0410.R/p066.\$
+E/000114b7E/000125b7E/00800593E/0d600893E/00000073E/ff800593E/fffee5b7
+E/00048633E/00100693E/f6900893E/00000073E/00100593E/00100893E/00000073
+E/00700593E/000485b3E/40900633E/ff800893E/00000073E/409005b3E/ffb00593
+E/00700893E/00000073E/ffd00593E/0004b583E/01e00893E/00000073$
+29./M000000000000002aR/a63$
+28./.T0000000000000000R/a62$
+$
+10.R\p032.R\p0410.R\p063.R/a62R/a63M0000000000000000/!

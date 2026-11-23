@@ -42,5 +42,7 @@ cellfie-identity.txt
 
 # the abstraction of make product is written by hand, what else it needs is generated
 !tests/cellfie-test-abstraction.btor2
+!tests/cellfie-io-test-abstraction.btor2
+tests/cellfie-io-test.txt
 cellfie-test
 cellfie-product.txt

@@ -1472,7 +1472,10 @@ void load_input(char* name) {
 // a layout is a grid of cells and a token as text, see cellfie.md; it goes
 // into the states of cellfie's model: the token into token-x, token-y,
 // token-heading, token-pc, token-address, token-data, and token-registers,
-// the cells into cell-kinds and cell-words, row by row
+// the state of its system calls into token-break, token-open-files,
+// token-leg, token-word, token-tape-heads, token-tape-ends,
+// token-tape-inputs, and token-tape-opens, and the cells into cell-kinds
+// and cell-words, row by row
 
 uint64_t layout_character() {
   if (layout_pos < layout_size)
@@ -1627,6 +1630,10 @@ void load_layout(char* name) {
   uint64_t* registers_nid;
   uint64_t* kinds_nid;
   uint64_t* words_nid;
+  uint64_t* heads_nid;
+  uint64_t* ends_nid;
+  uint64_t* inputs_nid;
+  uint64_t* opens_nid;
   uint64_t width;
   uint64_t height;
   uint64_t x;
@@ -1646,9 +1653,33 @@ void load_layout(char* name) {
   kinds_nid     = find_layout_state("cell-kinds");
   words_nid     = find_layout_state("cell-words");
 
+  heads_nid  = find_layout_state("token-tape-heads");
+  ends_nid   = find_layout_state("token-tape-ends");
+  inputs_nid = find_layout_state("token-tape-inputs");
+  opens_nid  = find_layout_state("token-tape-opens");
+
   // the token: at the northwestern cell heading east with all words zero,
   // unless a line #T x y heading pc address data says otherwise; a line
-  // #R register value sets a register; all other lines with # are comments
+  // #R register value sets a register; the three standard files are open
+  // with standard input the only input tape, unless a line #S break
+  // open-files leg word or #F descriptor head end input open says
+  // otherwise; all other lines with # are comments
+
+  set_state(find_layout_state("token-break"), 0);
+  set_state(find_layout_state("token-open-files"), 3);
+  set_state(find_layout_state("token-leg"), 0);
+  set_state(find_layout_state("token-word"), 0);
+
+  n = 0;
+
+  while (n < array_elements(heads_nid)) {
+    write_array_raw(heads_nid, n, 0);
+    write_array_raw(ends_nid, n, 0);
+    write_array_raw(inputs_nid, n, n == 0);
+    write_array_raw(opens_nid, n, 0);
+
+    n = n + 1;
+  }
 
   set_state(find_layout_state("token-x"), 0);
   set_state(find_layout_state("token-y"), 0);
@@ -1692,6 +1723,31 @@ void load_layout(char* name) {
       // register zero is always 0
       if (n != 0)
         write_array_raw(registers_nid, n, c);
+    } else if (c == 'S') {
+      layout_pos = layout_pos + 1;
+
+      set_state(find_state("token-break"), scan_layout_hexadecimal(0));
+      set_state(find_state("token-open-files"), scan_layout_hexadecimal(0));
+
+      n = scan_layout_hexadecimal(0);
+
+      if (n > 3)
+        layout_error("no such leg");
+
+      set_state(find_state("token-leg"), n);
+      set_state(find_state("token-word"), scan_layout_hexadecimal(0));
+    } else if (c == 'F') {
+      layout_pos = layout_pos + 1;
+
+      n = scan_layout_decimal();
+
+      if (n >= array_elements(heads_nid))
+        layout_error("no such file descriptor");
+
+      write_array_raw(heads_nid, n, scan_layout_hexadecimal(0));
+      write_array_raw(ends_nid, n, scan_layout_hexadecimal(0));
+      write_array_raw(inputs_nid, n, scan_layout_hexadecimal(0));
+      write_array_raw(opens_nid, n, scan_layout_hexadecimal(0));
     }
 
     while (and(layout_character() != 10, layout_pos < layout_size))
@@ -1851,6 +1907,10 @@ void load_layout(char* name) {
       word = word + c;
     } else if (c == 'M') {
       cell = 3;
+
+      word = scan_layout_hexadecimal(16);
+    } else if (c == 'T') {
+      cell = 5;
 
       word = scan_layout_hexadecimal(16);
     } else if (c != '.') {
