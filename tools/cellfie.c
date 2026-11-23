@@ -78,6 +78,7 @@ uint64_t cell_index(uint64_t x, uint64_t y);
 uint64_t get_cell_kind(uint64_t cell)        { return cell % 8; }
 uint64_t get_cell_orientation(uint64_t cell) { return cell / 8 % 4; }
 uint64_t get_cell_mirror(uint64_t cell)      { return cell / 32 % 2; }
+uint64_t is_cell_tagged(uint64_t cell)       { return cell / 64 % 2; }
 
 uint64_t encode_cell(uint64_t kind, uint64_t orientation, uint64_t mirror_kind) {
   return kind + orientation * 8 + mirror_kind * 32;
@@ -124,6 +125,7 @@ uint64_t grid_size = 0; // number of cells
 
 uint64_t* cell_kinds = (uint64_t*) 0; // kind, orientation, and mirror of each cell
 uint64_t* cell_words = (uint64_t*) 0; // instruction, memory word, or router bit and field
+uint64_t* cell_tags  = (uint64_t*) 0; // address of a tagged instruction, memory, or tape cell
 
 // -----------------------------------------------------------------
 // ----------------------------- TOKEN -----------------------------
@@ -222,8 +224,10 @@ uint64_t PROPERTY_UNSUPPORTED_SYSCALL = 5; // system call other than exit, read,
 uint64_t PROPERTY_IRREVERSIBLE_BRK    = 6; // brk with nonzero a0 or zero program break
 uint64_t PROPERTY_IRREVERSIBLE_TAPE   = 7; // read or write of 4GB or more
 uint64_t PROPERTY_IRREVERSIBLE_OPENAT = 8; // openat with all file descriptors allocated
+uint64_t PROPERTY_INVALID_ADDRESS     = 9; // token at a memory or tape cell that is not the cell of its address
+uint64_t PROPERTY_INVALID_PC          = 10; // token on the path of an instruction cell that is not the cell of its pc
 
-uint64_t NUMBER_OF_PROPERTIES = 8;
+uint64_t NUMBER_OF_PROPERTIES = 10;
 
 uint64_t SYSCALL_FAILURE = 4294967295; // -1 as 32-bit system call result
 uint64_t LARGEST_TRANSFER = 4294967296; // a read or write transfers less than 4GB
@@ -382,8 +386,9 @@ uint64_t STATE_INPUTS     = 13;
 uint64_t STATE_OPENS      = 14;
 uint64_t STATE_KINDS      = 15;
 uint64_t STATE_WORDS      = 16;
+uint64_t STATE_TAGS       = 17;
 
-uint64_t NUMBER_OF_STATES = 17;
+uint64_t NUMBER_OF_STATES = 18;
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
@@ -481,6 +486,7 @@ uint64_t differing_bit(uint64_t a, uint64_t b);
 uint64_t comb_height(uint64_t* keys, uint64_t lo, uint64_t hi);
 
 void lay_cell(uint64_t x, uint64_t y, uint64_t cell, uint64_t word);
+void lay_tagged_cell(uint64_t x, uint64_t y, uint64_t cell, uint64_t word, uint64_t tag);
 void lay_mirror(uint64_t x, uint64_t y, uint64_t mirror_kind);
 void lay_comb(uint64_t* keys, uint64_t* xs, uint64_t lo, uint64_t hi, uint64_t y, uint64_t down, uint64_t field);
 
@@ -556,6 +562,7 @@ void allocate_grid(uint64_t width, uint64_t height) {
 
   cell_kinds = zmalloc(grid_size * sizeof(uint64_t));
   cell_words = zmalloc(grid_size * sizeof(uint64_t));
+  cell_tags  = zmalloc(grid_size * sizeof(uint64_t));
 
   if (token_registers == (uint64_t*) 0)
     reset_token();
@@ -1398,11 +1405,24 @@ uint64_t token_property() {
 
   cell = *(cell_kinds + cell_index(token_x, token_y));
 
-  if (get_cell_kind(cell) != CELL_INSTRUCTION)
+  // a tagged cell knows its address: a token that wire led to the cell
+  // of another address, since its own has no cell, is not where it should be
+
+  if (get_cell_kind(cell) != CELL_INSTRUCTION) {
+    if (is_cell_tagged(cell))
+      if (or(get_cell_kind(cell) == CELL_MEMORY, get_cell_kind(cell) == CELL_TAPE))
+        if (token_address != *(cell_tags + cell_index(token_x, token_y)))
+          return PROPERTY_INVALID_ADDRESS;
+
     return PROPERTY_NONE;
+  }
 
   if (token_heading != get_cell_orientation(cell))
     return PROPERTY_NONE;
+
+  if (is_cell_tagged(cell))
+    if (token_pc != *(cell_tags + cell_index(token_x, token_y)))
+      return PROPERTY_INVALID_PC;
 
   decode_cell(*(cell_words + cell_index(token_x, token_y)));
 
@@ -1460,7 +1480,9 @@ uint64_t token_property() {
 // decimal digits (router on that bit of the pc or the address), M with
 // 16 hexadecimal digits (memory word), T with 16 hexadecimal digits
 // (tape word), or E, N, W, S with mirror and 8 hexadecimal digits
-// (instruction with orientation). A decimal number in front of a cell
+// (instruction with orientation). A memory, tape, or instruction cell
+// may be followed by @ and 16 hexadecimal digits, its tag: the address
+// of the word or the instruction. A decimal number in front of a cell
 // repeats it, $ ends a row, the rest of a row is blank. Numbers after
 // #T, #R, #S, and #F are hexadecimal, except x, y, register, descriptor.
 
@@ -1801,6 +1823,7 @@ void load_cells() {
   uint64_t c;
   uint64_t cell;
   uint64_t word;
+  uint64_t tag;
 
   x = 0;
   y = 0;
@@ -1894,6 +1917,19 @@ void load_cells() {
       word = scan_hexadecimal(8);
     }
 
+    tag = 0;
+
+    if (layout_character() == '@') {
+      if (get_cell_kind(cell) < CELL_MEMORY)
+        layout_error("only memory, tape, and instruction cells have tags");
+
+      next_layout_character();
+
+      tag = scan_hexadecimal(16);
+
+      cell = cell + 64;
+    }
+
     while (n > 0) {
       if (x >= grid_width)
         layout_error("row is wider than the grid");
@@ -1902,6 +1938,7 @@ void load_cells() {
 
       *(cell_kinds + cell_index(x, y)) = cell;
       *(cell_words + cell_index(x, y)) = word;
+      *(cell_tags + cell_index(x, y))  = tag;
 
       x = x + 1;
 
@@ -2036,6 +2073,14 @@ void print_cell(uint64_t index) {
     print_hexadecimal_digits(word, 8);
   } else
     put_character('.');
+
+  if (kind >= CELL_MEMORY)
+    if (kind <= CELL_TAPE)
+      if (is_cell_tagged(cell)) {
+        put_character('@');
+
+        print_hexadecimal_digits(*(cell_tags + index), 16);
+      }
 }
 
 uint64_t is_blank_cell(uint64_t index) {
@@ -2062,6 +2107,14 @@ uint64_t are_cells_equal(uint64_t i, uint64_t j) {
     return 0;
 
   kind = get_cell_kind(*(cell_kinds + i));
+
+  if (kind >= CELL_MEMORY) {
+    if (is_cell_tagged(*(cell_kinds + i)) != is_cell_tagged(*(cell_kinds + j)))
+      return 0;
+    else if (is_cell_tagged(*(cell_kinds + i)))
+      if (*(cell_tags + i) != *(cell_tags + j))
+        return 0;
+  }
 
   if (kind == CELL_MIRROR)
     return 1;
@@ -2255,8 +2308,10 @@ uint64_t get_state_word(uint64_t state, uint64_t i) {
     return *(token_opens + i);
   else if (state == STATE_KINDS)
     return *(cell_kinds + i);
-  else
+  else if (state == STATE_WORDS)
     return *(cell_words + i);
+  else
+    return *(cell_tags + i);
 }
 
 void set_state_word(uint64_t state, uint64_t i, uint64_t value) {
@@ -2292,8 +2347,10 @@ void set_state_word(uint64_t state, uint64_t i, uint64_t value) {
     *(token_opens + i) = value;
   else if (state == STATE_KINDS)
     *(cell_kinds + i) = value;
-  else
+  else if (state == STATE_WORDS)
     *(cell_words + i) = value;
+  else
+    *(cell_tags + i) = value;
 }
 
 char* state_name(uint64_t state) {
@@ -2331,8 +2388,10 @@ char* state_name(uint64_t state) {
     return "token-tape-opens";
   else if (state == STATE_KINDS)
     return "cell-kinds";
-  else
+  else if (state == STATE_WORDS)
     return "cell-words";
+  else
+    return "cell-tags";
 }
 
 uint64_t snapshot_size() {
@@ -2465,6 +2524,10 @@ void print_property(uint64_t property) {
     printf("irreversible-tape");
   else if (property == PROPERTY_IRREVERSIBLE_OPENAT)
     printf("irreversible-openat");
+  else if (property == PROPERTY_INVALID_ADDRESS)
+    printf("invalid-address 0x%lX", token_address);
+  else if (property == PROPERTY_INVALID_PC)
+    printf("invalid-pc");
 }
 
 uint64_t run_forward(uint64_t ticks) {
@@ -2715,7 +2778,7 @@ void model_sorts(uint64_t xbits, uint64_t ybits) {
 
   SID_INDEX = new_sort(xbits + ybits);
 
-  SID_CELL = new_bitvec(8, "cell: 3-bit kind, 2-bit orientation, 1-bit mirror");
+  SID_CELL = new_bitvec(8, "cell: 3-bit kind, 2-bit orientation, 1-bit mirror, 1-bit tagged");
   SID_WORD = new_bitvec(64, "64-bit word");
 
   SID_REGISTER = new_bitvec(5, "5-bit register address");
@@ -2796,11 +2859,15 @@ void model_states() {
     } else if (state == STATE_KINDS) {
       sid = SID_KINDS;
 
-      comment = "kind, orientation, mirror of each cell";
-    } else {
+      comment = "kind, orientation, mirror of each cell, and whether it is tagged";
+    } else if (state == STATE_WORDS) {
       sid = SID_WORDS;
 
       comment = "instruction, memory or tape word, or router bit of each cell";
+    } else {
+      sid = SID_WORDS;
+
+      comment = "address of each tagged instruction, memory, or tape cell";
     }
 
     *(state_nids + state) = (uint64_t) new_input(OP_STATE, sid, state_name(state), comment);
@@ -3697,9 +3764,26 @@ void model_rule() {
 
   set_comment(is_reversible_nid, "RISC-R instruction");
 
-  // the token is about to enter an instruction cell on its path
+  // a tagged cell knows its address: the token is at a memory or tape
+  // cell that is not the cell of its address, or about to enter an
+  // instruction cell on its path that is not the cell of its pc
+
+  value_nid = new_binary(OP_READ, SID_WORD, (uint64_t*) *(state_nids + STATE_TAGS), index_nid, "cell tag");
 
   is_instruction_nid = new_and(new_is_field(kind_nid, CELL_INSTRUCTION), new_eq(heading_nid, orientation_nid));
+
+  *(property_nids + PROPERTY_INVALID_ADDRESS) = (uint64_t)
+    new_and(new_slice(SID_BOOLEAN, cell_nid, 6, 6, "cell tagged"),
+      new_and(new_or(new_is_field(kind_nid, CELL_MEMORY), new_is_field(kind_nid, CELL_TAPE)),
+        new_not(new_eq(address_nid, value_nid))));
+
+  value_nid = new_and(new_slice(SID_BOOLEAN, cell_nid, 6, 6, "cell tagged"), new_not(new_eq(pc_nid, value_nid)));
+
+  *(property_nids + PROPERTY_INVALID_PC) = (uint64_t) new_and(is_instruction_nid, value_nid);
+
+  // the token is about to enter an instruction cell on its path, the cell of its pc
+
+  is_instruction_nid = new_and(is_instruction_nid, new_not(value_nid));
 
   *(property_nids + PROPERTY_ILLEGAL_INSTRUCTION) = (uint64_t)
     new_and(is_instruction_nid, new_not(is_reversible_nid));
@@ -3759,8 +3843,12 @@ char* property_name(uint64_t property) {
     return "irreversible-brk";
   else if (property == PROPERTY_IRREVERSIBLE_TAPE)
     return "irreversible-tape";
-  else
+  else if (property == PROPERTY_IRREVERSIBLE_OPENAT)
     return "irreversible-openat";
+  else if (property == PROPERTY_INVALID_ADDRESS)
+    return "invalid-address";
+  else
+    return "invalid-pc";
 }
 
 char* property_comment(uint64_t property) {
@@ -3778,8 +3866,12 @@ char* property_comment(uint64_t property) {
     return "brk with nonzero a0 or zero program break";
   else if (property == PROPERTY_IRREVERSIBLE_TAPE)
     return "read or write of 4GB or more";
-  else
+  else if (property == PROPERTY_IRREVERSIBLE_OPENAT)
     return "openat with all file descriptors allocated";
+  else if (property == PROPERTY_INVALID_ADDRESS)
+    return "token at a memory or tape cell that is not the cell of its address";
+  else
+    return "token on the path of an instruction cell that is not the cell of its pc";
 }
 
 void print_model(char* name, uint64_t properties) {
@@ -4021,6 +4113,19 @@ void random_state() {
     i = i + 1;
   }
 
+  // tags: the tagged bit of a cell is random already
+
+  i = 0;
+
+  while (i < grid_size) {
+    if (random_below(2) == 0)
+      *(cell_kinds + i) = *(cell_kinds + i) % 64 + random_below(4) * 64;
+
+    *(cell_tags + i) = random_value();
+
+    i = i + 1;
+  }
+
   // the token, mostly where a cell acts on it: on its path or on its side
 
   token_x = random_below(grid_width);
@@ -4072,6 +4177,15 @@ void random_state() {
     token_leg  = random_below(4);
     token_word = random_below(4);
   }
+
+  // half of the time the cell under the token is the cell of its pc or address
+
+  r = random_below(4);
+
+  if (r == 0)
+    *(cell_tags + cell_index(token_x, token_y)) = token_pc;
+  else if (r == 1)
+    *(cell_tags + cell_index(token_x, token_y)) = token_address;
 
   i = 0;
 
@@ -4570,6 +4684,15 @@ void lay_cell(uint64_t x, uint64_t y, uint64_t cell, uint64_t word) {
   *(cell_words + cell_index(x, y)) = word;
 }
 
+void lay_tagged_cell(uint64_t x, uint64_t y, uint64_t cell, uint64_t word, uint64_t tag) {
+  // an instruction, memory, or tape cell that knows its address, so that
+  // a token on its way to an address without a cell does not go unnoticed
+
+  lay_cell(x, y, cell + 64, word);
+
+  *(cell_tags + cell_index(x, y)) = tag;
+}
+
 void lay_mirror(uint64_t x, uint64_t y, uint64_t mirror_kind) {
   lay_cell(x, y, encode_cell(CELL_MIRROR, 0, mirror_kind), 0);
 }
@@ -4892,7 +5015,7 @@ void compile_layout(char* name) {
       if (or(is == ECALL, and(is == LOAD, rd != REG_ZR)))
         j = BACKSLASH;
 
-    lay_cell(x, path_row, encode_cell(CELL_INSTRUCTION, EAST, j), value);
+    lay_tagged_cell(x, path_row, encode_cell(CELL_INSTRUCTION, EAST, j), value, code_start + i * INSTRUCTIONSIZE);
 
     i = i + 1;
   }
@@ -4958,7 +5081,7 @@ void compile_layout(char* name) {
   i = 0;
 
   while (i < number_of_words) {
-    lay_cell(*(word_xs + i), memory_row, encode_cell(*(word_kinds + i), 0, 0), *(word_values + i));
+    lay_tagged_cell(*(word_xs + i), memory_row, encode_cell(*(word_kinds + i), 0, 0), *(word_values + i), *(word_addresses + i));
 
     *(word_cells + i) = cell_index(*(word_xs + i), memory_row);
 

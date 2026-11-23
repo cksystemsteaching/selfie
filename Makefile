@@ -504,9 +504,9 @@ cells: cellfie bitr selfie selfie.h
 	  ./cellfie -noproperties -btor2 $$1 $$2 > /dev/null && \
 	  ./cellfie -inverse -btor2 $$1 $$2 > /dev/null || exit 1; \
 	  ./bitr cellfie-$$1x$$2-noproperties.btor2 -identity cellfie-$$1x$$2-inverse.btor2 | tee cellfie-identity.txt; \
-	  grep -q "cellfie-$$1x$$2-inverse.btor2 after cellfie-$$1x$$2-noproperties.btor2 is the identity on all 17 states" cellfie-identity.txt || exit 1; \
+	  grep -q "cellfie-$$1x$$2-inverse.btor2 after cellfie-$$1x$$2-noproperties.btor2 is the identity on all 18 states" cellfie-identity.txt || exit 1; \
 	  ./bitr cellfie-$$1x$$2-inverse.btor2 -identity cellfie-$$1x$$2-noproperties.btor2 | tee cellfie-identity.txt; \
-	  grep -q "cellfie-$$1x$$2-noproperties.btor2 after cellfie-$$1x$$2-inverse.btor2 is the identity on all 17 states" cellfie-identity.txt || exit 1; \
+	  grep -q "cellfie-$$1x$$2-noproperties.btor2 after cellfie-$$1x$$2-inverse.btor2 is the identity on all 18 states" cellfie-identity.txt || exit 1; \
 	done
 	@echo "$@: the hand-laid programs run forward and back to their initial layouts, simulator and model agree, the cell rule is a bijection"
 
@@ -582,7 +582,9 @@ tapes: cellfie cellfie-test bitr riscr rotor selfie selfie.h
 # riscr and back to the layout; and bitr's product of rotor's model of the binary and cellfie's model with the
 # layout, by the abstraction that cellfie writes, finds pc, registers, the state of the system calls, and all
 # words of memory and tapes that have a cell equal at every instruction. An example that riscr stops for
-# accessing memory that is not there is skipped: the grid has no cell for it and no way to say so. The first
+# accessing memory that is not there stops on cellfie as well, in the instruction after riscr's last, with the
+# token at a cell that is tagged with another address than the token's: invalid-address, with riscr's address.
+# So does the most recursive example with 512 words of history, where the grid is what is too small. The first
 # example is also compiled and run with cellfie on mipster.
 layouts: cellfie bitr riscr rotor selfie selfie.h
 	./cellfie -btor2 4096 128 > /dev/null
@@ -593,7 +595,12 @@ layouts: cellfie bitr riscr rotor selfie selfie.h
 	  out=$$(./riscr -l $$b.r -m 1 < tests/bitr-input.txt 2>&1); \
 	  e=$$(echo "$$out" | sed -n 's/.*with exit code \([0-9]*\).*/\1/p'); \
 	  n=$$(echo "$$out" | sed -n 's/.*summary: \([0-9]*\) executed instructions.*/\1/p'); \
-	  if [ $$e -ge 11 ]; then echo "$$b.r: skipped, riscr stops it with exit code $$e"; continue; fi; \
+	  if [ $$e -ge 11 ]; then \
+	    a=$$(echo "$$out" | sed -n 's/.*uncaught exception: invalid address \(0x[0-9A-F]*\).*/\1/p'); \
+	    ./cellfie -heap 0 2048 -heap 1044472 1 -heap 1048576 64 -stack 128 -i tests/bitr-input.txt -c $$b.r -f 100000000 > $$b.cells || exit 1; \
+	    grep -q "invalid-address $$a after [0-9]* ticks and $$((n + 1)) instructions" $$b.cells || \
+	      { echo "$$b.r: cellfie does not stop at the invalid address $$a after $$n instructions as riscr does"; exit 1; }; \
+	    echo "$$b.r: invalid address $$a after $$n instructions as riscr"; continue; fi; \
 	  ./cellfie -heap 0 2048 -heap 1048576 64 -stack 128 -i tests/bitr-input.txt -c $$b.r -o $$b.rle -a $$b-abstraction.btor2 2097152 65536 -rev 100000000 > $$b.cells || exit 1; \
 	  grep -q "exit with exit code $$e after [0-9]* ticks and $$((n - 1)) instructions" $$b.cells && \
 	  grep -q "initial state restored" $$b.cells || \
@@ -607,6 +614,8 @@ layouts: cellfie bitr riscr rotor selfie selfie.h
 	done; [ $$m -ge 17 ] || { echo "only $$m layouts checked"; exit 1; }
 	./selfie -c selfie.h tools/btor2.h tools/cellfie.c -m 512 -heap 0 2048 -heap 1048576 64 -stack 128 -i tests/bitr-input.txt -c examples/symbolic/division-by-zero-3-35.r -f 100000000 | tee cellfie-product.txt
 	grep -q "exit with exit code 1 after 567686 ticks and 430 instructions" cellfie-product.txt
+	./cellfie -heap 0 512 -heap 1048576 64 -stack 128 -i tests/bitr-input.txt -c examples/symbolic/nested-recursion-fail-1-35.r -f 100000000 | tee cellfie-product.txt
+	grep -q "invalid-address 0x13000 after" cellfie-product.txt
 	@echo "$@: the layouts of the symbolic examples run as riscr runs their binaries and as rotor's model does at every instruction"
 
 # Bennett mode (M2 of projects/reversible.md): selfie translated to RISC-R compiles selfie on riscr

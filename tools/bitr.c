@@ -1487,8 +1487,8 @@ void load_input(char* name) {
 // token-heading, token-pc, token-address, token-data, and token-registers,
 // the state of its system calls into token-break, token-open-files,
 // token-leg, token-word, token-tape-heads, token-tape-ends,
-// token-tape-inputs, and token-tape-opens, and the cells into cell-kinds
-// and cell-words, row by row
+// token-tape-inputs, and token-tape-opens, and the cells into cell-kinds,
+// cell-words, and cell-tags, row by row
 
 uint64_t layout_character() {
   if (layout_pos < layout_size)
@@ -1647,6 +1647,8 @@ void load_layout(char* name) {
   uint64_t* ends_nid;
   uint64_t* inputs_nid;
   uint64_t* opens_nid;
+  uint64_t* tags_nid;
+  uint64_t tag;
   uint64_t width;
   uint64_t height;
   uint64_t x;
@@ -1665,6 +1667,8 @@ void load_layout(char* name) {
   registers_nid = find_layout_state("token-registers");
   kinds_nid     = find_layout_state("cell-kinds");
   words_nid     = find_layout_state("cell-words");
+
+  tags_nid = find_layout_state("cell-tags");
 
   heads_nid  = find_layout_state("token-tape-heads");
   ends_nid   = find_layout_state("token-tape-ends");
@@ -1856,6 +1860,7 @@ void load_layout(char* name) {
   while (n < width * height) {
     write_array_raw(kinds_nid, n, 0);
     write_array_raw(words_nid, n, 0);
+    write_array_raw(tags_nid, n, 0);
 
     n = n + 1;
   }
@@ -1937,6 +1942,21 @@ void load_layout(char* name) {
       word = scan_layout_hexadecimal(8);
     }
 
+    // a memory, tape, or instruction cell may be tagged with its address
+
+    tag = 0;
+
+    if (layout_character() == '@') {
+      if (cell % 8 < 3)
+        layout_error("only memory, tape, and instruction cells have tags");
+
+      layout_pos = layout_pos + 1;
+
+      tag = scan_layout_hexadecimal(16);
+
+      cell = cell + 64;
+    }
+
     while (n > 0) {
       if (x >= width)
         layout_error("row is wider than the grid");
@@ -1945,6 +1965,7 @@ void load_layout(char* name) {
 
       write_array_raw(kinds_nid, y * width + x, cell);
       write_array_raw(words_nid, y * width + x, word);
+      write_array_raw(tags_nid, y * width + x, tag);
 
       x = x + 1;
 
