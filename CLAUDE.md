@@ -1,6 +1,6 @@
 # Selfie on the RISC-R branch
 
-This branch adds RISC-R (a reversible variant of RISC-U) to selfie as the tool riscr (`tools/riscr.c`), cellfie (`tools/cellfie.c`, an instruction-level reversible cellular machine that runs RISC-R), and bitr (`tools/bitr.c`, a BTOR2-only bounded model checker). The full development plan is `projects/reversible.md`; read it before changing anything on this branch. The instruction set is specified in `riscr.md`, next to `riscu.md`, and the cell machine in `cellfie.md`. The repo's `PLAN.md` is the course plan and belongs to the `intelligence` branch, not to this work.
+This branch adds RISC-R (a reversible variant of RISC-U) to selfie as the tool riscr (`tools/riscr.c`), cellfie (`tools/cellfie.c`, an instruction-level reversible cellular machine that runs RISC-R), and bitr (`tools/bitr.c`, a BTOR2-only bounded model checker). The full development plan is `projects/reversible.md`; read it before changing anything on this branch. The instruction set is specified in `riscr.md`, next to `riscu.md`, and the cell machine in `cellfie.md`. `optimizations.md` explains what was optimized in RISC-R and cellfie with one running example (`examples/symbolic/recursive-fibonacci-1-10.c`) and numbers before and after; keep it up to date: a change that moves one of its numbers, or adds an optimization, updates it in the same commit, with the commit added to its table of layouts. The repo's `PLAN.md` is the course plan and belongs to the `intelligence` branch, not to this work.
 
 ## Design rules
 
