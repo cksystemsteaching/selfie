@@ -121,7 +121,15 @@ The same run by kind of transfer, in average ticks per transfer:
 | stack | 132 | 6,245 | 2,657 | 1,909 | 1,080 |
 | data, heap, and system calls | 15 | 4,922 | 2,350 | 2,448 | 1,563 |
 
-Read down a column to see where a layout spends its ticks, and along a row to see which step helped which transfer. Each step is explained below.
+Read down a column to see where a layout spends its ticks, and along a row to see which step helped which transfer. The same as a chart, in total ticks:
+
+![Ticks of the running example by kind of transfer, per layout](figures/ticks-by-transfer.svg)
+
+And the four layouts themselves, as the compiler of each step lays the running example, at one scale:
+
+![The four layouts of the running example at one scale](figures/layouts.png)
+
+Each step is explained below, with a schematic and the actual layout.
 
 ### Layout 0: One Row
 
@@ -139,6 +147,10 @@ words     | e |  D  H  H  H  H  H  H  ... history ...  H  h  S  S  S  T  |
           +---+----------------------------------------------------------+
             ^ every transfer goes west to a spine, around the torus, and back east
 ```
+
+![Layout 0 of the running example](figures/layout-0.png)
+
+The blue row is the path, the orange row the words, the yellow and gray cells the routers and mirrors of the combs. The words reach further east than the instructions: 2,289 columns of them, the stack at the far end.
 
 A leg from an instruction in column *x* to the word in column *w* and back took *H* + 2*x* + 2*w* - 4 ticks on a grid of height *H*: the token goes west to the root of a comb, east to the word, west again, and east again. The stack has the highest addresses, so it is in the last columns: 6,245 ticks for an average access to the stack in the running example, where the grid is 4,096 columns wide.
 
@@ -166,6 +178,10 @@ A row of *N* words puts the last word *N* columns away. A square of *N* words pu
   d  +---------------------+  the far corner
   e
 ```
+
+![Layout 1 of the running example](figures/layout-1.png)
+
+The words are now the block in the southwest, 22 strips of 128 columns, each an orange row with its two combs; the path is still one row.
 
 | | Running example | Selfie |
 | --- | --- | --- |
@@ -196,6 +212,10 @@ The fix turns the token first. A token that is heading south when it meets the r
 ```
 
 With the stair, the strips of the stack are first and all others follow by ascending address. Within the stack, strips and words descend the same way, so the top of the stack is the first word of the first strip.
+
+![Layout 2 of the running example](figures/layout-2.png)
+
+The first strip of words is now the stack. It is twice as wide as the others, since each of its routers takes a column, and its combs look different: they are the stair.
 
 | | Running example | Selfie |
 | --- | --- | --- |
@@ -229,6 +249,10 @@ After layout 2, two fifths of what selfie's run cost was the way along the path:
           | ...                 |
 ```
 
+![Layout 3 of the running example](figures/layout-3.png)
+
+Six blue strips of the path, each with its combs north and south, the combs on their side west of them, and south of them the strips of words as in layout 2, the stack first.
+
 | | Running example | Selfie |
 | --- | --- | --- |
 | Strips of the path, and instructions per strip | 6 of 128 | 79 of 2,048 |
@@ -242,14 +266,7 @@ Control gains most, a factor of three, since both ends of a control transfer are
 
 ### All Steps, for Selfie
 
-Ticks for selfie compiling itself, on a logarithmic scale, one `#` per factor of two above 10^13:
-
-```
-0. one row                3.76e17  ###############
-1. words in strips        3.51e14  #####
-2. the stack first        1.48e14  ####
-3. the path in strips     9.43e13  ###
-```
+![Ticks of selfie compiling itself per layout, logarithmic scale](figures/selfie-ticks.svg)
 
 | Step | Ticks | Factor | Ticks per instruction | At 1ns per tick |
 | --- | --- | --- | --- | --- |
@@ -311,4 +328,4 @@ The layouts are the layout compilers of these commits of `tools/cellfie.c`, each
 | 2. the stack first | `f5a3cd6` | November 23, 2026 |
 | 3. the path in strips | `5d76d28` | November 24, 2026 |
 
-The table of transfers is from the event-driven simulator of each commit, printing the ticks whenever the token is on the path of an instruction cell, and classifying each step by the address it accesses. The counts in Part 1 are from `./selfie -l fib.m -d 1` and the instruction profiles that selfie and riscr print.
+The figures are rendered by `python3 figures/render.py`, which builds the layout compiler of each commit, compiles and runs the running example on it, and draws the layouts, cell by cell, and the charts; it prints the numbers of the table of transfers. For that table the event-driven simulator of each commit prints the ticks whenever the token is on the path of an instruction cell, and each step is classified by the address it accesses. A new layout is a new line in the script's list of layouts and in the table above; the ticks of selfie in the script are those of this document. The counts in Part 1 are from `./selfie -l fib.m -d 1` and the instruction profiles that selfie and riscr print.
