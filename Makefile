@@ -655,6 +655,31 @@ construct: cellfie cellfie-test riscr selfie selfie.h
 	cmp cellfie-test-compiled.rle cellfie-test-built.rle
 	@echo "$@: constructors build the compiled layouts from their tapes and take them apart again"
 
+# The layout compiler on cellfie (M11 of projects/reversible.md): cellfie, compiled by selfie and translated by
+# riscr to RISC-R with a history stack of 12GB, compiles a layout on riscr forward and backward, and on mipster,
+# to the layout that cellfie compiles natively; and on cellfie's hybrid simulator it compiles its own RISC-R
+# binary to the layout that cellfie compiles that binary to natively, byte for byte: L1 = L0. Takes about
+# 10GB of memory and 25 minutes, and reports the ticks and the seconds.
+cellfie-on-cellfie: cellfie cellfie-test riscr selfie selfie.h
+	./cellfie-test tests/cellfie-test.r tests/cellfie-io-test.r
+	./selfie -c selfie.h tools/btor2.h tools/cellfie.c -o cellfie-u.m
+	./riscr -l cellfie-u.m -history 12288 -t cellfie-r.r
+	./cellfie -c tests/cellfie-test.r -o cellfie-test-compiled.rle
+	./selfie -l cellfie-u.m -m 1024 -c tests/cellfie-test.r -o cellfie-test-built.rle > /dev/null
+	cmp cellfie-test-compiled.rle cellfie-test-built.rle
+	./riscr -l cellfie-u.m -history 1024 -t cellfie-test.r > /dev/null
+	./riscr -l cellfie-test.r -rev 2048 -c tests/cellfie-test.r -o cellfie-test-built.rle > cellfie-product.txt
+	grep -q "initial state restored bit for bit" cellfie-product.txt
+	cmp cellfie-test-compiled.rle cellfie-test-built.rle
+	./cellfie -c cellfie-r.r -o cellfie-test-l0.rle
+	s=$$(date +%s); \
+	./cellfie -memory 16 -tapes 8 -tapewords 4194304 -heap 0 1800000000 -stack 1000000 -h cellfie-r.r -c cellfie-r.r -o cellfie-test-l1.rle > cellfie-product.txt || exit 1; \
+	tail -2 cellfie-product.txt; \
+	grep -q "exit with exit code 0 after" cellfie-product.txt || { echo "cellfie does not exit with exit code 0 on cellfie"; exit 1; }; \
+	echo "$@: $$(($$(date +%s) - s)) seconds on cellfie"
+	cmp cellfie-test-l0.rle cellfie-test-l1.rle
+	@echo "$@: the layout compiler compiles itself on cellfie to the layout it compiles itself to natively"
+
 # Hybrid simulation of cellfie (M13 of projects/reversible.md): the hybrid simulator, which runs the cells
 # of a layout without laying it out and measures the wire instead of following it, stops every symbolic
 # example where the event-driven simulator stops it on the compiled layout, with the same exit code after
@@ -727,7 +752,7 @@ trust: selfie selfie.h
 	rm -f examples/trusting-trust/honest-stamp.c examples/trusting-trust/honest-victim.c examples/trusting-trust/trojaned-victim.c examples/trusting-trust/suspect-stamp.c
 
 # Consider these targets as targets, not files
-.PHONY: rev riscr-rev bennett trust riscr-model sim bmc cdcl identity cells product tapes layouts hybrid construct selfie-on-cellfie
+.PHONY: rev riscr-rev bennett trust riscr-model sim bmc cdcl identity cells product tapes layouts hybrid construct selfie-on-cellfie cellfie-on-cellfie
 
 # Consider these targets as targets, not files
 .PHONY: spike qemu assemble beator-32 rotor-32 32-bit bitwuzla beator-bitme rotor-bitme bitme extras

@@ -40,7 +40,7 @@ Usage: cellfie { -l layout | -o layout | -f ticks | -b ticks | -rev ticks |
                  -heap offset words | -stack words | -i file | -c binary |
                  -a abstraction heap-allowance stack-allowance |
                  -k binary | -window layout |
-                 -tapes descriptors | -tapewords words } [ -h binary ... ]
+                 -tapes descriptors | -tapewords words | -memory GB } [ -h binary ... ]
 
 -c compiles a RISC-R binary into a layout: its instructions in a row,
 memory cells for its data segment, for the regions of its heap given
@@ -68,7 +68,14 @@ which the layout determines. Words are allocated when accessed, so
 the grid can have a cell for every word of a large heap. Files are
 the host's. -tapes before it sets the number of file descriptors, a
 power of two, 4 by default, and gives each of them tapes, not only
-the standard ones; -tapewords sets the words per tape, 16 by default.
+the standard ones; -tapewords sets the words per tape, 16 by default;
+-memory sets the virtual memory of the binary, 4GB by default, at
+whose end its stack is.
+
+The compiler lays cells as a list and writes a layout from the list;
+the grid is allocated only when a token is to run on it. So cellfie,
+compiled by selfie and translated by riscr, compiles its own binary
+on cellfie into the layout that it compiles it into on any machine.
 
 -l loads a layout, -o writes the grid and the token as layout; -f
 runs at most ticks forward, stopping where a property holds for the
@@ -328,6 +335,15 @@ void load_header();
 void load_cells();
 void load_layout(char* name);
 
+void put_layout_character(uint64_t c);
+void flush_layout_words();
+void flush_layout();
+void put_layout_characters(uint64_t characters, uint64_t n);
+void put_layout_digits(uint64_t value);
+void print_laid_cell(uint64_t i);
+void print_layout_string(char* s);
+void print_layout_decimal(uint64_t n);
+
 void print_hexadecimal_digits(uint64_t value, uint64_t digits);
 void print_heading(uint64_t heading);
 void print_mirror(uint64_t mirror_kind);
@@ -350,6 +366,17 @@ uint64_t* layout_text = (uint64_t*) 0;
 uint64_t  layout_size = 0; // in bytes
 uint64_t  layout_pos  = 0;
 uint64_t  layout_line = 1;
+
+// a layout that is being written into a file
+
+uint64_t* layout_buffer = (uint64_t*) 0;
+
+uint64_t layout_bytes = 0; // characters in the buffer
+uint64_t layout_word  = 0; // the characters of the next word of the buffer
+uint64_t layout_shift = 1; // 256 to the power of their number
+
+uint64_t* hexadecimal_pairs = (uint64_t*) 0; // the two hexadecimal digits of each byte, as characters
+uint64_t* byte_powers       = (uint64_t*) 0; // 256 to the power of 0 to 8, the last as 0
 
 // -----------------------------------------------------------------
 // --------------------------- SIMULATOR ---------------------------
@@ -538,6 +565,7 @@ void     add_region(uint64_t start, uint64_t words, uint64_t kind);
 uint64_t find_region(uint64_t address);
 uint64_t region_height(uint64_t lo, uint64_t hi);
 
+uint64_t classify_instruction(uint64_t word);
 uint64_t plan_path_combs(uint64_t* keys, uint64_t count);
 void     plan_path();
 void     plan_regions();
@@ -562,7 +590,13 @@ void lay_descending_comb(uint64_t* keys, uint64_t* xs, uint64_t lo, uint64_t hi,
 void     boot_token();
 
 uint64_t differing_bit(uint64_t a, uint64_t b);
+uint64_t split_keys(uint64_t* keys, uint64_t lo, uint64_t hi);
 uint64_t comb_height(uint64_t* keys, uint64_t lo, uint64_t hi);
+
+void plan_grid(uint64_t width, uint64_t height, uint64_t cells);
+void sort_laid_cells();
+void write_laid_cells();
+void materialize_grid();
 
 void lay_cell(uint64_t x, uint64_t y, uint64_t cell, uint64_t word);
 void lay_tagged_cell(uint64_t x, uint64_t y, uint64_t cell, uint64_t word, uint64_t tag);
@@ -621,6 +655,7 @@ uint64_t  input_size  = 0;             // its size in bytes
 // the instructions that leave the path, by ascending address, and their columns
 
 uint64_t* instruction_classes = (uint64_t*) 0; // of all instructions
+uint64_t* instruction_words   = (uint64_t*) 0; // and the instructions
 
 uint64_t* control_keys = (uint64_t*) 0;
 uint64_t* control_out  = (uint64_t*) 0;
@@ -705,7 +740,22 @@ uint64_t number_of_strips = 0;
 uint64_t stack_start = 0; // address of the first word of the stack that has a cell
 
 uint64_t laying_strips = 0; // the combs over the strips are laid, not only placed
-uint64_t split_bit     = 0; // the bit that split the strips last
+uint64_t split_bit     = 0; // the bit that split keys last
+uint64_t split_power   = 0; // two to the power of the bit that differed last
+
+// the combs of the path are planned once and laid twice: where each of
+// their nodes splits its keys is remembered, node by node, parent first
+
+uint64_t* comb_mids = (uint64_t*) 0; // the first key of the second half of each node, if remembered
+uint64_t* comb_bits = (uint64_t*) 0; // the bit that splits it
+
+uint64_t comb_node    = 0; // the next node
+uint64_t comb_filling = 0; // the splits are being found, not looked up
+
+uint64_t* control_mids = (uint64_t*) 0;
+uint64_t* control_bits = (uint64_t*) 0;
+uint64_t* access_mids  = (uint64_t*) 0;
+uint64_t* access_bits  = (uint64_t*) 0;
 
 uint64_t comb_columns = 0; // columns of a comb over the strips
 uint64_t memory_rows  = 0; // rows of all strips
@@ -721,6 +771,21 @@ uint64_t* word_cells     = (uint64_t*) 0; // index of the cell on the grid
 uint64_t number_of_words = 0;
 
 uint64_t heap_start_address = 0; // start of the heap of the compiled binary
+
+// The compiler lays cells as a list: a grid is mostly blank, and writing
+// a layout takes the cells in the order of rows and columns, not the grid.
+// The grid is allocated when a token is to run on it.
+
+uint64_t* laid_xs    = (uint64_t*) 0;
+uint64_t* laid_ys    = (uint64_t*) 0;
+uint64_t* laid_kinds = (uint64_t*) 0;
+uint64_t* laid_words = (uint64_t*) 0;
+uint64_t* laid_tags  = (uint64_t*) 0;
+
+uint64_t number_of_laid_cells = 0;
+uint64_t max_laid_cells       = 0;
+
+uint64_t are_laid_cells_sorted = 0; // by row, then by column
 
 // the tape of a constructor: the parts of the cells of a layout that are
 // not zero, each as the part, the column and the row of its cell in the
@@ -2383,37 +2448,241 @@ void load_layout(char* name) {
   printf("%s: grid of %lux%lu cells loaded from %s\n", selfie_name, grid_width, grid_height, layout_name);
 }
 
+void put_layout_character(uint64_t c) {
+  // a character of a layout that is being written into a file is collected
+  // in a word, eight to a word, and the words in a buffer that is written
+  // when it is full; any other character is put where selfie puts it
+
+  if (layout_buffer == (uint64_t*) 0) {
+    put_character(c);
+
+    return;
+  }
+
+  layout_word  = layout_word + c * layout_shift;
+  layout_shift = layout_shift * 256;
+
+  layout_bytes = layout_bytes + 1;
+
+  if (layout_bytes % WORDSIZE == 0) {
+    *(layout_buffer + layout_bytes / WORDSIZE - 1) = layout_word;
+
+    layout_word  = 0;
+    layout_shift = 1;
+
+    if (layout_bytes == LAYOUT_CHUNK * WORDSIZE)
+      flush_layout_words();
+  }
+}
+
+void flush_layout_words() {
+  // the full words collected so far into the file; the characters of
+  // the word that is not full yet stay
+
+  write(output_fd, layout_buffer, layout_bytes / WORDSIZE * WORDSIZE);
+
+  layout_bytes = layout_bytes % WORDSIZE;
+}
+
+void flush_layout() {
+  // all characters collected so far into the file
+
+  if (layout_bytes % WORDSIZE != 0)
+    *(layout_buffer + layout_bytes / WORDSIZE) = layout_word;
+
+  if (layout_bytes > 0)
+    write(output_fd, layout_buffer, layout_bytes);
+
+  layout_bytes = 0;
+  layout_word  = 0;
+  layout_shift = 1;
+}
+
+void put_layout_characters(uint64_t characters, uint64_t n) {
+  uint64_t k;
+
+  // n characters, at most eight, the first in the lowest byte, into the
+  // buffer at once
+
+  k = layout_bytes % WORDSIZE;
+
+  layout_word = layout_word + characters * layout_shift;
+
+  if (k + n >= WORDSIZE) {
+    // the word is full, the characters that did not fit begin the next
+
+    *(layout_buffer + layout_bytes / WORDSIZE) = layout_word;
+
+    if (k == 0)
+      layout_word = 0;
+    else
+      layout_word = characters / *(byte_powers + WORDSIZE - k);
+
+    layout_shift = *(byte_powers + k + n - WORDSIZE);
+
+    layout_bytes = layout_bytes + n;
+
+    if (layout_bytes >= LAYOUT_CHUNK * WORDSIZE)
+      flush_layout_words();
+  } else {
+    layout_shift = *(byte_powers + k + n);
+
+    layout_bytes = layout_bytes + n;
+  }
+}
+
+void put_layout_digits(uint64_t value) {
+  uint64_t word;
+  uint64_t k;
+  uint64_t i;
+
+  // the eight hexadecimal digits of the lower half of value, as the eight
+  // characters of one word, from a table of the two digits of a byte, and
+  // into the buffer at once: most of a layout is digits
+
+  if (hexadecimal_pairs == (uint64_t*) 0) {
+    hexadecimal_pairs = smalloc(256 * sizeof(uint64_t));
+
+    i = 0;
+
+    while (i < 256) {
+      if (i / 16 < 10)
+        word = '0' + i / 16;
+      else
+        word = 'a' + i / 16 - 10;
+
+      if (i % 16 < 10)
+        word = word + ('0' + i % 16) * 256;
+      else
+        word = word + ('a' + i % 16 - 10) * 256;
+
+      *(hexadecimal_pairs + i) = word;
+
+      i = i + 1;
+    }
+  }
+
+  word = *(hexadecimal_pairs + value / 16777216 % 256)
+    + *(hexadecimal_pairs + value / 65536 % 256) * 65536
+    + *(hexadecimal_pairs + value / 256 % 256) * 4294967296
+    + *(hexadecimal_pairs + value % 256) * 281474976710656;
+
+  k = layout_bytes % WORDSIZE;
+
+  if (k == 0)
+    *(layout_buffer + layout_bytes / WORDSIZE) = word;
+  else {
+    // the characters that fill the word, and the others for the next
+
+    *(layout_buffer + layout_bytes / WORDSIZE) = layout_word + word * layout_shift;
+
+    layout_word = word / *(byte_powers + WORDSIZE - k);
+  }
+
+  layout_bytes = layout_bytes + WORDSIZE;
+
+  if (layout_bytes >= LAYOUT_CHUNK * WORDSIZE)
+    flush_layout_words();
+}
+
+void print_layout_string(char* s) {
+  uint64_t i;
+
+  i = 0;
+
+  while (load_character(s, i) != 0) {
+    put_layout_character(load_character(s, i));
+
+    i = i + 1;
+  }
+}
+
+void print_layout_decimal(uint64_t n) {
+  uint64_t p;
+
+  // the highest power of ten in n first
+
+  p = 1;
+
+  while (n / p >= 10)
+    p = p * 10;
+
+  while (p > 0) {
+    put_layout_character('0' + n / p % 10);
+
+    p = p / 10;
+  }
+}
+
 void print_hexadecimal_digits(uint64_t value, uint64_t digits) {
+  uint64_t p;
   uint64_t digit;
 
-  while (digits > 0) {
-    digits = digits - 1;
+  if (layout_buffer != (uint64_t*) 0) {
+    if (digits == 16) {
+      put_layout_digits(value / 4294967296);
+      put_layout_digits(value);
 
-    digit = get_bits(value, digits * 4, 4);
+      return;
+    } else if (digits == 8) {
+      put_layout_digits(value);
+
+      return;
+    }
+  }
+
+  // the highest of the digits first
+
+  p = 1;
+
+  while (digits > 1) {
+    p = p * 16;
+
+    digits = digits - 1;
+  }
+
+  while (p > 0) {
+    digit = value / p % 16;
 
     if (digit < 10)
-      put_character('0' + digit);
+      digit = digit + '0';
     else
-      put_character('a' + digit - 10);
+      digit = digit - 10 + 'a';
+
+    if (layout_buffer == (uint64_t*) 0)
+      put_character(digit);
+    else if (layout_bytes % WORDSIZE == WORDSIZE - 1)
+      // the last character of a word
+      put_layout_character(digit);
+    else {
+      // as put_layout_character, without the call: most of a layout is digits
+
+      layout_word  = layout_word + digit * layout_shift;
+      layout_shift = layout_shift * 256;
+
+      layout_bytes = layout_bytes + 1;
+    }
+
+    p = p / 16;
   }
 }
 
 void print_heading(uint64_t heading) {
   if (heading == EAST)
-    put_character('E');
+    put_layout_character('E');
   else if (heading == NORTH)
-    put_character('N');
+    put_layout_character('N');
   else if (heading == WEST)
-    put_character('W');
+    put_layout_character('W');
   else
-    put_character('S');
+    put_layout_character('S');
 }
 
 void print_mirror(uint64_t mirror_kind) {
   if (mirror_kind == SLASH)
-    put_character('/');
+    put_layout_character('/');
   else
-    put_character(92);
+    put_layout_character(92);
 }
 
 void print_cell(uint64_t index) {
@@ -2429,23 +2698,23 @@ void print_cell(uint64_t index) {
   if (kind == CELL_MIRROR)
     print_mirror(get_cell_mirror(cell));
   else if (kind == CELL_ROUTER) {
-    put_character('R');
+    put_layout_character('R');
 
     print_mirror(get_cell_mirror(cell));
 
     if (get_router_field(word) == FIELD_PC)
-      put_character('p');
+      put_layout_character('p');
     else
-      put_character('a');
+      put_layout_character('a');
 
-    put_character('0' + get_router_bit(word) / 10);
-    put_character('0' + get_router_bit(word) % 10);
+    put_layout_character('0' + get_router_bit(word) / 10);
+    put_layout_character('0' + get_router_bit(word) % 10);
   } else if (kind == CELL_MEMORY) {
-    put_character('M');
+    put_layout_character('M');
 
     print_hexadecimal_digits(word, 16);
   } else if (kind == CELL_TAPE) {
-    put_character('T');
+    put_layout_character('T');
 
     print_hexadecimal_digits(word, 16);
   } else if (kind == CELL_INSTRUCTION) {
@@ -2454,12 +2723,12 @@ void print_cell(uint64_t index) {
 
     print_hexadecimal_digits(word, 8);
   } else
-    put_character('.');
+    put_layout_character('.');
 
   if (kind >= CELL_MEMORY)
     if (kind <= CELL_TAPE)
       if (is_cell_tagged(cell)) {
-        put_character('@');
+        put_layout_character('@');
 
         print_hexadecimal_digits(*(cell_tags + index), 16);
       }
@@ -2530,115 +2799,156 @@ void write_layout(char* name) {
   output_name = name;
   output_fd   = fd;
 
-  dprintf(output_fd, "#C cellfie layout, see cellfie.md\n");
-  dprintf(output_fd, "#T %lu %lu ", token_x, token_y);
+  layout_buffer = smalloc((LAYOUT_CHUNK + 1) * sizeof(uint64_t));
+
+  if (byte_powers == (uint64_t*) 0) {
+    byte_powers = smalloc((WORDSIZE + 1) * sizeof(uint64_t));
+
+    *byte_powers = 1;
+
+    i = 1;
+
+    while (i <= WORDSIZE) {
+      *(byte_powers + i) = *(byte_powers + i - 1) * 256;
+
+      i = i + 1;
+    }
+  }
+
+  layout_bytes = 0;
+  layout_word  = 0;
+  layout_shift = 1;
+
+  print_layout_string("#C cellfie layout, see cellfie.md\n");
+  print_layout_string("#T ");
+  print_layout_decimal(token_x);
+  print_layout_string(" ");
+  print_layout_decimal(token_y);
+  print_layout_string(" ");
 
   print_heading(token_heading);
 
-  put_character(' ');
+  put_layout_character(' ');
   print_hexadecimal_digits(token_pc, 16);
-  put_character(' ');
+  put_layout_character(' ');
   print_hexadecimal_digits(token_address, 16);
-  put_character(' ');
+  put_layout_character(' ');
   print_hexadecimal_digits(token_data, 16);
-  put_character(10);
+  put_layout_character(10);
 
   i = 1;
 
   while (i < NUMBEROFREGISTERS) {
     if (get_token_register(i) != 0) {
-      dprintf(output_fd, "#R %lu ", i);
+      print_layout_string("#R ");
+      print_layout_decimal(i);
+      print_layout_string(" ");
 
       print_hexadecimal_digits(get_token_register(i), 16);
 
-      put_character(10);
+      put_layout_character(10);
     }
 
     i = i + 1;
   }
 
   if (or(token_break != 0, or(token_open_files != 3, or(token_leg != LEG_NONE, or(token_word != 0, token_flight != 0))))) {
-    dprintf(output_fd, "#S ");
+    print_layout_string("#S ");
 
     print_hexadecimal_digits(token_break, 16);
-    put_character(' ');
+    put_layout_character(' ');
     print_hexadecimal_digits(token_open_files, 16);
-    put_character(' ');
+    put_layout_character(' ');
     print_hexadecimal_digits(token_leg, 1);
-    put_character(' ');
+    put_layout_character(' ');
     print_hexadecimal_digits(token_word, 16);
 
     if (token_flight != 0) {
-      put_character(' ');
+      put_layout_character(' ');
       print_hexadecimal_digits(token_flight, 16);
     }
 
-    put_character(10);
+    put_layout_character(10);
   }
 
   i = 0;
 
   while (i < NUMBER_OF_TAPES) {
     if (or(*(token_heads + i) != 0, or(*(token_ends + i) != 0, or(*(token_inputs + i) != (i == 0), *(token_opens + i) != 0)))) {
-      dprintf(output_fd, "#F %lu ", i);
+      print_layout_string("#F ");
+      print_layout_decimal(i);
+      print_layout_string(" ");
 
       print_hexadecimal_digits(*(token_heads + i), 16);
-      put_character(' ');
+      put_layout_character(' ');
       print_hexadecimal_digits(*(token_ends + i), 16);
-      put_character(' ');
+      put_layout_character(' ');
       print_hexadecimal_digits(*(token_inputs + i), 16);
-      put_character(' ');
+      put_layout_character(' ');
       print_hexadecimal_digits(*(token_opens + i), 16);
-      put_character(10);
+      put_layout_character(10);
     }
 
     i = i + 1;
   }
 
-  dprintf(output_fd, "x = %lu, y = %lu, rule = RISC-R\n", grid_width, grid_height);
+  print_layout_string("x = ");
+  print_layout_decimal(grid_width);
+  print_layout_string(", y = ");
+  print_layout_decimal(grid_height);
+  print_layout_string(", rule = RISC-R\n");
 
-  y = 0;
+  if (cell_kinds == (uint64_t*) 0)
+    // a compiled layout that is not on a grid
+    write_laid_cells();
+  else {
+    y = 0;
 
-  while (y < grid_height) {
-    // a row without the blank cells at its end
+    while (y < grid_height) {
+      // a row without the blank cells at its end
 
-    last = 0;
+      last = 0;
 
-    x = 0;
+      x = 0;
 
-    while (x < grid_width) {
-      if (not(is_blank_cell(cell_index(x, y))))
-        last = x + 1;
+      while (x < grid_width) {
+        if (not(is_blank_cell(cell_index(x, y))))
+          last = x + 1;
 
-      x = x + 1;
+        x = x + 1;
+      }
+
+      x = 0;
+
+      while (x < last) {
+        n = 1;
+
+        while (and(x + n < last, are_cells_equal(cell_index(x, y), cell_index((x + n) % grid_width, y))))
+          // the cells of a row up to last are on the grid, the remainder keeps the index there
+          n = n + 1;
+
+        if (n > 1)
+          print_layout_decimal(n);
+
+        print_cell(cell_index(x, y));
+
+        x = x + n;
+      }
+
+      y = y + 1;
+
+      if (y < grid_height)
+        put_layout_character('$');
+      else
+        put_layout_character('!');
+
+      put_layout_character(10);
     }
-
-    x = 0;
-
-    while (x < last) {
-      n = 1;
-
-      while (and(x + n < last, are_cells_equal(cell_index(x, y), cell_index((x + n) % grid_width, y))))
-        // the cells of a row up to last are on the grid, the remainder keeps the index there
-        n = n + 1;
-
-      if (n > 1)
-        dprintf(output_fd, "%lu", n);
-
-      print_cell(cell_index(x, y));
-
-      x = x + n;
-    }
-
-    y = y + 1;
-
-    if (y < grid_height)
-      put_character('$');
-    else
-      put_character('!');
-
-    put_character(10);
   }
+
+  flush_layout();
+
+  layout_buffer = (uint64_t*) 0;
 
   output_name = (char*) 0;
   output_fd   = STDOUT_FD;
@@ -5162,15 +5472,47 @@ void boot_binary(char* name, uint64_t arguments) {
     selfie_argv = smalloc(sizeof(uint64_t*));
   }
 
+  // no profiler: the binary is booted, not run
   reset_interpreter();
-  reset_profiler();
   reset_microkernel();
 
   init_memory(1);
 
   current_context = create_context(MY_CONTEXT, 0);
 
-  boot_loader(current_context);
+  // the boot loader names the binary after the machine that boots it, and
+  // puts the name on the stack: cellfie is the same machine wherever it
+  // runs, so that a layout is the same whether cellfie runs on a host,
+  // on an emulator, or on cellfie
+
+  name = selfie_name;
+
+  selfie_name = "./cellfie";
+
+  // as selfie's boot loader, but for the code and the data: the compiler
+  // takes them from the binary, and mapping them into the memory of a
+  // context takes selfie more than laying them out
+
+  set_pc(current_context, e_entry);
+
+  set_lowest_lo_page(current_context, page_of_virtual_address(code_start));
+  set_highest_lo_page(current_context, get_lowest_lo_page(current_context));
+
+  set_code_seg_start(current_context, code_start);
+  set_code_seg_size(current_context, code_size);
+  set_data_seg_start(current_context, data_start);
+  set_data_seg_size(current_context, data_size);
+  set_heap_seg_start(current_context, round_up(data_start + data_size, PAGESIZE));
+  set_program_break(current_context, get_heap_seg_start(current_context));
+
+  set_name(current_context, increment_boot_level_prefix(selfie_name, binary_name));
+
+  // pass binary name as first argument by replacing next argument
+  set_argument(get_name(current_context));
+
+  up_load_arguments(current_context, number_of_remaining_arguments(), remaining_arguments());
+
+  selfie_name = name;
 
   if (arguments) {
     // the arguments are the program's
@@ -5185,19 +5527,81 @@ void boot_binary(char* name, uint64_t arguments) {
 
 uint64_t differing_bit(uint64_t a, uint64_t b) {
   uint64_t bit;
+  uint64_t p;
 
-  // the highest bit in which a and b differ, assert: a != b
+  // the highest bit in which a and b differ, assert: a != b; split_power
+  // is two to its power. The keys of a comb are close, so from the lowest
+  // bit up: without their bits up to that bit a and b are the same.
 
-  bit = 63;
+  bit = 0;
 
-  while (get_bits(a, bit, 1) == get_bits(b, bit, 1))
-    bit = bit - 1;
+  p = 2;
+
+  while (a / p != b / p) {
+    bit = bit + 1;
+
+    if (bit == 63) {
+      split_power = p;
+
+      return bit;
+    }
+
+    p = p * 2;
+  }
+
+  split_power = p / 2;
 
   return bit;
 }
 
+uint64_t split_keys(uint64_t* keys, uint64_t lo, uint64_t hi) {
+  uint64_t first;
+  uint64_t mid;
+  uint64_t top;
+
+  // the first of the ascending keys from lo to hi - 1 in which the highest
+  // differing bit of all of them is set, which is split_bit: the first key
+  // that is no less than the last key without its bits below that bit
+
+  if (comb_mids != (uint64_t*) 0)
+    if (comb_filling == 0) {
+      // remembered
+
+      split_bit = *(comb_bits + comb_node);
+
+      comb_node = comb_node + 1;
+
+      return *(comb_mids + comb_node - 1);
+    }
+
+  split_bit = differing_bit(*(keys + lo), *(keys + hi - 1));
+
+  first = *(keys + hi - 1) / split_power * split_power;
+
+  // by halving: the key at lo is less, the key at top is not
+
+  top = hi - 1;
+
+  while (lo + 1 < top) {
+    mid = (lo + top) / 2;
+
+    if (*(keys + mid) < first)
+      lo = mid;
+    else
+      top = mid;
+  }
+
+  if (comb_mids != (uint64_t*) 0) {
+    *(comb_mids + comb_node) = top;
+    *(comb_bits + comb_node) = split_bit;
+
+    comb_node = comb_node + 1;
+  }
+
+  return top;
+}
+
 uint64_t comb_height(uint64_t* keys, uint64_t lo, uint64_t hi) {
-  uint64_t bit;
   uint64_t mid;
   uint64_t left;
   uint64_t right;
@@ -5207,12 +5611,7 @@ uint64_t comb_height(uint64_t* keys, uint64_t lo, uint64_t hi) {
   if (hi < lo + 2)
     return 0;
 
-  bit = differing_bit(*(keys + lo), *(keys + hi - 1));
-
-  mid = lo + 1;
-
-  while (get_bits(*(keys + mid), bit, 1) == 0)
-    mid = mid + 1;
+  mid = split_keys(keys, lo, hi);
 
   left  = comb_height(keys, lo, mid);
   right = comb_height(keys, mid, hi);
@@ -5223,17 +5622,393 @@ uint64_t comb_height(uint64_t* keys, uint64_t lo, uint64_t hi) {
     return right + 1;
 }
 
-void lay_cell(uint64_t x, uint64_t y, uint64_t cell, uint64_t word) {
-  // every cell is laid once
+void plan_grid(uint64_t width, uint64_t height, uint64_t cells) {
+  // a grid that is not allocated, and room for the cells to be laid
 
-  if (*(cell_kinds + cell_index(x, y)) != 0) {
-    printf("%s: cell (%lu,%lu) is laid twice\n", selfie_name, x, y);
+  set_grid_size(width, height);
+
+  grid_size = grid_width * grid_height;
+
+  cell_kinds = (uint64_t*) 0;
+  cell_words = (uint64_t*) 0;
+  cell_tags  = (uint64_t*) 0;
+
+  // not zeroed: every cell is written when it is laid, and zeroing
+  // takes selfie a loop
+
+  laid_xs    = smalloc(cells * sizeof(uint64_t));
+  laid_ys    = smalloc(cells * sizeof(uint64_t));
+  laid_kinds = smalloc(cells * sizeof(uint64_t));
+  laid_words = smalloc(cells * sizeof(uint64_t));
+  laid_tags  = smalloc(cells * sizeof(uint64_t));
+
+  number_of_laid_cells = 0;
+  max_laid_cells       = cells;
+
+  are_laid_cells_sorted = 0;
+}
+
+void lay_cell(uint64_t x, uint64_t y, uint64_t cell, uint64_t word) {
+  // every cell is laid once, which shows when the cells are sorted or
+  // put onto the grid
+
+  if (number_of_laid_cells >= max_laid_cells) {
+    printf("%s: more than %lu cells to lay\n", selfie_name, max_laid_cells);
 
     exit(EXITCODE_COMPILERERROR);
   }
 
-  *(cell_kinds + cell_index(x, y)) = cell;
-  *(cell_words + cell_index(x, y)) = word;
+  *(laid_xs + number_of_laid_cells)    = x;
+  *(laid_ys + number_of_laid_cells)    = y;
+  *(laid_kinds + number_of_laid_cells) = cell;
+  *(laid_words + number_of_laid_cells) = word;
+  *(laid_tags + number_of_laid_cells)  = 0;
+
+  number_of_laid_cells = number_of_laid_cells + 1;
+}
+
+void sort_laid_cells() {
+  uint64_t* counts;
+  uint64_t* xs;
+  uint64_t* ys;
+  uint64_t* kinds;
+  uint64_t* words;
+  uint64_t* tags;
+  uint64_t n;
+  uint64_t i;
+  uint64_t j;
+  uint64_t sum;
+  uint64_t x;
+  uint64_t kind;
+  uint64_t word;
+  uint64_t tag;
+
+  // the laid cells by row and, in a row, by column. By row by counting
+  // the cells of each row, which keeps the cells of a row in the order
+  // in which they were laid. That is nearly the order of their columns:
+  // combs are laid from west to east. A cell that is laid west of one
+  // laid before it in its row is moved there.
+
+  if (are_laid_cells_sorted)
+    return;
+
+  n = number_of_laid_cells;
+
+  counts = zmalloc((grid_height + 1) * sizeof(uint64_t));
+
+  i = 0;
+
+  while (i < n) {
+    *(counts + *(laid_ys + i)) = *(counts + *(laid_ys + i)) + 1;
+
+    i = i + 1;
+  }
+
+  sum = 0;
+
+  i = 0;
+
+  while (i < grid_height) {
+    j = *(counts + i);
+
+    *(counts + i) = sum;
+
+    sum = sum + j;
+
+    i = i + 1;
+  }
+
+  xs    = smalloc(n * sizeof(uint64_t));
+  ys    = smalloc(n * sizeof(uint64_t));
+  kinds = smalloc(n * sizeof(uint64_t));
+  words = smalloc(n * sizeof(uint64_t));
+  tags  = smalloc(n * sizeof(uint64_t));
+
+  i = 0;
+
+  while (i < n) {
+    j = *(laid_ys + i);
+
+    sum = *(counts + j);
+
+    *(counts + j) = sum + 1;
+
+    *(xs + sum)    = *(laid_xs + i);
+    *(ys + sum)    = j;
+    *(kinds + sum) = *(laid_kinds + i);
+    *(words + sum) = *(laid_words + i);
+    *(tags + sum)  = *(laid_tags + i);
+
+    i = i + 1;
+  }
+
+  // a cell west of the cell before it in its row moves west
+
+  i = 1;
+
+  while (i < n) {
+    if (*(ys + i) == *(ys + i - 1))
+      if (*(xs + i) < *(xs + i - 1)) {
+        x    = *(xs + i);
+        kind = *(kinds + i);
+        word = *(words + i);
+        tag  = *(tags + i);
+
+        j = i;
+
+        sum = 1;
+
+        while (sum) {
+          *(xs + j)    = *(xs + j - 1);
+          *(kinds + j) = *(kinds + j - 1);
+          *(words + j) = *(words + j - 1);
+          *(tags + j)  = *(tags + j - 1);
+
+          j = j - 1;
+
+          sum = 0;
+
+          if (j > 0)
+            if (*(ys + j - 1) == *(ys + i))
+              sum = *(xs + j - 1) > x;
+        }
+
+        *(xs + j)    = x;
+        *(kinds + j) = kind;
+        *(words + j) = word;
+        *(tags + j)  = tag;
+      }
+
+    i = i + 1;
+  }
+
+  laid_xs    = xs;
+  laid_ys    = ys;
+  laid_kinds = kinds;
+  laid_words = words;
+  laid_tags  = tags;
+
+  max_laid_cells = n;
+
+  are_laid_cells_sorted = 1;
+}
+
+void print_laid_cell(uint64_t i) {
+  uint64_t cell;
+  uint64_t kind;
+  uint64_t word;
+  uint64_t c;
+
+  // laid cell i as print_cell prints the cell of a grid, but with its
+  // characters put into the buffer together: a layout of a program is
+  // a million cells
+
+  cell = *(laid_kinds + i);
+  word = *(laid_words + i);
+
+  kind = cell % 8;
+
+  // a slash is 47, a backslash 92
+
+  if (cell / 32 % 2 == SLASH)
+    c = '/';
+  else
+    c = 92;
+
+  if (kind == CELL_MIRROR)
+    put_layout_characters(c, 1);
+  else if (kind == CELL_ROUTER) {
+    // R, the mirror, p or a, and the bit as two digits
+
+    c = 'R' + c * 256 + ('0' + word % 64 / 10) * 16777216 + ('0' + word % 64 % 10) * 4294967296;
+
+    if (word / 64 % 2 == FIELD_PC)
+      c = c + 'p' * 65536;
+    else
+      c = c + 'a' * 65536;
+
+    put_layout_characters(c, 5);
+  } else if (kind == CELL_INSTRUCTION) {
+    // the orientation, the mirror, and the instruction
+
+    kind = cell / 8 % 4;
+
+    if (kind == EAST)
+      c = 'E' + c * 256;
+    else if (kind == NORTH)
+      c = 'N' + c * 256;
+    else if (kind == WEST)
+      c = 'W' + c * 256;
+    else
+      c = 'S' + c * 256;
+
+    put_layout_characters(c, 2);
+
+    put_layout_digits(word);
+  } else {
+    if (kind == CELL_MEMORY)
+      put_layout_characters('M', 1);
+    else
+      put_layout_characters('T', 1);
+
+    put_layout_digits(word / 4294967296);
+    put_layout_digits(word);
+  }
+
+  if (kind != CELL_MIRROR)
+    if (cell % 8 != CELL_ROUTER)
+      if (cell / 64 % 2) {
+        put_layout_characters('@', 1);
+
+        word = *(laid_tags + i);
+
+        put_layout_digits(word / 4294967296);
+        put_layout_digits(word);
+      }
+}
+
+void write_laid_cells() {
+  uint64_t x;
+  uint64_t y;
+  uint64_t n;
+  uint64_t i;
+  uint64_t same;
+  uint64_t count;
+  uint64_t digits;
+
+  // the rows of a layout from the laid cells, as write_layout writes them
+  // from a grid: the laid cells take the place of the grid, and the i-th
+  // of them is cell i
+
+  sort_laid_cells();
+
+  cell_kinds = laid_kinds;
+  cell_words = laid_words;
+  cell_tags  = laid_tags;
+
+  i = 0;
+
+  y = 0;
+
+  while (y < grid_height) {
+    x = 0;
+
+    same = 0;
+
+    if (i < number_of_laid_cells)
+      same = *(laid_ys + i) == y;
+
+    while (same) {
+      if (*(laid_xs + i) < x) {
+        printf("%s: cell (%lu,%lu) is laid twice\n", selfie_name, *(laid_xs + i), y);
+
+        exit(EXITCODE_COMPILERERROR);
+      }
+
+      // the blank cells in between, as their number and a dot, and the
+      // cells from here on that print the same, as their number
+
+      count = *(laid_xs + i) - x;
+
+      x = *(laid_xs + i);
+
+      n = 1;
+
+      same = 1;
+
+      while (same) {
+        same = 0;
+
+        if (i + n < number_of_laid_cells)
+          if (*(laid_xs + i + n) == x + n)
+            if (*(laid_ys + i + n) == y)
+              if (are_cells_equal(i, i + n)) {
+                n = n + 1;
+
+                same = 1;
+              }
+      }
+
+      if (count == 1)
+        put_layout_characters('.', 1);
+      else if (count > 1) {
+        // the digits of the number, the lowest last, then the dot
+
+        same   = '.';
+        digits = 1;
+
+        while (count > 0) {
+          same = same * 256 + '0' + count % 10;
+
+          digits = digits + 1;
+
+          count = count / 10;
+        }
+
+        put_layout_characters(same, digits);
+      }
+
+      if (n > 1)
+        print_layout_decimal(n);
+
+      print_laid_cell(i);
+
+      x = x + n;
+      i = i + n;
+
+      same = 0;
+
+      if (i < number_of_laid_cells)
+        same = *(laid_ys + i) == y;
+    }
+
+    y = y + 1;
+
+    // the end of the row, or of the layout, and of the line
+
+    if (y < grid_height)
+      put_layout_characters('$' + 10 * 256, 2);
+    else
+      put_layout_characters('!' + 10 * 256, 2);
+  }
+
+  cell_kinds = (uint64_t*) 0;
+  cell_words = (uint64_t*) 0;
+  cell_tags  = (uint64_t*) 0;
+}
+
+void materialize_grid() {
+  uint64_t i;
+  uint64_t index;
+
+  // the grid with the laid cells on it, if it is not there yet
+
+  if (cell_kinds != (uint64_t*) 0)
+    return;
+  else if (grid_size == 0)
+    return;
+
+  cell_kinds = zmalloc(grid_size * sizeof(uint64_t));
+  cell_words = zmalloc(grid_size * sizeof(uint64_t));
+  cell_tags  = zmalloc(grid_size * sizeof(uint64_t));
+
+  i = 0;
+
+  while (i < number_of_laid_cells) {
+    index = cell_index(*(laid_xs + i), *(laid_ys + i));
+
+    if (*(cell_kinds + index) != 0) {
+      printf("%s: cell (%lu,%lu) is laid twice\n", selfie_name, *(laid_xs + i), *(laid_ys + i));
+
+      exit(EXITCODE_COMPILERERROR);
+    }
+
+    *(cell_kinds + index) = *(laid_kinds + i);
+    *(cell_words + index) = *(laid_words + i);
+    *(cell_tags + index)  = *(laid_tags + i);
+
+    i = i + 1;
+  }
 }
 
 void lay_tagged_cell(uint64_t x, uint64_t y, uint64_t cell, uint64_t word, uint64_t tag) {
@@ -5242,11 +6017,12 @@ void lay_tagged_cell(uint64_t x, uint64_t y, uint64_t cell, uint64_t word, uint6
 
   lay_cell(x, y, cell + 64, word);
 
-  *(cell_tags + cell_index(x, y)) = tag;
+  *(laid_tags + number_of_laid_cells - 1) = tag;
 }
 
 void lay_mirror(uint64_t x, uint64_t y, uint64_t mirror_kind) {
-  lay_cell(x, y, encode_cell(CELL_MIRROR, 0, mirror_kind), 0);
+  // as encode_cell has it: the mirror is bit 5 of a cell
+  lay_cell(x, y, CELL_MIRROR + mirror_kind * 32, 0);
 }
 
 void lay_comb(uint64_t* keys, uint64_t* xs, uint64_t lo, uint64_t hi, uint64_t y, uint64_t down, uint64_t field) {
@@ -5262,19 +6038,16 @@ void lay_comb(uint64_t* keys, uint64_t* xs, uint64_t lo, uint64_t hi, uint64_t y
   if (hi < lo + 2)
     return;
 
-  bit = differing_bit(*(keys + lo), *(keys + hi - 1));
+  mid = split_keys(keys, lo, hi);
 
-  mid = lo + 1;
-
-  while (get_bits(*(keys + mid), bit, 1) == 0)
-    mid = mid + 1;
+  bit = split_bit;
 
   if (down)
     mirror_kind = BACKSLASH;
   else
     mirror_kind = SLASH;
 
-  lay_cell(*(xs + lo), y, encode_cell(CELL_ROUTER, 0, mirror_kind), bit + field * 64);
+  lay_cell(*(xs + lo), y, CELL_ROUTER + mirror_kind * 32, bit + field * 64);
 
   lay_mirror(*(xs + mid), y, mirror_kind);
 
@@ -5300,12 +6073,9 @@ void lay_side_comb(uint64_t* keys, uint64_t* ys, uint64_t lo, uint64_t hi, uint6
   if (hi < lo + 2)
     return;
 
-  bit = differing_bit(*(keys + lo), *(keys + hi - 1));
+  mid = split_keys(keys, lo, hi);
 
-  mid = lo + 1;
-
-  while (get_bits(*(keys + mid), bit, 1) == 0)
-    mid = mid + 1;
+  bit = split_bit;
 
   lay_cell(x, *(ys + lo), encode_cell(CELL_ROUTER, 0, BACKSLASH), bit + field * 64);
 
@@ -5332,6 +6102,16 @@ uint64_t lay_path_combs(uint64_t* keys, uint64_t* outs, uint64_t* ins, uint64_t 
 
   strips = 0;
 
+  // where the nodes of the combs split is remembered from planning them
+
+  if (control) {
+    comb_mids = control_mids;
+    comb_bits = control_bits;
+  } else {
+    comb_mids = access_mids;
+    comb_bits = access_bits;
+  }
+
   lo = 0;
 
   while (lo < count) {
@@ -5349,7 +6129,12 @@ uint64_t lay_path_combs(uint64_t* keys, uint64_t* outs, uint64_t* ins, uint64_t 
       // from the west in the row south of the combs, north to the root, to
       // the row south of the path, and west and north into the cell
 
+      comb_node = lo;
+
       lay_comb(keys, outs, lo, hi, top + control_out_row, 1, FIELD_ADDRESS);
+
+      comb_node = lo;
+
       lay_comb(keys, ins, lo, hi, top + control_in_row, 0, FIELD_PC);
 
       lay_mirror(*(outs + lo), top + control_turn_row, BACKSLASH);
@@ -5362,7 +6147,12 @@ uint64_t lay_path_combs(uint64_t* keys, uint64_t* outs, uint64_t* ins, uint64_t 
       // combs, there west; from the west in the second row, south to the
       // root, to the row north of the path, and west and south into the cell
 
+      comb_node = lo;
+
       lay_comb(keys, outs, lo, hi, top + access_out_row, 0, FIELD_PC);
+
+      comb_node = lo;
+
       lay_comb(keys, ins, lo, hi, top + access_in_row, 1, FIELD_PC);
 
       lay_mirror(*(outs + lo), top + access_spine_row, SLASH);
@@ -5376,11 +6166,11 @@ uint64_t lay_path_combs(uint64_t* keys, uint64_t* outs, uint64_t* ins, uint64_t 
 
     while (i < hi) {
       if (control) {
-        lay_mirror(*(ins + i), top + path_row + 1, BACKSLASH);
         lay_mirror(*(outs + i), top + path_row + 1, BACKSLASH);
+        lay_mirror(*(ins + i), top + path_row + 1, BACKSLASH);
       } else {
-        lay_mirror(*(ins + i), top + path_row - 1, SLASH);
         lay_mirror(*(outs + i), top + path_row - 1, SLASH);
+        lay_mirror(*(ins + i), top + path_row - 1, SLASH);
       }
 
       i = i + 1;
@@ -5392,6 +6182,8 @@ uint64_t lay_path_combs(uint64_t* keys, uint64_t* outs, uint64_t* ins, uint64_t 
 
     lo = hi;
   }
+
+  comb_mids = (uint64_t*) 0;
 
   return strips;
 }
@@ -5424,12 +6216,9 @@ void lay_descending_comb(uint64_t* keys, uint64_t* xs, uint64_t lo, uint64_t hi,
     return;
   }
 
-  bit = differing_bit(*(keys + lo), *(keys + hi - 1));
+  mid = split_keys(keys, lo, hi);
 
-  mid = lo + 1;
-
-  while (get_bits(*(keys + mid), bit, 1) == 0)
-    mid = mid + 1;
+  bit = split_bit;
 
   // the column in which the comb of all words that differ from these keys
   // in this bit and the bits below would begin: that of its first word,
@@ -5636,6 +6425,14 @@ uint64_t plan_path_combs(uint64_t* keys, uint64_t count) {
 
   firsts = zmalloc(path_strips * sizeof(uint64_t));
 
+  // the splits of the combs of the strips are remembered, those of the
+  // strip that begins with key lo from lo on
+
+  comb_mids = smalloc((count + 1) * sizeof(uint64_t));
+  comb_bits = smalloc((count + 1) * sizeof(uint64_t));
+
+  comb_filling = 1;
+
   strips  = 0;
   highest = 0;
 
@@ -5650,6 +6447,8 @@ uint64_t plan_path_combs(uint64_t* keys, uint64_t count) {
 
     while (and(hi < count, (*(keys + hi) - code_start) / INSTRUCTIONSIZE / path_width == strip))
       hi = hi + 1;
+
+    comb_node = lo;
 
     height = comb_height(keys, lo, hi);
 
@@ -5666,9 +6465,70 @@ uint64_t plan_path_combs(uint64_t* keys, uint64_t count) {
     lo = hi;
   }
 
+  if (keys == control_keys) {
+    control_mids = comb_mids;
+    control_bits = comb_bits;
+  } else {
+    access_mids = comb_mids;
+    access_bits = comb_bits;
+  }
+
+  comb_mids = (uint64_t*) 0;
+
+  comb_filling = 0;
+
   side_height = comb_height(firsts, 0, strips);
 
   return highest;
+}
+
+uint64_t classify_instruction(uint64_t word) {
+  uint64_t op;
+  uint64_t f3;
+  uint64_t d;
+  uint64_t s1;
+
+  // CLASS_CONTROL for beq, jal, and jalr, CLASS_ACCESS for ecall and for
+  // ld with rd not zero, 0 for any other instruction and for any that is
+  // not RISC-R, as decode_cell and is_reversible_instruction have it, but
+  // from the fields that matter only: the compiler looks at every
+  // instruction, and decoding one takes thousands of instructions
+
+  op = word % 128;
+
+  if (op == OP_JAL)
+    return CLASS_CONTROL;
+
+  f3 = word / 4096 % 8;
+
+  if (op == OP_BRANCH) {
+    if (f3 == F3_BEQ)
+      return CLASS_CONTROL;
+  } else if (op == OP_SYSTEM) {
+    if (f3 == F3_ECALL)
+      return CLASS_ACCESS;
+  } else if (op == OP_JALR) {
+    d  = word / 128 % 32;
+    s1 = word / 32768 % 32;
+
+    // jalr rd,0(rd) with rd not zero
+
+    if (f3 == F3_JALR)
+      if (d == s1)
+        if (d != REG_ZR)
+          if (word / 1048576 % 4096 == 0)
+            return CLASS_CONTROL;
+  } else if (op == OP_LOAD) {
+    d  = word / 128 % 32;
+    s1 = word / 32768 % 32;
+
+    if (f3 == F3_LD)
+      if (d != REG_ZR)
+        if (d != s1)
+          return CLASS_ACCESS;
+  }
+
+  return 0;
 }
 
 void plan_path() {
@@ -5707,15 +6567,18 @@ void plan_path() {
   // the instructions: beq, jal, and jalr transfer control, ld with rd not
   // zero and ecall access memory, both leave and join the path sideways
 
-  instruction_classes = zmalloc(n * sizeof(uint64_t));
+  // not zeroed: written before they are read
 
-  control_keys = zmalloc(n * sizeof(uint64_t));
-  control_out  = zmalloc(n * sizeof(uint64_t));
-  control_in   = zmalloc(n * sizeof(uint64_t));
+  instruction_classes = smalloc(n * sizeof(uint64_t));
+  instruction_words   = smalloc(n * sizeof(uint64_t));
 
-  access_keys = zmalloc(n * sizeof(uint64_t));
-  access_out  = zmalloc(n * sizeof(uint64_t));
-  access_in   = zmalloc(n * sizeof(uint64_t));
+  control_keys = smalloc(n * sizeof(uint64_t));
+  control_out  = smalloc(n * sizeof(uint64_t));
+  control_in   = smalloc(n * sizeof(uint64_t));
+
+  access_keys = smalloc(n * sizeof(uint64_t));
+  access_out  = smalloc(n * sizeof(uint64_t));
+  access_in   = smalloc(n * sizeof(uint64_t));
 
   controls = 0;
   accesses = 0;
@@ -5723,22 +6586,23 @@ void plan_path() {
   i = 0;
 
   while (i < n) {
-    decode_cell(load_instruction(i * INSTRUCTIONSIZE));
+    // as load_instruction: two instructions to a word of the binary
 
-    if (is_reversible_instruction()) {
-      if (or(is == BEQ, or(is == JAL, is == JALR))) {
-        *(instruction_classes + i) = CLASS_CONTROL;
+    if (i % 2 == 0)
+      *(instruction_words + i) = *(code_binary + i / 2) % 4294967296;
+    else
+      *(instruction_words + i) = *(code_binary + i / 2) / 4294967296;
 
-        *(control_keys + controls) = code_start + i * INSTRUCTIONSIZE;
+    *(instruction_classes + i) = classify_instruction(*(instruction_words + i));
 
-        controls = controls + 1;
-      } else if (or(is == ECALL, and(is == LOAD, rd != REG_ZR))) {
-        *(instruction_classes + i) = CLASS_ACCESS;
+    if (*(instruction_classes + i) == CLASS_CONTROL) {
+      *(control_keys + controls) = code_start + i * INSTRUCTIONSIZE;
 
-        *(access_keys + accesses) = code_start + i * INSTRUCTIONSIZE;
+      controls = controls + 1;
+    } else if (*(instruction_classes + i) == CLASS_ACCESS) {
+      *(access_keys + accesses) = code_start + i * INSTRUCTIONSIZE;
 
-        accesses = accesses + 1;
-      }
+      accesses = accesses + 1;
     }
 
     i = i + 1;
@@ -5883,9 +6747,14 @@ uint64_t initial_word(uint64_t address) {
   } else if (address >= INPUT_TAPES) {
     if (address - INPUT_TAPES < input_size)
       return *(input_words + (address - INPUT_TAPES) / WORDSIZE);
-  } else if (address < OUTPUT_TAPES)
+  } else if (address < OUTPUT_TAPES) {
+    if (address >= data_start)
+      if (address < data_start + data_size)
+        return load_data(address - data_start);
+
     if (is_virtual_address_mapped(get_pt(current_context), address))
       return load_virtual_memory(get_pt(current_context), address);
+  }
 
   return 0;
 }
@@ -6058,12 +6927,7 @@ uint64_t split_strips(uint64_t lo, uint64_t hi) {
   // the first of the strips from lo to hi - 1 in whose addresses the
   // highest differing bit of all of them is set, which is split_bit
 
-  split_bit = differing_bit(*(strip_keys + lo), *(strip_keys + hi - 1));
-
-  mid = lo + 1;
-
-  while (get_bits(*(strip_keys + mid), split_bit, 1) == 0)
-    mid = mid + 1;
+  mid = split_keys(strip_keys, lo, hi);
 
   return mid;
 }
@@ -6358,7 +7222,12 @@ void lay_layout(char* name, uint64_t width, uint64_t height) {
   if (height < memory_in_row + memory_rows)
     height = memory_in_row + memory_rows;
 
-  allocate_grid(x, height);
+  // no more cells than these: the instructions, for each that leaves the
+  // path two mirrors next to it and two nodes of combs of two cells, a word
+  // with two nodes of combs, of three cells in a strip of the stack, and
+  // the wire of the strips
+
+  plan_grid(x, height, n + 6 * (controls + accesses) + 12 * number_of_region_words + 16 * (path_strips + number_of_strips) + 64);
 
   // the path, strip by strip: from the last instruction of a strip two
   // columns east, south to the last row of the strip, west to the column
@@ -6367,19 +7236,18 @@ void lay_layout(char* name, uint64_t width, uint64_t height) {
   i = 0;
 
   while (i < n) {
-    value = load_instruction(i * INSTRUCTIONSIZE);
-
-    decode_cell(value);
+    value = *(instruction_words + i);
 
     x = path_column + 2 * (i % path_width);
 
     j = SLASH;
 
-    if (is_reversible_instruction())
-      if (or(is == ECALL, and(is == LOAD, rd != REG_ZR)))
-        j = BACKSLASH;
+    if (*(instruction_classes + i) == CLASS_ACCESS)
+      j = BACKSLASH;
 
-    lay_tagged_cell(x, i / path_width * path_pitch + path_row, encode_cell(CELL_INSTRUCTION, EAST, j), value, code_start + i * INSTRUCTIONSIZE);
+    // as encode_cell has it: the orientation is bits 3 and 4 of a cell, the mirror bit 5
+
+    lay_tagged_cell(x, i / path_width * path_pitch + path_row, CELL_INSTRUCTION + EAST * 8 + j * 32, value, code_start + i * INSTRUCTIONSIZE);
 
     i = i + 1;
   }
@@ -6479,11 +7347,40 @@ void lay_layout(char* name, uint64_t width, uint64_t height) {
   i = 0;
 
   while (i < number_of_words) {
-    lay_tagged_cell(*(word_xs + i), *(word_ys + i), encode_cell(*(word_kinds + i), 0, 0), *(word_values + i), *(word_addresses + i));
+    // the words of a strip by ascending column, which in a strip of
+    // the stack is by descending address
 
-    *(word_cells + i) = cell_index(*(word_xs + i), *(word_ys + i));
+    hi = i + 1;
 
-    i = i + 1;
+    j = 1;
+
+    while (j) {
+      j = 0;
+
+      if (hi < number_of_words)
+        if (*(word_strips + hi) == *(word_strips + i)) {
+          hi = hi + 1;
+
+          j = 1;
+        }
+    }
+
+    j = i;
+
+    while (j < hi) {
+      if (is_stack_strip(*(word_strips + i)))
+        lo = i + hi - 1 - j;
+      else
+        lo = j;
+
+      lay_tagged_cell(*(word_xs + lo), *(word_ys + lo), *(word_kinds + lo), *(word_values + lo), *(word_addresses + lo));
+
+      *(word_cells + lo) = cell_index(*(word_xs + lo), *(word_ys + lo));
+
+      j = j + 1;
+    }
+
+    i = hi;
   }
 
   boot_token();
@@ -6583,6 +7480,8 @@ void construct_layout(char* name) {
   tape_parts = 0;
 
   compile_layout(name);
+
+  materialize_grid();
 
   kinds = cell_kinds;
   words = cell_words;
@@ -7025,12 +7924,20 @@ uint64_t* word_in_store(uint64_t address) {
   else
     table = 0;
 
-  offset = get_bits(address, 3, 29);
+  if (table == 0)
+    offset = address / WORDSIZE;
+  else
+    offset = address % 4294967296 / WORDSIZE;
 
   pages = (uint64_t*) *(store + table);
 
   if (pages == (uint64_t*) 0) {
-    pages = zmalloc(STORE_PAGES * sizeof(uint64_t*));
+    // the pages of a tape, or of all of memory
+
+    if (table == 0)
+      pages = zmalloc(VIRTUALMEMORYSIZE * GIGABYTE / WORDSIZE / PAGE_WORDS * sizeof(uint64_t*));
+    else
+      pages = zmalloc(STORE_PAGES * sizeof(uint64_t*));
 
     *(store + table) = (uint64_t) pages;
   }
@@ -7480,6 +8387,19 @@ uint64_t cellfie() {
       input_name = get_argument();
     else if (string_compare(argument, "-h"))
       run_hybrid(get_argument());
+    else if (string_compare(argument, "-memory")) {
+      // the virtual memory of the binaries booted from here on, in GB:
+      // their stack is at its end
+
+      VIRTUALMEMORYSIZE = atoi(get_argument());
+
+      if (VIRTUALMEMORYSIZE < 4)
+        return EXITCODE_BADARGUMENTS;
+
+      HIGHESTVIRTUALADDRESS = VIRTUALMEMORYSIZE * GIGABYTE - 1;
+
+      NUMBEROFPAGES = VIRTUALMEMORYSIZE * GIGABYTE / PAGESIZE;
+    }
     else if (string_compare(argument, "-tapes")) {
       NUMBER_OF_TAPES = atoi(get_argument());
 
@@ -7567,13 +8487,21 @@ uint64_t cellfie() {
       if (window_width == 0)
         return EXITCODE_BADARGUMENTS;
 
+      materialize_grid();
+
       write_window(get_argument());
     }
-    else if (string_compare(argument, "-f"))
+    else if (string_compare(argument, "-f")) {
+      materialize_grid();
+
       run_forward(atoi(get_argument()));
-    else if (string_compare(argument, "-b"))
+    } else if (string_compare(argument, "-b")) {
+      materialize_grid();
+
       run_backward(atoi(get_argument()));
-    else if (string_compare(argument, "-rev")) {
+    } else if (string_compare(argument, "-rev")) {
+      materialize_grid();
+
       if (not(run_forward_and_backward(atoi(get_argument()))))
         return EXITCODE_SYSTEMERROR;
     } else
@@ -7599,6 +8527,10 @@ int main(int argc, char** argv) {
   init_disassembler();
 
   init_model();
+
+  // RISC-R binaries are larger than the RISC-U binaries they are translated from
+  MAX_CODE_SIZE   = 4 * MAX_CODE_SIZE;
+  MAX_BINARY_SIZE = 4 * MAX_BINARY_SIZE;
 
   INPUT_TAPES  = two_to_the_power_of(63);
   CELL_ADDRESSES = two_to_the_power_of(61);

@@ -2,7 +2,7 @@
 
 This document explains the optimizations in RISC-R (`riscr.md`) and cellfie (`cellfie.md`) with one running example and with numbers before and after each step. It is kept up to date: a change that moves one of its numbers changes this document in the same commit, and the last section says how each number is reproduced.
 
-Last updated November 24, 2026, at the commit that folds the path.
+Last updated November 24, 2026, at the commit that runs the layout compiler on cellfie (M11); the layouts are those of the commit that folds the path.
 
 ## The Running Example
 
@@ -291,6 +291,32 @@ Three more changes are not about how fast a program runs on the grid but about b
 The hybrid simulator is what the numbers for selfie in this document come from. It is tied to the event-driven simulator by `make hybrid`: on the 17 symbolic examples that exit, the running example among them, both stop with the same exit code after the same number of instructions and the same number of ticks, for every layout above.
 
 Cells that know their address (tags, `invalid-address` and `invalid-pc`) are not an optimization, but every layout step relied on them: a token that a new comb sends to the wrong word stops there instead of computing something else.
+
+## Part 4: The Layout Compiler Itself
+
+The layout compiler is a C\* program. To run it on cellfie (M11), selfie compiles it and riscr translates it, and then every RISC-U instruction it executes costs 3.6 RISC-R instructions and two thirds of a word of history. What it cost to compile a layout, in RISC-U instructions on mipster, natively in seconds, and in memory:
+
+| Compiling and writing the layout of | Before | After |
+| --- | --- | --- |
+| the running example, RISC-U instructions on mipster | 40,351,841 | 4,740,688 |
+| per compiled instruction | 31,000 | 2,700 |
+| per character written | 520 | 80 |
+| selfie (160,220 instructions), natively | 9.8 seconds, 1.6GB | 0.09 seconds |
+| selfie, RISC-U instructions on mipster | more than 10^10, not finished | 703,546,877 |
+| cellfie (355,548 instructions), natively | 5.7 seconds after the first step | 0.2 seconds |
+
+| Step | What it was | What it is |
+| --- | --- | --- |
+| Cells as a list | a grid of three words a cell, allocated and scanned: 67 million cells for the 672,698 of selfie's layout | a list of the cells laid, sorted by row |
+| Where a comb splits | the highest differing bit by scanning down from bit 63 with two `get_bits` a bit, then a scan for the first key with the bit | the bit by doubling a power, the key by halving, and both remembered from planning for laying |
+| The class of an instruction | all fields decoded, twice per instruction | the opcode and the two fields that matter, once |
+| Characters | one system call per character, through selfie's `printf` | a buffer of words; the characters of a cell together, eight hexadecimal digits as one word from a table |
+| Booting the binary | code and data mapped into a context, word by word, to learn the stack pointer and the program break | segments set, arguments on the stack, nothing mapped |
+| Zeroed memory | `zmalloc` of arrays for eight cells per instruction, zeroed by a loop | arrays of what is needed, not zeroed if written first |
+
+None of this changed a layout: after each step the files were compared with those of the step before. The cost model that the profile gave, and that predicted each step, is that a procedure call or a loop iteration of C\* is about 40 RISC-U instructions, whatever it does: `get_bits` is five calls, `and(a, b)` three.
+
+With that, cellfie compiles its own binary on cellfie: 5,586,386,911 RISC-R instructions for 1.5 billion RISC-U instructions, 9.96·10^14 ticks, 21 minutes, 9.5GB, and the layout is the one the host writes, byte for byte (`make cellfie-on-cellfie`).
 
 ## What Is Not Optimized
 

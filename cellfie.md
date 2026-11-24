@@ -301,10 +301,36 @@ Construction is slow, and for the same reason running was: the constructor is it
 
 What a constructor does not do yet: start the program it built, since the token it has is its own and ends at its exit; build anything but a layout that the compiler computed for it; and build itself.
 
+## The Layout Compiler on Cellfie
+
+Cellfie is a C\* program, so selfie compiles it and riscr translates it, and the result is a RISC-R binary that cellfie can run: the layout compiler on the machine it compiles for. `make cellfie-on-cellfie` has it compile its own binary there.
+
+```
+./selfie -c selfie.h tools/btor2.h tools/cellfie.c -o cellfie-u.m
+./riscr -l cellfie-u.m -history 12288 -t cellfie-r.r
+./cellfie -c cellfie-r.r -o L0.rle
+./cellfie -memory 16 -tapes 8 -tapewords 4194304 -heap 0 1800000000 -stack 1000000 -h cellfie-r.r -c cellfie-r.r -o L1.rle
+cmp L0.rle L1.rle
+```
+
+`L0.rle` is the layout of cellfie's binary as cellfie compiles it on the host. `L1.rle` is the layout of the same binary as that binary compiles it, running on cellfie's hybrid simulator. They are the same file: 355,548 instruction cells among 1,488,779 cells on a grid of 16,384 times 8,192, 14.7MB as text. The run takes 5,586,386,911 RISC-R instructions, 995,720,340,899,180 ticks, 21 minutes of the host, and 9.5GB, most of it the history of 1.5 billion RISC-U instructions.
+
+Four things had to change for this, none of them in the cell rule:
+
+- **The compiler lays cells as a list.** A grid is almost all blank: cellfie's own layout has 1.5 million cells on 134 million. The compiler used to allocate the grid, three words a cell, and to scan it to write it. It now appends each cell it lays to a list, sorts the list by row, and writes rows from it; the grid is allocated only when a token is to run on it (`-f`, `-b`, `-rev`, `-window`, `-k`). The layouts are the same files.
+- **The compiler does not use selfie's bit operations where it handles every instruction or every character.** `get_bits`, `left_shift`, and `and` are procedures in C\*, and a procedure call is about 40 RISC-U instructions. Classifying an instruction by decoding it took 7,000 instructions, finding where a comb splits 20,000, and writing a character 520. The compiler now classifies by the fields that matter, splits by comparing keys, remembers the splits of the combs of the path from planning them, and puts the characters of a cell into a buffer together.
+- **A layout does not depend on where cellfie runs.** Selfie's boot loader names a binary after the machine that boots it and puts the name on the stack, and the stack is part of a layout. Cellfie boots under one name, so the layout is the same on the host, on mipster, on riscr, and on cellfie.
+- **Riscr relays far jumps, and cellfie has more than 4GB of memory.** Translated, cellfie is 1.4MB of code, and `jal` reaches 1MB: see the Bennett translation in `riscr.md`. And a history stack for 1.5 billion instructions is 8GB: `-memory GB` sets the virtual memory of the binaries cellfie boots, with the stack at its end.
+
+The same binary also compiles a small layout on riscr, forward and backward to its initial state, and on mipster, to the file the host writes.
+
+What this is not: the layout `L1` is not built on a grid by the program that computed it. The layout compiler writes a file, as selfie writes a binary; the constructor of the section before builds a layout from a tape that cellfie wrote. Joining the two, a compiler that constructs what it compiles, is what is left of self-reproduction.
+
 ## Not There Yet
 
 - Files of the host on a grid: the hybrid simulator has them, the event-driven simulator and the model do not. There input is what the layout holds and output stays on its tape.
 - Words without a cell are detected where the cells are tagged, which is in compiled layouts: `invalid-address` when the token is at the wrong word. A `brk` beyond the cells of the heap is not detected before the first access, and the layouts written by hand have no tags. A token that leaves the wire altogether, for want of a mirror, just goes around the torus.
+- A layout that is computed and constructed in one run: the layout compiler writes a file, the constructor takes its tape from cellfie on the host.
 - Construction in the hybrid simulator: an `ld` at the address of a cell is an `invalid-address` there, so a constructor only runs event-driven.
 - A flight whose destination is in the column or in the row of the cell it left, or in the row north of it, has corners that coincide. The rule is defined there and a bijection, but the token does not come back; no property says so.
 - RISC-U cells, which overwrite `rd` and join paths without a come-from. Their rule is no bijection, and bitr should find two states with the same successor.
