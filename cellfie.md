@@ -16,6 +16,8 @@ The token is at one cell and has a heading, east, north, west, or south. It carr
 
 The token also carries the state of RISC-R's system calls: the program break, the next file descriptor, and for each of four file descriptors the head of its tape in words, the end of its file in bytes, whether its tape is an input tape, and whether the host can open its file. The words of the tapes are in cells. During a `read` or `write` the token carries two more numbers, zero otherwise: the *leg*, what it is on its way to, and the number of the *word* it transfers. The token is the processor and its kernel, the grid is code and storage.
 
+One more word of the token, its *flight*, is zero unless the token is on its way to a cell of the grid to exchange a part of it, see Construction.
+
 One *tick* is: the cell under the token acts on the token, then the token moves one cell along its heading. Nothing else changes in a tick, so simulating a tick costs one cell, whatever the size of the grid. Backward, a tick is: the token moves one cell back against its heading, then the cell there undoes what it did.
 
 ## Cells
@@ -132,7 +134,7 @@ E/00100a13E/00300293$
 13./M0000000000000000R/a03!
 ```
 
-Lines starting with `#C` are comments. `#T x y heading pc address datum` is the token, at the northwestern cell heading east with all words zero if missing; `#R register value` sets a register. `#S break open-files leg word` is the program break, the next file descriptor, and the leg and word of a transfer, 0, 3, 0, and 0 if missing. `#F descriptor head end input open` is a file descriptor: the head of its tape, the end of its file, whether the tape is an input tape, and whether the host can open the file; all zero if missing, except that the tape of descriptor 0 is an input tape. Column, row, register, and descriptor are decimal, all other numbers hexadecimal. The header gives the size of the grid, which is rounded up to powers of two, and the rule, `RISC-R`. Reversibility is a switch, and the rule in the header is where a layout says which way it is set; cells that follow RISC-U are not implemented yet, so cellfie refuses `RISC-U`.
+Lines starting with `#C` are comments. `#T x y heading pc address datum` is the token, at the northwestern cell heading east with all words zero if missing; `#R register value` sets a register. `#S break open-files leg word` is the program break, the next file descriptor, and the leg and word of a transfer, 0, 3, 0, and 0 if missing; a fifth number is the flight of a token in flight, see Construction. `#F descriptor head end input open` is a file descriptor: the head of its tape, the end of its file, whether the tape is an input tape, and whether the host can open the file; all zero if missing, except that the tape of descriptor 0 is an input tape. Column, row, register, and descriptor are decimal, all other numbers hexadecimal. The header gives the size of the grid, which is rounded up to powers of two, and the rule, `RISC-R`. Reversibility is a switch, and the rule in the header is where a layout says which way it is set; cells that follow RISC-U are not implemented yet, so cellfie refuses `RISC-U`.
 
 The cells follow row by row. A decimal number in front of a cell repeats it, `$` ends a row, a number in front of `$` ends that many rows, the rest of a row is blank, and `!` ends the layout. Line breaks and spaces between cells are ignored. A memory cell is `M` and a tape cell `T`, each with its word as sixteen hexadecimal digits. A memory, tape, or instruction cell is tagged by `@` and sixteen hexadecimal digits after it, as in `M0000000000000007@0000000000011000`. A router is `R`, its mirror, `p` or `a`, and the bit as two decimal digits. An instruction cell is its orientation `E`, `N`, `W`, or `S`, its mirror, and its instruction as eight hexadecimal digits.
 
@@ -144,7 +146,7 @@ The cells follow row by row. A decimal number in front of a cell repeats it, `$`
 
 ## Model
 
-`./cellfie -btor2 width height` writes the rule for a grid of that size as BTOR2 model `cellfie-WxH.btor2`, and with `-inverse` before it the inverse rule as `cellfie-WxH-inverse.btor2`. Both have the same eighteen states: `token-x`, `token-y`, `token-heading`, `token-pc`, `token-address`, `token-data`, `token-break`, `token-open-files`, `token-leg`, `token-word`, `token-registers`, `token-tape-heads`, `token-tape-ends`, `token-tape-inputs`, `token-tape-opens`, `cell-kinds`, `cell-words`, and `cell-tags`. None is initialized: a layout is the initial state, and without one all states are free. The properties are the bad states of the rule; with `-noproperties` they are left out, which is the model `cellfie-WxH-noproperties.btor2` of the rule alone. The inverse rule has no properties.
+`./cellfie -btor2 width height` writes the rule for a grid of that size as BTOR2 model `cellfie-WxH.btor2`, and with `-inverse` before it the inverse rule as `cellfie-WxH-inverse.btor2`. Both have the same nineteen states: `token-x`, `token-y`, `token-heading`, `token-pc`, `token-address`, `token-data`, `token-break`, `token-open-files`, `token-leg`, `token-word`, `token-registers`, `token-tape-heads`, `token-tape-ends`, `token-tape-inputs`, `token-tape-opens`, `cell-kinds`, `cell-words`, `cell-tags`, and `token-flight`. None is initialized: a layout is the initial state, and without one all states are free. The properties are the bad states of the rule; with `-noproperties` they are left out, which is the model `cellfie-WxH-noproperties.btor2` of the rule alone. The inverse rule has no properties.
 
 A cell of `cell-kinds` is 8 bits: the kind in bits 0 to 2 (blank 0, mirror 1, router 2, memory 3, instruction 4, tape 5, all others blank), the orientation in bits 3 and 4 (east 0, north 1, west 2, south 3), the mirror in bit 5 (`/` 0, `\` 1), and whether the cell is tagged in bit 6. A word of `cell-words` is the instruction in its lower half, the memory or tape word, or the bit of a router in bits 0 to 5 with bit 6 set for the address.
 
@@ -245,10 +247,66 @@ Files are the host's, as in riscr: `openat` opens the file whose name is in memo
 
 The first step is the dimension, a factor of 1,072. The second is a measurement: of 647 million legs to a word, 39% go to the stack, which was in the far corner, 54% to the heap, most of them pushes onto the history stack, and 6% to the data segment. Control transfers are 45 million and one percent of the ticks. The third takes the way along the path, 90,000 ticks per leg, down to the few thousand of a strip and its rows. What is left is the way to the history stack, which every push finds a word further on, and to the heap behind it.
 
+## Construction
+
+Loading a program onto a grid is writing its cells. With `-c` cellfie writes them. A machine that is to hold more than one program, or to make copies of itself, has to write cells itself, by its own rule, and reversibly. Cellfie's rule can: a program exchanges a register with a part of a cell as it exchanges it with a word of memory.
+
+### Cells Have Addresses
+
+The address 2^61 plus *part* times 2^56 plus *row* times 2^28 plus *column* is the address of a part of the cell in that row and column: part 0 is the eight bits of its kind, orientation, mirror, and tagged flag, part 1 its word, part 2 its tag. `ld rd,imm(rs1)` at such an address exchanges `rd` with that part, the lowest eight bits of `rd` for part 0. Nothing else is new: no instruction, no system call, no kind of cell. A blank cell is all zero, so exchanging a register with the three parts of a blank cell writes a cell and leaves the register zero, and exchanging again takes the cell off the grid and puts it back into the register.
+
+### Flight
+
+No wire leads to a blank cell. A token on its way to a part of a cell *flies*: it has one more word, its *flight*, which is zero on a path and on wire, and no cell acts on a token whose flight is not zero, except the cell it left.
+
+- The instruction cell of the `ld` sets the flight to where it is, 2^63 plus its row times 2^28 plus its column, turns the token south as for any `ld`, and puts the address into the token's address.
+- The token flies a rectangle: south to the row of its address, east to the column of its address, north to the row north of the cell it left, west to the column of that cell, and south into it. It turns in the four corners as at a mirror; which cells are corners follows from its position, its address, and its flight, and from nothing on the grid. Rows and columns count around the torus.
+- In the corner that is its destination it exchanges its datum with the part of the cell there.
+- Back at the cell it left, which is the one cell whose position is its flight, the cell acts as on any token arriving at its side: the datum becomes `rd`, the address is uncomputed, the flight is zero again.
+
+A flight costs twice the columns plus twice the rows to its destination, plus 2 ticks. It is local: only the token and the cell under it change, and only in the one tick at the destination. It is reversible: a mirror and an exchange are their own inverses, so the inverse rule flies the same rectangle the other way round. Bitr proves the rule with flight a bijection on all nineteen states, with no constraint, as before; the properties of a token hold only if its flight is zero, since a token in flight is not at the cells it is over.
+
+A token flies over anything, its own program and cells it has just written included, which is what a wire could not do. The price is one word in the token and a rule in which a cell does not always act on the token above it.
+
+### The Constructor
+
+`./cellfie -k binary` compiles the binary into a layout, as `-c` does, and then writes, instead of that layout, a *constructor* for it: a RISC-R program of 18 instructions with a tape in its memory, on a grid that has a blank *window* of the size of the layout south of it. The tape has two words for each part of a cell of the layout that is not zero: the address of the part in the window, and the part. The program is one loop:
+
+```
+loop:  ld t0,0(s1)     the address of a part, from the tape
+       ld t1,8(s1)     the part, from the tape
+       ld t1,0(t0)     exchange it with the part of the cell: a flight
+       ld t1,8(s1)     what was there, onto the tape
+       ld t0,0(s1)     the address, back onto the tape
+       addi s1,zero,16
+       ...             count, and branch back while parts are left
+       ecall           exit
+```
+
+It moves the layout from the tape onto the grid. It keeps no history and leaves no garbage: when it exits, the window holds the layout, the tape holds the addresses and, where the parts were, what the window held before, which is zeros, and the registers hold a counter and a pointer. Backward it takes the layout apart and puts it back onto the tape. Run on a window that is not blank it exchanges all the same, and the tape then holds what was there.
+
+`-window layout` writes the cells of the window as a layout of its size. `make construct` does this for the hand-laid test program and for the running example of `optimizations.md`: the constructor runs to its exit, back to its initial state, and to its exit again; the cells of the window are then the cells of the compiled layout, as files; and with the token of the compiled layout they run the program to its exit code.
+
+| | Test program | `recursive-fibonacci-1-10` |
+| --- | --- | --- |
+| Instructions of the program | 22 | 704 |
+| Layout of the program | 64 x 256 | 512 x 1024 |
+| Parts on the tape | 1,216 | 23,477 |
+| Grid of the constructor | 512 x 1024 | 4096 x 4096 |
+| Instructions the constructor executes | 12,166 | 234,776 |
+| Ticks | 4,723,824 | 296,466,548 |
+| Ticks per part | 3,885 | 12,628 |
+
+Construction is slow, and for the same reason running was: the constructor is itself a compiled layout, its tape is its memory, twice as many words as the layout has parts, and every part costs four legs to the tape and one flight. The tape is far larger than what it describes: 47,000 words in strips for a layout of 14,521 cells.
+
+What a constructor does not do yet: start the program it built, since the token it has is its own and ends at its exit; build anything but a layout that the compiler computed for it; and build itself.
+
 ## Not There Yet
 
 - Files of the host on a grid: the hybrid simulator has them, the event-driven simulator and the model do not. There input is what the layout holds and output stays on its tape.
 - Words without a cell are detected where the cells are tagged, which is in compiled layouts: `invalid-address` when the token is at the wrong word. A `brk` beyond the cells of the heap is not detected before the first access, and the layouts written by hand have no tags. A token that leaves the wire altogether, for want of a mirror, just goes around the torus.
+- Construction in the hybrid simulator: an `ld` at the address of a cell is an `invalid-address` there, so a constructor only runs event-driven.
+- A flight whose destination is in the column or in the row of the cell it left, or in the row north of it, has corners that coincide. The rule is defined there and a bijection, but the token does not come back; no property says so.
 - RISC-U cells, which overwrite `rd` and join paths without a come-from. Their rule is no bijection, and bitr should find two states with the same successor.
 - The comparison with RISC-R is 19 programs and one run each, with one input. The cell rule and rotor's model are not compared on all states: an instruction takes one step in one and a number of ticks without bound in the other, so that proof needs the cells of a transfer and the wire between them, not the rule alone. The examples read one byte, so nothing has been compared for other inputs.
 - An `ld` at an address that is not word-aligned is not a property: no router looks at the lowest three bits.

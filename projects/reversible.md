@@ -1,6 +1,6 @@
 # selfie · cellfie · bitr — development plan
 
-Oct 30, 2026 · Christoph Kirsch · updated Nov 23, 2026: encodings frozen, M6, M7, M8, and M13 done, by hybrid simulation, rotor's `write` corrected, cellfie before the rest of RISC-R; Nov 6: M2 done; Nov 5: M16 garbage-free riscr, M17 reversible hypster; Nov 2: RISC-R moved into its own tool, riscr
+Oct 30, 2026 · Christoph Kirsch · updated Nov 24, 2026: M10 done; Nov 23: encodings frozen, M6, M7, M8, and M13 done, by hybrid simulation, rotor's `write` corrected, cellfie before the rest of RISC-R; Nov 6: M2 done; Nov 5: M16 garbage-free riscr, M17 reversible hypster; Nov 2: RISC-R moved into its own tool, riscr
 
 ## Goal and design rules
 
@@ -143,7 +143,7 @@ Cellfie is one C\* file, `tools/cellfie.c`. Each cell holds one RISC-R instructi
 
 **Running all of selfie.** Event-driven simulation costs tens to thousands of ticks per instruction, mostly memory round trips. Selfie's self-compilation, around 10⁸–10⁹ instructions, should then take hours when run natively. That needs measuring. Hybrid simulation stays as the fallback: abstract RISC-R steps wherever nobody is watching.
 
-**Constructor and tape.** Loading a program means constructing it. A constructor token reads a tape and writes instruction and memory cells into blank space. The tape is kept, so the global map stays injective. The layout compiler is the shortcut that writes the same cells directly. Self-replication, a program that writes a copy of its own cells, follows Avida's precedent.
+**Constructor and tape.** Loading a program means constructing it. A constructor token reads a tape and writes instruction and memory cells into blank space. The tape is kept, so the global map stays injective. The layout compiler is the shortcut that writes the same cells directly. Self-replication, a program that writes a copy of its own cells, follows Avida's precedent. (M10: there is no separate constructor token. The parts of a cell have addresses, `ld` at such an address exchanges a register with the part, and the token of the program flies there and back, ignored by the cells in between; a constructor is a RISC-R program with a tape in its memory that moves a layout from the tape into a blank window of its grid, and backward takes it apart. The tape keeps the addresses and gets what the window held. See `cellfie.md`.)
 
 **The three selfie analogies:**
 
@@ -206,7 +206,7 @@ The critical path runs M1 → M3 → M5 → M7 → M8. M7 is the first time cell
 | M7 | cellfie | A hand-laid program of a few instructions, including a branch and a memory exchange; done November 23, 2026, on M6a, with a loop, three memory exchanges, and a call | M5, M6 | `make product`: bitr's product check against rotor's model passes at every instruction of the run, to the end; the run matches riscr in exit code and number of instructions |
 | M8 | cellfie | Layout compiler from RISC-R binaries; done November 23, 2026, `cellfie -c`, with the abstraction for bitr's product | M7 | `make layouts`: selfie-compiled examples run on cellfie identically to riscr, in exit code and number of instructions, and to rotor's model step by step; 17 of 18, the 18th accesses memory that does not exist |
 | M9 | selfie | `+=`, `-=` and `^=` in C\*, compiled without history | M2 | the history stack stays empty for programs that use only these; selfie still compiles with gcc |
-| M10 | cellfie | Construction ISA, constructor, tape emission | M8 | constructor plus tape plus blank grid reaches exactly the compiled layout plus tape and idle constructor |
+| M10 | cellfie | Construction ISA, constructor, tape emission; done November 24, 2026: the ISA is `ld` at the address of a part of a cell, reached by flight, the constructor 18 RISC-R instructions with a tape in memory, emitted by `cellfie -k` | M8 | `make construct`: constructor plus tape plus blank window reaches exactly the compiled layout plus tape and idle constructor, and back; the window as a file is the compiled layout and runs |
 | M11 | cellfie | Self-compilation fixed point: the layout compiler, compiled by selfie to RISC-R, runs on cellfie | M8, M10 | L1 = L0 byte for byte |
 | M12 | bitr | Backward BMC on the inverse model, compared with forward BMC and with meet-in-the-middle joined on the property's cone of influence | M5 | a written comparison on the examples (research result, not a pass/fail gate), with solver time, trimmed DRAT proof size, and the proof's variables per frame split into free and defined bits, see information as proof size; branching unrestricted, restricted to free bits, and prioritised by free bits and by sampled influence |
 | M13 | cellfie | All of selfie on cellfie; done November 23, 2026, by hybrid simulation (`cellfie -h`), since the layout has 550 million words and cannot be laid out; cells can be tagged with their address, so that an access without a cell is a property | M8 | `make hybrid`: hybrid and event-driven simulation agree on exit code, instructions, and ticks for the symbolic examples; `make selfie-on-cellfie`: selfie compiles itself on cellfie with output identical to riscr's, in riscr's number of instructions; ticks and seconds reported |

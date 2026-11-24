@@ -1753,6 +1753,17 @@ void load_layout(char* name) {
 
       set_state(find_state("token-leg"), n);
       set_state(find_state("token-word"), scan_layout_hexadecimal(0));
+
+      // the flight of the token, if there is one
+
+      skip_layout_blanks(0);
+
+      c = layout_character();
+
+      if (or(and(c >= '0', c <= '9'), or(and(c >= 'a', c <= 'f'), and(c >= 'A', c <= 'F'))))
+        set_state(find_state("token-flight"), scan_layout_hexadecimal(0));
+
+      c = 'S';
     } else if (c == 'F') {
       layout_pos = layout_pos + 1;
 

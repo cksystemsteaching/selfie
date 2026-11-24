@@ -211,7 +211,7 @@ cache: selfie selfie.m selfie.s examples/cache/dcache-access-[01].c
 .PHONY: sat brr bzz mon smt beat beator-btor2 rot synthesize rotor-btor2 btor2 more all
 
 # Run more that only requires standard tools and is not too slow
-more: sat brr bzz mon smt beat beator-btor2 rot synthesize rotor-btor2 rev trust riscr-model sim bmc cdcl identity cells product tapes layouts hybrid
+more: sat brr bzz mon smt beat beator-btor2 rot synthesize rotor-btor2 rev trust riscr-model sim bmc cdcl identity cells product tapes layouts hybrid construct
 
 # Run all that only requires standard tools and is not too slow
 all: less more
@@ -504,9 +504,9 @@ cells: cellfie bitr selfie selfie.h
 	  ./cellfie -noproperties -btor2 $$1 $$2 > /dev/null && \
 	  ./cellfie -inverse -btor2 $$1 $$2 > /dev/null || exit 1; \
 	  ./bitr cellfie-$$1x$$2-noproperties.btor2 -identity cellfie-$$1x$$2-inverse.btor2 | tee cellfie-identity.txt; \
-	  grep -q "cellfie-$$1x$$2-inverse.btor2 after cellfie-$$1x$$2-noproperties.btor2 is the identity on all 18 states" cellfie-identity.txt || exit 1; \
+	  grep -q "cellfie-$$1x$$2-inverse.btor2 after cellfie-$$1x$$2-noproperties.btor2 is the identity on all 19 states" cellfie-identity.txt || exit 1; \
 	  ./bitr cellfie-$$1x$$2-inverse.btor2 -identity cellfie-$$1x$$2-noproperties.btor2 | tee cellfie-identity.txt; \
-	  grep -q "cellfie-$$1x$$2-noproperties.btor2 after cellfie-$$1x$$2-inverse.btor2 is the identity on all 18 states" cellfie-identity.txt || exit 1; \
+	  grep -q "cellfie-$$1x$$2-noproperties.btor2 after cellfie-$$1x$$2-inverse.btor2 is the identity on all 19 states" cellfie-identity.txt || exit 1; \
 	done
 	@echo "$@: the hand-laid programs run forward and back to their initial layouts, simulator and model agree, the cell rule is a bijection"
 
@@ -622,6 +622,39 @@ layouts: cellfie bitr riscr rotor selfie selfie.h
 	grep -q "invalid-address 0x13000 after" cellfie-product.txt
 	@echo "$@: the layouts of the symbolic examples run as riscr runs their binaries and as rotor's model does at every instruction"
 
+# Construction on cellfie (M10 of projects/reversible.md): for the hand-laid test program and for a symbolic
+# example, cellfie writes a constructor, a RISC-R program with the compiled layout on its tape and a blank
+# window on its grid; the constructor runs to its exit, back to its initial state, and to its exit again;
+# the cells of the window are then the cells of the compiled layout, and with the token of the compiled
+# layout they run the program to its exit. The first also with cellfie on mipster.
+construct: cellfie cellfie-test riscr selfie selfie.h
+	./cellfie-test tests/cellfie-test.r tests/cellfie-io-test.r
+	./selfie -c examples/symbolic/recursive-fibonacci-1-10.c -o examples/symbolic/recursive-fibonacci-1-10.m > /dev/null
+	./riscr -l examples/symbolic/recursive-fibonacci-1-10.m -history 1 -t examples/symbolic/recursive-fibonacci-1-10.r > /dev/null
+	for b in tests/cellfie-test examples/symbolic/recursive-fibonacci-1-10; do \
+	  o="-heap 0 2048 -heap 1048576 64 -stack 128 -i tests/bitr-input.txt"; \
+	  if [ $$b = tests/cellfie-test ]; then o=""; fi; \
+	  ./cellfie $$o -c $$b.r -o cellfie-test-compiled.rle -f 100000000 > cellfie-product.txt || exit 1; \
+	  e=$$(sed -n 's/.*: \(exit with exit code .*\)/\1/p' cellfie-product.txt); \
+	  ./cellfie $$o -k $$b.r -o cellfie-test-constructor.rle -rev 100000000000 -f 100000000000 -window cellfie-test-window.rle > cellfie-product.txt || exit 1; \
+	  grep "tape has\|exit with" cellfie-product.txt | tail -2; \
+	  grep -q "initial state restored" cellfie-product.txt && \
+	  grep -q "exit with exit code 0 after" cellfie-product.txt || \
+	    { echo "$$b.r: the constructor does not run to its exit and back"; exit 1; }; \
+	  { grep "^#" cellfie-test-compiled.rle; grep -v "^#" cellfie-test-window.rle; } > cellfie-test-built.rle; \
+	  cmp cellfie-test-compiled.rle cellfie-test-built.rle || \
+	    { echo "$$b.r: the constructed layout is not the compiled layout"; exit 1; }; \
+	  [ -n "$$e" ] && ./cellfie -l cellfie-test-built.rle -f 100000000 | grep -q "$$e" || \
+	    { echo "$$b.r: the constructed layout does not run as the compiled layout"; exit 1; }; \
+	  echo "$$b.r: constructed, taken apart, constructed again, and run: $$e"; \
+	done
+	./selfie -c selfie.h tools/btor2.h tools/cellfie.c -m 1024 -c tests/cellfie-test.r -o cellfie-test-compiled.rle > /dev/null
+	./selfie -c selfie.h tools/btor2.h tools/cellfie.c -m 1024 -k tests/cellfie-test.r -f 100000000 -window cellfie-test-window.rle | tee cellfie-product.txt
+	grep -q "exit with exit code 0 after" cellfie-product.txt
+	{ grep "^#" cellfie-test-compiled.rle; grep -v "^#" cellfie-test-window.rle; } > cellfie-test-built.rle
+	cmp cellfie-test-compiled.rle cellfie-test-built.rle
+	@echo "$@: constructors build the compiled layouts from their tapes and take them apart again"
+
 # Hybrid simulation of cellfie (M13 of projects/reversible.md): the hybrid simulator, which runs the cells
 # of a layout without laying it out and measures the wire instead of following it, stops every symbolic
 # example where the event-driven simulator stops it on the compiled layout, with the same exit code after
@@ -694,7 +727,7 @@ trust: selfie selfie.h
 	rm -f examples/trusting-trust/honest-stamp.c examples/trusting-trust/honest-victim.c examples/trusting-trust/trojaned-victim.c examples/trusting-trust/suspect-stamp.c
 
 # Consider these targets as targets, not files
-.PHONY: rev riscr-rev bennett trust riscr-model sim bmc cdcl identity cells product tapes layouts hybrid selfie-on-cellfie
+.PHONY: rev riscr-rev bennett trust riscr-model sim bmc cdcl identity cells product tapes layouts hybrid construct selfie-on-cellfie
 
 # Consider these targets as targets, not files
 .PHONY: spike qemu assemble beator-32 rotor-32 32-bit bitwuzla beator-bitme rotor-bitme bitme extras

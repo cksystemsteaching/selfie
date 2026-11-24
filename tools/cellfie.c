@@ -39,6 +39,7 @@ Usage: cellfie { -l layout | -o layout | -f ticks | -b ticks | -rev ticks |
                  -inverse | -noproperties | -btor2 width height | -check states |
                  -heap offset words | -stack words | -i file | -c binary |
                  -a abstraction heap-allowance stack-allowance |
+                 -k binary | -window layout |
                  -tapes descriptors | -tapewords words } [ -h binary ... ]
 
 -c compiles a RISC-R binary into a layout: its instructions in a row,
@@ -50,6 +51,14 @@ with -i as its standard input, all wired by combs of routers. -a
 then writes the abstraction that relates the layout to rotor's
 RISC-R model of the binary with the given allowances in bytes, for
 bitr's product of the two.
+
+-k compiles a RISC-R binary into a layout as -c does and then writes,
+instead of it, a constructor: a RISC-R program with the layout on a
+tape in its memory, on a grid with a blank window south of it, in
+which it builds the layout, cell by cell. A program exchanges a
+register with a part of a cell of the grid by ld at the address of
+the part; no wire leads there, the token flies. -window writes the
+cells of the window as a layout.
 
 -h runs a RISC-R binary with the remaining arguments on the layout
 that -c would write, without laying it out: the hybrid simulator has
@@ -186,6 +195,11 @@ uint64_t* token_opens  = (uint64_t*) 0; // 1 if the host can open the file, for 
 uint64_t token_leg  = 0; // what the token is on its way to, LEG_NONE on a path
 uint64_t token_word = 0; // which word of the buffer the token transfers
 
+// A token in flight is on its way to a cell of the grid and back, and no
+// cell on the way acts on it: its flight is where it left, see cellfie.md.
+
+uint64_t token_flight = 0; // 0, or 2^63 plus row times 2^28 plus column of the cell the token left
+
 // -----------------------------------------------------------------
 // --------------------------- CELL RULE ---------------------------
 // -----------------------------------------------------------------
@@ -213,6 +227,11 @@ void     cell_brk();
 void     cell_openat();
 uint64_t cell_transfer(uint64_t on_path);
 uint64_t cell_system_call(uint64_t on_path);
+
+uint64_t is_cell_address(uint64_t address);
+uint64_t flight_code(uint64_t x, uint64_t y);
+uint64_t is_in_flight();
+void     act_flight();
 
 void act_instruction(uint64_t orientation, uint64_t mirror_kind, uint64_t word);
 void act_memory(uint64_t* word);
@@ -248,6 +267,17 @@ uint64_t SYSCALL_FAILURE = 4294967295; // -1 as 32-bit system call result
 uint64_t LARGEST_TRANSFER = 4294967296; // a read or write transfers less than 4GB
 
 uint64_t INPUT_TAPES  = 0; // addresses of input tape words: 2^63 + descriptor * 2^32 + position * 8
+
+// addresses of the cells of the grid: 2^61 + part * 2^56 + row * 2^28 + column,
+// the part of a cell being its kind, orientation, and mirror, its word, or its tag
+
+uint64_t CELL_ADDRESSES = 0;
+
+uint64_t PART_KIND = 0;
+uint64_t PART_WORD = 1;
+uint64_t PART_TAG  = 2;
+
+uint64_t COORDINATE_BITS = 28; // of a column or a row in an address and in a flight
 uint64_t OUTPUT_TAPES = 0; // addresses of output tape words: 2^62 + descriptor * 2^32 + position * 8
 
 // ------------------------ GLOBAL VARIABLES -----------------------
@@ -263,6 +293,9 @@ uint64_t acted_instructions = 0; // instruction cells that acted on a token on t
 uint64_t acted_breaks       = 0; // brk that changed the program break
 uint64_t acted_opens        = 0; // openat
 uint64_t acted_legs         = 0; // read or write that began, went on, or ended a transfer
+uint64_t acted_launches     = 0; // ld that began or ended a flight
+uint64_t acted_turns        = 0; // turns of a token in flight
+uint64_t acted_cells        = 0; // cells exchanged with a token in flight
 
 // -----------------------------------------------------------------
 // ---------------------------- LAYOUT -----------------------------
@@ -403,8 +436,9 @@ uint64_t STATE_OPENS      = 14;
 uint64_t STATE_KINDS      = 15;
 uint64_t STATE_WORDS      = 16;
 uint64_t STATE_TAGS       = 17;
+uint64_t STATE_FLIGHT     = 18;
 
-uint64_t NUMBER_OF_STATES = 18;
+uint64_t NUMBER_OF_STATES = 19;
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
@@ -541,6 +575,11 @@ uint64_t lay_path_combs(uint64_t* keys, uint64_t* outs, uint64_t* ins, uint64_t 
 void add_memory_word(uint64_t address, uint64_t value, uint64_t kind);
 
 void compile_layout(char* name);
+void lay_layout(char* name, uint64_t width, uint64_t height);
+
+void emit_constructor(uint64_t parts);
+void construct_layout(char* name);
+void write_window(char* name);
 
 void print_difference(uint64_t index_sid, uint64_t state_nid, uint64_t index, uint64_t cell_state_nid, uint64_t cell_index);
 void write_abstraction(char* name, uint64_t heap_allowance, uint64_t stack_allowance);
@@ -554,6 +593,9 @@ uint64_t MAX_HEAP_REGIONS = 8;
 uint64_t MAX_REGIONS      = 64; // data, heap, stack, tapes
 
 uint64_t COMB_COLUMN = 3; // first column of the combs over the strips of words
+
+uint64_t TAPE_START    = 1073741824; // address of the tape of a constructor in its memory: 1GB
+uint64_t WINDOW_COLUMN = 64;         // first column of the window, east of the constructor's instructions
 
 uint64_t CLASS_CONTROL = 1; // beq, jal, jalr
 uint64_t CLASS_ACCESS  = 2; // ld with rd not zero, ecall
@@ -679,6 +721,22 @@ uint64_t* word_cells     = (uint64_t*) 0; // index of the cell on the grid
 uint64_t number_of_words = 0;
 
 uint64_t heap_start_address = 0; // start of the heap of the compiled binary
+
+// the tape of a constructor: the parts of the cells of a layout that are
+// not zero, each as the part, the column and the row of its cell in the
+// layout, and its value; the layout is built in a window of the grid
+
+uint64_t* tape_kinds  = (uint64_t*) 0; // PART_KIND, PART_WORD, or PART_TAG
+uint64_t* tape_xs     = (uint64_t*) 0;
+uint64_t* tape_ys     = (uint64_t*) 0;
+uint64_t* tape_values = (uint64_t*) 0;
+
+uint64_t tape_parts = 0;
+
+uint64_t window_x      = 0;
+uint64_t window_y      = 0;
+uint64_t window_width  = 0;
+uint64_t window_height = 0;
 
 uint64_t abstraction_nid  = 0; // next nid of the abstraction being written
 uint64_t abstraction_step = 0; // nid of its output step
@@ -814,6 +872,8 @@ void reset_token() {
 
   token_leg  = LEG_NONE;
   token_word = 0;
+
+  token_flight = 0;
 }
 
 uint64_t get_token_register(uint64_t reg) {
@@ -1057,6 +1117,15 @@ void cell_exchange(uint64_t on_path) {
   set_token_register(rd, token_data);
 
   token_data = rd_value;
+
+  // the address of a cell of the grid: no wire leads there, the token
+  // flies, and remembers the cell it left until it is back
+
+  if (is_cell_address(address)) {
+    token_flight = bitwise_xor(token_flight, flight_code(token_x, token_y));
+
+    acted_launches = acted_launches + 1;
+  }
 }
 
 void cell_branch(uint64_t on_path) {
@@ -1525,6 +1594,90 @@ void act_tape(uint64_t* word) {
   *word = bitwise_xor(*word, token_data);
 }
 
+uint64_t is_cell_address(uint64_t address) {
+  return get_bits(address, 61, 3) == 1;
+}
+
+uint64_t flight_code(uint64_t x, uint64_t y) {
+  // the flight of a token that left the cell in column x and row y
+  return two_to_the_power_of(63) + left_shift(y, COORDINATE_BITS) + x;
+}
+
+uint64_t is_in_flight() {
+  // a token in flight is away from the cell it left: there, and with
+  // no flight, the cell under the token acts on it
+
+  if (token_flight == 0)
+    return 0;
+  else
+    return token_flight != flight_code(token_x, token_y);
+}
+
+void act_flight() {
+  uint64_t index;
+  uint64_t x;
+  uint64_t y;
+  uint64_t datum;
+  uint64_t part;
+
+  // No cell acts on a token in flight. It left the cell in column ox and
+  // row oy heading south, for the cell in column x and row y of its address,
+  // and flies a rectangle: south to row y, east to column x, north to the
+  // row north of oy, west to column ox, and south into the cell it left.
+  // It turns in the four corners as at a mirror, and in the corner that is
+  // its destination it exchanges its datum with the part of the cell that
+  // its address names. Columns and rows count around the torus. Mirrors
+  // are their own inverses, and so is the exchange: backward is the same.
+
+  x = get_bits(token_address, 0, COORDINATE_BITS) % grid_width;
+  y = get_bits(token_address, COORDINATE_BITS, COORDINATE_BITS) % grid_height;
+
+  if (token_x == x) {
+    if (token_y == y) {
+      index = cell_index(token_x, token_y);
+
+      part = get_bits(token_address, 2 * COORDINATE_BITS, 2);
+
+      if (part == PART_KIND) {
+        // a cell is eight bits
+
+        datum = token_data;
+
+        token_data = datum - datum % 256 + *(cell_kinds + index) % 256;
+
+        *(cell_kinds + index) = datum % 256;
+      } else if (part == PART_WORD)
+        act_memory(cell_words + index);
+      else if (part == PART_TAG)
+        act_memory(cell_tags + index);
+
+      token_heading = mirror_heading(token_heading, SLASH);
+
+      acted_cells = acted_cells + 1;
+    }
+
+    if ((token_y + 1) % grid_height == get_bits(token_flight, COORDINATE_BITS, COORDINATE_BITS) % grid_height) {
+      token_heading = mirror_heading(token_heading, BACKSLASH);
+
+      acted_turns = acted_turns + 1;
+    }
+  }
+
+  if (token_x == get_bits(token_flight, 0, COORDINATE_BITS) % grid_width) {
+    if (token_y == y) {
+      token_heading = mirror_heading(token_heading, BACKSLASH);
+
+      acted_turns = acted_turns + 1;
+    }
+
+    if ((token_y + 1) % grid_height == get_bits(token_flight, COORDINATE_BITS, COORDINATE_BITS) % grid_height) {
+      token_heading = mirror_heading(token_heading, SLASH);
+
+      acted_turns = acted_turns + 1;
+    }
+  }
+}
+
 void act() {
   uint64_t index;
   uint64_t cell;
@@ -1532,7 +1685,14 @@ void act() {
   uint64_t word;
   uint64_t bit;
 
-  // the cell under the token acts on the token, and backward undoes that
+  // the cell under the token acts on the token, and backward undoes that,
+  // unless the token is in flight
+
+  if (is_in_flight()) {
+    act_flight();
+
+    return;
+  }
 
   index = cell_index(token_x, token_y);
 
@@ -1648,7 +1808,11 @@ uint64_t token_property() {
   // where a RISC-R program stops: the token is where a tagged cell says
   // it should not be, or about to enter an instruction cell on its path
   // that stops it; the rule is defined for these states as well, they
-  // are not constraints
+  // are not constraints; a token in flight, or about to land, is not at
+  // the cell it is over
+
+  if (token_flight != 0)
+    return PROPERTY_NONE;
 
   cell = *(cell_kinds + cell_index(token_x, token_y));
 
@@ -1958,13 +2122,18 @@ void load_register() {
 }
 
 void load_system_state() {
-  // #S break open-files leg word
+  // #S break open-files leg word, and the flight if there is one
 
   token_break      = scan_hexadecimal(0);
   token_open_files = scan_hexadecimal(0);
 
   token_leg  = scan_hexadecimal(0);
   token_word = scan_hexadecimal(0);
+
+  skip_layout_spaces();
+
+  if (hexadecimal_value(layout_character()) != 16)
+    token_flight = scan_hexadecimal(0);
 
   if (token_leg > LEG_BUFFER_BACK)
     layout_error("no such leg");
@@ -2388,7 +2557,7 @@ void write_layout(char* name) {
     i = i + 1;
   }
 
-  if (or(token_break != 0, or(token_open_files != 3, or(token_leg != LEG_NONE, token_word != 0)))) {
+  if (or(token_break != 0, or(token_open_files != 3, or(token_leg != LEG_NONE, or(token_word != 0, token_flight != 0))))) {
     dprintf(output_fd, "#S ");
 
     print_hexadecimal_digits(token_break, 16);
@@ -2398,6 +2567,12 @@ void write_layout(char* name) {
     print_hexadecimal_digits(token_leg, 1);
     put_character(' ');
     print_hexadecimal_digits(token_word, 16);
+
+    if (token_flight != 0) {
+      put_character(' ');
+      print_hexadecimal_digits(token_flight, 16);
+    }
+
     put_character(10);
   }
 
@@ -2480,6 +2655,8 @@ uint64_t state_length(uint64_t state) {
 
   if (state < STATE_REGISTERS)
     return 1;
+  else if (state == STATE_FLIGHT)
+    return 1;
   else if (state == STATE_REGISTERS)
     return NUMBEROFREGISTERS;
   else if (state < STATE_KINDS)
@@ -2509,6 +2686,8 @@ uint64_t get_state_word(uint64_t state, uint64_t i) {
     return token_leg;
   else if (state == STATE_WORD)
     return token_word;
+  else if (state == STATE_FLIGHT)
+    return token_flight;
   else if (state == STATE_REGISTERS)
     return *(token_registers + i);
   else if (state == STATE_HEADS)
@@ -2548,6 +2727,8 @@ void set_state_word(uint64_t state, uint64_t i, uint64_t value) {
     token_leg = value;
   else if (state == STATE_WORD)
     token_word = value;
+  else if (state == STATE_FLIGHT)
+    token_flight = value;
   else if (state == STATE_REGISTERS)
     *(token_registers + i) = value;
   else if (state == STATE_HEADS)
@@ -2589,6 +2770,8 @@ char* state_name(uint64_t state) {
     return "token-leg";
   else if (state == STATE_WORD)
     return "token-word";
+  else if (state == STATE_FLIGHT)
+    return "token-flight";
   else if (state == STATE_REGISTERS)
     return "token-registers";
   else if (state == STATE_HEADS)
@@ -3056,6 +3239,8 @@ void model_states() {
       comment = "leg of a transfer: none 0, to the buffer 1, to the tape 2, to the buffer again 3";
     } else if (state == STATE_WORD)
       comment = "number of the word in transfer";
+    else if (state == STATE_FLIGHT)
+      comment = "the cell a token in flight left: 2^63 plus row times 2^28 plus column, or 0";
     else if (state == STATE_REGISTERS) {
       sid = SID_REGISTERS;
 
@@ -3384,6 +3569,21 @@ void model_rule() {
   uint64_t* openat_effect;
   uint64_t* tape_effect;
 
+  uint64_t* flight_nid;
+  uint64_t* code_nid;
+  uint64_t* at_column_nid;
+  uint64_t* at_row_nid;
+  uint64_t* at_origin_column_nid;
+  uint64_t* at_origin_row_nid;
+  uint64_t* turn_nid;
+  uint64_t* part_nid;
+  uint64_t* tags_nid;
+
+  uint64_t* flight_effect;
+  uint64_t* kind_effect;
+  uint64_t* word_effect;
+  uint64_t* tag_effect;
+
   uint64_t i;
 
   // the token
@@ -3411,6 +3611,14 @@ void model_rule() {
     x_nid = new_sub(x_nid, new_delta_x(heading_nid));
     y_nid = new_sub(y_nid, new_delta_y(heading_nid));
   }
+
+  // the flight of a token that left the cell here: 2^63 plus row times 2^28 plus column
+
+  flight_nid = (uint64_t*) *(state_nids + STATE_FLIGHT);
+
+  code_nid = new_join(new_number(new_sort(64 - 2 * COORDINATE_BITS), two_to_the_power_of(63 - 2 * COORDINATE_BITS)),
+    new_join(new_ext(OP_UEXT, new_sort(COORDINATE_BITS), y_nid, COORDINATE_BITS - eval_bitvec_size(SID_Y), NOCOMMENT),
+      new_ext(OP_UEXT, new_sort(COORDINATE_BITS), x_nid, COORDINATE_BITS - eval_bitvec_size(SID_X), NOCOMMENT)));
 
   // the cell: index is row times width plus column
 
@@ -3598,6 +3806,12 @@ void model_rule() {
   *(exchange_on_path + STATE_REGISTERS) = (uint64_t)
     new_ternary(OP_WRITE, SID_REGISTERS, registers_nid, rd_nid, data_nid, "ld");
   *(exchange_on_path + STATE_ADDRESS)   = (uint64_t) new_add(address_nid, load_address_nid);
+
+  // to a cell of the grid the token flies, and remembers the cell it left
+
+  *(exchange_on_path + STATE_FLIGHT) = (uint64_t)
+    new_ite(new_is_field(new_bits(load_address_nid, 63, 61), 1),
+      new_binary(OP_XOR, SID_WORD, flight_nid, code_nid, "flight begun or ended"), flight_nid);
 
   exchange_on_side = new_effect(exchange_on_path);
 
@@ -3936,6 +4150,69 @@ void model_rule() {
         new_choice(new_is_field(kind_nid, CELL_MIRROR), on_side,
           new_choice(new_is_field(kind_nid, CELL_ROUTER), advance, same)))));
 
+  // A token in flight, with a flight that is not the cell here: no cell acts
+  // on it. It turns as at a mirror in the four corners of the rectangle that
+  // it flies, which are where its column is that of its address or of its
+  // flight, and its row that of its address or the one north of its flight:
+  // a slash flips the lower bit of the heading, a backslash both. In the
+  // corner of its address its datum and the part of the cell that the
+  // address names are exchanged.
+
+  at_column_nid = new_eq(new_slice(SID_X, address_nid, eval_bitvec_size(SID_X) - 1, 0, NOCOMMENT), x_nid);
+  at_row_nid    = new_eq(new_slice(SID_Y, address_nid,
+    COORDINATE_BITS + eval_bitvec_size(SID_Y) - 1, COORDINATE_BITS, NOCOMMENT), y_nid);
+
+  at_origin_column_nid = new_eq(new_slice(SID_X, flight_nid, eval_bitvec_size(SID_X) - 1, 0, NOCOMMENT), x_nid);
+  at_origin_row_nid    = new_eq(new_slice(SID_Y, flight_nid,
+    COORDINATE_BITS + eval_bitvec_size(SID_Y) - 1, COORDINATE_BITS, NOCOMMENT), new_add(y_nid, new_number(SID_Y, 1)));
+
+  // backslashes in the corner of the flight's column and the address's row
+  // and in the corner of the address's column and the flight's row
+
+  turn_nid = new_binary(OP_XOR, SID_BOOLEAN,
+    new_and(at_origin_column_nid, at_row_nid), new_and(at_column_nid, at_origin_row_nid), NOCOMMENT);
+
+  flight_effect = new_effect(same);
+
+  *(flight_effect + STATE_HEADING) = (uint64_t) new_binary(OP_XOR, SID_HEADING, heading_nid,
+    new_binary(OP_CONCAT, SID_HEADING, turn_nid,
+      new_binary(OP_XOR, SID_BOOLEAN, turn_nid,
+        new_binary(OP_XOR, SID_BOOLEAN,
+          new_and(at_column_nid, at_row_nid), new_and(at_origin_column_nid, at_origin_row_nid), NOCOMMENT),
+        NOCOMMENT), NOCOMMENT),
+    "heading turned in the corners of a flight");
+
+  kind_effect = new_effect(flight_effect);
+
+  *(kind_effect + STATE_DATA)  = (uint64_t) new_join(new_bits(data_nid, 63, 8), cell_nid);
+  *(kind_effect + STATE_KINDS) = (uint64_t)
+    new_ternary(OP_WRITE, SID_KINDS, (uint64_t*) *(state_nids + STATE_KINDS), index_nid,
+      new_slice(SID_CELL, data_nid, 7, 0, NOCOMMENT), "cell written");
+
+  word_effect = new_effect(flight_effect);
+
+  *(word_effect + STATE_DATA)  = (uint64_t) word_nid;
+  *(word_effect + STATE_WORDS) = (uint64_t)
+    new_ternary(OP_WRITE, SID_WORDS, words_nid, index_nid, data_nid, "cell word written");
+
+  tags_nid = (uint64_t*) *(state_nids + STATE_TAGS);
+
+  tag_effect = new_effect(flight_effect);
+
+  *(tag_effect + STATE_DATA) = (uint64_t) new_binary(OP_READ, SID_WORD, tags_nid, index_nid, "cell tag");
+  *(tag_effect + STATE_TAGS) = (uint64_t)
+    new_ternary(OP_WRITE, SID_WORDS, tags_nid, index_nid, data_nid, "cell tag written");
+
+  part_nid = new_bits(address_nid, 2 * COORDINATE_BITS + 1, 2 * COORDINATE_BITS);
+
+  flight_effect = new_choice(new_and(at_column_nid, at_row_nid),
+    new_choice(new_is_field(part_nid, PART_KIND), kind_effect,
+      new_choice(new_is_field(part_nid, PART_WORD), word_effect,
+        new_choice(new_is_field(part_nid, PART_TAG), tag_effect, flight_effect))),
+    flight_effect);
+
+  effect = new_choice(new_or(new_is_field(flight_nid, 0), new_eq(flight_nid, code_nid)), effect, flight_effect);
+
   // position: forward one cell along the new heading, backward the cell moved back to
 
   if (not(reverse)) {
@@ -4046,6 +4323,16 @@ void model_rule() {
       new_not(new_or(value_nid,
         new_or(new_is_field(a7_nid, SYSCALL_EXIT),
           new_or(new_is_field(a7_nid, SYSCALL_BRK), new_is_field(a7_nid, SYSCALL_OPENAT))))));
+
+  // a token in flight, or about to land, is not at the cell it is over
+
+  i = 1;
+
+  while (i <= NUMBER_OF_PROPERTIES) {
+    *(property_nids + i) = (uint64_t) new_and(new_is_field(flight_nid, 0), (uint64_t*) *(property_nids + i));
+
+    i = i + 1;
+  }
 }
 
 char* property_name(uint64_t property) {
@@ -4396,6 +4683,34 @@ void random_state() {
   if (random_below(2) == 0) {
     token_leg  = random_below(4);
     token_word = random_below(4);
+  }
+
+  // flights: one in four tokens is in flight, having left the cell it is at
+  // or one nearby, for a cell nearby, or any; and a register in four has the
+  // address of a part of a cell
+
+  token_flight = 0;
+
+  r = random_below(8);
+
+  if (r == 0)
+    token_flight = flight_code(token_x, token_y);
+  else if (r == 1) {
+    token_flight = flight_code(random_below(grid_width), random_below(grid_height));
+
+    token_address = CELL_ADDRESSES + left_shift(random_below(4), 2 * COORDINATE_BITS)
+      + left_shift(random_below(grid_height), COORDINATE_BITS) + random_below(grid_width);
+  } else if (r == 2)
+    token_flight = random_value();
+
+  i = 1;
+
+  while (i < NUMBEROFREGISTERS) {
+    if (random_below(4) == 0)
+      *(token_registers + i) = CELL_ADDRESSES + left_shift(random_below(4), 2 * COORDINATE_BITS)
+        + left_shift(random_below(grid_height), COORDINATE_BITS) + random_below(grid_width);
+
+    i = i + 1;
   }
 
   // half of the time the cell under the token is the cell of its pc or address
@@ -4784,8 +5099,10 @@ uint64_t check_rule(uint64_t states) {
   printf("%s: simulator and model agree forward and backward on %lu of %lu random states,\n", selfie_name, states - failed, states);
   printf("%s: and one tick is undone by the other; a property holds in %lu states\n", selfie_name, stopped);
   printf("%s: in 4 ticks per state, %lu times a RISC-R instruction cell had a token on its path or side,\n", selfie_name, acted_instructions);
-  printf("%s: %lu times brk changed the program break, %lu times openat ran, %lu times a read or write moved a transfer on\n", selfie_name,
+  printf("%s: %lu times brk changed the program break, %lu times openat ran, %lu times a read or write moved a transfer on,\n", selfie_name,
     acted_breaks, acted_opens, acted_legs);
+  printf("%s: %lu times a flight began or ended, %lu times a token in flight turned, %lu times it exchanged a part of a cell\n", selfie_name,
+    acted_launches, acted_turns, acted_cells);
 
   return failed == 0;
 }
@@ -4823,7 +5140,8 @@ void boot_binary(char* name, uint64_t arguments) {
   // the machine as riscr and rotor boot it: the binary loaded, and on the
   // stack its name as only argument, or with all remaining arguments
 
-  selfie_load(name);
+  if (name != (char*) 0)
+    selfie_load(name);
 
   if ((e_flags / EF_RISCR) % 2 == 0) {
     printf("%s: %s is a RISC-U binary, cells of RISC-U are not supported yet\n", selfie_name, name);
@@ -5513,6 +5831,10 @@ void plan_regions() {
     i = i + 1;
   }
 
+  // the tape of a constructor: two words for each part of a cell
+
+  add_region(TAPE_START, 2 * tape_parts, CELL_MEMORY);
+
   add_region(VIRTUALMEMORYSIZE * GIGABYTE - stack_words * WORDSIZE, stack_words, CELL_MEMORY);
 
   if (*(get_regs(current_context) + REG_SP) < VIRTUALMEMORYSIZE * GIGABYTE - stack_words * WORDSIZE) {
@@ -5541,10 +5863,24 @@ void plan_regions() {
 }
 
 uint64_t initial_word(uint64_t address) {
-  // the word at address as the boot loader left the machine: the data
-  // segment and the arguments on the stack, and the input on its tape
+  uint64_t i;
 
-  if (address >= INPUT_TAPES) {
+  // the word at address as the boot loader left the machine: the data
+  // segment and the arguments on the stack, and the input on its tape;
+  // on the tape of a constructor the address of a part of a cell in
+  // the window, and what the part is to be
+
+  if (and(address >= TAPE_START, address < TAPE_START + 2 * tape_parts * WORDSIZE)) {
+    i = (address - TAPE_START) / WORDSIZE;
+
+    if (i % 2 == 1)
+      return *(tape_values + i / 2);
+
+    i = i / 2;
+
+    return CELL_ADDRESSES + left_shift(*(tape_kinds + i), 2 * COORDINATE_BITS)
+      + left_shift(window_y + *(tape_ys + i), COORDINATE_BITS) + window_x + *(tape_xs + i);
+  } else if (address >= INPUT_TAPES) {
     if (address - INPUT_TAPES < input_size)
       return *(input_words + (address - INPUT_TAPES) / WORDSIZE);
   } else if (address < OUTPUT_TAPES)
@@ -5948,6 +6284,18 @@ void boot_token() {
 }
 
 void compile_layout(char* name) {
+  // the binary as a layout on the least grid that holds it
+
+  boot_binary(name, 0);
+
+  plan_path();
+  plan_regions();
+  plan_rows();
+
+  lay_layout(name, 0, 0);
+}
+
+void lay_layout(char* name, uint64_t width, uint64_t height) {
   uint64_t n;
   uint64_t i;
   uint64_t j;
@@ -5961,12 +6309,6 @@ void compile_layout(char* name) {
   uint64_t* word_strips;
   uint64_t entry;
   uint64_t exit_row;
-
-  boot_binary(name, 0);
-
-  plan_path();
-  plan_regions();
-  plan_rows();
 
   n = code_size / INSTRUCTIONSIZE;
 
@@ -6008,7 +6350,15 @@ void compile_layout(char* name) {
   if (x < word_column + two_to_the_power_of(strip_bits + 1) + 1)
     x = word_column + two_to_the_power_of(strip_bits + 1) + 1;
 
-  allocate_grid(x, memory_in_row + memory_rows);
+  // the layout as planned, on a grid of at least that width and height
+
+  if (x < width)
+    x = width;
+
+  if (height < memory_in_row + memory_rows)
+    height = memory_in_row + memory_rows;
+
+  allocate_grid(x, height);
 
   // the path, strip by strip: from the last instruction of a strip two
   // columns east, south to the last row of the strip, west to the column
@@ -6140,6 +6490,253 @@ void compile_layout(char* name) {
 
   printf("%s: %lu instructions of %s on a grid of %lux%lu cells: %lu transfer control, %lu access memory, %lu words of memory and tapes\n", selfie_name,
     n, name, grid_width, grid_height, controls, accesses, number_of_words);
+}
+
+// A constructor is a RISC-R program with a tape in its memory that builds
+// a layout in a blank window of its grid, see cellfie.md. The tape has two
+// words for each part of a cell that is not zero: the address of the part,
+// and the part. The program exchanges each part with what is there, which
+// is zero in a blank window, and puts that onto the tape instead: it moves
+// the layout from the tape to the grid, and backward from the grid back
+// onto the tape. It keeps no history and leaves its registers as they were,
+// but for the counter and the pointer.
+
+void emit_constructor(uint64_t parts) {
+  uint64_t head;
+  uint64_t bottom;
+  uint64_t upper;
+  uint64_t lower;
+
+  reset_binary();
+
+  code_binary = zmalloc(MAX_CODE_SIZE);
+  data_binary = zmalloc(MAX_DATA_SIZE);
+
+  reset_binary_counters();
+
+  code_start = PK_CODE_START;
+  code_size  = 0;
+  data_size  = 0;
+
+  e_entry = code_start;
+
+  // the number of parts as upper 20 and signed lower 12 bits
+
+  upper = parts / 4096;
+  lower = parts % 4096;
+
+  if (lower >= 2048) {
+    upper = upper + 1;
+    lower = lower - 4096;
+  }
+
+  emit_addi(REG_S4, REG_ZR, 1);                // one
+  emit_lui(REG_S1, TAPE_START / 4096);         // s1: the tape
+  emit_lui(REG_T3, upper);                     // t3: the number of parts
+  emit_addi(REG_T3, REG_ZR, lower);
+  emit_addi(REG_A7, REG_ZR, SYSCALL_EXIT);
+
+  head = code_size;
+
+  emit_beq(REG_T4, REG_S4, 0);                 // loop head, come-from of the branch at the bottom
+
+  emit_sltu(REG_T4, REG_ZR, REG_T2);           // uncompute the flag: it is 0 < i on both ways in
+  emit_load(REG_T0, REG_S1, 0);                // t0: the address of the part, the tape word is zero
+  emit_load(REG_T1, REG_S1, WORDSIZE);         // t1: the part, the tape word is zero
+  emit_load(REG_T1, REG_T0, 0);                // exchange t1 with the part of the cell: a flight
+  emit_load(REG_T1, REG_S1, WORDSIZE);         // what was there onto the tape, t1 is zero
+  emit_load(REG_T0, REG_S1, 0);                // the address back onto the tape, t0 is zero
+  emit_addi(REG_S1, REG_ZR, 2 * WORDSIZE);     // the next two words of the tape
+  emit_addi(REG_T2, REG_ZR, 1);                // i += 1
+  emit_sltu(REG_T4, REG_T2, REG_T3);           // flag: i < parts
+
+  bottom = code_size;
+
+  fixup_BFormat(head);                         // the come-from points at the branch
+
+  emit_beq(REG_T4, REG_S4, head - bottom);     // back to the loop head
+
+  emit_ecall();                                // exit(a1), with a1 == 0
+
+  // code segment must be word-aligned for loading binaries on mipster
+  while (code_size % WORDSIZE != 0)
+    emit_nop();
+
+  data_start = round_up(code_start + code_size, PAGESIZE);
+
+  e_flags = EF_RISCR;
+
+  binary_name = "constructor";
+}
+
+void construct_layout(char* name) {
+  uint64_t* kinds;
+  uint64_t* words;
+  uint64_t* tags;
+  uint64_t n;
+  uint64_t i;
+  uint64_t pass;
+
+  // the layout of the binary, and then, instead of it, a constructor
+  // with the layout on its tape and a blank window for it
+
+  tape_parts = 0;
+
+  compile_layout(name);
+
+  kinds = cell_kinds;
+  words = cell_words;
+  tags  = cell_tags;
+
+  window_width  = grid_width;
+  window_height = grid_height;
+
+  // the parts of its cells that are not zero: counted, then listed
+
+  pass = 0;
+
+  while (pass < 2) {
+    n = 0;
+
+    i = 0;
+
+    while (i < grid_size) {
+      if (*(kinds + i) != 0) {
+        if (pass) {
+          *(tape_kinds + n)  = PART_KIND;
+          *(tape_xs + n)     = i % grid_width;
+          *(tape_ys + n)     = i / grid_width;
+          *(tape_values + n) = *(kinds + i);
+        }
+
+        n = n + 1;
+      }
+
+      if (*(words + i) != 0) {
+        if (pass) {
+          *(tape_kinds + n)  = PART_WORD;
+          *(tape_xs + n)     = i % grid_width;
+          *(tape_ys + n)     = i / grid_width;
+          *(tape_values + n) = *(words + i);
+        }
+
+        n = n + 1;
+      }
+
+      if (*(tags + i) != 0) {
+        if (pass) {
+          *(tape_kinds + n)  = PART_TAG;
+          *(tape_xs + n)     = i % grid_width;
+          *(tape_ys + n)     = i / grid_width;
+          *(tape_values + n) = *(tags + i);
+        }
+
+        n = n + 1;
+      }
+
+      i = i + 1;
+    }
+
+    if (pass == 0) {
+      tape_kinds  = zmalloc(n * sizeof(uint64_t));
+      tape_xs     = zmalloc(n * sizeof(uint64_t));
+      tape_ys     = zmalloc(n * sizeof(uint64_t));
+      tape_values = zmalloc(n * sizeof(uint64_t));
+    }
+
+    pass = pass + 1;
+  }
+
+  // the constructor has its tape in memory and nothing else on the heap
+
+  number_of_heap_regions = 0;
+
+  stack_words = 64;
+
+  input_name = (char*) 0;
+
+  emit_constructor(n);
+
+  tape_parts = n;
+
+  boot_binary((char*) 0, 0);
+
+  plan_path();
+  plan_regions();
+  plan_rows();
+
+  // the window is south of the constructor and east of its instructions,
+  // where a token that leaves an instruction south and turns east gets to
+
+  window_x = WINDOW_COLUMN;
+  window_y = memory_in_row + memory_rows;
+
+  if (window_x <= path_column + 2 * path_width) {
+    printf("%s: the instructions of the constructor reach the columns of its window\n", selfie_name);
+
+    exit(EXITCODE_COMPILERERROR);
+  }
+
+  lay_layout("the constructor", window_x + window_width, window_y + window_height);
+
+  printf("%s: its tape has %lu parts of the cells of %s, for a window of %lux%lu cells at (%lu,%lu)\n", selfie_name,
+    tape_parts, name, window_width, window_height, window_x, window_y);
+}
+
+void write_window(char* name) {
+  uint64_t* kinds;
+  uint64_t* words;
+  uint64_t* tags;
+  uint64_t width;
+  uint64_t height;
+  uint64_t x;
+  uint64_t y;
+
+  // the cells of the window as a layout of its size, with the token of
+  // the grid, which is not in the window
+
+  kinds = cell_kinds;
+  words = cell_words;
+  tags  = cell_tags;
+
+  width  = grid_width;
+  height = grid_height;
+
+  grid_width  = window_width;
+  grid_height = window_height;
+
+  grid_size = grid_width * grid_height;
+
+  cell_kinds = zmalloc(grid_size * sizeof(uint64_t));
+  cell_words = zmalloc(grid_size * sizeof(uint64_t));
+  cell_tags  = zmalloc(grid_size * sizeof(uint64_t));
+
+  y = 0;
+
+  while (y < window_height) {
+    x = 0;
+
+    while (x < window_width) {
+      *(cell_kinds + cell_index(x, y)) = *(kinds + (window_y + y) * width + window_x + x);
+      *(cell_words + cell_index(x, y)) = *(words + (window_y + y) * width + window_x + x);
+      *(cell_tags + cell_index(x, y))  = *(tags + (window_y + y) * width + window_x + x);
+
+      x = x + 1;
+    }
+
+    y = y + 1;
+  }
+
+  write_layout(name);
+
+  cell_kinds = kinds;
+  cell_words = words;
+  cell_tags  = tags;
+
+  grid_width  = width;
+  grid_height = height;
+
+  grid_size = grid_width * grid_height;
 }
 
 // The abstraction relates the layout to rotor's RISC-R model of the binary
@@ -6877,6 +7474,8 @@ uint64_t cellfie() {
       load_layout(get_argument());
     else if (string_compare(argument, "-c"))
       compile_layout(get_argument());
+    else if (string_compare(argument, "-k"))
+      construct_layout(get_argument());
     else if (string_compare(argument, "-i"))
       input_name = get_argument();
     else if (string_compare(argument, "-h"))
@@ -6964,6 +7563,12 @@ uint64_t cellfie() {
       return EXITCODE_BADARGUMENTS;
     } else if (string_compare(argument, "-o"))
       write_layout(get_argument());
+    else if (string_compare(argument, "-window")) {
+      if (window_width == 0)
+        return EXITCODE_BADARGUMENTS;
+
+      write_window(get_argument());
+    }
     else if (string_compare(argument, "-f"))
       run_forward(atoi(get_argument()));
     else if (string_compare(argument, "-b"))
@@ -6996,6 +7601,7 @@ int main(int argc, char** argv) {
   init_model();
 
   INPUT_TAPES  = two_to_the_power_of(63);
+  CELL_ADDRESSES = two_to_the_power_of(61);
   OUTPUT_TAPES = two_to_the_power_of(62);
 
   exit_code = cellfie();
