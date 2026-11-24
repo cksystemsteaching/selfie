@@ -281,7 +281,7 @@ Cells that know their address (tags, `invalid-address` and `invalid-pc`) are not
 - **The heap behind the history.** Selfie's own heap begins after the 3GB region of which 2GB are used. It is a gigabyte of empty strips away.
 - **Hot code and hot data.** Instructions are in the order of their addresses and regions in a guessed order, stack first. Nothing is profiled.
 - **Density.** A strip of words takes 2*h* + 3 rows for one row of words, 39 for selfie, because each strip has its own two combs.
-- **The translation.** 3.5 RISC-R instructions and 0.65 words of history per RISC-U instruction, 3.6 and 0.86 for the running example; this (395 million RISC-U instructions) are what `riscr -t` does to code that starc wrote for an irreversible machine.
+- **The translation.** For selfie, 3.5 RISC-R instructions and 0.65 words of history per RISC-U instruction, for the running example 3.6 and 0.86: that is what `riscr -t` does to code that starc wrote for an irreversible machine.
 
 ## How the Numbers Are Reproduced
 
