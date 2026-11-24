@@ -318,6 +318,8 @@ None of this changed a layout: after each step the files were compared with thos
 
 With that, cellfie compiles its own binary on cellfie: 5,586,386,911 RISC-R instructions for 1.5 billion RISC-U instructions, 9.96·10^14 ticks, 21 minutes, 9.5GB, and the layout is the one the host writes, byte for byte (`make cellfie-on-cellfie`).
 
+Since then the compiler also constructs what it compiles, in a window of the grid it runs on (see `cellfie.md`), which made its binary 360,512 instructions. The same target now measures that run: 6,110,490,485 RISC-R instructions and 1.13·10^15 ticks to compile, write the file, and construct 1,509,401 cells; 2,131,520,395 instructions and 3.15·10^14 ticks without writing the file. Two thirds of the work is the layout as text, 80 RISC-U instructions per character for 14.9MB, which a compiler that only constructs does not need.
+
 ## What Is Not Optimized
 
 - **The history stack.** 54% of selfie's legs go to the heap, most of them pushes, each a word further into 2GB of strips that take 39 rows for one row of words. No placement helps a region that is used once from end to end. A smaller region, checkpointing, or a code generator that leaves less garbage (M9) would.

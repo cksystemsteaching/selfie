@@ -653,13 +653,28 @@ construct: cellfie cellfie-test riscr selfie selfie.h
 	grep -q "exit with exit code 0 after" cellfie-product.txt
 	{ grep "^#" cellfie-test-compiled.rle; grep -v "^#" cellfie-test-window.rle; } > cellfie-test-built.rle
 	cmp cellfie-test-compiled.rle cellfie-test-built.rle
+	./selfie -c tests/cellfie-build-test.c -o tests/cellfie-build-test.m > /dev/null
+	./riscr -l tests/cellfie-build-test.m -history 1 -t tests/cellfie-build-test.r > /dev/null
+	o="-heap 0 2048 -heap 1048576 64 -stack 128 -at 300 1500 64 64"; \
+	./cellfie $$o -c tests/cellfie-build-test.r -rev 100000000 -f 100000000 -window cellfie-test-window.rle > cellfie-product.txt || exit 1; \
+	grep -q "initial state restored" cellfie-product.txt || { echo "a C* program that stores cells does not run back"; exit 1; }; \
+	e=$$(sed -n 's/.* with pc \(.*: exit with exit code .*\)/\1/p' cellfie-product.txt | tail -1); \
+	h=$$(./cellfie $$o -window cellfie-test-built.rle -h tests/cellfie-build-test.r | sed -n 's/.* with pc \(.*: exit with exit code .*\)/\1/p'); \
+	[ -n "$$e" ] && [ "$$e" = "$$h" ] || { echo "a C* program that stores cells: event-driven $$e, hybrid $$h"; exit 1; }; \
+	grep -v "^#" cellfie-test-window.rle > cellfie-test-window-cells.rle; \
+	grep -v "^#" cellfie-test-built.rle > cellfie-test-built-cells.rle; \
+	cmp cellfie-test-window-cells.rle cellfie-test-built-cells.rle || exit 1; \
+	grep -q "E/00000013@0000000000010000" cellfie-test-built-cells.rle || { echo "the cells stored are not in the window"; exit 1; }; \
+	echo "a C* program stores cells in a window: $$h, as event-driven, with the same cells"
 	@echo "$@: constructors build the compiled layouts from their tapes and take them apart again"
 
 # The layout compiler on cellfie (M11 of projects/reversible.md): cellfie, compiled by selfie and translated by
 # riscr to RISC-R with a history stack of 12GB, compiles a layout on riscr forward and backward, and on mipster,
 # to the layout that cellfie compiles natively; and on cellfie's hybrid simulator it compiles its own RISC-R
-# binary to the layout that cellfie compiles that binary to natively, byte for byte: L1 = L0. Takes about
-# 10GB of memory and 25 minutes, and reports the ticks and the seconds.
+# binary to the layout that cellfie compiles that binary to natively, byte for byte: L1 = L0. In the same run
+# it stores the cells of that layout in a window of the grid it runs on, far south and east of itself, and the
+# window is then that layout, cell for cell: L2 = L0. Takes about 10GB of memory and 25 minutes, and reports
+# the ticks and the seconds.
 cellfie-on-cellfie: cellfie cellfie-test riscr selfie selfie.h
 	./cellfie-test tests/cellfie-test.r tests/cellfie-io-test.r
 	./selfie -c selfie.h tools/btor2.h tools/cellfie.c -o cellfie-u.m
@@ -673,12 +688,17 @@ cellfie-on-cellfie: cellfie cellfie-test riscr selfie selfie.h
 	cmp cellfie-test-compiled.rle cellfie-test-built.rle
 	./cellfie -c cellfie-r.r -o cellfie-test-l0.rle
 	s=$$(date +%s); \
-	./cellfie -memory 16 -tapes 8 -tapewords 4194304 -heap 0 1800000000 -stack 1000000 -h cellfie-r.r -c cellfie-r.r -o cellfie-test-l1.rle > cellfie-product.txt || exit 1; \
-	tail -2 cellfie-product.txt; \
+	w=$$(sed -n 's/^x = \([0-9]*\), y = \([0-9]*\),.*/\1/p' cellfie-test-l0.rle); \
+	h=$$(sed -n 's/^x = \([0-9]*\), y = \([0-9]*\),.*/\2/p' cellfie-test-l0.rle); \
+	./cellfie -memory 16 -tapes 8 -tapewords 4194304 -heap 0 1800000000 -stack 1000000 -at 16384 1048576 $$w $$h -window cellfie-test-l2.rle -h cellfie-r.r -c cellfie-r.r -o cellfie-test-l1.rle -onto 16384 1048576 > cellfie-product.txt || exit 1; \
+	tail -4 cellfie-product.txt; \
 	grep -q "exit with exit code 0 after" cellfie-product.txt || { echo "cellfie does not exit with exit code 0 on cellfie"; exit 1; }; \
 	echo "$@: $$(($$(date +%s) - s)) seconds on cellfie"
 	cmp cellfie-test-l0.rle cellfie-test-l1.rle
-	@echo "$@: the layout compiler compiles itself on cellfie to the layout it compiles itself to natively"
+	grep -v "^#" cellfie-test-l0.rle > cellfie-test-l0-cells.rle
+	grep -v "^#" cellfie-test-l2.rle > cellfie-test-l2-cells.rle
+	cmp cellfie-test-l0-cells.rle cellfie-test-l2-cells.rle
+	@echo "$@: the layout compiler compiles itself on cellfie to the layout it compiles itself to natively, and constructs it there"
 
 # Hybrid simulation of cellfie (M13 of projects/reversible.md): the hybrid simulator, which runs the cells
 # of a layout without laying it out and measures the wire instead of following it, stops every symbolic
@@ -875,6 +895,6 @@ clean:
 	rm -f selfie selfie-32 selfie.h selfie-gc.h selfie-gc-nomain.h selfie.exe
 	rm -f babysat buzzr monster beator beator-32 rotor rotor-32 riscr riscr.h riscr-test bitr cellfie cellfie-test
 	rm -f cellfie-test-*.rle cellfie-check-failed.rle cellfie-test.txt cellfie-identity.txt cellfie-product.txt
-	rm -f tests/cellfie-test.r tests/cellfie-test-rotorized-riscr.btor2
+	rm -f tests/cellfie-test.r tests/cellfie-build-test.r tests/cellfie-test-rotorized-riscr.btor2
 	rm -f tests/cellfie-io-test.r tests/cellfie-io-test.txt tests/cellfie-io-test-rotorized-riscr.btor2
 	rm -f selfie-u.m selfie-r.r selfie-r.m riscr-u.m riscr-r.r riscr-r2.r

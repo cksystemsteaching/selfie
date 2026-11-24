@@ -40,6 +40,7 @@ Usage: cellfie { -l layout | -o layout | -f ticks | -b ticks | -rev ticks |
                  -heap offset words | -stack words | -i file | -c binary |
                  -a abstraction heap-allowance stack-allowance |
                  -k binary | -window layout |
+                 -at column row width height | -onto column row |
                  -tapes descriptors | -tapewords words | -memory GB } [ -h binary ... ]
 
 -c compiles a RISC-R binary into a layout: its instructions in a row,
@@ -59,6 +60,14 @@ which it builds the layout, cell by cell. A program exchanges a
 register with a part of a cell of the grid by ld at the address of
 the part; no wire leads there, the token flies. -window writes the
 cells of the window as a layout.
+
+-at before -c or -h gives the grid of any binary a window, which must
+be south and east of all its cells, for the binary to store cells in:
+in C*, a store at the address of a part of a cell. -window after a
+run, or before -h, writes that window. -onto after -c stores the
+compiled layout, cell by cell, at the given cell of the grid that
+cellfie itself runs on, which is only possible on cellfie: there the
+layout compiler constructs what it compiles.
 
 -h runs a RISC-R binary with the remaining arguments on the layout
 that -c would write, without laying it out: the hybrid simulator has
@@ -615,6 +624,9 @@ void emit_constructor(uint64_t parts);
 void construct_layout(char* name);
 void write_window(char* name);
 
+void check_window();
+void construct_laid_cells(uint64_t x, uint64_t y);
+
 void print_difference(uint64_t index_sid, uint64_t state_nid, uint64_t index, uint64_t cell_state_nid, uint64_t cell_index);
 void write_abstraction(char* name, uint64_t heap_allowance, uint64_t stack_allowance);
 
@@ -813,6 +825,10 @@ uint64_t abstraction_step = 0; // nid of its output step
 uint64_t* word_in_store(uint64_t address);
 void      boot_store();
 
+uint64_t* part_in_store(uint64_t address);
+uint64_t  get_part(uint64_t address);
+void      write_constructed_window(char* name);
+
 uint64_t* allocate_host_buffer(uint64_t words);
 
 void host_openat();
@@ -825,6 +841,8 @@ void run_hybrid(char* name);
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
 uint64_t PAGE_WORDS  = 4096;   // words of memory or of a tape are allocated in pages
+
+uint64_t PART_SLOTS = 16777216; // parts of cells that a binary may construct in a hybrid run
 uint64_t STORE_PAGES = 131072; // 4GB of memory and of each tape
 
 // ------------------------ GLOBAL VARIABLES -----------------------
@@ -832,6 +850,13 @@ uint64_t STORE_PAGES = 131072; // 4GB of memory and of each tape
 // the words of memory, of the input tapes, and of the output tapes, in pages
 
 uint64_t* store = (uint64_t*) 0;
+
+// the parts of cells that the binary exchanged a register with, by address
+
+uint64_t* part_addresses = (uint64_t*) 0; // 0 for none
+uint64_t* part_values    = (uint64_t*) 0;
+
+char* window_name = (char*) 0; // the layout that the window is written to when the binary has run
 
 uint64_t* host_fds = (uint64_t*) 0; // file descriptors of the host by file descriptor
 
@@ -7147,8 +7172,29 @@ void boot_token() {
   executed_instructions = 0;
 }
 
+void check_window() {
+  // a window, if there is one, is south of all strips and east of all
+  // instructions: where a token that leaves an instruction south and
+  // turns east gets to, over nothing that it would not fly over
+
+  if (window_width == 0)
+    return;
+
+  if (window_y >= memory_in_row + memory_rows)
+    if (window_x > path_column + 2 * path_width)
+      if (window_x + window_width <= two_to_the_power_of(COORDINATE_BITS))
+        if (window_y + window_height <= two_to_the_power_of(COORDINATE_BITS))
+          return;
+
+  printf("%s: the window at (%lu,%lu) is not south of row %lu and east of column %lu\n", selfie_name,
+    window_x, window_y, memory_in_row + memory_rows - 1, path_column + 2 * path_width);
+
+  exit(EXITCODE_BADARGUMENTS);
+}
+
 void compile_layout(char* name) {
-  // the binary as a layout on the least grid that holds it
+  // the binary as a layout on the least grid that holds it, and its
+  // window if it has one
 
   boot_binary(name, 0);
 
@@ -7156,7 +7202,65 @@ void compile_layout(char* name) {
   plan_regions();
   plan_rows();
 
-  lay_layout(name, 0, 0);
+  check_window();
+
+  if (window_width == 0)
+    lay_layout(name, 0, 0);
+  else
+    lay_layout(name, window_x + window_width, window_y + window_height);
+}
+
+void construct_laid_cells(uint64_t x, uint64_t y) {
+  uint64_t* part;
+  uint64_t address;
+  uint64_t word;
+  uint64_t tag;
+  uint64_t i;
+
+  // The compiled layout, constructed: each part of each laid cell is
+  // stored at its address on the grid that this compiler runs on, the
+  // layout's first cell being the cell in column x and row y there. A
+  // store at the address of a part of a cell is what riscr translates
+  // into two exchanges, of what is there into the history and of the
+  // part into the cell, and each is a flight, see cellfie.md. On any
+  // other machine there is no such address.
+
+  if (load_character(selfie_name, 0) != '>') {
+    printf("%s: a layout is constructed on the grid that cellfie runs on, and this cellfie runs on none\n", selfie_name);
+
+    exit(EXITCODE_BADARGUMENTS);
+  }
+
+  word = left_shift(PART_WORD, 2 * COORDINATE_BITS);
+  tag  = left_shift(PART_TAG, 2 * COORDINATE_BITS);
+
+  y = CELL_ADDRESSES + left_shift(y, COORDINATE_BITS) + x;
+
+  i = 0;
+
+  while (i < number_of_laid_cells) {
+    address = y + *(laid_ys + i) * 268435456 + *(laid_xs + i);
+
+    part = (uint64_t*) address;
+
+    *part = *(laid_kinds + i);
+
+    if (*(laid_words + i) != 0) {
+      part = (uint64_t*) (address + word);
+
+      *part = *(laid_words + i);
+    }
+
+    if (*(laid_tags + i) != 0) {
+      part = (uint64_t*) (address + tag);
+
+      *part = *(laid_tags + i);
+    }
+
+    i = i + 1;
+  }
+
+  printf("%s: %lu cells constructed at (%lu,%lu)\n", selfie_name, number_of_laid_cells, x, (y - CELL_ADDRESSES) / 268435456);
 }
 
 void lay_layout(char* name, uint64_t width, uint64_t height) {
@@ -7478,6 +7582,11 @@ void construct_layout(char* name) {
   // with the layout on its tape and a blank window for it
 
   tape_parts = 0;
+
+  // the layout has no window, the constructor will
+
+  window_width  = 0;
+  window_height = 0;
 
   compile_layout(name);
 
@@ -8000,6 +8109,98 @@ void boot_store() {
   *(host_fds + 2) = 2;
 }
 
+uint64_t* part_in_store(uint64_t address) {
+  uint64_t i;
+
+  // the part of a cell at address, zero until a register was exchanged
+  // with it: the parts are found by their addresses, hashed
+
+  if (part_addresses == (uint64_t*) 0) {
+    part_addresses = zmalloc(PART_SLOTS * sizeof(uint64_t));
+    part_values    = zmalloc(PART_SLOTS * sizeof(uint64_t));
+  }
+
+  i = (address % 268435456 * 7 + address / 268435456 % 268435456 * 31337 + address / 72057594037927936) % PART_SLOTS;
+
+  while (*(part_addresses + i) != address) {
+    if (*(part_addresses + i) == 0) {
+      *(part_addresses + i) = address;
+
+      return part_values + i;
+    }
+
+    i = (i + 1) % PART_SLOTS;
+  }
+
+  return part_values + i;
+}
+
+uint64_t get_part(uint64_t address) {
+  return *(part_in_store(address));
+}
+
+void write_constructed_window(char* name) {
+  uint64_t n;
+  uint64_t i;
+  uint64_t x;
+  uint64_t y;
+  uint64_t pass;
+  uint64_t address;
+
+  // the cells of the window that the binary constructed, as a layout of
+  // the size of the window: the cells whose first part is not zero,
+  // counted and then laid as the compiler lays cells
+
+  pass = 0;
+
+  while (pass < 2) {
+    n = 0;
+
+    i = 0;
+
+    while (i < PART_SLOTS) {
+      address = 0;
+
+      if (part_addresses != (uint64_t*) 0)
+        address = *(part_addresses + i);
+
+      if (address != 0)
+        if (get_bits(address, 2 * COORDINATE_BITS, 2) == PART_KIND)
+          if (*(part_values + i) != 0) {
+            x = get_bits(address, 0, COORDINATE_BITS);
+            y = get_bits(address, COORDINATE_BITS, COORDINATE_BITS);
+
+            if (x >= window_x)
+              if (x < window_x + window_width)
+                if (y >= window_y)
+                  if (y < window_y + window_height) {
+                    if (pass) {
+                      lay_cell(x - window_x, y - window_y, *(part_values + i),
+                        get_part(address + left_shift(PART_WORD, 2 * COORDINATE_BITS)));
+
+                      *(laid_tags + number_of_laid_cells - 1) = get_part(address + left_shift(PART_TAG, 2 * COORDINATE_BITS));
+                    }
+
+                    n = n + 1;
+                  }
+          }
+
+      i = i + 1;
+    }
+
+    if (pass == 0)
+      plan_grid(window_width, window_height, n);
+
+    pass = pass + 1;
+  }
+
+  write_layout(name);
+
+  // the grid of the binary is no layout
+
+  grid_size = 0;
+}
+
 uint64_t* allocate_host_buffer(uint64_t words) {
   uint64_t i;
 
@@ -8221,7 +8422,17 @@ void run_hybrid(char* name) {
   if (x < word_column + two_to_the_power_of(strip_bits + 1) + 1)
     x = word_column + two_to_the_power_of(strip_bits + 1) + 1;
 
-  set_grid_size(x, memory_in_row + memory_rows);
+  // the grid holds the window, if there is one
+
+  check_window();
+
+  if (x < window_x + window_width)
+    x = window_x + window_width;
+
+  if (window_y + window_height > memory_in_row + memory_rows)
+    set_grid_size(x, window_y + window_height);
+  else
+    set_grid_size(x, memory_in_row + memory_rows);
 
   boot_token();
   boot_store();
@@ -8273,7 +8484,43 @@ void run_hybrid(char* name) {
 
           r = find_region(address);
 
-          if (r == number_of_regions) {
+          if (token_flight != 0) {
+            // a flight to the part of a cell at the address and back: south to
+            // its row, east to its column, and the same back around the cell
+            // left, twice the rows and twice the columns and two ticks, see
+            // cellfie.md; the datum and the part are exchanged as act_flight
+            // exchanges them
+
+            j = get_bits(address, 0, COORDINATE_BITS) % grid_width;
+            r = get_bits(address, COORDINATE_BITS, COORDINATE_BITS) % grid_height;
+
+            j = (j + grid_width - token_x) % grid_width;
+            r = (r + grid_height - token_y) % grid_height;
+
+            if (or(j == 0, or(r == 0, r == grid_height - 1))) {
+              // the token would not come back
+              property = PROPERTY_INVALID_ADDRESS;
+
+              token_heading = EAST;
+            } else {
+              executed_ticks = executed_ticks + 2 * j + 2 * r + 2;
+
+              j = get_bits(address, 2 * COORDINATE_BITS, 2);
+
+              if (j == PART_KIND) {
+                r = token_data;
+
+                token_data = r - r % 256 + get_part(address) % 256;
+
+                *(part_in_store(address)) = r % 256;
+              } else if (j != 3)
+                act_memory(part_in_store(address));
+
+              acted_cells = acted_cells + 1;
+
+              act_instruction(EAST, BACKSLASH, word);
+            }
+          } else if (r == number_of_regions) {
             property = PROPERTY_INVALID_ADDRESS;
 
             token_heading = EAST;
@@ -8354,11 +8601,94 @@ void run_hybrid(char* name) {
   token_heading = EAST;
 
   print_stop(property);
+
+  if (window_name != (char*) 0) {
+    printf("%s: %lu times the binary exchanged a part of a cell\n", selfie_name, acted_cells);
+
+    write_constructed_window(window_name);
+  }
 }
 
 // -----------------------------------------------------------------
 // ----------------------------- MAIN ------------------------------
 // -----------------------------------------------------------------
+
+uint64_t bad_size_option = 0; // the size option had bad arguments
+
+uint64_t size_option() {
+  // the options that size what is compiled and booted: true if the argument
+  // is one of them, with bad_size_option set if its arguments are bad
+
+  bad_size_option = 1;
+
+  if (string_compare(argument, "-at")) {
+    // a window of the grid for the binary to construct in
+
+    if (number_of_remaining_arguments() < 4)
+      return 1;
+
+    window_x      = atoi(get_argument());
+    window_y      = atoi(get_argument());
+    window_width  = atoi(get_argument());
+    window_height = atoi(get_argument());
+
+    if (window_width == 0)
+      return 1;
+    else if (window_height == 0)
+      return 1;
+  } else if (string_compare(argument, "-memory")) {
+    // the virtual memory of the binaries booted from here on, in GB:
+    // their stack is at its end
+
+    VIRTUALMEMORYSIZE = atoi(get_argument());
+
+    if (VIRTUALMEMORYSIZE < 4)
+      return 1;
+
+    HIGHESTVIRTUALADDRESS = VIRTUALMEMORYSIZE * GIGABYTE - 1;
+
+    NUMBEROFPAGES = VIRTUALMEMORYSIZE * GIGABYTE / PAGESIZE;
+  } else if (string_compare(argument, "-tapes")) {
+    NUMBER_OF_TAPES = atoi(get_argument());
+
+    if (NUMBER_OF_TAPES < 4)
+      return 1;
+    else if (NUMBER_OF_TAPES != two_to_the_power_of(log_two(NUMBER_OF_TAPES)))
+      return 1;
+    else if (token_registers != (uint64_t*) 0)
+      // the token has its tapes already
+      return 1;
+
+    tape_files = NUMBER_OF_TAPES;
+  } else if (string_compare(argument, "-tapewords"))
+    TAPE_WORDS = atoi(get_argument());
+  else if (string_compare(argument, "-stack"))
+    stack_words = atoi(get_argument());
+  else if (string_compare(argument, "-heap")) {
+    if (number_of_remaining_arguments() < 2)
+      return 1;
+    else if (number_of_heap_regions >= MAX_HEAP_REGIONS)
+      return 1;
+
+    if (heap_offsets == (uint64_t*) 0) {
+      heap_offsets = zmalloc(MAX_HEAP_REGIONS * sizeof(uint64_t));
+      heap_words   = zmalloc(MAX_HEAP_REGIONS * sizeof(uint64_t));
+    }
+
+    *(heap_offsets + number_of_heap_regions) = atoi(get_argument());
+    *(heap_words + number_of_heap_regions)   = atoi(get_argument());
+
+    number_of_heap_regions = number_of_heap_regions + 1;
+  } else {
+    bad_size_option = 0;
+
+    return 0;
+  }
+
+  bad_size_option = 0;
+
+  return 1;
+}
 
 uint64_t cellfie() {
   uint64_t width;
@@ -8381,57 +8711,31 @@ uint64_t cellfie() {
       load_layout(get_argument());
     else if (string_compare(argument, "-c"))
       compile_layout(get_argument());
+    else if (size_option()) {
+      if (bad_size_option)
+        return EXITCODE_BADARGUMENTS;
+    } else if (string_compare(argument, "-onto")) {
+      // construct the compiled layout on the grid that cellfie runs on
+
+      if (number_of_remaining_arguments() < 2)
+        return EXITCODE_BADARGUMENTS;
+      else if (laid_xs == (uint64_t*) 0)
+        return EXITCODE_BADARGUMENTS;
+
+      width  = atoi(get_argument());
+      height = atoi(get_argument());
+
+      construct_laid_cells(width, height);
+    } else if (and(string_compare(argument, "-window"), grid_size == 0))
+      // before a hybrid run: the window is written when the binary has run
+      window_name = get_argument();
     else if (string_compare(argument, "-k"))
       construct_layout(get_argument());
     else if (string_compare(argument, "-i"))
       input_name = get_argument();
     else if (string_compare(argument, "-h"))
       run_hybrid(get_argument());
-    else if (string_compare(argument, "-memory")) {
-      // the virtual memory of the binaries booted from here on, in GB:
-      // their stack is at its end
-
-      VIRTUALMEMORYSIZE = atoi(get_argument());
-
-      if (VIRTUALMEMORYSIZE < 4)
-        return EXITCODE_BADARGUMENTS;
-
-      HIGHESTVIRTUALADDRESS = VIRTUALMEMORYSIZE * GIGABYTE - 1;
-
-      NUMBEROFPAGES = VIRTUALMEMORYSIZE * GIGABYTE / PAGESIZE;
-    }
-    else if (string_compare(argument, "-tapes")) {
-      NUMBER_OF_TAPES = atoi(get_argument());
-
-      if (NUMBER_OF_TAPES < 4)
-        return EXITCODE_BADARGUMENTS;
-      else if (NUMBER_OF_TAPES != two_to_the_power_of(log_two(NUMBER_OF_TAPES)))
-        return EXITCODE_BADARGUMENTS;
-      else if (token_registers != (uint64_t*) 0)
-        // the token has its tapes already
-        return EXITCODE_BADARGUMENTS;
-
-      tape_files = NUMBER_OF_TAPES;
-    } else if (string_compare(argument, "-tapewords"))
-      TAPE_WORDS = atoi(get_argument());
-    else if (string_compare(argument, "-stack"))
-      stack_words = atoi(get_argument());
-    else if (string_compare(argument, "-heap")) {
-      if (number_of_remaining_arguments() < 2)
-        return EXITCODE_BADARGUMENTS;
-      else if (number_of_heap_regions >= MAX_HEAP_REGIONS)
-        return EXITCODE_BADARGUMENTS;
-
-      if (heap_offsets == (uint64_t*) 0) {
-        heap_offsets = zmalloc(MAX_HEAP_REGIONS * sizeof(uint64_t));
-        heap_words   = zmalloc(MAX_HEAP_REGIONS * sizeof(uint64_t));
-      }
-
-      *(heap_offsets + number_of_heap_regions) = atoi(get_argument());
-      *(heap_words + number_of_heap_regions)   = atoi(get_argument());
-
-      number_of_heap_regions = number_of_heap_regions + 1;
-    } else if (string_compare(argument, "-a")) {
+    else if (string_compare(argument, "-a")) {
       if (number_of_remaining_arguments() < 3)
         return EXITCODE_BADARGUMENTS;
 

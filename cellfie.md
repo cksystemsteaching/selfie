@@ -324,14 +324,51 @@ Four things had to change for this, none of them in the cell rule:
 
 The same binary also compiles a small layout on riscr, forward and backward to its initial state, and on mipster, to the file the host writes.
 
-What this is not: the layout `L1` is not built on a grid by the program that computed it. The layout compiler writes a file, as selfie writes a binary; the constructor of the section before builds a layout from a tape that cellfie wrote. Joining the two, a compiler that constructs what it compiles, is what is left of self-reproduction.
+### A Compiler That Constructs What It Compiles
+
+The layout compiler writes a file, as selfie writes a binary, and the constructor of the section before builds a layout from a tape that cellfie wrote on the host. Joined, the compiler builds the layout it computed on the grid it runs on, with no file and no tape in between.
+
+Nothing in the rule is needed for that, and little in the compiler. The parts of a cell have addresses, so in C\* a part of a cell is behind a pointer, and constructing a cell is a store:
+
+```
+part = (uint64_t*) (2305843009213693952 + row * 268435456 + column);
+
+*part = kind;
+```
+
+Selfie compiles the store to `sd`, and riscr translates `sd` to two exchanges with the word at the address: what is there goes onto the history stack, and the value goes there. Both are `ld` at the address of a part of a cell, so both are flights. A C\* program that stores cells therefore runs on cellfie as it is, forward and backward: `tests/cellfie-build-test.c` stores a mirror, a router, a memory cell, and an instruction cell, and loads one of them again.
+
+- `-at column row width height` before `-c` or `-h` gives the grid of a binary a window to store cells in. It must be south and east of everything the compiler lays, and the grid grows to hold it.
+- `-onto column row` after `-c` stores the layout just compiled, cell by cell, with its first cell at that cell of the grid that cellfie itself runs on (`construct_laid_cells`). On the host there is no such grid, and cellfie says so.
+- The hybrid simulator flies: a flight is `2dx + 2dy + 2` ticks, with `dx` columns east and `dy` rows south around the torus, and the parts of cells are in a store of their own. `-window layout` before `-h` writes the window when the binary has run.
+
+`make construct` runs the test program event-driven, to its exit and back to its initial state, and on the hybrid simulator: exit code 42 after 1,493 instructions and 929,774 ticks in both, with 20 exchanges of parts, and the same cells in the two windows. `make cellfie-on-cellfie` now ends with the join:
+
+```
+./cellfie -memory 16 -tapes 8 -tapewords 4194304 -heap 0 1800000000 -stack 1000000 \
+  -at 16384 1048576 16384 8192 -window L2.rle \
+  -h cellfie-r.r -c cellfie-r.r -o L1.rle -onto 16384 1048576
+```
+
+Cellfie's binary, with what this section added 360,512 RISC-R instructions, compiles itself on cellfie, writes `L1.rle`, and stores the 1,509,401 cells of the layout in a window a million rows south of itself: 5,243,698 flights, two for each part that is not zero. `L1.rle` is `L0.rle`, and the window, written by the simulator as `L2.rle`, has the cells of `L0.rle`, line for line.
+
+| | Compile and construct | and write the file |
+| --- | --- | --- |
+| RISC-R instructions | 2,131,520,395 | 6,110,490,485 |
+| Ticks | 3.15·10^14 | 1.13·10^15 |
+| Host | 7 minutes | 20 minutes |
+
+Writing the layout as text is two thirds of the work; a compiler that only constructs does not need the file.
+
+What this is and is not. The program that computes the layout builds it, by the rule, on its own grid: that is the compiler plus constructor of the plan. It is not self-reproduction yet: the copy has no token, so it does not run, and the window is given by the user, far away, on a grid that only the hybrid simulator can hold. It is not the constructor of the section before either: a store pushes what was in the window onto the history stack, so the layout is built with garbage, a word of history per part, where the constructor moved it from its tape with none. And at this size nothing ran backward: the hybrid simulator does not.
 
 ## Not There Yet
 
 - Files of the host on a grid: the hybrid simulator has them, the event-driven simulator and the model do not. There input is what the layout holds and output stays on its tape.
 - Words without a cell are detected where the cells are tagged, which is in compiled layouts: `invalid-address` when the token is at the wrong word. A `brk` beyond the cells of the heap is not detected before the first access, and the layouts written by hand have no tags. A token that leaves the wire altogether, for want of a mirror, just goes around the torus.
-- A layout that is computed and constructed in one run: the layout compiler writes a file, the constructor takes its tape from cellfie on the host.
-- Construction in the hybrid simulator: an `ld` at the address of a cell is an `invalid-address` there, so a constructor only runs event-driven.
+- A constructed layout that runs: the compiler stores the cells of the layout but no token, and its own token ends at its exit. The window is where the user says, not where the compiler finds room.
+- Construction without garbage by a compiler: a store in C\* is an exchange with the history stack. The constructor with a tape leaves none, but its tape comes from the host.
+- Flights in the hybrid simulator are a formula tied to the event-driven simulator by one small program; a flight with coinciding corners is `invalid-address` there.
 - A flight whose destination is in the column or in the row of the cell it left, or in the row north of it, has corners that coincide. The rule is defined there and a bijection, but the token does not come back; no property says so.
 - RISC-U cells, which overwrite `rd` and join paths without a come-from. Their rule is no bijection, and bitr should find two states with the same successor.
 - The comparison with RISC-R is 19 programs and one run each, with one input. The cell rule and rotor's model are not compared on all states: an instruction takes one step in one and a number of ticks without bound in the other, so that proof needs the cells of a transfer and the wire between them, not the rule alone. The examples read one byte, so nothing has been compared for other inputs.
