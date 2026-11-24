@@ -504,6 +504,7 @@ void     add_region(uint64_t start, uint64_t words, uint64_t kind);
 uint64_t find_region(uint64_t address);
 uint64_t region_height(uint64_t lo, uint64_t hi);
 
+uint64_t plan_path_combs(uint64_t* keys, uint64_t count);
 void     plan_path();
 void     plan_regions();
 uint64_t initial_word(uint64_t address);
@@ -533,6 +534,9 @@ void lay_cell(uint64_t x, uint64_t y, uint64_t cell, uint64_t word);
 void lay_tagged_cell(uint64_t x, uint64_t y, uint64_t cell, uint64_t word, uint64_t tag);
 void lay_mirror(uint64_t x, uint64_t y, uint64_t mirror_kind);
 void lay_comb(uint64_t* keys, uint64_t* xs, uint64_t lo, uint64_t hi, uint64_t y, uint64_t down, uint64_t field);
+void lay_side_comb(uint64_t* keys, uint64_t* ys, uint64_t lo, uint64_t hi, uint64_t x, uint64_t field);
+
+uint64_t lay_path_combs(uint64_t* keys, uint64_t* outs, uint64_t* ins, uint64_t count, uint64_t control);
 
 void add_memory_word(uint64_t address, uint64_t value, uint64_t kind);
 
@@ -543,7 +547,6 @@ void write_abstraction(char* name, uint64_t heap_allowance, uint64_t stack_allow
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
-uint64_t CODE_COLUMN = 4; // column of the first instruction and of the first memory word
 
 uint64_t TAPE_WORDS = 16; // words per tape, as in rotor's model
 
@@ -603,16 +606,45 @@ uint64_t last_region = 0; // the region found last
 
 // the rows of the layout
 
-uint64_t control_turn_row  = 0;
-uint64_t access_turn_row   = 0;
+// the path in strips: a strip is a row of the instructions whose addresses
+// differ in their lower bits only, with its combs north and south of it
+
+uint64_t path_bits    = 0; // the bits of an instruction address that select the column
+uint64_t path_width   = 0; // instructions of a strip
+uint64_t path_strips  = 0; // number of strips
+uint64_t path_pitch   = 0; // rows of a strip
+uint64_t path_column  = 0; // column of the first instruction of each strip
+
+uint64_t control_height = 0; // rows of a comb of control of a strip
+uint64_t access_height  = 0; // rows of a comb of access of a strip
+
+uint64_t control_side_height = 0; // columns of a comb over the strips that transfer control
+uint64_t access_side_height  = 0; // columns of a comb over the strips that access memory
+
+uint64_t first_control_strip = 0; // the first strip that transfers control
+uint64_t first_access_strip  = 0; // the first strip that accesses memory
+
+uint64_t side_height = 0; // of the comb over the strips planned last
+uint64_t first_strip = 0; // of the strips planned last
+
+uint64_t* side_keys    = (uint64_t*) 0; // an address in each strip that has a comb
+uint64_t* side_entries = (uint64_t*) 0; // the row in which a token enters each such strip
+uint64_t* side_exits   = (uint64_t*) 0; // the row in which a token leaves each such strip
+
+// the rows of a strip of the path, from its first row
+
+uint64_t control_turn_row  = 0; // control leaves the strip west
+uint64_t access_turn_row   = 0; // a token returns from memory east into the strip
 uint64_t control_out_row   = 0;
 uint64_t access_in_row     = 0;
 uint64_t path_row          = 0;
 uint64_t control_in_row    = 0;
 uint64_t access_out_row    = 0;
-uint64_t control_spine_row = 0;
-uint64_t access_spine_row  = 0;
-uint64_t memory_in_row     = 0; // the first row of the first strip
+uint64_t control_spine_row = 0; // control enters the strip east
+uint64_t access_spine_row  = 0; // a token leaves the strip west for memory
+uint64_t path_return_row   = 0; // the path leads west to the next strip
+
+uint64_t memory_in_row = 0; // the first row of the first strip of words
 
 // the strips of words: a strip is a row of the words whose addresses differ
 // in their lower bits only, with a comb to them above and one from them below
@@ -4937,6 +4969,115 @@ void lay_comb(uint64_t* keys, uint64_t* xs, uint64_t lo, uint64_t hi, uint64_t y
   lay_comb(keys, xs, mid, hi, y, down, field);
 }
 
+void lay_side_comb(uint64_t* keys, uint64_t* ys, uint64_t lo, uint64_t hi, uint64_t x, uint64_t field) {
+  uint64_t bit;
+  uint64_t mid;
+
+  // a comb on its side, over the keys from lo to hi - 1 with its root in
+  // column x and its leaves in the rows ys east of it: a token heading
+  // east for the leaves is turned south by a router if the bit is set
+  // and east again in the row of its half, and a token heading west from
+  // the leaves is turned north in its row and west again by the router
+
+  if (hi < lo + 2)
+    return;
+
+  bit = differing_bit(*(keys + lo), *(keys + hi - 1));
+
+  mid = lo + 1;
+
+  while (get_bits(*(keys + mid), bit, 1) == 0)
+    mid = mid + 1;
+
+  lay_cell(x, *(ys + lo), encode_cell(CELL_ROUTER, 0, BACKSLASH), bit + field * 64);
+
+  lay_mirror(x, *(ys + mid), BACKSLASH);
+
+  lay_side_comb(keys, ys, lo, mid, x + 1, field);
+  lay_side_comb(keys, ys, mid, hi, x + 1, field);
+}
+
+uint64_t lay_path_combs(uint64_t* keys, uint64_t* outs, uint64_t* ins, uint64_t count, uint64_t control) {
+  uint64_t strips;
+  uint64_t strip;
+  uint64_t top;
+  uint64_t lo;
+  uint64_t hi;
+  uint64_t i;
+
+  // the combs of the strips of the path over the instructions with these
+  // ascending addresses, which leave the path in the columns outs and
+  // join it from the columns ins, and the wire from the roots of the
+  // combs to the rows in which a token leaves and enters a strip; sets
+  // side_keys, side_exits, and side_entries for the combs over the
+  // strips and returns the number of strips
+
+  strips = 0;
+
+  lo = 0;
+
+  while (lo < count) {
+    strip = (*(keys + lo) - code_start) / INSTRUCTIONSIZE / path_width;
+
+    hi = lo + 1;
+
+    while (and(hi < count, (*(keys + hi) - code_start) / INSTRUCTIONSIZE / path_width == strip))
+      hi = hi + 1;
+
+    top = strip * path_pitch;
+
+    if (control) {
+      // north out of the cell to the root and on to the first row, there west;
+      // from the west in the row south of the combs, north to the root, to
+      // the row south of the path, and west and north into the cell
+
+      lay_comb(keys, outs, lo, hi, top + control_out_row, 1, FIELD_ADDRESS);
+      lay_comb(keys, ins, lo, hi, top + control_in_row, 0, FIELD_PC);
+
+      lay_mirror(*(outs + lo), top + control_turn_row, BACKSLASH);
+      lay_mirror(*(ins + lo), top + control_spine_row, SLASH);
+
+      *(side_exits + strips)   = top + control_turn_row;
+      *(side_entries + strips) = top + control_spine_row;
+    } else {
+      // south out of the cell to the root and on to the row south of all
+      // combs, there west; from the west in the second row, south to the
+      // root, to the row north of the path, and west and south into the cell
+
+      lay_comb(keys, outs, lo, hi, top + access_out_row, 0, FIELD_PC);
+      lay_comb(keys, ins, lo, hi, top + access_in_row, 1, FIELD_PC);
+
+      lay_mirror(*(outs + lo), top + access_spine_row, SLASH);
+      lay_mirror(*(ins + lo), top + access_turn_row, BACKSLASH);
+
+      *(side_exits + strips)   = top + access_spine_row;
+      *(side_entries + strips) = top + access_turn_row;
+    }
+
+    i = lo;
+
+    while (i < hi) {
+      if (control) {
+        lay_mirror(*(ins + i), top + path_row + 1, BACKSLASH);
+        lay_mirror(*(outs + i), top + path_row + 1, BACKSLASH);
+      } else {
+        lay_mirror(*(ins + i), top + path_row - 1, SLASH);
+        lay_mirror(*(outs + i), top + path_row - 1, SLASH);
+      }
+
+      i = i + 1;
+    }
+
+    *(side_keys + strips) = *(keys + lo);
+
+    strips = strips + 1;
+
+    lo = hi;
+  }
+
+  return strips;
+}
+
 void lay_descending_comb(uint64_t* keys, uint64_t* xs, uint64_t lo, uint64_t hi, uint64_t x, uint64_t y, uint64_t down) {
   uint64_t bit;
   uint64_t mid;
@@ -5161,15 +5302,92 @@ uint64_t region_height(uint64_t lo, uint64_t hi) {
     return right + 1;
 }
 
+uint64_t plan_path_combs(uint64_t* keys, uint64_t count) {
+  uint64_t* firsts;
+  uint64_t strips;
+  uint64_t strip;
+  uint64_t height;
+  uint64_t highest;
+  uint64_t lo;
+  uint64_t hi;
+
+  // the combs over the instructions with these ascending addresses: returns
+  // the rows of the highest comb of a strip, and sets side_height to the
+  // columns of the comb over the strips that have one and first_strip to
+  // the first of them
+
+  firsts = zmalloc(path_strips * sizeof(uint64_t));
+
+  strips  = 0;
+  highest = 0;
+
+  first_strip = 0;
+
+  lo = 0;
+
+  while (lo < count) {
+    strip = (*(keys + lo) - code_start) / INSTRUCTIONSIZE / path_width;
+
+    hi = lo + 1;
+
+    while (and(hi < count, (*(keys + hi) - code_start) / INSTRUCTIONSIZE / path_width == strip))
+      hi = hi + 1;
+
+    height = comb_height(keys, lo, hi);
+
+    if (height > highest)
+      highest = height;
+
+    if (strips == 0)
+      first_strip = strip;
+
+    *(firsts + strips) = *(keys + lo);
+
+    strips = strips + 1;
+
+    lo = hi;
+  }
+
+  side_height = comb_height(firsts, 0, strips);
+
+  return highest;
+}
+
 void plan_path() {
   uint64_t n;
   uint64_t i;
-  uint64_t x;
+  uint64_t cost;
+  uint64_t best;
+
+  // the path in two dimensions: as many bits of an instruction address
+  // select the column that the width of a strip plus the height of all
+  // strips is least, with a comb taken to have as many rows as bits
+
+  n = code_size / INSTRUCTIONSIZE;
+
+  path_bits = 1;
+
+  best = 4 + (n + 1) / 2 * 12;
+
+  i = 2;
+
+  while (two_to_the_power_of(i - 1) < n) {
+    cost = two_to_the_power_of(i + 1) + (n + two_to_the_power_of(i) - 1) / two_to_the_power_of(i) * (4 * i + 8);
+
+    if (cost < best) {
+      best = cost;
+
+      path_bits = i;
+    }
+
+    i = i + 1;
+  }
+
+  path_width  = two_to_the_power_of(path_bits);
+  path_strips = (n + path_width - 1) / path_width;
 
   // the instructions: beq, jal, and jalr transfer control, ld with rd not
   // zero and ecall access memory, both leave and join the path sideways
-
-  n = code_size / INSTRUCTIONSIZE;
 
   instruction_classes = zmalloc(n * sizeof(uint64_t));
 
@@ -5189,27 +5407,17 @@ void plan_path() {
   while (i < n) {
     decode_cell(load_instruction(i * INSTRUCTIONSIZE));
 
-    x = CODE_COLUMN + 2 * i;
-
     if (is_reversible_instruction()) {
       if (or(is == BEQ, or(is == JAL, is == JALR))) {
-        // leaves north in its column, arrives from the south from the next column
-
         *(instruction_classes + i) = CLASS_CONTROL;
 
         *(control_keys + controls) = code_start + i * INSTRUCTIONSIZE;
-        *(control_out + controls)  = x;
-        *(control_in + controls)   = x + 1;
 
         controls = controls + 1;
       } else if (or(is == ECALL, and(is == LOAD, rd != REG_ZR))) {
-        // leaves south in its column, returns from the north from the next column
-
         *(instruction_classes + i) = CLASS_ACCESS;
 
         *(access_keys + accesses) = code_start + i * INSTRUCTIONSIZE;
-        *(access_out + accesses)  = x;
-        *(access_in + accesses)   = x + 1;
 
         accesses = accesses + 1;
       }
@@ -5217,6 +5425,48 @@ void plan_path() {
 
     i = i + 1;
   }
+
+  // the combs of the strips, and the combs over the strips west of them
+
+  control_height = plan_path_combs(control_keys, controls);
+
+  control_side_height = side_height;
+  first_control_strip = first_strip;
+
+  access_height = plan_path_combs(access_keys, accesses);
+
+  access_side_height = side_height;
+  first_access_strip = first_strip;
+
+  // one column west of the strips leads the path from a strip to the next
+
+  path_column = COMB_COLUMN + 2 * control_side_height + 2 * access_side_height + 1;
+
+  // control leaves north in its column and arrives from the south from the
+  // next column, access leaves south in its column and returns from the north
+  // from the next column
+
+  i = 0;
+
+  while (i < controls) {
+    *(control_out + i) = path_column + 2 * ((*(control_keys + i) - code_start) / INSTRUCTIONSIZE % path_width);
+    *(control_in + i)  = *(control_out + i) + 1;
+
+    i = i + 1;
+  }
+
+  i = 0;
+
+  while (i < accesses) {
+    *(access_out + i) = path_column + 2 * ((*(access_keys + i) - code_start) / INSTRUCTIONSIZE % path_width);
+    *(access_in + i)  = *(access_out + i) + 1;
+
+    i = i + 1;
+  }
+
+  side_keys    = zmalloc(path_strips * sizeof(uint64_t));
+  side_entries = zmalloc(path_strips * sizeof(uint64_t));
+  side_exits   = zmalloc(path_strips * sizeof(uint64_t));
 }
 
 void plan_regions() {
@@ -5636,16 +5886,11 @@ uint64_t get_word_row(uint64_t strip) {
 }
 
 void plan_rows() {
-  uint64_t control_height;
-  uint64_t access_height;
-
-  // the rows, from north to south: two rows in which wire turns to the
-  // combs below, the combs north of the path, the path, the combs south
-  // of it, two rows in which wire turns to the combs above and to memory,
-  // and the strips of words
-
-  control_height = comb_height(control_keys, 0, controls);
-  access_height  = comb_height(access_keys, 0, accesses);
+  // the rows of a strip of the path, from north to south: two rows in
+  // which wire leaves and enters the strip west of the combs below, the
+  // combs north of the path, the path, the combs south of it, two rows in
+  // which wire enters and leaves the strip, and the row in which the path
+  // returns west; the strips of words are south of all strips of the path
 
   plan_strips();
 
@@ -5667,7 +5912,11 @@ void plan_rows() {
   control_spine_row = access_out_row + 1;
   access_spine_row  = control_spine_row + 1;
 
-  memory_in_row = access_spine_row + 1;
+  path_return_row = access_spine_row + 1;
+
+  path_pitch = path_return_row + 1;
+
+  memory_in_row = path_strips * path_pitch;
 }
 
 void boot_token() {
@@ -5677,7 +5926,7 @@ void boot_token() {
 
   reset_token();
 
-  token_x = CODE_COLUMN;
+  token_x = path_column;
   token_y = path_row;
 
   token_pc = get_pc(current_context);
@@ -5754,14 +6003,16 @@ void compile_layout(char* name) {
     j = j + 1;
   }
 
-  x = CODE_COLUMN + 2 * n + 2;
+  x = path_column + 2 * path_width + 2;
 
   if (x < word_column + two_to_the_power_of(strip_bits + 1) + 1)
     x = word_column + two_to_the_power_of(strip_bits + 1) + 1;
 
   allocate_grid(x, memory_in_row + memory_rows);
 
-  // the path
+  // the path, strip by strip: from the last instruction of a strip two
+  // columns east, south to the last row of the strip, west to the column
+  // west of the strips, south to the path of the next strip, and east
 
   i = 0;
 
@@ -5770,7 +6021,7 @@ void compile_layout(char* name) {
 
     decode_cell(value);
 
-    x = CODE_COLUMN + 2 * i;
+    x = path_column + 2 * (i % path_width);
 
     j = SLASH;
 
@@ -5778,60 +6029,56 @@ void compile_layout(char* name) {
       if (or(is == ECALL, and(is == LOAD, rd != REG_ZR)))
         j = BACKSLASH;
 
-    lay_tagged_cell(x, path_row, encode_cell(CELL_INSTRUCTION, EAST, j), value, code_start + i * INSTRUCTIONSIZE);
+    lay_tagged_cell(x, i / path_width * path_pitch + path_row, encode_cell(CELL_INSTRUCTION, EAST, j), value, code_start + i * INSTRUCTIONSIZE);
 
     i = i + 1;
   }
 
-  // control: north out of the cell to the root of the comb of departures
-  // and on to the northern row, west to column 0, south past the path to
-  // the row south of the combs south of it, east to the root of the comb
-  // of arrivals, north to the row south of the path, and west and north
-  // into the cell
+  i = 0;
 
-  if (controls > 0) {
-    lay_comb(control_keys, control_out, 0, controls, control_out_row, 1, FIELD_ADDRESS);
-    lay_comb(control_keys, control_in, 0, controls, control_in_row, 0, FIELD_PC);
+  while (i + 1 < path_strips) {
+    lay_mirror(path_column + 2 * path_width, i * path_pitch + path_row, BACKSLASH);
+    lay_mirror(path_column + 2 * path_width, i * path_pitch + path_return_row, SLASH);
+    lay_mirror(path_column - 1, i * path_pitch + path_return_row, SLASH);
+    lay_mirror(path_column - 1, (i + 1) * path_pitch + path_row, BACKSLASH);
 
-    i = 0;
-
-    while (i < controls) {
-      lay_mirror(*(control_in + i), path_row + 1, BACKSLASH);
-      lay_mirror(*(control_out + i), path_row + 1, BACKSLASH);
-
-      i = i + 1;
-    }
-
-    lay_mirror(*control_out, control_turn_row, BACKSLASH);
-    lay_mirror(0, control_turn_row, SLASH);
-    lay_mirror(0, control_spine_row, BACKSLASH);
-    lay_mirror(*control_in, control_spine_row, SLASH);
+    i = i + 1;
   }
 
-  // memory: south out of the cell to the root of the comb of departures,
-  // west to column 1, south and east to the root of the comb over the
-  // strips, east in the row of the strip to the root of its comb to the
-  // words, through the cell of the word and the comb back from the words
-  // of the strip, west through the comb back from the strips to column 2,
-  // north past the path to the second row, east to the root of the comb
-  // of returns, south to the row north of the path, and west and south
-  // into the cell
+  // control: through the comb of departures of its strip, west through the
+  // comb from the strips to column 0, south to the row in which control
+  // enters the first strip that has any, east through the comb to the
+  // strips, and through the comb of arrivals of its strip
+
+  if (controls > 0) {
+    i = lay_path_combs(control_keys, control_out, control_in, controls, 1);
+
+    lay_side_comb(side_keys, side_exits, 0, i, COMB_COLUMN, FIELD_ADDRESS);
+    lay_side_comb(side_keys, side_entries, 0, i, COMB_COLUMN + control_side_height + access_side_height, FIELD_PC);
+
+    lay_mirror(0, *side_exits, SLASH);
+    lay_mirror(0, *side_entries, BACKSLASH);
+  }
+
+  // memory: through the comb of departures of its strip, west through the
+  // comb from the strips to column 1, south past all strips of the path
+  // and east to the root of the comb over the strips of words, east in
+  // the row of the strip to the root of its comb to the words, through
+  // the cell of the word and the comb back from the words of the strip,
+  // west through the comb back from the strips of words to column 2,
+  // north to the row in which a token enters the first strip of the path
+  // that has any access, east through the comb to the strips, and
+  // through the comb of returns of its strip
 
   if (accesses > 0) {
-    lay_comb(access_keys, access_out, 0, accesses, access_out_row, 0, FIELD_PC);
-    lay_comb(access_keys, access_in, 0, accesses, access_in_row, 1, FIELD_PC);
+    i = lay_path_combs(access_keys, access_out, access_in, accesses, 0);
 
-    i = 0;
+    lay_side_comb(side_keys, side_entries, 0, i, COMB_COLUMN + control_side_height, FIELD_PC);
+    lay_side_comb(side_keys, side_exits, 0, i, COMB_COLUMN + 2 * control_side_height + access_side_height, FIELD_PC);
 
-    while (i < accesses) {
-      lay_mirror(*(access_in + i), path_row - 1, SLASH);
-      lay_mirror(*(access_out + i), path_row - 1, SLASH);
+    lay_mirror(1, *side_exits, SLASH);
+    lay_mirror(2, *side_entries, SLASH);
 
-      i = i + 1;
-    }
-
-    lay_mirror(*access_out, access_spine_row, SLASH);
-    lay_mirror(1, access_spine_row, SLASH);
     lay_mirror(1, memory_in_row, BACKSLASH);
 
     lo = 0;
@@ -5877,8 +6124,6 @@ void compile_layout(char* name) {
     laying_strips = 0;
 
     lay_mirror(2, memory_in_row + strip_pitch - 1, BACKSLASH);
-    lay_mirror(2, access_turn_row, SLASH);
-    lay_mirror(*access_in, access_turn_row, BACKSLASH);
   }
 
   i = 0;
@@ -6145,16 +6390,23 @@ void write_abstraction(char* name, uint64_t heap_allowance, uint64_t stack_allow
 // and the cells of the words act on the token by the procedures of the
 // cell rule, and the wire in between is not followed but measured. The
 // compiler lays wire on which the token never turns back, so the ticks
-// of a transfer are the distance along its wire, with instruction i
-// in column CODE_COLUMN + 2 * i, the row S in which control turns
-// south of the path, and combs of h rows in the strips of words:
+// of a transfer are the distance along its wire. With strips of the
+// path of n instructions and p rows, of which S is the row in which
+// control enters, strips of words whose combs have h rows, and c and
+// a the first strips of the path that transfer control and access
+// memory:
 //
-//   from an instruction in column x to the one after the come-from
-//   in column y: 2 * S + x + y + 4 ticks
+//   from an instruction to the next: 2 ticks, or 2 * n + 4 + p if
+//   the next is in the next strip
 //
-//   from an instruction in column x to the word in column w and row v
-//   and back to its side: 2 * x + 2 * w + 2 * v + 2 * h - 4 ticks, and
-//   2 more to the next instruction after the last such leg
+//   from an instruction in strip s and column x to the one after the
+//   come-from in strip t and column y: 2 * S + x + y + 4 ticks, and
+//   (s + t - 2 * c) * p for the rows in between
+//
+//   from an instruction in strip s and column x to the word in column
+//   w and row v and back to its side: 2 * x + 2 * w + 2 * v + 2 * h - 4
+//   ticks, and 2 * (s - 2 * a) * p for the rows in between, and 2 more
+//   to the next instruction after the last such leg
 //
 // See cellfie.md. Words are allocated when first accessed. Files are
 // the host's, as in riscr: openat opens the file, read moves its bytes
@@ -6445,8 +6697,12 @@ void run_hybrid(char* name) {
   uint64_t address;
   uint64_t word;
   uint64_t property;
+  uint64_t at;
+  uint64_t strip;
 
-  word = 0;
+  word  = 0;
+  at    = 0;
+  strip = 0;
 
   boot_binary(name, 1);
 
@@ -6456,7 +6712,7 @@ void run_hybrid(char* name) {
 
   n = code_size / INSTRUCTIONSIZE;
 
-  x = CODE_COLUMN + 2 * n + 2;
+  x = path_column + 2 * path_width + 2;
 
   if (x < word_column + two_to_the_power_of(strip_bits + 1) + 1)
     x = word_column + two_to_the_power_of(strip_bits + 1) + 1;
@@ -6485,9 +6741,14 @@ void run_hybrid(char* name) {
     else if (i >= n)
       property = PROPERTY_INVALID_PC;
     else {
-      x = CODE_COLUMN + 2 * i;
+      at = i;
+
+      strip = i / path_width;
+
+      x = path_column + 2 * (i % path_width);
 
       token_x = x;
+      token_y = strip * path_pitch + path_row;
 
       word = load_instruction(i * INSTRUCTIONSIZE);
 
@@ -6525,6 +6786,11 @@ void run_hybrid(char* name) {
 
             executed_ticks = executed_ticks + 2 * x + 2 * j + 2 * strip_height - 4;
 
+            // the rows of the strips of the path on the way
+
+            executed_ticks = executed_ticks + 2 * (strip - first_access_strip) * path_pitch;
+            executed_ticks = executed_ticks - 2 * first_access_strip * path_pitch;
+
             act_instruction(EAST, BACKSLASH, word);
           }
         }
@@ -6545,9 +6811,20 @@ void run_hybrid(char* name) {
           else if (*(instruction_classes + j) != CLASS_CONTROL)
             property = PROPERTY_INVALID_PC;
           else {
-            executed_ticks = executed_ticks + 2 * control_spine_row + x + CODE_COLUMN + 2 * j + 2;
+            at = j;
 
-            token_x = CODE_COLUMN + 2 * j;
+            token_x = path_column + 2 * (j % path_width);
+            token_y = j / path_width * path_pitch + path_row;
+
+            executed_ticks = executed_ticks + 2 * control_spine_row + x + token_x + 2;
+
+            // the rows of the strips of the path on the way
+
+            j = strip + j / path_width - 2 * first_control_strip;
+
+            executed_ticks = executed_ticks + j * path_pitch;
+
+            j = at;
 
             act_instruction(EAST, SLASH, load_instruction(j * INSTRUCTIONSIZE));
 
@@ -6558,9 +6835,15 @@ void run_hybrid(char* name) {
         }
       }
 
-      if (property == PROPERTY_NONE)
-        // to the next instruction on the path
+      if (property == PROPERTY_NONE) {
+        // to the next instruction on the path, which may be in the next strip
+
         executed_ticks = executed_ticks + 2;
+
+        if (at % path_width == path_width - 1)
+          if (at + 1 < n)
+            executed_ticks = executed_ticks + 2 * path_width + 2 + path_pitch;
+      }
     }
   }
 
