@@ -26,16 +26,18 @@ flow of the model path by path and asks the solver only where a path
 forks or may reach a bad state, and a prover that one model undoes
 another, by cases over all choices the two models make.
 
-Usage: bitr model.btor2 [ -l binary ] [ -i file ] [ -k steps ] [ -p ]
+Usage: bitr model.btor2 [ -l binary ] [ -i file ] [ -grid layout ] [ -k steps ] [ -p ]
        bitr model.btor2 [ -l binary ] -bmc steps [ -all ] [ -w file ] [ -dimacs prefix limit ] [ -v ]
        bitr model.btor2 -identity inverse.btor2 [ -k steps ] [ -all ] [ -v ]
+       bitr model.btor2 [ -l binary ] -product other.btor2 [ -grid layout ] -abstraction map.btor2 [ -k steps ]
        bitr -sat file.cnf
 
 -l loads the code and data of binary into the model's code and data
 segment states, checking them against words the model holds already;
 -i puts file onto the model's input tape (RISC-R) or input buffer
-(RISC-U); -k bounds the number of steps; -p prints the program
-counter at every step. Bitr reports the first bad state or violated
+(RISC-U); -grid loads the cells and the token of a cellfie layout
+into the states of cellfie's model; -k bounds the number of steps;
+-p prints the program counter at every step. Bitr reports the first bad state or violated
 constraint and the number of instructions executed until then.
 
 -bmc checks all inputs at once: state that the model leaves
@@ -51,6 +53,15 @@ of the inverse model lead back to the state they started in, for
 every state that satisfies the constraints of the model and is not
 bad; the models share their states by name. One step is the default.
 Bitr reports the first state it finds not restored, with -all all.
+
+-product runs the model and another model together, concretely: the
+other model step by step, the model only in the steps in which the
+output step of the abstraction holds. The abstraction is a third
+BTOR2 file whose states are states of the two models by name and
+whose bad states are where the two differ. Bitr reports the first
+step in which they differ or only one of them stops, or that they
+agree until both stop together. This is how cellfie's cell rule on
+a layout is compared with rotor's RISC-R model of a binary.
 
 -sat runs the CDCL solver on a DIMACS CNF file.
 */
@@ -126,10 +137,33 @@ void load_words(uint64_t* state_nid, uint64_t start, uint64_t size, uint64_t bin
 void load_binary(char* name);
 void load_input(char* name);
 
+uint64_t layout_character();
+void     layout_error(char* message);
+void     skip_layout_blanks(uint64_t lines);
+uint64_t scan_layout_decimal();
+uint64_t scan_layout_hexadecimal(uint64_t digits);
+uint64_t scan_layout_mirror();
+uint64_t scan_layout_heading(uint64_t c);
+
+uint64_t* find_layout_state(char* symbol);
+uint64_t* find_context_state(char* token_symbol, char* pocket_symbol);
+
+void load_layout(char* name);
+
+void load_files();
+
 // ------------------------ GLOBAL VARIABLES -----------------------
 
 char* binary_file = (char*) 0;
 char* input_file  = (char*) 0;
+char* layout_file = (char*) 0;
+
+uint64_t* layout_text = (uint64_t*) 0; // layout file in memory
+uint64_t  layout_size = 0;             // in bytes
+uint64_t  layout_pos  = 0;             // current character
+uint64_t  layout_line = 1;             // current line number
+
+uint64_t layout_pocket = 0; // the lines of the layout from here on are the pocket's
 
 uint64_t loaded_words   = 0;
 uint64_t checked_words  = 0;
@@ -143,12 +177,51 @@ void     init_states();
 uint64_t check_properties();
 uint64_t simulate();
 
+void collect_lines();
+
+uint64_t* violated_property();
+
+void parse_next_model(char* name);
+
+void bind_abstraction();
+void eval_nexts();
+void apply_nexts();
+void skip_nexts();
+
+uint64_t product();
+
 // ------------------------ GLOBAL VARIABLES -----------------------
 
 uint64_t max_steps   = 0; // bound on steps, 0 for none
 uint64_t printing_pc = 0; // print pc at every step
 
 uint64_t* pc_state_nid = (uint64_t*) 0;
+
+// product of two models: the second model, the abstraction that relates
+// its states to the states of the first, and the models as records
+
+char* OP_OUTPUT = (char*) 0; // output lines name what an abstraction computes
+
+char* product_model_name     = (char*) 0;
+char* abstraction_model_name = (char*) 0;
+
+uint64_t MODEL_RECORD_SIZE = 22;
+
+// the next, state, and property lines of the current model, collected
+// once, since a product takes many steps of models with many lines
+
+uint64_t* next_lines     = (uint64_t*) 0;
+uint64_t* state_lines    = (uint64_t*) 0;
+uint64_t* property_lines = (uint64_t*) 0;
+
+uint64_t number_of_next_lines     = 0;
+uint64_t number_of_state_lines    = 0;
+uint64_t number_of_property_lines = 0;
+
+uint64_t* abstraction_states = (uint64_t*) 0; // states of the abstraction
+uint64_t* abstracted_states  = (uint64_t*) 0; // and the states of the models they stand for
+
+uint64_t number_of_abstraction_states = 0;
 
 // -----------------------------------------------------------------
 // -------------------------- BIT BLASTER --------------------------
@@ -969,6 +1042,7 @@ char* canonical_op(char* token) {
   if (string_compare(token, OP_WRITE)) return OP_WRITE;
   if (string_compare(token, OP_BAD)) return OP_BAD;
   if (string_compare(token, OP_CONSTRAINT)) return OP_CONSTRAINT;
+  if (string_compare(token, OP_OUTPUT)) return OP_OUTPUT;
 
   return (char*) 0;
 }
@@ -1131,6 +1205,15 @@ void parse_model() {
           number_of_bads = number_of_bads + 1;
         else
           number_of_constraints = number_of_constraints + 1;
+      } else if (op == OP_OUTPUT) {
+        // a named value, of an abstraction
+        arg1 = line_of_token(scan_token());
+
+        symbol = scan_token();
+
+        comment = scan_comment();
+
+        line = new_property(op, arg1, symbol, comment);
       } else if (op == OP_SEXT) {
         sid  = line_of_token(scan_token());
         arg1 = line_of_token(scan_token());
@@ -1402,6 +1485,586 @@ void load_input(char* name) {
   }
 }
 
+// a layout is a grid of cells and a token as text, see cellfie.md; it goes
+// into the states of cellfie's model: the token into token-x, token-y,
+// token-heading, token-pc, token-address, token-data, and token-registers,
+// the state of its system calls into token-break, token-open-files,
+// token-leg, token-word, token-tape-heads, token-tape-ends,
+// token-tape-inputs, and token-tape-opens, its pocket after a line #P into
+// the pocket- states of the same names, and the cells into cell-kinds,
+// cell-words, and cell-tags, row by row
+
+uint64_t layout_character() {
+  if (layout_pos < layout_size)
+    return load_character((char*) layout_text, layout_pos);
+  else
+    return 0;
+}
+
+void layout_error(char* message) {
+  printf("%s: %s in line %lu of %s\n", selfie_name, message, layout_line, layout_file);
+
+  exit(EXITCODE_SCANNERERROR);
+}
+
+void skip_layout_blanks(uint64_t lines) {
+  uint64_t c;
+
+  // spaces and tabs, and line ends as well if lines is set
+
+  while (1) {
+    c = layout_character();
+
+    if (c == 10) {
+      if (lines)
+        layout_line = layout_line + 1;
+      else
+        return;
+    } else if (c == 13) {
+      if (not(lines))
+        return;
+    } else if (c != ' ')
+      if (c != 9)
+        return;
+
+    layout_pos = layout_pos + 1;
+  }
+}
+
+uint64_t scan_layout_decimal() {
+  uint64_t n;
+  uint64_t c;
+
+  skip_layout_blanks(0);
+
+  c = layout_character();
+
+  if (or(c < '0', c > '9'))
+    layout_error("decimal number expected");
+
+  n = 0;
+
+  while (and(c >= '0', c <= '9')) {
+    n = n * 10 + c - '0';
+
+    layout_pos = layout_pos + 1;
+
+    c = layout_character();
+  }
+
+  return n;
+}
+
+uint64_t scan_layout_hexadecimal(uint64_t digits) {
+  uint64_t n;
+  uint64_t i;
+  uint64_t c;
+
+  // a number of exactly that many hexadecimal digits, or, with 0 digits,
+  // of as many as there are, at least one
+
+  if (digits == 0)
+    skip_layout_blanks(0);
+
+  n = 0;
+  i = 0;
+
+  while (1) {
+    c = layout_character();
+
+    if (and(c >= '0', c <= '9'))
+      c = c - '0';
+    else if (and(c >= 'a', c <= 'f'))
+      c = c - 'a' + 10;
+    else if (and(c >= 'A', c <= 'F'))
+      c = c - 'A' + 10;
+    else if (or(i == 0, digits != 0))
+      layout_error("hexadecimal digit expected");
+    else
+      return n;
+
+    n = n * 16 + c;
+
+    layout_pos = layout_pos + 1;
+
+    i = i + 1;
+
+    if (i == digits)
+      return n;
+  }
+}
+
+uint64_t scan_layout_mirror() {
+  uint64_t c;
+
+  // slash is 0, backslash is 1
+
+  c = layout_character();
+
+  layout_pos = layout_pos + 1;
+
+  if (c == '/')
+    return 0;
+  else if (c != 92)
+    layout_error("mirror expected");
+
+  return 1;
+}
+
+uint64_t scan_layout_heading(uint64_t c) {
+  // east is 0, north is 1, west is 2, south is 3
+
+  if (c == 'E')
+    return 0;
+  else if (c == 'N')
+    return 1;
+  else if (c == 'W')
+    return 2;
+  else if (c != 'S')
+    layout_error("heading E, N, W, or S expected");
+
+  return 3;
+}
+
+uint64_t* find_layout_state(char* symbol) {
+  uint64_t* state_nid;
+
+  state_nid = find_state(symbol);
+
+  if (state_nid == UNUSED) {
+    printf("%s: no state %s for %s in %s\n", selfie_name, symbol, layout_file, model_name);
+
+    exit(EXITCODE_BADARGUMENTS);
+  }
+
+  // a loaded state is not free
+  *(uninitialized_states + get_nid(state_nid)) = 0;
+
+  return state_nid;
+}
+
+uint64_t* find_context_state(char* token_symbol, char* pocket_symbol) {
+  // a state of the token, or after a line #P the same state of its pocket
+  if (layout_pocket)
+    return find_layout_state(pocket_symbol);
+  else
+    return find_layout_state(token_symbol);
+}
+
+void load_layout(char* name) {
+  uint64_t* registers_nid;
+  uint64_t* kinds_nid;
+  uint64_t* words_nid;
+  uint64_t* heads_nid;
+  uint64_t* ends_nid;
+  uint64_t* inputs_nid;
+  uint64_t* opens_nid;
+  uint64_t* tags_nid;
+  uint64_t tag;
+  uint64_t width;
+  uint64_t height;
+  uint64_t x;
+  uint64_t y;
+  uint64_t n;
+  uint64_t c;
+  uint64_t cell;
+  uint64_t word;
+
+  layout_text = read_whole_file(name);
+  layout_size = model_size;
+
+  layout_pos  = 0;
+  layout_line = 1;
+
+  registers_nid = find_layout_state("token-registers");
+  kinds_nid     = find_layout_state("cell-kinds");
+  words_nid     = find_layout_state("cell-words");
+
+  tags_nid = find_layout_state("cell-tags");
+
+  heads_nid  = find_layout_state("token-tape-heads");
+  ends_nid   = find_layout_state("token-tape-ends");
+  inputs_nid = find_layout_state("token-tape-inputs");
+  opens_nid  = find_layout_state("token-tape-opens");
+
+  // the token: at the northwestern cell heading east with all words zero,
+  // unless a line #T x y heading pc address data says otherwise; a line
+  // #R register value sets a register; the three standard files are open
+  // with standard input the only input tape, unless a line #S break
+  // open-files leg word or #F descriptor head end input open says
+  // otherwise; all other lines with # are comments
+
+  set_state(find_layout_state("token-break"), 0);
+  set_state(find_layout_state("token-open-files"), 3);
+  set_state(find_layout_state("token-leg"), 0);
+  set_state(find_layout_state("token-word"), 0);
+
+  n = 0;
+
+  while (n < array_elements(heads_nid)) {
+    write_array_raw(heads_nid, n, 0);
+    write_array_raw(ends_nid, n, 0);
+    write_array_raw(inputs_nid, n, n == 0);
+    write_array_raw(opens_nid, n, 0);
+
+    n = n + 1;
+  }
+
+  // the pocket of the token is as the token is at first, unless a line
+  // #P pc address data says otherwise: the lines #R, #S, and #F after it
+  // are the pocket's
+
+  layout_pocket = 0;
+
+  set_state(find_layout_state("pocket-pc"), 0);
+  set_state(find_layout_state("pocket-address"), 0);
+  set_state(find_layout_state("pocket-data"), 0);
+  set_state(find_layout_state("pocket-break"), 0);
+  set_state(find_layout_state("pocket-open-files"), 3);
+  set_state(find_layout_state("pocket-leg"), 0);
+  set_state(find_layout_state("pocket-word"), 0);
+  set_state(find_layout_state("pocket-flight"), 0);
+
+  find_layout_state("pocket-registers");
+
+  n = 0;
+
+  while (n < array_elements(heads_nid)) {
+    write_array_raw(find_layout_state("pocket-tape-heads"), n, 0);
+    write_array_raw(find_layout_state("pocket-tape-ends"), n, 0);
+    write_array_raw(find_layout_state("pocket-tape-inputs"), n, n == 0);
+    write_array_raw(find_layout_state("pocket-tape-opens"), n, 0);
+
+    n = n + 1;
+  }
+
+  set_state(find_layout_state("token-x"), 0);
+  set_state(find_layout_state("token-y"), 0);
+  set_state(find_layout_state("token-heading"), 0);
+  set_state(find_layout_state("token-pc"), 0);
+  set_state(find_layout_state("token-address"), 0);
+  set_state(find_layout_state("token-data"), 0);
+
+  skip_layout_blanks(1);
+
+  while (layout_character() == '#') {
+    layout_pos = layout_pos + 1;
+
+    c = layout_character();
+
+    if (c == 'T') {
+      layout_pos = layout_pos + 1;
+
+      set_state(find_state("token-x"), scan_layout_decimal());
+      set_state(find_state("token-y"), scan_layout_decimal());
+
+      skip_layout_blanks(0);
+
+      set_state(find_state("token-heading"), scan_layout_heading(layout_character()));
+
+      layout_pos = layout_pos + 1;
+
+      set_state(find_state("token-pc"), scan_layout_hexadecimal(0));
+      set_state(find_state("token-address"), scan_layout_hexadecimal(0));
+      set_state(find_state("token-data"), scan_layout_hexadecimal(0));
+    } else if (c == 'R') {
+      layout_pos = layout_pos + 1;
+
+      n = scan_layout_decimal();
+
+      if (n >= array_elements(registers_nid))
+        layout_error("no such register");
+
+      c = scan_layout_hexadecimal(0);
+
+      // register zero is always 0
+      if (n != 0)
+        write_array_raw(registers_nid, n, c);
+    } else if (c == 'S') {
+      layout_pos = layout_pos + 1;
+
+      set_state(find_context_state("token-break", "pocket-break"), scan_layout_hexadecimal(0));
+      set_state(find_context_state("token-open-files", "pocket-open-files"), scan_layout_hexadecimal(0));
+
+      n = scan_layout_hexadecimal(0);
+
+      if (n > 3)
+        layout_error("no such leg");
+
+      set_state(find_context_state("token-leg", "pocket-leg"), n);
+      set_state(find_context_state("token-word", "pocket-word"), scan_layout_hexadecimal(0));
+
+      // the flight of the token, if there is one
+
+      skip_layout_blanks(0);
+
+      c = layout_character();
+
+      if (or(and(c >= '0', c <= '9'), or(and(c >= 'a', c <= 'f'), and(c >= 'A', c <= 'F'))))
+        set_state(find_context_state("token-flight", "pocket-flight"), scan_layout_hexadecimal(0));
+
+      c = 'S';
+    } else if (c == 'F') {
+      layout_pos = layout_pos + 1;
+
+      n = scan_layout_decimal();
+
+      if (n >= array_elements(heads_nid))
+        layout_error("no such file descriptor");
+
+      write_array_raw(heads_nid, n, scan_layout_hexadecimal(0));
+      write_array_raw(ends_nid, n, scan_layout_hexadecimal(0));
+      write_array_raw(inputs_nid, n, scan_layout_hexadecimal(0));
+      write_array_raw(opens_nid, n, scan_layout_hexadecimal(0));
+    } else if (c == 'P') {
+      layout_pos = layout_pos + 1;
+
+      if (layout_pocket)
+        layout_error("one pocket");
+
+      layout_pocket = 1;
+
+      registers_nid = find_layout_state("pocket-registers");
+
+      heads_nid  = find_layout_state("pocket-tape-heads");
+      ends_nid   = find_layout_state("pocket-tape-ends");
+      inputs_nid = find_layout_state("pocket-tape-inputs");
+      opens_nid  = find_layout_state("pocket-tape-opens");
+
+      set_state(find_layout_state("pocket-pc"), scan_layout_hexadecimal(0));
+      set_state(find_layout_state("pocket-address"), scan_layout_hexadecimal(0));
+      set_state(find_layout_state("pocket-data"), scan_layout_hexadecimal(0));
+    }
+
+    while (and(layout_character() != 10, layout_pos < layout_size))
+      layout_pos = layout_pos + 1;
+
+    skip_layout_blanks(1);
+  }
+
+  // x = width, y = height, rule = RISC-R: the grid of the model has the
+  // powers of two as sides that width and height fit in, 2 at least
+
+  if (layout_character() != 'x')
+    layout_error("x = width, y = height, rule = RISC-R expected");
+
+  layout_pos = layout_pos + 1;
+
+  skip_layout_blanks(0);
+
+  layout_pos = layout_pos + 1;
+
+  width = scan_layout_decimal();
+
+  while (or(layout_character() < '0', layout_character() > '9')) {
+    if (layout_pos >= layout_size)
+      layout_error("x = width, y = height, rule = RISC-R expected");
+
+    layout_pos = layout_pos + 1;
+  }
+
+  height = scan_layout_decimal();
+
+  // reversibility is a switch, the rule says which way it is set
+
+  while (layout_character() != '=') {
+    if (layout_pos >= layout_size)
+      layout_error("x = width, y = height, rule = RISC-R expected");
+
+    layout_pos = layout_pos + 1;
+  }
+
+  layout_pos = layout_pos + 1;
+
+  skip_layout_blanks(0);
+
+  n = 0;
+
+  while (n < 6) {
+    // RISC-R
+
+    if (n == 0)
+      c = 'R';
+    else if (n == 1)
+      c = 'I';
+    else if (n == 2)
+      c = 'S';
+    else if (n == 3)
+      c = 'C';
+    else if (n == 4)
+      c = '-';
+    else
+      c = 'R';
+
+    if (layout_character() != c)
+      layout_error("the rule of the layout is not RISC-R");
+
+    layout_pos = layout_pos + 1;
+
+    n = n + 1;
+  }
+
+  x = two_to_the_power_of(eval_bitvec_size(get_sid(find_state("token-x"))));
+  y = two_to_the_power_of(eval_bitvec_size(get_sid(find_state("token-y"))));
+
+  if (or(width > x, or(height > y, or(and(2 * width <= x, x > 2), and(2 * height <= y, y > 2))))) {
+    printf("%s: the grid of %lux%lu cells of %s is not the grid of %lux%lu cells of %s\n", selfie_name,
+      width, height, name, x, y, model_name);
+
+    exit(EXITCODE_BADARGUMENTS);
+  }
+
+  width  = x;
+  height = y;
+
+  if (or(get_state(find_state("token-x")) >= width, get_state(find_state("token-y")) >= height))
+    layout_error("token is not on the grid");
+
+  // the cells, row by row: a cell is its kind, plus orientation times 8 for
+  // an instruction cell, plus 32 for a backslash mirror; the word of a router
+  // is its bit, plus 64 if it is a bit of the address
+
+  n = 0;
+
+  while (n < width * height) {
+    write_array_raw(kinds_nid, n, 0);
+    write_array_raw(words_nid, n, 0);
+    write_array_raw(tags_nid, n, 0);
+
+    n = n + 1;
+  }
+
+  x = 0;
+  y = 0;
+
+  while (1) {
+    skip_layout_blanks(1);
+
+    n = 1;
+
+    c = layout_character();
+
+    if (and(c >= '0', c <= '9'))
+      n = scan_layout_decimal();
+
+    c = layout_character();
+
+    layout_pos = layout_pos + 1;
+
+    cell = 0;
+    word = 0;
+
+    if (c == '!') {
+      printf("%s: grid of %lux%lu cells and token of %s loaded into %s\n", selfie_name, width, height, name, model_name);
+
+      return;
+    } else if (c == '$') {
+      x = 0;
+      y = y + n;
+
+      n = 0;
+    } else if (c == '/')
+      cell = 1;
+    else if (c == 92)
+      cell = 1 + 32;
+    else if (c == 'R') {
+      cell = 2 + scan_layout_mirror() * 32;
+
+      c = layout_character();
+
+      if (c == 'a')
+        word = 64;
+      else if (c != 'p')
+        layout_error("router field p or a expected");
+
+      layout_pos = layout_pos + 1;
+
+      c = scan_layout_hexadecimal(2);
+
+      // two decimal digits read as hexadecimal ones
+
+      if (or(c / 16 > 6, c % 16 > 9))
+        layout_error("router bit expected");
+
+      c = c / 16 * 10 + c % 16;
+
+      if (c > 63)
+        layout_error("router bit beyond 63");
+
+      word = word + c;
+    } else if (c == 'M') {
+      cell = 3;
+
+      word = scan_layout_hexadecimal(16);
+    } else if (c == 'T') {
+      cell = 5;
+
+      word = scan_layout_hexadecimal(16);
+    } else if (c != '.') {
+      if (c == 0)
+        layout_error("layout does not end with !");
+
+      cell = 4 + scan_layout_heading(c) * 8;
+
+      cell = cell + scan_layout_mirror() * 32;
+
+      word = scan_layout_hexadecimal(8);
+    }
+
+    // a memory, tape, or instruction cell may be tagged with its address
+
+    tag = 0;
+
+    if (layout_character() == '@') {
+      if (cell % 8 < 3)
+        layout_error("only memory, tape, and instruction cells have tags");
+
+      layout_pos = layout_pos + 1;
+
+      tag = scan_layout_hexadecimal(16);
+
+      cell = cell + 64;
+    }
+
+    while (n > 0) {
+      if (x >= width)
+        layout_error("row is wider than the grid");
+      else if (y >= height)
+        layout_error("more rows than the grid has");
+
+      write_array_raw(kinds_nid, y * width + x, cell);
+      write_array_raw(words_nid, y * width + x, word);
+      write_array_raw(tags_nid, y * width + x, tag);
+
+      x = x + 1;
+
+      n = n - 1;
+    }
+  }
+}
+
+void load_files() {
+  // each file goes into the model that has the states for it
+
+  if (binary_file != (char*) 0) {
+    if (find_state("core-0-loaded-code-segment") != UNUSED)
+      load_binary(binary_file);
+    else if (find_state("core-0-code-segment") != UNUSED)
+      load_binary(binary_file);
+  }
+
+  if (input_file != (char*) 0) {
+    if (find_state("input-tapes") != UNUSED)
+      load_input(input_file);
+    else if (find_state("input-buffer") != UNUSED)
+      load_input(input_file);
+  }
+
+  if (layout_file != (char*) 0)
+    if (find_state("cell-kinds") != UNUSED)
+      load_layout(layout_file);
+}
+
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
 // -----------------------------------------------------------------
 // --------------------------- SIMULATOR ---------------------------
@@ -1560,6 +2223,390 @@ uint64_t simulate() {
 
       nid = nid + 1;
     }
+
+    current_step = next_step;
+  }
+}
+
+// The product of two models runs both, the second step by step and the
+// first only in the steps in which an abstraction says so: the second
+// model may take many steps where the first takes one, as cellfie's cell
+// rule takes many ticks for one RISC-R instruction. The abstraction is a
+// third model without initial or next states. Its states are the states
+// of the two models by name, its output step says whether the first model
+// takes a step, and its bad states are where the two models differ.
+
+void collect_lines() {
+  uint64_t nid;
+  uint64_t* line;
+
+  // the next, state, and property lines of the current model in the order of their nids
+
+  next_lines     = zmalloc((max_nid + 1) * sizeof(uint64_t*));
+  state_lines    = zmalloc((max_nid + 1) * sizeof(uint64_t*));
+  property_lines = zmalloc((max_nid + 1) * sizeof(uint64_t*));
+
+  number_of_next_lines     = 0;
+  number_of_state_lines    = 0;
+  number_of_property_lines = 0;
+
+  nid = 1;
+
+  while (nid <= max_nid) {
+    line = line_of_nid(nid);
+
+    if (line != UNUSED) {
+      if (get_op(line) == OP_NEXT) {
+        *(next_lines + number_of_next_lines) = (uint64_t) line;
+
+        number_of_next_lines = number_of_next_lines + 1;
+      } else if (get_op(line) == OP_STATE) {
+        *(state_lines + number_of_state_lines) = (uint64_t) line;
+
+        number_of_state_lines = number_of_state_lines + 1;
+      } else if (is_property_op(get_op(line))) {
+        *(property_lines + number_of_property_lines) = (uint64_t) line;
+
+        number_of_property_lines = number_of_property_lines + 1;
+      }
+    }
+
+    nid = nid + 1;
+  }
+}
+
+uint64_t* violated_property() {
+  uint64_t i;
+  uint64_t* line;
+
+  // the first bad state or violated constraint of the current model, or 0
+
+  i = 0;
+
+  while (i < number_of_property_lines) {
+    line = (uint64_t*) *(property_lines + i);
+
+    if (get_op(line) == OP_BAD) {
+      if (eval_line(get_arg1(line)))
+        return line;
+    } else if (not(eval_line(get_arg1(line))))
+      return line;
+
+    i = i + 1;
+  }
+
+  return UNUSED;
+}
+
+void parse_next_model(char* name) {
+  // another model, with its own lines and sorts
+
+  nid_lines  = (uint64_t*) 0;
+  init_lines = (uint64_t*) 0;
+  nid_limit  = 0;
+  max_nid    = 0;
+
+  number_of_sorts       = 0;
+  number_of_states      = 0;
+  number_of_inits       = 0;
+  number_of_nexts       = 0;
+  number_of_bads        = 0;
+  number_of_constraints = 0;
+
+  SID_BOOLEAN      = UNUSED;
+  SID_INPUT_BUFFER = UNUSED;
+  SID_CODE_STATE   = UNUSED;
+
+  model_name = name;
+
+  parse_model();
+}
+
+void bind_abstraction() {
+  uint64_t i;
+  uint64_t* state_nid;
+
+  // the states of the abstraction are the states of the models: bit vectors
+  // by value, arrays by reference
+
+  i = 0;
+
+  while (i < number_of_abstraction_states) {
+    state_nid = (uint64_t*) *(abstraction_states + i);
+
+    set_state(state_nid, get_state((uint64_t*) *(abstracted_states + i)));
+
+    set_step(state_nid, current_step);
+
+    i = i + 1;
+  }
+}
+
+void eval_nexts() {
+  uint64_t i;
+
+  i = 0;
+
+  while (i < number_of_next_lines) {
+    eval_next((uint64_t*) *(next_lines + i));
+
+    i = i + 1;
+  }
+}
+
+void apply_nexts() {
+  uint64_t i;
+
+  i = 0;
+
+  while (i < number_of_next_lines) {
+    apply_next((uint64_t*) *(next_lines + i));
+
+    i = i + 1;
+  }
+}
+
+void skip_nexts() {
+  uint64_t i;
+
+  // the current model does not take this step: its states keep their
+  // values and move to the next step with all others
+
+  i = 0;
+
+  while (i < number_of_next_lines) {
+    set_step((uint64_t*) *(next_lines + i), next_step);
+
+    i = i + 1;
+  }
+
+  i = 0;
+
+  while (i < number_of_state_lines) {
+    set_step((uint64_t*) *(state_lines + i), next_step);
+
+    i = i + 1;
+  }
+}
+
+uint64_t product() {
+  uint64_t* first;
+  uint64_t* second;
+  uint64_t* abstraction;
+  uint64_t* step_nid;
+  uint64_t* line;
+  uint64_t* other;
+  uint64_t* first_stop;
+  uint64_t* second_stop;
+  uint64_t nid;
+  uint64_t step;
+  uint64_t first_steps;
+  uint64_t second_steps;
+
+  // returns 1 if the models do not differ until both stop in the same step
+  // or the bound on the steps of the second model is reached, 0 otherwise
+
+  first       = zmalloc(MODEL_RECORD_SIZE * sizeof(uint64_t));
+  second      = zmalloc(MODEL_RECORD_SIZE * sizeof(uint64_t));
+  abstraction = zmalloc(MODEL_RECORD_SIZE * sizeof(uint64_t));
+
+  init_states();
+  load_files();
+
+  collect_lines();
+
+  save_model(first);
+
+  parse_next_model(product_model_name);
+
+  init_states();
+  load_files();
+
+  collect_lines();
+
+  save_model(second);
+
+  parse_next_model(abstraction_model_name);
+
+  init_states();
+
+  collect_lines();
+
+  save_model(abstraction);
+
+  // the states of the abstraction are states of the two models by name
+
+  abstraction_states = zmalloc((max_nid + 1) * sizeof(uint64_t*));
+  abstracted_states  = zmalloc((max_nid + 1) * sizeof(uint64_t*));
+
+  step_nid = UNUSED;
+
+  nid = 1;
+
+  while (nid <= *(abstraction + 3)) {
+    restore_model(abstraction);
+
+    line = line_of_nid(nid);
+
+    if (line != UNUSED) {
+      if (get_op(line) == OP_STATE) {
+        restore_model(first);
+
+        other = find_state((char*) get_arg1(line));
+
+        if (other == UNUSED) {
+          restore_model(second);
+
+          other = find_state((char*) get_arg1(line));
+        }
+
+        if (other == UNUSED) {
+          printf("%s: state %s of %s is neither in %s nor in %s\n", selfie_name, (char*) get_arg1(line),
+            abstraction_model_name, (char*) *(first + 10), product_model_name);
+
+          exit(EXITCODE_BADARGUMENTS);
+        }
+
+        if (is_bitvector(get_sid(line))) {
+          step = 0;
+
+          if (is_bitvector(get_sid(other)))
+            step = eval_bitvec_size(get_sid(line)) == eval_bitvec_size(get_sid(other));
+        } else {
+          step = 0;
+
+          if (is_array(get_sid(other)))
+            if (eval_array_size(get_sid(line)) == eval_array_size(get_sid(other)))
+              step = eval_element_size(get_sid(line)) == eval_element_size(get_sid(other));
+        }
+
+        if (not(step)) {
+          printf("%s: state %s of %s has another sort in %s\n", selfie_name, (char*) get_arg1(line),
+            abstraction_model_name, model_name);
+
+          exit(EXITCODE_BADARGUMENTS);
+        }
+
+        *(abstraction_states + number_of_abstraction_states) = (uint64_t) line;
+        *(abstracted_states + number_of_abstraction_states)  = (uint64_t) other;
+
+        number_of_abstraction_states = number_of_abstraction_states + 1;
+      } else if (get_op(line) == OP_OUTPUT)
+        if (string_compare((char*) get_arg2(line), "step"))
+          step_nid = get_arg1(line);
+    }
+
+    nid = nid + 1;
+  }
+
+  if (step_nid == UNUSED) {
+    printf("%s: no output step in %s\n", selfie_name, abstraction_model_name);
+
+    exit(EXITCODE_BADARGUMENTS);
+  }
+
+  printf("%s: ********************************************************************************\n", selfie_name);
+
+  current_step = 0;
+  next_step    = 0;
+
+  first_steps  = 0;
+  second_steps = 0;
+
+  while (1) {
+    next_step = next_step + 1;
+
+    restore_model(abstraction);
+
+    bind_abstraction();
+
+    step = eval_line(step_nid);
+
+    restore_model(second);
+
+    second_stop = violated_property();
+
+    if (step) {
+      // the first model is to take a step: the models must not differ, and
+      // either both stop here or neither
+
+      restore_model(first);
+
+      first_stop = violated_property();
+
+      restore_model(abstraction);
+
+      line = violated_property();
+
+      if (line != UNUSED) {
+        printf("%s: %s %s: %s after %lu steps and %s after %lu steps differ\n", selfie_name,
+          get_op(line), (char*) get_arg2(line), (char*) *(first + 10), first_steps, product_model_name, second_steps);
+
+        return 0;
+      }
+
+      if (first_stop != UNUSED) {
+        if (second_stop != UNUSED) {
+          printf("%s: %s %s after %lu instructions in %s\n", selfie_name,
+            get_op(first_stop), (char*) get_arg2(first_stop), first_steps + 1, (char*) *(first + 10));
+          printf("%s: %s %s after %lu instructions in %s\n", selfie_name,
+            get_op(second_stop), (char*) get_arg2(second_stop), second_steps + 1, product_model_name);
+          printf("%s: %s and %s agree at all %lu steps of %s, in %lu steps of %s, and stop together\n", selfie_name,
+            (char*) *(first + 10), product_model_name, first_steps, (char*) *(first + 10), second_steps, product_model_name);
+
+          return 1;
+        }
+
+        printf("%s: %s %s after %lu instructions in %s but %s goes on after %lu steps\n", selfie_name,
+          get_op(first_stop), (char*) get_arg2(first_stop), first_steps + 1, (char*) *(first + 10), product_model_name, second_steps);
+
+        return 0;
+      }
+    }
+
+    if (second_stop != UNUSED) {
+      printf("%s: %s %s after %lu instructions in %s but %s goes on after %lu steps\n", selfie_name,
+        get_op(second_stop), (char*) get_arg2(second_stop), second_steps + 1, product_model_name, (char*) *(first + 10), first_steps);
+
+      return 0;
+    }
+
+    if (max_steps > 0)
+      if (second_steps >= max_steps) {
+        printf("%s: %s and %s agree at all %lu steps of %s, in %lu steps of %s, bound reached\n", selfie_name,
+          (char*) *(first + 10), product_model_name, first_steps, (char*) *(first + 10), second_steps, product_model_name);
+
+        return 1;
+      }
+
+    // all next states are evaluated before any is applied
+
+    restore_model(second);
+
+    eval_nexts();
+
+    if (step) {
+      restore_model(first);
+
+      eval_nexts();
+      apply_nexts();
+
+      first_steps = first_steps + 1;
+    } else {
+      restore_model(first);
+
+      skip_nexts();
+    }
+
+    restore_model(second);
+
+    apply_nexts();
+
+    second_steps = second_steps + 1;
+
+    restore_model(abstraction);
+
+    skip_nexts();
 
     current_step = next_step;
   }
@@ -5287,6 +6334,21 @@ void save_model(uint64_t* model) {
   *(model + 8) = (uint64_t) sym_bases;
   *(model + 9) = (uint64_t) sym_free;
   *(model + 10) = (uint64_t) model_name;
+
+  // and what the concrete evaluator needs per model
+
+  *(model + 11) = (uint64_t) SID_BOOLEAN;
+  *(model + 12) = (uint64_t) SID_INPUT_BUFFER;
+  *(model + 13) = (uint64_t) SID_CODE_STATE;
+  *(model + 14) = (uint64_t) uninitialized_states;
+  *(model + 15) = (uint64_t) pc_state_nid;
+
+  *(model + 16) = (uint64_t) next_lines;
+  *(model + 17) = (uint64_t) state_lines;
+  *(model + 18) = (uint64_t) property_lines;
+  *(model + 19) = number_of_next_lines;
+  *(model + 20) = number_of_state_lines;
+  *(model + 21) = number_of_property_lines;
 }
 
 void restore_model(uint64_t* model) {
@@ -5301,6 +6363,22 @@ void restore_model(uint64_t* model) {
   sym_bases  = (uint64_t*) *(model + 8);
   sym_free   = (uint64_t*) *(model + 9);
   model_name = (char*) *(model + 10);
+
+  SID_BOOLEAN      = (uint64_t*) *(model + 11);
+  SID_INPUT_BUFFER = (uint64_t*) *(model + 12);
+  SID_CODE_STATE   = (uint64_t*) *(model + 13);
+
+  uninitialized_states = (uint64_t*) *(model + 14);
+
+  pc_state_nid = (uint64_t*) *(model + 15);
+
+  next_lines     = (uint64_t*) *(model + 16);
+  state_lines    = (uint64_t*) *(model + 17);
+  property_lines = (uint64_t*) *(model + 18);
+
+  number_of_next_lines     = *(model + 19);
+  number_of_state_lines    = *(model + 20);
+  number_of_property_lines = *(model + 21);
 }
 
 void assume(uint64_t l) {
@@ -5822,8 +6900,8 @@ uint64_t prove_identity() {
   if (max_steps == 0)
     max_steps = 1;
 
-  first_model  = zmalloc(11 * sizeof(uint64_t));
-  second_model = zmalloc(11 * sizeof(uint64_t));
+  first_model  = zmalloc(MODEL_RECORD_SIZE * sizeof(uint64_t));
+  second_model = zmalloc(MODEL_RECORD_SIZE * sizeof(uint64_t));
 
   sym_init(1);
 
@@ -6101,6 +7179,21 @@ uint64_t bitr() {
         second_model_name = get_argument();
       else
         return EXITCODE_BADARGUMENTS;
+    } else if (string_compare(argument, "-product")) {
+      if (number_of_remaining_arguments() > 0)
+        product_model_name = get_argument();
+      else
+        return EXITCODE_BADARGUMENTS;
+    } else if (string_compare(argument, "-abstraction")) {
+      if (number_of_remaining_arguments() > 0)
+        abstraction_model_name = get_argument();
+      else
+        return EXITCODE_BADARGUMENTS;
+    } else if (string_compare(argument, "-grid")) {
+      if (number_of_remaining_arguments() > 0)
+        layout_file = get_argument();
+      else
+        return EXITCODE_BADARGUMENTS;
     } else if (string_compare(argument, "-all"))
       stop_at_first = 0;
     else if (string_compare(argument, "-v"))
@@ -6152,6 +7245,18 @@ uint64_t bitr() {
     return EXITCODE_NOERROR;
   }
 
+  if (product_model_name != (char*) 0) {
+    if (abstraction_model_name == (char*) 0)
+      return EXITCODE_BADARGUMENTS;
+
+    if (not(product()))
+      return EXITCODE_SYSTEMERROR;
+
+    printf("%s: ################################################################################\n", selfie_name);
+
+    return EXITCODE_NOERROR;
+  }
+
   init_states();
 
   if (binary_file != (char*) 0)
@@ -6159,6 +7264,9 @@ uint64_t bitr() {
 
   if (input_file != (char*) 0)
     load_input(input_file);
+
+  if (layout_file != (char*) 0)
+    load_layout(layout_file);
 
   if (checking_bmc) {
     bmc();
@@ -6189,6 +7297,8 @@ int main(int argc, char** argv) {
 
   init_model();
 
+  OP_OUTPUT = "output";
+
   init_aig();
   init_bit_vectors();
   init_arrays();
@@ -6197,5 +7307,5 @@ int main(int argc, char** argv) {
 
   exit_code = bitr();
 
-  return exit_selfie(exit_code, " model.btor2 [ -l binary ] [ -i file ] [ -k steps ] [ -p ]");
+  return exit_selfie(exit_code, " model.btor2 [ -l binary ] [ -i file ] [ -grid layout ] [ -k steps ] [ -p ]");
 }

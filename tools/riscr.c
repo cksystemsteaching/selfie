@@ -97,6 +97,9 @@ void load_source();
 void classify_source(uint64_t i);
 void analyze_source();
 
+uint64_t is_in_reach(uint64_t from, uint64_t to);
+void     put_relays();
+
 void put_prologue();
 void put_trailer();
 void put_prefix(uint64_t i);
@@ -171,6 +174,21 @@ uint64_t* origin_pc   = (uint64_t*) 0; // per origin: address of the beq paired 
 uint64_t* jump_pc     = (uint64_t*) 0; // per long origin: address of its jal zero
 uint64_t* come_from_pc = (uint64_t*) 0; // per origin: address of its come-from in the chain
 uint64_t* island_pc   = (uint64_t*) 0; // per long origin: address of the come-from of its jal zero
+
+// a jal reaches 1MB: a call or a long origin whose jal would have to reach
+// further goes through a relay in the middle of the code, see riscr.md
+
+uint64_t* is_far   = (uint64_t*) 0; // per call or long origin: 1 if it goes through a relay
+uint64_t* relay_pc = (uint64_t*) 0; // per far call or far origin: address of its relay
+
+uint64_t relay_index = (uint64_t) -1; // the relays follow the translation of this return, if there are any
+
+uint64_t is_exit_far   = 0; // the jump from the prologue to the trailer goes through a relay
+uint64_t exit_relay_pc = 0;
+
+uint64_t number_of_far_transfers = 0;
+
+uint64_t JAL_REACH = 1040384; // 1MB less two pages, by which a layout may still move
 
 uint64_t trailer_pc   = 0; // address of the exit code after the translated code
 uint64_t exit_jump_pc = 0; // address of the jal zero in the prologue that reaches it
@@ -751,6 +769,9 @@ void analyze_source() {
   come_from_pc = zmalloc(n * sizeof(uint64_t));
   island_pc    = zmalloc(n * sizeof(uint64_t));
 
+  is_far   = zmalloc(n * sizeof(uint64_t));
+  relay_pc = zmalloc(n * sizeof(uint64_t));
+
   // decode and classify, keeping the decoded fields
   source_is  = zmalloc(n * sizeof(uint64_t));
   source_rd  = zmalloc(n * sizeof(uint64_t));
@@ -895,7 +916,11 @@ void put_prologue() {
   put_beq(REG_FL, REG_ONE, 3 * INSTRUCTIONSIZE);
   put_beq(REG_A0, REG_ZR, -4 * INSTRUCTIONSIZE);
   exit_jump_pc = translated_pc;
-  put_jal(REG_ZR, trailer_pc - translated_pc);
+
+  if (is_exit_far)
+    put_jal(REG_ZR, exit_relay_pc - translated_pc);
+  else
+    put_jal(REG_ZR, trailer_pc - translated_pc);
   put_beq(REG_FL, REG_ONE, hop_pc - translated_pc);
   put_addi(REG_FL, REG_ZR, -1);
 
@@ -907,11 +932,18 @@ void put_prologue() {
 
 void put_trailer() {
   // reached from the prologue only if the history stack could not be allocated
-  put_jal(REG_ZR, exit_jump_pc - translated_pc);
+  if (is_exit_far)
+    put_jal(REG_ZR, exit_relay_pc + INSTRUCTIONSIZE - translated_pc);
+  else
+    put_jal(REG_ZR, exit_jump_pc - translated_pc);
   put_addi(REG_A7, REG_ZR, SYSCALL_EXIT - SYSCALL_BRK);
   put_sub(REG_A1, REG_ZR, REG_BRK);
   put_addi(REG_A1, REG_ZR, EXITCODE_OUTOFVIRTUALMEMORY);
   put_ecall();
+
+  // code segment must be word-aligned for loading binaries on mipster
+  if ((translated_pc - code_start) % WORDSIZE != 0)
+    put_addi(REG_ZR, REG_ZR, 0);
 }
 
 void put_prefix(uint64_t i) {
@@ -970,7 +1002,10 @@ void put_prefix(uint64_t i) {
         // come-from of the long jump, then a short hop into the chain
         *(island_pc + o) = translated_pc;
 
-        put_jal(REG_ZR, *(jump_pc + o) - translated_pc);
+        if (*(is_far + o))
+          put_jal(REG_ZR, *(relay_pc + o) + INSTRUCTIONSIZE - translated_pc);
+        else
+          put_jal(REG_ZR, *(jump_pc + o) - translated_pc);
 
         *(origin_pc + o) = translated_pc;
 
@@ -1034,13 +1069,72 @@ void put_origin(uint64_t i) {
 
     *(jump_pc + i) = translated_pc;
 
-    put_jal(REG_ZR, *(island_pc + i) - translated_pc);
+    if (*(is_far + i))
+      put_jal(REG_ZR, *(relay_pc + i) - translated_pc);
+    else
+      put_jal(REG_ZR, *(island_pc + i) - translated_pc);
+
     put_beq(REG_FL, REG_ONE, -3 * INSTRUCTIONSIZE);
     put_addi(REG_FL, REG_ZR, -1);
   } else {
     *(jump_pc + i) = translated_pc;
 
-    put_jal(REG_ZR, *(island_pc + i) - translated_pc);
+    if (*(is_far + i))
+      put_jal(REG_ZR, *(relay_pc + i) - translated_pc);
+    else
+      put_jal(REG_ZR, *(island_pc + i) - translated_pc);
+  }
+}
+
+uint64_t is_in_reach(uint64_t from, uint64_t to) {
+  // a jal at from reaches to, with room for the layout to move
+  if (to >= from)
+    return to - from < JAL_REACH;
+  else
+    return from - to < JAL_REACH;
+}
+
+void put_relays() {
+  uint64_t n;
+  uint64_t i;
+  uint64_t t;
+
+  // The relays of all far calls and far origins, after a return, where
+  // nothing falls into them. A far call jumps to its relay, which calls
+  // the procedure and jumps back: come-from of the jump there, the call,
+  // come-from of the return, the jump back. A far origin jumps to its
+  // relay, which jumps on to the island of the origin at its target:
+  // come-from of the origin, the jump.
+
+  n = number_of_source_instructions;
+
+  i = 0;
+
+  while (i < n) {
+    if (*(is_far + i)) {
+      *(relay_pc + i) = translated_pc;
+
+      if (*(kind + i) == TK_CALL) {
+        t = *(target_of + i);
+
+        put_jal(REG_ZR, *(jump_pc + i) - translated_pc);
+        put_jal(REG_RA, *(prefix_pc + t) - translated_pc);
+        put_jal(REG_RA, *(body_pc + *(return_of + t)) - translated_pc);
+        put_jal(REG_ZR, *(jump_pc + i) + INSTRUCTIONSIZE - translated_pc);
+      } else {
+        put_jal(REG_ZR, *(jump_pc + i) - translated_pc);
+        put_jal(REG_ZR, *(island_pc + i) - translated_pc);
+      }
+    }
+
+    i = i + 1;
+  }
+
+  if (is_exit_far) {
+    exit_relay_pc = translated_pc;
+
+    put_jal(REG_ZR, exit_jump_pc - translated_pc);
+    put_jal(REG_ZR, trailer_pc - translated_pc);
   }
 }
 
@@ -1176,8 +1270,18 @@ void put_body(uint64_t i) {
     t = *(target_of + i);
 
     put_push(REG_RA);
-    put_jal(REG_RA, *(prefix_pc + t) - translated_pc);
-    put_jal(REG_RA, *(body_pc + *(return_of + t)) - translated_pc);
+
+    *(jump_pc + i) = translated_pc;
+
+    if (*(is_far + i)) {
+      // to the relay, which makes the call, and the come-from of its jump back
+      put_jal(REG_ZR, *(relay_pc + i) - translated_pc);
+      put_jal(REG_ZR, *(relay_pc + i) + 3 * INSTRUCTIONSIZE - translated_pc);
+    } else {
+      put_jal(REG_RA, *(prefix_pc + t) - translated_pc);
+      put_jal(REG_RA, *(body_pc + *(return_of + t)) - translated_pc);
+    }
+
     put_pop(REG_RA);
   } else if (k == TK_RET)
     put_jalr(REG_RA, REG_RA, 0);
@@ -1225,10 +1329,16 @@ void layout_translation() {
       else if (*(origin_kind + i) != ORIGIN_NONE)
         // only origins change their length when they become long
         put_body(i);
+      else if (*(kind + i) == TK_CALL)
+        // and calls are where their relays jump back to
+        put_body(i);
       else
         translated_pc = translated_pc + *(body_length + i);
 
       *(body_length + i) = translated_pc - *(body_pc + i);
+
+      if (i == relay_index)
+        put_relays();
 
       i = i + 1;
     }
@@ -1258,6 +1368,70 @@ void layout_translation() {
 
       i = i + 1;
     }
+
+    // calls and long origins whose jal would be out of reach become far,
+    // and so does the jump from the prologue to the trailer
+
+    i = 0;
+
+    while (i < n) {
+      if (*(is_far + i) == 0) {
+        d = 0;
+
+        if (*(kind + i) == TK_CALL) {
+          if (not(is_in_reach(*(jump_pc + i), *(prefix_pc + *(target_of + i)))))
+            d = 1;
+          else if (not(is_in_reach(*(jump_pc + i), *(body_pc + *(return_of + *(target_of + i))))))
+            d = 1;
+        } else if (*(is_long + i))
+          if (not(is_in_reach(*(jump_pc + i), *(island_pc + i))))
+            d = 1;
+
+        if (d) {
+          *(is_far + i) = 1;
+
+          number_of_far_transfers = number_of_far_transfers + 1;
+
+          changed = 1;
+        }
+      }
+
+      i = i + 1;
+    }
+
+    if (is_exit_far == 0)
+      if (not(is_in_reach(exit_jump_pc, trailer_pc))) {
+        is_exit_far = 1;
+
+        changed = 1;
+      }
+
+    if (changed)
+      if (relay_index == (uint64_t) -1)
+        if (number_of_far_transfers + is_exit_far > 0) {
+          // the relays follow the return nearest to the middle of the code
+
+          d = (uint64_t) -1;
+
+          i = 0;
+
+          while (i < n) {
+            if (*(kind + i) == TK_RET) {
+              if (*(body_pc + i) >= code_start + (trailer_pc - code_start) / 2)
+                lower = *(body_pc + i) - code_start - (trailer_pc - code_start) / 2;
+              else
+                lower = code_start + (trailer_pc - code_start) / 2 - *(body_pc + i);
+
+              if (lower < d) {
+                d = lower;
+
+                relay_index = i;
+              }
+            }
+
+            i = i + 1;
+          }
+        }
 
     new_code_size  = translated_pc - code_start;
     new_data_start = round_up(code_start + new_code_size, PAGESIZE);
@@ -1309,6 +1483,9 @@ void emit_translation() {
       translation_error(i, "internal error: layout and emission disagree");
 
     put_body(i);
+
+    if (i == relay_index)
+      put_relays();
 
     i = i + 1;
   }
@@ -1363,6 +1540,10 @@ uint64_t selfie_translate() {
     number_of_history_slots,
     number_of_long_origins,
     HISTORY_MEGABYTES);
+
+  if (number_of_far_transfers + is_exit_far > 0)
+    printf("%s: %lu calls and jumps beyond the reach of jal go through relays at 0x%lX\n", selfie_name,
+      number_of_far_transfers + is_exit_far, *(body_pc + relay_index) + *(body_length + relay_index));
 
   selfie_output(filename);
 

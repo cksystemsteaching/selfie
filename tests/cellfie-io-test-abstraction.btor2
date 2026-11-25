@@ -1,0 +1,472 @@
+; selfie.cs.uni-salzburg.at
+
+; Abstraction for bitr's product of rotor's RISC-R model of the binary
+; tests/cellfie-io-test.r with cellfie's cell rule on the layout
+; tests/cellfie-io-test.rle, see cellfie.md and make tapes. Its states are
+; the states of the two models by name. Its output step holds when the
+; token is on the path of an instruction cell, about to execute it: that
+; is where a RISC-R instruction begins, and where rotor's model takes a
+; step. Its bad states are where the two differ then: the pc, a register,
+; the program break, the next file descriptor, the head, end, kind, and
+; host flag of a tape, or one of the three words the program uses: the
+; buffer at 0x11000, which is the first word of the data segment and the
+; memory cell in column 30 of row 5 of the grid of 32x8 cells, the first
+; word of the input tape of standard input, the memory cell in row 2, and
+; the first word of the output tape of standard output, the tape cell in
+; row 3; and the token must be on the path with nothing in transit.
+; Written by hand for the hand-laid layout.
+
+1 sort bitvec 1 ; Boolean
+2 sort bitvec 64 ; word
+3 sort bitvec 5 ; register
+4 sort array 3 2 ; register file
+5 sort bitvec 3 ; address of a word in the data segment
+6 sort array 5 2 ; data segment of six words
+7 sort bitvec 32 ; virtual address
+8 sort bitvec 2 ; file descriptor, heading, leg
+9 sort array 8 2 ; a word per file descriptor
+10 sort bitvec 6 ; address of a tape word: 16 words per file descriptor
+11 sort array 10 2 ; tapes
+12 sort bitvec 5 ; column
+13 sort bitvec 8 ; cell index: row, column; cell: kind, orientation, mirror
+14 sort array 13 13 ; cells
+15 sort array 13 2 ; cell words
+
+; rotor's model
+
+20 state 2 core-0-pc
+21 state 4 core-0-initialized-register-file
+22 state 6 core-0-loaded-data-segment
+23 state 7 core-0-program-break
+24 state 2 open-files
+25 state 9 tape-heads
+26 state 9 tape-ends
+27 state 9 tape-inputs
+28 state 9 tape-opens
+29 state 11 input-tapes
+30 state 11 output-tapes
+
+; cellfie's model
+
+40 state 12 token-x
+41 state 5 token-y
+42 state 8 token-heading
+43 state 2 token-pc
+44 state 2 token-address
+45 state 2 token-data
+46 state 4 token-registers
+47 state 2 token-break
+48 state 2 token-open-files
+49 state 8 token-leg
+50 state 2 token-word
+51 state 9 token-tape-heads
+52 state 9 token-tape-ends
+53 state 9 token-tape-inputs
+54 state 9 token-tape-opens
+55 state 14 cell-kinds
+56 state 15 cell-words
+
+; step: the cell under the token is an instruction cell, kind 4, and the
+; token is heading where the cell is oriented
+
+60 concat 13 41 40 ; cell index
+61 read 13 55 60 ; cell
+62 slice 5 61 2 0 ; kind
+63 constd 5 4 ; instruction
+64 eq 1 62 63
+65 slice 8 61 4 3 ; orientation
+66 eq 1 42 65
+67 and 1 64 66
+68 output 67 step ; a RISC-R instruction begins
+
+; nothing is in transit
+
+70 zero 2
+71 zero 8
+72 neq 1 44 70
+73 neq 1 45 70
+74 neq 1 49 71
+75 neq 1 50 70
+76 or 1 72 73
+77 or 1 74 75
+78 or 1 76 77
+79 and 1 67 78
+80 bad 79 token-in-transit ; address, datum, leg, or word of the token is not zero on the path
+
+; pc, program break, next file descriptor
+
+90 neq 1 20 43
+91 and 1 67 90
+92 bad 91 pc-differs
+93 uext 2 23 32
+94 neq 1 93 47
+95 and 1 67 94
+96 bad 95 program-break-differs
+97 neq 1 24 48
+98 and 1 67 97
+99 bad 98 open-files-differ
+
+; the buffer at 0x11000 is cell (30,5); the first input word of standard
+; input is cell (30,2), the first output word of standard output is cell (30,3)
+
+100 zero 5
+101 constd 13 190 ; 5 * 32 + 30
+102 read 2 22 100
+103 read 2 56 101
+104 neq 1 102 103
+105 and 1 67 104
+106 bad 105 word-at-0x11000-differs
+107 zero 10
+108 constd 13 94 ; 2 * 32 + 30
+109 read 2 29 107
+110 read 2 56 108
+111 neq 1 109 110
+112 and 1 67 111
+113 bad 112 input-word-differs
+114 constd 10 16 ; file descriptor 1, word 0
+115 constd 13 126 ; 3 * 32 + 30
+116 read 2 30 114
+117 read 2 56 115
+118 neq 1 116 117
+119 and 1 67 118
+120 bad 119 output-word-differs
+
+; tapes
+
+200 constd 8 0
+201 read 2 25 200
+202 read 2 51 200
+203 neq 1 201 202
+204 and 1 67 203
+205 bad 204 head-of-tape-0-differs
+
+210 constd 8 0
+211 read 2 26 210
+212 read 2 52 210
+213 neq 1 211 212
+214 and 1 67 213
+215 bad 214 end-of-tape-0-differs
+
+220 constd 8 0
+221 read 2 27 220
+222 read 2 53 220
+223 neq 1 221 222
+224 and 1 67 223
+225 bad 224 kind-of-tape-0-differs
+
+230 constd 8 0
+231 read 2 28 230
+232 read 2 54 230
+233 neq 1 231 232
+234 and 1 67 233
+235 bad 234 host-flag-of-tape-0-differs
+
+240 constd 8 1
+241 read 2 25 240
+242 read 2 51 240
+243 neq 1 241 242
+244 and 1 67 243
+245 bad 244 head-of-tape-1-differs
+
+250 constd 8 1
+251 read 2 26 250
+252 read 2 52 250
+253 neq 1 251 252
+254 and 1 67 253
+255 bad 254 end-of-tape-1-differs
+
+260 constd 8 1
+261 read 2 27 260
+262 read 2 53 260
+263 neq 1 261 262
+264 and 1 67 263
+265 bad 264 kind-of-tape-1-differs
+
+270 constd 8 1
+271 read 2 28 270
+272 read 2 54 270
+273 neq 1 271 272
+274 and 1 67 273
+275 bad 274 host-flag-of-tape-1-differs
+
+280 constd 8 2
+281 read 2 25 280
+282 read 2 51 280
+283 neq 1 281 282
+284 and 1 67 283
+285 bad 284 head-of-tape-2-differs
+
+290 constd 8 2
+291 read 2 26 290
+292 read 2 52 290
+293 neq 1 291 292
+294 and 1 67 293
+295 bad 294 end-of-tape-2-differs
+
+300 constd 8 2
+301 read 2 27 300
+302 read 2 53 300
+303 neq 1 301 302
+304 and 1 67 303
+305 bad 304 kind-of-tape-2-differs
+
+310 constd 8 2
+311 read 2 28 310
+312 read 2 54 310
+313 neq 1 311 312
+314 and 1 67 313
+315 bad 314 host-flag-of-tape-2-differs
+
+320 constd 8 3
+321 read 2 25 320
+322 read 2 51 320
+323 neq 1 321 322
+324 and 1 67 323
+325 bad 324 head-of-tape-3-differs
+
+330 constd 8 3
+331 read 2 26 330
+332 read 2 52 330
+333 neq 1 331 332
+334 and 1 67 333
+335 bad 334 end-of-tape-3-differs
+
+340 constd 8 3
+341 read 2 27 340
+342 read 2 53 340
+343 neq 1 341 342
+344 and 1 67 343
+345 bad 344 kind-of-tape-3-differs
+
+350 constd 8 3
+351 read 2 28 350
+352 read 2 54 350
+353 neq 1 351 352
+354 and 1 67 353
+355 bad 354 host-flag-of-tape-3-differs
+
+; registers
+
+400 constd 3 0
+401 read 2 21 400
+402 read 2 46 400
+403 neq 1 401 402
+404 and 1 67 403
+405 bad 404 register-zero-differs
+
+410 constd 3 1
+411 read 2 21 410
+412 read 2 46 410
+413 neq 1 411 412
+414 and 1 67 413
+415 bad 414 register-ra-differs
+
+420 constd 3 2
+421 read 2 21 420
+422 read 2 46 420
+423 neq 1 421 422
+424 and 1 67 423
+425 bad 424 register-sp-differs
+
+430 constd 3 3
+431 read 2 21 430
+432 read 2 46 430
+433 neq 1 431 432
+434 and 1 67 433
+435 bad 434 register-gp-differs
+
+440 constd 3 4
+441 read 2 21 440
+442 read 2 46 440
+443 neq 1 441 442
+444 and 1 67 443
+445 bad 444 register-tp-differs
+
+450 constd 3 5
+451 read 2 21 450
+452 read 2 46 450
+453 neq 1 451 452
+454 and 1 67 453
+455 bad 454 register-t0-differs
+
+460 constd 3 6
+461 read 2 21 460
+462 read 2 46 460
+463 neq 1 461 462
+464 and 1 67 463
+465 bad 464 register-t1-differs
+
+470 constd 3 7
+471 read 2 21 470
+472 read 2 46 470
+473 neq 1 471 472
+474 and 1 67 473
+475 bad 474 register-t2-differs
+
+480 constd 3 8
+481 read 2 21 480
+482 read 2 46 480
+483 neq 1 481 482
+484 and 1 67 483
+485 bad 484 register-s0-differs
+
+490 constd 3 9
+491 read 2 21 490
+492 read 2 46 490
+493 neq 1 491 492
+494 and 1 67 493
+495 bad 494 register-s1-differs
+
+500 constd 3 10
+501 read 2 21 500
+502 read 2 46 500
+503 neq 1 501 502
+504 and 1 67 503
+505 bad 504 register-a0-differs
+
+510 constd 3 11
+511 read 2 21 510
+512 read 2 46 510
+513 neq 1 511 512
+514 and 1 67 513
+515 bad 514 register-a1-differs
+
+520 constd 3 12
+521 read 2 21 520
+522 read 2 46 520
+523 neq 1 521 522
+524 and 1 67 523
+525 bad 524 register-a2-differs
+
+530 constd 3 13
+531 read 2 21 530
+532 read 2 46 530
+533 neq 1 531 532
+534 and 1 67 533
+535 bad 534 register-a3-differs
+
+540 constd 3 14
+541 read 2 21 540
+542 read 2 46 540
+543 neq 1 541 542
+544 and 1 67 543
+545 bad 544 register-a4-differs
+
+550 constd 3 15
+551 read 2 21 550
+552 read 2 46 550
+553 neq 1 551 552
+554 and 1 67 553
+555 bad 554 register-a5-differs
+
+560 constd 3 16
+561 read 2 21 560
+562 read 2 46 560
+563 neq 1 561 562
+564 and 1 67 563
+565 bad 564 register-a6-differs
+
+570 constd 3 17
+571 read 2 21 570
+572 read 2 46 570
+573 neq 1 571 572
+574 and 1 67 573
+575 bad 574 register-a7-differs
+
+580 constd 3 18
+581 read 2 21 580
+582 read 2 46 580
+583 neq 1 581 582
+584 and 1 67 583
+585 bad 584 register-s2-differs
+
+590 constd 3 19
+591 read 2 21 590
+592 read 2 46 590
+593 neq 1 591 592
+594 and 1 67 593
+595 bad 594 register-s3-differs
+
+600 constd 3 20
+601 read 2 21 600
+602 read 2 46 600
+603 neq 1 601 602
+604 and 1 67 603
+605 bad 604 register-s4-differs
+
+610 constd 3 21
+611 read 2 21 610
+612 read 2 46 610
+613 neq 1 611 612
+614 and 1 67 613
+615 bad 614 register-s5-differs
+
+620 constd 3 22
+621 read 2 21 620
+622 read 2 46 620
+623 neq 1 621 622
+624 and 1 67 623
+625 bad 624 register-s6-differs
+
+630 constd 3 23
+631 read 2 21 630
+632 read 2 46 630
+633 neq 1 631 632
+634 and 1 67 633
+635 bad 634 register-s7-differs
+
+640 constd 3 24
+641 read 2 21 640
+642 read 2 46 640
+643 neq 1 641 642
+644 and 1 67 643
+645 bad 644 register-s8-differs
+
+650 constd 3 25
+651 read 2 21 650
+652 read 2 46 650
+653 neq 1 651 652
+654 and 1 67 653
+655 bad 654 register-s9-differs
+
+660 constd 3 26
+661 read 2 21 660
+662 read 2 46 660
+663 neq 1 661 662
+664 and 1 67 663
+665 bad 664 register-s10-differs
+
+670 constd 3 27
+671 read 2 21 670
+672 read 2 46 670
+673 neq 1 671 672
+674 and 1 67 673
+675 bad 674 register-s11-differs
+
+680 constd 3 28
+681 read 2 21 680
+682 read 2 46 680
+683 neq 1 681 682
+684 and 1 67 683
+685 bad 684 register-t3-differs
+
+690 constd 3 29
+691 read 2 21 690
+692 read 2 46 690
+693 neq 1 691 692
+694 and 1 67 693
+695 bad 694 register-t4-differs
+
+700 constd 3 30
+701 read 2 21 700
+702 read 2 46 700
+703 neq 1 701 702
+704 and 1 67 703
+705 bad 704 register-t5-differs
+
+710 constd 3 31
+711 read 2 21 710
+712 read 2 46 710
+713 neq 1 711 712
+714 and 1 67 713
+715 bad 714 register-t6-differs

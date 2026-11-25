@@ -10225,8 +10225,8 @@ uint64_t* riscr_tape_memory_data_flow(uint64_t* ir_nid, uint64_t* register_file_
   uint64_t  i;
   uint64_t* flow_nid;
 
-  // read and write exchange up to SYSCALL_WORDS buffer words with tape words;
-  // on output tapes the words ahead of the head are zero, so write copies
+  // read exchanges up to SYSCALL_WORDS buffer words with tape words;
+  // write leaves the buffer as it is
 
   flow_nid = segment_nid;
 
@@ -10246,7 +10246,7 @@ uint64_t* riscr_tape_memory_data_flow(uint64_t* ir_nid, uint64_t* register_file_
   }
 
   return new_ternary(OP_ITE, get_sid(segment_nid),
-    riscr_is_active_exchange(ir_nid, register_file_nid),
+    riscr_is_active_read(ir_nid, register_file_nid),
     flow_nid,
     other_data_flow_nid,
     "RISC-R kernel memory data flow");
@@ -10256,25 +10256,43 @@ uint64_t* riscr_tapes_data_flow(uint64_t* register_file_nid, uint64_t* active_ni
   uint64_t* data_segment_nid, uint64_t* heap_segment_nid, uint64_t* stack_segment_nid, uint64_t* tapes_nid) {
   uint64_t  i;
   uint64_t* flow_nid;
+  uint64_t* index_nid;
+  uint64_t* word_nid;
+
+  // read exchanges words of the input tape with buffer words; write flips
+  // the bits of words of the output tape by buffer words, in both directions:
+  // on a tape that is zero ahead of its head that copies the buffer onto the
+  // tape forward and erases it from the tape backward, as riscr does, and
+  // it is a bijection on all states, with the buffer left as it is
 
   flow_nid = tapes_nid;
 
   i = 0;
 
   while (i < SYSCALL_WORDS) {
+    index_nid = riscr_tape_index(load_register_value(NID_A1, "a1 value", register_file_nid),
+      new_binary(OP_ADD, SID_MACHINE_WORD,
+        riscr_exchange_head(register_file_nid),
+        new_constant(OP_CONSTD, SID_MACHINE_WORD, i, format_comment("word %lu", i)),
+        format_comment("head + %lu", i)));
+
+    word_nid = riscr_buffer_word(i, register_file_nid, data_segment_nid, heap_segment_nid, stack_segment_nid);
+
+    if (tapes_nid == state_output_tapes_nid)
+      word_nid = new_binary(OP_XOR, SID_MACHINE_WORD,
+        new_binary(OP_READ, SID_MACHINE_WORD, tapes_nid, index_nid, format_comment("output tape word %lu", i)),
+        word_nid,
+        format_comment("output tape word %lu flipped by buffer word", i));
+
     flow_nid = new_ternary(OP_ITE, SID_TAPE_STATE,
       riscr_is_exchanged_word(i, register_file_nid),
       new_ternary(OP_WRITE, SID_TAPE_STATE,
         flow_nid,
-        riscr_tape_index(load_register_value(NID_A1, "a1 value", register_file_nid),
-          new_binary(OP_ADD, SID_MACHINE_WORD,
-            riscr_exchange_head(register_file_nid),
-            new_constant(OP_CONSTD, SID_MACHINE_WORD, i, format_comment("word %lu", i)),
-            format_comment("head + %lu", i))),
-        riscr_buffer_word(i, register_file_nid, data_segment_nid, heap_segment_nid, stack_segment_nid),
-        format_comment("tape word %lu exchanged with buffer word", i)),
+        index_nid,
+        word_nid,
+        format_comment("tape word %lu exchanged with or flipped by buffer word", i)),
       flow_nid,
-      format_comment("exchange tape word %lu", i));
+      format_comment("exchange or flip tape word %lu", i));
 
     i = i + 1;
   }
