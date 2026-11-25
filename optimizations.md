@@ -318,7 +318,7 @@ None of this changed a layout: after each step the files were compared with thos
 
 With that, cellfie compiles its own binary on cellfie: 5,586,386,911 RISC-R instructions for 1.5 billion RISC-U instructions, 9.96·10^14 ticks, 21 minutes, 9.5GB, and the layout is the one the host writes, byte for byte (`make cellfie-on-cellfie`).
 
-Since then the compiler also constructs what it compiles, in a window of the grid it runs on (see `cellfie.md`), which made its binary 360,512 instructions. The same target now measures that run: 6,110,490,485 RISC-R instructions and 1.13·10^15 ticks to compile, write the file, and construct 1,509,401 cells; 2,131,520,395 instructions and 3.15·10^14 ticks without writing the file. Two thirds of the work is the layout as text, 80 RISC-U instructions per character for 14.9MB, which a compiler that only constructs does not need.
+Since then the compiler also constructs what it compiles, where the grid it runs on says it is free, and lands in it (see `cellfie.md`), which made its binary 376,324 instructions. The same target now measures that run: 6,378,168,020 RISC-R instructions and 1.19·10^15 ticks to compile, write the file, construct 1,575,267 cells, and land; 2,224,308,137 instructions and 3.26·10^14 ticks without writing the file. Two thirds of the work is the layout as text, 80 RISC-U instructions per character for 15.5MB, which a compiler that only constructs does not need. Where the room is matters little here: it is 8,000 columns east instead of 524,000 since the compiler puts it east of the instructions rather than east of the words, and the 5.5 million flights are about a hundredth of the ticks of the run without the file.
 
 ## What Is Not Optimized
 

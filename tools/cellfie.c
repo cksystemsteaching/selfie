@@ -40,7 +40,7 @@ Usage: cellfie { -l layout | -o layout | -f ticks | -b ticks | -rev ticks |
                  -heap offset words | -stack words | -i file | -c binary |
                  -a abstraction heap-allowance stack-allowance |
                  -k binary | -window layout |
-                 -at column row width height | -onto column row |
+                 -room columns rows | -onto |
                  -tapes descriptors | -tapewords words | -memory GB } [ -h binary ... ]
 
 -c compiles a RISC-R binary into a layout: its instructions in a row,
@@ -61,13 +61,21 @@ register with a part of a cell of the grid by ld at the address of
 the part; no wire leads there, the token flies. -window writes the
 cells of the window as a layout.
 
--at before -c or -h gives the grid of any binary a window, which must
-be south and east of all its cells, for the binary to store cells in:
-in C*, a store at the address of a part of a cell. -window after a
-run, or before -h, writes that window. -onto after -c stores the
-compiled layout, cell by cell, at the given cell of the grid that
-cellfie itself runs on, which is only possible on cellfie: there the
-layout compiler constructs what it compiles.
+-room before -c or -h gives the grid of any binary room, that many
+free columns and rows south and east of all its cells, for the binary
+to store cells in: in C*, a store at the address of a part of a cell.
+The compiler picks where, and says so in the word of a memory cell in
+the last column and row of the grid, which a binary reads and, when
+it has constructed, advances. -window after a run, or before -h,
+writes what was constructed there, with the token if it is there.
+-onto after -c stores the compiled layout, cell by cell, where the
+grid that cellfie itself runs on is free, which is only possible on
+cellfie, stores the token of the layout in the pocket of its own
+token, and lands: the token goes on in the layout it constructed,
+with the compiler in its pocket. The pocket is a second context that
+a token carries; ld at the address of one of its fields exchanges a
+register with the field, and a token that flies to a cell as to no
+part of it lands there, exchanging its context with its pocket.
 
 -h runs a RISC-R binary with the remaining arguments on the layout
 that -c would write, without laying it out: the hybrid simulator has
@@ -79,7 +87,9 @@ the host's. -tapes before it sets the number of file descriptors, a
 power of two, 4 by default, and gives each of them tapes, not only
 the standard ones; -tapewords sets the words per tape, 16 by default;
 -memory sets the virtual memory of the binary, 4GB by default, at
-whose end its stack is.
+whose end its stack is. A hybrid run ends where a property holds or
+where the token lands: what it lands in is not the binary's layout,
+and is in the window.
 
 The compiler lays cells as a list and writes a layout from the list;
 the grid is allocated only when a token is to run on it. So cellfie,
@@ -168,7 +178,10 @@ uint64_t* cell_tags  = (uint64_t*) 0; // address of a tagged instruction, memory
 // ----------------------------- TOKEN -----------------------------
 // -----------------------------------------------------------------
 
+void reset_context();
 void reset_token();
+
+void swap_contexts();
 
 uint64_t  get_token_register(uint64_t reg);
 void      set_token_register(uint64_t reg, uint64_t value);
@@ -216,6 +229,30 @@ uint64_t token_word = 0; // which word of the buffer the token transfers
 
 uint64_t token_flight = 0; // 0, or 2^63 plus row times 2^28 plus column of the cell the token left
 
+// The pocket of the token: a second context, all of the token but where
+// it is and where it heads, which the token carries and which no cell
+// acts on. A program exchanges registers with the fields of the pocket,
+// and a token that lands exchanges its context with it, see cellfie.md.
+
+uint64_t pocket_pc      = 0;
+uint64_t pocket_address = 0;
+uint64_t pocket_data    = 0;
+
+uint64_t* pocket_registers = (uint64_t*) 0;
+
+uint64_t pocket_break      = 0;
+uint64_t pocket_open_files = 3;
+
+uint64_t* pocket_heads  = (uint64_t*) 0;
+uint64_t* pocket_ends   = (uint64_t*) 0;
+uint64_t* pocket_inputs = (uint64_t*) 0;
+uint64_t* pocket_opens  = (uint64_t*) 0;
+
+uint64_t pocket_leg  = 0;
+uint64_t pocket_word = 0;
+
+uint64_t pocket_flight = 0;
+
 // -----------------------------------------------------------------
 // --------------------------- CELL RULE ---------------------------
 // -----------------------------------------------------------------
@@ -244,10 +281,16 @@ void     cell_openat();
 uint64_t cell_transfer(uint64_t on_path);
 uint64_t cell_system_call(uint64_t on_path);
 
+uint64_t is_pocket_address(uint64_t address);
+void     cell_pocket();
+
 uint64_t is_cell_address(uint64_t address);
 uint64_t flight_code(uint64_t x, uint64_t y);
 uint64_t is_in_flight();
 void     act_flight();
+
+uint64_t is_token_landing();
+uint64_t is_landing();
 
 void act_instruction(uint64_t orientation, uint64_t mirror_kind, uint64_t word);
 void act_memory(uint64_t* word);
@@ -293,7 +336,30 @@ uint64_t PART_KIND = 0;
 uint64_t PART_WORD = 1;
 uint64_t PART_TAG  = 2;
 
+uint64_t PART_LANDING = 3; // no part: a token that flies there lands, see below
+
 uint64_t COORDINATE_BITS = 28; // of a column or a row in an address and in a flight
+
+// addresses of the fields of the pocket: 2^60 + group * 2^12 + field * 8,
+// the group being its words, its registers, or one of its four tapes states
+
+uint64_t POCKET_ADDRESSES = 0;
+
+uint64_t POCKET_WORDS     = 0;
+uint64_t POCKET_REGISTERS = 1;
+uint64_t POCKET_HEADS     = 2;
+uint64_t POCKET_ENDS      = 3;
+uint64_t POCKET_INPUTS    = 4;
+uint64_t POCKET_OPENS     = 5;
+
+uint64_t POCKET_PC         = 0;
+uint64_t POCKET_ADDRESS    = 1;
+uint64_t POCKET_DATA       = 2;
+uint64_t POCKET_FLIGHT     = 3;
+uint64_t POCKET_WORD       = 4;
+uint64_t POCKET_BREAK      = 5;
+uint64_t POCKET_OPEN_FILES = 6;
+uint64_t POCKET_LEG        = 7;
 uint64_t OUTPUT_TAPES = 0; // addresses of output tape words: 2^62 + descriptor * 2^32 + position * 8
 
 // ------------------------ GLOBAL VARIABLES -----------------------
@@ -312,6 +378,8 @@ uint64_t acted_legs         = 0; // read or write that began, went on, or ended 
 uint64_t acted_launches     = 0; // ld that began or ended a flight
 uint64_t acted_turns        = 0; // turns of a token in flight
 uint64_t acted_cells        = 0; // cells exchanged with a token in flight
+uint64_t acted_pockets      = 0; // ld that exchanged a register with a field of the pocket
+uint64_t acted_landings     = 0; // tokens that exchanged their context with their pocket
 
 // -----------------------------------------------------------------
 // ---------------------------- LAYOUT -----------------------------
@@ -360,6 +428,9 @@ void print_cell(uint64_t index);
 
 uint64_t is_blank_cell(uint64_t index);
 uint64_t are_cells_equal(uint64_t i, uint64_t j);
+
+uint64_t is_context_reset();
+void     print_context();
 
 void write_layout(char* name);
 
@@ -443,6 +514,13 @@ uint64_t* new_arithmetic_choice(uint64_t* funct3_nid, uint64_t* funct7_nid, uint
 void model_sorts(uint64_t xbits, uint64_t ybits);
 void model_states();
 void model_transfer(uint64_t reading);
+
+uint64_t* new_pocket_effect(uint64_t* advance, uint64_t state, uint64_t* rd_nid, uint64_t* rd_value_nid, uint64_t* index_nid);
+uint64_t* model_pocket(uint64_t* advance, uint64_t* rd_nid, uint64_t* rd_value_nid, uint64_t* address_nid);
+
+uint64_t* new_is_landing(uint64_t* address_nid, uint64_t* flight_nid, uint64_t* x_nid, uint64_t* y_nid, uint64_t* code_nid);
+uint64_t* model_landing(uint64_t* effect, uint64_t* same, uint64_t* kind_nid, uint64_t* x_nid, uint64_t* y_nid, uint64_t* code_nid);
+
 void model_rule();
 
 char* property_name(uint64_t property);
@@ -474,7 +552,13 @@ uint64_t STATE_WORDS      = 16;
 uint64_t STATE_TAGS       = 17;
 uint64_t STATE_FLIGHT     = 18;
 
-uint64_t NUMBER_OF_STATES = 19;
+// the pocket has the states of the token from the pc to the host opens,
+// in their order, and the flight
+
+uint64_t STATE_POCKET        = 19;
+uint64_t STATE_POCKET_FLIGHT = 31;
+
+uint64_t NUMBER_OF_STATES = 32;
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
@@ -561,6 +645,7 @@ uint64_t check_rule(uint64_t states);
 uint64_t random_seed = 1;
 
 uint64_t* next_values = (uint64_t*) 0; // next value of each bit-vector state of the model
+uint64_t* state_copies = (uint64_t*) 0; // words of each array state of the model that becomes another array
 
 // -----------------------------------------------------------------
 // --------------------------- COMPILER ----------------------------
@@ -624,8 +709,11 @@ void emit_constructor(uint64_t parts);
 void construct_layout(char* name);
 void write_window(char* name);
 
-void check_window();
-void construct_laid_cells(uint64_t x, uint64_t y);
+uint64_t room_address();
+void     plan_room();
+uint64_t frame_window(uint64_t corner);
+
+void construct_laid_cells();
 
 void print_difference(uint64_t index_sid, uint64_t state_nid, uint64_t index, uint64_t cell_state_nid, uint64_t cell_index);
 void write_abstraction(char* name, uint64_t heap_allowance, uint64_t stack_allowance);
@@ -810,6 +898,15 @@ uint64_t* tape_values = (uint64_t*) 0;
 
 uint64_t tape_parts = 0;
 
+// With room, a grid has a memory cell in its last column and row whose
+// word is the first column and row of what is free of it, 2^28 times the
+// row plus the column: a program that constructs reads where from there
+// and writes there what is free then. The window is that room, and after
+// a run the part of it that is not free any more.
+
+uint64_t room_width  = 0; // columns and rows of free cells south and east of a compiled layout, see -room
+uint64_t room_height = 0;
+
 uint64_t window_x      = 0;
 uint64_t window_y      = 0;
 uint64_t window_width  = 0;
@@ -855,6 +952,9 @@ uint64_t* store = (uint64_t*) 0;
 
 uint64_t* part_addresses = (uint64_t*) 0; // 0 for none
 uint64_t* part_values    = (uint64_t*) 0;
+
+uint64_t part_columns = 0; // the grid of the binary, which is not laid out
+uint64_t part_rows    = 0;
 
 char* window_name = (char*) 0; // the layout that the window is written to when the binary has run
 
@@ -914,11 +1014,115 @@ uint64_t cell_index(uint64_t x, uint64_t y) {
 // -----------------------------------------------------------------
 
 void reset_token() {
+  // the token as a RISC-R machine starts, without a program: at the
+  // northwestern cell heading east, with the context below, and the
+  // same context in its pocket
+
+  token_x = 0;
+  token_y = 0;
+
+  token_heading = EAST;
+
+  reset_context();
+
+  swap_contexts();
+
+  reset_context();
+
+  swap_contexts();
+}
+
+void swap_contexts() {
+  uint64_t value;
+  uint64_t* values;
+
+  // the token and its pocket exchange all of the token but where it is
+  // and where it heads
+
+  value = token_pc;
+
+  token_pc = pocket_pc;
+
+  pocket_pc = value;
+
+  value = token_address;
+
+  token_address = pocket_address;
+
+  pocket_address = value;
+
+  value = token_data;
+
+  token_data = pocket_data;
+
+  pocket_data = value;
+
+  values = token_registers;
+
+  token_registers = pocket_registers;
+
+  pocket_registers = values;
+
+  value = token_break;
+
+  token_break = pocket_break;
+
+  pocket_break = value;
+
+  value = token_open_files;
+
+  token_open_files = pocket_open_files;
+
+  pocket_open_files = value;
+
+  values = token_heads;
+
+  token_heads = pocket_heads;
+
+  pocket_heads = values;
+
+  values = token_ends;
+
+  token_ends = pocket_ends;
+
+  pocket_ends = values;
+
+  values = token_inputs;
+
+  token_inputs = pocket_inputs;
+
+  pocket_inputs = values;
+
+  values = token_opens;
+
+  token_opens = pocket_opens;
+
+  pocket_opens = values;
+
+  value = token_leg;
+
+  token_leg = pocket_leg;
+
+  pocket_leg = value;
+
+  value = token_word;
+
+  token_word = pocket_word;
+
+  pocket_word = value;
+
+  value = token_flight;
+
+  token_flight = pocket_flight;
+
+  pocket_flight = value;
+}
+
+void reset_context() {
   uint64_t i;
 
-  // the token as a RISC-R machine starts, without a program: at the
-  // northwestern cell heading east, all registers zero, no program break,
-  // the three standard files open with standard input the only input tape
+  // all registers zero, no program break, the three standard files open
+  // with standard input the only input tape
 
   if (token_registers == (uint64_t*) 0) {
     token_registers = zmalloc(NUMBEROFREGISTERS * sizeof(uint64_t));
@@ -928,11 +1132,6 @@ void reset_token() {
     token_inputs = zmalloc(NUMBER_OF_TAPES * sizeof(uint64_t));
     token_opens  = zmalloc(NUMBER_OF_TAPES * sizeof(uint64_t));
   }
-
-  token_x = 0;
-  token_y = 0;
-
-  token_heading = EAST;
 
   token_pc      = 0;
   token_address = 0;
@@ -1651,9 +1850,17 @@ void act_instruction(uint64_t orientation, uint64_t mirror_kind, uint64_t word) 
     cell_jump(on_path);
   else if (is == JALR)
     cell_return(on_path);
-  else if (and(is == LOAD, rd != REG_ZR))
+  else if (and(is == LOAD, rd != REG_ZR)) {
+    if (is_pocket_address(get_token_register(rs1) + imm)) {
+      // the pocket is with the token: it stays on the path, or crosses it
+      if (on_path)
+        cell_pocket();
+
+      return;
+    }
+
     cell_exchange(on_path);
-  else {
+  } else {
     // the token stays on the path, or crosses it
     if (on_path)
       cell_compute();
@@ -1682,6 +1889,100 @@ void act_tape(uint64_t* word) {
   // a tape cell flips the bits of its word by the datum
 
   *word = bitwise_xor(*word, token_data);
+}
+
+uint64_t is_pocket_address(uint64_t address) {
+  return get_bits(address, 60, 4) == 1;
+}
+
+void cell_pocket() {
+  uint64_t address;
+  uint64_t group;
+  uint64_t field;
+  uint64_t value;
+  uint64_t datum;
+
+  // ld rd,imm(rs1) at the address of a field of the pocket exchanges rd
+  // with the field, the lowest two bits of rd with the leg, which is two
+  // bits, and nothing with register zero or a field that there is not.
+  // The token stays on the path. An exchange is its own inverse.
+
+  address = get_token_register(rs1) + imm;
+
+  advance_on_path();
+
+  group = get_bits(address, 12, 4);
+  field = get_bits(address, 3, 9);
+
+  value = get_token_register(rd);
+
+  if (group == POCKET_WORDS) {
+    field = field % 8;
+
+    if (field == POCKET_PC) {
+      datum = pocket_pc;
+
+      pocket_pc = value;
+    } else if (field == POCKET_ADDRESS) {
+      datum = pocket_address;
+
+      pocket_address = value;
+    } else if (field == POCKET_DATA) {
+      datum = pocket_data;
+
+      pocket_data = value;
+    } else if (field == POCKET_FLIGHT) {
+      datum = pocket_flight;
+
+      pocket_flight = value;
+    } else if (field == POCKET_WORD) {
+      datum = pocket_word;
+
+      pocket_word = value;
+    } else if (field == POCKET_BREAK) {
+      datum = pocket_break;
+
+      pocket_break = value;
+    } else if (field == POCKET_OPEN_FILES) {
+      datum = pocket_open_files;
+
+      pocket_open_files = value;
+    } else {
+      datum = value - value % 4 + pocket_leg;
+
+      pocket_leg = value % 4;
+    }
+  } else if (group == POCKET_REGISTERS) {
+    field = field % NUMBEROFREGISTERS;
+
+    if (field == REG_ZR)
+      return;
+
+    datum = *(pocket_registers + field);
+
+    *(pocket_registers + field) = value;
+  } else if (group == POCKET_HEADS) {
+    datum = *(pocket_heads + field % NUMBER_OF_TAPES);
+
+    *(pocket_heads + field % NUMBER_OF_TAPES) = value;
+  } else if (group == POCKET_ENDS) {
+    datum = *(pocket_ends + field % NUMBER_OF_TAPES);
+
+    *(pocket_ends + field % NUMBER_OF_TAPES) = value;
+  } else if (group == POCKET_INPUTS) {
+    datum = *(pocket_inputs + field % NUMBER_OF_TAPES);
+
+    *(pocket_inputs + field % NUMBER_OF_TAPES) = value;
+  } else if (group == POCKET_OPENS) {
+    datum = *(pocket_opens + field % NUMBER_OF_TAPES);
+
+    *(pocket_opens + field % NUMBER_OF_TAPES) = value;
+  } else
+    return;
+
+  set_token_register(rd, datum);
+
+  acted_pockets = acted_pockets + 1;
 }
 
 uint64_t is_cell_address(uint64_t address) {
@@ -1768,6 +2069,44 @@ void act_flight() {
   }
 }
 
+uint64_t is_token_landing() {
+  // a token in flight that is at the cell of its address, and has the
+  // address of no part of the cell, is landing
+
+  if (is_in_flight())
+    if (get_bits(token_address, 0, COORDINATE_BITS) % grid_width == token_x)
+      if (get_bits(token_address, COORDINATE_BITS, COORDINATE_BITS) % grid_height == token_y)
+        return get_bits(token_address, 2 * COORDINATE_BITS, 2) == PART_LANDING;
+
+  return 0;
+}
+
+uint64_t is_landing() {
+  uint64_t landing;
+
+  // A token lands if its pocket is at rest, with no flight and no address.
+  // Landing exchanges the two, so a token at rest whose pocket is landing
+  // where the token is does the same: that is landing undone, and makes
+  // landing its own inverse.
+
+  if (is_token_landing())
+    return and(pocket_flight == 0, pocket_address == 0);
+  else if (token_flight != 0)
+    return 0;
+  else if (token_address != 0)
+    return 0;
+  else if (pocket_flight == 0)
+    return 0;
+
+  swap_contexts();
+
+  landing = is_token_landing();
+
+  swap_contexts();
+
+  return landing;
+}
+
 void act() {
   uint64_t index;
   uint64_t cell;
@@ -1776,13 +2115,8 @@ void act() {
   uint64_t bit;
 
   // the cell under the token acts on the token, and backward undoes that,
-  // unless the token is in flight
-
-  if (is_in_flight()) {
-    act_flight();
-
-    return;
-  }
+  // unless the token is in flight; a token that lands, which it only does
+  // at a blank cell, exchanges its context with its pocket and flies no more
 
   index = cell_index(token_x, token_y);
 
@@ -1790,6 +2124,21 @@ void act() {
   word = *(cell_words + index);
 
   kind = get_cell_kind(cell);
+
+  if (kind == CELL_BLANK)
+    if (is_landing()) {
+      swap_contexts();
+
+      acted_landings = acted_landings + 1;
+
+      return;
+    }
+
+  if (is_in_flight()) {
+    act_flight();
+
+    return;
+  }
 
   if (kind == CELL_MIRROR)
     token_heading = mirror_heading(token_heading, get_cell_mirror(cell));
@@ -1940,6 +2289,7 @@ uint64_t token_property() {
 // #R register value                   a register that is not zero
 // #S break open-files leg word        program break, next descriptor, transfer
 // #F descriptor head end input open   a file descriptor and its tape
+// #P pc address data                  the pocket; the lines #R, #S, #F after it are its
 // x = width, y = height, rule = RISC-R
 // 2.E/00100a13M0000000000000007$     cells, row by row, ended by !
 //
@@ -2420,7 +2770,11 @@ void load_cells() {
 }
 
 void load_layout(char* name) {
+  uint64_t in_pocket;
+
   layout_name = name;
+
+  in_pocket = 0;
 
   layout_text = read_file(name);
 
@@ -2455,12 +2809,30 @@ void load_layout(char* name) {
       next_layout_character();
 
       load_file_descriptor();
+    } else if (layout_character() == 'P') {
+      next_layout_character();
+
+      // the lines from here on are the pocket's
+
+      if (in_pocket)
+        layout_error("one pocket");
+
+      in_pocket = 1;
+
+      swap_contexts();
+
+      token_pc      = scan_hexadecimal(0);
+      token_address = scan_hexadecimal(0);
+      token_data    = scan_hexadecimal(0);
     }
 
     skip_layout_line();
 
     skip_layout_blanks();
   }
+
+  if (in_pocket)
+    swap_contexts();
 
   load_header();
   load_cells();
@@ -2802,58 +3174,43 @@ uint64_t are_cells_equal(uint64_t i, uint64_t j) {
     return *(cell_words + i) == *(cell_words + j);
 }
 
-void write_layout(char* name) {
-  uint64_t fd;
-  uint64_t x;
-  uint64_t y;
-  uint64_t n;
-  uint64_t last;
+uint64_t is_context_reset() {
   uint64_t i;
 
-  // the grid and the token as layout, in one form only, so that
-  // equal states are equal files
+  // is the context of the token as a RISC-R machine starts?
 
-  fd = open_write_only(name, S_IRUSR_IWUSR_IRGRP_IROTH);
+  if (or(token_pc != 0, or(token_address != 0, token_data != 0)))
+    return 0;
+  else if (or(token_break != 0, or(token_open_files != 3, or(token_leg != LEG_NONE, or(token_word != 0, token_flight != 0)))))
+    return 0;
 
-  if (signed_less_than(fd, 0)) {
-    printf("%s: could not create %s\n", selfie_name, name);
+  i = 1;
 
-    exit(EXITCODE_IOERROR);
+  while (i < NUMBEROFREGISTERS) {
+    if (get_token_register(i) != 0)
+      return 0;
+
+    i = i + 1;
   }
 
-  output_name = name;
-  output_fd   = fd;
+  i = 0;
 
-  layout_buffer = smalloc((LAYOUT_CHUNK + 1) * sizeof(uint64_t));
+  while (i < NUMBER_OF_TAPES) {
+    if (or(*(token_heads + i) != 0, or(*(token_ends + i) != 0, or(*(token_inputs + i) != (i == 0), *(token_opens + i) != 0))))
+      return 0;
 
-  if (byte_powers == (uint64_t*) 0) {
-    byte_powers = smalloc((WORDSIZE + 1) * sizeof(uint64_t));
-
-    *byte_powers = 1;
-
-    i = 1;
-
-    while (i <= WORDSIZE) {
-      *(byte_powers + i) = *(byte_powers + i - 1) * 256;
-
-      i = i + 1;
-    }
+    i = i + 1;
   }
 
-  layout_bytes = 0;
-  layout_word  = 0;
-  layout_shift = 1;
+  return 1;
+}
 
-  print_layout_string("#C cellfie layout, see cellfie.md\n");
-  print_layout_string("#T ");
-  print_layout_decimal(token_x);
-  print_layout_string(" ");
-  print_layout_decimal(token_y);
-  print_layout_string(" ");
+void print_context() {
+  uint64_t i;
 
-  print_heading(token_heading);
+  // the rest of the line of the token or the pocket, and the lines of
+  // its registers, its system call state, and its file descriptors
 
-  put_layout_character(' ');
   print_hexadecimal_digits(token_pc, 16);
   put_layout_character(' ');
   print_hexadecimal_digits(token_address, 16);
@@ -2916,6 +3273,74 @@ void write_layout(char* name) {
 
     i = i + 1;
   }
+}
+
+void write_layout(char* name) {
+  uint64_t fd;
+  uint64_t x;
+  uint64_t y;
+  uint64_t n;
+  uint64_t last;
+  uint64_t i;
+
+  // the grid and the token as layout, in one form only, so that
+  // equal states are equal files
+
+  fd = open_write_only(name, S_IRUSR_IWUSR_IRGRP_IROTH);
+
+  if (signed_less_than(fd, 0)) {
+    printf("%s: could not create %s\n", selfie_name, name);
+
+    exit(EXITCODE_IOERROR);
+  }
+
+  output_name = name;
+  output_fd   = fd;
+
+  layout_buffer = smalloc((LAYOUT_CHUNK + 1) * sizeof(uint64_t));
+
+  if (byte_powers == (uint64_t*) 0) {
+    byte_powers = smalloc((WORDSIZE + 1) * sizeof(uint64_t));
+
+    *byte_powers = 1;
+
+    i = 1;
+
+    while (i <= WORDSIZE) {
+      *(byte_powers + i) = *(byte_powers + i - 1) * 256;
+
+      i = i + 1;
+    }
+  }
+
+  layout_bytes = 0;
+  layout_word  = 0;
+  layout_shift = 1;
+
+  print_layout_string("#C cellfie layout, see cellfie.md\n");
+  print_layout_string("#T ");
+  print_layout_decimal(token_x);
+  print_layout_string(" ");
+  print_layout_decimal(token_y);
+  print_layout_string(" ");
+
+  print_heading(token_heading);
+
+  put_layout_character(' ');
+
+  print_context();
+
+  // the pocket, if it is not as a RISC-R machine starts
+
+  swap_contexts();
+
+  if (not(is_context_reset())) {
+    print_layout_string("#P ");
+
+    print_context();
+  }
+
+  swap_contexts();
 
   print_layout_string("x = ");
   print_layout_decimal(grid_width);
@@ -2985,8 +3410,30 @@ void write_layout(char* name) {
 // --------------------------- SIMULATOR ---------------------------
 // -----------------------------------------------------------------
 
+uint64_t token_state(uint64_t state) {
+  // the state of the token that a state of the pocket is the pocket's of
+
+  if (state == STATE_POCKET_FLIGHT)
+    return STATE_FLIGHT;
+  else if (state >= STATE_POCKET)
+    return state - STATE_POCKET + STATE_PC;
+  else
+    return state;
+}
+
+uint64_t pocket_state(uint64_t state) {
+  // the state of the pocket for a state of the token that the pocket has
+
+  if (state == STATE_FLIGHT)
+    return STATE_POCKET_FLIGHT;
+  else
+    return state - STATE_PC + STATE_POCKET;
+}
+
 uint64_t state_length(uint64_t state) {
   // number of words of a state of the machine
+
+  state = token_state(state);
 
   if (state < STATE_REGISTERS)
     return 1;
@@ -3001,6 +3448,18 @@ uint64_t state_length(uint64_t state) {
 }
 
 uint64_t get_state_word(uint64_t state, uint64_t i) {
+  uint64_t value;
+
+  if (state >= STATE_POCKET) {
+    swap_contexts();
+
+    value = get_state_word(token_state(state), i);
+
+    swap_contexts();
+
+    return value;
+  }
+
   if (state == STATE_X)
     return token_x;
   else if (state == STATE_Y)
@@ -3042,6 +3501,16 @@ uint64_t get_state_word(uint64_t state, uint64_t i) {
 }
 
 void set_state_word(uint64_t state, uint64_t i, uint64_t value) {
+  if (state >= STATE_POCKET) {
+    swap_contexts();
+
+    set_state_word(token_state(state), i, value);
+
+    swap_contexts();
+
+    return;
+  }
+
   if (state == STATE_X)
     token_x = value;
   else if (state == STATE_Y)
@@ -3121,8 +3590,37 @@ char* state_name(uint64_t state) {
     return "cell-kinds";
   else if (state == STATE_WORDS)
     return "cell-words";
-  else
+  else if (state == STATE_TAGS)
     return "cell-tags";
+
+  state = token_state(state);
+
+  if (state == STATE_PC)
+    return "pocket-pc";
+  else if (state == STATE_ADDRESS)
+    return "pocket-address";
+  else if (state == STATE_DATA)
+    return "pocket-data";
+  else if (state == STATE_BREAK)
+    return "pocket-break";
+  else if (state == STATE_OPEN_FILES)
+    return "pocket-open-files";
+  else if (state == STATE_LEG)
+    return "pocket-leg";
+  else if (state == STATE_WORD)
+    return "pocket-word";
+  else if (state == STATE_FLIGHT)
+    return "pocket-flight";
+  else if (state == STATE_REGISTERS)
+    return "pocket-registers";
+  else if (state == STATE_HEADS)
+    return "pocket-tape-heads";
+  else if (state == STATE_ENDS)
+    return "pocket-tape-ends";
+  else if (state == STATE_INPUTS)
+    return "pocket-tape-inputs";
+  else
+    return "pocket-tape-opens";
 }
 
 uint64_t snapshot_size() {
@@ -3537,6 +4035,7 @@ void model_sorts(uint64_t xbits, uint64_t ybits) {
 void model_states() {
   uint64_t state;
   uint64_t* sid;
+  char* name;
   char* comment;
 
   state_nids = zmalloc(NUMBER_OF_STATES * sizeof(uint64_t*));
@@ -3545,6 +4044,12 @@ void model_states() {
 
   while (state < NUMBER_OF_STATES) {
     sid = SID_WORD;
+
+    // a state of the pocket is as the state of the token
+
+    name = state_name(state);
+
+    state = token_state(state);
 
     if (state == STATE_X) {
       sid = SID_X;
@@ -3610,7 +4115,13 @@ void model_states() {
       comment = "address of each tagged instruction, memory, or tape cell";
     }
 
-    *(state_nids + state) = (uint64_t) new_input(OP_STATE, sid, state_name(state), comment);
+    if (string_compare(name, state_name(state)) == 0) {
+      state = pocket_state(state);
+
+      comment = "the same in the pocket";
+    }
+
+    *(state_nids + state) = (uint64_t) new_input(OP_STATE, sid, name, comment);
 
     state = state + 1;
   }
@@ -3819,6 +4330,133 @@ void model_transfer(uint64_t reading) {
     system_on_side);
 }
 
+uint64_t* new_pocket_effect(uint64_t* advance, uint64_t state, uint64_t* rd_nid, uint64_t* rd_value_nid, uint64_t* index_nid) {
+  uint64_t* effect;
+  uint64_t* registers_nid;
+  uint64_t* pocket_nid;
+  uint64_t* value_nid;
+  uint64_t* next_nid;
+
+  // rd and a state of the pocket are exchanged: a word, the two bits of
+  // the leg with the lowest two bits of rd, or the word at an index
+
+  registers_nid = (uint64_t*) *(state_nids + STATE_REGISTERS);
+
+  pocket_nid = (uint64_t*) *(state_nids + pocket_state(state));
+
+  if (index_nid != (uint64_t*) 0) {
+    value_nid = new_binary(OP_READ, SID_WORD, pocket_nid, index_nid, "word of the pocket");
+
+    next_nid = new_ternary(OP_WRITE, get_sid(pocket_nid), pocket_nid, index_nid, rd_value_nid, "word of the pocket written");
+  } else if (state == STATE_LEG) {
+    value_nid = new_join(new_bits(rd_value_nid, 63, 2), pocket_nid);
+
+    next_nid = new_slice(SID_HEADING, rd_value_nid, 1, 0, NOCOMMENT);
+  } else {
+    value_nid = pocket_nid;
+
+    next_nid = rd_value_nid;
+  }
+
+  effect = new_effect(advance);
+
+  *(effect + STATE_REGISTERS) = (uint64_t)
+    new_ternary(OP_WRITE, SID_REGISTERS, registers_nid, rd_nid, value_nid, "ld of the pocket");
+
+  *(effect + pocket_state(state)) = (uint64_t) next_nid;
+
+  return effect;
+}
+
+uint64_t* model_pocket(uint64_t* advance, uint64_t* rd_nid, uint64_t* rd_value_nid, uint64_t* address_nid) {
+  uint64_t* group_nid;
+  uint64_t* field_nid;
+  uint64_t* register_nid;
+  uint64_t* fd_nid;
+  uint64_t* no_index_nid;
+
+  // ld at the address of a field of the pocket, on the path: rd and the
+  // field are exchanged and the token stays on the path; nothing is
+  // exchanged with register zero or a field that there is not
+
+  group_nid = new_bits(address_nid, 15, 12);
+  field_nid = new_bits(address_nid, 5, 3);
+
+  register_nid = new_slice(SID_REGISTER, address_nid, 7, 3, "register of the pocket");
+
+  fd_nid = new_slice(SID_FD, address_nid, 2 + log_two(NUMBER_OF_TAPES), 3, "file descriptor of the pocket");
+
+  no_index_nid = (uint64_t*) 0;
+
+  return new_choice(new_is_field(group_nid, POCKET_WORDS),
+    new_choice(new_is_field(field_nid, POCKET_PC), new_pocket_effect(advance, STATE_PC, rd_nid, rd_value_nid, no_index_nid),
+    new_choice(new_is_field(field_nid, POCKET_ADDRESS), new_pocket_effect(advance, STATE_ADDRESS, rd_nid, rd_value_nid, no_index_nid),
+    new_choice(new_is_field(field_nid, POCKET_DATA), new_pocket_effect(advance, STATE_DATA, rd_nid, rd_value_nid, no_index_nid),
+    new_choice(new_is_field(field_nid, POCKET_FLIGHT), new_pocket_effect(advance, STATE_FLIGHT, rd_nid, rd_value_nid, no_index_nid),
+    new_choice(new_is_field(field_nid, POCKET_WORD), new_pocket_effect(advance, STATE_WORD, rd_nid, rd_value_nid, no_index_nid),
+    new_choice(new_is_field(field_nid, POCKET_BREAK), new_pocket_effect(advance, STATE_BREAK, rd_nid, rd_value_nid, no_index_nid),
+    new_choice(new_is_field(field_nid, POCKET_OPEN_FILES), new_pocket_effect(advance, STATE_OPEN_FILES, rd_nid, rd_value_nid, no_index_nid),
+      new_pocket_effect(advance, STATE_LEG, rd_nid, rd_value_nid, no_index_nid)))))))),
+    new_choice(new_is_field(group_nid, POCKET_REGISTERS),
+      new_choice(new_is_field(register_nid, REG_ZR), advance,
+        new_pocket_effect(advance, STATE_REGISTERS, rd_nid, rd_value_nid, register_nid)),
+    new_choice(new_is_field(group_nid, POCKET_HEADS), new_pocket_effect(advance, STATE_HEADS, rd_nid, rd_value_nid, fd_nid),
+    new_choice(new_is_field(group_nid, POCKET_ENDS), new_pocket_effect(advance, STATE_ENDS, rd_nid, rd_value_nid, fd_nid),
+    new_choice(new_is_field(group_nid, POCKET_INPUTS), new_pocket_effect(advance, STATE_INPUTS, rd_nid, rd_value_nid, fd_nid),
+    new_choice(new_is_field(group_nid, POCKET_OPENS), new_pocket_effect(advance, STATE_OPENS, rd_nid, rd_value_nid, fd_nid),
+      advance))))));
+}
+
+uint64_t* new_is_landing(uint64_t* address_nid, uint64_t* flight_nid, uint64_t* x_nid, uint64_t* y_nid, uint64_t* code_nid) {
+  // in flight, at the cell of the address, and the address that of no part
+  return new_and(new_not(new_or(new_is_field(flight_nid, 0), new_eq(flight_nid, code_nid))),
+    new_and(new_eq(new_slice(SID_X, address_nid, eval_bitvec_size(SID_X) - 1, 0, NOCOMMENT), x_nid),
+      new_and(new_eq(new_slice(SID_Y, address_nid,
+          COORDINATE_BITS + eval_bitvec_size(SID_Y) - 1, COORDINATE_BITS, NOCOMMENT), y_nid),
+        new_is_field(new_bits(address_nid, 2 * COORDINATE_BITS + 1, 2 * COORDINATE_BITS), PART_LANDING))));
+}
+
+uint64_t* model_landing(uint64_t* effect, uint64_t* same, uint64_t* kind_nid, uint64_t* x_nid, uint64_t* y_nid, uint64_t* code_nid) {
+  uint64_t* swap_effect;
+  uint64_t* address_nid;
+  uint64_t* flight_nid;
+  uint64_t* pocket_address_nid;
+  uint64_t* pocket_flight_nid;
+  uint64_t state;
+
+  // At a blank cell a token that is landing, with its pocket at rest,
+  // exchanges its context with its pocket, and so does a token at rest
+  // with its pocket landing there: landing is its own inverse. Else the
+  // rule is as it is without.
+
+  swap_effect = new_effect(same);
+
+  state = STATE_PC;
+
+  while (state <= STATE_FLIGHT) {
+    if (or(state <= STATE_OPENS, state == STATE_FLIGHT)) {
+      *(swap_effect + state)               = *(state_nids + pocket_state(state));
+      *(swap_effect + pocket_state(state)) = *(state_nids + state);
+    }
+
+    state = state + 1;
+  }
+
+  address_nid = (uint64_t*) *(state_nids + STATE_ADDRESS);
+  flight_nid  = (uint64_t*) *(state_nids + STATE_FLIGHT);
+
+  pocket_address_nid = (uint64_t*) *(state_nids + pocket_state(STATE_ADDRESS));
+  pocket_flight_nid  = (uint64_t*) *(state_nids + pocket_state(STATE_FLIGHT));
+
+  return new_choice(new_is_field(kind_nid, CELL_BLANK),
+    new_choice(new_is_landing(address_nid, flight_nid, x_nid, y_nid, code_nid),
+      new_choice(new_and(new_is_field(pocket_flight_nid, 0), new_is_field(pocket_address_nid, 0)), swap_effect, effect),
+      new_choice(new_is_landing(pocket_address_nid, pocket_flight_nid, x_nid, y_nid, code_nid),
+        new_choice(new_and(new_is_field(flight_nid, 0), new_is_field(address_nid, 0)), swap_effect, effect),
+        effect)),
+    effect);
+}
+
 void model_rule() {
   uint64_t* next_nids;
 
@@ -3879,6 +4517,7 @@ void model_rule() {
 
   uint64_t* exchange_on_path;
   uint64_t* exchange_on_side;
+  uint64_t* pocket_on_path;
   uint64_t* branch_on_path;
   uint64_t* branch_on_side;
   uint64_t* jump_on_path;
@@ -4152,6 +4791,10 @@ void model_rule() {
 
   *(exchange_on_side + STATE_ADDRESS) = (uint64_t) new_sub(address_nid, load_address_nid);
 
+  // ld at the address of a field of the pocket: the token stays on the path
+
+  pocket_on_path = model_pocket(advance, rd_nid, rd_value_nid, load_address_nid);
+
   if (reverse)
     *(exchange_on_path + STATE_PC) = *(advance + STATE_PC);
   else
@@ -4400,7 +5043,8 @@ void model_rule() {
     new_choice(new_is_field(opcode_nid, OP_LOAD),
       new_choice(new_is_field(funct3_nid, F3_LD),
         new_choice(is_rd_zero_nid, advance,
-          new_choice(is_rd_rs1_nid, same, exchange_on_path)),
+          new_choice(is_rd_rs1_nid, same,
+            new_choice(new_is_field(new_bits(load_address_nid, 63, 60), 1), pocket_on_path, exchange_on_path))),
         same),
     new_choice(new_is_field(opcode_nid, OP_OP),
       new_choice(is_rd_zero_nid,
@@ -4428,7 +5072,8 @@ void model_rule() {
     new_choice(new_is_field(opcode_nid, OP_LOAD),
       new_choice(new_is_field(funct3_nid, F3_LD),
         new_choice(is_rd_zero_nid, same,
-          new_choice(is_rd_rs1_nid, same, exchange_on_side)),
+          new_choice(is_rd_rs1_nid, same,
+            new_choice(new_is_field(new_bits(load_address_nid, 63, 60), 1), same, exchange_on_side))),
         same),
     new_choice(new_is_field(opcode_nid, OP_BRANCH),
       new_choice(new_is_field(funct3_nid, F3_BEQ),
@@ -4547,6 +5192,10 @@ void model_rule() {
     flight_effect);
 
   effect = new_choice(new_or(new_is_field(flight_nid, 0), new_eq(flight_nid, code_nid)), effect, flight_effect);
+
+  // a token that lands exchanges its context with its pocket
+
+  effect = model_landing(effect, same, kind_nid, x_nid, y_nid, code_nid);
 
   // position: forward one cell along the new heading, backward the cell moved back to
 
@@ -5048,6 +5697,79 @@ void random_state() {
     i = i + 1;
   }
 
+  // the pocket: any context; one register in eight has the address of one
+  // of its fields; and one state in four is about landing: the token or
+  // its pocket lands where the token is, the other often at rest, and the
+  // cell there often blank
+
+  pocket_pc      = random_value();
+  pocket_address = random_value();
+  pocket_data    = random_value();
+
+  i = 1;
+
+  while (i < NUMBEROFREGISTERS) {
+    *(pocket_registers + i) = random_value();
+
+    if (random_below(8) == 0)
+      *(token_registers + i) = POCKET_ADDRESSES + random_below(8) * 4096 + random_below(512) * WORDSIZE + random_below(2);
+
+    i = i + 1;
+  }
+
+  pocket_break      = random_value();
+  pocket_open_files = random_below(6);
+
+  pocket_leg  = random_below(4);
+  pocket_word = random_below(4);
+
+  pocket_flight = 0;
+
+  i = 0;
+
+  while (i < NUMBER_OF_TAPES) {
+    *(pocket_heads + i)  = random_below(4);
+    *(pocket_ends + i)   = random_value();
+    *(pocket_inputs + i) = random_below(2);
+    *(pocket_opens + i)  = random_below(2);
+
+    i = i + 1;
+  }
+
+  if (random_below(2) == 0)
+    pocket_flight = random_value();
+
+  r = random_below(8);
+
+  if (r < 2) {
+    if (r == 0) {
+      // the token lands
+      token_flight = flight_code(random_below(grid_width), random_below(grid_height));
+
+      token_address = CELL_ADDRESSES + left_shift(PART_LANDING, 2 * COORDINATE_BITS)
+        + left_shift(token_y, COORDINATE_BITS) + token_x;
+
+      if (random_below(4) != 0) {
+        pocket_flight  = 0;
+        pocket_address = 0;
+      }
+    } else {
+      // the pocket lands
+      pocket_flight = flight_code(random_below(grid_width), random_below(grid_height));
+
+      pocket_address = CELL_ADDRESSES + left_shift(PART_LANDING, 2 * COORDINATE_BITS)
+        + left_shift(token_y, COORDINATE_BITS) + token_x;
+
+      if (random_below(4) != 0) {
+        token_flight  = 0;
+        token_address = 0;
+      }
+    }
+
+    if (random_below(4) != 0)
+      *(cell_kinds + cell_index(token_x, token_y)) = encode_cell(CELL_BLANK, 0, 0);
+  }
+
   // half of the time the cell under the token is the cell of its pc or address
 
   r = random_below(4);
@@ -5208,6 +5930,7 @@ void step_model(uint64_t* next_nids) {
   uint64_t state;
   uint64_t* line;
   uint64_t* values;
+  uint64_t i;
 
   // one step of the rule or the inverse rule: all next values are
   // evaluated before any is applied, array writes are logged while
@@ -5234,6 +5957,12 @@ void step_model(uint64_t* next_nids) {
 
   apply_writes();
 
+  // an array that becomes another array, which the evaluator has no
+  // writes for, gets its words: all are read before any is written
+
+  if (state_copies == (uint64_t*) 0)
+    state_copies = zmalloc(NUMBER_OF_STATES * sizeof(uint64_t*));
+
   state = 0;
 
   while (state < NUMBER_OF_STATES) {
@@ -5241,6 +5970,37 @@ void step_model(uint64_t* next_nids) {
 
     if (is_bitvector(get_sid(line)))
       set_state(line, *(values + state));
+    else if (*(values + state) != (uint64_t) line) {
+      if (*(state_copies + state) == 0)
+        *(state_copies + state) = (uint64_t) smalloc(state_length(state) * sizeof(uint64_t));
+
+      i = 0;
+
+      while (i < state_length(state)) {
+        *((uint64_t*) *(state_copies + state) + i) = read_array_raw((uint64_t*) *(values + state), i);
+
+        i = i + 1;
+      }
+    }
+
+    state = state + 1;
+  }
+
+  state = 0;
+
+  while (state < NUMBER_OF_STATES) {
+    line = (uint64_t*) *(state_nids + state);
+
+    if (not(is_bitvector(get_sid(line))))
+      if (*(values + state) != (uint64_t) line) {
+        i = 0;
+
+        while (i < state_length(state)) {
+          write_array_raw(line, i, *((uint64_t*) *(state_copies + state) + i));
+
+          i = i + 1;
+        }
+      }
 
     state = state + 1;
   }
@@ -5438,6 +6198,8 @@ uint64_t check_rule(uint64_t states) {
     acted_breaks, acted_opens, acted_legs);
   printf("%s: %lu times a flight began or ended, %lu times a token in flight turned, %lu times it exchanged a part of a cell\n", selfie_name,
     acted_launches, acted_turns, acted_cells);
+  printf("%s: %lu times a register was exchanged with the pocket, %lu times a token landed or took off again\n", selfie_name,
+    acted_pockets, acted_landings);
 
   return failed == 0;
 }
@@ -7172,29 +7934,71 @@ void boot_token() {
   executed_instructions = 0;
 }
 
-void check_window() {
-  // a window, if there is one, is south of all strips and east of all
-  // instructions: where a token that leaves an instruction south and
-  // turns east gets to, over nothing that it would not fly over
+uint64_t room_address() {
+  // the address of the word of the cell in the last column and row of any grid
+  return CELL_ADDRESSES + left_shift(PART_WORD, 2 * COORDINATE_BITS) + two_to_the_power_of(2 * COORDINATE_BITS) - 1;
+}
 
-  if (window_width == 0)
+void plan_room() {
+  // the room of a layout, if it has any, is south of all its cells and
+  // east of all its instructions: where a token that leaves an
+  // instruction south and turns east gets to, as near as that is, and
+  // the window is all of it
+
+  if (room_width == 0)
     return;
 
-  if (window_y >= memory_in_row + memory_rows)
-    if (window_x > path_column + 2 * path_width)
-      if (window_x + window_width <= two_to_the_power_of(COORDINATE_BITS))
-        if (window_y + window_height <= two_to_the_power_of(COORDINATE_BITS))
-          return;
+  window_x = path_column + 2 * path_width + 2;
+  window_y = memory_in_row + memory_rows;
 
-  printf("%s: the window at (%lu,%lu) is not south of row %lu and east of column %lu\n", selfie_name,
-    window_x, window_y, memory_in_row + memory_rows - 1, path_column + 2 * path_width);
+  window_width  = room_width;
+  window_height = room_height;
+
+  if (window_x + window_width < two_to_the_power_of(COORDINATE_BITS))
+    if (window_y + window_height < two_to_the_power_of(COORDINATE_BITS))
+      return;
+
+  printf("%s: no room for %lux%lu cells at (%lu,%lu)\n", selfie_name, room_width, room_height, window_x, window_y);
 
   exit(EXITCODE_BADARGUMENTS);
 }
 
+uint64_t frame_window(uint64_t corner) {
+  uint64_t x;
+  uint64_t y;
+
+  // the window of a grid with room is what was constructed there: from
+  // where the room began to where it begins now, and a token in it is
+  // where it is in the window
+
+  if (room_width == 0)
+    return 1;
+
+  x = get_bits(corner, 0, COORDINATE_BITS);
+  y = get_bits(corner, COORDINATE_BITS, COORDINATE_BITS);
+
+  if (or(x <= window_x, or(y <= window_y, or(x > window_x + room_width, y > window_y + room_height)))) {
+    printf("%s: nothing is constructed in the room at (%lu,%lu), which is free from (%lu,%lu)\n", selfie_name,
+      window_x, window_y, x, y);
+
+    return 0;
+  }
+
+  window_width  = x - window_x;
+  window_height = y - window_y;
+
+  if (and(token_x >= window_x, token_y >= window_y))
+    if (and(token_x < x, token_y < y)) {
+      token_x = token_x - window_x;
+      token_y = token_y - window_y;
+    }
+
+  return 1;
+}
+
 void compile_layout(char* name) {
   // the binary as a layout on the least grid that holds it, and its
-  // window if it has one
+  // room if it has any, with the cell that says where the room is
 
   boot_binary(name, 0);
 
@@ -7202,28 +8006,38 @@ void compile_layout(char* name) {
   plan_regions();
   plan_rows();
 
-  check_window();
+  plan_room();
 
-  if (window_width == 0)
+  if (room_width == 0)
     lay_layout(name, 0, 0);
-  else
-    lay_layout(name, window_x + window_width, window_y + window_height);
+  else {
+    lay_layout(name, window_x + window_width + 1, window_y + window_height + 1);
+
+    lay_cell(grid_width - 1, grid_height - 1, CELL_MEMORY, left_shift(window_y, COORDINATE_BITS) + window_x);
+  }
 }
 
-void construct_laid_cells(uint64_t x, uint64_t y) {
+void construct_laid_cells() {
   uint64_t* part;
+  uint64_t corner;
   uint64_t address;
   uint64_t word;
   uint64_t tag;
+  uint64_t x;
+  uint64_t y;
   uint64_t i;
 
-  // The compiled layout, constructed: each part of each laid cell is
-  // stored at its address on the grid that this compiler runs on, the
-  // layout's first cell being the cell in column x and row y there. A
-  // store at the address of a part of a cell is what riscr translates
-  // into two exchanges, of what is there into the history and of the
-  // part into the cell, and each is a flight, see cellfie.md. On any
-  // other machine there is no such address.
+  // The compiled layout, constructed and started, on the grid that this
+  // compiler runs on. Where: the word of the last cell of the grid says
+  // where the grid is free, and gets where it is free then. Each part of
+  // each laid cell is stored at its address; a store at the address of a
+  // part of a cell is what riscr translates into two exchanges, of what
+  // is there into the history and of the part into the cell, and each is
+  // a flight, see cellfie.md. The token of the layout is stored in the
+  // pocket, where it is not as a machine starts, and a load at the cell
+  // west of the first instruction, as no part of it, lands there: the
+  // layout runs, and this compiler is in its pocket. On any other
+  // machine there are no such addresses.
 
   if (load_character(selfie_name, 0) != '>') {
     printf("%s: a layout is constructed on the grid that cellfie runs on, and this cellfie runs on none\n", selfie_name);
@@ -7231,15 +8045,27 @@ void construct_laid_cells(uint64_t x, uint64_t y) {
     exit(EXITCODE_BADARGUMENTS);
   }
 
+  part = (uint64_t*) room_address();
+
+  corner = *part;
+
+  if (corner == 0) {
+    printf("%s: no room on the grid\n", selfie_name);
+
+    exit(EXITCODE_BADARGUMENTS);
+  }
+
+  *part = corner + left_shift(grid_height, COORDINATE_BITS) + grid_width;
+
   word = left_shift(PART_WORD, 2 * COORDINATE_BITS);
   tag  = left_shift(PART_TAG, 2 * COORDINATE_BITS);
 
-  y = CELL_ADDRESSES + left_shift(y, COORDINATE_BITS) + x;
+  corner = CELL_ADDRESSES + corner;
 
   i = 0;
 
   while (i < number_of_laid_cells) {
-    address = y + *(laid_ys + i) * 268435456 + *(laid_xs + i);
+    address = corner + *(laid_ys + i) * 268435456 + *(laid_xs + i);
 
     part = (uint64_t*) address;
 
@@ -7260,7 +8086,46 @@ void construct_laid_cells(uint64_t x, uint64_t y) {
     i = i + 1;
   }
 
-  printf("%s: %lu cells constructed at (%lu,%lu)\n", selfie_name, number_of_laid_cells, x, (y - CELL_ADDRESSES) / 268435456);
+  x = get_bits(corner, 0, COORDINATE_BITS);
+  y = get_bits(corner, COORDINATE_BITS, COORDINATE_BITS);
+
+  printf("%s: %lu cells constructed at (%lu,%lu), started at (%lu,%lu)\n", selfie_name,
+    number_of_laid_cells, x, y, x + token_x, y + token_y);
+
+  // the token of the layout: its pc, its registers, its program break,
+  // and the end of its input
+
+  part = (uint64_t*) (POCKET_ADDRESSES + POCKET_PC * WORDSIZE);
+
+  *part = token_pc;
+
+  i = 1;
+
+  while (i < NUMBEROFREGISTERS) {
+    if (*(token_registers + i) != 0) {
+      part = (uint64_t*) (POCKET_ADDRESSES + POCKET_REGISTERS * 4096 + i * WORDSIZE);
+
+      *part = *(token_registers + i);
+    }
+
+    i = i + 1;
+  }
+
+  part = (uint64_t*) (POCKET_ADDRESSES + POCKET_BREAK * WORDSIZE);
+
+  *part = token_break;
+
+  if (*token_ends != 0) {
+    part = (uint64_t*) (POCKET_ADDRESSES + POCKET_ENDS * 4096);
+
+    *part = *token_ends;
+  }
+
+  // the token lands and does not come back
+
+  part = (uint64_t*) (corner + left_shift(PART_LANDING, 2 * COORDINATE_BITS) + token_y * 268435456 + token_x - 1);
+
+  i = *part;
 }
 
 void lay_layout(char* name, uint64_t width, uint64_t height) {
@@ -8120,6 +8985,12 @@ uint64_t* part_in_store(uint64_t address) {
     part_values    = zmalloc(PART_SLOTS * sizeof(uint64_t));
   }
 
+  // columns and rows count around the torus
+
+  address = address - address % 72057594037927936
+    + left_shift(get_bits(address, COORDINATE_BITS, COORDINATE_BITS) % part_rows, COORDINATE_BITS)
+    + get_bits(address, 0, COORDINATE_BITS) % part_columns;
+
   i = (address % 268435456 * 7 + address / 268435456 % 268435456 * 31337 + address / 72057594037927936) % PART_SLOTS;
 
   while (*(part_addresses + i) != address) {
@@ -8404,6 +9275,7 @@ void run_hybrid(char* name) {
   uint64_t property;
   uint64_t at;
   uint64_t strip;
+  uint64_t landed;
 
   word  = 0;
   at    = 0;
@@ -8422,20 +9294,27 @@ void run_hybrid(char* name) {
   if (x < word_column + two_to_the_power_of(strip_bits + 1) + 1)
     x = word_column + two_to_the_power_of(strip_bits + 1) + 1;
 
-  // the grid holds the window, if there is one
+  // the grid holds the room, if there is any, and the cell that says where it is
 
-  check_window();
+  plan_room();
 
-  if (x < window_x + window_width)
-    x = window_x + window_width;
-
-  if (window_y + window_height > memory_in_row + memory_rows)
-    set_grid_size(x, window_y + window_height);
-  else
+  if (room_width == 0)
     set_grid_size(x, memory_in_row + memory_rows);
+  else {
+    if (x < window_x + window_width + 1)
+      x = window_x + window_width + 1;
+
+    set_grid_size(x, window_y + window_height + 1);
+  }
 
   boot_token();
   boot_store();
+
+  part_columns = grid_width;
+  part_rows    = grid_height;
+
+  if (room_width != 0)
+    *(part_in_store(room_address())) = left_shift(window_y, COORDINATE_BITS) + window_x;
 
   printf("%s: %lu instructions of %s on a grid of %lux%lu cells, not laid out: %lu transfer control, %lu access memory, %lu words\n", selfie_name,
     n, name, grid_width, grid_height, controls, accesses, number_of_region_words);
@@ -8444,7 +9323,9 @@ void run_hybrid(char* name) {
 
   property = PROPERTY_NONE;
 
-  while (property == PROPERTY_NONE) {
+  landed = 0;
+
+  while (and(property == PROPERTY_NONE, landed == 0)) {
     // the token is on the path of the instruction cell of its pc, if there is one
 
     i = (token_pc - code_start) / INSTRUCTIONSIZE;
@@ -8497,7 +9378,32 @@ void run_hybrid(char* name) {
             j = (j + grid_width - token_x) % grid_width;
             r = (r + grid_height - token_y) % grid_height;
 
-            if (or(j == 0, or(r == 0, r == grid_height - 1))) {
+            if (get_bits(address, 2 * COORDINATE_BITS, 2) == PART_LANDING) {
+              // the token lands, if its pocket is at rest and the cell is
+              // blank: south to the row and east to the column, where it
+              // exchanges its context with its pocket, and one cell on
+
+              property = PROPERTY_INVALID_ADDRESS;
+
+              if (and(j != 0, r != 0))
+                if (and(pocket_flight == 0, pocket_address == 0))
+                  if (get_part(address - left_shift(PART_LANDING, 2 * COORDINATE_BITS)) % 8 == CELL_BLANK) {
+                    executed_ticks = executed_ticks + j + r + 1;
+
+                    token_x = (token_x + j + 1) % grid_width;
+                    token_y = (token_y + r) % grid_height;
+
+                    swap_contexts();
+
+                    acted_landings = acted_landings + 1;
+
+                    property = PROPERTY_NONE;
+
+                    landed = 1;
+                  }
+
+              token_heading = EAST;
+            } else if (or(j == 0, or(r == 0, r == grid_height - 1))) {
               // the token would not come back
               property = PROPERTY_INVALID_ADDRESS;
 
@@ -8586,7 +9492,7 @@ void run_hybrid(char* name) {
         }
       }
 
-      if (property == PROPERTY_NONE) {
+      if (and(property == PROPERTY_NONE, landed == 0)) {
         // to the next instruction on the path, which may be in the next strip
 
         executed_ticks = executed_ticks + 2;
@@ -8602,10 +9508,14 @@ void run_hybrid(char* name) {
 
   print_stop(property);
 
+  if (landed)
+    printf("%s: the token landed with what was in its pocket, at a cell that is not of %s\n", selfie_name, name);
+
   if (window_name != (char*) 0) {
     printf("%s: %lu times the binary exchanged a part of a cell\n", selfie_name, acted_cells);
 
-    write_constructed_window(window_name);
+    if (frame_window(get_part(room_address())))
+      write_constructed_window(window_name);
   }
 }
 
@@ -8621,20 +9531,18 @@ uint64_t size_option() {
 
   bad_size_option = 1;
 
-  if (string_compare(argument, "-at")) {
-    // a window of the grid for the binary to construct in
+  if (string_compare(argument, "-room")) {
+    // room on the grid of a binary, for the binary to construct in
 
-    if (number_of_remaining_arguments() < 4)
+    if (number_of_remaining_arguments() < 2)
       return 1;
 
-    window_x      = atoi(get_argument());
-    window_y      = atoi(get_argument());
-    window_width  = atoi(get_argument());
-    window_height = atoi(get_argument());
+    room_width  = atoi(get_argument());
+    room_height = atoi(get_argument());
 
-    if (window_width == 0)
+    if (room_width == 0)
       return 1;
-    else if (window_height == 0)
+    else if (room_height == 0)
       return 1;
   } else if (string_compare(argument, "-memory")) {
     // the virtual memory of the binaries booted from here on, in GB:
@@ -8705,7 +9613,14 @@ uint64_t cellfie() {
       reverse = 1;
     else if (string_compare(argument, "-noproperties"))
       printing_properties = 0;
-    else if (number_of_remaining_arguments() == 0)
+    else if (string_compare(argument, "-onto")) {
+      // construct the compiled layout on the grid that cellfie runs on, and start it
+
+      if (laid_xs == (uint64_t*) 0)
+        return EXITCODE_BADARGUMENTS;
+
+      construct_laid_cells();
+    } else if (number_of_remaining_arguments() == 0)
       return EXITCODE_BADARGUMENTS;
     else if (string_compare(argument, "-l"))
       load_layout(get_argument());
@@ -8714,18 +9629,6 @@ uint64_t cellfie() {
     else if (size_option()) {
       if (bad_size_option)
         return EXITCODE_BADARGUMENTS;
-    } else if (string_compare(argument, "-onto")) {
-      // construct the compiled layout on the grid that cellfie runs on
-
-      if (number_of_remaining_arguments() < 2)
-        return EXITCODE_BADARGUMENTS;
-      else if (laid_xs == (uint64_t*) 0)
-        return EXITCODE_BADARGUMENTS;
-
-      width  = atoi(get_argument());
-      height = atoi(get_argument());
-
-      construct_laid_cells(width, height);
     } else if (and(string_compare(argument, "-window"), grid_size == 0))
       // before a hybrid run: the window is written when the binary has run
       window_name = get_argument();
@@ -8793,7 +9696,23 @@ uint64_t cellfie() {
 
       materialize_grid();
 
+      // with room, the window is what was constructed in it
+
+      width  = token_x;
+      height = token_y;
+
+      if (not(frame_window(*(cell_words + grid_size - 1))))
+        return EXITCODE_BADARGUMENTS;
+
       write_window(get_argument());
+
+      token_x = width;
+      token_y = height;
+
+      if (room_width != 0) {
+        window_width  = room_width;
+        window_height = room_height;
+      }
     }
     else if (string_compare(argument, "-f")) {
       materialize_grid();
@@ -8838,6 +9757,7 @@ int main(int argc, char** argv) {
 
   INPUT_TAPES  = two_to_the_power_of(63);
   CELL_ADDRESSES = two_to_the_power_of(61);
+  POCKET_ADDRESSES = two_to_the_power_of(60);
   OUTPUT_TAPES = two_to_the_power_of(62);
 
   exit_code = cellfie();

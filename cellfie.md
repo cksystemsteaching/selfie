@@ -18,6 +18,8 @@ The token also carries the state of RISC-R's system calls: the program break, th
 
 One more word of the token, its *flight*, is zero unless the token is on its way to a cell of the grid to exchange a part of it, see Construction.
 
+And the token carries a *pocket*: a second context, all of the above but where the token is and where it heads. No cell acts on the pocket. A program fills it, and a token that lands exchanges its context with it: that is how a program that was constructed gets a token, see The Pocket and Landing.
+
 One *tick* is: the cell under the token acts on the token, then the token moves one cell along its heading. Nothing else changes in a tick, so simulating a tick costs one cell, whatever the size of the grid. Backward, a tick is: the token moves one cell back against its heading, then the cell there undoes what it did.
 
 ## Cells
@@ -134,7 +136,7 @@ E/00100a13E/00300293$
 13./M0000000000000000R/a03!
 ```
 
-Lines starting with `#C` are comments. `#T x y heading pc address datum` is the token, at the northwestern cell heading east with all words zero if missing; `#R register value` sets a register. `#S break open-files leg word` is the program break, the next file descriptor, and the leg and word of a transfer, 0, 3, 0, and 0 if missing; a fifth number is the flight of a token in flight, see Construction. `#F descriptor head end input open` is a file descriptor: the head of its tape, the end of its file, whether the tape is an input tape, and whether the host can open the file; all zero if missing, except that the tape of descriptor 0 is an input tape. Column, row, register, and descriptor are decimal, all other numbers hexadecimal. The header gives the size of the grid, which is rounded up to powers of two, and the rule, `RISC-R`. Reversibility is a switch, and the rule in the header is where a layout says which way it is set; cells that follow RISC-U are not implemented yet, so cellfie refuses `RISC-U`.
+Lines starting with `#C` are comments. `#T x y heading pc address datum` is the token, at the northwestern cell heading east with all words zero if missing; `#R register value` sets a register. `#S break open-files leg word` is the program break, the next file descriptor, and the leg and word of a transfer, 0, 3, 0, and 0 if missing; a fifth number is the flight of a token in flight, see Construction. `#P pc address datum` is the pocket, and the lines `#R`, `#S`, and `#F` after it are the pocket's; without it the pocket is as a token without lines. `#F descriptor head end input open` is a file descriptor: the head of its tape, the end of its file, whether the tape is an input tape, and whether the host can open the file; all zero if missing, except that the tape of descriptor 0 is an input tape. Column, row, register, and descriptor are decimal, all other numbers hexadecimal. The header gives the size of the grid, which is rounded up to powers of two, and the rule, `RISC-R`. Reversibility is a switch, and the rule in the header is where a layout says which way it is set; cells that follow RISC-U are not implemented yet, so cellfie refuses `RISC-U`.
 
 The cells follow row by row. A decimal number in front of a cell repeats it, `$` ends a row, a number in front of `$` ends that many rows, the rest of a row is blank, and `!` ends the layout. Line breaks and spaces between cells are ignored. A memory cell is `M` and a tape cell `T`, each with its word as sixteen hexadecimal digits. A memory, tape, or instruction cell is tagged by `@` and sixteen hexadecimal digits after it, as in `M0000000000000007@0000000000011000`. A router is `R`, its mirror, `p` or `a`, and the bit as two decimal digits. An instruction cell is its orientation `E`, `N`, `W`, or `S`, its mirror, and its instruction as eight hexadecimal digits.
 
@@ -146,7 +148,7 @@ The cells follow row by row. A decimal number in front of a cell repeats it, `$`
 
 ## Model
 
-`./cellfie -btor2 width height` writes the rule for a grid of that size as BTOR2 model `cellfie-WxH.btor2`, and with `-inverse` before it the inverse rule as `cellfie-WxH-inverse.btor2`. Both have the same nineteen states: `token-x`, `token-y`, `token-heading`, `token-pc`, `token-address`, `token-data`, `token-break`, `token-open-files`, `token-leg`, `token-word`, `token-registers`, `token-tape-heads`, `token-tape-ends`, `token-tape-inputs`, `token-tape-opens`, `cell-kinds`, `cell-words`, `cell-tags`, and `token-flight`. None is initialized: a layout is the initial state, and without one all states are free. The properties are the bad states of the rule; with `-noproperties` they are left out, which is the model `cellfie-WxH-noproperties.btor2` of the rule alone. The inverse rule has no properties.
+`./cellfie -btor2 width height` writes the rule for a grid of that size as BTOR2 model `cellfie-WxH.btor2`, and with `-inverse` before it the inverse rule as `cellfie-WxH-inverse.btor2`. Both have the same thirty-two states: `token-x`, `token-y`, `token-heading`, `token-pc`, `token-address`, `token-data`, `token-break`, `token-open-files`, `token-leg`, `token-word`, `token-registers`, `token-tape-heads`, `token-tape-ends`, `token-tape-inputs`, `token-tape-opens`, `cell-kinds`, `cell-words`, `cell-tags`, `token-flight`, and the thirteen of the pocket, `pocket-pc` to `pocket-tape-opens` and `pocket-flight`, named as the token's. None is initialized: a layout is the initial state, and without one all states are free. The properties are the bad states of the rule; with `-noproperties` they are left out, which is the model `cellfie-WxH-noproperties.btor2` of the rule alone. The inverse rule has no properties.
 
 A cell of `cell-kinds` is 8 bits: the kind in bits 0 to 2 (blank 0, mirror 1, router 2, memory 3, instruction 4, tape 5, all others blank), the orientation in bits 3 and 4 (east 0, north 1, west 2, south 3), the mirror in bit 5 (`/` 0, `\` 1), and whether the cell is tagged in bit 6. A word of `cell-words` is the instruction in its lower half, the memory or tape word, or the bit of a router in bits 0 to 5 with bit 6 set for the address.
 
@@ -154,7 +156,7 @@ A cell of `cell-kinds` is 8 bits: the kind in bits 0 to 2 (blank 0, mirror 1, ro
 
 1. The first test layout runs until `exit` with exit code 42 after 176 ticks and 29 instructions, the second after 344 ticks and 26 instructions, and as many ticks backward restore the initial layouts, in one run and across files, the second from the middle of its `read`, natively and with cellfie running on mipster.
 2. `./cellfie -check N` compares one tick of the simulator with one step of the model, forward and backward, and the properties, on N random states with cells of all kinds, kinds and instructions that do not exist included.
-3. Bitr proves that one step of the inverse rule after one step of the rule restores all seventeen states, and one step of the rule after one step of the inverse rule as well, from every state of the grid: `./bitr cellfie-16x8-noproperties.btor2 -identity cellfie-16x8-inverse.btor2`. There is no constraint to assume. The proof takes about 160 paths and a second per direction.
+3. Bitr proves that one step of the inverse rule after one step of the rule restores all states, and one step of the rule after one step of the inverse rule as well, from every state of the grid: `./bitr cellfie-16x8-noproperties.btor2 -identity cellfie-16x8-inverse.btor2`. There is no constraint to assume. The proof takes about 160 paths and a second per direction.
 
 Bitr loads layouts itself, with `-grid layout`, into the states of the model, with a reader of its own: `./bitr cellfie-16x8.btor2 -grid tests/cellfie-test.rle` stops at the bad state `exit` after 177 steps, the 176 ticks of the simulator and the step that stops.
 
@@ -264,7 +266,7 @@ No wire leads to a blank cell. A token on its way to a part of a cell *flies*: i
 - In the corner that is its destination it exchanges its datum with the part of the cell there.
 - Back at the cell it left, which is the one cell whose position is its flight, the cell acts as on any token arriving at its side: the datum becomes `rd`, the address is uncomputed, the flight is zero again.
 
-A flight costs twice the columns plus twice the rows to its destination, plus 2 ticks. It is local: only the token and the cell under it change, and only in the one tick at the destination. It is reversible: a mirror and an exchange are their own inverses, so the inverse rule flies the same rectangle the other way round. Bitr proves the rule with flight a bijection on all nineteen states, with no constraint, as before; the properties of a token hold only if its flight is zero, since a token in flight is not at the cells it is over.
+A flight costs twice the columns plus twice the rows to its destination, plus 2 ticks. It is local: only the token and the cell under it change, and only in the one tick at the destination. It is reversible: a mirror and an exchange are their own inverses, so the inverse rule flies the same rectangle the other way round. Bitr proves the rule with flight a bijection on all states, nineteen then and thirty-two with the pocket below, with no constraint, as before; the properties of a token hold only if its flight is zero, since a token in flight is not at the cells it is over.
 
 A token flies over anything, its own program and cells it has just written included, which is what a wire could not do. The price is one word in the token and a rule in which a cell does not always act on the token above it.
 
@@ -336,39 +338,66 @@ part = (uint64_t*) (2305843009213693952 + row * 268435456 + column);
 *part = kind;
 ```
 
-Selfie compiles the store to `sd`, and riscr translates `sd` to two exchanges with the word at the address: what is there goes onto the history stack, and the value goes there. Both are `ld` at the address of a part of a cell, so both are flights. A C\* program that stores cells therefore runs on cellfie as it is, forward and backward: `tests/cellfie-build-test.c` stores a mirror, a router, a memory cell, and an instruction cell, and loads one of them again.
+Selfie compiles the store to `sd`, and riscr translates `sd` to two exchanges with the word at the address: what is there goes onto the history stack, and the value goes there. Both are `ld` at the address of a part of a cell, so both are flights. A C\* program that stores cells therefore runs on cellfie as it is, forward and backward. The hybrid simulator flies as well: a flight is `2dx + 2dy + 2` ticks, with `dx` columns east and `dy` rows south around the torus, and the parts of cells are in a store of their own.
 
-- `-at column row width height` before `-c` or `-h` gives the grid of a binary a window to store cells in. It must be south and east of everything the compiler lays, and the grid grows to hold it.
-- `-onto column row` after `-c` stores the layout just compiled, cell by cell, with its first cell at that cell of the grid that cellfie itself runs on (`construct_laid_cells`). On the host there is no such grid, and cellfie says so.
-- The hybrid simulator flies: a flight is `2dx + 2dy + 2` ticks, with `dx` columns east and `dy` rows south around the torus, and the parts of cells are in a store of their own. `-window layout` before `-h` writes the window when the binary has run.
+### The Pocket and Landing
 
-`make construct` runs the test program event-driven, to its exit and back to its initial state, and on the hybrid simulator: exit code 42 after 1,493 instructions and 929,774 ticks in both, with 20 exchanges of parts, and the same cells in the two windows. `make cellfie-on-cellfie` now ends with the join:
+What is constructed needs a token to run, and a grid has one. The token of the program that constructed cannot become the token of what it constructed: its registers, its program break, its descriptors, and the heads of its tapes are what that program computed, and a reversible rule forgets nothing. It can be put away. The token carries a second context, its *pocket*: a pc, registers, address, datum, flight, leg, word, and the state of the system calls, everything a token has but its cell and its heading. No cell acts on the pocket, and two things reach it.
+
+- **An exchange with a field.** `ld rd,imm(rs1)` at the address 2^60 plus *group* times 2^12 plus 8 times *field* exchanges `rd` with a field of the pocket, on the path, in the tick of the instruction: no wire and no flight, the pocket is where the token is. Group 0 is the words, pc 0, address 1, datum 2, flight 3, word 4, program break 5, next descriptor 6, and the leg 7, whose two bits are exchanged with the lowest two of `rd`; group 1 the registers; groups 2 to 5 the heads, the ends, the kinds, and the host opens by descriptor. A token on the side of such an `ld` passes.
+- **Landing.** A token that flies to a cell as to its part 3, which no cell has, *lands* there, if the cell is blank and the pocket is at rest, with no flight and no address: it exchanges its context with its pocket and does not turn. It is then a token with what was in the pocket, heading east as it arrived, not in flight, and a tick later one cell east. What it was is in the pocket, with its flight and its address, as it landed.
+
+Landing has to be its own inverse, so there is a second case: a token at rest at a blank cell whose pocket is landing at that cell exchanges as well, which is landing undone. On a path that is never the case; it is what makes the rule a bijection on all states. The three conditions are needed, and bitr says so: without the blank cell, without the pocket at rest, or without the second case, the rule is no bijection and the proof fails; with them bitr proves the rule a bijection on all thirty-two states in two to three seconds per direction, with no constraint. A pocket whose word is overwritten instead of exchanged fails the proof too. An `ld` of the pocket that also acts on the side is another bijection, and fails only the check of the simulator against the model.
+
+So a program gives what it constructed a token by storing the token's context, field by field, in its pocket, and then loading from the cell west of the first instruction, as part 3 of it. In C\* both are a store and a load through a pointer. The load never returns: the token goes on in the constructed program, and the program that constructed is in its pocket, in the middle of that load.
+
+### Room
+
+Where to construct is the last thing a program needs to know, and it cannot know it: a program does not know the layout it runs on. The grid says it. With `-room columns rows` before `-c` or `-h`, the compiler leaves that many columns and rows free south of all cells of the layout and east of its instructions, where a token that leaves an instruction south and turns east gets to, and lays one more cell, a memory cell in the last column and row of the grid, whose word is 2^28 times the first free row plus the first free column. That cell has the same address on every grid, since columns and rows count around the torus: part 1 of the cell in column and row 2^28 - 1. A program that constructs reads it, constructs there, and writes back what is free then, south and east of what it constructed. It is to the grid what the program break is to memory.
+
+- `-room columns rows` gives the grid of a binary room and the cell that says where it is.
+- `-onto` after `-c` reads that cell, stores the layout just compiled there, cell by cell, advances the cell by the columns and rows of the layout, stores the pc, the registers, the program break, and the end of the input of the layout's token in the pocket, and lands west of its first instruction (`construct_laid_cells`). On the host there is no grid, and cellfie says so.
+- `-window layout` after a run, or before `-h`, writes what was constructed in the room, from where the room began to where it begins now, with the token if it is there, and the pocket.
+- A hybrid run ends where the token lands, since what it lands in is not the layout of the binary; the window is written then, and is a layout that the event-driven simulator runs.
+
+`make construct` checks this with two programs. `tests/cellfie-build-test.c` is a short C\* program: it reads where the grid is free, stores a mirror, a router, a memory cell, and three instruction cells that exit with exit code 42, loads the memory cell again, stores the pc of the three in the pocket, and lands. Event-driven it runs to exit code 42 after 2,406,276 ticks and 3,288 instructions, the last two of them in what it constructed, and back to its initial state. The hybrid simulator stops at the landing after 2,406,274 ticks and 3,286 instructions; the window it writes is, byte for byte, the window of the event-driven simulator after that many ticks, token and pocket included; and that window runs 2 ticks and 2 instructions to exit code 42. The second program is cellfie itself, on cellfie:
 
 ```
-./cellfie -memory 16 -tapes 8 -tapewords 4194304 -heap 0 1800000000 -stack 1000000 \
-  -at 16384 1048576 16384 8192 -window L2.rle \
-  -h cellfie-r.r -c cellfie-r.r -o L1.rle -onto 16384 1048576
+./cellfie -tapes 8 -tapewords 4194304 -heap 0 400000000 -stack 1000000 -room 512 1024 -window W.rle \
+  -h cellfie-test.r -heap 0 2048 -heap 1048576 64 -stack 128 -i tests/bitr-input.txt \
+  -c examples/symbolic/recursive-fibonacci-1-10.r -onto
 ```
 
-Cellfie's binary, with what this section added 360,512 RISC-R instructions, compiles itself on cellfie, writes `L1.rle`, and stores the 1,509,401 cells of the layout in a window a million rows south of itself: 5,243,698 flights, two for each part that is not zero. `L1.rle` is `L0.rle`, and the window, written by the simulator as `L2.rle`, has the cells of `L0.rle`, line for line.
+Cellfie, translated with a history stack of 1GB, compiles the running example of `optimizations.md` on cellfie, constructs its 14,521 cells where the grid says it is free, and lands in it, 33,543,188 instructions and 1.92·10^12 ticks after it began. `W.rle` without the lines of its pocket is the layout that cellfie compiles on the host, byte for byte, and it runs as that layout runs: exit code 1 after 413,768 ticks and 830 instructions.
 
-| | Compile and construct | and write the file |
+`make cellfie-on-cellfie` does the same with cellfie's own binary:
+
+```
+./cellfie -memory 16 -tapes 8 -tapewords 4194304 -heap 0 1800000000 -stack 1000000 -room 16384 8192 -window L2.rle \
+  -h cellfie-r.r -c cellfie-r.r -o L1.rle -onto
+```
+
+Cellfie's binary, 376,324 RISC-R instructions with what this section added, compiles itself on cellfie, writes `L1.rle`, stores the 1,575,267 cells of the layout at column 8,226 and row 295,438 of a grid of 1,048,576 times 524,288 cells, right below its own memory, 5,472,590 flights, two for each part that is not zero and a few for the room, and lands. `L1.rle` is `L0.rle`. `L2.rle`, the window, is `L0.rle` once the lines of its pocket are taken out: cells, token, and all. And it runs as `L0.rle` runs, which is not far: a layout compiled with default memory has no cells for its heap, and both stop with `invalid-address 0x188000` after 5,581 ticks and 28 instructions, at the first push onto the history stack.
+
+| | Compile, construct, and land | and write the file |
 | --- | --- | --- |
-| RISC-R instructions | 2,131,520,395 | 6,110,490,485 |
-| Ticks | 3.15·10^14 | 1.13·10^15 |
-| Host | 7 minutes | 20 minutes |
+| RISC-R instructions | 2,224,308,137 | 6,378,168,020 |
+| Ticks | 3.26·10^14 | 1.19·10^15 |
+| Host | 8 minutes | 24 minutes |
 
 Writing the layout as text is two thirds of the work; a compiler that only constructs does not need the file.
 
-What this is and is not. The program that computes the layout builds it, by the rule, on its own grid: that is the compiler plus constructor of the plan. It is not self-reproduction yet: the copy has no token, so it does not run, and the window is given by the user, far away, on a grid that only the hybrid simulator can hold. It is not the constructor of the section before either: a store pushes what was in the window onto the history stack, so the layout is built with garbage, a word of history per part, where the constructor moved it from its tape with none. And at this size nothing ran backward: the hybrid simulator does not.
+What this is and is not. A program computes a layout, builds it by the rule on its own grid, where the grid says there is room, and hands it the only token there is: compiler, constructor, and loader in one, and the copy of the running example runs to its end. It is not self-reproduction yet, for three reasons. The copy of cellfie is cellfie with 64 words of stack and no heap, not the cellfie that made it, which has 14GB of both: a layout that can run the compiler has 1.8 billion memory cells, and constructing those is beyond the simulator. The parent does not go on: it is in the pocket of its child, and nothing but running backward takes it out again. And a store pushes what was in the room onto the history stack, so the layout is built with garbage, a word of history per part, where the constructor of the section before moved it from its tape with none.
 
 ## Not There Yet
 
 - Files of the host on a grid: the hybrid simulator has them, the event-driven simulator and the model do not. There input is what the layout holds and output stays on its tape.
 - Words without a cell are detected where the cells are tagged, which is in compiled layouts: `invalid-address` when the token is at the wrong word. A `brk` beyond the cells of the heap is not detected before the first access, and the layouts written by hand have no tags. A token that leaves the wire altogether, for want of a mirror, just goes around the torus.
-- A constructed layout that runs: the compiler stores the cells of the layout but no token, and its own token ends at its exit. The window is where the user says, not where the compiler finds room.
+- A parent that goes on after its child is started, and a child that starts a child of its own: there is one token and one pocket. The child would have to put what is in its pocket into its memory first, field by field; nothing does that yet.
+- Room is one corner that only advances, south and east. Nothing gives room back, and nothing checks that the room is blank.
+- Bitr's simulator does not run a landing: an array that becomes another array is an error there. The proof, which is symbolic, covers it; the products with rotor's model do not land.
 - Construction without garbage by a compiler: a store in C\* is an exchange with the history stack. The constructor with a tape leaves none, but its tape comes from the host.
-- Flights in the hybrid simulator are a formula tied to the event-driven simulator by one small program; a flight with coinciding corners is `invalid-address` there.
+- Flights and landings in the hybrid simulator are formulas tied to the event-driven simulator by one small program; a flight with coinciding corners is `invalid-address` there.
 - A flight whose destination is in the column or in the row of the cell it left, or in the row north of it, has corners that coincide. The rule is defined there and a bijection, but the token does not come back; no property says so.
 - RISC-U cells, which overwrite `rd` and join paths without a come-from. Their rule is no bijection, and bitr should find two states with the same successor.
 - The comparison with RISC-R is 19 programs and one run each, with one input. The cell rule and rotor's model are not compared on all states: an instruction takes one step in one and a number of ticks without bound in the other, so that proof needs the cells of a transfer and the wire between them, not the rule alone. The examples read one byte, so nothing has been compared for other inputs.

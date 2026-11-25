@@ -504,9 +504,9 @@ cells: cellfie bitr selfie selfie.h
 	  ./cellfie -noproperties -btor2 $$1 $$2 > /dev/null && \
 	  ./cellfie -inverse -btor2 $$1 $$2 > /dev/null || exit 1; \
 	  ./bitr cellfie-$$1x$$2-noproperties.btor2 -identity cellfie-$$1x$$2-inverse.btor2 | tee cellfie-identity.txt; \
-	  grep -q "cellfie-$$1x$$2-inverse.btor2 after cellfie-$$1x$$2-noproperties.btor2 is the identity on all 19 states" cellfie-identity.txt || exit 1; \
+	  grep -q "cellfie-$$1x$$2-inverse.btor2 after cellfie-$$1x$$2-noproperties.btor2 is the identity on all 32 states" cellfie-identity.txt || exit 1; \
 	  ./bitr cellfie-$$1x$$2-inverse.btor2 -identity cellfie-$$1x$$2-noproperties.btor2 | tee cellfie-identity.txt; \
-	  grep -q "cellfie-$$1x$$2-noproperties.btor2 after cellfie-$$1x$$2-inverse.btor2 is the identity on all 19 states" cellfie-identity.txt || exit 1; \
+	  grep -q "cellfie-$$1x$$2-noproperties.btor2 after cellfie-$$1x$$2-inverse.btor2 is the identity on all 32 states" cellfie-identity.txt || exit 1; \
 	done
 	@echo "$@: the hand-laid programs run forward and back to their initial layouts, simulator and model agree, the cell rule is a bijection"
 
@@ -607,7 +607,7 @@ layouts: cellfie bitr riscr rotor selfie selfie.h
 	  ./rotor -l $$b.r - $$e -heapallowance 2097152 -stackallowance 65536 > /dev/null || exit 1; \
 	  w=$$(sed -n 's/^x = \([0-9]*\), y = \([0-9]*\),.*/\1/p' $$b.rle); \
 	  h=$$(sed -n 's/^x = \([0-9]*\), y = \([0-9]*\),.*/\2/p' $$b.rle); \
-	  [ -f cellfie-$${w}x$$h.btor2 ] || ./cellfie -btor2 $$w $$h > /dev/null || exit 1; \
+	  [ cellfie-$${w}x$$h.btor2 -nt cellfie ] || ./cellfie -btor2 $$w $$h > /dev/null || exit 1; \
 	  ./bitr $$b-rotorized-riscr.btor2 -l $$b.r -i tests/bitr-input.txt -product cellfie-$${w}x$$h.btor2 -grid $$b.rle -abstraction $$b-abstraction.btor2 | \
 	    grep -q "agree at all $$((n - 1)) steps of .*, and stop together" || \
 	    { echo "$$b.rle: cellfie's rule on the layout disagrees with rotor's model"; exit 1; }; \
@@ -626,7 +626,13 @@ layouts: cellfie bitr riscr rotor selfie selfie.h
 # example, cellfie writes a constructor, a RISC-R program with the compiled layout on its tape and a blank
 # window on its grid; the constructor runs to its exit, back to its initial state, and to its exit again;
 # the cells of the window are then the cells of the compiled layout, and with the token of the compiled
-# layout they run the program to its exit. The first also with cellfie on mipster.
+# layout they run the program to its exit. The first also with cellfie on mipster. Then programs that
+# construct and start what they construct, with no tape and no token from the host: a C* program reads
+# from the grid where it is free, stores a program of three instructions there and its pc in the pocket of
+# its token, and lands in it, event-driven forward and backward and on the hybrid simulator, which stops
+# at the landing with the window that the event-driven simulator has then; and cellfie, on cellfie, does
+# the same with the layout it compiles of a symbolic example, which is then the compiled layout byte for
+# byte but for the pocket, and runs to the example's exit in its ticks and instructions.
 construct: cellfie cellfie-test riscr selfie selfie.h
 	./cellfie-test tests/cellfie-test.r tests/cellfie-io-test.r
 	./selfie -c examples/symbolic/recursive-fibonacci-1-10.c -o examples/symbolic/recursive-fibonacci-1-10.m > /dev/null
@@ -655,26 +661,43 @@ construct: cellfie cellfie-test riscr selfie selfie.h
 	cmp cellfie-test-compiled.rle cellfie-test-built.rle
 	./selfie -c tests/cellfie-build-test.c -o tests/cellfie-build-test.m > /dev/null
 	./riscr -l tests/cellfie-build-test.m -history 1 -t tests/cellfie-build-test.r > /dev/null
-	o="-heap 0 2048 -heap 1048576 64 -stack 128 -at 300 1500 64 64"; \
-	./cellfie $$o -c tests/cellfie-build-test.r -rev 100000000 -f 100000000 -window cellfie-test-window.rle > cellfie-product.txt || exit 1; \
-	grep -q "initial state restored" cellfie-product.txt || { echo "a C* program that stores cells does not run back"; exit 1; }; \
-	e=$$(sed -n 's/.* with pc \(.*: exit with exit code .*\)/\1/p' cellfie-product.txt | tail -1); \
-	h=$$(./cellfie $$o -window cellfie-test-built.rle -h tests/cellfie-build-test.r | sed -n 's/.* with pc \(.*: exit with exit code .*\)/\1/p'); \
-	[ -n "$$e" ] && [ "$$e" = "$$h" ] || { echo "a C* program that stores cells: event-driven $$e, hybrid $$h"; exit 1; }; \
-	grep -v "^#" cellfie-test-window.rle > cellfie-test-window-cells.rle; \
-	grep -v "^#" cellfie-test-built.rle > cellfie-test-built-cells.rle; \
-	cmp cellfie-test-window-cells.rle cellfie-test-built-cells.rle || exit 1; \
-	grep -q "E/00000013@0000000000010000" cellfie-test-built-cells.rle || { echo "the cells stored are not in the window"; exit 1; }; \
-	echo "a C* program stores cells in a window: $$h, as event-driven, with the same cells"
-	@echo "$@: constructors build the compiled layouts from their tapes and take them apart again"
+	o="-heap 0 2048 -heap 1048576 64 -stack 128 -room 64 64"; \
+	./cellfie $$o -c tests/cellfie-build-test.r -rev 100000000 > cellfie-product.txt || exit 1; \
+	grep -q "initial state restored" cellfie-product.txt || { echo "a C* program that constructs a program and starts it does not run back"; exit 1; }; \
+	e=$$(sed -n 's/.*: exit with exit code 42 after \(.*\) ticks and \(.*\) instructions/\1 \2/p' cellfie-product.txt | head -1); \
+	./cellfie $$o -window cellfie-test-built.rle -h tests/cellfie-build-test.r > cellfie-product.txt || exit 1; \
+	grep -q "the token landed" cellfie-product.txt || { echo "the token does not land on the hybrid simulator"; exit 1; }; \
+	h=$$(sed -n 's/.* with pc 0x10000 after \(.*\) ticks and \(.*\) instructions/\1 \2/p' cellfie-product.txt | head -1); \
+	./cellfie $$o -c tests/cellfie-build-test.r -f $${h%% *} -window cellfie-test-window.rle > /dev/null || exit 1; \
+	cmp cellfie-test-window.rle cellfie-test-built.rle || { echo "the hybrid simulator lands with another window than the event-driven simulator"; exit 1; }; \
+	grep -q "^#P " cellfie-test-built.rle || { echo "the program that landed is not in the pocket"; exit 1; }; \
+	r=$$(./cellfie -l cellfie-test-built.rle -f 100000000 | sed -n 's/.*: exit with exit code 42 after \(.*\) ticks and \(.*\) instructions/\1 \2/p'); \
+	[ -n "$$e" ] && [ -n "$$r" ] && [ $$(($${h%% *} + $${r%% *})) = $${e%% *} ] && [ $$(($${h##* } + $${r##* })) = $${e##* } ] || \
+	  { echo "a C* program that constructs a program and starts it: event-driven $$e, hybrid $$h and then $$r"; exit 1; }; \
+	echo "a C* program finds room, constructs a program, and lands in it: exit code 42 after $$e ticks and instructions, the hybrid simulator lands after $$h with the same window, and the window runs $$r more"
+	./selfie -c selfie.h tools/btor2.h tools/cellfie.c -o cellfie-u.m > /dev/null
+	./riscr -l cellfie-u.m -history 1024 -t cellfie-test.r > /dev/null
+	b=examples/symbolic/recursive-fibonacci-1-10; \
+	o="-heap 0 2048 -heap 1048576 64 -stack 128 -i tests/bitr-input.txt"; \
+	e=$$(./cellfie $$o -c $$b.r -o cellfie-test-compiled.rle -f 100000000 | sed -n 's/.* with pc \(.*: exit with exit code .*\)/\1/p'); \
+	./cellfie -tapes 8 -tapewords 4194304 -heap 0 400000000 -stack 1000000 -room 512 1024 -window cellfie-test-window.rle -h cellfie-test.r $$o -c $$b.r -onto > cellfie-product.txt || exit 1; \
+	grep "cells constructed\|the token landed" cellfie-product.txt; \
+	grep -q "the token landed" cellfie-product.txt || { echo "the token of cellfie does not land in the layout of $$b.r"; exit 1; }; \
+	sed '/^#P/,/^x = /{/^x = /!d}' cellfie-test-window.rle > cellfie-test-built.rle; \
+	cmp cellfie-test-compiled.rle cellfie-test-built.rle || { echo "the layout of $$b.r that cellfie constructs on cellfie is not the compiled layout"; exit 1; }; \
+	r=$$(./cellfie -tapes 8 -l cellfie-test-window.rle -f 100000000 | sed -n 's/.* with pc \(.*: exit with exit code .*\)/\1/p'); \
+	[ -n "$$e" ] && [ "$$e" = "$$r" ] || { echo "$$b.r, constructed by cellfie on cellfie: $$r, compiled: $$e"; exit 1; }; \
+	echo "$$b.r: compiled, constructed, and started by cellfie on cellfie, and run: $$r"
+	@echo "$@: constructors build the compiled layouts from their tapes and take them apart again, and a compiler on cellfie constructs and starts what it compiles"
 
 # The layout compiler on cellfie (M11 of projects/reversible.md): cellfie, compiled by selfie and translated by
 # riscr to RISC-R with a history stack of 12GB, compiles a layout on riscr forward and backward, and on mipster,
 # to the layout that cellfie compiles natively; and on cellfie's hybrid simulator it compiles its own RISC-R
 # binary to the layout that cellfie compiles that binary to natively, byte for byte: L1 = L0. In the same run
-# it stores the cells of that layout in a window of the grid it runs on, far south and east of itself, and the
-# window is then that layout, cell for cell: L2 = L0. Takes about 10GB of memory and 25 minutes, and reports
-# the ticks and the seconds.
+# it reads from the grid where the grid is free, stores the cells of that layout there, stores the token of
+# the layout in its pocket, and lands in the layout: the window with the token is then that layout, L2 = L0,
+# but for the pocket, in which the compiler is, and L2 runs to where L0 runs. Takes about 10GB of memory and
+# 25 minutes, and reports the ticks and the seconds.
 cellfie-on-cellfie: cellfie cellfie-test riscr selfie selfie.h
 	./cellfie-test tests/cellfie-test.r tests/cellfie-io-test.r
 	./selfie -c selfie.h tools/btor2.h tools/cellfie.c -o cellfie-u.m
@@ -690,15 +713,19 @@ cellfie-on-cellfie: cellfie cellfie-test riscr selfie selfie.h
 	s=$$(date +%s); \
 	w=$$(sed -n 's/^x = \([0-9]*\), y = \([0-9]*\),.*/\1/p' cellfie-test-l0.rle); \
 	h=$$(sed -n 's/^x = \([0-9]*\), y = \([0-9]*\),.*/\2/p' cellfie-test-l0.rle); \
-	./cellfie -memory 16 -tapes 8 -tapewords 4194304 -heap 0 1800000000 -stack 1000000 -at 16384 1048576 $$w $$h -window cellfie-test-l2.rle -h cellfie-r.r -c cellfie-r.r -o cellfie-test-l1.rle -onto 16384 1048576 > cellfie-product.txt || exit 1; \
-	tail -4 cellfie-product.txt; \
-	grep -q "exit with exit code 0 after" cellfie-product.txt || { echo "cellfie does not exit with exit code 0 on cellfie"; exit 1; }; \
+	./cellfie -memory 16 -tapes 8 -tapewords 4194304 -heap 0 1800000000 -stack 1000000 -room $$w $$h -window cellfie-test-l2.rle -h cellfie-r.r -c cellfie-r.r -o cellfie-test-l1.rle -onto > cellfie-product.txt || exit 1; \
+	tail -5 cellfie-product.txt; \
+	grep -q "the token landed" cellfie-product.txt || { echo "the token of cellfie does not land in the layout that cellfie constructs on cellfie"; exit 1; }; \
 	echo "$@: $$(($$(date +%s) - s)) seconds on cellfie"
 	cmp cellfie-test-l0.rle cellfie-test-l1.rle
-	grep -v "^#" cellfie-test-l0.rle > cellfie-test-l0-cells.rle
-	grep -v "^#" cellfie-test-l2.rle > cellfie-test-l2-cells.rle
-	cmp cellfie-test-l0-cells.rle cellfie-test-l2-cells.rle
-	@echo "$@: the layout compiler compiles itself on cellfie to the layout it compiles itself to natively, and constructs it there"
+	grep -q "^#P " cellfie-test-l2.rle
+	sed '/^#P/,/^x = /{/^x = /!d}' cellfie-test-l2.rle > cellfie-test-l2-token.rle
+	cmp cellfie-test-l0.rle cellfie-test-l2-token.rle
+	e=$$(./cellfie -tapes 8 -l cellfie-test-l0.rle -f 100000000 | tail -1); \
+	r=$$(./cellfie -tapes 8 -l cellfie-test-l2.rle -f 100000000 | tail -1); \
+	echo "$$r"; \
+	[ -n "$$e" ] && [ "$$e" = "$$r" ] || { echo "the constructed layout runs to another stop than the compiled layout: $$e"; exit 1; }
+	@echo "$@: the layout compiler compiles itself on cellfie to the layout it compiles itself to natively, constructs it there, and starts it"
 
 # Hybrid simulation of cellfie (M13 of projects/reversible.md): the hybrid simulator, which runs the cells
 # of a layout without laying it out and measures the wire instead of following it, stops every symbolic

@@ -146,6 +146,7 @@ uint64_t scan_layout_mirror();
 uint64_t scan_layout_heading(uint64_t c);
 
 uint64_t* find_layout_state(char* symbol);
+uint64_t* find_context_state(char* token_symbol, char* pocket_symbol);
 
 void load_layout(char* name);
 
@@ -161,6 +162,8 @@ uint64_t* layout_text = (uint64_t*) 0; // layout file in memory
 uint64_t  layout_size = 0;             // in bytes
 uint64_t  layout_pos  = 0;             // current character
 uint64_t  layout_line = 1;             // current line number
+
+uint64_t layout_pocket = 0; // the lines of the layout from here on are the pocket's
 
 uint64_t loaded_words   = 0;
 uint64_t checked_words  = 0;
@@ -1487,7 +1490,8 @@ void load_input(char* name) {
 // token-heading, token-pc, token-address, token-data, and token-registers,
 // the state of its system calls into token-break, token-open-files,
 // token-leg, token-word, token-tape-heads, token-tape-ends,
-// token-tape-inputs, and token-tape-opens, and the cells into cell-kinds,
+// token-tape-inputs, and token-tape-opens, its pocket after a line #P into
+// the pocket- states of the same names, and the cells into cell-kinds,
 // cell-words, and cell-tags, row by row
 
 uint64_t layout_character() {
@@ -1639,6 +1643,14 @@ uint64_t* find_layout_state(char* symbol) {
   return state_nid;
 }
 
+uint64_t* find_context_state(char* token_symbol, char* pocket_symbol) {
+  // a state of the token, or after a line #P the same state of its pocket
+  if (layout_pocket)
+    return find_layout_state(pocket_symbol);
+  else
+    return find_layout_state(token_symbol);
+}
+
 void load_layout(char* name) {
   uint64_t* registers_nid;
   uint64_t* kinds_nid;
@@ -1698,6 +1710,34 @@ void load_layout(char* name) {
     n = n + 1;
   }
 
+  // the pocket of the token is as the token is at first, unless a line
+  // #P pc address data says otherwise: the lines #R, #S, and #F after it
+  // are the pocket's
+
+  layout_pocket = 0;
+
+  set_state(find_layout_state("pocket-pc"), 0);
+  set_state(find_layout_state("pocket-address"), 0);
+  set_state(find_layout_state("pocket-data"), 0);
+  set_state(find_layout_state("pocket-break"), 0);
+  set_state(find_layout_state("pocket-open-files"), 3);
+  set_state(find_layout_state("pocket-leg"), 0);
+  set_state(find_layout_state("pocket-word"), 0);
+  set_state(find_layout_state("pocket-flight"), 0);
+
+  find_layout_state("pocket-registers");
+
+  n = 0;
+
+  while (n < array_elements(heads_nid)) {
+    write_array_raw(find_layout_state("pocket-tape-heads"), n, 0);
+    write_array_raw(find_layout_state("pocket-tape-ends"), n, 0);
+    write_array_raw(find_layout_state("pocket-tape-inputs"), n, n == 0);
+    write_array_raw(find_layout_state("pocket-tape-opens"), n, 0);
+
+    n = n + 1;
+  }
+
   set_state(find_layout_state("token-x"), 0);
   set_state(find_layout_state("token-y"), 0);
   set_state(find_layout_state("token-heading"), 0);
@@ -1743,16 +1783,16 @@ void load_layout(char* name) {
     } else if (c == 'S') {
       layout_pos = layout_pos + 1;
 
-      set_state(find_state("token-break"), scan_layout_hexadecimal(0));
-      set_state(find_state("token-open-files"), scan_layout_hexadecimal(0));
+      set_state(find_context_state("token-break", "pocket-break"), scan_layout_hexadecimal(0));
+      set_state(find_context_state("token-open-files", "pocket-open-files"), scan_layout_hexadecimal(0));
 
       n = scan_layout_hexadecimal(0);
 
       if (n > 3)
         layout_error("no such leg");
 
-      set_state(find_state("token-leg"), n);
-      set_state(find_state("token-word"), scan_layout_hexadecimal(0));
+      set_state(find_context_state("token-leg", "pocket-leg"), n);
+      set_state(find_context_state("token-word", "pocket-word"), scan_layout_hexadecimal(0));
 
       // the flight of the token, if there is one
 
@@ -1761,7 +1801,7 @@ void load_layout(char* name) {
       c = layout_character();
 
       if (or(and(c >= '0', c <= '9'), or(and(c >= 'a', c <= 'f'), and(c >= 'A', c <= 'F'))))
-        set_state(find_state("token-flight"), scan_layout_hexadecimal(0));
+        set_state(find_context_state("token-flight", "pocket-flight"), scan_layout_hexadecimal(0));
 
       c = 'S';
     } else if (c == 'F') {
@@ -1776,6 +1816,24 @@ void load_layout(char* name) {
       write_array_raw(ends_nid, n, scan_layout_hexadecimal(0));
       write_array_raw(inputs_nid, n, scan_layout_hexadecimal(0));
       write_array_raw(opens_nid, n, scan_layout_hexadecimal(0));
+    } else if (c == 'P') {
+      layout_pos = layout_pos + 1;
+
+      if (layout_pocket)
+        layout_error("one pocket");
+
+      layout_pocket = 1;
+
+      registers_nid = find_layout_state("pocket-registers");
+
+      heads_nid  = find_layout_state("pocket-tape-heads");
+      ends_nid   = find_layout_state("pocket-tape-ends");
+      inputs_nid = find_layout_state("pocket-tape-inputs");
+      opens_nid  = find_layout_state("pocket-tape-opens");
+
+      set_state(find_layout_state("pocket-pc"), scan_layout_hexadecimal(0));
+      set_state(find_layout_state("pocket-address"), scan_layout_hexadecimal(0));
+      set_state(find_layout_state("pocket-data"), scan_layout_hexadecimal(0));
     }
 
     while (and(layout_character() != 10, layout_pos < layout_size))
