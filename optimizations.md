@@ -2,7 +2,7 @@
 
 This document explains the optimizations in RISC-R (`riscr.md`) and cellfie (`cellfie.md`) with one running example and with numbers before and after each step. It is kept up to date: a change that moves one of its numbers changes this document in the same commit, and the last section says how each number is reproduced.
 
-Last updated November 24, 2026, at the commit that runs the layout compiler on cellfie (M11); the layouts are those of the commit that folds the path.
+Last updated November 25, 2026, at the commit that gives the constructed layout a token and room; the layouts are those of the commit that folds the path.
 
 ## The Running Example
 
