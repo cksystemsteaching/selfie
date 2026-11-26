@@ -54,3 +54,5 @@ selfie-riscr.h
 riscr-compound-test
 riscr-compound-test.txt
 tests/riscr-compound-base.c
+*.state
+bitr-backward.txt

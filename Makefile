@@ -440,6 +440,32 @@ sim: bitr selfie riscr rotor
 	  done; \
 	done
 
+# Checking backward (M12 of projects/reversible.md): bitr finds an input that leads to a bad state in rotor's
+# model of an example translated to RISC-R, runs the model on it, and writes the bad state; from that state
+# rotor's inverse model of the same binary runs back to its initial state, path by path as forward, in the
+# number of instructions that led there, with nothing free and with the four words on top of the history
+# stack free, which forks a path and has the solver find the one history that leads back
+backward: bitr selfie riscr rotor
+	b=examples/symbolic/simple-assignment-1-35; \
+	o="-Pnobadexitcode -Pgoodexitcode -heapallowance 2097152 -stackallowance 65536"; \
+	./selfie -c $$b.c -o $$b.m > /dev/null && \
+	./riscr -l $$b.m -history 1 -t $$b.r > /dev/null && \
+	./rotor -l $$b.r - 0 $$o > /dev/null && \
+	./rotor -l $$b.r - 0 $$o -inverse > /dev/null || exit 1; \
+	./bitr $$b-rotorized-riscr.btor2 -l $$b.r -bmc 5000 -w $$b.witness > /dev/null; \
+	n=$$(./bitr $$b-rotorized-riscr.btor2 -l $$b.r -i $$b.witness -dump $$b.state | sed -n 's/.*: bad core-0-good-exit-code after \([0-9]*\) instructions/\1/p'); \
+	[ -n "$$n" ] || { echo "$$b: no bad state"; exit 1; }; \
+	./bitr $$b-rotorized-riscr-inverse.btor2 -l $$b.r -state $$b.state -bmc 5000 | tee bitr-backward.txt; \
+	grep -q "initial state reached after $$((n - 1)) instructions" bitr-backward.txt || exit 1; \
+	grep -q " 0 paths forked" bitr-backward.txt || exit 1; \
+	h=$$(sed -n 's/^core-0-initialized-register-file 18 //p' $$b.state); \
+	s=$$(sed -n 's/.* consth [0-9]* \([0-9A-Fa-f]*\) ; start of heap segment.*/\1/p' $$b-rotorized-riscr-inverse.btor2); \
+	w=$$(( (h - 0x$$s) / 8 )); \
+	./bitr $$b-rotorized-riscr-inverse.btor2 -l $$b.r -state $$b.state -free core-0-zeroed-heap-segment $$((w - 4)) 4 -enumerate core-0-pc -bmc 5000 | tee bitr-backward.txt; \
+	grep -q "initial state reached after $$((n - 1)) instructions" bitr-backward.txt || exit 1; \
+	grep -q " 1 paths forked" bitr-backward.txt || exit 1; \
+	echo "$@: from the bad state after $$n instructions back to the initial state, with 4 of $$w words of history free"
+
 # Check bitr's bounded model checker (M5 of projects/reversible.md): in rotor's model of every symbolic example,
 # compiled to RISC-U and translated to RISC-R, bitr finds an input that leads to a non-zero exit code, a division
 # by zero, or an invalid memory access, and the emulator, run on that input, does the same after the same number
@@ -834,7 +860,7 @@ trust: selfie selfie.h
 	rm -f examples/trusting-trust/honest-stamp.c examples/trusting-trust/honest-victim.c examples/trusting-trust/trojaned-victim.c examples/trusting-trust/suspect-stamp.c
 
 # Consider these targets as targets, not files
-.PHONY: rev riscr-rev bennett trust riscr-model sim bmc cdcl identity cells product tapes layouts hybrid construct selfie-on-cellfie cellfie-on-cellfie reversible garbage-free
+.PHONY: rev riscr-rev bennett trust riscr-model sim bmc cdcl identity cells product tapes layouts hybrid construct selfie-on-cellfie cellfie-on-cellfie reversible garbage-free backward
 
 # Run the checks of the RISC-R branch that are not too slow, one after another and after rotor-btor2:
 # they share generated files, the binaries, models, and layouts of the symbolic examples and of the
@@ -845,6 +871,7 @@ reversible: rotor-btor2 selfie selfie.h selfie-riscr.h riscr riscr.h riscr-test 
 	$(MAKE) riscr-model
 	$(MAKE) sim
 	$(MAKE) bmc
+	$(MAKE) backward
 	$(MAKE) cdcl
 	$(MAKE) identity
 	$(MAKE) cells
@@ -965,7 +992,7 @@ clean:
 	rm -f examples/*.s
 	rm -f examples/symbolic/*.smt
 	rm -f examples/symbolic/*.btor2
-	rm -f examples/symbolic/*.r examples/symbolic/*.witness examples/symbolic/*.cnf
+	rm -f examples/symbolic/*.r examples/symbolic/*.witness examples/symbolic/*.cnf examples/symbolic/*.state
 	rm -f examples/symbolic/*.rle examples/symbolic/*.cells
 	rm -f division-by-zero.bmc riscr-identity.txt
 	rm -f tools/*.smt
