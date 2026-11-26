@@ -524,6 +524,8 @@ void     load_state(char* name);
 void     collect_differences(uint64_t* line);
 uint64_t target_literal();
 void     check_reached(uint64_t guard, uint64_t t);
+void     keep_states(uint64_t* successor, uint64_t* states);
+void     enumerate_cases(uint64_t* line, uint64_t guard);
 uint64_t check_backward(uint64_t guard, uint64_t t);
 
 void     save_model(uint64_t* model);
@@ -657,6 +659,10 @@ uint64_t* difference_lists  = (uint64_t*) 0; // per array state nid: indices at 
 uint64_t* difference_counts = (uint64_t*) 0;
 
 uint64_t initial_paths = 0; // paths on which the initial state is reached
+
+char*    enumerated_state_name = (char*) 0; // bit-vector state whose values the solver enumerates
+uint64_t enumerated_state_nid  = 0;
+uint64_t enumerated_cases      = 0;
 uint64_t witnesses    = 0;
 
 uint64_t* dimacs_clause = (uint64_t*) 0;
@@ -6197,7 +6203,7 @@ uint64_t bmc() {
                 sym_cases(get_arg2(line), AIG_TRUE);
 
                 if (cases_constant == 0)
-                  number_of_cases = 0;
+                  enumerate_cases(line, guard);
               }
 
               if (number_of_cases > 1) {
@@ -6220,7 +6226,10 @@ uint64_t bmc() {
 
                 changed = 1;
               } else {
-                value = sym_eval(get_arg2(line));
+                if (number_of_cases == 1)
+                  value = *case_values;
+                else
+                  value = sym_eval(get_arg2(line));
 
                 *(successor + slot) = value;
 
@@ -6232,16 +6241,7 @@ uint64_t bmc() {
           nid = nid + 1;
         }
 
-        // states without next keep their value
-
-        i = 0;
-
-        while (i < number_of_slots) {
-          if (*(successor + i) == 0)
-            *(successor + i) = *(states + i);
-
-          i = i + 1;
-        }
+        keep_states(successor, states);
 
         if (changed == 0)
           // the machine halted on this path
@@ -6366,6 +6366,9 @@ void print_bmc_statistics() {
     aig_ands, aig_inputs, bv_count, arr_count - 1);
   printf("%s: %lu paths forked, %lu paths at most, %lu paths halted\n", selfie_name,
     forked_paths, max_paths, halted_paths);
+
+  if (enumerated_state_nid != 0)
+    printf("%s: %lu values of %s enumerated by the solver\n", selfie_name, enumerated_cases, enumerated_state_name);
   printf("%s: %lu SAT calls with %lu variables at most, %lu clauses, %lu decisions, and %lu conflicts in total\n", selfie_name,
     sat_calls, sat_max_variables, sat_total_clauses, sat_total_decisions, sat_total_conflicts);
 
@@ -6753,6 +6756,64 @@ void check_reached(uint64_t guard, uint64_t t) {
 
       printf("%s: initial state reached after %lu instructions\n", selfie_name, t);
     }
+}
+
+void keep_states(uint64_t* successor, uint64_t* states) {
+  uint64_t i;
+
+  // states without next keep their value
+
+  i = 0;
+
+  while (i < number_of_slots) {
+    if (*(successor + i) == 0)
+      *(successor + i) = *(states + i);
+
+    i = i + 1;
+  }
+}
+
+void enumerate_cases(uint64_t* line, uint64_t guard) {
+  uint64_t* value;
+  uint64_t* constant;
+  uint64_t rest;
+  uint64_t e;
+
+  // the values that the state of a next line may have next on a path, if it
+  // is the state to enumerate, by asking the solver for one after the other: backward, a program counter that comes out of
+  // a register is no choice between constants, but the model allows it
+  // few values, the origins of a transfer; on return the cases are in
+  // case_guards and case_values, or there are none if there are too many
+
+  number_of_cases = 0;
+
+  if (get_nid(get_arg1(line)) != enumerated_state_nid)
+    return;
+
+  value = (uint64_t*) sym_eval(get_arg2(line));
+
+  rest = guard;
+
+  while (aig_solve(rest)) {
+    if (number_of_cases == MAX_CASES) {
+      number_of_cases = 0;
+
+      return;
+    }
+
+    constant = bv_constant(bv_model(value), *value);
+
+    e = bv_eq(value, constant);
+
+    *(case_guards + number_of_cases) = e;
+    *(case_values + number_of_cases) = (uint64_t) constant;
+
+    number_of_cases = number_of_cases + 1;
+
+    enumerated_cases = enumerated_cases + 1;
+
+    rest = aig_and(rest, aig_not(e));
+  }
 }
 
 uint64_t check_backward(uint64_t guard, uint64_t t) {
@@ -7719,6 +7780,11 @@ uint64_t bitr() {
         state_file = get_argument();
       else
         return EXITCODE_BADARGUMENTS;
+    } else if (string_compare(argument, "-enumerate")) {
+      if (number_of_remaining_arguments() > 0)
+        enumerated_state_name = get_argument();
+      else
+        return EXITCODE_BADARGUMENTS;
     } else if (string_compare(argument, "-free")) {
       if (number_of_remaining_arguments() > 2) {
         free_state_name = get_argument();
@@ -7784,6 +7850,16 @@ uint64_t bitr() {
     free_state_nid = get_nid(find_state(free_state_name));
 
     free_elements = zmalloc((free_count + 1) * sizeof(uint64_t));
+  }
+
+  if (enumerated_state_name != (char*) 0) {
+    if (find_state(enumerated_state_name) == UNUSED) {
+      printf("%s: state %s is not in %s\n", selfie_name, enumerated_state_name, model_name);
+
+      return EXITCODE_BADARGUMENTS;
+    }
+
+    enumerated_state_nid = get_nid(find_state(enumerated_state_name));
   }
 
   if (checking_bmc) {
