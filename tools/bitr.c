@@ -518,6 +518,14 @@ uint64_t check_bads(uint64_t guard, uint64_t t);
 uint64_t bmc();
 void     print_bmc_statistics();
 
+void     write_state(char* name);
+uint64_t state_number();
+void     load_state(char* name);
+void     collect_differences(uint64_t* line);
+uint64_t target_literal();
+void     check_reached(uint64_t guard, uint64_t t);
+uint64_t check_backward(uint64_t guard, uint64_t t);
+
 void     save_model(uint64_t* model);
 void     restore_model(uint64_t* model);
 void     assume(uint64_t l);
@@ -623,6 +631,32 @@ uint64_t* first_model  = (uint64_t*) 0; // parser and symbolic tables of the fir
 uint64_t* second_model = (uint64_t*) 0; // and of the second
 
 char*    witness_file = (char*) 0; // file to write the input of a bad state to
+
+// checking backward: the model is an inverse model, its state the state
+// that a file holds, with a range of an array free, and the question is
+// whether the initial state of the model is reached after a number of steps
+
+char* state_dump_file = (char*) 0; // file to write the state to in which simulation stops
+char* state_file      = (char*) 0; // file with the state to check backward from
+
+char*    free_state_name = (char*) 0; // array state with free elements
+uint64_t free_state_nid  = 0;
+uint64_t free_first      = 0; // first free element
+uint64_t free_count      = 0; // number of free elements
+
+uint64_t* free_elements = (uint64_t*) 0; // the free elements, allocated on demand
+
+char*    state_text = (char*) 0; // the file with the state
+uint64_t  state_size = 0;
+uint64_t  state_pos  = 0;
+
+uint64_t* target_defined = (uint64_t*) 0; // per state nid: 1 if the state has an initial value
+uint64_t* target_states  = (uint64_t*) 0; // per state nid: its initial value, or a copy of its initial array
+uint64_t* target_bases   = (uint64_t*) 0; // per array state nid: its initial array as array value
+uint64_t* difference_lists  = (uint64_t*) 0; // per array state nid: indices at which state and initial state differ
+uint64_t* difference_counts = (uint64_t*) 0;
+
+uint64_t initial_paths = 0; // paths on which the initial state is reached
 uint64_t witnesses    = 0;
 
 uint64_t* dimacs_clause = (uint64_t*) 0;
@@ -4045,7 +4079,28 @@ uint64_t* arr_element(uint64_t a, uint64_t index) {
   uint64_t* elements;
   uint64_t* element;
 
-  // element of a base: free bits, allocated on first use, or the state's value
+  // element of a base: free bits, allocated on first use, or the state's value;
+  // a base with y == 2 is an array of values that is no state, z are its values
+
+  if (*(arr_y + a) == 2)
+    return bv_constant(*((uint64_t*) *(arr_z + a) + index), *(arr_ew + a));
+
+  if (*(arr_y + a) == 0)
+    if (free_state_nid != 0)
+      if (get_nid((uint64_t*) *(arr_x + a)) == free_state_nid)
+        if (index >= free_first)
+          if (index < free_first + free_count) {
+            // a free element of a state that is not free
+            element = (uint64_t*) *(free_elements + index - free_first);
+
+            if (element == (uint64_t*) 0) {
+              element = bv_fresh(*(arr_ew + a));
+
+              *(free_elements + index - free_first) = (uint64_t) element;
+            }
+
+            return element;
+          }
 
   if (*(arr_y + a)) {
     elements = (uint64_t*) *(arr_z + a);
@@ -6098,7 +6153,9 @@ uint64_t bmc() {
 
       n = 0;
 
-      if (guard != AIG_FALSE)
+      if (state_file != (char*) 0)
+        guard = check_backward(guard, t);
+      else if (guard != AIG_FALSE)
         n = check_bads(guard, t);
 
       found = found + n;
@@ -6314,6 +6371,434 @@ void print_bmc_statistics() {
 
   if (dimacs_prefix != (char*) 0)
     printf("%s: %lu CNF files written with prefix %s\n", selfie_name, dimacs_files, dimacs_prefix);
+}
+
+void write_state(char* name) {
+  uint64_t fd;
+  uint64_t nid;
+  uint64_t* line;
+  uint64_t size;
+  uint64_t i;
+  uint64_t value;
+
+  // the state of the model as text, a line per bit-vector state and per
+  // array element that is not zero: the name of the state, the index, 0
+  // for a bit vector, and the value; every array has a line for index 0
+
+  fd = open_write_only(name, S_IRUSR_IWUSR_IRGRP_IROTH);
+
+  if (signed_less_than(fd, 0)) {
+    printf("%s: could not create %s\n", selfie_name, name);
+
+    exit(EXITCODE_IOERROR);
+  }
+
+  nid = 1;
+
+  while (nid <= max_nid) {
+    line = line_of_nid(nid);
+
+    if (line != UNUSED)
+      if (get_op(line) == OP_STATE) {
+        if (is_bitvector(get_sid(line)))
+          dprintf(fd, "%s 0 %lu\n", (char*) get_arg1(line), get_state(line));
+        else if (get_state(line) != 0) {
+          size = two_to_the_power_of(eval_array_size(get_sid(line)));
+
+          i = 0;
+
+          while (i < size) {
+            value = read_array_raw(line, i);
+
+            if (or(i == 0, value != 0))
+              dprintf(fd, "%s %lu %lu\n", (char*) get_arg1(line), i, value);
+
+            i = i + 1;
+          }
+        }
+      }
+
+    nid = nid + 1;
+  }
+
+  printf("%s: state written to %s\n", selfie_name, name);
+}
+
+uint64_t state_number() {
+  uint64_t c;
+  uint64_t n;
+
+  // a decimal number and the character after it
+
+  n = 0;
+
+  c = load_character(state_text, state_pos);
+
+  while (and(c >= '0', c <= '9')) {
+    n = n * 10 + c - '0';
+
+    state_pos = state_pos + 1;
+
+    c = load_character(state_text, state_pos);
+  }
+
+  state_pos = state_pos + 1;
+
+  return n;
+}
+
+void load_state(char* name) {
+  uint64_t nid;
+  uint64_t* line;
+  uint64_t* loaded;
+  uint64_t* copy;
+  uint64_t size;
+  uint64_t i;
+  uint64_t start;
+  char* symbol;
+  uint64_t index;
+  uint64_t value;
+
+  // the initial state of the model becomes the target, and the state in
+  // the file the state from which the model is checked; an array in the
+  // file is zero where the file has no line for it
+
+  target_defined    = zmalloc((max_nid + 1) * sizeof(uint64_t));
+  target_states     = zmalloc((max_nid + 1) * sizeof(uint64_t));
+  target_bases      = zmalloc((max_nid + 1) * sizeof(uint64_t));
+  difference_lists  = zmalloc((max_nid + 1) * sizeof(uint64_t));
+  difference_counts = zmalloc((max_nid + 1) * sizeof(uint64_t));
+
+  loaded = zmalloc((max_nid + 1) * sizeof(uint64_t));
+
+  nid = 1;
+
+  while (nid <= max_nid) {
+    line = line_of_nid(nid);
+
+    if (line != UNUSED)
+      if (get_op(line) == OP_STATE)
+        if (*(uninitialized_states + nid) == 0) {
+          if (is_bitvector(get_sid(line))) {
+            *(target_states + nid)  = get_state(line);
+            *(target_defined + nid) = 1;
+          } else if (get_state(line) != 0) {
+            size = two_to_the_power_of(eval_array_size(get_sid(line)));
+
+            copy = zmalloc(size * sizeof(uint64_t));
+
+            i = 0;
+
+            while (i < size) {
+              *(copy + i) = read_array_raw(line, i);
+
+              i = i + 1;
+            }
+
+            *(target_states + nid)  = (uint64_t) copy;
+            *(target_defined + nid) = 1;
+          }
+        }
+
+    nid = nid + 1;
+  }
+
+  state_text = (char*) read_whole_file(name);
+  state_size = model_size;
+  state_pos  = 0;
+
+  while (state_pos < state_size) {
+    start = state_pos;
+
+    while (load_character(state_text, state_pos) != ' ')
+      state_pos = state_pos + 1;
+
+    symbol = string_alloc(state_pos - start);
+
+    i = 0;
+
+    while (start + i < state_pos) {
+      store_character(symbol, i, load_character(state_text, start + i));
+
+      i = i + 1;
+    }
+
+    store_character(symbol, i, 0);
+
+    state_pos = state_pos + 1;
+
+    index = state_number();
+    value = state_number();
+
+    line = find_state(symbol);
+
+    if (line == UNUSED) {
+      printf("%s: state %s of %s is not in %s\n", selfie_name, symbol, name, model_name);
+
+      exit(EXITCODE_BADARGUMENTS);
+    }
+
+    nid = get_nid(line);
+
+    if (is_bitvector(get_sid(line)))
+      set_state(line, value);
+    else {
+      if (*(loaded + nid) == 0) {
+        // a zeroed array, also for a state the model leaves uninitialized
+        set_state(line, (uint64_t) allocate_array(get_sid(line)));
+      }
+
+      write_array_raw(line, index, value);
+    }
+
+    *(loaded + nid) = 1;
+
+    *(uninitialized_states + nid) = 0;
+  }
+
+  printf("%s: state loaded from %s\n", selfie_name, name);
+}
+
+void collect_differences(uint64_t* line) {
+  uint64_t nid;
+  uint64_t* initial;
+  uint64_t* list;
+  uint64_t size;
+  uint64_t n;
+  uint64_t i;
+  uint64_t pass;
+
+  // the indices at which an array state differs from its initial array,
+  // or is free: only there, and where a path writes, can the array on a
+  // path differ from the initial array
+
+  nid = get_nid(line);
+
+  initial = (uint64_t*) *(target_states + nid);
+
+  size = two_to_the_power_of(eval_array_size(get_sid(line)));
+
+  list = (uint64_t*) 0;
+
+  pass = 0;
+
+  while (pass < 2) {
+    n = 0;
+
+    i = 0;
+
+    while (i < size) {
+      if (read_array_raw(line, i) != *(initial + i)) {
+        if (pass)
+          *(list + n) = i;
+
+        n = n + 1;
+      } else if (nid == free_state_nid)
+        if (i >= free_first)
+          if (i < free_first + free_count) {
+            if (pass)
+              *(list + n) = i;
+
+            n = n + 1;
+          }
+
+      i = i + 1;
+    }
+
+    if (pass == 0)
+      list = zmalloc((n + 1) * sizeof(uint64_t));
+
+    pass = pass + 1;
+  }
+
+  *(difference_lists + nid)  = (uint64_t) list;
+  *(difference_counts + nid) = n;
+
+  // the initial array as an array value, to read it at any index
+  *(target_bases + nid) = arr_new(ARR_BASE, (uint64_t) line, 2, (uint64_t) initial,
+    eval_array_size(get_sid(line)), eval_element_size(get_sid(line)));
+}
+
+uint64_t target_literal() {
+  uint64_t nid;
+  uint64_t* line;
+  uint64_t l;
+  uint64_t a;
+  uint64_t final;
+  uint64_t* list;
+  uint64_t* index;
+  uint64_t* marks;
+  uint64_t* stack;
+  uint64_t top;
+  uint64_t i;
+
+  // is the current state the initial state? A bit vector is its initial
+  // value. An array is its initial array if it is at the indices at which
+  // it differed before the first step, and at the indices written since
+
+  l = AIG_TRUE;
+
+  nid = 1;
+
+  while (nid <= max_nid) {
+    line = line_of_nid(nid);
+
+    if (line != UNUSED)
+      if (get_op(line) == OP_STATE)
+        if (*(target_defined + nid))
+          if (is_bitvector(get_sid(line))) {
+            l = aig_and(l, bv_eq((uint64_t*) *(sym_states + nid), bv_constant(*(target_states + nid), width_of(line))));
+
+            if (l == AIG_FALSE) {
+              if (verbose > 1)
+                printf("%s: %s is not as initially\n", selfie_name, (char*) get_arg1(line));
+
+              return l;
+            }
+          }
+
+    nid = nid + 1;
+  }
+
+  nid = 1;
+
+  while (nid <= max_nid) {
+    line = line_of_nid(nid);
+
+    if (line != UNUSED)
+      if (get_op(line) == OP_STATE)
+        if (*(target_defined + nid)) {
+          if (not(is_bitvector(get_sid(line)))) {
+            if (*(target_bases + nid) == 0)
+              collect_differences(line);
+
+            final = *(sym_states + nid);
+
+            list = (uint64_t*) *(difference_lists + nid);
+
+            i = 0;
+
+            while (i < *(difference_counts + nid)) {
+              index = bv_constant(*(list + i), *(arr_iw + final));
+
+              l = aig_and(l, bv_eq(arr_read(final, index), arr_read(*(target_bases + nid), index)));
+
+              i = i + 1;
+            }
+
+            // the indices written that are not constants, through all choices
+
+            marks = zmalloc((arr_count + 1) * sizeof(uint64_t));
+            stack = zmalloc((arr_count + 1) * sizeof(uint64_t));
+
+            *stack = final;
+
+            top = 1;
+
+            while (top > 0) {
+              top = top - 1;
+
+              a = *(stack + top);
+
+              if (*(marks + a) == 0) {
+                *(marks + a) = 1;
+
+                if (*(arr_kind + a) == ARR_WRITE) {
+                  index = (uint64_t*) *(arr_y + a);
+
+                  if (not(bv_is_constant(index)))
+                    l = aig_and(l, bv_eq(arr_read(final, index), arr_read(*(target_bases + nid), index)));
+
+                  *(stack + top) = *(arr_x + a);
+
+                  top = top + 1;
+                } else if (*(arr_kind + a) == ARR_ITE) {
+                  *(stack + top) = *(arr_y + a);
+
+                  top = top + 1;
+
+                  *(stack + top) = *(arr_z + a);
+
+                  top = top + 1;
+                }
+              }
+            }
+          }
+
+          if (l == AIG_FALSE) {
+            if (verbose)
+              printf("%s: %s is not as initially\n", selfie_name, (char*) get_arg1(line));
+
+            return l;
+          }
+        }
+
+    nid = nid + 1;
+  }
+
+  return l;
+}
+
+void check_reached(uint64_t guard, uint64_t t) {
+  uint64_t l;
+
+  // is the current state of a path the initial state? Mostly not, and
+  // then the program counter says so before any array is compared
+
+  l = aig_and(guard, target_literal());
+
+  if (l != AIG_FALSE)
+    if (aig_solve(l)) {
+      initial_paths = initial_paths + 1;
+
+      printf("%s: initial state reached after %lu instructions\n", selfie_name, t);
+    }
+}
+
+uint64_t check_backward(uint64_t guard, uint64_t t) {
+  uint64_t nid;
+  uint64_t* line;
+  uint64_t before;
+
+  // backward, in the current frame of a path: is this the initial state?
+  // Then a bad state of the inverse model is where the path ends, as
+  // before the first instruction. Returns the guard of what goes on.
+
+  if (guard != AIG_FALSE)
+    check_reached(guard, t);
+
+  before = guard;
+
+  nid = 1;
+
+  while (nid <= max_nid) {
+    line = line_of_nid(nid);
+
+    if (line != UNUSED)
+      if (get_op(line) == OP_BAD) {
+        if (verbose)
+          if (guard != AIG_FALSE)
+            if (sym_bit(get_arg1(line)) == AIG_TRUE)
+              printf("%s: a path ends in %s after %lu instructions\n", selfie_name, (char*) get_arg2(line), t);
+
+        guard = aig_and(guard, aig_not(sym_bit(get_arg1(line))));
+      }
+
+    nid = nid + 1;
+  }
+
+  if (guard == AIG_FALSE)
+    if (before != AIG_FALSE) {
+      // rotor's models say that a fetch will fail one instruction ahead,
+      // which backward is before the first instruction is undone: take
+      // that step and look again
+
+      sym_step_frame();
+
+      check_reached(before, t + 1);
+    }
+
+  return guard;
 }
 
 // -----------------------------------------------------------------
@@ -7197,7 +7682,7 @@ uint64_t bitr() {
     } else if (string_compare(argument, "-all"))
       stop_at_first = 0;
     else if (string_compare(argument, "-v"))
-      verbose = 1;
+      verbose = verbose + 1;
     else if (string_compare(argument, "-w")) {
       if (number_of_remaining_arguments() > 0)
         witness_file = get_argument();
@@ -7223,6 +7708,24 @@ uint64_t bitr() {
       if (number_of_remaining_arguments() > 0)
         max_steps = atoi(get_argument());
       else
+        return EXITCODE_BADARGUMENTS;
+    } else if (string_compare(argument, "-dump")) {
+      if (number_of_remaining_arguments() > 0)
+        state_dump_file = get_argument();
+      else
+        return EXITCODE_BADARGUMENTS;
+    } else if (string_compare(argument, "-state")) {
+      if (number_of_remaining_arguments() > 0)
+        state_file = get_argument();
+      else
+        return EXITCODE_BADARGUMENTS;
+    } else if (string_compare(argument, "-free")) {
+      if (number_of_remaining_arguments() > 2) {
+        free_state_name = get_argument();
+
+        free_first = atoi(get_argument());
+        free_count = atoi(get_argument());
+      } else
         return EXITCODE_BADARGUMENTS;
     } else if (string_compare(argument, "-p"))
       printing_pc = 1;
@@ -7268,12 +7771,31 @@ uint64_t bitr() {
   if (layout_file != (char*) 0)
     load_layout(layout_file);
 
+  if (state_file != (char*) 0)
+    load_state(state_file);
+
+  if (free_state_name != (char*) 0) {
+    if (find_state(free_state_name) == UNUSED) {
+      printf("%s: state %s is not in %s\n", selfie_name, free_state_name, model_name);
+
+      return EXITCODE_BADARGUMENTS;
+    }
+
+    free_state_nid = get_nid(find_state(free_state_name));
+
+    free_elements = zmalloc((free_count + 1) * sizeof(uint64_t));
+  }
+
   if (checking_bmc) {
     bmc();
 
     print_bmc_statistics();
-  } else
+  } else {
     simulate();
+
+    if (state_dump_file != (char*) 0)
+      write_state(state_dump_file);
+  }
 
   printf("%s: ################################################################################\n", selfie_name);
 
