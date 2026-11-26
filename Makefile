@@ -211,7 +211,7 @@ cache: selfie selfie.m selfie.s examples/cache/dcache-access-[01].c
 .PHONY: sat brr bzz mon smt beat beator-btor2 rot synthesize rotor-btor2 btor2 more all
 
 # Run more that only requires standard tools and is not too slow
-more: sat brr bzz mon smt beat beator-btor2 rot synthesize rotor-btor2 rev trust riscr-model sim bmc cdcl identity cells product tapes layouts hybrid construct
+more: sat brr bzz mon smt beat beator-btor2 rot synthesize rotor-btor2 trust reversible
 
 # Run all that only requires standard tools and is not too slow
 all: less more
@@ -683,7 +683,7 @@ construct: cellfie cellfie-test riscr selfie selfie.h
 	./cellfie -tapes 8 -tapewords 4194304 -heap 0 400000000 -stack 1000000 -room 512 1024 -window cellfie-test-window.rle -h cellfie-test.r $$o -c $$b.r -onto > cellfie-product.txt || exit 1; \
 	grep "cells constructed\|the token landed" cellfie-product.txt; \
 	grep -q "the token landed" cellfie-product.txt || { echo "the token of cellfie does not land in the layout of $$b.r"; exit 1; }; \
-	sed '/^#P/,/^x = /{/^x = /!d}' cellfie-test-window.rle > cellfie-test-built.rle; \
+	sed '/^#P/,/^x = /{/^x = /!d;}' cellfie-test-window.rle > cellfie-test-built.rle; \
 	cmp cellfie-test-compiled.rle cellfie-test-built.rle || { echo "the layout of $$b.r that cellfie constructs on cellfie is not the compiled layout"; exit 1; }; \
 	r=$$(./cellfie -tapes 8 -l cellfie-test-window.rle -f 100000000 | sed -n 's/.* with pc \(.*: exit with exit code .*\)/\1/p'); \
 	[ -n "$$e" ] && [ "$$e" = "$$r" ] || { echo "$$b.r, constructed by cellfie on cellfie: $$r, compiled: $$e"; exit 1; }; \
@@ -719,7 +719,7 @@ cellfie-on-cellfie: cellfie cellfie-test riscr selfie selfie.h
 	echo "$@: $$(($$(date +%s) - s)) seconds on cellfie"
 	cmp cellfie-test-l0.rle cellfie-test-l1.rle
 	grep -q "^#P " cellfie-test-l2.rle
-	sed '/^#P/,/^x = /{/^x = /!d}' cellfie-test-l2.rle > cellfie-test-l2-token.rle
+	sed '/^#P/,/^x = /{/^x = /!d;}' cellfie-test-l2.rle > cellfie-test-l2-token.rle
 	cmp cellfie-test-l0.rle cellfie-test-l2-token.rle
 	e=$$(./cellfie -tapes 8 -l cellfie-test-l0.rle -f 100000000 | tail -1); \
 	r=$$(./cellfie -tapes 8 -l cellfie-test-l2.rle -f 100000000 | tail -1); \
@@ -799,7 +799,24 @@ trust: selfie selfie.h
 	rm -f examples/trusting-trust/honest-stamp.c examples/trusting-trust/honest-victim.c examples/trusting-trust/trojaned-victim.c examples/trusting-trust/suspect-stamp.c
 
 # Consider these targets as targets, not files
-.PHONY: rev riscr-rev bennett trust riscr-model sim bmc cdcl identity cells product tapes layouts hybrid construct selfie-on-cellfie cellfie-on-cellfie
+.PHONY: rev riscr-rev bennett trust riscr-model sim bmc cdcl identity cells product tapes layouts hybrid construct selfie-on-cellfie cellfie-on-cellfie reversible
+
+# Run the checks of the RISC-R branch that are not too slow, one after another and after rotor-btor2:
+# they share generated files, the binaries, models, and layouts of the symbolic examples and of the
+# tests, so make -j must not run two of them, or one of them and rotor-btor2, at the same time
+reversible: rotor-btor2 selfie selfie.h riscr riscr.h riscr-test rotor bitr babysat cellfie cellfie-test
+	$(MAKE) rev
+	$(MAKE) riscr-model
+	$(MAKE) sim
+	$(MAKE) bmc
+	$(MAKE) cdcl
+	$(MAKE) identity
+	$(MAKE) cells
+	$(MAKE) product
+	$(MAKE) tapes
+	$(MAKE) layouts
+	$(MAKE) hybrid
+	$(MAKE) construct
 
 # Consider these targets as targets, not files
 .PHONY: spike qemu assemble beator-32 rotor-32 32-bit bitwuzla beator-bitme rotor-bitme bitme extras

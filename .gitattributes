@@ -1,0 +1,3 @@
+# files that are compared byte for byte or line by line are checked out with line feeds on all systems
+examples/trusting-trust/* text eol=lf
+tests/* text eol=lf
