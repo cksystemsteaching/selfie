@@ -277,8 +277,9 @@ uint64_t LINUX_O_CREAT_TRUNC_WRONLY = 577;
 // MAC: 1537 = 0x0601 = O_CREAT (0x0200) | O_TRUNC (0x0400) | O_WRONLY (0x0001)
 uint64_t MAC_O_CREAT_TRUNC_WRONLY = 1537;
 
-// WINDOWS: 33537 = 0x8301 = _O_BINARY (0x8000) | _O_CREAT (0x0100) | _O_TRUNC (0x0200) | _O_WRONLY (0x0001)
-uint64_t WINDOWS_O_BINARY_CREAT_TRUNC_WRONLY = 33537;
+// WINDOWS: 67073 = 0x10601 = O_BINARY (0x10000) | O_CREAT (0x0200) | O_TRUNC (0x0400) | O_WRONLY (0x0001)
+// these are the flags of cygwin, which is what selfie is built with on Windows
+uint64_t WINDOWS_O_BINARY_CREAT_TRUNC_WRONLY = 67073;
 
 // default is LINUX, re-initialized in init_system()
 uint64_t O_CREAT_TRUNC_WRONLY = 577; // write-only flags for host operating system
