@@ -444,9 +444,10 @@ cdcl: bitr babysat selfie rotor
 	rm -f examples/symbolic/*.cnf
 	for f in $(wildcard examples/symbolic/*.c); do \
 	  b=$${f%.c}; \
-	  ./selfie -c $$f -o $$b.m > /dev/null && \
-	  ./rotor -l $$b.m - 0 -Pnobadexitcode -Pgoodexitcode -riscuonly > /dev/null && \
-	  ./bitr $$b-rotorized-riscuonly.btor2 -l $$b.m -bmc 300 -all -dimacs $$b 100 > /dev/null || exit 1; \
+	  out=$$(./selfie -c $$f -o $$b.m 2>&1 && \
+	    ./rotor -l $$b.m - 0 -Pnobadexitcode -Pgoodexitcode -riscuonly 2>&1 && \
+	    ./bitr $$b-rotorized-riscuonly.btor2 -l $$b.m -bmc 300 -all -dimacs $$b 100 2>&1) || \
+	    { echo "$$out" | tail -n 20; echo "$$b: no CNF files"; exit 1; }; \
 	done
 	n=0; for f in examples/sat/*.cnf examples/symbolic/*.cnf; do \
 	  a=$$(./babysat $$f | grep -o "is [un]*satisfiable"); \
