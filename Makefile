@@ -344,32 +344,66 @@ rotor-btor2: $(rotors) selfie-rotorized.btor2 synthesize
 # Run beator and rotor on *.c files in symbolic folder and even on selfie
 btor2: beator-btor2 rotor-btor2
 
-# Compile riscr.c with selfie.h as library into riscr executable
-riscr: tools/riscr.c selfie.h
-	$(CC) $(CFLAGS) --include selfie.h $< -o $@
+# Generate selfie library for riscr as selfie-riscr.h: riscr wraps the three procedures
+# of the scanner and the parser that it extends by compound assignments, see tools/riscr.c
+selfie-riscr.h: selfie.c
+	sed -e 's/main(/selfie_main(/' \
+	    -e 's/^char find_next_character() {/char selfie_find_next_character() {/' \
+	    -e 's/^void get_symbol() {/void selfie_get_symbol() {/' \
+	    -e 's/^void compile_assignment(char\* variable) {/void selfie_compile_assignment(char* variable) {/' selfie.c > selfie-riscr.h
+
+# Compile riscr.c with selfie-riscr.h as library into riscr executable
+riscr: tools/riscr.c selfie-riscr.h
+	$(CC) $(CFLAGS) --include selfie-riscr.h $< -o $@
 
 # Generate riscr library as riscr.h
 riscr.h: tools/riscr.c
 	sed 's/main(/riscr_main(/' tools/riscr.c > riscr.h
 
-# Compile riscr-test.c with selfie.h and riscr.h as libraries into riscr-test executable
-riscr-test: tests/riscr-test.c selfie.h riscr.h
-	$(CC) $(CFLAGS) --include selfie.h --include riscr.h $< -o $@
+# Compile riscr-test.c with selfie-riscr.h and riscr.h as libraries into riscr-test executable
+riscr-test: tests/riscr-test.c selfie-riscr.h riscr.h
+	$(CC) $(CFLAGS) --include selfie-riscr.h --include riscr.h $< -o $@
 
 # Run riscr-test, hand-written RISC-R code executed forward and backward on riscr, natively and as RISC-U executable,
 # and check that mipster refuses RISC-R binaries
-rev: riscr-test selfie selfie.h riscr.h
+rev: riscr-test selfie selfie-riscr.h riscr.h
 	echo "RISC-R" | ./riscr-test tests/riscr-test.m
-	echo "RISC-R" | ./selfie -c selfie.h riscr.h tests/riscr-test.c -m 64 tests/riscr-test-emu.m
+	echo "RISC-R" | ./selfie -c selfie-riscr.h riscr.h tests/riscr-test.c -m 64 tests/riscr-test-emu.m
 	! ./selfie -l tests/riscr-test.m -m 1
 
 # Prevent make from deleting intermediate target riscr-test
 .SECONDARY: riscr-test
 
 # Run riscr executing RISC-R code forward and backward, natively and as RISC-U executable, exit code is the first input byte plus 14
-riscr-rev: riscr selfie selfie.h rev
+riscr-rev: riscr selfie selfie-riscr.h rev
 	-echo "RISC-R" | ./riscr -l tests/riscr-test.m -rev 1
-	-echo "RISC-R" | ./selfie -c selfie.h tools/riscr.c -m 16 -l tests/riscr-test.m -rev 1
+	-echo "RISC-R" | ./selfie -c selfie-riscr.h tools/riscr.c -m 16 -l tests/riscr-test.m -rev 1
+
+# Garbage-free assignments (M9 of projects/reversible.md): riscr compiles x += e, x -= e, and x ^= e without
+# history. The test program exits natively, compiled by gcc, as on riscr, forward and backward; it leaves the
+# history pointer where the same program without its compound assignments leaves it; the RISC-U binary that
+# riscr writes translates to the same RISC-R binary, and so does riscr on mipster; what cannot be uncomputed,
+# an expression that reads the variable assigned to or calls a procedure, is a syntax error
+garbage-free: riscr selfie selfie-riscr.h
+	$(CC) -w -D'uint64_t=unsigned long' tests/riscr-compound-test.c -o riscr-compound-test
+	./riscr-compound-test; e=$$?; \
+	./riscr -c tests/riscr-compound-test.c -o tests/riscr-compound-test.m -t tests/riscr-compound-test.r -rev 1 | tee riscr-compound-test.txt; \
+	grep -q "with exit code $$e$$" riscr-compound-test.txt
+	grep -q "initial state restored bit for bit" riscr-compound-test.txt
+	grep -v "// garbage-free" tests/riscr-compound-test.c > tests/riscr-compound-base.c
+	h=$$(sed -n 's/.*the history pointer of translated code, is \(.*\)/\1/p' riscr-compound-test.txt); \
+	b=$$(./riscr -c tests/riscr-compound-base.c -t tests/riscr-compound-base.r -rev 1 | sed -n 's/.*the history pointer of translated code, is \(.*\)/\1/p'); \
+	[ -n "$$h" ] && [ "$$h" = "$$b" ] || { echo "history pointer at $$h, without compound assignments at $$b"; exit 1; }; \
+	echo "history pointer at $$h with and without compound assignments"
+	./riscr -l tests/riscr-compound-test.m -t tests/riscr-compound-file.r > /dev/null
+	cmp tests/riscr-compound-test.r tests/riscr-compound-file.r
+	./selfie -c selfie-riscr.h tools/riscr.c -m 64 -c tests/riscr-compound-test.c -t tests/riscr-compound-file.r > /dev/null
+	cmp tests/riscr-compound-test.r tests/riscr-compound-file.r
+	printf 'uint64_t main() { uint64_t x; x = 1; x += x + 1; return x; }\n' > tests/riscr-compound-base.c
+	./riscr -c tests/riscr-compound-base.c | grep -q "variable occurs on the right of its own compound assignment"
+	printf 'uint64_t f() { return 1; }\nuint64_t main() { uint64_t x; x = 1; x -= f(); return x; }\n' > tests/riscr-compound-base.c
+	./riscr -c tests/riscr-compound-base.c | grep -q "procedure call in a compound assignment"
+	@echo "$@: compound assignments compute as in C and leave no history"
 
 # Run rotor to generate the 64-bit RISC-R machine model forward and inverse (M3a of projects/reversible.md), and
 # check on random states that inverse after forward and forward after inverse are the identity
@@ -771,11 +805,11 @@ selfie-on-cellfie: cellfie riscr selfie selfie.h
 # Bennett mode (M2 of projects/reversible.md): selfie translated to RISC-R compiles selfie on riscr
 # to an identical binary and runs back to its initial state; riscr's translator reaches a fixed point
 # on itself; takes about 3GB of memory for the history stack and a few minutes
-bennett: riscr selfie selfie.h
+bennett: riscr selfie selfie.h selfie-riscr.h
 	./selfie -c selfie.c -o selfie-u.m
 	./riscr -l selfie-u.m -t selfie-r.r -rev 4096 -c selfie.c -o selfie-r.m
 	cmp selfie-u.m selfie-r.m
-	./selfie -c selfie.h tools/riscr.c -o riscr-u.m
+	./selfie -c selfie-riscr.h tools/riscr.c -o riscr-u.m
 	./riscr -l riscr-u.m -t riscr-r.r
 	./riscr -l riscr-r.r -m 3072 -l riscr-u.m -t riscr-r2.r
 	cmp riscr-r.r riscr-r2.r
@@ -800,13 +834,14 @@ trust: selfie selfie.h
 	rm -f examples/trusting-trust/honest-stamp.c examples/trusting-trust/honest-victim.c examples/trusting-trust/trojaned-victim.c examples/trusting-trust/suspect-stamp.c
 
 # Consider these targets as targets, not files
-.PHONY: rev riscr-rev bennett trust riscr-model sim bmc cdcl identity cells product tapes layouts hybrid construct selfie-on-cellfie cellfie-on-cellfie reversible
+.PHONY: rev riscr-rev bennett trust riscr-model sim bmc cdcl identity cells product tapes layouts hybrid construct selfie-on-cellfie cellfie-on-cellfie reversible garbage-free
 
 # Run the checks of the RISC-R branch that are not too slow, one after another and after rotor-btor2:
 # they share generated files, the binaries, models, and layouts of the symbolic examples and of the
 # tests, so make -j must not run two of them, or one of them and rotor-btor2, at the same time
-reversible: rotor-btor2 selfie selfie.h riscr riscr.h riscr-test rotor bitr babysat cellfie cellfie-test
+reversible: rotor-btor2 selfie selfie.h selfie-riscr.h riscr riscr.h riscr-test rotor bitr babysat cellfie cellfie-test
 	$(MAKE) rev
+	$(MAKE) garbage-free
 	$(MAKE) riscr-model
 	$(MAKE) sim
 	$(MAKE) bmc
@@ -936,6 +971,7 @@ clean:
 	rm -f tools/*.smt
 	rm -f tools/*.btor2
 	rm -f tests/*.m tests/riscr-test.txt
+	rm -f selfie-riscr.h riscr-compound-test riscr-compound-test.txt tests/riscr-compound-*.r tests/riscr-compound-base.c
 	rm -f examples/trusting-trust/honest-stamp.c examples/trusting-trust/honest-victim.c examples/trusting-trust/trojaned-victim.c examples/trusting-trust/suspect-stamp.c
 	rm -f selfie selfie-32 selfie.h selfie-gc.h selfie-gc-nomain.h selfie.exe
 	rm -f babysat buzzr monster beator beator-32 rotor rotor-32 riscr riscr.h riscr-test bitr cellfie cellfie-test

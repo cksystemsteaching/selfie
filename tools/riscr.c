@@ -59,6 +59,48 @@ char* xor_table = (char*) 0; // 256x256 table of byte-wise exclusive ors, see in
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
 
 // -----------------------------------------------------------------
+// -------------------- COMPOUND ASSIGNMENTS -----------------------
+// -----------------------------------------------------------------
+
+// Garbage-free mode (milestone M9): riscr compiles C* plus the three
+// compound assignments x += e, x -= e, and x ^= e, also with *x and
+// *(e) on the left, where the memory word assigned to is not read by
+// e and e calls no procedure. The scanner and the parser are selfie's:
+// find_next_character, get_symbol, and compile_assignment below wrap
+// the procedures of selfie.c, which selfie-riscr.h renames, see the
+// Makefile. A compound assignment is compiled to the RISC-U code of
+// e between two markers in a register that starc never uses, s6:
+//
+//   addi s6,zero,0         begin
+//   ...                    the code of the address, if any, and of e
+//   ld   s6,offset(base)
+//   op   s6,s6,t           add or sub; for ^= divu s6,t,zero, see below
+//   sd   s6,offset(base)
+//
+// which the translator turns into compute, update, uncompute: the
+// translation of e, the update of the memory word, and the inverse of
+// the translation of e, so that no history is left, see put_update.
+// RISC-U has no exclusive or: x ^= e is compiled for RISC-R only, and
+// its RISC-U code divides by zero.
+
+char find_next_character();
+void get_symbol();
+void compile_assignment(char* variable);
+
+void put_unconstant(uint64_t reg, uint64_t immediate, uint64_t upper);
+void put_unsource(uint64_t reg);
+void put_inverse(uint64_t i);
+void put_update(uint64_t i);
+
+// ------------------------ GLOBAL VARIABLES -----------------------
+
+uint64_t caret_scanned = 0; // 1 if ^ was scanned in front of the current =
+
+uint64_t compound_assignment = 0; // 0, or ADD, SUB, MUL for the last = scanned being +=, -=, ^=
+
+uint64_t number_of_compound_assignments = 0;
+
+// -----------------------------------------------------------------
 // -------------------------- TRANSLATOR ---------------------------
 // -----------------------------------------------------------------
 
@@ -134,6 +176,9 @@ uint64_t TK_JALZ      = 8;  // unconditional jump to a join
 uint64_t TK_CALL      = 9;  // jal ra
 uint64_t TK_RET       = 10; // jalr zero,0(ra)
 uint64_t TK_ECALL     = 11; // system call
+uint64_t TK_BEGIN     = 12; // begin of a compound assignment, no code
+uint64_t TK_UPDATE    = 13; // its update and the inverse of its expression
+uint64_t TK_NOTHING   = 14; // the rest of its update, no code
 
 uint64_t ORIGIN_NONE      = 0;
 uint64_t ORIGIN_BEQ       = 1;
@@ -164,6 +209,8 @@ uint64_t* first_origin = (uint64_t*) 0; // per target: first origin in source or
 uint64_t* next_origin  = (uint64_t*) 0; // per origin: next origin with the same target, or NONE
 uint64_t* chain_index  = (uint64_t*) 0; // per origin: position in its target's chain of come-froms
 uint64_t* is_long      = (uint64_t*) 0; // per origin: 1 if it needs a jal zero to reach its target
+
+uint64_t* begin_of = (uint64_t*) 0; // per update: source index of the begin of its compound assignment
 
 uint64_t* is_call_target = (uint64_t*) 0; // per source instruction: 1 if some jal ra targets it
 uint64_t* return_of      = (uint64_t*) 0; // per call target: source index of its return jalr
@@ -442,6 +489,277 @@ uint64_t bitwise_xor(uint64_t a, uint64_t b) {
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
 
 // -----------------------------------------------------------------
+// -------------------- COMPOUND ASSIGNMENTS -----------------------
+// -----------------------------------------------------------------
+
+char find_next_character() {
+  // selfie's scanner does not know ^: skip it in front of =,
+  // which get_symbol below then takes for the = of ^=
+
+  selfie_find_next_character();
+
+  if (character == '^') {
+    get_character();
+
+    if (character == CHAR_EQUAL)
+      caret_scanned = 1;
+    else
+      syntax_error_expected_character(CHAR_EQUAL);
+  }
+
+  return character;
+}
+
+void get_symbol() {
+  // +=, -=, and ^= are scanned as = with compound_assignment
+  // saying which, for compile_assignment below
+
+  caret_scanned = 0;
+
+  selfie_get_symbol();
+
+  if (symbol == SYM_ASSIGN) {
+    if (caret_scanned)
+      compound_assignment = MUL;
+    else
+      compound_assignment = 0;
+  } else if (character == CHAR_EQUAL) {
+    // no whitespace has been skipped yet, so = follows immediately
+    if (symbol == SYM_PLUS) {
+      get_character();
+
+      symbol = SYM_ASSIGN;
+
+      compound_assignment = ADD;
+    } else if (symbol == SYM_MINUS) {
+      get_character();
+
+      symbol = SYM_ASSIGN;
+
+      compound_assignment = SUB;
+    }
+  }
+}
+
+void compile_assignment(char* variable) {
+  uint64_t begin;
+  uint64_t end;
+  uint64_t a;
+  uint64_t base;
+  uint64_t offset;
+  uint64_t value;
+  uint64_t opcode;
+
+  // selfie compiles x op= e as x = e, ending in a store of e, which
+  // becomes the update of x; a marker is inserted in front of the code
+
+  // the = of an assignment to a variable has been scanned already
+
+  begin = code_size;
+
+  selfie_compile_assignment(variable);
+
+  if (compound_assignment == 0)
+    return;
+
+  if (code_size == begin)
+    // syntax error
+    return;
+
+  end = code_size - INSTRUCTIONSIZE;
+
+  ir = load_instruction(end);
+
+  if (get_opcode(ir) != OP_STORE)
+    // syntax error
+    return;
+
+  base   = get_rs1(ir);
+  offset = get_immediate_s_format(ir);
+  value  = get_rs2(ir);
+
+  a = begin;
+
+  while (a < end) {
+    ir = load_instruction(a);
+
+    opcode = get_opcode(ir);
+
+    if (opcode == OP_LOAD) {
+      // a variable is at an offset from the frame or the global pointer
+      if (or(base == REG_S0, base == REG_GP))
+        if (get_rs1(ir) == base)
+          if (get_immediate_i_format(ir) == offset)
+            syntax_error_message("variable occurs on the right of its own compound assignment");
+    } else if (or(or(opcode == OP_JAL, opcode == OP_JALR), or(opcode == OP_BRANCH, opcode == OP_SYSTEM)))
+      syntax_error_message("procedure call in a compound assignment");
+
+    a = a + INSTRUCTIONSIZE;
+  }
+
+  // move the code up by one instruction, it has no relative addresses
+
+  a = end;
+
+  while (a > begin) {
+    a = a - INSTRUCTIONSIZE;
+
+    store_instruction(a + INSTRUCTIONSIZE, load_instruction(a));
+  }
+
+  store_instruction(begin, encode_i_format(0, REG_ZR, F3_ADDI, REG_X, OP_IMM));
+
+  ic_addi = ic_addi + 1;
+
+  // the store is overwritten
+  ic_store = ic_store - 1;
+
+  code_size = end + INSTRUCTIONSIZE;
+
+  emit_load(REG_X, base, offset);
+
+  if (compound_assignment == ADD)
+    emit_add(REG_X, REG_X, value);
+  else if (compound_assignment == SUB)
+    emit_sub(REG_X, REG_X, value);
+  else
+    // there is no exclusive or in RISC-U
+    emit_divu(REG_X, value, REG_ZR);
+
+  emit_store(base, offset, REG_X);
+
+  number_of_compound_assignments = number_of_compound_assignments + 1;
+
+  compound_assignment = 0;
+}
+
+void put_unconstant(uint64_t reg, uint64_t immediate, uint64_t upper) {
+  // subtract what lui (upper) or addi added: the most negative
+  // immediate cannot be negated and takes two instructions
+
+  if (upper) {
+    if (immediate == -two_to_the_power_of(19)) {
+      put_lui(reg, two_to_the_power_of(19) - 1);
+      put_lui(reg, 1);
+    } else
+      put_lui(reg, -immediate);
+  } else if (immediate == -two_to_the_power_of(11)) {
+    put_addi(reg, REG_ZR, two_to_the_power_of(11) - 1);
+    put_addi(reg, REG_ZR, 1);
+  } else
+    put_addi(reg, REG_ZR, -immediate);
+}
+
+void put_unsource(uint64_t reg) {
+  // the inverse of put_source: reg, which holds what the decoded
+  // source instruction computes from its sources, becomes zero
+
+  if (is == LUI)
+    put_unconstant(reg, imm, 1);
+  else if (is == ADDI) {
+    put_sub(reg, REG_ZR, rs1);
+    put_unconstant(reg, imm, 0);
+  } else if (is == ADD) {
+    put_sub(reg, REG_ZR, rs1);
+    put_sub(reg, REG_ZR, rs2);
+  } else if (is == SUB)
+    put_sub(reg, rs2, rs1);
+  else
+    // mul, divu, remu, sltu flip the bits of reg, twice is the identity
+    put_op(is, reg, rs1, rs2);
+}
+
+void put_inverse(uint64_t i) {
+  uint64_t k;
+
+  // the inverse of put_body for the straight-line code of an expression:
+  // the inverses of its instructions in reverse order, pops for pushes
+
+  decode_source(i);
+
+  k = *(kind + i);
+
+  if (k == TK_COPY)
+    put_instruction(ir);
+  else if (k == TK_INPLACE) {
+    if (is == ADDI)
+      put_unconstant(rd, imm, 0);
+    else if (is == ADD) {
+      if (rd == rs1)
+        put_sub(rd, REG_ZR, rs2);
+      else
+        put_sub(rd, REG_ZR, rs1);
+    } else
+      put_add(rd, rs2, REG_ZR);
+  } else if (k == TK_PUSHOP) {
+    put_unsource(rd);
+    put_pop(rd);
+  } else if (k == TK_SCRATCH) {
+    put_addi(REG_HP, REG_ZR, -WORDSIZE);
+    put_ld(rd, REG_HP, 0);
+    put_ld(REG_X, REG_HP, 0);
+    put_unsource(REG_X);
+  } else if (k == TK_LOAD) {
+    put_ld(REG_X, rs1, imm);
+    put_sub(rd, REG_ZR, REG_X);
+    put_ld(REG_X, rs1, imm);
+    put_pop(rd);
+  } else if (k == TK_LOADSAME) {
+    put_addi(REG_HP, REG_ZR, -WORDSIZE);
+    put_ld(rd, REG_HP, 0);
+    put_ld(REG_Y, REG_HP, 0);
+    put_ld(REG_X, rs1, imm);
+    put_sub(REG_Y, REG_ZR, REG_X);
+    put_ld(REG_X, rs1, imm);
+  } else
+    translation_error(i, "compound assignment that is not straight-line code");
+
+  if (dry_run == 0)
+    if (and(k != TK_COPY, k != TK_INPLACE))
+      // a push undone
+      number_of_history_slots = number_of_history_slots - 1;
+}
+
+void put_update(uint64_t i) {
+  uint64_t base;
+  uint64_t offset;
+  uint64_t b;
+
+  // compute, update, uncompute: the expression has been translated,
+  // its value is in a register; add it to, subtract it from, or flip
+  // by it the bits of the memory word, through the scratch register;
+  // then undo the translation of the expression, which restores all
+  // registers and frees all history that it pushed
+
+  decode_source(i);
+
+  base   = rs1;
+  offset = imm;
+
+  decode_source(i + 1);
+
+  put_ld(REG_X, base, offset);
+
+  if (is == ADD)
+    put_add(REG_X, rs2, REG_ZR);
+  else if (is == SUB)
+    put_sub(REG_X, REG_ZR, rs2);
+  else
+    // reg ^= value * 1
+    put_op(MUL, REG_X, rs1, REG_ONE);
+
+  put_ld(REG_X, base, offset);
+
+  b = *(begin_of + i);
+
+  while (i > b + 1) {
+    i = i - 1;
+
+    put_inverse(i);
+  }
+}
+
+// -----------------------------------------------------------------
 // -------------------------- TRANSLATOR ---------------------------
 // -----------------------------------------------------------------
 
@@ -642,7 +960,24 @@ void classify_source(uint64_t i) {
   *(target_of + i)   = NONE;
   *(origin_kind + i) = ORIGIN_NONE;
 
-  if (is == LUI) {
+  target = 0;
+
+  if (is == STORE) {
+    if (rs2 == REG_X)
+      target = 1;
+  } else if (and(and(is != BEQ, is != JAL), and(is != JALR, is != ECALL)))
+    if (rd == REG_X)
+      target = 1;
+
+  if (target) {
+    // the markers of a compound assignment, checked in analyze_source
+    if (is == ADDI)
+      *(kind + i) = TK_BEGIN;
+    else if (is == LOAD)
+      *(kind + i) = TK_UPDATE;
+    else
+      *(kind + i) = TK_NOTHING;
+  } else if (is == LUI) {
     if (is_reserved_register(rd))
       translation_error(i, "reserved register");
 
@@ -791,6 +1126,67 @@ void analyze_source() {
     i = i + 1;
   }
 
+  // a compound assignment is a begin, straight-line code, and an update of three instructions
+  begin_of = zmalloc(n * sizeof(uint64_t));
+
+  t = NONE;
+  i = 0;
+
+  while (i < n) {
+    k = *(kind + i);
+
+    if (k == TK_BEGIN) {
+      decode_source(i);
+
+      if (or(t != NONE, or(rs1 != REG_ZR, imm != 0)))
+        translation_error(i, "unexpected begin of a compound assignment");
+
+      t = i;
+    } else if (k == TK_UPDATE) {
+      if (or(t == NONE, i + 2 >= n))
+        translation_error(i, "update without a compound assignment");
+
+      decode_source(i);
+
+      o = rs1;
+      k = imm;
+
+      decode_source(i + 1);
+
+      if (or(*(kind + i + 1) != TK_NOTHING, and(is != ADD, and(is != SUB, is != DIVU))))
+        translation_error(i + 1, "unexpected update of a compound assignment");
+
+      if (is == DIVU) {
+        if (or(rs2 != REG_ZR, is_reserved_register(rs1)))
+          translation_error(i + 1, "unexpected update of a compound assignment");
+      } else if (or(rs1 != REG_X, is_reserved_register(rs2)))
+        translation_error(i + 1, "unexpected update of a compound assignment");
+
+      decode_source(i + 2);
+
+      if (or(is != STORE, or(rs1 != o, imm != k)))
+        translation_error(i + 2, "unexpected update of a compound assignment");
+
+      if (is_reserved_register(o))
+        translation_error(i, "reserved register");
+
+      *(begin_of + i) = t;
+
+      t = NONE;
+
+      i = i + 2;
+    } else if (k == TK_NOTHING)
+      translation_error(i, "reserved register");
+    else if (t != NONE)
+      if (and(and(k != TK_COPY, k != TK_INPLACE), and(and(k != TK_PUSHOP, k != TK_SCRATCH), and(k != TK_LOAD, k != TK_LOADSAME))))
+        translation_error(i, "compound assignment that is not straight-line code");
+
+    i = i + 1;
+  }
+
+  if (t != NONE)
+    translation_error(t, "compound assignment without an update");
+
   // the global pointer is loaded first, with lui and addi into t0, see emit_bootstrapping
   decode_source(0);
 
@@ -852,6 +1248,24 @@ void analyze_source() {
       *(next_origin + i)  = *(first_origin + t);
       *(first_origin + t) = i;
     }
+  }
+
+  // no transfer leads into a compound assignment, only to its begin
+  i = 0;
+
+  while (i < n) {
+    if (*(kind + i) == TK_UPDATE) {
+      t = *(begin_of + i) + 1;
+
+      while (t <= i + 2) {
+        if (or(*(first_origin + t) != NONE, *(is_call_target + t)))
+          translation_error(t, "transfer into a compound assignment");
+
+        t = t + 1;
+      }
+    }
+
+    i = i + 1;
   }
 
   i = 0;
@@ -1287,6 +1701,10 @@ void put_body(uint64_t i) {
     put_jalr(REG_RA, REG_RA, 0);
   else if (k == TK_ECALL)
     put_syscall(i);
+  else if (k == TK_UPDATE)
+    put_update(i);
+
+  // TK_BEGIN and TK_NOTHING are markers without code
 
   if (*(origin_kind + i) == ORIGIN_SYNTHETIC)
     // jump over the come-from of the procedure entry that follows
@@ -3054,6 +3472,10 @@ uint64_t selfie_run_reversibly() {
     WORDSIZEINBITS,
     binary_name,
     sign_extend(exit_code, SYSCALL_BITWIDTH));
+
+  // where a translated program leaves its history pointer says how much history it left
+  printf("%s: register s2, the history pointer of translated code, is 0x%lX\n", selfie_name,
+    *(get_regs(current_context) + REG_HP));
 
   if (backward) {
     if (get_exception(current_context) == EXCEPTION_NOEXCEPTION) {
