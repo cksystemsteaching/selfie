@@ -50,3 +50,12 @@ cellfie-product.txt
 # what make layouts writes
 examples/symbolic/*.rle
 examples/symbolic/*.cells
+selfie-riscr.h
+riscr-compound-test
+riscr-compound-test.txt
+tests/riscr-compound-base.c
+*.state
+bitr-backward.txt
+riscr-bitlength-test
+riscr-bitlength-test.txt
+tests/riscr-bitlength-*.txt

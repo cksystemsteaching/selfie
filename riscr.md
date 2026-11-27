@@ -10,7 +10,7 @@ This document provides an overview of the RISC-R instruction set. RISC-R is a re
 
 A RISC-R machine has the state of a RISC-U machine, a 64-bit program counter `pc`, 32 general-purpose 64-bit registers, 4GB of byte-addressed memory, and a program break, plus one tape of 64-bit words per open file, with a head per tape. All registers, including `ra`, are zero when a program starts, except `sp`, which the boot loader points at the arguments on the stack, and only the tapes of standard input, output, and error exist, all empty. Register `zero` always contains the value 0; writes to `zero` are ignored, which makes instructions with `rd` equal to `zero` effective no-ops in both directions. The code segment is read-only, which is what makes the step function a bijection on the remaining state once the program is fixed.
 
-Executing backward, riscr fetches the instruction at `pc - 4`, applies its inverse, and leaves `pc` at that instruction. Riscr runs a RISC-R binary forward with `-m`, and with `-rev` forward and then backward: after the program exits, riscr executes as many instructions backward as it executed forward, except the final `exit`, and checks that the initial state (`pc`, registers, program break, every mapped page, tape heads) is restored bit for bit, exiting with code 14 if it is not. The `tests/riscr-test.c` harness runs hand-written RISC-R code through this with `make rev`. Riscr also translates RISC-U binaries into RISC-R binaries with `-t`, see the Bennett translation below and `make bennett`.
+Executing backward, riscr fetches the instruction at `pc - 4`, applies its inverse, and leaves `pc` at that instruction. Riscr runs a RISC-R binary forward with `-m`, and with `-rev` forward and then backward: after the program exits, riscr executes as many instructions backward as it executed forward, except the final `exit`, and checks that the initial state (`pc`, registers, program break, every mapped page, tape heads) is restored bit for bit, exiting with code 14 if it is not. The `tests/riscr-test.c` harness runs hand-written RISC-R code through this with `make rev`. Riscr also translates RISC-U binaries into RISC-R binaries with `-t`, see the Bennett translation below and `make bennett`, and compiles C\* with compound assignments that translate without history, see Garbage-Free Assignments.
 
 ## Instructions
 
@@ -136,7 +136,60 @@ Violating rules 1 to 4, or calling `brk` with nonzero `a0`, throws an irreversib
 
 A come-from `beq f,one` is false when fallen into, because `f` is at most 0 there, and true when arrived at, because the origin set `f` to 1; the push at the join records which path arrived, as one of `m + 1` distinct values for `m` origins, and zeroes `f`. The exchange after a call does not restore `ra`: the word below `hp` is the callee's last push, or the saved `ra` only if the callee pushed nothing. It moves that word into `ra`, which starc's code never reads after a call (the epilogue reloads `ra` from the stack), and frees the slot, so a call costs no history in the end. The return of a procedure is its first `jalr`; `exit` has none and never returns, so the come-from emitted for it is never reached. Backward, the pop restores `f` and the come-from, executed backward, jumps onto its origin exactly if `f` is 1. Branches whose come-from is out of the 4KB reach of `beq` after translation go through a local island holding a `jal zero` to an island in front of the target, each island hopped over by the fall-through path with an always-taken `beq f,one`; `jal zero` come-froms cannot be fallen into, which is why the islands exist. The translation of selfie is 3.6 instructions per RISC-U instruction and pushes about two thirds of a word per executed RISC-U instruction; selfie compiling itself on riscr in Bennett mode executes 1.39 billion RISC-R instructions and leaves 2GB of history.
 
-**Relays.** A `jal` reaches 1MB. Selfie translated is 640KB of code and never needed more; cellfie translated is 1.4MB. A call or a long transfer whose `jal` would have to reach further goes through a *relay*, a few instructions in a block in the middle of the code, placed after the translation of a return, where nothing falls into it. A far call `jal ra,F` becomes a jump to its relay and the come-from of the jump back; the relay is the come-from of that jump, the call `jal ra,F`, the come-from of `F`'s return, and the jump back. Only `jal zero` pairs go far, which need no link register, so the callee sees an ordinary call from the relay. A far long transfer jumps to its relay, which is the come-from of that jump and the jump on to the island at the target. The jump from the prologue to the trailer is relayed the same way. Cellfie has 397 far calls and jumps of 96,482 RISC-U instructions; one block of relays serves code up to 2MB, and more than that is not implemented. The translation is also padded to a whole number of words now, with an `addi zero,zero,0` that is never reached, since mipster loads code by words.
+**Relays.** A `jal` reaches 1MB. Selfie translated is 640KB of code and never needed more; cellfie translated is 1.5MB. A call or a long transfer whose `jal` would have to reach further goes through a *relay*, a few instructions in a block in the middle of the code, placed after the translation of a return, where nothing falls into it. A far call `jal ra,F` becomes a jump to its relay and the come-from of the jump back; the relay is the come-from of that jump, the call `jal ra,F`, the come-from of `F`'s return, and the jump back. Only `jal zero` pairs go far, which need no link register, so the callee sees an ordinary call from the relay. A far long transfer jumps to its relay, which is the come-from of that jump and the jump on to the island at the target. The jump from the prologue to the trailer is relayed the same way. Cellfie has 466 far calls and jumps of 102,066 RISC-U instructions; one block of relays serves code up to 2MB, and more than that is not implemented. The translation is also padded to a whole number of words now, with an `addi zero,zero,0` that is never reached, since mipster loads code by words.
+
+## Garbage-Free Assignments
+
+The translation pushes what a RISC-U program overwrites because it cannot know that a value is recomputable. For three statements the programmer says so. Riscr compiles C\* plus the compound assignments `x += e`, `x -= e`, and `x ^= e`, with a variable, `*x`, or `*(e)` on the left, and translates them without history (M9 of `projects/reversible.md`). They are C, so gcc compiles the same source. Selfie does not: its scanner and parser are unchanged, and riscr wraps the three procedures that it extends (`find_next_character`, `get_symbol`, `compile_assignment` in `tools/riscr.c`, on `selfie-riscr.h`, which is `selfie.c` with these three renamed, as `selfie-gc.h` is for the garbage collector).
+
+`riscr -c` compiles a compound assignment to the RISC-U code that starc generates for the address, if any, and for `e`, between two markers in `s6`, a register that starc never uses:
+
+```
+addi s6,zero,0          begin
+...                     the code of the address and of e, its value in t
+ld   s6,offset(base)
+add  s6,s6,t            sub for -=, divu s6,t,zero for ^=
+sd   s6,offset(base)
+```
+
+The markers are in the binary, so a RISC-U binary with compound assignments translates from its file like any other. For `+=` and `-=` the code is also correct RISC-U and runs on mipster. RISC-U has no exclusive or, so `^=` is compiled for RISC-R only, and its RISC-U code divides by zero.
+
+`riscr -t` turns a compound assignment into compute, update, uncompute. The code of `e` is translated as always, with its pushes. The update exchanges the memory word with the scratch register, adds the value to it, subtracts the value from it, or flips its bits by the value (`mul s6,t,s4`, with the constant 1 in `s4`), and exchanges it back. Then follows the inverse of the translation of `e`: the inverses of its instructions in reverse order, a pop for every push. After the statement all registers and the history pointer are what they were before it, and the memory word is updated. The statement leaves no history, whatever was in the temporary registers before.
+
+That is only correct if running the code of `e` again would compute the same value, so riscr's compiler refuses, as syntax errors, an `e` that reads the variable assigned to and an `e` that calls a procedure. It cannot see a pointer in `e` that points to the word assigned to: such a statement is still executed reversibly, but its uncompute does not restore the registers and the history. That is the programmer's obligation, as in Janus. The translator checks the shape of what is between the markers, straight-line code without transfers into it, and refuses anything else.
+
+`make garbage-free` runs `tests/riscr-compound-test.c`, eleven compound assignments of all three kinds, to variables, through pointers, and in a loop, which are executed fourteen times: the program exits natively as on riscr, runs back to its initial state, and leaves the history pointer where the same program without the eleven statements leaves it. Written as `x = x + e` and `x = x - e`, the nine additive ones leave 60 words of history, for 785 instead of 849 executed RISC-R instructions: uncomputing costs instructions, not memory. Not there: conditionals without history; procedure calls in `e`; and `^=` in RISC-U. Loops without history are the next section.
+
+## Loops Without History
+
+A translated `while` loop pushes a flag per iteration, because backward execution at the head of the loop must know whether control came from before the loop or from the end of its body. Riscr compiles a loop in which the programmer says how to tell, as in Janus:
+
+```
+from (e1) while (e2) statement
+```
+
+`e1`, the entry test, is true when the loop is entered and false whenever the body has been executed; `e2` is the loop condition. With `from(e)` defined as nothing it is a `while` loop in C, which is how gcc compiles it (`-D'from(e)='`). `from` is no keyword: riscr wraps `compile_statement` and takes the identifier `from` followed by a parenthesis as the loop, and as a variable otherwise.
+
+`riscr -c` compiles it to the RISC-U code of a `while` loop with the code of `e1` before the loop and again at the end of the body, between markers in `s6`: `addi s6,zero,1`, the code of `e1` with its value in `a`, `addi s6,a,2` at the head, the code of `e2`, the branch, the body, `addi s6,zero,3`, the code of `e1` again, `addi s6,a,4`, and the jump back. As RISC-U it is the `while` loop. `riscr -t` translates it to:
+
+```
+      <entry test>           a is true
+head: beq a,zero,back        come-from of back
+      <entry test undone>
+      <exit test>            t
+exit: beq t,zero,out
+      <exit test undone>
+      ...                    the body
+      <entry test>           a is false
+back: beq a,zero,head        always taken
+      sd                     never reached
+out:  beq t,zero,exit        come-from of exit
+      <exit test undone>
+```
+
+Both tests are computed and uncomputed like the expression of a compound assignment, so the loop itself leaves no history; its body leaves what its statements leave, nothing if they are compound assignments. The two branches are ordinary paired branches of RISC-R: the condition of each come-from is the condition of its origin, which is what the rule for `beq` requires. An entry test that is false on entry or true after the body ends in the `sd`, an irreversible store; that the test is right is the programmer's obligation, checked when the program runs. The tests must not call procedures, and the loop must fit the reach of `beq`.
+
+`make bit-length` runs two versions of the loop that counts how often a number can be halved, the number being a byte the program reads. `tests/riscr-bitlength-history-test.c` is `while (x != 0) { x = x / 2; c = c + 1; }`. `tests/riscr-bitlength-test.c` is the same loop with `from (c == 0)` and a body of thirteen compound assignments, which moves the low bit of `x` into a word `s` before it halves `x`: one bit per iteration is all the loop destroys, and `s` is where it goes. Both exit as compiled by gcc and run back. The first leaves 12 words of history per iteration, in 54 RISC-R instructions; the second leaves the history pointer where it is whatever the number of iterations, in 301 instructions per iteration. What that does to model checking is in `projects/reversible.md`.
 
 ## With Dedicated Opcodes
 

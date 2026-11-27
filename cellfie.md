@@ -6,7 +6,7 @@ selfie.cs.uni-salzburg.at
 
 This document specifies cellfie, an instruction-level reversible cellular machine that runs [RISC-R](riscr.md). The tool is `tools/cellfie.c`, the development plan is `projects/reversible.md`. The machine is a grid of cells and one token. A cell holds one RISC-R instruction, one memory word, or a piece of wire. The token carries the program counter and the register file from cell to cell. The rule of the machine is RISC-R applied where the token is, plus the movement of the token, and it is a bijection on all states: running it backward needs no trace. For details on the exact semantics see the `cell_*` procedures and `model_rule` in `tools/cellfie.c`.
 
-This is the state after milestones M6, M7, and M8: all thirteen instructions and the five system calls, wire, routers, memory and tape cells, two hand-laid programs on which the rule is compared with rotor's RISC-R model and with riscr, and a layout compiler from RISC-R binaries, with which selfie-compiled programs are compared the same way. What is missing is in the last section.
+This is the state after milestones M6, M7, M8, M10, M11, and M13: all thirteen instructions and the five system calls, wire, routers, memory and tape cells, two hand-laid programs on which the rule is compared with rotor's RISC-R model and with riscr, a layout compiler from RISC-R binaries, with which selfie-compiled programs are compared the same way, a hybrid simulator that runs all of selfie, construction by flight, and the layout compiler compiling, constructing, and landing in its own layout on cellfie. What is missing is in the last section.
 
 ## Machine State
 

@@ -2,7 +2,7 @@
 
 This document explains the optimizations in RISC-R (`riscr.md`) and cellfie (`cellfie.md`) with one running example and with numbers before and after each step. It is kept up to date: a change that moves one of its numbers changes this document in the same commit, and the last section says how each number is reproduced.
 
-Last updated November 24, 2026, at the commit that runs the layout compiler on cellfie (M11); the layouts are those of the commit that folds the path.
+Last updated November 26, 2026, at the commit that adds garbage-free assignments (M9); the layouts are those of the commit that folds the path.
 
 ## The Running Example
 
@@ -326,7 +326,7 @@ Since then the compiler also constructs what it compiles, where the grid it runs
 - **The heap behind the history.** Selfie's own heap begins after the 3GB region of which 2GB are used. It is a gigabyte of empty strips away.
 - **Hot code and hot data.** Instructions are in the order of their addresses and regions in a guessed order, stack first. Nothing is profiled.
 - **Density.** A strip of words takes 2*h* + 3 rows for one row of words, 39 for selfie, because each strip has its own two combs.
-- **The translation.** For selfie, 3.5 RISC-R instructions and 0.65 words of history per RISC-U instruction, for the running example 3.6 and 0.86: that is what `riscr -t` does to code that starc wrote for an irreversible machine.
+- **The translation.** For selfie, 3.5 RISC-R instructions and 0.65 words of history per RISC-U instruction, for the running example 3.6 and 0.86: that is what `riscr -t` does to code that starc wrote for an irreversible machine. Since M9 a program can say where no history is needed: riscr translates `x += e`, `x -= e`, and `x ^= e` as compute, update, uncompute, see `riscr.md`. In `tests/riscr-compound-test.c`, nine such statements leave no history where `x = x + e` leaves 60 words, for 849 instead of 785 executed instructions. Neither selfie nor the running example uses them, so no number above has moved.
 
 ## How the Numbers Are Reproduced
 
