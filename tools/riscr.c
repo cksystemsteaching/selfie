@@ -87,10 +87,44 @@ char find_next_character();
 void get_symbol();
 void compile_assignment(char* variable);
 
+// A loop without history: from (e1) while (e2) statement, where e1 is
+// true when the loop is entered and false whenever its body has been
+// executed, as in Janus. That tells backward execution at the head of
+// the loop which way control came, so no flag is pushed, and e1 and e2
+// are computed and uncomputed like the expression of a compound
+// assignment. With from(e) defined as nothing it is a while loop in C.
+// The RISC-U code is that of a while loop with the code of e1 before
+// the loop and again at its end, between markers in s6:
+//
+//   addi s6,zero,1         the loop begins
+//   ...                    the code of e1, its value in a
+//   addi s6,a,2            the head of the loop
+//   ...                    the code of e2, its value in t
+//   beq  t,zero,end
+//   ...                    the body
+//   addi s6,zero,3
+//   ...                    the code of e1 again
+//   addi s6,a,4
+//   jal  zero,head
+//
+// see put_loop_head, put_loop_exit, and put_loop_back for the RISC-R code.
+
+uint64_t is_straight_line(uint64_t from, uint64_t to);
+void     compile_from();
+void     compile_statement();
+
 void put_unconstant(uint64_t reg, uint64_t immediate, uint64_t upper);
 void put_unsource(uint64_t reg);
 void put_inverse(uint64_t i);
 void put_update(uint64_t i);
+
+uint64_t is_straight_kind(uint64_t k);
+void     analyze_loops();
+void     put_inverses(uint64_t from, uint64_t to);
+void     put_loop_branch(uint64_t i, uint64_t reg, uint64_t address);
+void     put_loop_head(uint64_t i);
+void     put_loop_exit(uint64_t i);
+void     put_loop_back(uint64_t i);
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
@@ -99,6 +133,7 @@ uint64_t caret_scanned = 0; // 1 if ^ was scanned in front of the current =
 uint64_t compound_assignment = 0; // 0, or ADD, SUB, MUL for the last = scanned being +=, -=, ^=
 
 uint64_t number_of_compound_assignments = 0;
+uint64_t number_of_from_loops           = 0;
 
 // -----------------------------------------------------------------
 // -------------------------- TRANSLATOR ---------------------------
@@ -179,6 +214,12 @@ uint64_t TK_ECALL     = 11; // system call
 uint64_t TK_BEGIN     = 12; // begin of a compound assignment, no code
 uint64_t TK_UPDATE    = 13; // its update and the inverse of its expression
 uint64_t TK_NOTHING   = 14; // the rest of its update, no code
+uint64_t TK_LOOP_BEGIN = 15; // begin of a loop without history, no code
+uint64_t TK_LOOP_HEAD  = 16; // its head: the come-from of its end, and the entry test uncomputed
+uint64_t TK_LOOP_AGAIN = 17; // the entry test is computed again, no code
+uint64_t TK_LOOP_END   = 18; // and has been, no code
+uint64_t TK_LOOP_EXIT  = 19; // the branch out of the loop, and the exit test uncomputed
+uint64_t TK_LOOP_BACK  = 20; // the branch back to the head, and the come-from of the branch out
 
 uint64_t ORIGIN_NONE      = 0;
 uint64_t ORIGIN_BEQ       = 1;
@@ -211,6 +252,12 @@ uint64_t* chain_index  = (uint64_t*) 0; // per origin: position in its target's 
 uint64_t* is_long      = (uint64_t*) 0; // per origin: 1 if it needs a jal zero to reach its target
 
 uint64_t* begin_of = (uint64_t*) 0; // per update: source index of the begin of its compound assignment
+
+// per head, exit, and back of a loop without history: the source indices of its parts
+uint64_t* loop_begin = (uint64_t*) 0;
+uint64_t* loop_head  = (uint64_t*) 0;
+uint64_t* loop_exit  = (uint64_t*) 0;
+uint64_t* loop_back  = (uint64_t*) 0;
 
 uint64_t* is_call_target = (uint64_t*) 0; // per source instruction: 1 if some jal ra targets it
 uint64_t* return_of      = (uint64_t*) 0; // per call target: source index of its return jalr
@@ -633,6 +680,127 @@ void compile_assignment(char* variable) {
   compound_assignment = 0;
 }
 
+uint64_t is_straight_line(uint64_t from, uint64_t to) {
+  uint64_t opcode;
+
+  // code that the translator can undo: no transfer, system call, or store
+
+  while (from < to) {
+    opcode = get_opcode(load_instruction(from));
+
+    if (or(or(opcode == OP_JAL, opcode == OP_JALR), or(or(opcode == OP_BRANCH, opcode == OP_SYSTEM), opcode == OP_STORE)))
+      return 0;
+
+    from = from + INSTRUCTIONSIZE;
+  }
+
+  return 1;
+}
+
+void compile_from() {
+  uint64_t entry_test;
+  uint64_t entry_register;
+  uint64_t head;
+  uint64_t exit_test;
+  uint64_t branch_forward_to_end;
+  uint64_t a;
+
+  // "from" has been scanned: "(" expression ")" "while" "(" expression ")" statement
+
+  get_expected_symbol(SYM_LPARENTHESIS);
+
+  emit_addi(REG_X, REG_ZR, 1);
+
+  entry_test = code_size;
+
+  compile_expression();
+
+  entry_register = current_temporary();
+
+  tfree(1);
+
+  if (not(is_straight_line(entry_test, code_size)))
+    syntax_error_message("procedure call in the entry test of a from loop");
+
+  get_expected_symbol(SYM_RPARENTHESIS);
+
+  head = code_size;
+
+  emit_addi(REG_X, entry_register, 2);
+
+  get_expected_symbol(SYM_WHILE);
+  get_expected_symbol(SYM_LPARENTHESIS);
+
+  exit_test = code_size;
+
+  compile_expression();
+
+  if (not(is_straight_line(exit_test, code_size)))
+    syntax_error_message("procedure call in the exit test of a from loop");
+
+  // if the exit test is false the loop ends
+
+  branch_forward_to_end = code_size;
+
+  emit_beq(current_temporary(), REG_ZR, 0);
+
+  tfree(1);
+
+  get_expected_symbol(SYM_RPARENTHESIS);
+
+  if (symbol == SYM_LBRACE) {
+    get_symbol();
+
+    while (is_neither_rbrace_nor_eof())
+      compile_statement();
+
+    get_required_symbol(SYM_RBRACE);
+  } else
+    compile_statement();
+
+  // the entry test again, by its code: it has no relative addresses
+
+  emit_addi(REG_X, REG_ZR, 3);
+
+  a = entry_test;
+
+  while (a < head) {
+    emit_instruction(load_instruction(a));
+
+    a = a + INSTRUCTIONSIZE;
+  }
+
+  emit_addi(REG_X, entry_register, 4);
+
+  emit_jal(REG_ZR, head - code_size);
+
+  fixup_BFormat(branch_forward_to_end);
+
+  number_of_from_loops = number_of_from_loops + 1;
+}
+
+void compile_statement() {
+  // selfie's statements, and the loop without history
+
+  if (symbol == SYM_IDENTIFIER)
+    if (string_compare(identifier, "from")) {
+      get_symbol();
+
+      if (symbol == SYM_LPARENTHESIS)
+        compile_from();
+      else {
+        // a variable of that name
+        compile_assignment("from");
+
+        get_expected_symbol(SYM_SEMICOLON);
+      }
+
+      return;
+    }
+
+  selfie_compile_statement();
+}
+
 void put_unconstant(uint64_t reg, uint64_t immediate, uint64_t upper) {
   // subtract what lui (upper) or addi added: the most negative
   // immediate cannot be negated and takes two instructions
@@ -718,6 +886,255 @@ void put_inverse(uint64_t i) {
     if (and(k != TK_COPY, k != TK_INPLACE))
       // a push undone
       number_of_history_slots = number_of_history_slots - 1;
+}
+
+uint64_t is_straight_kind(uint64_t k) {
+  // the kinds of translated instructions that put_inverse undoes
+
+  if (or(k == TK_COPY, k == TK_INPLACE))
+    return 1;
+  else if (or(k == TK_PUSHOP, k == TK_SCRATCH))
+    return 1;
+  else if (or(k == TK_LOAD, k == TK_LOADSAME))
+    return 1;
+  else
+    return 0;
+}
+
+void analyze_loops() {
+  uint64_t n;
+  uint64_t* begins;
+  uint64_t open;
+  uint64_t b;
+  uint64_t h;
+  uint64_t e;
+  uint64_t x;
+  uint64_t j;
+  uint64_t a;
+  uint64_t i;
+
+  // a loop without history is a begin, its entry test, a head, its exit
+  // test, a branch out, a body, the entry test again between two more
+  // markers, and a jump back to the head, see compile_from; the branch
+  // and the jump are no origins: nothing is pushed where they lead
+
+  n = number_of_source_instructions;
+
+  loop_begin = zmalloc(n * sizeof(uint64_t));
+  loop_head  = zmalloc(n * sizeof(uint64_t));
+  loop_exit  = zmalloc(n * sizeof(uint64_t));
+  loop_back  = zmalloc(n * sizeof(uint64_t));
+
+  begins = zmalloc(n * sizeof(uint64_t));
+
+  open = 0;
+
+  h = 0;
+
+  while (h < n) {
+    if (*(kind + h) == TK_LOOP_BEGIN) {
+      *(begins + open) = h;
+
+      open = open + 1;
+    } else if (*(kind + h) == TK_LOOP_HEAD) {
+      if (open == 0)
+        translation_error(h, "head of a loop without a begin");
+
+      open = open - 1;
+
+      b = *(begins + open);
+
+      i = b + 1;
+
+      while (i < h) {
+        if (not(is_straight_kind(*(kind + i))))
+          translation_error(i, "entry test of a loop that is not straight-line code");
+
+        i = i + 1;
+      }
+
+      // the exit test ends in the branch out of the loop
+
+      x = NONE;
+
+      e = h + 1;
+
+      while (e < n) {
+        if (is_straight_kind(*(kind + e)))
+          e = e + 1;
+        else if (*(kind + e) == TK_BEQ) {
+          decode_source(e);
+
+          if (rs2 != REG_ZR)
+            translation_error(e, "unexpected branch out of a loop");
+
+          x = *(target_of + e);
+
+          // leaves the search
+          i = e;
+          e = n;
+        } else
+          translation_error(e, "exit test of a loop that is not straight-line code");
+      }
+
+      if (x == NONE)
+        translation_error(h, "loop without a branch out");
+
+      e = i;
+
+      if (x < h + 4)
+        translation_error(e, "unexpected branch out of a loop");
+
+      j = x - 1;
+
+      if (or(*(kind + j) != TK_JALZ, *(target_of + j) != h))
+        translation_error(j, "loop without a jump back to its head");
+
+      if (*(kind + j - 1) != TK_LOOP_END)
+        translation_error(j - 1, "loop without its entry test at its end");
+
+      // the entry test again, instruction by instruction
+
+      a = j - 1 - (h - b);
+
+      if (*(kind + a) != TK_LOOP_AGAIN)
+        translation_error(a, "loop without its entry test at its end");
+
+      i = 1;
+
+      while (b + i < h) {
+        if (*(source_code + b + i) != *(source_code + a + i))
+          translation_error(a + i, "entry test of a loop differs at its end");
+
+        i = i + 1;
+      }
+
+      decode_source(j - 1);
+
+      a = rs1;
+
+      decode_source(h);
+
+      if (or(rs1 != a, is_reserved_register(rs1)))
+        translation_error(h, "unexpected register for the entry test of a loop");
+
+      *(kind + e) = TK_LOOP_EXIT;
+      *(kind + j) = TK_LOOP_BACK;
+
+      *(origin_kind + e) = ORIGIN_NONE;
+      *(origin_kind + j) = ORIGIN_NONE;
+
+      *(loop_begin + h) = b;
+      *(loop_exit + h)  = e;
+      *(loop_back + h)  = j;
+
+      *(loop_head + e) = h;
+      *(loop_back + e) = j;
+
+      *(loop_head + j) = h;
+      *(loop_exit + j) = e;
+    }
+
+    h = h + 1;
+  }
+
+  if (open != 0)
+    translation_error(*begins, "loop without a head");
+}
+
+void put_inverses(uint64_t from, uint64_t to) {
+  // undo the translation of the source instructions from to to, exclusively
+
+  while (to > from + 1) {
+    to = to - 1;
+
+    put_inverse(to);
+  }
+}
+
+void put_loop_branch(uint64_t i, uint64_t reg, uint64_t address) {
+  // beq reg,zero to an address in the same loop
+
+  if (dry_run == 0)
+    if (not(is_signed_integer(address - translated_pc, 13)))
+      translation_error(i, "loop without history is too long for a branch");
+
+  put_beq(reg, REG_ZR, address - translated_pc);
+}
+
+void put_loop_head(uint64_t i) {
+  uint64_t a;
+
+  // The entry test has been computed into a register a, by the code in
+  // front of the loop or by the code at its end. It is true in front of
+  // the loop and false at its end, which is what a come-from needs:
+  //
+  //         <entry test>           a is true
+  //   head: beq a,zero,back        come-from of back, false when fallen into
+  //         <entry test undone>    on both ways, a is zero again
+  //         <exit test>            t
+  //   exit: beq t,zero,out         leaves the loop if the exit test is false
+  //         <exit test undone>
+  //         ...                    the body
+  //         <entry test>           a is false
+  //   back: beq a,zero,head        always taken
+  //         sd                     not reached: the entry test was true
+  //   out:  beq t,zero,exit        come-from of exit
+  //         <exit test undone>
+  //
+  // Backward, the come-from at the head leads to the end of the loop if
+  // the entry test is false, and out of the loop at its top if it is
+  // true. Nothing is pushed that is not popped again.
+
+  decode_source(i);
+
+  a = rs1;
+
+  put_loop_branch(i, a, *(body_pc + *(loop_back + i)));
+
+  put_inverses(*(loop_begin + i), i);
+}
+
+void put_loop_exit(uint64_t i) {
+  uint64_t t;
+
+  decode_source(i);
+
+  t = rs1;
+
+  // the come-from is the third instruction at the end of the loop
+  put_loop_branch(i, t, *(body_pc + *(loop_back + i)) + 2 * INSTRUCTIONSIZE);
+
+  put_inverses(*(loop_head + i), i);
+}
+
+void put_loop_back(uint64_t i) {
+  uint64_t a;
+  uint64_t t;
+
+  decode_source(i - 1);
+
+  a = rs1;
+
+  put_loop_branch(i, a, *(body_pc + *(loop_head + i)));
+
+  // a store is irreversible: riscr and rotor's model stop here
+  if (dry_run)
+    put_instruction(0);
+  else
+    put_instruction(encode_s_format(0, REG_ZR, REG_ZR, F3_SD, OP_STORE));
+
+  decode_source(*(loop_exit + i));
+
+  t = rs1;
+
+  put_loop_branch(i, t, *(body_pc + *(loop_exit + i)));
+
+  put_inverses(*(loop_head + i), *(loop_exit + i));
+
+  if (dry_run == 0)
+    printf("%s: loop without history from 0x%lX to 0x%lX\n", selfie_name,
+      *(body_pc + *(loop_begin + *(loop_head + i))), translated_pc);
 }
 
 void put_update(uint64_t i) {
@@ -970,9 +1387,20 @@ void classify_source(uint64_t i) {
       target = 1;
 
   if (target) {
-    // the markers of a compound assignment, checked in analyze_source
-    if (is == ADDI)
-      *(kind + i) = TK_BEGIN;
+    // the markers of a compound assignment and of a loop without
+    // history, checked in analyze_source and analyze_loops
+    if (is == ADDI) {
+      if (imm == 1)
+        *(kind + i) = TK_LOOP_BEGIN;
+      else if (imm == 2)
+        *(kind + i) = TK_LOOP_HEAD;
+      else if (imm == 3)
+        *(kind + i) = TK_LOOP_AGAIN;
+      else if (imm == 4)
+        *(kind + i) = TK_LOOP_END;
+      else
+        *(kind + i) = TK_BEGIN;
+    }
     else if (is == LOAD)
       *(kind + i) = TK_UPDATE;
     else
@@ -1178,7 +1606,7 @@ void analyze_source() {
     } else if (k == TK_NOTHING)
       translation_error(i, "reserved register");
     else if (t != NONE)
-      if (and(and(k != TK_COPY, k != TK_INPLACE), and(and(k != TK_PUSHOP, k != TK_SCRATCH), and(k != TK_LOAD, k != TK_LOADSAME))))
+      if (not(is_straight_kind(k)))
         translation_error(i, "compound assignment that is not straight-line code");
 
     i = i + 1;
@@ -1186,6 +1614,8 @@ void analyze_source() {
 
   if (t != NONE)
     translation_error(t, "compound assignment without an update");
+
+  analyze_loops();
 
   // the global pointer is loaded first, with lui and addi into t0, see emit_bootstrapping
   decode_source(0);
@@ -1703,8 +2133,14 @@ void put_body(uint64_t i) {
     put_syscall(i);
   else if (k == TK_UPDATE)
     put_update(i);
+  else if (k == TK_LOOP_HEAD)
+    put_loop_head(i);
+  else if (k == TK_LOOP_EXIT)
+    put_loop_exit(i);
+  else if (k == TK_LOOP_BACK)
+    put_loop_back(i);
 
-  // TK_BEGIN and TK_NOTHING are markers without code
+  // all other new kinds are markers without code
 
   if (*(origin_kind + i) == ORIGIN_SYNTHETIC)
     // jump over the come-from of the procedure entry that follows

@@ -350,7 +350,8 @@ selfie-riscr.h: selfie.c
 	sed -e 's/main(/selfie_main(/' \
 	    -e 's/^char find_next_character() {/char selfie_find_next_character() {/' \
 	    -e 's/^void get_symbol() {/void selfie_get_symbol() {/' \
-	    -e 's/^void compile_assignment(char\* variable) {/void selfie_compile_assignment(char* variable) {/' selfie.c > selfie-riscr.h
+	    -e 's/^void compile_assignment(char\* variable) {/void selfie_compile_assignment(char* variable) {/' \
+	    -e 's/^void compile_statement() {/void selfie_compile_statement() {/' selfie.c > selfie-riscr.h
 
 # Compile riscr.c with selfie-riscr.h as library into riscr executable
 riscr: tools/riscr.c selfie-riscr.h
