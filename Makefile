@@ -467,6 +467,41 @@ backward: bitr selfie riscr rotor
 	grep -q " 1 paths forked" bitr-backward.txt || exit 1; \
 	echo "$@: from the bad state after $$n instructions back to the initial state, with 4 of $$w words of history free"
 
+# A loop without history (M15 of projects/reversible.md, the bit-length loop): the loop with compound
+# assignments and from, and the loop as C* has it, each read a byte with 8 bits and with 1 bit, exit as
+# compiled by gcc, for which from(e) is nothing, and run back; the first leaves the history pointer where it
+# is whatever the number of iterations, the second does not; riscr on mipster translates the first to the
+# same binary; and from the exit of the first after 1 iteration rotor's inverse model runs back to its
+# initial state with s free, the word that holds the bits the loop took from x
+bit-length: bitr selfie riscr rotor selfie-riscr.h
+	printf '\265' > tests/riscr-bitlength-8.txt
+	printf '\1' > tests/riscr-bitlength-1.txt
+	for t in tests/riscr-bitlength-test tests/riscr-bitlength-history-test; do \
+	  $(CC) -w -D'uint64_t=unsigned long' -D'from(e)=' $$t.c -o riscr-bitlength-test || exit 1; \
+	  for i in 8 1; do \
+	    ./riscr-bitlength-test < tests/riscr-bitlength-$$i.txt; e=$$?; \
+	    ./riscr -c $$t.c -history 1 -t $$t.r -rev 1 < tests/riscr-bitlength-$$i.txt > riscr-bitlength-test.txt; \
+	    [ $$e = $$i ] && grep -q "with exit code $$e$$" riscr-bitlength-test.txt && \
+	    grep -q "initial state restored bit for bit" riscr-bitlength-test.txt || \
+	      { echo "$$t: wrong exit code or not reversed for $$i bits"; exit 1; }; \
+	    eval h$$i=$$(sed -n 's/.*the history pointer of translated code, is \(.*\)/\1/p' riscr-bitlength-test.txt); \
+	  done; \
+	  echo "$$t: history pointer at $$h8 after 8 iterations and at $$h1 after 1"; \
+	  if [ $$t = tests/riscr-bitlength-test ]; then [ "$$h8" = "$$h1" ] || exit 1; else [ "$$h8" != "$$h1" ] || exit 1; fi; \
+	done
+	./riscr -c tests/riscr-bitlength-test.c -history 1 -t tests/riscr-bitlength-test.r | grep "loop without history"
+	./selfie -c selfie-riscr.h tools/riscr.c -m 64 -c tests/riscr-bitlength-test.c -history 1 -t tests/riscr-bitlength-file.r > /dev/null
+	cmp tests/riscr-bitlength-test.r tests/riscr-bitlength-file.r
+	t=tests/riscr-bitlength-test; \
+	o="-heapallowance 2097152 -stackallowance 65536"; \
+	./rotor -l $$t.r - 1 $$o > /dev/null && \
+	./rotor -l $$t.r - 1 $$o -inverse > /dev/null || exit 1; \
+	n=$$(./bitr $$t-rotorized-riscr.btor2 -l $$t.r -i tests/riscr-bitlength-1.txt -dump $$t.state | sed -n 's/.*: bad core-0-bad-exit-code after \([0-9]*\) instructions/\1/p'); \
+	[ -n "$$n" ] && grep -q "^core-0-zeroed-data-segment 3 1$$" $$t.state || { echo "$$t: no exit, or s is not 1"; exit 1; }; \
+	./bitr $$t-rotorized-riscr-inverse.btor2 -l $$t.r -state $$t.state -free core-0-zeroed-data-segment 3 1 -enumerate core-0-pc -bmc 5000 | tee riscr-bitlength-test.txt; \
+	grep -q "initial state reached after $$((n - 1)) instructions" riscr-bitlength-test.txt || exit 1; \
+	echo "$@: the loop leaves no history, and runs back from its exit after $$n instructions with s free"
+
 # Check bitr's bounded model checker (M5 of projects/reversible.md): in rotor's model of every symbolic example,
 # compiled to RISC-U and translated to RISC-R, bitr finds an input that leads to a non-zero exit code, a division
 # by zero, or an invalid memory access, and the emulator, run on that input, does the same after the same number
@@ -861,7 +896,7 @@ trust: selfie selfie.h
 	rm -f examples/trusting-trust/honest-stamp.c examples/trusting-trust/honest-victim.c examples/trusting-trust/trojaned-victim.c examples/trusting-trust/suspect-stamp.c
 
 # Consider these targets as targets, not files
-.PHONY: rev riscr-rev bennett trust riscr-model sim bmc cdcl identity cells product tapes layouts hybrid construct selfie-on-cellfie cellfie-on-cellfie reversible garbage-free backward
+.PHONY: rev riscr-rev bennett trust riscr-model sim bmc cdcl identity cells product tapes layouts hybrid construct selfie-on-cellfie cellfie-on-cellfie reversible garbage-free backward bit-length
 
 # Run the checks of the RISC-R branch that are not too slow, one after another and after rotor-btor2:
 # they share generated files, the binaries, models, and layouts of the symbolic examples and of the
@@ -873,6 +908,7 @@ reversible: rotor-btor2 selfie selfie.h selfie-riscr.h riscr riscr.h riscr-test 
 	$(MAKE) sim
 	$(MAKE) bmc
 	$(MAKE) backward
+	$(MAKE) bit-length
 	$(MAKE) cdcl
 	$(MAKE) identity
 	$(MAKE) cells
@@ -1000,6 +1036,7 @@ clean:
 	rm -f tools/*.btor2
 	rm -f tests/*.m tests/riscr-test.txt
 	rm -f selfie-riscr.h riscr-compound-test riscr-compound-test.txt tests/riscr-compound-*.r tests/riscr-compound-base.c
+	rm -f riscr-bitlength-test riscr-bitlength-test.txt tests/riscr-bitlength-*.r tests/riscr-bitlength-*.txt tests/riscr-bitlength-*.state tests/riscr-bitlength-*.btor2
 	rm -f examples/trusting-trust/honest-stamp.c examples/trusting-trust/honest-victim.c examples/trusting-trust/trojaned-victim.c examples/trusting-trust/suspect-stamp.c
 	rm -f selfie selfie-32 selfie.h selfie-gc.h selfie-gc-nomain.h selfie.exe
 	rm -f babysat buzzr monster beator beator-32 rotor rotor-32 riscr riscr.h riscr-test bitr cellfie cellfie-test

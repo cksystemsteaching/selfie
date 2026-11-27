@@ -158,7 +158,38 @@ The markers are in the binary, so a RISC-U binary with compound assignments tran
 
 That is only correct if running the code of `e` again would compute the same value, so riscr's compiler refuses, as syntax errors, an `e` that reads the variable assigned to and an `e` that calls a procedure. It cannot see a pointer in `e` that points to the word assigned to: such a statement is still executed reversibly, but its uncompute does not restore the registers and the history. That is the programmer's obligation, as in Janus. The translator checks the shape of what is between the markers, straight-line code without transfers into it, and refuses anything else.
 
-`make garbage-free` runs `tests/riscr-compound-test.c`, eleven compound assignments of all three kinds, to variables, through pointers, and in a loop, which are executed fourteen times: the program exits natively as on riscr, runs back to its initial state, and leaves the history pointer where the same program without the eleven statements leaves it. Written as `x = x + e` and `x = x - e`, the nine additive ones leave 60 words of history, for 785 instead of 849 executed RISC-R instructions: uncomputing costs instructions, not memory. Not there: conditionals and loops without history, which need an exit test that equals the entry test (M16), so a loop still pushes a flag per iteration; procedure calls in `e`; and `^=` in RISC-U.
+`make garbage-free` runs `tests/riscr-compound-test.c`, eleven compound assignments of all three kinds, to variables, through pointers, and in a loop, which are executed fourteen times: the program exits natively as on riscr, runs back to its initial state, and leaves the history pointer where the same program without the eleven statements leaves it. Written as `x = x + e` and `x = x - e`, the nine additive ones leave 60 words of history, for 785 instead of 849 executed RISC-R instructions: uncomputing costs instructions, not memory. Not there: conditionals without history; procedure calls in `e`; and `^=` in RISC-U. Loops without history are the next section.
+
+## Loops Without History
+
+A translated `while` loop pushes a flag per iteration, because backward execution at the head of the loop must know whether control came from before the loop or from the end of its body. Riscr compiles a loop in which the programmer says how to tell, as in Janus:
+
+```
+from (e1) while (e2) statement
+```
+
+`e1`, the entry test, is true when the loop is entered and false whenever the body has been executed; `e2` is the loop condition. With `from(e)` defined as nothing it is a `while` loop in C, which is how gcc compiles it (`-D'from(e)='`). `from` is no keyword: riscr wraps `compile_statement` and takes the identifier `from` followed by a parenthesis as the loop, and as a variable otherwise.
+
+`riscr -c` compiles it to the RISC-U code of a `while` loop with the code of `e1` before the loop and again at the end of the body, between markers in `s6`: `addi s6,zero,1`, the code of `e1` with its value in `a`, `addi s6,a,2` at the head, the code of `e2`, the branch, the body, `addi s6,zero,3`, the code of `e1` again, `addi s6,a,4`, and the jump back. As RISC-U it is the `while` loop. `riscr -t` translates it to:
+
+```
+      <entry test>           a is true
+head: beq a,zero,back        come-from of back
+      <entry test undone>
+      <exit test>            t
+exit: beq t,zero,out
+      <exit test undone>
+      ...                    the body
+      <entry test>           a is false
+back: beq a,zero,head        always taken
+      sd                     never reached
+out:  beq t,zero,exit        come-from of exit
+      <exit test undone>
+```
+
+Both tests are computed and uncomputed like the expression of a compound assignment, so the loop itself leaves no history; its body leaves what its statements leave, nothing if they are compound assignments. The two branches are ordinary paired branches of RISC-R: the condition of each come-from is the condition of its origin, which is what the rule for `beq` requires. An entry test that is false on entry or true after the body ends in the `sd`, an irreversible store; that the test is right is the programmer's obligation, checked when the program runs. The tests must not call procedures, and the loop must fit the reach of `beq`.
+
+`make bit-length` runs two versions of the loop that counts how often a number can be halved, the number being a byte the program reads. `tests/riscr-bitlength-history-test.c` is `while (x != 0) { x = x / 2; c = c + 1; }`. `tests/riscr-bitlength-test.c` is the same loop with `from (c == 0)` and a body of thirteen compound assignments, which moves the low bit of `x` into a word `s` before it halves `x`: one bit per iteration is all the loop destroys, and `s` is where it goes. Both exit as compiled by gcc and run back. The first leaves 12 words of history per iteration, in 54 RISC-R instructions; the second leaves the history pointer where it is whatever the number of iterations, in 301 instructions per iteration. What that does to model checking is in `projects/reversible.md`.
 
 ## With Dedicated Opcodes
 

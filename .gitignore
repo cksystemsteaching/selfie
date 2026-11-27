@@ -56,3 +56,6 @@ riscr-compound-test.txt
 tests/riscr-compound-base.c
 *.state
 bitr-backward.txt
+riscr-bitlength-test
+riscr-bitlength-test.txt
+tests/riscr-bitlength-*.txt

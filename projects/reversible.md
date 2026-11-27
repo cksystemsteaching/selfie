@@ -1,6 +1,6 @@
 # selfie · cellfie · bitr — development plan
 
-Oct 30, 2026 · Christoph Kirsch · updated Nov 26, 2026: M9 done, in riscr rather than selfie, and a first, negative result for M12; Nov 25: the constructed layout gets the token, room on the grid, and research notes on history invariants, direction by free bits, the hindsight optimum, the summary game and the stutter test, measured in M12 and M15; Nov 24: M10 and M11 done, and joined; Nov 23: encodings frozen, M6, M7, M8, and M13 done, by hybrid simulation, rotor's `write` corrected, cellfie before the rest of RISC-R; Nov 6: M2 done; Nov 5: M16 garbage-free riscr, M17 reversible hypster; Nov 2: RISC-R moved into its own tool, riscr
+Oct 30, 2026 · Christoph Kirsch · updated Nov 27, 2026: a loop without history in riscr, and the bit-length loop of M15 forward and backward; Nov 26: M9 done, in riscr rather than selfie, and a first, negative result for M12; Nov 25: the constructed layout gets the token, room on the grid, and research notes on history invariants, direction by free bits, the hindsight optimum, the summary game and the stutter test, measured in M12 and M15; Nov 24: M10 and M11 done, and joined; Nov 23: encodings frozen, M6, M7, M8, and M13 done, by hybrid simulation, rotor's `write` corrected, cellfie before the rest of RISC-R; Nov 6: M2 done; Nov 5: M16 garbage-free riscr, M17 reversible hypster; Nov 2: RISC-R moved into its own tool, riscr
 
 ## Goal and design rules
 
@@ -135,7 +135,32 @@ Every run that finishes reaches the initial state on exactly one path. What this
 - **Pointers are the cost.** The top four words are a value, a flag, a return address, and a zero, and cost one fork. The fifth is a stack address, a saved frame pointer. From then on memory is read at addresses that are not constants, which bitr encodes as a multiplexer over the segment, and the solver has to find out that a free word is the one pointer that fits: millions of and-nodes and tens of thousands of conflicts for a run that forward is 126 conflicts. Without `-enumerate` the same runs keep a symbolic program counter and go out of memory.
 - **This is the favourable case.** The checker was given the bad state, its pointers, and all but a few words of its history. From the set of bad states, with registers and memory free, bitr does not get started: with all states free, one step of the machine model is proven in 6 seconds with a 2KB heap, not in 5 minutes with 64KB, and not in 15GB with the 2MB of these models.
 
-So on Bennett-translated code backward checking does not compete with forward checking, by orders of magnitude and before it is given a fair task, and the reason is the one the plan names: history words are 64 fresh bits each, of which the solver must discover that nearly all are determined. The plan's prediction is not tested yet in its interesting half, that garbage-free code (M9) leaves few free bits; the bit-length loop of M15 is the example for that. Not done from M12's list: bad states as a set, meet in the middle, the history invariants as constraints, proof sizes, restricted branching, and the hindsight optimum. What would have to change in bitr before any of that pays: array reads at free addresses as fresh values with consistency constraints instead of multiplexers, and values that are determined by structure, a pop of what was pushed, recognized without the solver.
+So on Bennett-translated code backward checking does not compete with forward checking, by orders of magnitude and before it is given a fair task, and the reason is the one the plan names: history words are 64 fresh bits each, of which the solver must discover that nearly all are determined. The plan's prediction in its interesting half, that garbage-free code (M9) leaves few free bits, is tested below with the bit-length loop of M15. Not done from M12's list: bad states as a set, meet in the middle, the history invariants as constraints, proof sizes, restricted branching, and the hindsight optimum. What would have to change in bitr before any of that pays: array reads at free addresses as fresh values with consistency constraints instead of multiplexers, and values that are determined by structure, a pop of what was pushed, recognized without the solver.
+
+**The bit-length loop, with and without history (November 27, 2026).** `tests/riscr-bitlength-history-test.c` is the loop of the picture above as C\* has it, `tests/riscr-bitlength-test.c` the same loop garbage-free: a `from` loop (see `riscr.md`) of compound assignments that moves the low bit of `x` into a word `s` per iteration. The number is a byte that the program reads. Per iteration the first pushes 12 words, 768 bits, in 54 RISC-R instructions, and the second pushes nothing in 301 instructions: it keeps the one bit that the loop destroys, and pays in time. `make bit-length` checks both and that the second leaves no history.
+
+Forward, bitr asks whether exit code 8 is reachable (input free, the answer is a byte with 8 bits):
+
+| | instructions | seconds | forks | SAT calls | conflicts |
+| --- | --- | --- | --- | --- | --- |
+| with history | 949 | 0.28 | 11 | 23 | 58 |
+| garbage-free | 2,836 | 3.2 | 9 | 19 | 43,486 |
+
+Backward, from the state at the end of the loop to the initial state, with everything free that the loop left behind: `s` for the garbage-free loop, one word, and all words of history that the other loop pushed. With nothing free both run back in under half a second.
+
+| bits of the input | garbage-free, `s` free: seconds | forks | conflicts | with history, free words | seconds | forks | conflicts | and-nodes |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 1 | 8.8 | 6 | 76,828 | 18 | 4.8 | 18 | 48,504 | 0.4 million |
+| 2 | 34 | 6 | 259,861 | 30 | 94 | 68 | 159,764 | 3.5 million |
+| 4 | 273 | 7 | 1,479,791 | 54 | more than 900, at instruction 319 of 609 | | 1,039,026 | 5.4 million |
+| 8 | more than 1,500, at instruction 2,750 of 2,787 | | 4,445,671 | 102 | more than 1,500, at instruction 344 of 825 | | 1,736,966 | 9.9 million |
+
+What this says:
+
+- **The prediction holds for paths and fails for cost.** Without history the number of paths does not depend on the number of iterations: 6 or 7 forks, at most 2 paths alive, about 50 SAT calls. With history forks grow with the free words, 18 and 68, and the formula with them. From 2 bits on the garbage-free loop is the cheaper one backward.
+- **The cost moved into arithmetic.** The solver's conflicts grow 3 to 6 times per doubling of the iterations. Each iteration asks whether `x` can be zero at the exit of the loop, and `x` is by then a chain of 64-bit additions and subtractions over the free `s`, which bitr's normal forms do not cancel across iterations and the solver has to work out bit by bit. Division by 2 is not the cost: giving bitr a shift for it changed nothing.
+- **Forward still wins, on both programs, by orders of magnitude.** And forward the garbage-free loop is the more expensive one, 43,486 conflicts against 58: uncomputing is arithmetic that a checker has to see through, in either direction.
+- **Free bits are not the measure, again.** `s` is 64 free bits of which as many as there were iterations matter, the history is 1,152 to 6,528 free bits, and the first is not cheaper by anything like that ratio. Open and cheap: free only the bits of `s` that the loop wrote, as many as `c` says. If the conflicts stay, the bottleneck is word-level reasoning in bitr, normal forms that cancel what an uncompute undoes across statements, not freedom.
 
 **Research notes on reversible model checking.**
 
