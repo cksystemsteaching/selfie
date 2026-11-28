@@ -986,6 +986,63 @@ count: entr bitr selfie riscr rotor
 	./selfie -c selfie.h tools/btor2.h bitr.h tools/entr.c -m 512 $$b-rotorized-riscuonly.btor2 -l $$b.m -k 5000 -fix input-buffer 0 48 -over input-buffer 0 2 -zero input-buffer | tee entr-count.txt; \
 	grep -q "count 3 of 4 worlds, entropy 1.58 of 2.00 bits" entr-count.txt || { echo "$@: entr on mipster does not count 3 of the inputs 48 to 51"; exit 1; }
 
+entr.h: tools/entr.c
+	sed 's/main(/entr_main(/' tools/entr.c > entr.h
+
+entr-trace: tests/entr-trace.c entr.h bitr.h tools/btor2.h selfie.h
+	$(CC) $(CFLAGS) --include selfie.h --include tools/btor2.h --include bitr.h --include entr.h $< -o $@
+
+# E2: the loop on the formulas of examples/sat and on the formulas that model
+# checking the symbolic examples generates, as make cdcl does. For every setting
+# of the switches the ledger accounts for all worlds and the trace replays to the
+# count; the counts are the reference's where it can enumerate; the answer to
+# whether is babysat's and bitr's, and with all switches off the first world found
+# is babysat's; the loop and the checker of traces run on mipster
+ledger: entr entr-trace bitr babysat selfie rotor
+	for f in $(wildcard examples/symbolic/*.c); do \
+	  b=$${f%.c}; \
+	  out=$$(./selfie -c $$f -o $$b.m 2>&1 && \
+	    ./rotor -l $$b.m - 0 -Pnobadexitcode -Pgoodexitcode -riscuonly 2>&1 && \
+	    ./bitr $$b-rotorized-riscuonly.btor2 -l $$b.m -bmc 300 -all -dimacs $$b 100 2>&1) || \
+	    { echo "$$out" | tail -n 20; echo "$$b: no CNF files"; exit 1; }; \
+	done
+	n=0; for f in examples/sat/*.cnf examples/symbolic/*.cnf; do \
+	  v=$$(sed -n 's/^p cnf \([0-9]*\) .*/\1/p' $$f); \
+	  c=$$(./entr -cnf $$f -count -trace entr.trace | tee entr-ledger.txt | sed -n 's/.*: count \(.*\) worlds, .*/\1/p'); \
+	  [ -n "$$c" ] && grep -q "ledger: .* open: all " entr-ledger.txt || { echo "$$f: no count, or a ledger that does not account for all worlds"; exit 1; }; \
+	  ./entr-trace $$f entr.trace | grep -q "replays to count $$c worlds" || { echo "$$f: the trace does not replay to count $$c"; exit 1; }; \
+	  if [ $$v -le 20 ]; then \
+	    ./entr -cnf $$f -reference | grep -q ": count $$c worlds" || { echo "$$f: the reference does not count $$c"; exit 1; }; \
+	    ./entr -cnf $$f -count -O0 -trace entr.trace | tee entr-ledger.txt | grep -q ": count $$c worlds" && grep -q "ledger: .* open: all " entr-ledger.txt || \
+	      { echo "$$f: with all switches off the count is not $$c, or the ledger does not account for all worlds"; exit 1; }; \
+	    ./entr-trace $$f entr.trace | grep -q "replays to count $$c worlds" || { echo "$$f: the trace with all switches off does not replay to count $$c"; exit 1; }; \
+	  fi; \
+	  a=$$(./babysat $$f | grep -o "is [un]*satisfiable"); \
+	  d=$$(./bitr -sat $$f | grep -o "is [un]*satisfiable"); \
+	  [ -n "$$a" ] && [ "$$a" = "$$d" ] || { echo "$$f: babysat says it $$a, bitr says it $$d"; exit 1; }; \
+	  case "$$c" in "0 of"*) [ "$$a" = "is unsatisfiable" ] ;; *) [ "$$a" = "is satisfiable" ] ;; esac || \
+	    { echo "$$f: the count is $$c, but babysat says it $$a"; exit 1; }; \
+	  for o in "-first" "-first -no pure" "-first -no propagate" "-first -O0"; do \
+	    ./entr -cnf $$f $$o -trace entr.trace > entr-ledger.txt; \
+	    grep -q "ledger: .* open: all " entr-ledger.txt && [ "$$(grep -o 'is [un]*satisfiable' entr-ledger.txt)" = "$$a" ] || \
+	      { echo "$$f: with $$o the answer is not that it $$a, or the ledger does not account for all worlds"; exit 1; }; \
+	    ./entr-trace $$f entr.trace | grep -q "replays to count" || { echo "$$f: the trace with $$o does not replay"; exit 1; }; \
+	  done; \
+	  if [ "$$a" = "is satisfiable" ]; then \
+	    [ "$$(sed -n 's/.* is satisfiable with //p' entr-ledger.txt)" = "$$(./babysat $$f | sed -n 's/.* is satisfiable with //p')" ] || \
+	      { echo "$$f: with all switches off the first world found is not babysat's"; exit 1; }; \
+	  fi; \
+	  n=$$((n + 1)); \
+	done; echo "$@: counts, ledgers, traces, and answers agree on $$n formulas"
+	./entr -cnf examples/sat/pigeonhole-4-3.cnf -count -O0 | grep "regions undecided"
+	./entr -cnf examples/sat/pigeonhole-4-3.cnf -count | grep "regions undecided"
+	./entr -cnf examples/sat/rivest.cnf -count -trace entr.trace > /dev/null && sed 's/^e \([0-9]*\)$$/e 1/' entr.trace > entr-wrong.trace; \
+	./entr-trace examples/sat/rivest.cnf entr-wrong.trace | grep "region is not empty by the clause" || { echo "$@: a wrong trace replays"; exit 1; }
+	./selfie -c selfie.h tools/btor2.h bitr.h tools/entr.c -m 64 -cnf examples/sat/pigeonhole-4-3.cnf -count -trace entr.trace | tee entr-ledger.txt; \
+	grep -q "count 0 of 4096 worlds" entr-ledger.txt && grep -q "ledger: .* open: all 4096 worlds" entr-ledger.txt || { echo "$@: entr on mipster does not count 0 of 4096"; exit 1; }
+	./selfie -c selfie.h tools/btor2.h bitr.h entr.h tests/entr-trace.c -m 64 examples/sat/pigeonhole-4-3.cnf entr.trace | tee entr-ledger.txt; \
+	grep -q "replays to count 0 of 4096 worlds" entr-ledger.txt || { echo "$@: the checker of traces on mipster does not replay to 0 of 4096"; exit 1; }
+
 # E0: what today's bitr does on the symbolic examples and on the families of
 # examples/entropy, next to the reference: the table to measure entr against;
 # a program that reads n bytes one at a time reads n words of the input tape
@@ -1033,18 +1090,19 @@ baselines: entr bitr selfie riscr rotor
 	done
 
 # Consider these targets as targets, not files
-.PHONY: rev riscr-rev bennett trust riscr-model sim bmc cdcl identity cells product tapes layouts hybrid construct selfie-on-cellfie cellfie-on-cellfie reversible garbage-free backward bit-length count baselines
+.PHONY: rev riscr-rev bennett trust riscr-model sim bmc cdcl identity cells product tapes layouts hybrid construct selfie-on-cellfie cellfie-on-cellfie reversible garbage-free backward bit-length count baselines ledger
 
 # Run the checks of the RISC-R branch that are not too slow, one after another and after rotor-btor2:
 # they share generated files, the binaries, models, and layouts of the symbolic examples and of the
 # tests, so make -j must not run two of them, or one of them and rotor-btor2, at the same time
-reversible: rotor-btor2 selfie selfie.h selfie-riscr.h riscr riscr.h riscr-test rotor bitr bitr.h entr babysat cellfie cellfie-test
+reversible: rotor-btor2 selfie selfie.h selfie-riscr.h riscr riscr.h riscr-test rotor bitr bitr.h entr entr.h entr-trace babysat cellfie cellfie-test
 	$(MAKE) rev
 	$(MAKE) garbage-free
 	$(MAKE) riscr-model
 	$(MAKE) sim
 	$(MAKE) bmc
 	$(MAKE) count
+	$(MAKE) ledger
 	$(MAKE) backward
 	$(MAKE) bit-length
 	$(MAKE) cdcl
@@ -1178,7 +1236,7 @@ clean:
 	rm -f examples/trusting-trust/honest-stamp.c examples/trusting-trust/honest-victim.c examples/trusting-trust/trojaned-victim.c examples/trusting-trust/suspect-stamp.c
 	rm -f selfie selfie-32 selfie.h selfie-gc.h selfie-gc-nomain.h selfie.exe
 	rm -f babysat buzzr monster beator beator-32 rotor rotor-32 riscr riscr.h riscr-test bitr cellfie cellfie-test
-	rm -f entr bitr.h entr-count.txt baselines.out
+	rm -f entr bitr.h entr-count.txt baselines.out entr.h entr-trace entr-ledger.txt entr.trace entr-wrong.trace
 	rm -f examples/symbolic/*.count examples/symbolic/*.worlds examples/symbolic/*.bitr examples/symbolic/*.inputs
 	rm -f examples/entropy/*-*.c examples/entropy/*.m examples/entropy/*.r examples/entropy/*.btor2
 	rm -f cellfie-test-*.rle cellfie-check-failed.rle cellfie-test.txt cellfie-identity.txt cellfie-product.txt

@@ -64,6 +64,10 @@ tests/riscr-bitlength-*.txt
 entr
 bitr.h
 entr-count.txt
+entr.h
+entr-trace
+entr-ledger.txt
+*.trace
 baselines.out
 *.count
 *.worlds

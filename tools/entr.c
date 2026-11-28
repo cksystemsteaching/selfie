@@ -15,11 +15,19 @@ is reached within a number of steps, marks some of the worlds. Their
 number is the count of the question and the logarithm of the count its
 entropy. See projects/entropy.md for the plan and the story.
 
-This file is the beginning, milestone E1: the arithmetic of counts and
-the reference, which is the specification of every count that entr will
-ever report. The reference enumerates the worlds and runs the concrete
-evaluator of tools/btor2.h on each. It is exponential in the bits counted
-over, on purpose.
+This file has, from milestone E1, the arithmetic of counts and the
+reference, which is the specification of every count that entr will ever
+report. The reference enumerates the worlds and runs the concrete
+evaluator of tools/btor2.h on each, or for a formula evaluates its clauses.
+It is exponential in the bits counted over, on purpose.
+
+From milestone E2 it has the loop, for formulas in DIMACS format: bracket
+a region, and if the bracket is undecided split the region and bracket the
+halves. The bracket is what is concluded without a split, the estimate
+picks the split, and every other technique is a switch of one of the two.
+A ledger says how many worlds each rule disposed of and must account for
+all of them, and a trace is the run as a file that tests/entr-trace.c
+replays to the count.
 
 Every count is a count over a declared set of bits. An open bit of the
 model that is neither counted over nor fixed is refused: it would double
@@ -153,8 +161,163 @@ uint64_t* bad_firsts = (uint64_t*) 0; // the smallest number of instructions aft
 uint64_t* bad_lasts  = (uint64_t*) 0; // and the largest
 
 // -----------------------------------------------------------------
+// ---------------------------- FORMULA ----------------------------
+// -----------------------------------------------------------------
+
+uint64_t formula_character();
+void     skip_formula_blanks();
+void     skip_formula_line();
+uint64_t scan_formula_number();
+void     formula_error(char* message);
+
+void load_formula(char* name);
+
+uint64_t literal_variable(uint64_t literal);
+uint64_t literal_is_negative(uint64_t literal);
+uint64_t literal_value(uint64_t literal);
+
+void print_literal(uint64_t fd, uint64_t literal);
+
+void assign_literal(uint64_t literal);
+void unassign_to(uint64_t mark);
+
+void formula_reference();
+
+// a formula is a conjunction of clauses over variables 0 to n - 1; a
+// literal is twice its variable, plus one if it is negative; a region is
+// the values of the variables, on a trail in the order they were given
+
+// ------------------------ GLOBAL CONSTANTS -----------------------
+
+uint64_t VALUE_OPEN  = 0;
+uint64_t VALUE_TRUE  = 1;
+uint64_t VALUE_FALSE = 2;
+
+uint64_t MAX_REFERENCE_VARIABLES = 24; // the reference enumerates up to 2^24 worlds
+
+// ------------------------ GLOBAL VARIABLES -----------------------
+
+char* formula_name = (char*) 0;
+
+char*    formula_text = (char*) 0; // formula file in memory
+uint64_t formula_size = 0;         // in bytes
+uint64_t formula_pos  = 0;         // current character
+uint64_t formula_line = 1;         // current line number
+
+uint64_t number_of_variables = 0;
+uint64_t number_of_clauses   = 0;
+
+uint64_t* clause_starts   = (uint64_t*) 0; // per clause: its first literal, and one more for the end
+uint64_t* clause_literals = (uint64_t*) 0;
+
+uint64_t* variable_values = (uint64_t*) 0; // per variable: open, true, or false
+
+uint64_t* trail      = (uint64_t*) 0; // literals made true, in order
+uint64_t  trail_size = 0;
+
+// -----------------------------------------------------------------
+// ----------------------------- LOOP ------------------------------
+// -----------------------------------------------------------------
+
+uint64_t* count_of_power(uint64_t exponent);
+
+uint64_t* new_ledger();
+void      enter(uint64_t* ledger, uint64_t exponent);
+uint64_t* count_of_ledger(uint64_t* ledger);
+uint64_t  ledgers_account();
+
+uint64_t open_variables();
+
+void trace(char* event, uint64_t literal, uint64_t clause);
+
+uint64_t is_answered();
+
+void count_region();
+
+void print_model();
+void print_interval(uint64_t* total);
+void print_ledger();
+void print_measure();
+
+void loop();
+
+// the loop of the story: bracket a region; if the bracket is undecided,
+// split the region on the bit the estimate picks and bracket the halves
+
+// ------------------------ GLOBAL VARIABLES -----------------------
+
+uint64_t asking_whether = 0; // the question is whether the count is zero: stop at the first world found
+
+uint64_t found_regions = 0; // regions that are full so far
+
+// the ledger: how many worlds each rule disposed of, as the number of
+// regions of each size, so that no world is lost to rounding: a region
+// with f open bits is entered as one region at exponent f
+
+uint64_t* ledger_empty     = (uint64_t*) 0; // regions that violate a clause
+uint64_t* ledger_full      = (uint64_t*) 0; // regions that satisfy all clauses
+uint64_t* ledger_propagate = (uint64_t*) 0; // halves that unit propagation found empty
+uint64_t* ledger_pure      = (uint64_t*) 0; // halves that pure literals make irrelevant
+uint64_t* ledger_open      = (uint64_t*) 0; // regions not looked at since the question was answered
+
+// the measure: what the search cost
+
+uint64_t undecided_regions = 0; // regions split
+uint64_t brackets_taken    = 0; // regions bracketed
+uint64_t clauses_visited   = 0; // clauses looked at by all brackets
+
+uint64_t* model_values = (uint64_t*) 0; // per variable: its value in the first world found
+
+uint64_t model_found = 0;
+
+char*    trace_name = (char*) 0; // file to write the trace to
+uint64_t trace_fd   = 0;
+
+// -----------------------------------------------------------------
+// ---------------------------- BRACKET ----------------------------
+// -----------------------------------------------------------------
+
+uint64_t scan_clauses();
+uint64_t find_pure_literal();
+
+uint64_t bracket();
+
+// the bracket of a region: empty, full, or undecided; a bracket that
+// propagates makes the region smaller before it says undecided
+
+// ------------------------ GLOBAL CONSTANTS -----------------------
+
+uint64_t BRACKET_EMPTY     = 0; // lo = hi = 0
+uint64_t BRACKET_FULL      = 1; // lo = hi = 2^(open variables)
+uint64_t BRACKET_UNDECIDED = 2; // lo = 0, hi = 2^(open variables)
+uint64_t BRACKET_UNIT      = 3; // a clause has one open literal and no true one
+
+// ------------------------ GLOBAL VARIABLES -----------------------
+
+uint64_t bracket_propagates = 1; // switch propagate: unit propagation
+uint64_t bracket_pure       = 1; // switch pure: pure literals, only if asking whether
+
+uint64_t bracket_clause  = 0; // the clause that makes the region empty, or is unit
+uint64_t bracket_literal = 0; // the open literal of the unit clause
+
+uint64_t* literal_occurs = (uint64_t*) 0; // per literal: whether it occurs in a clause not yet satisfied
+
+// -----------------------------------------------------------------
+// --------------------------- ESTIMATE ----------------------------
+// -----------------------------------------------------------------
+
+uint64_t estimate();
+
+// the estimate of a region: the literal to make true first, for the
+// variable to split on; it changes the cost and never the answer
+
+// -----------------------------------------------------------------
 // ----------------------------- MAIN ------------------------------
 // -----------------------------------------------------------------
+
+uint64_t set_switch(char* name, uint64_t value);
+
+uint64_t entr_formula();
 
 uint64_t entr();
 
@@ -232,20 +395,23 @@ void count_add(uint64_t* count, uint64_t* addend) {
     f = count_exponent(count);
   }
 
-  // n * 2^f becomes n * 2^(f - e) * 2^e if that fits
+  // n * 2^f becomes n * 2^(f - e) * 2^e as far as that fits
 
   while (f > e) {
     if (n >= two_to_the_power_of(SIZEOFUINT64INBITS - 1)) {
-      // it does not: the smaller summand is dropped, the sum is a lower bound
-      *count       = n;
-      *(count + 1) = f;
-      *(count + 2) = 0;
+      // it does not: the smaller summand loses its lowest bits instead,
+      // and the sum is a lower bound
+      while (f > e) {
+        if (m % 2 == 1)
+          *(count + 2) = 0;
 
-      return;
+        m = m / 2;
+        e = e + 1;
+      }
+    } else {
+      n = n * 2;
+      f = f - 1;
     }
-
-    n = n * 2;
-    f = f - 1;
   }
 
   if (m + n < m) {
@@ -274,18 +440,16 @@ uint64_t entropy_in_hundredths(uint64_t* count) {
   // down: the exponent plus the logarithm of the mantissa, whose bits
   // after the point come from squaring the mantissa scaled to [1,2)
 
+  // p is the position of the highest bit of the mantissa
+
   m = count_mantissa(count);
 
   p = 0;
 
-  while (two_to_the_power_of(p + 1) <= m) {
-    if (p + 1 == SIZEOFUINT64INBITS - 1) {
-      // two_to_the_power_of(64) would be 0
-      p = p + 1;
+  while (m > 1) {
+    m = m / 2;
 
-      m = 0;
-    } else
-      p = p + 1;
+    p = p + 1;
   }
 
   m = count_mantissa(count);
@@ -319,13 +483,20 @@ uint64_t entropy_in_hundredths(uint64_t* count) {
 }
 
 void print_count(uint64_t* count) {
-  if (count_is_exact(count) == 0)
-    printf("at least ");
+  if (count_is_exact(count) == 0) {
+    // a lower bound, as a power of two
+    printf("at least 2^");
+    print_entropy(count);
+
+    return;
+  }
 
   if (count_exponent(count) == 0)
     printf("%lu", count_mantissa(count));
   else if (count_exponent(count) + log_two(count_mantissa(count)) < SIZEOFUINT64INBITS - 1)
     printf("%lu", count_mantissa(count) * two_to_the_power_of(count_exponent(count)));
+  else if (count_mantissa(count) == 1)
+    printf("2^%lu", count_exponent(count));
   else
     printf("%lu * 2^%lu", count_mantissa(count), count_exponent(count));
 }
@@ -891,9 +1062,946 @@ void reference() {
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
 // -----------------------------------------------------------------
+// ---------------------------- FORMULA ----------------------------
+// -----------------------------------------------------------------
+// *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
+
+uint64_t formula_character() {
+  if (formula_pos < formula_size)
+    return load_character(formula_text, formula_pos);
+  else
+    // the end of the file
+    return 0;
+}
+
+void skip_formula_blanks() {
+  uint64_t c;
+
+  // blanks, tabs, and ends of lines: 32, 9, 13, and 10
+
+  c = formula_character();
+
+  while (1) {
+    if (c == 10)
+      formula_line = formula_line + 1;
+    else if (c != 32)
+      if (c != 9)
+        if (c != 13)
+          return;
+
+    formula_pos = formula_pos + 1;
+
+    c = formula_character();
+  }
+}
+
+void skip_formula_line() {
+  uint64_t c;
+
+  c = formula_character();
+
+  while (c != 10) {
+    if (c == 0)
+      return;
+
+    formula_pos = formula_pos + 1;
+
+    c = formula_character();
+  }
+}
+
+uint64_t scan_formula_number() {
+  uint64_t c;
+  uint64_t n;
+
+  c = formula_character();
+
+  if (c < '0')
+    formula_error("number expected");
+  else if (c > '9')
+    formula_error("number expected");
+
+  n = 0;
+
+  while (c >= '0') {
+    if (c > '9')
+      return n;
+
+    n = n * 10 + c - '0';
+
+    formula_pos = formula_pos + 1;
+
+    c = formula_character();
+  }
+
+  return n;
+}
+
+void formula_error(char* message) {
+  printf("%s: %s in line %lu of %s\n", selfie_name, message, formula_line, formula_name);
+
+  exit(EXITCODE_SCANNERERROR);
+}
+
+void load_formula(char* name) {
+  uint64_t c;
+  uint64_t clause;
+  uint64_t literals;
+  uint64_t negative;
+  uint64_t variable;
+
+  // a formula in DIMACS format: comment lines that begin with c, a line
+  // p cnf with the numbers of variables and clauses, and the clauses, each
+  // a list of variables from 1 on, negated by a minus, that ends with 0
+
+  formula_name = name;
+
+  formula_text = (char*) read_whole_file(name);
+  formula_size = model_size;
+  formula_pos  = 0;
+  formula_line = 1;
+
+  skip_formula_blanks();
+
+  while (formula_character() == 'c') {
+    skip_formula_line();
+    skip_formula_blanks();
+  }
+
+  if (formula_character() != 'p')
+    formula_error("p cnf expected");
+
+  formula_pos = formula_pos + 1;
+
+  skip_formula_blanks();
+
+  if (formula_character() != 'c')
+    formula_error("p cnf expected");
+
+  // c, n, f
+  formula_pos = formula_pos + 3;
+
+  skip_formula_blanks();
+
+  number_of_variables = scan_formula_number();
+
+  skip_formula_blanks();
+
+  number_of_clauses = scan_formula_number();
+
+  // a clause has no more literals than there are characters left, halved
+  clause_starts   = smalloc((number_of_clauses + 1) * sizeof(uint64_t));
+  clause_literals = smalloc((formula_size - formula_pos + 1) * sizeof(uint64_t));
+
+  variable_values = zmalloc(number_of_variables * sizeof(uint64_t));
+  model_values    = zmalloc(number_of_variables * sizeof(uint64_t));
+  literal_occurs  = zmalloc(2 * number_of_variables * sizeof(uint64_t));
+
+  trail      = smalloc(number_of_variables * sizeof(uint64_t));
+  trail_size = 0;
+
+  clause   = 0;
+  literals = 0;
+
+  *clause_starts = 0;
+
+  while (clause < number_of_clauses) {
+    skip_formula_blanks();
+
+    c = formula_character();
+
+    while (c == 'c') {
+      skip_formula_line();
+      skip_formula_blanks();
+
+      c = formula_character();
+    }
+
+    negative = 0;
+
+    if (c == '-') {
+      negative = 1;
+
+      formula_pos = formula_pos + 1;
+    }
+
+    variable = scan_formula_number();
+
+    if (variable == 0) {
+      // the end of a clause is the start of the next
+      clause = clause + 1;
+
+      *(clause_starts + clause) = literals;
+    } else if (variable > number_of_variables)
+      formula_error("variable is not declared");
+    else {
+      *(clause_literals + literals) = 2 * (variable - 1) + negative;
+
+      literals = literals + 1;
+    }
+  }
+
+  printf("%s: %lu clauses over %lu variables with %lu literals loaded from %s\n", selfie_name,
+    number_of_clauses, number_of_variables, literals, formula_name);
+}
+
+uint64_t literal_variable(uint64_t literal)    { return literal / 2; }
+uint64_t literal_is_negative(uint64_t literal) { return literal % 2; }
+
+uint64_t literal_value(uint64_t literal) {
+  uint64_t value;
+
+  // open, true, or false
+
+  value = *(variable_values + literal_variable(literal));
+
+  if (value == VALUE_OPEN)
+    return VALUE_OPEN;
+  else if (literal_is_negative(literal)) {
+    if (value == VALUE_TRUE)
+      return VALUE_FALSE;
+    else
+      return VALUE_TRUE;
+  } else
+    return value;
+}
+
+void print_literal(uint64_t fd, uint64_t literal) {
+  // as in DIMACS: variables from 1 on, negated by a minus
+
+  if (literal_is_negative(literal))
+    dprintf(fd, "-%lu", literal_variable(literal) + 1);
+  else
+    dprintf(fd, "%lu", literal_variable(literal) + 1);
+}
+
+void assign_literal(uint64_t literal) {
+  // the region becomes its half in which the literal is true
+
+  if (literal_is_negative(literal))
+    *(variable_values + literal_variable(literal)) = VALUE_FALSE;
+  else
+    *(variable_values + literal_variable(literal)) = VALUE_TRUE;
+
+  *(trail + trail_size) = literal;
+
+  trail_size = trail_size + 1;
+}
+
+void unassign_to(uint64_t mark) {
+  // the region becomes what it was when the trail had mark literals
+
+  while (trail_size > mark) {
+    trail_size = trail_size - 1;
+
+    *(variable_values + literal_variable(*(trail + trail_size))) = VALUE_OPEN;
+  }
+}
+
+void formula_reference() {
+  uint64_t worlds;
+  uint64_t world;
+  uint64_t bits;
+  uint64_t variable;
+  uint64_t clause;
+  uint64_t i;
+  uint64_t satisfied;
+  uint64_t* found;
+  uint64_t* total;
+  uint64_t* one;
+
+  // the count by enumeration: every assignment is a world, and is counted
+  // if every clause has a true literal
+
+  if (number_of_variables > MAX_REFERENCE_VARIABLES) {
+    printf("%s: %lu variables are more than the %lu the reference counts over\n", selfie_name, number_of_variables, MAX_REFERENCE_VARIABLES);
+
+    exit(EXITCODE_BADARGUMENTS);
+  }
+
+  found = new_count(0);
+  one   = new_count(1);
+
+  worlds = two_to_the_power_of(number_of_variables);
+
+  world = 0;
+
+  while (world < worlds) {
+    bits = world;
+
+    variable = 0;
+
+    while (variable < number_of_variables) {
+      if (bits % 2)
+        *(variable_values + variable) = VALUE_TRUE;
+      else
+        *(variable_values + variable) = VALUE_FALSE;
+
+      bits = bits / 2;
+
+      variable = variable + 1;
+    }
+
+    satisfied = 1;
+
+    clause = 0;
+
+    while (clause < number_of_clauses) {
+      satisfied = 0;
+
+      i = *(clause_starts + clause);
+
+      while (i < *(clause_starts + clause + 1)) {
+        if (literal_value(*(clause_literals + i)) == VALUE_TRUE) {
+          satisfied = 1;
+
+          i = *(clause_starts + clause + 1);
+        } else
+          i = i + 1;
+      }
+
+      if (satisfied)
+        clause = clause + 1;
+      else
+        clause = number_of_clauses;
+    }
+
+    if (satisfied)
+      count_add(found, one);
+
+    world = world + 1;
+  }
+
+  total = count_of_power(number_of_variables);
+
+  printf("%s: count ", selfie_name);
+  print_count(found);
+  printf(" of ");
+  print_count(total);
+  printf(" worlds, entropy ");
+  print_entropy(found);
+  printf(" of ");
+  print_entropy(total);
+  printf(" bits\n");
+}
+
+// *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
+// -----------------------------------------------------------------
+// ----------------------------- LOOP ------------------------------
+// -----------------------------------------------------------------
+// *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
+
+uint64_t* count_of_power(uint64_t exponent) {
+  uint64_t* count;
+
+  // 2^exponent: the number of worlds of a region with that many open bits
+
+  count = new_count(1);
+
+  *(count + 1) = exponent;
+
+  return count;
+}
+
+uint64_t* new_ledger() {
+  return zmalloc((number_of_variables + 1) * sizeof(uint64_t));
+}
+
+void enter(uint64_t* ledger, uint64_t exponent) {
+  // one more region of 2^exponent worlds
+
+  *(ledger + exponent) = *(ledger + exponent) + 1;
+}
+
+uint64_t* count_of_ledger(uint64_t* ledger) {
+  uint64_t* count;
+  uint64_t* regions;
+  uint64_t exponent;
+
+  // the worlds of a ledger as a count, from the largest regions down, so
+  // that a count that does not fit loses its smallest regions
+
+  count = new_count(0);
+
+  exponent = number_of_variables + 1;
+
+  while (exponent > 0) {
+    exponent = exponent - 1;
+
+    if (*(ledger + exponent) > 0) {
+      regions = new_count(*(ledger + exponent));
+
+      *(regions + 1) = *(regions + 1) + exponent;
+
+      count_add(count, regions);
+    }
+  }
+
+  return count;
+}
+
+uint64_t ledgers_account() {
+  uint64_t exponent;
+  uint64_t regions;
+
+  // the regions of all ledgers are all 2^n worlds, each once: two regions
+  // of a size are one region of the next size, from the smallest up, and
+  // what is left is one region of all worlds
+
+  regions = 0;
+
+  exponent = 0;
+
+  while (exponent < number_of_variables) {
+    regions = regions
+      + *(ledger_empty + exponent)
+      + *(ledger_full + exponent)
+      + *(ledger_propagate + exponent)
+      + *(ledger_pure + exponent)
+      + *(ledger_open + exponent);
+
+    if (regions % 2 == 1)
+      return 0;
+
+    regions = regions / 2;
+
+    exponent = exponent + 1;
+  }
+
+  regions = regions
+    + *(ledger_empty + exponent)
+    + *(ledger_full + exponent)
+    + *(ledger_propagate + exponent)
+    + *(ledger_pure + exponent)
+    + *(ledger_open + exponent);
+
+  return regions == 1;
+}
+
+uint64_t open_variables() {
+  return number_of_variables - trail_size;
+}
+
+void trace(char* event, uint64_t literal, uint64_t clause) {
+  // the trace is the run of the loop in the order it happened: s for a
+  // split on a literal, followed by the half in which it is true and the
+  // half in which it is false; u for a literal that a clause makes true,
+  // p for a pure literal, each followed by the half in which it is true;
+  // e for a region that a clause makes empty; f for a full region; o for
+  // a region not looked at
+
+  if (trace_name == (char*) 0)
+    return;
+
+  dprintf(trace_fd, "%s", event);
+
+  if (string_compare(event, "f") == 0)
+    if (string_compare(event, "o") == 0) {
+      if (string_compare(event, "e") == 0) {
+        dprintf(trace_fd, " ");
+
+        print_literal(trace_fd, literal);
+      }
+
+      if (string_compare(event, "s") == 0)
+        if (string_compare(event, "p") == 0)
+          dprintf(trace_fd, " %lu", clause + 1);
+    }
+
+  dprintf(trace_fd, "\n");
+}
+
+uint64_t is_answered() {
+  // whether is answered by the first world found
+
+  if (asking_whether)
+    return found_regions > 0;
+  else
+    return 0;
+}
+
+void count_region() {
+  uint64_t mark;
+  uint64_t outcome;
+  uint64_t literal;
+  uint64_t variable;
+
+  // brackets the region the trail describes and, if the bracket is
+  // undecided, splits it; leaves the trail as it found it
+
+  mark = trail_size;
+
+  outcome = bracket();
+
+  if (outcome == BRACKET_EMPTY) {
+    enter(ledger_empty, open_variables());
+
+    trace("e", 0, bracket_clause);
+  } else if (outcome == BRACKET_FULL) {
+    enter(ledger_full, open_variables());
+
+    found_regions = found_regions + 1;
+
+    trace("f", 0, 0);
+
+    if (model_found == 0) {
+      // the first world found, with the open variables true
+      model_found = 1;
+
+      variable = 0;
+
+      while (variable < number_of_variables) {
+        if (*(variable_values + variable) == VALUE_FALSE)
+          *(model_values + variable) = VALUE_FALSE;
+        else
+          *(model_values + variable) = VALUE_TRUE;
+
+        variable = variable + 1;
+      }
+    }
+  } else {
+    undecided_regions = undecided_regions + 1;
+
+    literal = estimate();
+
+    trace("s", literal, 0);
+
+    assign_literal(literal);
+
+    count_region();
+
+    unassign_to(trail_size - 1);
+
+    if (is_answered()) {
+      // the other half is not looked at
+      enter(ledger_open, open_variables() - 1);
+
+      trace("o", 0, 0);
+    } else {
+      // the other half: the literal is false
+      if (literal_is_negative(literal))
+        assign_literal(literal - 1);
+      else
+        assign_literal(literal + 1);
+
+      count_region();
+    }
+  }
+
+  unassign_to(mark);
+}
+
+void print_model() {
+  uint64_t variable;
+
+  printf("%s: %s is satisfiable with ", selfie_name, formula_name);
+
+  variable = 0;
+
+  while (variable < number_of_variables) {
+    if (*(model_values + variable) == VALUE_FALSE)
+      printf("-%lu ", variable + 1);
+    else
+      printf("%lu ", variable + 1);
+
+    variable = variable + 1;
+  }
+
+  printf("\n");
+}
+
+void print_interval(uint64_t* total) {
+  uint64_t* found;
+  uint64_t* open;
+  uint64_t* top;
+
+  // the count is between the worlds found and the worlds found plus the
+  // worlds not looked at
+
+  found = count_of_ledger(ledger_full);
+  open  = count_of_ledger(ledger_open);
+
+  printf("%s: count ", selfie_name);
+  print_count(found);
+
+  if (count_mantissa(open) > 0) {
+    top = count_of_ledger(ledger_full);
+
+    count_add(top, open);
+
+    printf(" to ");
+    print_count(top);
+  } else
+    top = found;
+
+  printf(" of ");
+  print_count(total);
+  printf(" worlds, entropy ");
+  print_entropy(found);
+
+  if (top != found) {
+    printf(" to ");
+    print_entropy(top);
+  }
+
+  printf(" of ");
+  print_entropy(total);
+  printf(" bits\n");
+}
+
+void print_ledger() {
+  // every world is disposed of by exactly one rule: a conservation law
+
+  printf("%s: ledger: ", selfie_name);
+  print_count(count_of_ledger(ledger_empty));
+  printf(" empty, ");
+  print_count(count_of_ledger(ledger_full));
+  printf(" full, ");
+  print_count(count_of_ledger(ledger_propagate));
+  printf(" by propagation, ");
+  print_count(count_of_ledger(ledger_pure));
+  printf(" by pure literals, ");
+  print_count(count_of_ledger(ledger_open));
+  printf(" open: ");
+
+  if (ledgers_account())
+    printf("all ");
+  else
+    printf("ledger error: not all ");
+
+  print_count(count_of_power(number_of_variables));
+  printf(" worlds\n");
+
+  if (ledgers_account() == 0)
+    exit(EXITCODE_SYSTEMERROR);
+}
+
+void print_measure() {
+  printf("%s: %lu regions undecided, %lu brackets, %lu clauses visited\n", selfie_name,
+    undecided_regions, brackets_taken, clauses_visited);
+}
+
+void loop() {
+  ledger_empty     = new_ledger();
+  ledger_full      = new_ledger();
+  ledger_propagate = new_ledger();
+  ledger_pure      = new_ledger();
+  ledger_open      = new_ledger();
+
+  if (trace_name != (char*) 0) {
+    trace_fd = open_write_only(trace_name, S_IRUSR_IWUSR_IRGRP_IROTH);
+
+    if (signed_less_than(trace_fd, 0)) {
+      printf("%s: could not create trace file %s\n", selfie_name, trace_name);
+
+      exit(EXITCODE_IOERROR);
+    }
+  }
+
+  count_region();
+
+  if (found_regions > 0) {
+    if (asking_whether)
+      print_model();
+  } else
+    // whether is only left open by a world found
+    printf("%s: %s is unsatisfiable\n", selfie_name, formula_name);
+
+  print_interval(count_of_power(number_of_variables));
+  print_ledger();
+  print_measure();
+}
+
+// *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
+// -----------------------------------------------------------------
+// ---------------------------- BRACKET ----------------------------
+// -----------------------------------------------------------------
+// *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
+
+uint64_t scan_clauses() {
+  uint64_t clause;
+  uint64_t i;
+  uint64_t literal;
+  uint64_t value;
+  uint64_t satisfied;
+  uint64_t open;
+  uint64_t all_satisfied;
+
+  // looks at the clauses in order: the first clause without a true or an
+  // open literal makes the region empty; if all clauses have a true
+  // literal the region is full; if the bracket propagates, the first
+  // clause with no true and one open literal is unit
+
+  all_satisfied = 1;
+
+  clause = 0;
+
+  while (clause < number_of_clauses) {
+    clauses_visited = clauses_visited + 1;
+
+    satisfied = 0;
+    open      = 0;
+
+    i = *(clause_starts + clause);
+
+    while (i < *(clause_starts + clause + 1)) {
+      literal = *(clause_literals + i);
+
+      value = literal_value(literal);
+
+      if (value == VALUE_TRUE) {
+        satisfied = 1;
+
+        i = *(clause_starts + clause + 1);
+      } else {
+        if (value == VALUE_OPEN) {
+          open = open + 1;
+
+          bracket_literal = literal;
+        }
+
+        i = i + 1;
+      }
+    }
+
+    if (satisfied == 0) {
+      all_satisfied = 0;
+
+      if (open == 0) {
+        bracket_clause = clause;
+
+        return BRACKET_EMPTY;
+      } else if (open == 1)
+        if (bracket_propagates) {
+          bracket_clause = clause;
+
+          return BRACKET_UNIT;
+        }
+    }
+
+    clause = clause + 1;
+  }
+
+  if (all_satisfied)
+    return BRACKET_FULL;
+  else
+    return BRACKET_UNDECIDED;
+}
+
+uint64_t find_pure_literal() {
+  uint64_t clause;
+  uint64_t i;
+  uint64_t literal;
+  uint64_t satisfied;
+
+  // a literal is pure if it is open and its negation occurs in no clause
+  // that is not yet satisfied: making it true loses worlds, but not all,
+  // unless there are none; returns 1 and the first pure literal, or 0
+
+  literal = 0;
+
+  while (literal < 2 * number_of_variables) {
+    *(literal_occurs + literal) = 0;
+
+    literal = literal + 1;
+  }
+
+  clause = 0;
+
+  while (clause < number_of_clauses) {
+    clauses_visited = clauses_visited + 1;
+
+    satisfied = 0;
+
+    i = *(clause_starts + clause);
+
+    while (i < *(clause_starts + clause + 1)) {
+      if (literal_value(*(clause_literals + i)) == VALUE_TRUE) {
+        satisfied = 1;
+
+        i = *(clause_starts + clause + 1);
+      } else
+        i = i + 1;
+    }
+
+    if (satisfied == 0) {
+      i = *(clause_starts + clause);
+
+      while (i < *(clause_starts + clause + 1)) {
+        literal = *(clause_literals + i);
+
+        if (literal_value(literal) == VALUE_OPEN)
+          *(literal_occurs + literal) = 1;
+
+        i = i + 1;
+      }
+    }
+
+    clause = clause + 1;
+  }
+
+  literal = 0;
+
+  while (literal < 2 * number_of_variables) {
+    if (*(literal_occurs + literal)) {
+      if (literal_is_negative(literal)) {
+        if (*(literal_occurs + literal - 1) == 0) {
+          bracket_literal = literal;
+
+          return 1;
+        }
+      } else if (*(literal_occurs + literal + 1) == 0) {
+        bracket_literal = literal;
+
+        return 1;
+      }
+    }
+
+    literal = literal + 1;
+  }
+
+  return 0;
+}
+
+uint64_t bracket() {
+  uint64_t outcome;
+
+  // the bracket of the region the trail describes; propagation and pure
+  // literals make the region smaller, and the ledger and the trace say by
+  // how much and why, until the region is empty, full, or left undecided
+
+  brackets_taken = brackets_taken + 1;
+
+  while (1) {
+    outcome = scan_clauses();
+
+    if (outcome == BRACKET_UNIT) {
+      // the half in which the literal is false is empty
+      enter(ledger_propagate, open_variables() - 1);
+
+      trace("u", bracket_literal, bracket_clause);
+
+      assign_literal(bracket_literal);
+    } else if (outcome == BRACKET_UNDECIDED) {
+      if (bracket_pure == 0)
+        return outcome;
+      else if (asking_whether == 0)
+        // pure literals are only right about zero
+        return outcome;
+      else if (find_pure_literal()) {
+        // the half in which the literal is false is not looked at
+        enter(ledger_pure, open_variables() - 1);
+
+        trace("p", bracket_literal, 0);
+
+        assign_literal(bracket_literal);
+      } else
+        return outcome;
+    } else
+      return outcome;
+  }
+}
+
+// *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
+// -----------------------------------------------------------------
+// --------------------------- ESTIMATE ----------------------------
+// -----------------------------------------------------------------
+// *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
+
+uint64_t estimate() {
+  uint64_t variable;
+
+  // the weakest estimate: the first open variable, true first, which is
+  // the order in which babysat goes through the assignments
+
+  variable = 0;
+
+  while (variable < number_of_variables) {
+    if (*(variable_values + variable) == VALUE_OPEN)
+      return 2 * variable;
+
+    variable = variable + 1;
+  }
+
+  // not reached: an undecided region has an open variable
+  return 0;
+}
+
+// *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
+// -----------------------------------------------------------------
 // ----------------------------- MAIN ------------------------------
 // -----------------------------------------------------------------
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
+
+uint64_t set_switch(char* name, uint64_t value) {
+  // a switch is a rule of the bracket or of the estimate, on or off
+
+  if (string_compare(name, "propagate"))
+    bracket_propagates = value;
+  else if (string_compare(name, "pure"))
+    bracket_pure = value;
+  else
+    return 0;
+
+  return 1;
+}
+
+uint64_t entr_formula() {
+  uint64_t referring;
+
+  // -cnf formula { -first | -count | -reference | -O0 | -O switch | -no switch | -trace file }
+
+  if (number_of_remaining_arguments() == 0)
+    return EXITCODE_BADARGUMENTS;
+
+  load_formula(get_argument());
+
+  referring = 0;
+
+  while (number_of_remaining_arguments() > 0) {
+    get_argument();
+
+    if (string_compare(argument, "-first"))
+      asking_whether = 1;
+    else if (string_compare(argument, "-count"))
+      asking_whether = 0;
+    else if (string_compare(argument, "-reference"))
+      referring = 1;
+    else if (string_compare(argument, "-O0")) {
+      bracket_propagates = 0;
+      bracket_pure       = 0;
+    } else if (string_compare(argument, "-O")) {
+      if (number_of_remaining_arguments() == 0)
+        return EXITCODE_BADARGUMENTS;
+
+      if (set_switch(get_argument(), 1) == 0)
+        return EXITCODE_BADARGUMENTS;
+    } else if (string_compare(argument, "-no")) {
+      if (number_of_remaining_arguments() == 0)
+        return EXITCODE_BADARGUMENTS;
+
+      if (set_switch(get_argument(), 0) == 0)
+        return EXITCODE_BADARGUMENTS;
+    } else if (string_compare(argument, "-trace")) {
+      if (number_of_remaining_arguments() == 0)
+        return EXITCODE_BADARGUMENTS;
+
+      trace_name = get_argument();
+    } else
+      return EXITCODE_BADARGUMENTS;
+  }
+
+  printf("%s: ********************************************************************************\n", selfie_name);
+
+  if (referring)
+    formula_reference();
+  else
+    loop();
+
+  printf("%s: ################################################################################\n", selfie_name);
+
+  return EXITCODE_NOERROR;
+}
 
 uint64_t entr() {
   char* symbol;
@@ -904,6 +2012,10 @@ uint64_t entr() {
     return EXITCODE_BADARGUMENTS;
 
   model_name = get_argument();
+
+  if (string_compare(model_name, "-cnf"))
+    // a formula instead of a model
+    return entr_formula();
 
   while (number_of_remaining_arguments() > 0) {
     get_argument();
@@ -1013,6 +2125,10 @@ int main(int argc, char** argv) {
   OP_OUTPUT = "output";
 
   exit_code = entr();
+
+  if (exit_code == EXITCODE_BADARGUMENTS)
+    // selfie prints the usage of models after this
+    printf("%s: for a formula: -cnf formula { -first | -count | -reference | -O0 | -O switch | -no switch | -trace file }\n", selfie_name);
 
   return exit_selfie(exit_code, " model.btor2 [ -l binary ] [ -i file ] [ -k steps ] { -over state index bits | -fix state index value | -zero state } [ -v ]");
 }
