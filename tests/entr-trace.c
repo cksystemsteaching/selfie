@@ -15,8 +15,11 @@ and trusts nothing but the formula: a region that the trace says is empty
 must violate the clause the trace names, a literal that the trace says a
 clause makes true must be the one open literal of that clause with no true
 literal, and a region that the trace says is full must satisfy all
-clauses. The count is then the sum over the full regions, and exact
-unless the trace has regions that were not looked at.
+clauses. A clause that the trace says was learned must follow from the
+clauses before it: with all its literals false, making true what clauses
+imply must end in a clause that is violated. The count is then the sum
+over the full regions, and exact unless the trace has regions that were
+not looked at.
 
 The checker is built on entr.h, which is tools/entr.c with its main
 renamed, and uses its formula and its counts, not its loop or its bracket.
@@ -37,6 +40,10 @@ void check_empty(uint64_t clause);
 void check_unit(uint64_t literal, uint64_t clause);
 void check_full();
 
+uint64_t propagate_to_conflict();
+void     check_learned();
+void     replay_learned();
+
 void replay();
 
 // ------------------------ GLOBAL VARIABLES -----------------------
@@ -49,6 +56,11 @@ uint64_t replay_pos  = 0;         // current character
 uint64_t replay_line = 1;         // current line number
 
 uint64_t* replayed_worlds = (uint64_t*) 0; // worlds in the full regions of the trace
+
+uint64_t* saved_trail   = (uint64_t*) 0; // the region, while a learned clause is checked
+uint64_t* learned_check = (uint64_t*) 0; // the learned clause being checked
+
+uint64_t replayed_clauses = 0; // learned clauses checked
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
 // -----------------------------------------------------------------
@@ -143,7 +155,7 @@ uint64_t scan_replay_clause() {
 
   if (clause == 0)
     replay_error("no clause");
-  else if (clause > number_of_clauses)
+  else if (clause > number_of_all_clauses)
     replay_error("no clause");
 
   return clause - 1;
@@ -206,6 +218,7 @@ void check_full() {
 
   clause = 0;
 
+  // the clauses of the formula: the learned ones follow from them
   while (clause < number_of_clauses) {
     satisfied = 0;
 
@@ -225,6 +238,162 @@ void check_full() {
   }
 }
 
+uint64_t propagate_to_conflict() {
+  uint64_t clause;
+  uint64_t i;
+  uint64_t literal;
+  uint64_t value;
+  uint64_t satisfied;
+  uint64_t open;
+  uint64_t unit;
+  uint64_t changed;
+
+  // makes true what clauses imply until a clause is violated, and returns
+  // 1, or until no clause implies anything more, and returns 0
+
+  changed = 1;
+
+  while (changed) {
+    changed = 0;
+
+    clause = 0;
+
+    while (clause < number_of_all_clauses) {
+      satisfied = 0;
+      open      = 0;
+      unit      = 0;
+
+      i = *(clause_starts + clause);
+
+      while (i < *(clause_starts + clause + 1)) {
+        literal = *(clause_literals + i);
+
+        value = literal_value(literal);
+
+        if (value == VALUE_TRUE)
+          satisfied = 1;
+        else if (value == VALUE_OPEN) {
+          open = open + 1;
+
+          unit = literal;
+        }
+
+        i = i + 1;
+      }
+
+      if (satisfied == 0) {
+        if (open == 0)
+          return 1;
+        else if (open == 1) {
+          assign_literal(unit);
+
+          changed = 1;
+        }
+      }
+
+      clause = clause + 1;
+    }
+  }
+
+  return 0;
+}
+
+void check_learned() {
+  uint64_t size;
+  uint64_t saved;
+  uint64_t i;
+  uint64_t c;
+  uint64_t literal;
+  uint64_t tautology;
+
+  // a learned clause, its literals and 0: it follows from the clauses so
+  // far, whatever the region, and is a clause as the others from here on
+
+  size = 0;
+
+  skip_replay_blanks();
+
+  c = replay_character();
+
+  while (c != '0') {
+    if (size > number_of_variables)
+      replay_error("learned clause is too long");
+
+    *(learned_check + size) = scan_replay_literal();
+
+    size = size + 1;
+
+    skip_replay_blanks();
+
+    c = replay_character();
+  }
+
+  // the 0
+  replay_pos = replay_pos + 1;
+
+  // the region is put aside
+
+  saved = trail_size;
+
+  i = 0;
+
+  while (i < saved) {
+    *(saved_trail + i) = *(trail + i);
+
+    i = i + 1;
+  }
+
+  unassign_to(0);
+
+  tautology = 0;
+
+  i = 0;
+
+  while (i < size) {
+    literal = *(learned_check + i);
+
+    if (literal_value(literal) == VALUE_OPEN)
+      assign_literal(negation(literal));
+    else if (literal_value(literal) == VALUE_TRUE)
+      // the clause has a literal and its negation
+      tautology = 1;
+
+    i = i + 1;
+  }
+
+  if (tautology == 0)
+    if (propagate_to_conflict() == 0)
+      replay_error("learned clause does not follow");
+
+  unassign_to(0);
+
+  i = 0;
+
+  while (i < saved) {
+    assign_literal(*(saved_trail + i));
+
+    i = i + 1;
+  }
+
+  add_clause(learned_check, size);
+
+  replayed_clauses = replayed_clauses + 1;
+}
+
+void replay_learned() {
+  // the clauses learned before the next region
+
+  skip_replay_blanks();
+
+  while (replay_character() == 'l') {
+    replay_pos = replay_pos + 1;
+
+    check_learned();
+
+    skip_replay_blanks();
+  }
+}
+
 void replay() {
   uint64_t event;
   uint64_t literal;
@@ -232,7 +401,7 @@ void replay() {
 
   // replays the events of one region and of all regions it is split into
 
-  skip_replay_blanks();
+  replay_learned();
 
   event = replay_character();
 
@@ -318,9 +487,13 @@ int main(int argc, char** argv) {
 
   replayed_worlds = new_count(0);
 
+  saved_trail   = smalloc(number_of_variables * sizeof(uint64_t));
+  learned_check = smalloc((number_of_variables + 1) * sizeof(uint64_t));
+
   replay();
 
-  skip_replay_blanks();
+  // the clauses learned from the last region
+  replay_learned();
 
   if (replay_pos < replay_size)
     replay_error("end of trace expected");
@@ -329,7 +502,7 @@ int main(int argc, char** argv) {
   print_count(replayed_worlds);
   printf(" of ");
   print_count(count_of_power(number_of_variables));
-  printf(" worlds\n");
+  printf(" worlds, with %lu learned clauses that follow\n", replayed_clauses);
 
   return EXITCODE_NOERROR;
 }

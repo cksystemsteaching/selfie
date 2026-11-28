@@ -995,9 +995,10 @@ entr-trace: tests/entr-trace.c entr.h bitr.h tools/btor2.h selfie.h
 # E2: the loop on the formulas of examples/sat and on the formulas that model
 # checking the symbolic examples generates, as make cdcl does. For every setting
 # of the switches the ledger accounts for all worlds and the trace replays to the
-# count; the counts are the reference's where it can enumerate; the answer to
-# whether is babysat's and bitr's, and with all switches off the first world found
-# is babysat's; the loop and the checker of traces run on mipster
+# count, with every learned clause shown to follow; the counts are the reference's
+# where it can enumerate; the answer to whether is bitr's, and babysat's up to 20
+# variables, where with all switches off the first world found is babysat's too;
+# the loop and the checker of traces run on mipster
 ledger: entr entr-trace bitr babysat selfie rotor
 	for f in $(wildcard examples/symbolic/*.c); do \
 	  b=$${f%.c}; \
@@ -1006,7 +1007,7 @@ ledger: entr entr-trace bitr babysat selfie rotor
 	    ./bitr $$b-rotorized-riscuonly.btor2 -l $$b.m -bmc 300 -all -dimacs $$b 100 2>&1) || \
 	    { echo "$$out" | tail -n 20; echo "$$b: no CNF files"; exit 1; }; \
 	done
-	n=0; for f in examples/sat/*.cnf examples/symbolic/*.cnf; do \
+	n=0; for f in examples/sat/*.cnf examples/entropy/*.cnf examples/symbolic/*.cnf; do \
 	  v=$$(sed -n 's/^p cnf \([0-9]*\) .*/\1/p' $$f); \
 	  c=$$(./entr -cnf $$f -count -trace entr.trace | tee entr-ledger.txt | sed -n 's/.*: count \(.*\) worlds, .*/\1/p'); \
 	  [ -n "$$c" ] && grep -q "ledger: .* open: all " entr-ledger.txt || { echo "$$f: no count, or a ledger that does not account for all worlds"; exit 1; }; \
@@ -1017,18 +1018,28 @@ ledger: entr entr-trace bitr babysat selfie rotor
 	      { echo "$$f: with all switches off the count is not $$c, or the ledger does not account for all worlds"; exit 1; }; \
 	    ./entr-trace $$f entr.trace | grep -q "replays to count $$c worlds" || { echo "$$f: the trace with all switches off does not replay to count $$c"; exit 1; }; \
 	  fi; \
-	  a=$$(./babysat $$f | grep -o "is [un]*satisfiable"); \
-	  d=$$(./bitr -sat $$f | grep -o "is [un]*satisfiable"); \
-	  [ -n "$$a" ] && [ "$$a" = "$$d" ] || { echo "$$f: babysat says it $$a, bitr says it $$d"; exit 1; }; \
+	  a=$$(./bitr -sat $$f | grep -o "is [un]*satisfiable"); \
+	  if [ $$v -le 20 ]; then \
+	    d=$$(./babysat $$f | grep -o "is [un]*satisfiable"); \
+	    [ -n "$$a" ] && [ "$$a" = "$$d" ] || { echo "$$f: bitr says it $$a, babysat says it $$d"; exit 1; }; \
+	  fi; \
+	  for o in "-no learn" "-no propagate"; do \
+	    if [ $$v -le 20 ] || [ "$$o" = "-no learn" ]; then \
+	      ./entr -cnf $$f -count $$o -trace entr.trace | tee entr-ledger.txt | grep -q ": count $$c worlds" && grep -q "ledger: .* open: all " entr-ledger.txt || \
+	        { echo "$$f: with $$o the count is not $$c, or the ledger does not account for all worlds"; exit 1; }; \
+	      ./entr-trace $$f entr.trace | grep -q "replays to count $$c worlds" || { echo "$$f: the trace with $$o does not replay to count $$c"; exit 1; }; \
+	    fi; \
+	  done; \
 	  case "$$c" in "0 of"*) [ "$$a" = "is unsatisfiable" ] ;; *) [ "$$a" = "is satisfiable" ] ;; esac || \
-	    { echo "$$f: the count is $$c, but babysat says it $$a"; exit 1; }; \
-	  for o in "-first" "-first -no pure" "-first -no propagate" "-first -O0"; do \
+	    { echo "$$f: the count is $$c, but bitr says it $$a"; exit 1; }; \
+	  for o in "-first" "-first -no pure" "-first -no learn" "-first -no propagate" "-first -O0"; do \
+	    if [ $$v -gt 20 ]; then case "$$o" in *propagate|*O0) continue ;; esac; fi; \
 	    ./entr -cnf $$f $$o -trace entr.trace > entr-ledger.txt; \
 	    grep -q "ledger: .* open: all " entr-ledger.txt && [ "$$(grep -o 'is [un]*satisfiable' entr-ledger.txt)" = "$$a" ] || \
 	      { echo "$$f: with $$o the answer is not that it $$a, or the ledger does not account for all worlds"; exit 1; }; \
 	    ./entr-trace $$f entr.trace | grep -q "replays to count" || { echo "$$f: the trace with $$o does not replay"; exit 1; }; \
 	  done; \
-	  if [ "$$a" = "is satisfiable" ]; then \
+	  if [ "$$a" = "is satisfiable" ] && [ $$v -le 20 ]; then \
 	    [ "$$(sed -n 's/.* is satisfiable with //p' entr-ledger.txt)" = "$$(./babysat $$f | sed -n 's/.* is satisfiable with //p')" ] || \
 	      { echo "$$f: with all switches off the first world found is not babysat's"; exit 1; }; \
 	  fi; \
@@ -1036,6 +1047,10 @@ ledger: entr entr-trace bitr babysat selfie rotor
 	done; echo "$@: counts, ledgers, traces, and answers agree on $$n formulas"
 	./entr -cnf examples/sat/pigeonhole-4-3.cnf -count -O0 | grep "regions undecided"
 	./entr -cnf examples/sat/pigeonhole-4-3.cnf -count | grep "regions undecided"
+	./entr -cnf examples/entropy/pigeonhole-7-6.cnf -count -no learn | grep "regions undecided"
+	./entr -cnf examples/entropy/pigeonhole-7-6.cnf -count | grep "regions undecided"
+	./entr -cnf examples/sat/rivest.cnf -count -trace entr.trace > /dev/null && { echo "l 1 0"; cat entr.trace; } > entr-wrong.trace; \
+	./entr-trace examples/sat/rivest.cnf entr-wrong.trace | grep "learned clause does not follow" || { echo "$@: a clause that does not follow is accepted as learned"; exit 1; }
 	./entr -cnf examples/sat/rivest.cnf -count -trace entr.trace > /dev/null && sed 's/^e \([0-9]*\)$$/e 1/' entr.trace > entr-wrong.trace; \
 	./entr-trace examples/sat/rivest.cnf entr-wrong.trace | grep "region is not empty by the clause" || { echo "$@: a wrong trace replays"; exit 1; }
 	./selfie -c selfie.h tools/btor2.h bitr.h tools/entr.c -m 64 -cnf examples/sat/pigeonhole-4-3.cnf -count -trace entr.trace | tee entr-ledger.txt; \

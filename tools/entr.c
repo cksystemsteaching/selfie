@@ -178,14 +178,23 @@ uint64_t literal_value(uint64_t literal);
 
 void print_literal(uint64_t fd, uint64_t literal);
 
+void add_clause(uint64_t* literals, uint64_t size);
+
+uint64_t negation(uint64_t literal);
+
 void assign_literal(uint64_t literal);
+void suppose_literal(uint64_t literal);
+void imply_literal(uint64_t literal, uint64_t clause);
 void unassign_to(uint64_t mark);
 
 void formula_reference();
 
 // a formula is a conjunction of clauses over variables 0 to n - 1; a
 // literal is twice its variable, plus one if it is negative; a region is
-// the values of the variables, on a trail in the order they were given
+// the values of the variables, on a trail in the order they were given;
+// a literal on the trail is assumed, by a split, or implied by a clause,
+// its reason, and its level is the number of literals assumed up to it;
+// clauses that follow from the formula may be added behind its own
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
@@ -204,16 +213,23 @@ uint64_t formula_size = 0;         // in bytes
 uint64_t formula_pos  = 0;         // current character
 uint64_t formula_line = 1;         // current line number
 
-uint64_t number_of_variables = 0;
-uint64_t number_of_clauses   = 0;
+uint64_t number_of_variables   = 0;
+uint64_t number_of_clauses     = 0; // clauses of the formula
+uint64_t number_of_all_clauses = 0; // and with the clauses added
 
 uint64_t* clause_starts   = (uint64_t*) 0; // per clause: its first literal, and one more for the end
 uint64_t* clause_literals = (uint64_t*) 0;
 
-uint64_t* variable_values = (uint64_t*) 0; // per variable: open, true, or false
+uint64_t clause_capacity  = 0; // clauses there is memory for
+uint64_t literal_capacity = 0; // literals there is memory for
 
-uint64_t* trail      = (uint64_t*) 0; // literals made true, in order
-uint64_t  trail_size = 0;
+uint64_t* variable_values  = (uint64_t*) 0; // per variable: open, true, or false
+uint64_t* variable_levels  = (uint64_t*) 0; // number of literals assumed when it got its value
+uint64_t* variable_reasons = (uint64_t*) 0; // clause that implied its value, plus one, or 0
+
+uint64_t* trail       = (uint64_t*) 0; // literals made true, in order
+uint64_t  trail_size  = 0;
+uint64_t  trail_level = 0; // number of literals assumed on the trail
 
 // -----------------------------------------------------------------
 // ----------------------------- LOOP ------------------------------
@@ -258,6 +274,7 @@ uint64_t* ledger_empty     = (uint64_t*) 0; // regions that violate a clause
 uint64_t* ledger_full      = (uint64_t*) 0; // regions that satisfy all clauses
 uint64_t* ledger_propagate = (uint64_t*) 0; // halves that unit propagation found empty
 uint64_t* ledger_pure      = (uint64_t*) 0; // halves that pure literals make irrelevant
+uint64_t* ledger_learn     = (uint64_t*) 0; // regions and halves that a learned clause found empty
 uint64_t* ledger_open      = (uint64_t*) 0; // regions not looked at since the question was answered
 
 // the measure: what the search cost
@@ -282,6 +299,8 @@ uint64_t find_pure_literal();
 
 uint64_t bracket();
 
+void learn(uint64_t conflict);
+
 // the bracket of a region: empty, full, or undecided; a bracket that
 // propagates makes the region smaller before it says undecided
 
@@ -296,6 +315,14 @@ uint64_t BRACKET_UNIT      = 3; // a clause has one open literal and no true one
 
 uint64_t bracket_propagates = 1; // switch propagate: unit propagation
 uint64_t bracket_pure       = 1; // switch pure: pure literals, only if asking whether
+uint64_t bracket_learns     = 1; // switch learn: a clause from every region found empty
+
+uint64_t* variable_seen = (uint64_t*) 0; // per variable: part of the clause being learned
+uint64_t* seen_stack    = (uint64_t*) 0; // the variables seen, to forget them again
+uint64_t* learned       = (uint64_t*) 0; // the clause being learned
+
+uint64_t learned_clauses  = 0; // clauses learned
+uint64_t learned_literals = 0; // and their literals
 
 uint64_t bracket_clause  = 0; // the clause that makes the region empty, or is unit
 uint64_t bracket_literal = 0; // the open literal of the unit clause
@@ -485,8 +512,12 @@ uint64_t entropy_in_hundredths(uint64_t* count) {
 void print_count(uint64_t* count) {
   if (count_is_exact(count) == 0) {
     // a lower bound, as a power of two
-    printf("at least 2^");
-    print_entropy(count);
+    if (count_mantissa(count) == 0)
+      printf("at least 0");
+    else {
+      printf("at least 2^");
+      print_entropy(count);
+    }
 
     return;
   }
@@ -1189,16 +1220,27 @@ void load_formula(char* name) {
 
   number_of_clauses = scan_formula_number();
 
-  // a clause has no more literals than there are characters left, halved
-  clause_starts   = smalloc((number_of_clauses + 1) * sizeof(uint64_t));
-  clause_literals = smalloc((formula_size - formula_pos + 1) * sizeof(uint64_t));
+  // the clauses have no more literals than there are characters left
+  clause_capacity  = number_of_clauses + 1;
+  literal_capacity = formula_size - formula_pos + 1;
 
-  variable_values = zmalloc(number_of_variables * sizeof(uint64_t));
+  clause_starts   = smalloc((clause_capacity + 1) * sizeof(uint64_t));
+  clause_literals = smalloc(literal_capacity * sizeof(uint64_t));
+
+  variable_values  = zmalloc(number_of_variables * sizeof(uint64_t));
+  variable_levels  = zmalloc(number_of_variables * sizeof(uint64_t));
+  variable_reasons = zmalloc(number_of_variables * sizeof(uint64_t));
+  variable_seen    = zmalloc(number_of_variables * sizeof(uint64_t));
+
+  seen_stack = smalloc(number_of_variables * sizeof(uint64_t));
+  learned    = smalloc((number_of_variables + 1) * sizeof(uint64_t));
+
   model_values    = zmalloc(number_of_variables * sizeof(uint64_t));
   literal_occurs  = zmalloc(2 * number_of_variables * sizeof(uint64_t));
 
-  trail      = smalloc(number_of_variables * sizeof(uint64_t));
-  trail_size = 0;
+  trail       = smalloc(number_of_variables * sizeof(uint64_t));
+  trail_size  = 0;
+  trail_level = 0;
 
   clause   = 0;
   literals = 0;
@@ -1241,8 +1283,71 @@ void load_formula(char* name) {
     }
   }
 
+  number_of_all_clauses = number_of_clauses;
+
   printf("%s: %lu clauses over %lu variables with %lu literals loaded from %s\n", selfie_name,
     number_of_clauses, number_of_variables, literals, formula_name);
+}
+
+void add_clause(uint64_t* literals, uint64_t size) {
+  uint64_t* bigger;
+  uint64_t first;
+  uint64_t i;
+
+  // a clause that follows from the formula, behind the clauses there are
+
+  first = *(clause_starts + number_of_all_clauses);
+
+  if (number_of_all_clauses + 1 > clause_capacity) {
+    clause_capacity = 2 * clause_capacity;
+
+    bigger = smalloc((clause_capacity + 1) * sizeof(uint64_t));
+
+    i = 0;
+
+    while (i <= number_of_all_clauses) {
+      *(bigger + i) = *(clause_starts + i);
+
+      i = i + 1;
+    }
+
+    clause_starts = bigger;
+  }
+
+  if (first + size > literal_capacity) {
+    literal_capacity = 2 * (first + size);
+
+    bigger = smalloc(literal_capacity * sizeof(uint64_t));
+
+    i = 0;
+
+    while (i < first) {
+      *(bigger + i) = *(clause_literals + i);
+
+      i = i + 1;
+    }
+
+    clause_literals = bigger;
+  }
+
+  i = 0;
+
+  while (i < size) {
+    *(clause_literals + first + i) = *(literals + i);
+
+    i = i + 1;
+  }
+
+  number_of_all_clauses = number_of_all_clauses + 1;
+
+  *(clause_starts + number_of_all_clauses) = first + size;
+}
+
+uint64_t negation(uint64_t literal) {
+  if (literal_is_negative(literal))
+    return literal - 1;
+  else
+    return literal + 1;
 }
 
 uint64_t literal_variable(uint64_t literal)    { return literal / 2; }
@@ -1283,9 +1388,28 @@ void assign_literal(uint64_t literal) {
   else
     *(variable_values + literal_variable(literal)) = VALUE_TRUE;
 
+  *(variable_levels + literal_variable(literal))  = trail_level;
+  *(variable_reasons + literal_variable(literal)) = 0;
+
   *(trail + trail_size) = literal;
 
   trail_size = trail_size + 1;
+}
+
+void suppose_literal(uint64_t literal) {
+  // a half that no clause singles out: by a split, or by a pure literal
+
+  trail_level = trail_level + 1;
+
+  assign_literal(literal);
+}
+
+void imply_literal(uint64_t literal, uint64_t clause) {
+  // the half that a clause leaves: its other half is empty by the clause
+
+  assign_literal(literal);
+
+  *(variable_reasons + literal_variable(literal)) = clause + 1;
 }
 
 void unassign_to(uint64_t mark) {
@@ -1296,6 +1420,11 @@ void unassign_to(uint64_t mark) {
 
     *(variable_values + literal_variable(*(trail + trail_size))) = VALUE_OPEN;
   }
+
+  if (trail_size == 0)
+    trail_level = 0;
+  else
+    trail_level = *(variable_levels + literal_variable(*(trail + trail_size - 1)));
 }
 
 void formula_reference() {
@@ -1458,6 +1587,7 @@ uint64_t ledgers_account() {
       + *(ledger_full + exponent)
       + *(ledger_propagate + exponent)
       + *(ledger_pure + exponent)
+      + *(ledger_learn + exponent)
       + *(ledger_open + exponent);
 
     if (regions % 2 == 1)
@@ -1473,6 +1603,7 @@ uint64_t ledgers_account() {
     + *(ledger_full + exponent)
     + *(ledger_propagate + exponent)
     + *(ledger_pure + exponent)
+    + *(ledger_learn + exponent)
     + *(ledger_open + exponent);
 
   return regions == 1;
@@ -1488,7 +1619,9 @@ void trace(char* event, uint64_t literal, uint64_t clause) {
   // half in which it is false; u for a literal that a clause makes true,
   // p for a pure literal, each followed by the half in which it is true;
   // e for a region that a clause makes empty; f for a full region; o for
-  // a region not looked at
+  // a region not looked at; and, between regions, l for a clause learned,
+  // see learn(), which is from then on a clause as the others, numbered
+  // after them
 
   if (trace_name == (char*) 0)
     return;
@@ -1522,6 +1655,7 @@ uint64_t is_answered() {
 
 void count_region() {
   uint64_t mark;
+  uint64_t split;
   uint64_t outcome;
   uint64_t literal;
   uint64_t variable;
@@ -1533,10 +1667,20 @@ void count_region() {
 
   outcome = bracket();
 
+  // the trail of the region as the bracket left it
+  split = trail_size;
+
   if (outcome == BRACKET_EMPTY) {
-    enter(ledger_empty, open_variables());
+    if (bracket_clause < number_of_clauses)
+      enter(ledger_empty, open_variables());
+    else
+      // empty by a clause that was learned
+      enter(ledger_learn, open_variables());
 
     trace("e", 0, bracket_clause);
+
+    if (bracket_learns)
+      learn(bracket_clause);
   } else if (outcome == BRACKET_FULL) {
     enter(ledger_full, open_variables());
 
@@ -1566,11 +1710,11 @@ void count_region() {
 
     trace("s", literal, 0);
 
-    assign_literal(literal);
+    suppose_literal(literal);
 
     count_region();
 
-    unassign_to(trail_size - 1);
+    unassign_to(split);
 
     if (is_answered()) {
       // the other half is not looked at
@@ -1579,10 +1723,7 @@ void count_region() {
       trace("o", 0, 0);
     } else {
       // the other half: the literal is false
-      if (literal_is_negative(literal))
-        assign_literal(literal - 1);
-      else
-        assign_literal(literal + 1);
+      suppose_literal(negation(literal));
 
       count_region();
     }
@@ -1661,6 +1802,8 @@ void print_ledger() {
   printf(" by propagation, ");
   print_count(count_of_ledger(ledger_pure));
   printf(" by pure literals, ");
+  print_count(count_of_ledger(ledger_learn));
+  printf(" by learned clauses, ");
   print_count(count_of_ledger(ledger_open));
   printf(" open: ");
 
@@ -1677,8 +1820,8 @@ void print_ledger() {
 }
 
 void print_measure() {
-  printf("%s: %lu regions undecided, %lu brackets, %lu clauses visited\n", selfie_name,
-    undecided_regions, brackets_taken, clauses_visited);
+  printf("%s: %lu regions undecided, %lu brackets, %lu clauses visited, %lu clauses learned with %lu literals\n", selfie_name,
+    undecided_regions, brackets_taken, clauses_visited, learned_clauses, learned_literals);
 }
 
 void loop() {
@@ -1686,6 +1829,7 @@ void loop() {
   ledger_full      = new_ledger();
   ledger_propagate = new_ledger();
   ledger_pure      = new_ledger();
+  ledger_learn     = new_ledger();
   ledger_open      = new_ledger();
 
   if (trace_name != (char*) 0) {
@@ -1736,7 +1880,7 @@ uint64_t scan_clauses() {
 
   clause = 0;
 
-  while (clause < number_of_clauses) {
+  while (clause < number_of_all_clauses) {
     clauses_visited = clauses_visited + 1;
 
     satisfied = 0;
@@ -1808,7 +1952,7 @@ uint64_t find_pure_literal() {
 
   clause = 0;
 
-  while (clause < number_of_clauses) {
+  while (clause < number_of_all_clauses) {
     clauses_visited = clauses_visited + 1;
 
     satisfied = 0;
@@ -1877,11 +2021,15 @@ uint64_t bracket() {
 
     if (outcome == BRACKET_UNIT) {
       // the half in which the literal is false is empty
-      enter(ledger_propagate, open_variables() - 1);
+      if (bracket_clause < number_of_clauses)
+        enter(ledger_propagate, open_variables() - 1);
+      else
+        // by a clause that was learned
+        enter(ledger_learn, open_variables() - 1);
 
       trace("u", bracket_literal, bracket_clause);
 
-      assign_literal(bracket_literal);
+      imply_literal(bracket_literal, bracket_clause);
     } else if (outcome == BRACKET_UNDECIDED) {
       if (bracket_pure == 0)
         return outcome;
@@ -1894,11 +2042,156 @@ uint64_t bracket() {
 
         trace("p", bracket_literal, 0);
 
-        assign_literal(bracket_literal);
+        suppose_literal(bracket_literal);
       } else
         return outcome;
     } else
       return outcome;
+  }
+}
+
+void learn(uint64_t conflict) {
+  uint64_t level;
+  uint64_t clause;
+  uint64_t pivot;
+  uint64_t i;
+  uint64_t literal;
+  uint64_t variable;
+  uint64_t pending;
+  uint64_t seen;
+  uint64_t size;
+  uint64_t t;
+  uint64_t resolved;
+
+  // the region is empty by the conflict clause, all of whose literals are
+  // false. A literal that is false because a clause implied its negation
+  // can be replaced by the other literals of that clause, which are false
+  // as well: the result follows from the two clauses, by resolution, and
+  // also makes the region empty. Replacing the literals of the highest
+  // level, last implied first, until one is left, the first unique
+  // implication point, gives a clause that makes more regions empty than
+  // this one: all in which its literals are false, whatever was assumed
+  // since. The clause is remembered; the count is not changed by it.
+
+  level = 0;
+
+  i = *(clause_starts + conflict);
+
+  while (i < *(clause_starts + conflict + 1)) {
+    variable = literal_variable(*(clause_literals + i));
+
+    if (*(variable_levels + variable) > level)
+      level = *(variable_levels + variable);
+
+    i = i + 1;
+  }
+
+  if (level == 0)
+    // nothing was assumed: the formula has no worlds, and nothing to learn
+    return;
+
+  pending  = 0; // literals of the highest level still to be replaced
+  seen     = 0;
+  size     = 1; // the first literal is the implication point
+  resolved = 0;
+
+  clause = conflict;
+  pivot  = number_of_variables; // no variable
+
+  t = trail_size;
+
+  while (1) {
+    i = *(clause_starts + clause);
+
+    while (i < *(clause_starts + clause + 1)) {
+      literal  = *(clause_literals + i);
+      variable = literal_variable(literal);
+
+      if (variable != pivot)
+        if (*(variable_seen + variable) == 0)
+          if (*(variable_levels + variable) > 0) {
+            // literals implied before anything was assumed are false in all worlds
+            *(variable_seen + variable) = 1;
+
+            *(seen_stack + seen) = variable;
+
+            seen = seen + 1;
+
+            if (*(variable_levels + variable) == level)
+              pending = pending + 1;
+            else {
+              *(learned + size) = literal;
+
+              size = size + 1;
+            }
+          }
+
+      i = i + 1;
+    }
+
+    // the literal of the highest level that was made true last
+
+    t = t - 1;
+
+    literal  = *(trail + t);
+    variable = literal_variable(literal);
+
+    while (*(variable_seen + variable) * (*(variable_levels + variable) == level) == 0) {
+      t = t - 1;
+
+      literal  = *(trail + t);
+      variable = literal_variable(literal);
+    }
+
+    pending = pending - 1;
+
+    if (pending == 0) {
+      // the implication point: its negation is the first literal learned
+      *learned = negation(literal);
+
+      i = 0;
+
+      while (i < seen) {
+        *(variable_seen + *(seen_stack + i)) = 0;
+
+        i = i + 1;
+      }
+
+      if (resolved == 0)
+        // the conflict clause itself: nothing new
+        return;
+
+      add_clause(learned, size);
+
+      learned_clauses  = learned_clauses + 1;
+      learned_literals = learned_literals + size;
+
+      if (trace_name != (char*) 0) {
+        // l for a clause learned, its literals, and 0
+        dprintf(trace_fd, "l ");
+
+        i = 0;
+
+        while (i < size) {
+          print_literal(trace_fd, *(learned + i));
+
+          dprintf(trace_fd, " ");
+
+          i = i + 1;
+        }
+
+        dprintf(trace_fd, "0\n");
+      }
+
+      return;
+    }
+
+    // replace it by the other literals of the clause that implied it
+
+    clause = *(variable_reasons + variable) - 1;
+    pivot  = variable;
+
+    resolved = resolved + 1;
   }
 }
 
@@ -1940,6 +2233,8 @@ uint64_t set_switch(char* name, uint64_t value) {
     bracket_propagates = value;
   else if (string_compare(name, "pure"))
     bracket_pure = value;
+  else if (string_compare(name, "learn"))
+    bracket_learns = value;
   else
     return 0;
 
@@ -1970,6 +2265,7 @@ uint64_t entr_formula() {
     else if (string_compare(argument, "-O0")) {
       bracket_propagates = 0;
       bracket_pure       = 0;
+      bracket_learns     = 0;
     } else if (string_compare(argument, "-O")) {
       if (number_of_remaining_arguments() == 0)
         return EXITCODE_BADARGUMENTS;
