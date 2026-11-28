@@ -77,3 +77,4 @@ examples/entropy/*-*.c
 examples/entropy/*.m
 examples/entropy/*.r
 examples/entropy/*.btor2
+baselines-*.txt
