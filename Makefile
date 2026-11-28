@@ -380,7 +380,7 @@ riscr-rev: riscr selfie selfie-riscr.h rev
 	-echo "RISC-R" | ./riscr -l tests/riscr-test.m -rev 1
 	-echo "RISC-R" | ./selfie -c selfie-riscr.h tools/riscr.c -m 16 -l tests/riscr-test.m -rev 1
 
-# Garbage-free assignments (M9 of projects/reversible.md): riscr compiles x += e, x -= e, and x ^= e without
+# Garbage-free assignments: riscr compiles x += e, x -= e, and x ^= e without
 # history. The test program exits natively, compiled by gcc, as on riscr, forward and backward; it leaves the
 # history pointer where the same program without its compound assignments leaves it; the RISC-U binary that
 # riscr writes translates to the same RISC-R binary, and so does riscr on mipster; what cannot be uncomputed,
@@ -406,7 +406,7 @@ garbage-free: riscr selfie selfie-riscr.h
 	./riscr -c tests/riscr-compound-base.c | grep -q "procedure call in a compound assignment"
 	@echo "$@: compound assignments compute as in C and leave no history"
 
-# Run rotor to generate the 64-bit RISC-R machine model forward and inverse (M3a of projects/reversible.md), and
+# Run rotor to generate the 64-bit RISC-R machine model forward and inverse, and
 # check on random states that inverse after forward and forward after inverse are the identity
 riscr-model: rotor
 	./rotor - 0 -riscr
@@ -417,7 +417,7 @@ riscr-model: rotor
 bitr: tools/bitr.c tools/btor2.h selfie.h
 	$(CC) $(CFLAGS) --include selfie.h --include tools/btor2.h $< -o $@
 
-# Check bitr's simulator against mipster and riscr (M4 of projects/reversible.md): every symbolic example,
+# Check bitr's simulator against mipster and riscr: every symbolic example,
 # compiled to RISC-U and translated to RISC-R with a 1MB history stack, reads tests/bitr-input.txt and must
 # stop in rotor's model of it with the emulator's exit code after the emulator's number of instructions, or,
 # if the emulator throws an exception, with a bad state after that number of instructions
@@ -441,39 +441,11 @@ sim: bitr selfie riscr rotor
 	  done; \
 	done
 
-# Checking backward (M12 of projects/reversible.md): bitr finds an input that leads to a bad state in rotor's
-# model of an example translated to RISC-R, runs the model on it, and writes the bad state; from that state
-# rotor's inverse model of the same binary runs back to its initial state, path by path as forward, in the
-# number of instructions that led there, with nothing free and with the four words on top of the history
-# stack free, which forks a path and has the solver find the one history that leads back
-backward: bitr selfie riscr rotor
-	b=examples/symbolic/simple-assignment-1-35; \
-	o="-Pnobadexitcode -Pgoodexitcode -heapallowance 2097152 -stackallowance 65536"; \
-	./selfie -c $$b.c -o $$b.m > /dev/null && \
-	./riscr -l $$b.m -history 1 -t $$b.r > /dev/null && \
-	./rotor -l $$b.r - 0 $$o > /dev/null && \
-	./rotor -l $$b.r - 0 $$o -inverse > /dev/null || exit 1; \
-	./bitr $$b-rotorized-riscr.btor2 -l $$b.r -bmc 5000 -w $$b.witness > /dev/null; \
-	n=$$(./bitr $$b-rotorized-riscr.btor2 -l $$b.r -i $$b.witness -dump $$b.state | sed -n 's/.*: bad core-0-good-exit-code after \([0-9]*\) instructions/\1/p'); \
-	[ -n "$$n" ] || { echo "$$b: no bad state"; exit 1; }; \
-	./bitr $$b-rotorized-riscr-inverse.btor2 -l $$b.r -state $$b.state -bmc 5000 | tee bitr-backward.txt; \
-	grep -q "initial state reached after $$((n - 1)) instructions" bitr-backward.txt || exit 1; \
-	grep -q " 0 paths forked" bitr-backward.txt || exit 1; \
-	h=$$(sed -n 's/^core-0-initialized-register-file 18 //p' $$b.state); \
-	s=$$(sed -n 's/.* consth [0-9]* \([0-9A-Fa-f]*\) ; start of heap segment.*/\1/p' $$b-rotorized-riscr-inverse.btor2); \
-	w=$$(( (h - 0x$$s) / 8 )); \
-	./bitr $$b-rotorized-riscr-inverse.btor2 -l $$b.r -state $$b.state -free core-0-zeroed-heap-segment $$((w - 4)) 4 -enumerate core-0-pc -bmc 5000 | tee bitr-backward.txt; \
-	grep -q "initial state reached after $$((n - 1)) instructions" bitr-backward.txt || exit 1; \
-	grep -q " 1 paths forked" bitr-backward.txt || exit 1; \
-	echo "$@: from the bad state after $$n instructions back to the initial state, with 4 of $$w words of history free"
-
-# A loop without history (M15 of projects/reversible.md, the bit-length loop): the loop with compound
-# assignments and from, and the loop as C* has it, each read a byte with 8 bits and with 1 bit, exit as
-# compiled by gcc, for which from(e) is nothing, and run back; the first leaves the history pointer where it
-# is whatever the number of iterations, the second does not; riscr on mipster translates the first to the
-# same binary; and from the exit of the first after 1 iteration rotor's inverse model runs back to its
-# initial state with s free, the word that holds the bits the loop took from x
-bit-length: bitr selfie riscr rotor selfie-riscr.h
+# A loop without history, the bit-length loop: the loop with compound assignments and from, and the loop as
+# C* has it, each read a byte with 8 bits and with 1 bit, exit as compiled by gcc, for which from(e) is
+# nothing, and run back; the first leaves the history pointer where it is whatever the number of iterations,
+# the second does not; riscr on mipster translates the first to the same binary
+bit-length: selfie riscr selfie-riscr.h
 	printf '\265' > tests/riscr-bitlength-8.txt
 	printf '\1' > tests/riscr-bitlength-1.txt
 	for t in tests/riscr-bitlength-test tests/riscr-bitlength-history-test; do \
@@ -492,17 +464,9 @@ bit-length: bitr selfie riscr rotor selfie-riscr.h
 	./riscr -c tests/riscr-bitlength-test.c -history 1 -t tests/riscr-bitlength-test.r | grep "loop without history"
 	./selfie -c selfie-riscr.h tools/riscr.c -m 64 -c tests/riscr-bitlength-test.c -history 1 -t tests/riscr-bitlength-file.r > /dev/null
 	cmp tests/riscr-bitlength-test.r tests/riscr-bitlength-file.r
-	t=tests/riscr-bitlength-test; \
-	o="-heapallowance 2097152 -stackallowance 65536"; \
-	./rotor -l $$t.r - 1 $$o > /dev/null && \
-	./rotor -l $$t.r - 1 $$o -inverse > /dev/null || exit 1; \
-	n=$$(./bitr $$t-rotorized-riscr.btor2 -l $$t.r -i tests/riscr-bitlength-1.txt -dump $$t.state | sed -n 's/.*: bad core-0-bad-exit-code after \([0-9]*\) instructions/\1/p'); \
-	[ -n "$$n" ] && grep -q "^core-0-zeroed-data-segment 3 1$$" $$t.state || { echo "$$t: no exit, or s is not 1"; exit 1; }; \
-	./bitr $$t-rotorized-riscr-inverse.btor2 -l $$t.r -state $$t.state -free core-0-zeroed-data-segment 3 1 -enumerate core-0-pc -bmc 5000 | tee riscr-bitlength-test.txt; \
-	grep -q "initial state reached after $$((n - 1)) instructions" riscr-bitlength-test.txt || exit 1; \
-	echo "$@: the loop leaves no history, and runs back from its exit after $$n instructions with s free"
+	echo "$@: the loop leaves no history, whatever the number of iterations"
 
-# Check bitr's bounded model checker (M5 of projects/reversible.md): in rotor's model of every symbolic example,
+# Check bitr's bounded model checker: in rotor's model of every symbolic example,
 # compiled to RISC-U and translated to RISC-R, bitr finds an input that leads to a non-zero exit code, a division
 # by zero, or an invalid memory access, and the emulator, run on that input, does the same after the same number
 # of instructions; on one example bitr then enumerates all such inputs and proves that all others halt
@@ -533,7 +497,7 @@ bmc: bitr selfie riscr rotor
 	[ $$(grep -c "bad core-0-good-exit-code" division-by-zero.bmc) = 1 ]
 	grep -q "halted after 107 instructions on all inputs that reach no bad state" division-by-zero.bmc
 
-# CDCL and babysat agree (M5 of projects/reversible.md): on the instances in examples/sat and on every CNF with
+# CDCL and babysat agree: on the instances in examples/sat and on every CNF with
 # at most 100 variables that bitr generates when model checking the symbolic examples, which is as far as
 # babysat's enumeration reaches
 cdcl: bitr babysat selfie rotor
@@ -552,7 +516,7 @@ cdcl: bitr babysat selfie rotor
 	  n=$$((n + 1)); \
 	done; echo "$@: babysat and CDCL agree on $$n instances"
 
-# Inverse after forward is the identity (M5 of projects/reversible.md): proven symbolically by bitr for one step
+# Inverse after forward is the identity: proven symbolically by bitr for one step
 # of the RISC-R machine model from every state that satisfies the model's constraints, and forward after inverse
 # as well; more steps follow by induction, each step of a run that reaches no bad state satisfies the constraints
 identity: bitr rotor
@@ -567,304 +531,7 @@ identity: bitr rotor
 # Prevent make from deleting intermediate target bitr
 .SECONDARY: bitr
 
-# Compile cellfie.c with selfie.h and btor2.h as libraries into cellfie executable
-cellfie: tools/cellfie.c tools/btor2.h selfie.h
-	$(CC) $(CFLAGS) --include selfie.h --include tools/btor2.h $< -o $@
-
-# Cell rule of cellfie (M6 of projects/reversible.md): the hand-laid RISC-R programs in tests/cellfie-test.rle
-# and, with all system calls, in tests/cellfie-io-test.rle run on the grid until they exit with exit code 42,
-# and then as many ticks backward, natively and on mipster, which restores the initial layout bit for bit, also
-# across files; the simulator agrees with the BTOR2 model of the rule, forward and backward, on random states;
-# and bitr proves that the inverse rule undoes the rule and the rule the inverse rule, on all states of a
-# grid, with no constraint on the states, for the grid of the first test and for the smallest grid
-cells: cellfie bitr selfie selfie.h
-	./cellfie -l tests/cellfie-test.rle -o cellfie-test-initial.rle -rev 10000 -o cellfie-test-restored.rle -f 10000 -o cellfie-test-final.rle | tee cellfie-test.txt
-	grep -q "exit with exit code 42 after 176 ticks and 29 instructions" cellfie-test.txt
-	grep -q "initial state restored after 176 ticks forward and 176 ticks backward" cellfie-test.txt
-	cmp cellfie-test-initial.rle cellfie-test-restored.rle
-	! cmp -s cellfie-test-initial.rle cellfie-test-final.rle
-	./cellfie -l cellfie-test-final.rle -b 176 -o cellfie-test-restored.rle
-	cmp cellfie-test-initial.rle cellfie-test-restored.rle
-	./cellfie -l tests/cellfie-io-test.rle -o cellfie-test-initial-io.rle -rev 10000 -o cellfie-test-restored.rle -f 150 -o cellfie-test-final.rle | tee cellfie-test.txt
-	grep -q "exit with exit code 42 after 344 ticks and 26 instructions" cellfie-test.txt
-	grep -q "initial state restored after 344 ticks forward and 344 ticks backward" cellfie-test.txt
-	cmp cellfie-test-initial-io.rle cellfie-test-restored.rle
-	./cellfie -l cellfie-test-final.rle -b 150 -o cellfie-test-restored.rle
-	cmp cellfie-test-initial-io.rle cellfie-test-restored.rle
-	./selfie -c selfie.h tools/btor2.h tools/cellfie.c -m 64 -l tests/cellfie-test.rle -rev 10000 -o cellfie-test-restored.rle -check 100
-	cmp cellfie-test-initial.rle cellfie-test-restored.rle
-	./cellfie -check 100000
-	./cellfie -btor2 16 8
-	./bitr cellfie-16x8.btor2 -k 1 > /dev/null
-	for g in "2 2" "16 8"; do \
-	  set -- $$g; \
-	  ./cellfie -noproperties -btor2 $$1 $$2 > /dev/null && \
-	  ./cellfie -inverse -btor2 $$1 $$2 > /dev/null || exit 1; \
-	  ./bitr cellfie-$$1x$$2-noproperties.btor2 -identity cellfie-$$1x$$2-inverse.btor2 | tee cellfie-identity.txt; \
-	  grep -q "cellfie-$$1x$$2-inverse.btor2 after cellfie-$$1x$$2-noproperties.btor2 is the identity on all 32 states" cellfie-identity.txt || exit 1; \
-	  ./bitr cellfie-$$1x$$2-inverse.btor2 -identity cellfie-$$1x$$2-noproperties.btor2 | tee cellfie-identity.txt; \
-	  grep -q "cellfie-$$1x$$2-noproperties.btor2 after cellfie-$$1x$$2-inverse.btor2 is the identity on all 32 states" cellfie-identity.txt || exit 1; \
-	done
-	@echo "$@: the hand-laid programs run forward and back to their initial layouts, simulator and model agree, the cell rule is a bijection"
-
-# Prevent make from deleting intermediate target cellfie
-.SECONDARY: cellfie
-
-# Compile cellfie-test.c with selfie.h as library into cellfie-test executable
-cellfie-test: tests/cellfie-test.c selfie.h
-	$(CC) $(CFLAGS) --include selfie.h $< -o $@
-
-# Cellfie meets RISC-R (M7 of projects/reversible.md): the program laid out by hand in tests/cellfie-test.rle is
-# written as RISC-R binary by cellfie-test; riscr runs the binary to exit code 42 in 30 instructions and back,
-# cellfie runs the layout to exit code 42 in 29 instructions before the exit; bitr stops in rotor's model of the
-# binary and in cellfie's model with the layout after as many steps as the emulator and the simulator take; and
-# bitr's product of the two models, in which rotor's model takes a step whenever the token is about to execute
-# an instruction, finds pc, all registers, and both memory words equal at every instruction and both models
-# stopping together, natively and with bitr running on mipster
-product: cellfie cellfie-test bitr riscr rotor selfie selfie.h
-	./cellfie-test tests/cellfie-test.r tests/cellfie-io-test.r
-	./riscr -l tests/cellfie-test.r -rev 1 | tee cellfie-product.txt
-	grep -q "with exit code 42" cellfie-product.txt
-	grep -q "executing 29 instructions backward" cellfie-product.txt
-	grep -q "initial state restored bit for bit" cellfie-product.txt
-	./cellfie -l tests/cellfie-test.rle -f 10000 | tee cellfie-product.txt
-	grep -q "exit with exit code 42 after 176 ticks and 29 instructions" cellfie-product.txt
-	./rotor -l tests/cellfie-test.r - 42 > /dev/null
-	./bitr tests/cellfie-test-rotorized-riscr.btor2 -l tests/cellfie-test.r | tee cellfie-product.txt
-	grep -q "bad core-0-bad-exit-code after 30 instructions" cellfie-product.txt
-	./cellfie -btor2 16 8
-	./bitr cellfie-16x8.btor2 -grid tests/cellfie-test.rle | tee cellfie-product.txt
-	grep -q "bad exit after 177 instructions" cellfie-product.txt
-	./bitr tests/cellfie-test-rotorized-riscr.btor2 -l tests/cellfie-test.r -product cellfie-16x8.btor2 -grid tests/cellfie-test.rle -abstraction tests/cellfie-test-abstraction.btor2 -k 10000 | tee cellfie-product.txt
-	grep -q "agree at all 29 steps of tests/cellfie-test-rotorized-riscr.btor2, in 176 steps of cellfie-16x8.btor2, and stop together" cellfie-product.txt
-	./selfie -c selfie.h tools/btor2.h tools/bitr.c -m 128 tests/cellfie-test-rotorized-riscr.btor2 -l tests/cellfie-test.r -product cellfie-16x8.btor2 -grid tests/cellfie-test.rle -abstraction tests/cellfie-test-abstraction.btor2 -k 10000 | tee cellfie-product.txt
-	grep -q "agree at all 29 steps of tests/cellfie-test-rotorized-riscr.btor2, in 176 steps of cellfie-16x8.btor2, and stop together" cellfie-product.txt
-	@echo "$@: cellfie's cell rule on the hand-laid layout does what rotor's RISC-R model of the binary does, instruction by instruction, and what riscr does"
-
-# Prevent make from deleting intermediate target cellfie-test
-.SECONDARY: cellfie-test
-
-# Tapes and system calls on cellfie (M6b of projects/reversible.md): as make product, for the hand-laid program
-# in tests/cellfie-io-test.rle that sets the program break, reads the byte * from standard input, writes it to
-# standard output, opens a file that does not exist, reads from it, and exits with the byte: riscr and cellfie
-# run it to exit code 42 in 26 instructions before the exit and back, bitr stops in rotor's model and in
-# cellfie's model after as many steps, and bitr's product finds pc, registers, program break, file descriptors,
-# tape heads, and the buffer, input, and output word equal at every instruction, natively and on mipster
-tapes: cellfie cellfie-test bitr riscr rotor selfie selfie.h
-	./cellfie-test tests/cellfie-test.r tests/cellfie-io-test.r
-	printf '*' > tests/cellfie-io-test.txt
-	./riscr -l tests/cellfie-io-test.r -rev 1 < tests/cellfie-io-test.txt | tee cellfie-product.txt
-	grep -q "with exit code 42" cellfie-product.txt
-	grep -q "executing 26 instructions backward" cellfie-product.txt
-	grep -q "initial state restored bit for bit" cellfie-product.txt
-	./cellfie -l tests/cellfie-io-test.rle -rev 10000 | tee cellfie-product.txt
-	grep -q "exit with exit code 42 after 344 ticks and 26 instructions" cellfie-product.txt
-	grep -q "initial state restored after 344 ticks forward and 344 ticks backward" cellfie-product.txt
-	./rotor -l tests/cellfie-io-test.r - 42 > /dev/null
-	./bitr tests/cellfie-io-test-rotorized-riscr.btor2 -l tests/cellfie-io-test.r -i tests/cellfie-io-test.txt | tee cellfie-product.txt
-	grep -q "bad core-0-bad-exit-code after 27 instructions" cellfie-product.txt
-	./cellfie -btor2 32 8
-	./bitr cellfie-32x8.btor2 -grid tests/cellfie-io-test.rle | tee cellfie-product.txt
-	grep -q "bad exit after 345 instructions" cellfie-product.txt
-	./bitr tests/cellfie-io-test-rotorized-riscr.btor2 -l tests/cellfie-io-test.r -i tests/cellfie-io-test.txt -product cellfie-32x8.btor2 -grid tests/cellfie-io-test.rle -abstraction tests/cellfie-io-test-abstraction.btor2 -k 10000 | tee cellfie-product.txt
-	grep -q "agree at all 26 steps of tests/cellfie-io-test-rotorized-riscr.btor2, in 344 steps of cellfie-32x8.btor2, and stop together" cellfie-product.txt
-	./selfie -c selfie.h tools/btor2.h tools/bitr.c -m 128 tests/cellfie-io-test-rotorized-riscr.btor2 -l tests/cellfie-io-test.r -i tests/cellfie-io-test.txt -product cellfie-32x8.btor2 -grid tests/cellfie-io-test.rle -abstraction tests/cellfie-io-test-abstraction.btor2 -k 10000 | tee cellfie-product.txt
-	grep -q "agree at all 26 steps of tests/cellfie-io-test-rotorized-riscr.btor2, in 344 steps of cellfie-32x8.btor2, and stop together" cellfie-product.txt
-	@echo "$@: cellfie's system calls on the hand-laid layout do what rotor's RISC-R model of the binary does, instruction by instruction, and what riscr does"
-
-# Layout compiler of cellfie (M8 of projects/reversible.md): every symbolic example, compiled by selfie to RISC-U
-# and translated by riscr to RISC-R with a 1MB history stack, is compiled by cellfie into a layout, with cells
-# for 2048 words of history, 64 words of heap, and 128 words of stack, and with tests/bitr-input.txt on the
-# tape of standard input; cellfie runs the layout to the exit code of riscr in the number of instructions of
-# riscr and back to the layout; and bitr's product of rotor's model of the binary and cellfie's model with the
-# layout, by the abstraction that cellfie writes, finds pc, registers, the state of the system calls, and all
-# words of memory and tapes that have a cell equal at every instruction. An example that riscr stops for
-# accessing memory that is not there stops on cellfie as well, in the instruction after riscr's last, with the
-# token at a cell that is tagged with another address than the token's: invalid-address, with riscr's address.
-# So does the most recursive example with 512 words of history, where the grid is what is too small. The first
-# example is also compiled and run with cellfie on mipster.
-layouts: cellfie bitr riscr rotor selfie selfie.h
-	m=0; for f in $(wildcard examples/symbolic/*.c); do \
-	  b=$${f%.c}; \
-	  ./selfie -c $$f -o $$b.m > /dev/null && \
-	  ./riscr -l $$b.m -history 1 -t $$b.r > /dev/null || exit 1; \
-	  out=$$(./riscr -l $$b.r -m 1 < tests/bitr-input.txt 2>&1); \
-	  e=$$(echo "$$out" | sed -n 's/.*with exit code \([0-9]*\).*/\1/p'); \
-	  n=$$(echo "$$out" | sed -n 's/.*summary: \([0-9]*\) executed instructions.*/\1/p'); \
-	  if [ $$e -ge 11 ]; then \
-	    a=$$(echo "$$out" | sed -n 's/.*uncaught exception: invalid address \(0x[0-9A-F]*\).*/\1/p'); \
-	    ./cellfie -heap 0 2048 -heap 1044472 1 -heap 1048576 64 -stack 128 -i tests/bitr-input.txt -c $$b.r -f 100000000 > $$b.cells || exit 1; \
-	    grep -q "invalid-address $$a after [0-9]* ticks and $$((n + 1)) instructions" $$b.cells || \
-	      { echo "$$b.r: cellfie does not stop at the invalid address $$a after $$n instructions as riscr does"; exit 1; }; \
-	    echo "$$b.r: invalid address $$a after $$n instructions as riscr"; continue; fi; \
-	  ./cellfie -heap 0 2048 -heap 1048576 64 -stack 128 -i tests/bitr-input.txt -c $$b.r -o $$b.rle -a $$b-abstraction.btor2 2097152 65536 -rev 100000000 > $$b.cells || exit 1; \
-	  grep -q "exit with exit code $$e after [0-9]* ticks and $$((n - 1)) instructions" $$b.cells && \
-	  grep -q "initial state restored" $$b.cells || \
-	    { echo "$$b.rle: cellfie disagrees with riscr, expected exit code $$e after $$((n - 1)) instructions"; exit 1; }; \
-	  ./rotor -l $$b.r - $$e -heapallowance 2097152 -stackallowance 65536 > /dev/null || exit 1; \
-	  w=$$(sed -n 's/^x = \([0-9]*\), y = \([0-9]*\),.*/\1/p' $$b.rle); \
-	  h=$$(sed -n 's/^x = \([0-9]*\), y = \([0-9]*\),.*/\2/p' $$b.rle); \
-	  [ cellfie-$${w}x$$h.btor2 -nt cellfie ] || ./cellfie -btor2 $$w $$h > /dev/null || exit 1; \
-	  ./bitr $$b-rotorized-riscr.btor2 -l $$b.r -i tests/bitr-input.txt -product cellfie-$${w}x$$h.btor2 -grid $$b.rle -abstraction $$b-abstraction.btor2 | \
-	    grep -q "agree at all $$((n - 1)) steps of .*, and stop together" || \
-	    { echo "$$b.rle: cellfie's rule on the layout disagrees with rotor's model"; exit 1; }; \
-	  echo "$$b.rle: exit code $$e after $$((n - 1)) instructions and $$(sed -n 's/.*exit with exit code [0-9]* after \([0-9]*\) ticks.*/\1/p' $$b.cells | head -1) ticks as riscr, and as rotor's model at every instruction"; \
-	  m=$$((m + 1)); \
-	done; [ $$m -ge 17 ] || { echo "only $$m layouts checked"; exit 1; }
-	n=$$(./cellfie -heap 0 2048 -heap 1048576 64 -stack 128 -i tests/bitr-input.txt -c examples/symbolic/division-by-zero-3-35.r -f 100000000 | sed -n 's/.* with pc \(.*: exit with exit code .*\)/\1/p'); \
-	m=$$(./selfie -c selfie.h tools/btor2.h tools/cellfie.c -m 512 -heap 0 2048 -heap 1048576 64 -stack 128 -i tests/bitr-input.txt -c examples/symbolic/division-by-zero-3-35.r -f 100000000 | sed -n 's/.* with pc \(.*: exit with exit code .*\)/\1/p'); \
-	[ -n "$$n" ] && [ "$$n" = "$$m" ] || { echo "cellfie on mipster: $$m, natively: $$n"; exit 1; }; \
-	echo "cellfie on mipster: $$m, as natively"
-	./cellfie -heap 0 512 -heap 1048576 64 -stack 128 -i tests/bitr-input.txt -c examples/symbolic/nested-recursion-fail-1-35.r -f 100000000 | tee cellfie-product.txt
-	grep -q "invalid-address 0x13000 after" cellfie-product.txt
-	@echo "$@: the layouts of the symbolic examples run as riscr runs their binaries and as rotor's model does at every instruction"
-
-# Construction on cellfie (M10 of projects/reversible.md): for the hand-laid test program and for a symbolic
-# example, cellfie writes a constructor, a RISC-R program with the compiled layout on its tape and a blank
-# window on its grid; the constructor runs to its exit, back to its initial state, and to its exit again;
-# the cells of the window are then the cells of the compiled layout, and with the token of the compiled
-# layout they run the program to its exit. The first also with cellfie on mipster. Then programs that
-# construct and start what they construct, with no tape and no token from the host: a C* program reads
-# from the grid where it is free, stores a program of three instructions there and its pc in the pocket of
-# its token, and lands in it, event-driven forward and backward and on the hybrid simulator, which stops
-# at the landing with the window that the event-driven simulator has then; and cellfie, on cellfie, does
-# the same with the layout it compiles of a symbolic example, which is then the compiled layout byte for
-# byte but for the pocket, and runs to the example's exit in its ticks and instructions.
-construct: cellfie cellfie-test riscr selfie selfie.h
-	./cellfie-test tests/cellfie-test.r tests/cellfie-io-test.r
-	./selfie -c examples/symbolic/recursive-fibonacci-1-10.c -o examples/symbolic/recursive-fibonacci-1-10.m > /dev/null
-	./riscr -l examples/symbolic/recursive-fibonacci-1-10.m -history 1 -t examples/symbolic/recursive-fibonacci-1-10.r > /dev/null
-	for b in tests/cellfie-test examples/symbolic/recursive-fibonacci-1-10; do \
-	  o="-heap 0 2048 -heap 1048576 64 -stack 128 -i tests/bitr-input.txt"; \
-	  if [ $$b = tests/cellfie-test ]; then o=""; fi; \
-	  ./cellfie $$o -c $$b.r -o cellfie-test-compiled.rle -f 100000000 > cellfie-product.txt || exit 1; \
-	  e=$$(sed -n 's/.*: \(exit with exit code .*\)/\1/p' cellfie-product.txt); \
-	  ./cellfie $$o -k $$b.r -o cellfie-test-constructor.rle -rev 100000000000 -f 100000000000 -window cellfie-test-window.rle > cellfie-product.txt || exit 1; \
-	  grep "tape has\|exit with" cellfie-product.txt | tail -2; \
-	  grep -q "initial state restored" cellfie-product.txt && \
-	  grep -q "exit with exit code 0 after" cellfie-product.txt || \
-	    { echo "$$b.r: the constructor does not run to its exit and back"; exit 1; }; \
-	  { grep "^#" cellfie-test-compiled.rle; grep -v "^#" cellfie-test-window.rle; } > cellfie-test-built.rle; \
-	  cmp cellfie-test-compiled.rle cellfie-test-built.rle || \
-	    { echo "$$b.r: the constructed layout is not the compiled layout"; exit 1; }; \
-	  [ -n "$$e" ] && ./cellfie -l cellfie-test-built.rle -f 100000000 | grep -q "$$e" || \
-	    { echo "$$b.r: the constructed layout does not run as the compiled layout"; exit 1; }; \
-	  echo "$$b.r: constructed, taken apart, constructed again, and run: $$e"; \
-	done
-	./selfie -c selfie.h tools/btor2.h tools/cellfie.c -m 1024 -c tests/cellfie-test.r -o cellfie-test-compiled.rle > /dev/null
-	./selfie -c selfie.h tools/btor2.h tools/cellfie.c -m 1024 -k tests/cellfie-test.r -f 100000000 -window cellfie-test-window.rle | tee cellfie-product.txt
-	grep -q "exit with exit code 0 after" cellfie-product.txt
-	{ grep "^#" cellfie-test-compiled.rle; grep -v "^#" cellfie-test-window.rle; } > cellfie-test-built.rle
-	cmp cellfie-test-compiled.rle cellfie-test-built.rle
-	./selfie -c tests/cellfie-build-test.c -o tests/cellfie-build-test.m > /dev/null
-	./riscr -l tests/cellfie-build-test.m -history 1 -t tests/cellfie-build-test.r > /dev/null
-	o="-heap 0 2048 -heap 1048576 64 -stack 128 -room 64 64"; \
-	./cellfie $$o -c tests/cellfie-build-test.r -rev 100000000 > cellfie-product.txt || exit 1; \
-	grep -q "initial state restored" cellfie-product.txt || { echo "a C* program that constructs a program and starts it does not run back"; exit 1; }; \
-	e=$$(sed -n 's/.*: exit with exit code 42 after \(.*\) ticks and \(.*\) instructions/\1 \2/p' cellfie-product.txt | head -1); \
-	./cellfie $$o -window cellfie-test-built.rle -h tests/cellfie-build-test.r > cellfie-product.txt || exit 1; \
-	grep -q "the token landed" cellfie-product.txt || { echo "the token does not land on the hybrid simulator"; exit 1; }; \
-	h=$$(sed -n 's/.* with pc 0x10000 after \(.*\) ticks and \(.*\) instructions/\1 \2/p' cellfie-product.txt | head -1); \
-	./cellfie $$o -c tests/cellfie-build-test.r -f $${h%% *} -window cellfie-test-window.rle > /dev/null || exit 1; \
-	cmp cellfie-test-window.rle cellfie-test-built.rle || { echo "the hybrid simulator lands with another window than the event-driven simulator"; exit 1; }; \
-	grep -q "^#P " cellfie-test-built.rle || { echo "the program that landed is not in the pocket"; exit 1; }; \
-	r=$$(./cellfie -l cellfie-test-built.rle -f 100000000 | sed -n 's/.*: exit with exit code 42 after \(.*\) ticks and \(.*\) instructions/\1 \2/p'); \
-	[ -n "$$e" ] && [ -n "$$r" ] && [ $$(($${h%% *} + $${r%% *})) = $${e%% *} ] && [ $$(($${h##* } + $${r##* })) = $${e##* } ] || \
-	  { echo "a C* program that constructs a program and starts it: event-driven $$e, hybrid $$h and then $$r"; exit 1; }; \
-	echo "a C* program finds room, constructs a program, and lands in it: exit code 42 after $$e ticks and instructions, the hybrid simulator lands after $$h with the same window, and the window runs $$r more"
-	./selfie -c selfie.h tools/btor2.h tools/cellfie.c -o cellfie-u.m > /dev/null
-	./riscr -l cellfie-u.m -history 1024 -t cellfie-test.r > /dev/null
-	b=examples/symbolic/recursive-fibonacci-1-10; \
-	o="-heap 0 2048 -heap 1048576 64 -stack 128 -i tests/bitr-input.txt"; \
-	e=$$(./cellfie $$o -c $$b.r -o cellfie-test-compiled.rle -f 100000000 | sed -n 's/.* with pc \(.*: exit with exit code .*\)/\1/p'); \
-	./cellfie -tapes 8 -tapewords 4194304 -heap 0 400000000 -stack 1000000 -room 512 1024 -window cellfie-test-window.rle -h cellfie-test.r $$o -c $$b.r -onto > cellfie-product.txt || exit 1; \
-	grep "cells constructed\|the token landed" cellfie-product.txt; \
-	grep -q "the token landed" cellfie-product.txt || { echo "the token of cellfie does not land in the layout of $$b.r"; exit 1; }; \
-	sed '/^#P/,/^x = /{/^x = /!d;}' cellfie-test-window.rle > cellfie-test-built.rle; \
-	cmp cellfie-test-compiled.rle cellfie-test-built.rle || { echo "the layout of $$b.r that cellfie constructs on cellfie is not the compiled layout"; exit 1; }; \
-	r=$$(./cellfie -tapes 8 -l cellfie-test-window.rle -f 100000000 | sed -n 's/.* with pc \(.*: exit with exit code .*\)/\1/p'); \
-	[ -n "$$e" ] && [ "$$e" = "$$r" ] || { echo "$$b.r, constructed by cellfie on cellfie: $$r, compiled: $$e"; exit 1; }; \
-	echo "$$b.r: compiled, constructed, and started by cellfie on cellfie, and run: $$r"
-	@echo "$@: constructors build the compiled layouts from their tapes and take them apart again, and a compiler on cellfie constructs and starts what it compiles"
-
-# The layout compiler on cellfie (M11 of projects/reversible.md): cellfie, compiled by selfie and translated by
-# riscr to RISC-R with a history stack of 12GB, compiles a layout on riscr forward and backward, and on mipster,
-# to the layout that cellfie compiles natively; and on cellfie's hybrid simulator it compiles its own RISC-R
-# binary to the layout that cellfie compiles that binary to natively, byte for byte: L1 = L0. In the same run
-# it reads from the grid where the grid is free, stores the cells of that layout there, stores the token of
-# the layout in its pocket, and lands in the layout: the window with the token is then that layout, L2 = L0,
-# but for the pocket, in which the compiler is, and L2 runs to where L0 runs. Takes about 10GB of memory and
-# 25 minutes, and reports the ticks and the seconds.
-cellfie-on-cellfie: cellfie cellfie-test riscr selfie selfie.h
-	./cellfie-test tests/cellfie-test.r tests/cellfie-io-test.r
-	./selfie -c selfie.h tools/btor2.h tools/cellfie.c -o cellfie-u.m
-	./riscr -l cellfie-u.m -history 12288 -t cellfie-r.r
-	./cellfie -c tests/cellfie-test.r -o cellfie-test-compiled.rle
-	./selfie -l cellfie-u.m -m 1024 -c tests/cellfie-test.r -o cellfie-test-built.rle > /dev/null
-	cmp cellfie-test-compiled.rle cellfie-test-built.rle
-	./riscr -l cellfie-u.m -history 1024 -t cellfie-test.r > /dev/null
-	./riscr -l cellfie-test.r -rev 2048 -c tests/cellfie-test.r -o cellfie-test-built.rle > cellfie-product.txt
-	grep -q "initial state restored bit for bit" cellfie-product.txt
-	cmp cellfie-test-compiled.rle cellfie-test-built.rle
-	./cellfie -c cellfie-r.r -o cellfie-test-l0.rle
-	s=$$(date +%s); \
-	w=$$(sed -n 's/^x = \([0-9]*\), y = \([0-9]*\),.*/\1/p' cellfie-test-l0.rle); \
-	h=$$(sed -n 's/^x = \([0-9]*\), y = \([0-9]*\),.*/\2/p' cellfie-test-l0.rle); \
-	./cellfie -memory 16 -tapes 8 -tapewords 4194304 -heap 0 1800000000 -stack 1000000 -room $$w $$h -window cellfie-test-l2.rle -h cellfie-r.r -c cellfie-r.r -o cellfie-test-l1.rle -onto > cellfie-product.txt || exit 1; \
-	tail -5 cellfie-product.txt; \
-	grep -q "the token landed" cellfie-product.txt || { echo "the token of cellfie does not land in the layout that cellfie constructs on cellfie"; exit 1; }; \
-	echo "$@: $$(($$(date +%s) - s)) seconds on cellfie"
-	cmp cellfie-test-l0.rle cellfie-test-l1.rle
-	grep -q "^#P " cellfie-test-l2.rle
-	sed '/^#P/,/^x = /{/^x = /!d;}' cellfie-test-l2.rle > cellfie-test-l2-token.rle
-	cmp cellfie-test-l0.rle cellfie-test-l2-token.rle
-	e=$$(./cellfie -tapes 8 -l cellfie-test-l0.rle -f 100000000 | tail -1); \
-	r=$$(./cellfie -tapes 8 -l cellfie-test-l2.rle -f 100000000 | tail -1); \
-	echo "$$r"; \
-	[ -n "$$e" ] && [ "$$e" = "$$r" ] || { echo "the constructed layout runs to another stop than the compiled layout: $$e"; exit 1; }
-	@echo "$@: the layout compiler compiles itself on cellfie to the layout it compiles itself to natively, constructs it there, and starts it"
-
-# Hybrid simulation of cellfie (M13 of projects/reversible.md): the hybrid simulator, which runs the cells
-# of a layout without laying it out and measures the wire instead of following it, stops every symbolic
-# example where the event-driven simulator stops it on the compiled layout, with the same exit code after
-# the same number of instructions and the same number of ticks, natively and for one example on mipster
-hybrid: cellfie riscr selfie selfie.h
-	m=0; for f in $(wildcard examples/symbolic/*.c); do \
-	  b=$${f%.c}; \
-	  ./selfie -c $$f -o $$b.m > /dev/null && \
-	  ./riscr -l $$b.m -history 1 -t $$b.r > /dev/null || exit 1; \
-	  e=$$(./cellfie -heap 0 2048 -heap 1048576 64 -stack 128 -i tests/bitr-input.txt -c $$b.r -f 100000000 | sed -n 's/.* with pc \(.*: exit with exit code .*\)/\1/p'); \
-	  h=$$(./cellfie -heap 0 2048 -heap 1048576 64 -stack 128 -i tests/bitr-input.txt -h $$b.r | sed -n 's/.* with pc \(.*: exit with exit code .*\)/\1/p'); \
-	  if [ -z "$$e" ]; then echo "$$b.r: skipped, it does not exit"; continue; fi; \
-	  [ "$$e" = "$$h" ] || { echo "$$b.r: event-driven $$e, hybrid $$h"; exit 1; }; \
-	  echo "$$b.r: $$h, as event-driven"; \
-	  m=$$((m + 1)); \
-	done; [ $$m -ge 17 ] || { echo "only $$m examples checked"; exit 1; }
-	n=$$(./cellfie -heap 0 2048 -heap 1048576 64 -stack 128 -i tests/bitr-input.txt -h examples/symbolic/division-by-zero-3-35.r | sed -n 's/.* with pc \(.*: exit with exit code .*\)/\1/p'); \
-	m=$$(./selfie -c selfie.h tools/btor2.h tools/cellfie.c -m 512 -heap 0 2048 -heap 1048576 64 -stack 128 -i tests/bitr-input.txt -h examples/symbolic/division-by-zero-3-35.r | sed -n 's/.* with pc \(.*: exit with exit code .*\)/\1/p'); \
-	[ -n "$$n" ] && [ "$$n" = "$$m" ] || { echo "cellfie on mipster: $$m, natively: $$n"; exit 1; }; \
-	echo "cellfie on mipster: $$m, as natively"
-	@echo "$@: hybrid and event-driven simulation agree on exit code, instructions, and ticks"
-
-# All of selfie on cellfie (M13 of projects/reversible.md): selfie translated to RISC-R compiles selfie on
-# cellfie's hybrid simulator, on a grid with a cell for every word of the heap and 8MB of stack, to the
-# binary that it compiles to on riscr and that selfie compiles itself to, in riscr's number of instructions;
-# takes about 4GB of memory and 10 minutes, and reports the ticks and the seconds
-selfie-on-cellfie: cellfie riscr selfie selfie.h
-	./selfie -c selfie.c -o selfie-u.m
-	./riscr -l selfie-u.m -t selfie-r.r -m 4096 -c selfie.c -o selfie-r.m > cellfie-product.txt
-	cmp selfie-u.m selfie-r.m
-	n=$$(sed -n 's/.*summary: \([0-9]*\) executed instructions.*/\1/p' cellfie-product.txt); \
-	s=$$(date +%s); \
-	./cellfie -tapes 8 -tapewords 1048576 -heap 0 535000000 -stack 1000000 -h selfie-r.r -c selfie.c -o selfie-c.m > cellfie-product.txt || exit 1; \
-	tail -2 cellfie-product.txt; \
-	grep -q "exit with exit code 0 after [0-9]* ticks and $$((n - 1)) instructions" cellfie-product.txt || \
-	  { echo "cellfie does not exit with exit code 0 after the $$((n - 1)) instructions of riscr"; exit 1; }; \
-	echo "$@: $$(($$(date +%s) - s)) seconds on cellfie"
-	cmp selfie-r.m selfie-c.m
-	@echo "$@: selfie compiles itself on cellfie to the binary it compiles itself to on riscr"
-
-# Bennett mode (M2 of projects/reversible.md): selfie translated to RISC-R compiles selfie on riscr
+# Bennett mode: selfie translated to RISC-R compiles selfie on riscr
 # to an identical binary and runs back to its initial state; riscr's translator reaches a fixed point
 # on itself; takes about 3GB of memory for the history stack and a few minutes
 bennett: riscr selfie selfie.h selfie-riscr.h
@@ -895,7 +562,7 @@ trust: selfie selfie.h
 	@echo "$@: trojan detected by diverse double-compiling"
 	rm -f examples/trusting-trust/honest-stamp.c examples/trusting-trust/honest-victim.c examples/trusting-trust/trojaned-victim.c examples/trusting-trust/suspect-stamp.c
 
-# Entr, milestones E0 and E1 of projects/entropy.md: counts over declared bits
+# Entr, see bitr.md: counts over declared bits
 
 bitr.h: tools/bitr.c
 	sed 's/main(/bitr_main(/' tools/bitr.c > bitr.h
@@ -913,7 +580,7 @@ model-options := -Pnobadexitcode -Pgoodexitcode -heapallowance 2097152 -stackall
 # the families of examples/entropy at the sizes that are checked: family, size, count
 families := sum-1-1 sum-2-4 password-1-1 password-2-1 loop-1-1 loop-4-1 branch-1-128 branch-2-16384 factor-1-2
 
-# E1: the reference refuses a model with an open state that is not declared, counts
+# The reference refuses a model with an open state that is not declared, counts
 # what bitr enumerates on the symbolic examples, the same as RISC-U and as RISC-R,
 # counts what the families of examples/entropy are built to have, also where a
 # program reads twice, a byte each, a word of the tape per read, and runs on mipster
@@ -992,7 +659,7 @@ entr.h: tools/entr.c
 entr-trace: tests/entr-trace.c entr.h bitr.h tools/btor2.h selfie.h
 	$(CC) $(CFLAGS) --include selfie.h --include tools/btor2.h --include bitr.h --include entr.h $< -o $@
 
-# E2: the loop on the formulas of examples/sat and on the formulas that model
+# The loop on the formulas of examples/sat and on the formulas that model
 # checking the symbolic examples generates, as make cdcl does. For every setting
 # of the switches the ledger accounts for all worlds and the trace replays to the
 # count, with every learned clause shown to follow; the counts are the reference's
@@ -1061,7 +728,7 @@ ledger: entr entr-trace bitr babysat selfie rotor
 	./selfie -c selfie.h tools/btor2.h bitr.h entr.h tests/entr-trace.c -m 64 examples/sat/pigeonhole-4-3.cnf entr.trace | tee entr-ledger.txt; \
 	grep -q "replays to count 0 of 4096 worlds" entr-ledger.txt || { echo "$@: the checker of traces on mipster does not replay to 0 of 4096"; exit 1; }
 
-# E0: what today's bitr does on the symbolic examples and on the families of
+# What today's bitr does on the symbolic examples and on the families of
 # examples/entropy, next to the reference: the table to measure entr against;
 # a program that reads n bytes one at a time reads n words of the input tape
 # a part of the table: make baselines baselines-list="branch-8 factor-2" baselines-table=part.txt
@@ -1112,12 +779,12 @@ baselines: entr bitr selfie riscr rotor
 	done
 
 # Consider these targets as targets, not files
-.PHONY: rev riscr-rev bennett trust riscr-model sim bmc cdcl identity cells product tapes layouts hybrid construct selfie-on-cellfie cellfie-on-cellfie reversible garbage-free backward bit-length count baselines ledger
+.PHONY: rev riscr-rev bennett trust riscr-model sim bmc cdcl identity reversible garbage-free bit-length count baselines ledger
 
 # Run the checks of the RISC-R branch that are not too slow, one after another and after rotor-btor2:
 # they share generated files, the binaries, models, and layouts of the symbolic examples and of the
 # tests, so make -j must not run two of them, or one of them and rotor-btor2, at the same time
-reversible: rotor-btor2 selfie selfie.h selfie-riscr.h riscr riscr.h riscr-test rotor bitr bitr.h entr entr.h entr-trace babysat cellfie cellfie-test
+reversible: rotor-btor2 selfie selfie.h selfie-riscr.h riscr riscr.h riscr-test rotor bitr bitr.h entr entr.h entr-trace babysat
 	$(MAKE) rev
 	$(MAKE) garbage-free
 	$(MAKE) riscr-model
@@ -1125,16 +792,9 @@ reversible: rotor-btor2 selfie selfie.h selfie-riscr.h riscr riscr.h riscr-test 
 	$(MAKE) bmc
 	$(MAKE) count
 	$(MAKE) ledger
-	$(MAKE) backward
 	$(MAKE) bit-length
 	$(MAKE) cdcl
 	$(MAKE) identity
-	$(MAKE) cells
-	$(MAKE) product
-	$(MAKE) tapes
-	$(MAKE) layouts
-	$(MAKE) hybrid
-	$(MAKE) construct
 
 # Consider these targets as targets, not files
 .PHONY: spike qemu assemble beator-32 rotor-32 32-bit bitwuzla beator-bitme rotor-bitme bitme extras
@@ -1257,11 +917,8 @@ clean:
 	rm -f riscr-bitlength-test riscr-bitlength-test.txt tests/riscr-bitlength-*.r tests/riscr-bitlength-*.txt tests/riscr-bitlength-*.state tests/riscr-bitlength-*.btor2
 	rm -f examples/trusting-trust/honest-stamp.c examples/trusting-trust/honest-victim.c examples/trusting-trust/trojaned-victim.c examples/trusting-trust/suspect-stamp.c
 	rm -f selfie selfie-32 selfie.h selfie-gc.h selfie-gc-nomain.h selfie.exe
-	rm -f babysat buzzr monster beator beator-32 rotor rotor-32 riscr riscr.h riscr-test bitr cellfie cellfie-test
+	rm -f babysat buzzr monster beator beator-32 rotor rotor-32 riscr riscr.h riscr-test bitr
 	rm -f entr bitr.h entr-count.txt baselines.out entr.h entr-trace entr-ledger.txt entr.trace entr-wrong.trace
 	rm -f examples/symbolic/*.count examples/symbolic/*.worlds examples/symbolic/*.bitr examples/symbolic/*.inputs
 	rm -f examples/entropy/*-*.c examples/entropy/*.m examples/entropy/*.r examples/entropy/*.btor2
-	rm -f cellfie-test-*.rle cellfie-check-failed.rle cellfie-test.txt cellfie-identity.txt cellfie-product.txt
-	rm -f tests/cellfie-test.r tests/cellfie-build-test.r tests/cellfie-test-rotorized-riscr.btor2
-	rm -f tests/cellfie-io-test.r tests/cellfie-io-test.txt tests/cellfie-io-test-rotorized-riscr.btor2
 	rm -f selfie-u.m selfie-r.r selfie-r.m riscr-u.m riscr-r.r riscr-r2.r
