@@ -911,11 +911,12 @@ over-riscr := -over input-tapes 0 8 -zero input-tapes -fix tape-ends 0 1 -zero t
 model-options := -Pnobadexitcode -Pgoodexitcode -heapallowance 2097152 -stackallowance 65536
 
 # the families of examples/entropy at the sizes that are checked: family, size, count
-families := sum-1-1 sum-2-4 password-1-1 password-2-1 loop-1-1 loop-4-1 branch-1-128 branch-2-16384
+families := sum-1-1 sum-2-4 password-1-1 password-2-1 loop-1-1 loop-4-1 branch-1-128 branch-2-16384 factor-1-2
 
 # E1: the reference refuses a model with an open state that is not declared, counts
 # what bitr enumerates on the symbolic examples, the same as RISC-U and as RISC-R,
-# counts what the families of examples/entropy are built to have, and runs on mipster
+# counts what the families of examples/entropy are built to have, also where a
+# program reads twice, a byte each, a word of the tape per read, and runs on mipster
 count: entr bitr selfie riscr rotor
 	b=examples/symbolic/division-by-zero-3-35; \
 	./selfie -c $$b.c -o $$b.m > /dev/null && \
@@ -955,7 +956,7 @@ count: entr bitr selfie riscr rotor
 	  f=$${x%%-*}; c=$${x##*-}; n=$${x#*-}; n=$${n%-*}; \
 	  b=examples/entropy/$$f-$$n; \
 	  sed "s/n = 1; \/\/ size/n = $$n; \/\/ size/" examples/entropy/$$f.c > $$b.c; \
-	  if [ $$f = loop ]; then bytes=1; else bytes=$$n; fi; \
+	  case $$f in loop) bytes=1 ;; factor) bytes=$$((2 * n)) ;; *) bytes=$$n ;; esac; \
 	  over=; i=0; while [ $$i -lt $$bytes ]; do over="$$over -over input-buffer $$i 8"; i=$$((i + 1)); done; \
 	  ./selfie -c $$b.c -o $$b.m > /dev/null && \
 	  ./rotor -l $$b.m - 0 -Pnobadexitcode -Pgoodexitcode -heapallowance 4096 -stackallowance 4096 -bytestoread $$bytes -riscuonly > /dev/null || exit 1; \
@@ -968,22 +969,35 @@ count: entr bitr selfie riscr rotor
 	      { echo "$$b: the count as RISC-R is not $$c"; exit 1; }; \
 	  fi; \
 	done
+	for x in sum-2-0-0-4 factor-1-156-180-1; do \
+	  c=$${x##*-}; b=examples/entropy/$${x%%-*}-$$(echo $$x | cut -d- -f2); first=$$(echo $$x | cut -d- -f3); second=$$(echo $$x | cut -d- -f4); \
+	  ./riscr -l $$b.m -history 1 -t $$b.r > /dev/null && \
+	  ./rotor -l $$b.m - 0 $(model-options) -bytestoread 2 -riscuonly > /dev/null && \
+	  ./rotor -l $$b.r - 0 $(model-options) > /dev/null || exit 1; \
+	  ./entr $$b-rotorized-riscuonly.btor2 -l $$b.m -k 20000 -zero input-buffer \
+	    -fix input-buffer 0 $$first -over input-buffer 0 2 -fix input-buffer 1 $$second -over input-buffer 1 2 | grep "count $$c of 16 " || \
+	    { echo "$$b: the count over two bits of two bytes as RISC-U is not $$c"; exit 1; }; \
+	  ./entr $$b-rotorized-riscr.btor2 -l $$b.r -k 20000 -zero input-tapes -fix tape-ends 0 9 -zero tape-ends -zero tape-opens -zero input-buffer \
+	    -fix input-tapes 0 $$first -over input-tapes 0 2 -fix input-tapes 1 $$second -over input-tapes 1 2 | grep "count $$c of 16 " || \
+	    { echo "$$b: the count over two bits of two bytes as RISC-R is not $$c"; exit 1; }; \
+	done
 	b=examples/symbolic/division-by-zero-3-35; \
 	./rotor -l $$b.m - 0 -Pnobadexitcode -Pgoodexitcode -heapallowance 4096 -stackallowance 4096 -riscuonly > /dev/null || exit 1; \
 	./selfie -c selfie.h tools/btor2.h bitr.h tools/entr.c -m 512 $$b-rotorized-riscuonly.btor2 -l $$b.m -k 5000 -fix input-buffer 0 48 -over input-buffer 0 2 -zero input-buffer | tee entr-count.txt; \
 	grep -q "count 3 of 4 worlds, entropy 1.58 of 2.00 bits" entr-count.txt || { echo "$@: entr on mipster does not count 3 of the inputs 48 to 51"; exit 1; }
 
 # E0: what today's bitr does on the symbolic examples and on the families of
-# examples/entropy, next to the reference: the table to measure entr against
+# examples/entropy, next to the reference: the table to measure entr against;
+# a program that reads n bytes one at a time reads n words of the input tape
 baselines: entr bitr selfie riscr rotor
 	echo "benchmark isa | reference: count of worlds, seconds | bitr, first bad state: instructions, seconds, paths forked, SAT calls, conflicts | bitr, all inputs: inputs, seconds" > baselines.txt
 	ms() { echo $$(( ($$(date +%s%N) - $$1) / 1000000 + 1000 )) | sed 's/\(...\)$$/.\1/' | awk '{ printf "%.3f", $$1 - 1 }'; }; \
-	for f in $(wildcard examples/symbolic/*.c) sum-1 sum-2 sum-3 sum-4 password-1 password-2 password-3 password-4 loop-1 loop-4 loop-16 branch-1 branch-2 branch-3 branch-4; do \
+	for f in $(wildcard examples/symbolic/*.c) sum-1 sum-2 sum-4 sum-8 sum-16 password-1 password-2 password-4 password-8 password-16 loop-1 loop-16 loop-64 loop-256 branch-1 branch-2 branch-4 branch-8 branch-10 branch-12 factor-1 factor-2 factor-3; do \
 	  case $$f in \
 	    *.c) b=$${f%.c}; bytes=1 ;; \
 	    *) n=$${f#*-}; b=examples/entropy/$$f; \
 	       sed "s/n = 1; \/\/ size/n = $$n; \/\/ size/" examples/entropy/$${f%-*}.c > $$b.c; \
-	       case $$f in loop-*) bytes=1 ;; *) bytes=$$n ;; esac ;; \
+	       case $$f in loop-*) bytes=1 ;; factor-*) bytes=$$((2 * n)) ;; *) bytes=$$n ;; esac ;; \
 	  esac; \
 	  ./selfie -c $$b.c -o $$b.m > /dev/null && \
 	  ./riscr -l $$b.m -history 1 -t $$b.r > /dev/null && \
@@ -996,20 +1010,21 @@ baselines: entr bitr selfie riscr rotor
 	      over="$$over -zero input-buffer"; limit=2; \
 	    else \
 	      model=$$b-rotorized-riscr.btor2; isa=RISC-R; \
-	      over="-over input-tapes 0 $$((8 * bytes)) -zero input-tapes -fix tape-ends 0 $$bytes -zero tape-ends -zero tape-opens -zero input-buffer"; limit=1; \
+	      over=; i=0; while [ $$i -lt $$bytes ]; do over="$$over -over input-tapes $$i 8"; i=$$((i + 1)); done; \
+	      over="$$over -zero input-tapes -fix tape-ends 0 $$((8 * bytes - 7)) -zero tape-ends -zero tape-opens -zero input-buffer"; limit=1; \
 	    fi; \
 	    if [ $$bytes -le $$limit ]; then \
 	      t=$$(date +%s%N); \
-	      c=$$(./entr $$model -l $$b.$$x -k 20000 $$over | sed -n 's/.*: count \(.*\) worlds, .*/\1/p'); \
+	      c=$$(./entr $$model -l $$b.$$x -k 200000 $$over | sed -n 's/.*: count \(.*\) worlds, .*/\1/p'); \
 	      reference="$$c, $$(ms $$t)"; \
 	    else reference="-"; fi; \
 	    t=$$(date +%s%N); \
-	    if timeout 60 ./bitr $$model -l $$b.$$x -bmc 20000 > baselines.out; then \
+	    if timeout 60 ./bitr $$model -l $$b.$$x -bmc 200000 > baselines.out; then \
 	      first="$$(sed -n 's/.*: bad .* after \([0-9]*\) instructions/\1/p' baselines.out | head -1), $$(ms $$t), $$(sed -n 's/.*: \([0-9]*\) paths forked.*/\1/p' baselines.out), $$(sed -n 's/.*: \([0-9]*\) SAT calls.*/\1/p' baselines.out), $$(sed -n 's/.* and \([0-9]*\) conflicts in total/\1/p' baselines.out)"; \
 	    else first="no answer in 60"; fi; \
 	    if [ $$x = m ]; then \
 	      t=$$(date +%s%N); \
-	      if timeout 60 ./bitr $$model -l $$b.$$x -bmc 20000 -all > baselines.out; then \
+	      if timeout 60 ./bitr $$model -l $$b.$$x -bmc 200000 -all > baselines.out; then \
 	        all="$$(grep -c 'witness input-buffer\[0\]' baselines.out), $$(ms $$t)"; \
 	      else all="no answer in 60"; fi; \
 	    else all="no projection"; fi; \
@@ -1023,12 +1038,13 @@ baselines: entr bitr selfie riscr rotor
 # Run the checks of the RISC-R branch that are not too slow, one after another and after rotor-btor2:
 # they share generated files, the binaries, models, and layouts of the symbolic examples and of the
 # tests, so make -j must not run two of them, or one of them and rotor-btor2, at the same time
-reversible: rotor-btor2 selfie selfie.h selfie-riscr.h riscr riscr.h riscr-test rotor bitr babysat cellfie cellfie-test
+reversible: rotor-btor2 selfie selfie.h selfie-riscr.h riscr riscr.h riscr-test rotor bitr bitr.h entr babysat cellfie cellfie-test
 	$(MAKE) rev
 	$(MAKE) garbage-free
 	$(MAKE) riscr-model
 	$(MAKE) sim
 	$(MAKE) bmc
+	$(MAKE) count
 	$(MAKE) backward
 	$(MAKE) bit-length
 	$(MAKE) cdcl

@@ -10374,8 +10374,10 @@ uint64_t* riscr_is_input_zero_beyond_end(uint64_t* ir_nid, uint64_t* register_fi
   uint64_t* zero_nid;
 
   // the bytes a read takes from an input tape are zero at and beyond the end
-  // of the file, as on riscr's tapes, which are filled from the file and
-  // zero elsewhere; this constrains the input, not the program
+  // of the file and beyond the size of the read, as on riscr's tapes, which
+  // are filled from the file with the bytes of each read and zero elsewhere:
+  // a read of one byte exchanges a word of which seven bytes are zero; this
+  // constrains the input, not the program
 
   end_nid = new_binary(OP_READ, SID_MACHINE_WORD, state_tape_ends_nid,
     riscr_fd_index(load_register_value(NID_A1, "a1 value", register_file_nid)),
@@ -10399,13 +10401,19 @@ uint64_t* riscr_is_input_zero_beyond_end(uint64_t* ir_nid, uint64_t* register_fi
         new_binary_boolean(OP_OR,
           new_unary_boolean(OP_NOT, riscr_is_exchanged_word(i, register_file_nid), "word not exchanged?"),
           new_binary_boolean(OP_OR,
-            new_binary_boolean(OP_ULT, position_nid, end_nid, "byte before end of file?"),
+            new_binary_boolean(OP_AND,
+              new_binary_boolean(OP_ULT, position_nid, end_nid, "byte before end of file?"),
+              new_binary_boolean(OP_ULT,
+                new_constant(OP_CONSTD, SID_MACHINE_WORD, i * WORDSIZE + b, format_comment("offset of byte %lu", i * WORDSIZE + b)),
+                load_register_value(NID_A3, "a3 value", register_file_nid),
+                "byte within size of read?"),
+              "byte read from file?"),
             new_binary_boolean(OP_EQ,
               new_slice(SID_BYTE, riscr_tape_word(i, register_file_nid), b * 8 + 7, b * 8, "byte of tape word"),
               NID_BYTE_0,
               "byte is zero?"),
-            "byte before end of file or zero?"),
-          "byte not read, before end of file, or zero?"),
+            "byte read from file or zero?"),
+          "byte not exchanged, read from file, or zero?"),
         "bytes so far zero beyond end of file?");
 
       b = b + 1;
