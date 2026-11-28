@@ -122,6 +122,32 @@ Not implemented before the submission, but in the documentation as the same pict
 
 Rule 8 holds: every experiment runs on the RISC-U and on the RISC-R model of the same program.
 
+## Setting the end: hindsight as the baseline
+
+Nature lets a run be set at its beginning and not at its end, and a solver is what that costs. A solved problem lifts the restriction for an experiment: its end is known, and a run can be given it.
+
+**A partial state at a time.** One more input, next to the model: at step t, these bits of these states have these values, as a state file (name, index, value per line, as `-dump` writes it) with a time and with what is left out being free. It generalizes today's `-state` and `-free`, which set the end and free a range of it. A partial state at a time is a region of the search, extended in time; with everything known at one time it is a region with nothing open, and its count is 0 or 1 by execution, forward with the model and backward with the inverse model.
+
+**Deriving the end.** A witness, replayed concretely, gives the full state at every step, the end included (`-dump`). A count of N gives N ends.
+
+**Three floors, from one mechanism.**
+
+| Revealed | Run | Cost | Holds for |
+| --- | --- | --- | --- |
+| the full end | backward, concretely, to the initial state | k steps | RISC-R only: its end still holds the input, a RISC-U end does not determine its past |
+| the full start, the witness's input | forward, concretely, to the bad state | k steps | RISC-U and RISC-R |
+| the full state at a time t | backward to the start and forward to the end | k steps | the best any strategy that meets in the middle can do |
+
+No run that finds a bug does less than replay it, so k steps is a floor for every experiment with a witness, and a configuration of the solver is reported as its ratio to it.
+
+**The ladder.** The floor alone is loose. The instrument is what lies between everything revealed and nothing: reveal a part of a state at a time, and measure the cost against what was revealed. M12's first result is such a ladder, with the top of the history as the hidden part, 0.1 seconds with up to 4 words hidden, minutes with 5 to 12, no result with 16; and it showed that which bits are hidden matters more than how many, a frame pointer against a value. The ladder measures what a bit is worth to the solver, which is the experimental handle on U minus H: a hidden bit that is determined by the rest should cost nothing, and a rule (`cancel`, `row`, `invariants`) is judged by the rungs on which it makes that true. `-reveal` takes the state file of a solved problem and a description of what to hide, so that a ladder is a loop in a make target.
+
+**Limits.**
+
+- A proof has no end to set: if no bad state is reachable there is nothing to reveal. The analogue is the solver's own proof in hindsight: the run again, given only the learned facts that the answer used, which is what trimming a proof computes. That bounds the strategy, not the problem; the shortest proof cannot be computed, see information as proof size in `projects/reversible.md`.
+- The floor is for one witness. N backward runs bound enumeration and not counting, which need not visit every bad state.
+- The end comes from our own solution. The ladder measures how far a strategy is from its own hindsight, not from the best solver there could be. That is what an ablation needs, and no more.
+
 ## The quantum connection, in the documentation only
 
 - A RISC-R step is a permutation matrix, a unitary with entries 0 and 1. The count N(init, k, bad) is a sum over paths of products of matrix entries: the quantity a quantum circuit simulator computes as an amplitude, in the semiring of natural numbers instead of complex numbers. SAT is the same sum in the Boolean semiring. Variable elimination, component decomposition, and tensor network contraction are one algorithm (Markov and Shi, 2008).
@@ -137,7 +163,7 @@ Rule 8 holds: every experiment runs on the RISC-U and on the RISC-R model of the
 | E2 | Counter with the ledger, the trace (`-trace file`), and the SAT switches up to `reduce`; a trace checker in `tests/` | `make ledger`: the checker replays every trace to the count reported; for every single switch and for all on, the count equals the reference's, zero or not zero equals babysat's and today's CDCL, and the ledger sums to 2^n where there is a partition |
 | E3 | Words, unoptimized, then `fold`, `hash`, `cancel`, `row`, `cone` | `make words`: counts on single BTOR2 operators and on one step of the machine models equal the reference's, switch by switch |
 | E4 | Checker: unrolling, then `fork`, `incremental` | `make entropy`: `make bmc`'s checks (same bugs, same instruction counts, witnesses replay) plus the counts, for fork thresholds 0 and pc. **Go or no-go for the paper's claim, see below.** |
-| E5 | `backward`, `direction`, `invariants`, `-entropy`. Continues M12 from its first result (`make backward`, `make bit-length`), whose tables are the baseline. | `make directions`: forward and backward counts equal where backward finishes; `-entropy` reports loss per step (zero on every RISC-R step, the bits erased on RISC-U) and width per cut, both against enumeration by the reference; M12's tables and the bit-length table again, with U, H, and conflicts per switch: `cancel` and `row` must bring the RISC-R conflicts to the RISC-U ones forward, and the 8-bit garbage-free loop to an end backward, or the paper says backward does not pay and why |
+| E5 | `backward`, `direction`, `invariants`, `-entropy`, partial states at a time and `-reveal`. Continues M12 from its first result (`make backward`, `make bit-length`), whose tables are the baseline. | `make directions`: forward and backward counts equal where backward finishes; with the full end, start, or middle revealed every example is replayed in its number of instructions without a decision; `make ladder` writes cost against what is hidden for the end of every example, per switch; `-entropy` reports loss per step (zero on every RISC-R step, the bits erased on RISC-U) and width per cut, both against enumeration by the reference; M12's tables and the bit-length table again, with U, H, and conflicts per switch: `cancel` and `row` must bring the RISC-R conflicts to the RISC-U ones forward, and the 8-bit garbage-free loop to an end backward, or the paper says backward does not pay and why |
 | E6 | `components`, `cache`, `eliminate`, `bounds`, `emulate`, `merge` | each: its check in E2 to E4 extended, and a line in the ablation table; for `cache` and `merge`, states visited per cut against the width |
 | E7 | Message passing as a branching and phase heuristic: integer min-sum on the residual formula at a decision | kept only if it reduces decisions and time on the families; otherwise a paragraph in the paper on why not |
 | E8 | Experiments frozen: families, baselines, ablation (every switch off alone, `-O0` where it terminates), artifact | `make paper-tables` regenerates every number in the paper |
