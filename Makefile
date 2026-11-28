@@ -1023,8 +1023,8 @@ ledger: entr entr-trace bitr babysat selfie rotor
 	    d=$$(./babysat $$f | grep -o "is [un]*satisfiable"); \
 	    [ -n "$$a" ] && [ "$$a" = "$$d" ] || { echo "$$f: bitr says it $$a, babysat says it $$d"; exit 1; }; \
 	  fi; \
-	  for o in "-no learn" "-no propagate"; do \
-	    if [ $$v -le 20 ] || [ "$$o" = "-no learn" ]; then \
+	  for o in "-no learn" "-no reduce -no branch -no phase" "-limits 4 8" "-no propagate"; do \
+	    if [ $$v -le 20 ] || [ "$$o" != "-no propagate" ]; then \
 	      ./entr -cnf $$f -count $$o -trace entr.trace | tee entr-ledger.txt | grep -q ": count $$c worlds" && grep -q "ledger: .* open: all " entr-ledger.txt || \
 	        { echo "$$f: with $$o the count is not $$c, or the ledger does not account for all worlds"; exit 1; }; \
 	      ./entr-trace $$f entr.trace | grep -q "replays to count $$c worlds" || { echo "$$f: the trace with $$o does not replay to count $$c"; exit 1; }; \
@@ -1032,7 +1032,7 @@ ledger: entr entr-trace bitr babysat selfie rotor
 	  done; \
 	  case "$$c" in "0 of"*) [ "$$a" = "is unsatisfiable" ] ;; *) [ "$$a" = "is satisfiable" ] ;; esac || \
 	    { echo "$$f: the count is $$c, but bitr says it $$a"; exit 1; }; \
-	  for o in "-first" "-first -no pure" "-first -no learn" "-first -no propagate" "-first -O0"; do \
+	  for o in "-first" "-first -limits 4 8" "-first -no restart" "-first -no branch" "-first -no phase" "-first -no reduce" "-first -no pure" "-first -no learn" "-first -no propagate" "-first -O0"; do \
 	    if [ $$v -gt 20 ]; then case "$$o" in *propagate|*O0) continue ;; esac; fi; \
 	    ./entr -cnf $$f $$o -trace entr.trace > entr-ledger.txt; \
 	    grep -q "ledger: .* open: all " entr-ledger.txt && [ "$$(grep -o 'is [un]*satisfiable' entr-ledger.txt)" = "$$a" ] || \
@@ -1048,7 +1048,10 @@ ledger: entr entr-trace bitr babysat selfie rotor
 	./entr -cnf examples/sat/pigeonhole-4-3.cnf -count -O0 | grep "regions undecided"
 	./entr -cnf examples/sat/pigeonhole-4-3.cnf -count | grep "regions undecided"
 	./entr -cnf examples/entropy/pigeonhole-7-6.cnf -count -no learn | grep "regions undecided"
+	./entr -cnf examples/entropy/pigeonhole-7-6.cnf -count -no reduce -no branch -no phase | grep "regions undecided"
 	./entr -cnf examples/entropy/pigeonhole-7-6.cnf -count | grep "regions undecided"
+	./entr -cnf examples/entropy/pigeonhole-7-6.cnf -first -limits 4 8 -trace entr.trace | grep "[1-9][0-9]* forgotten, [1-9][0-9]* restarts" || { echo "$@: no restart, or no clause forgotten"; exit 1; }
+	./entr-trace examples/entropy/pigeonhole-7-6.cnf entr.trace | grep "replays to count 0 of .* after [1-9][0-9]* restarts" || { echo "$@: the trace with restarts does not replay"; exit 1; }
 	./entr -cnf examples/sat/rivest.cnf -count -trace entr.trace > /dev/null && { echo "l 1 0"; cat entr.trace; } > entr-wrong.trace; \
 	./entr-trace examples/sat/rivest.cnf entr-wrong.trace | grep "learned clause does not follow" || { echo "$@: a clause that does not follow is accepted as learned"; exit 1; }
 	./entr -cnf examples/sat/rivest.cnf -count -trace entr.trace > /dev/null && sed 's/^e \([0-9]*\)$$/e 1/' entr.trace > entr-wrong.trace; \

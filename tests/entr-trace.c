@@ -19,7 +19,8 @@ clauses. A clause that the trace says was learned must follow from the
 clauses before it: with all its literals false, making true what clauses
 imply must end in a clause that is violated. The count is then the sum
 over the full regions, and exact unless the trace has regions that were
-not looked at.
+not looked at. After a restart the run begins again and so does the count;
+the learned clauses stay, since they follow whatever the run.
 
 The checker is built on entr.h, which is tools/entr.c with its main
 renamed, and uses its formula and its counts, not its loop or its bracket.
@@ -60,7 +61,10 @@ uint64_t* replayed_worlds = (uint64_t*) 0; // worlds in the full regions of the 
 uint64_t* saved_trail   = (uint64_t*) 0; // the region, while a learned clause is checked
 uint64_t* learned_check = (uint64_t*) 0; // the learned clause being checked
 
-uint64_t replayed_clauses = 0; // learned clauses checked
+uint64_t replayed_clauses  = 0; // learned clauses checked
+uint64_t replayed_restarts = 0; // restarts
+
+uint64_t replay_restarting = 0; // the trace begins again
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
 // -----------------------------------------------------------------
@@ -409,7 +413,10 @@ void replay() {
 
   mark = trail_size;
 
-  if (event == 'e')
+  if (event == 'r')
+    // a restart: the regions that are open are given up
+    replay_restarting = 1;
+  else if (event == 'e')
     check_empty(scan_replay_clause());
   else if (event == 'f') {
     check_full();
@@ -450,12 +457,11 @@ void replay() {
 
     unassign_to(mark);
 
-    if (literal_is_negative(literal))
-      assign_literal(literal - 1);
-    else
-      assign_literal(literal + 1);
+    if (replay_restarting == 0) {
+      assign_literal(negation(literal));
 
-    replay();
+      replay();
+    }
   } else
     replay_error("event expected");
 
@@ -495,6 +501,35 @@ int main(int argc, char** argv) {
   // the clauses learned from the last region
   replay_learned();
 
+  if (replay_character() == 'r') {
+    // a restart after the last region
+    replay_pos = replay_pos + 1;
+
+    replay_restarting = 1;
+  }
+
+  while (replay_restarting) {
+    // the run begins again, with the clauses learned so far
+
+    replay_restarting = 0;
+
+    replayed_restarts = replayed_restarts + 1;
+
+    unassign_to(0);
+
+    replayed_worlds = new_count(0);
+
+    replay();
+
+    replay_learned();
+
+    if (replay_character() == 'r') {
+      replay_pos = replay_pos + 1;
+
+      replay_restarting = 1;
+    }
+  }
+
   if (replay_pos < replay_size)
     replay_error("end of trace expected");
 
@@ -502,7 +537,7 @@ int main(int argc, char** argv) {
   print_count(replayed_worlds);
   printf(" of ");
   print_count(count_of_power(number_of_variables));
-  printf(" worlds, with %lu learned clauses that follow\n", replayed_clauses);
+  printf(" worlds, with %lu learned clauses that follow, after %lu restarts\n", replayed_clauses, replayed_restarts);
 
   return EXITCODE_NOERROR;
 }

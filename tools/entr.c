@@ -220,12 +220,16 @@ uint64_t number_of_all_clauses = 0; // and with the clauses added
 uint64_t* clause_starts   = (uint64_t*) 0; // per clause: its first literal, and one more for the end
 uint64_t* clause_literals = (uint64_t*) 0;
 
+uint64_t* clause_glues   = (uint64_t*) 0; // per clause added: the number of levels of its literals when it was learned
+uint64_t* clause_deleted = (uint64_t*) 0; // per clause added: 1 if it was forgotten again
+
 uint64_t clause_capacity  = 0; // clauses there is memory for
 uint64_t literal_capacity = 0; // literals there is memory for
 
 uint64_t* variable_values  = (uint64_t*) 0; // per variable: open, true, or false
 uint64_t* variable_levels  = (uint64_t*) 0; // number of literals assumed when it got its value
 uint64_t* variable_reasons = (uint64_t*) 0; // clause that implied its value, plus one, or 0
+uint64_t* variable_phases  = (uint64_t*) 0; // the value it had last, or open if it never had one
 
 uint64_t* trail       = (uint64_t*) 0; // literals made true, in order
 uint64_t  trail_size  = 0;
@@ -249,6 +253,8 @@ void trace(char* event, uint64_t literal, uint64_t clause);
 uint64_t is_answered();
 
 void count_region();
+
+void clear_ledger(uint64_t* ledger);
 
 void print_model();
 void print_interval(uint64_t* total);
@@ -283,6 +289,9 @@ uint64_t undecided_regions = 0; // regions split
 uint64_t brackets_taken    = 0; // regions bracketed
 uint64_t clauses_visited   = 0; // clauses looked at by all brackets
 
+uint64_t restarting = 0; // the loop is on its way back to the region of all worlds
+uint64_t restarts   = 0; // times it went back
+
 uint64_t* model_values = (uint64_t*) 0; // per variable: its value in the first world found
 
 uint64_t model_found = 0;
@@ -300,6 +309,7 @@ uint64_t find_pure_literal();
 uint64_t bracket();
 
 void learn(uint64_t conflict);
+void forget();
 
 // the bracket of a region: empty, full, or undecided; a bracket that
 // propagates makes the region smaller before it says undecided
@@ -316,6 +326,7 @@ uint64_t BRACKET_UNIT      = 3; // a clause has one open literal and no true one
 uint64_t bracket_propagates = 1; // switch propagate: unit propagation
 uint64_t bracket_pure       = 1; // switch pure: pure literals, only if asking whether
 uint64_t bracket_learns     = 1; // switch learn: a clause from every region found empty
+uint64_t bracket_reduces    = 1; // switch reduce: learned clauses are forgotten again
 
 uint64_t* variable_seen = (uint64_t*) 0; // per variable: part of the clause being learned
 uint64_t* seen_stack    = (uint64_t*) 0; // the variables seen, to forget them again
@@ -323,6 +334,12 @@ uint64_t* learned       = (uint64_t*) 0; // the clause being learned
 
 uint64_t learned_clauses  = 0; // clauses learned
 uint64_t learned_literals = 0; // and their literals
+
+uint64_t* level_stamps = (uint64_t*) 0; // per level: the learned clause it was last counted for
+
+uint64_t remembered_clauses = 0; // learned clauses not forgotten
+uint64_t forgotten_clauses  = 0; // learned clauses forgotten
+uint64_t reduce_limit       = 0; // learned clauses remembered before some are forgotten, 0 for the default
 
 uint64_t bracket_clause  = 0; // the clause that makes the region empty, or is unit
 uint64_t bracket_literal = 0; // the open literal of the unit clause
@@ -333,10 +350,27 @@ uint64_t* literal_occurs = (uint64_t*) 0; // per literal: whether it occurs in a
 // --------------------------- ESTIMATE ----------------------------
 // -----------------------------------------------------------------
 
+void bump(uint64_t variable);
+
 uint64_t estimate();
 
 // the estimate of a region: the literal to make true first, for the
-// variable to split on; it changes the cost and never the answer
+// variable to split on, and whether to give up the regions that are open
+// and begin again with what was learned; it changes the cost and never
+// the answer
+
+// ------------------------ GLOBAL VARIABLES -----------------------
+
+uint64_t estimate_branches = 1; // switch branch: split on the open variable that learned clauses name most
+uint64_t estimate_phases   = 1; // switch phase: first the half with the value the variable had last
+uint64_t estimate_restarts = 1; // switch restart: begin again after a number of empty regions, only if asking whether
+
+uint64_t* variable_activities = (uint64_t*) 0; // per variable: how much learned clauses name it, the recent ones more
+
+uint64_t activity_increment = 1;
+
+uint64_t empty_since_restart = 0;  // regions found empty since the loop began again
+uint64_t restart_limit       = 32; // and how many of them make it begin again
 
 // -----------------------------------------------------------------
 // ----------------------------- MAIN ------------------------------
@@ -1226,11 +1260,18 @@ void load_formula(char* name) {
 
   clause_starts   = smalloc((clause_capacity + 1) * sizeof(uint64_t));
   clause_literals = smalloc(literal_capacity * sizeof(uint64_t));
+  clause_glues    = zmalloc((clause_capacity + 1) * sizeof(uint64_t));
+  clause_deleted  = zmalloc((clause_capacity + 1) * sizeof(uint64_t));
 
   variable_values  = zmalloc(number_of_variables * sizeof(uint64_t));
   variable_levels  = zmalloc(number_of_variables * sizeof(uint64_t));
   variable_reasons = zmalloc(number_of_variables * sizeof(uint64_t));
   variable_seen    = zmalloc(number_of_variables * sizeof(uint64_t));
+  variable_phases  = zmalloc(number_of_variables * sizeof(uint64_t));
+
+  variable_activities = zmalloc(number_of_variables * sizeof(uint64_t));
+
+  level_stamps = zmalloc((number_of_variables + 1) * sizeof(uint64_t));
 
   seen_stack = smalloc(number_of_variables * sizeof(uint64_t));
   learned    = smalloc((number_of_variables + 1) * sizeof(uint64_t));
@@ -1312,6 +1353,30 @@ void add_clause(uint64_t* literals, uint64_t size) {
     }
 
     clause_starts = bigger;
+
+    bigger = zmalloc((clause_capacity + 1) * sizeof(uint64_t));
+
+    i = 0;
+
+    while (i <= number_of_all_clauses) {
+      *(bigger + i) = *(clause_glues + i);
+
+      i = i + 1;
+    }
+
+    clause_glues = bigger;
+
+    bigger = zmalloc((clause_capacity + 1) * sizeof(uint64_t));
+
+    i = 0;
+
+    while (i <= number_of_all_clauses) {
+      *(bigger + i) = *(clause_deleted + i);
+
+      i = i + 1;
+    }
+
+    clause_deleted = bigger;
   }
 
   if (first + size > literal_capacity) {
@@ -1417,6 +1482,9 @@ void unassign_to(uint64_t mark) {
 
   while (trail_size > mark) {
     trail_size = trail_size - 1;
+
+    // the value is remembered as the phase of the variable
+    *(variable_phases + literal_variable(*(trail + trail_size))) = *(variable_values + literal_variable(*(trail + trail_size)));
 
     *(variable_values + literal_variable(*(trail + trail_size))) = VALUE_OPEN;
   }
@@ -1621,7 +1689,7 @@ void trace(char* event, uint64_t literal, uint64_t clause) {
   // e for a region that a clause makes empty; f for a full region; o for
   // a region not looked at; and, between regions, l for a clause learned,
   // see learn(), which is from then on a clause as the others, numbered
-  // after them
+  // after them, and r for a restart, after which the run begins again
 
   if (trace_name == (char*) 0)
     return;
@@ -1681,6 +1749,16 @@ void count_region() {
 
     if (bracket_learns)
       learn(bracket_clause);
+
+    if (estimate_restarts)
+      if (asking_whether)
+        if (trail_level > 0) {
+          empty_since_restart = empty_since_restart + 1;
+
+          if (empty_since_restart >= restart_limit)
+            // the open regions are given up, what was learned is kept
+            restarting = 1;
+        }
   } else if (outcome == BRACKET_FULL) {
     enter(ledger_full, open_variables());
 
@@ -1716,6 +1794,12 @@ void count_region() {
 
     unassign_to(split);
 
+    if (restarting) {
+      unassign_to(mark);
+
+      return;
+    }
+
     if (is_answered()) {
       // the other half is not looked at
       enter(ledger_open, open_variables() - 1);
@@ -1730,6 +1814,18 @@ void count_region() {
   }
 
   unassign_to(mark);
+}
+
+void clear_ledger(uint64_t* ledger) {
+  uint64_t exponent;
+
+  exponent = 0;
+
+  while (exponent <= number_of_variables) {
+    *(ledger + exponent) = 0;
+
+    exponent = exponent + 1;
+  }
 }
 
 void print_model() {
@@ -1820,8 +1916,10 @@ void print_ledger() {
 }
 
 void print_measure() {
-  printf("%s: %lu regions undecided, %lu brackets, %lu clauses visited, %lu clauses learned with %lu literals\n", selfie_name,
-    undecided_regions, brackets_taken, clauses_visited, learned_clauses, learned_literals);
+  printf("%s: %lu regions undecided, %lu brackets, %lu clauses visited, ", selfie_name,
+    undecided_regions, brackets_taken, clauses_visited);
+  printf("%lu clauses learned with %lu literals, %lu forgotten, %lu restarts\n",
+    learned_clauses, learned_literals, forgotten_clauses, restarts);
 }
 
 void loop() {
@@ -1842,7 +1940,37 @@ void loop() {
     }
   }
 
+  if (reduce_limit == 0)
+    reduce_limit = number_of_clauses / 2 + 100;
+
   count_region();
+
+  while (restarting) {
+    // the loop begins again in the region of all worlds, and so does the
+    // ledger: the last run accounts for all worlds, by what the runs
+    // before it learned
+
+    restarting = 0;
+
+    restarts = restarts + 1;
+
+    empty_since_restart = 0;
+
+    restart_limit = restart_limit + restart_limit / 2;
+
+    clear_ledger(ledger_empty);
+    clear_ledger(ledger_full);
+    clear_ledger(ledger_propagate);
+    clear_ledger(ledger_pure);
+    clear_ledger(ledger_learn);
+    clear_ledger(ledger_open);
+
+    if (trace_name != (char*) 0)
+      // r for a restart: what follows is a run from the region of all worlds
+      dprintf(trace_fd, "r\n");
+
+    count_region();
+  }
 
   if (found_regions > 0) {
     if (asking_whether)
@@ -1888,6 +2016,10 @@ uint64_t scan_clauses() {
 
     i = *(clause_starts + clause);
 
+    if (*(clause_deleted + clause))
+      // a forgotten clause says nothing
+      i = *(clause_starts + clause + 1);
+
     while (i < *(clause_starts + clause + 1)) {
       literal = *(clause_literals + i);
 
@@ -1907,6 +2039,9 @@ uint64_t scan_clauses() {
         i = i + 1;
       }
     }
+
+    if (*(clause_deleted + clause))
+      satisfied = 1;
 
     if (satisfied == 0) {
       all_satisfied = 0;
@@ -1955,7 +2090,7 @@ uint64_t find_pure_literal() {
   while (clause < number_of_all_clauses) {
     clauses_visited = clauses_visited + 1;
 
-    satisfied = 0;
+    satisfied = *(clause_deleted + clause);
 
     i = *(clause_starts + clause);
 
@@ -2154,8 +2289,13 @@ void learn(uint64_t conflict) {
       while (i < seen) {
         *(variable_seen + *(seen_stack + i)) = 0;
 
+        // the variables of this conflict are where to split next
+        bump(*(seen_stack + i));
+
         i = i + 1;
       }
+
+      activity_increment = activity_increment + activity_increment / 16 + 1;
 
       if (resolved == 0)
         // the conflict clause itself: nothing new
@@ -2165,6 +2305,24 @@ void learn(uint64_t conflict) {
 
       learned_clauses  = learned_clauses + 1;
       learned_literals = learned_literals + size;
+
+      // the glue of the clause: the number of levels its literals are of
+
+      i = 0;
+
+      while (i < size) {
+        variable = literal_variable(*(learned + i));
+
+        if (*(level_stamps + *(variable_levels + variable)) != learned_clauses) {
+          *(level_stamps + *(variable_levels + variable)) = learned_clauses;
+
+          *(clause_glues + number_of_all_clauses - 1) = *(clause_glues + number_of_all_clauses - 1) + 1;
+        }
+
+        i = i + 1;
+      }
+
+      remembered_clauses = remembered_clauses + 1;
 
       if (trace_name != (char*) 0) {
         // l for a clause learned, its literals, and 0
@@ -2183,6 +2341,10 @@ void learn(uint64_t conflict) {
         dprintf(trace_fd, "0\n");
       }
 
+      if (bracket_reduces)
+        if (remembered_clauses > reduce_limit)
+          forget();
+
       return;
     }
 
@@ -2195,29 +2357,125 @@ void learn(uint64_t conflict) {
   }
 }
 
+void forget() {
+  uint64_t clause;
+  uint64_t i;
+  uint64_t glue;
+  uint64_t reason;
+
+  // forgets the learned clauses of more than average glue, but for those
+  // that are the reason of a literal on the trail: the bracket gets
+  // weaker and stays right, since a learned clause only says what the
+  // formula says; a forgotten clause keeps its number
+
+  glue = 0;
+
+  clause = number_of_clauses;
+
+  while (clause < number_of_all_clauses) {
+    if (*(clause_deleted + clause) == 0)
+      glue = glue + *(clause_glues + clause);
+
+    clause = clause + 1;
+  }
+
+  glue = glue / remembered_clauses;
+
+  // reasons are marked as deleted twice, for the moment
+
+  i = 0;
+
+  while (i < trail_size) {
+    reason = *(variable_reasons + literal_variable(*(trail + i)));
+
+    if (reason > number_of_clauses)
+      *(clause_deleted + reason - 1) = 2;
+
+    i = i + 1;
+  }
+
+  clause = number_of_clauses;
+
+  while (clause < number_of_all_clauses) {
+    if (*(clause_deleted + clause) == 2)
+      *(clause_deleted + clause) = 0;
+    else if (*(clause_deleted + clause) == 0)
+      if (*(clause_glues + clause) > glue) {
+        *(clause_deleted + clause) = 1;
+
+        remembered_clauses = remembered_clauses - 1;
+        forgotten_clauses  = forgotten_clauses + 1;
+      }
+
+    clause = clause + 1;
+  }
+
+  reduce_limit = reduce_limit + reduce_limit / 2;
+}
+
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
 // -----------------------------------------------------------------
 // --------------------------- ESTIMATE ----------------------------
 // -----------------------------------------------------------------
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
 
+void bump(uint64_t variable) {
+  uint64_t v;
+
+  // the activity of a variable: the sum of increments that grow, so that
+  // recent conflicts count more; halved for all when it gets large
+
+  *(variable_activities + variable) = *(variable_activities + variable) + activity_increment;
+
+  if (*(variable_activities + variable) > two_to_the_power_of(60)) {
+    v = 0;
+
+    while (v < number_of_variables) {
+      *(variable_activities + v) = *(variable_activities + v) / two_to_the_power_of(30);
+
+      v = v + 1;
+    }
+
+    activity_increment = activity_increment / two_to_the_power_of(30) + 1;
+  }
+}
+
 uint64_t estimate() {
   uint64_t variable;
+  uint64_t best;
 
   // the weakest estimate: the first open variable, true first, which is
-  // the order in which babysat goes through the assignments
+  // the order in which babysat goes through the assignments; with branch,
+  // the open variable of the most activity, the first of them; with
+  // phase, first the value the variable had last
+
+  best = number_of_variables;
 
   variable = 0;
 
   while (variable < number_of_variables) {
-    if (*(variable_values + variable) == VALUE_OPEN)
-      return 2 * variable;
+    if (*(variable_values + variable) == VALUE_OPEN) {
+      if (best == number_of_variables)
+        best = variable;
+      else if (estimate_branches)
+        if (*(variable_activities + variable) > *(variable_activities + best))
+          best = variable;
+
+      if (estimate_branches == 0)
+        // the first open variable
+        variable = number_of_variables;
+    }
 
     variable = variable + 1;
   }
 
-  // not reached: an undecided region has an open variable
-  return 0;
+  // an undecided region has an open variable
+
+  if (estimate_phases)
+    if (*(variable_phases + best) == VALUE_FALSE)
+      return 2 * best + 1;
+
+  return 2 * best;
 }
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
@@ -2235,6 +2493,14 @@ uint64_t set_switch(char* name, uint64_t value) {
     bracket_pure = value;
   else if (string_compare(name, "learn"))
     bracket_learns = value;
+  else if (string_compare(name, "reduce"))
+    bracket_reduces = value;
+  else if (string_compare(name, "branch"))
+    estimate_branches = value;
+  else if (string_compare(name, "phase"))
+    estimate_phases = value;
+  else if (string_compare(name, "restart"))
+    estimate_restarts = value;
   else
     return 0;
 
@@ -2244,7 +2510,7 @@ uint64_t set_switch(char* name, uint64_t value) {
 uint64_t entr_formula() {
   uint64_t referring;
 
-  // -cnf formula { -first | -count | -reference | -O0 | -O switch | -no switch | -trace file }
+  // -cnf formula { -first | -count | -reference | -O0 | -O switch | -no switch | -limits restart reduce | -trace file }
 
   if (number_of_remaining_arguments() == 0)
     return EXITCODE_BADARGUMENTS;
@@ -2266,6 +2532,11 @@ uint64_t entr_formula() {
       bracket_propagates = 0;
       bracket_pure       = 0;
       bracket_learns     = 0;
+      bracket_reduces    = 0;
+
+      estimate_branches = 0;
+      estimate_phases   = 0;
+      estimate_restarts = 0;
     } else if (string_compare(argument, "-O")) {
       if (number_of_remaining_arguments() == 0)
         return EXITCODE_BADARGUMENTS;
@@ -2278,6 +2549,13 @@ uint64_t entr_formula() {
 
       if (set_switch(get_argument(), 0) == 0)
         return EXITCODE_BADARGUMENTS;
+    } else if (string_compare(argument, "-limits")) {
+      // when to restart first and when to forget first, for testing
+      if (number_of_remaining_arguments() < 2)
+        return EXITCODE_BADARGUMENTS;
+
+      restart_limit = atoi(get_argument());
+      reduce_limit  = atoi(get_argument());
     } else if (string_compare(argument, "-trace")) {
       if (number_of_remaining_arguments() == 0)
         return EXITCODE_BADARGUMENTS;
