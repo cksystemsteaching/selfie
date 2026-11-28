@@ -895,8 +895,130 @@ trust: selfie selfie.h
 	@echo "$@: trojan detected by diverse double-compiling"
 	rm -f examples/trusting-trust/honest-stamp.c examples/trusting-trust/honest-victim.c examples/trusting-trust/trojaned-victim.c examples/trusting-trust/suspect-stamp.c
 
+# Entr, milestones E0 and E1 of projects/entropy.md: counts over declared bits
+
+bitr.h: tools/bitr.c
+	sed 's/main(/bitr_main(/' tools/bitr.c > bitr.h
+
+entr: tools/entr.c bitr.h tools/btor2.h selfie.h
+	$(CC) $(CFLAGS) --include selfie.h --include tools/btor2.h --include bitr.h $< -o $@
+
+# what a count is over: one byte of input, for rotor's RISC-U and RISC-R models,
+# and the rest of the open states, which are zero, with one byte on the input tape
+over-riscu := -over input-buffer 0 8 -zero input-buffer
+over-riscr := -over input-tapes 0 8 -zero input-tapes -fix tape-ends 0 1 -zero tape-ends -zero tape-opens -zero input-buffer
+
+model-options := -Pnobadexitcode -Pgoodexitcode -heapallowance 2097152 -stackallowance 65536
+
+# the families of examples/entropy at the sizes that are checked: family, size, count
+families := sum-1-1 sum-2-4 password-1-1 password-2-1 loop-1-1 loop-4-1 branch-1-128 branch-2-16384
+
+# E1: the reference refuses a model with an open state that is not declared, counts
+# what bitr enumerates on the symbolic examples, the same as RISC-U and as RISC-R,
+# counts what the families of examples/entropy are built to have, and runs on mipster
+count: entr bitr selfie riscr rotor
+	b=examples/symbolic/division-by-zero-3-35; \
+	./selfie -c $$b.c -o $$b.m > /dev/null && \
+	./rotor -l $$b.m - 0 $(model-options) -riscuonly > /dev/null || exit 1; \
+	./entr $$b-rotorized-riscuonly.btor2 -l $$b.m -k 5000 | grep "state input-buffer .* is open" || \
+	  { echo "$@: an open state that is not declared is not refused"; exit 1; }
+	for f in $(wildcard examples/symbolic/*.c); do \
+	  b=$${f%.c}; \
+	  ./selfie -c $$f -o $$b.m > /dev/null && \
+	  ./riscr -l $$b.m -history 1 -t $$b.r > /dev/null && \
+	  ./rotor -l $$b.m - 0 $(model-options) -riscuonly > /dev/null && \
+	  ./rotor -l $$b.r - 0 $(model-options) > /dev/null || exit 1; \
+	  ./entr $$b-rotorized-riscuonly.btor2 -l $$b.m -k 5000 $(over-riscu) -v > $$b.count || exit 1; \
+	  u=$$(sed -n 's/.*: count \(.*\) of 256 worlds.*/\1/p' $$b.count); \
+	  r=$$(./entr $$b-rotorized-riscr.btor2 -l $$b.r -k 5000 $(over-riscr) | sed -n 's/.*: count \(.*\) of 256 worlds.*/\1/p'); \
+	  [ -n "$$u" ] && [ -n "$$r" ] || { echo "$$b: no count"; exit 1; }; \
+	  sed -n 's/.*: world [0-9]*: bad \(.*\) after \([0-9]*\) instructions/\1 \2/p' $$b.count | sort -u > $$b.worlds; \
+	  case "$$u$$r" in \
+	    *to*) \
+	      ./bitr $$b-rotorized-riscuonly.btor2 -l $$b.m -bmc 5000 | sed -n 's/.*: bad \(.*\) after \([0-9]*\) instructions/\1 \2/p' | head -1 > $$b.bitr; \
+	      grep -qxF "$$(cat $$b.bitr)" $$b.worlds || { echo "$$b: the bad state bitr finds is in no world"; exit 1; }; \
+	      echo "$$b: count $$u as RISC-U and $$r as RISC-R of 256 worlds, open at 5000 instructions, with the bad state bitr finds" ;; \
+	    *) \
+	      [ "$$u" = "$$r" ] || { echo "$$b: count $$u as RISC-U and $$r as RISC-R"; exit 1; }; \
+	      ./bitr $$b-rotorized-riscuonly.btor2 -l $$b.m -bmc 5000 -all > $$b.bitr; \
+	      sed -n 's/.*: bad \(.*\) after \([0-9]*\) instructions/\1 \2/p' $$b.bitr | sort -u | comm -13 - $$b.worlds | grep -q . && \
+	        { echo "$$b: the reference reaches a bad state that bitr does not"; exit 1; }; \
+	      if grep -q "witness input-buffer" $$b.bitr; then \
+	        sed -n 's/.*: witness input-buffer\[0\] = \([0-9]*\)/\1/p' $$b.bitr | sort -n > $$b.inputs; \
+	        sed -n 's/.*: world \([0-9]*\): bad .*/\1/p' $$b.count | sort -n | cmp -s - $$b.inputs || \
+	          { echo "$$b: the inputs bitr enumerates are not the bad worlds of the reference"; exit 1; }; \
+	      fi; \
+	      echo "$$b: count $$u of 256 worlds as RISC-U and as RISC-R, the inputs bitr enumerates" ;; \
+	  esac; \
+	done
+	for x in $(families); do \
+	  f=$${x%%-*}; c=$${x##*-}; n=$${x#*-}; n=$${n%-*}; \
+	  b=examples/entropy/$$f-$$n; \
+	  sed "s/n = 1; \/\/ size/n = $$n; \/\/ size/" examples/entropy/$$f.c > $$b.c; \
+	  if [ $$f = loop ]; then bytes=1; else bytes=$$n; fi; \
+	  over=; i=0; while [ $$i -lt $$bytes ]; do over="$$over -over input-buffer $$i 8"; i=$$((i + 1)); done; \
+	  ./selfie -c $$b.c -o $$b.m > /dev/null && \
+	  ./rotor -l $$b.m - 0 -Pnobadexitcode -Pgoodexitcode -heapallowance 4096 -stackallowance 4096 -bytestoread $$bytes -riscuonly > /dev/null || exit 1; \
+	  ./entr $$b-rotorized-riscuonly.btor2 -l $$b.m -k 20000 $$over -zero input-buffer | grep "count $$c of " || \
+	    { echo "$$b: the count as RISC-U is not $$c"; exit 1; }; \
+	  if [ $$bytes = 1 ]; then \
+	    ./riscr -l $$b.m -history 1 -t $$b.r > /dev/null && \
+	    ./rotor -l $$b.r - 0 $(model-options) > /dev/null || exit 1; \
+	    ./entr $$b-rotorized-riscr.btor2 -l $$b.r -k 20000 $(over-riscr) | grep "count $$c of " || \
+	      { echo "$$b: the count as RISC-R is not $$c"; exit 1; }; \
+	  fi; \
+	done
+	b=examples/symbolic/division-by-zero-3-35; \
+	./rotor -l $$b.m - 0 -Pnobadexitcode -Pgoodexitcode -heapallowance 4096 -stackallowance 4096 -riscuonly > /dev/null || exit 1; \
+	./selfie -c selfie.h tools/btor2.h bitr.h tools/entr.c -m 512 $$b-rotorized-riscuonly.btor2 -l $$b.m -k 5000 -fix input-buffer 0 48 -over input-buffer 0 2 -zero input-buffer | tee entr-count.txt; \
+	grep -q "count 3 of 4 worlds, entropy 1.58 of 2.00 bits" entr-count.txt || { echo "$@: entr on mipster does not count 3 of the inputs 48 to 51"; exit 1; }
+
+# E0: what today's bitr does on the symbolic examples and on the families of
+# examples/entropy, next to the reference: the table to measure entr against
+baselines: entr bitr selfie riscr rotor
+	echo "benchmark isa | reference: count of worlds, seconds | bitr, first bad state: instructions, seconds, paths forked, SAT calls, conflicts | bitr, all inputs: inputs, seconds" > baselines.txt
+	ms() { echo $$(( ($$(date +%s%N) - $$1) / 1000000 + 1000 )) | sed 's/\(...\)$$/.\1/' | awk '{ printf "%.3f", $$1 - 1 }'; }; \
+	for f in $(wildcard examples/symbolic/*.c) sum-1 sum-2 sum-3 sum-4 password-1 password-2 password-3 password-4 loop-1 loop-4 loop-16 branch-1 branch-2 branch-3 branch-4; do \
+	  case $$f in \
+	    *.c) b=$${f%.c}; bytes=1 ;; \
+	    *) n=$${f#*-}; b=examples/entropy/$$f; \
+	       sed "s/n = 1; \/\/ size/n = $$n; \/\/ size/" examples/entropy/$${f%-*}.c > $$b.c; \
+	       case $$f in loop-*) bytes=1 ;; *) bytes=$$n ;; esac ;; \
+	  esac; \
+	  ./selfie -c $$b.c -o $$b.m > /dev/null && \
+	  ./riscr -l $$b.m -history 1 -t $$b.r > /dev/null && \
+	  ./rotor -l $$b.m - 0 $(model-options) -bytestoread $$bytes -riscuonly > /dev/null && \
+	  ./rotor -l $$b.r - 0 $(model-options) -bytestoread $$bytes > /dev/null || exit 1; \
+	  for x in m r; do \
+	    if [ $$x = m ]; then \
+	      model=$$b-rotorized-riscuonly.btor2; isa=RISC-U; \
+	      over=; i=0; while [ $$i -lt $$bytes ]; do over="$$over -over input-buffer $$i 8"; i=$$((i + 1)); done; \
+	      over="$$over -zero input-buffer"; limit=2; \
+	    else \
+	      model=$$b-rotorized-riscr.btor2; isa=RISC-R; \
+	      over="-over input-tapes 0 $$((8 * bytes)) -zero input-tapes -fix tape-ends 0 $$bytes -zero tape-ends -zero tape-opens -zero input-buffer"; limit=1; \
+	    fi; \
+	    if [ $$bytes -le $$limit ]; then \
+	      t=$$(date +%s%N); \
+	      c=$$(./entr $$model -l $$b.$$x -k 20000 $$over | sed -n 's/.*: count \(.*\) worlds, .*/\1/p'); \
+	      reference="$$c, $$(ms $$t)"; \
+	    else reference="-"; fi; \
+	    t=$$(date +%s%N); \
+	    if timeout 60 ./bitr $$model -l $$b.$$x -bmc 20000 > baselines.out; then \
+	      first="$$(sed -n 's/.*: bad .* after \([0-9]*\) instructions/\1/p' baselines.out | head -1), $$(ms $$t), $$(sed -n 's/.*: \([0-9]*\) paths forked.*/\1/p' baselines.out), $$(sed -n 's/.*: \([0-9]*\) SAT calls.*/\1/p' baselines.out), $$(sed -n 's/.* and \([0-9]*\) conflicts in total/\1/p' baselines.out)"; \
+	    else first="no answer in 60"; fi; \
+	    if [ $$x = m ]; then \
+	      t=$$(date +%s%N); \
+	      if timeout 60 ./bitr $$model -l $$b.$$x -bmc 20000 -all > baselines.out; then \
+	        all="$$(grep -c 'witness input-buffer\[0\]' baselines.out), $$(ms $$t)"; \
+	      else all="no answer in 60"; fi; \
+	    else all="no projection"; fi; \
+	    echo "$$(basename $$b) $$isa | $$reference | $$first | $$all" | tee -a baselines.txt; \
+	  done; \
+	done
+
 # Consider these targets as targets, not files
-.PHONY: rev riscr-rev bennett trust riscr-model sim bmc cdcl identity cells product tapes layouts hybrid construct selfie-on-cellfie cellfie-on-cellfie reversible garbage-free backward bit-length
+.PHONY: rev riscr-rev bennett trust riscr-model sim bmc cdcl identity cells product tapes layouts hybrid construct selfie-on-cellfie cellfie-on-cellfie reversible garbage-free backward bit-length count baselines
 
 # Run the checks of the RISC-R branch that are not too slow, one after another and after rotor-btor2:
 # they share generated files, the binaries, models, and layouts of the symbolic examples and of the
@@ -1040,6 +1162,9 @@ clean:
 	rm -f examples/trusting-trust/honest-stamp.c examples/trusting-trust/honest-victim.c examples/trusting-trust/trojaned-victim.c examples/trusting-trust/suspect-stamp.c
 	rm -f selfie selfie-32 selfie.h selfie-gc.h selfie-gc-nomain.h selfie.exe
 	rm -f babysat buzzr monster beator beator-32 rotor rotor-32 riscr riscr.h riscr-test bitr cellfie cellfie-test
+	rm -f entr bitr.h entr-count.txt baselines.out
+	rm -f examples/symbolic/*.count examples/symbolic/*.worlds examples/symbolic/*.bitr examples/symbolic/*.inputs
+	rm -f examples/entropy/*-*.c examples/entropy/*.m examples/entropy/*.r examples/entropy/*.btor2
 	rm -f cellfie-test-*.rle cellfie-check-failed.rle cellfie-test.txt cellfie-identity.txt cellfie-product.txt
 	rm -f tests/cellfie-test.r tests/cellfie-build-test.r tests/cellfie-test-rotorized-riscr.btor2
 	rm -f tests/cellfie-io-test.r tests/cellfie-io-test.txt tests/cellfie-io-test-rotorized-riscr.btor2

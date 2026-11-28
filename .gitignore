@@ -59,3 +59,17 @@ bitr-backward.txt
 riscr-bitlength-test
 riscr-bitlength-test.txt
 tests/riscr-bitlength-*.txt
+
+# what make count and make baselines write
+entr
+bitr.h
+entr-count.txt
+baselines.out
+*.count
+*.worlds
+*.bitr
+*.inputs
+examples/entropy/*-*.c
+examples/entropy/*.m
+examples/entropy/*.r
+examples/entropy/*.btor2
