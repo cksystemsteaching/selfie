@@ -1,0 +1,67 @@
+benchmark isa | reference: count of worlds, seconds | bitr, first bad state: instructions, seconds, paths forked, SAT calls, conflicts | bitr, all inputs: inputs, seconds
+division-by-zero-3-35 RISC-U | 3 of 256, 0.170 | 77, 0.041, 0, 1, 0 | 3, 0.129
+division-by-zero-3-35 RISC-R | 3 of 256, 1.071 | 322, 0.064, 0, 1, 0 | no projection
+invalid-memory-access-fail-2-35 RISC-U | 2 of 256, 0.168 | 80, 0.038, 1, 3, 0 | 2, 0.041
+invalid-memory-access-fail-2-35 RISC-R | 2 of 256, 0.812 | 329, 0.088, 1, 3, 3 | no projection
+memory-access-fail-1-35 RISC-U | 256 of 256, 0.145 | 67, 0.037, 0, 0, 0 | 0, 0.042
+memory-access-fail-1-35 RISC-R | 256 of 256, 1.083 | 541, 0.462, 0, 1, 0 | no projection
+nested-if-else-1-35 RISC-U | 1 of 256, 0.183 | 114, 0.045, 2, 7, 1 | 1, 0.055
+nested-if-else-1-35 RISC-R | 1 of 256, 0.944 | 462, 0.101, 2, 7, 55 | no projection
+nested-if-else-reverse-1-35 RISC-U | 1 of 256, 0.217 | 113, 0.047, 2, 7, 1 | 1, 0.048
+nested-if-else-reverse-1-35 RISC-R | 1 of 256, 1.407 | 465, 0.124, 2, 7, 54 | no projection
+nested-recursion-fail-1-35 RISC-U | 1 to 36 of 256, 4.666 | 801, 2.133, 52, 107, 49 | no answer in 60
+nested-recursion-fail-1-35 RISC-R | 1 to 62 of 256, 26.125 | 2720, 36.021, 53, 109, 2129 | no projection
+recursive-ackermann-1-35 RISC-U | 1 to 48 of 256, 7.372 | 271, 0.129, 7, 15, 14 | no answer in 60
+recursive-ackermann-1-35 RISC-R | 1 to 160 of 256, 32.649 | 988, 0.264, 7, 15, 369 | no projection
+recursive-factorial-fail-1-35 RISC-U | 1 to 40 of 256, 5.253 | 399, 0.823, 25, 53, 50 | no answer in 60
+recursive-factorial-fail-1-35 RISC-R | 1 to 64 of 256, 24.353 | 1388, 1.247, 25, 53, 852 | no projection
+recursive-fibonacci-1-10 RISC-U | 1 to 244 of 256, 14.719 | 231, 0.117, 10, 41, 17 | no answer in 60
+recursive-fibonacci-1-10 RISC-R | 1 to 246 of 256, 36.274 | 831, 0.336, 10, 41, 474 | no projection
+return-from-loop-1-35 RISC-U | 10 of 256, 0.332 | 96, 0.042, 1, 3, 1 | 10, 0.075
+return-from-loop-1-35 RISC-R | 10 of 256, 2.243 | 388, 0.102, 1, 3, 50 | no projection
+simple-assignment-1-35 RISC-U | 255 of 256, 0.162 | 92, 0.050, 2, 5, 2 | 255, 0.094
+simple-assignment-1-35 RISC-R | 255 of 256, 0.818 | 376, 0.077, 2, 5, 126 | no projection
+simple-decreasing-loop-1-35 RISC-U | 1 to 41 of 256, 3.882 | 244, 0.083, 11, 23, 0 | 1, 2.488
+simple-decreasing-loop-1-35 RISC-R | 1 to 41 of 256, 18.379 | 984, 0.212, 11, 23, 566 | no projection
+simple-if-else-1-35 RISC-U | 1 of 256, 0.195 | 108, 0.042, 1, 5, 3 | 1, 0.055
+simple-if-else-1-35 RISC-R | 1 of 256, 0.893 | 437, 0.086, 1, 5, 55 | no projection
+simple-if-else-reverse-1-35 RISC-U | 1 of 256, 0.191 | 106, 0.043, 1, 5, 2 | 1, 0.046
+simple-if-else-reverse-1-35 RISC-R | 1 of 256, 1.590 | 434, 0.086, 1, 5, 52 | no projection
+simple-if-without-else-1-35 RISC-U | 1 of 256, 0.199 | 107, 0.044, 1, 5, 3 | 1, 0.052
+simple-if-without-else-1-35 RISC-R | 1 of 256, 1.011 | 436, 0.123, 1, 5, 55 | no projection
+simple-increasing-loop-1-35 RISC-U | 1 of 256, 0.266 | 270, 0.075, 13, 27, 18 | 1, 0.202
+simple-increasing-loop-1-35 RISC-R | 1 of 256, 1.681 | 1087, 0.264, 13, 27, 22 | no projection
+three-level-nested-loop-fail-1-35 RISC-U | 1 of 256, 0.236 | 394, 0.375, 101, 323, 365 | 1, 0.231
+three-level-nested-loop-fail-1-35 RISC-R | 1 of 256, 0.990 | 1632, 1.145, 101, 323, 622 | no projection
+two-level-nested-loop-1-35 RISC-U | 1 of 256, 0.251 | 190, 0.107, 19, 49, 64 | 1, 0.098
+two-level-nested-loop-1-35 RISC-R | 1 of 256, 0.875 | 778, 0.225, 19, 49, 107 | no projection
+sum-1 RISC-U | 1 of 256, 0.181 | 111, 0.040, 1, 3, 0 | 1, 0.047
+sum-1 RISC-R | 1 of 256, 1.300 | 452, 0.081, 1, 3, 1 | no projection
+sum-2 RISC-U | 4 of 65536, 59.470 | 142, 0.065, 1, 3, 15 | 4, 0.063
+sum-2 RISC-R | - | 578, 0.117, 1, 3, 197 | no projection
+sum-3 RISC-U | - | 173, 0.074, 1, 3, 47 | 10, 0.052
+sum-3 RISC-R | - | 704, 0.209, 1, 3, 508 | no projection
+sum-4 RISC-U | - | 204, 0.051, 1, 3, 76 | 20, 0.058
+sum-4 RISC-R | - | 830, 0.161, 1, 3, 889 | no projection
+password-1 RISC-U | 1 of 256, 0.243 | 106, 0.056, 1, 3, 0 | 1, 0.054
+password-1 RISC-R | 1 of 256, 0.861 | 430, 0.086, 1, 3, 3 | no projection
+password-2 RISC-U | 1 of 65536, 46.833 | 140, 0.053, 2, 5, 0 | 1, 0.063
+password-2 RISC-R | - | 566, 0.095, 2, 5, 6 | no projection
+password-3 RISC-U | - | 174, 0.071, 3, 7, 0 | 1, 0.072
+password-3 RISC-R | - | 702, 0.129, 3, 7, 8 | no projection
+password-4 RISC-U | - | 208, 0.058, 4, 9, 0 | 1, 0.055
+password-4 RISC-R | - | 838, 0.141, 4, 9, 11 | no projection
+loop-1 RISC-U | 1 of 256, 0.457 | 434, 0.070, 1, 3, 1 | 1, 0.065
+loop-1 RISC-R | 1 of 256, 3.595 | 1696, 0.196, 1, 3, 69 | no projection
+loop-4 RISC-U | 1 of 256, 1.265 | 1442, 0.142, 1, 3, 1 | 1, 0.141
+loop-4 RISC-R | 1 of 256, 10.852 | 5584, 0.582, 1, 3, 76 | no projection
+loop-16 RISC-U | 1 of 256, 4.572 | 5474, 0.628, 1, 3, 1 | 1, 0.561
+loop-16 RISC-R | 0 to 256 of 256, 40.039 | , 3.259, 0, 0, 0 | no projection
+branch-1 RISC-U | 128 of 256, 0.264 | 115, 0.053, 1, 3, 0 | 128, 0.058
+branch-1 RISC-R | 128 of 256, 1.121 | 470, 0.089, 1, 3, 0 | no projection
+branch-2 RISC-U | 16384 of 65536, 56.035 | 150, 0.077, 3, 7, 0 | no answer in 60
+branch-2 RISC-R | - | 612, 0.175, 3, 7, 0 | no projection
+branch-3 RISC-U | - | 185, 0.089, 7, 15, 0 | no answer in 60
+branch-3 RISC-R | - | 754, 0.223, 7, 15, 0 | no projection
+branch-4 RISC-U | - | 220, 0.100, 15, 31, 0 | no answer in 60
+branch-4 RISC-R | - | 896, 0.539, 15, 31, 0 | no projection
