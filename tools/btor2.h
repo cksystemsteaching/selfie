@@ -14,7 +14,7 @@ structure (lines, sorts, constants, operators, states, properties),
 the BTOR2 and SMT-LIB printer, and the concrete evaluator that runs
 models step by step on bit vectors and arrays, including the
 symbolic status needed for unrolling. Rotor generates models with
-it, bitr parses models into it, see projects/reversible.md. Like
+it, bitr parses models into it. Like
 selfie.h it is included as library: gcc --include selfie.h
 --include tools/btor2.h, or ./selfie -c selfie.h tools/btor2.h ...
 */

@@ -1,4 +1,4 @@
-// M9 of projects/reversible.md: the compound assignments x += e, x -= e,
+// The compound assignments of riscr.md: x += e, x -= e,
 // and x ^= e, which riscr compiles without history. The program is C, so
 // gcc compiles it as well, and make garbage-free compares the two.
 //

@@ -9727,7 +9727,7 @@ void kernel_properties(uint64_t core, uint64_t* ir_nid, uint64_t* read_bytes_nid
 }
 
 // RISC-R kernel: only exit and brk exist so far; read, write, and openat
-// need tapes as named state, see projects/reversible.md (M3b)
+// need tapes as named state, see riscr.md
 
 uint64_t* riscr_is_syscall(uint64_t* ir_nid, uint64_t* register_file_nid, uint64_t* syscall_id_nid, char* comment) {
   return new_binary_boolean(OP_AND,
@@ -13075,7 +13075,7 @@ void disassemble_rotor(uint64_t core) {
 // ------------------------ RISC-R ROUND TRIP ----------------------
 // -----------------------------------------------------------------
 
-// M3 check, see projects/reversible.md: on random states, the inverse model
+// the round trip, see riscr.md: on random states, the inverse model
 // after the forward model and the forward model after the inverse model are
 // the identity, bit for bit, unless the state is excluded by a property
 

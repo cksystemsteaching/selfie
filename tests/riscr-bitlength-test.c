@@ -1,4 +1,4 @@
-// The bit-length loop of projects/reversible.md, garbage-free: it counts
+// The bit-length loop of riscr.md, garbage-free: it counts
 // in c how often x can be halved, x being the byte it reads. Halving x
 // destroys the low bit of x, which this program keeps in s, a bit per
 // iteration: that is all the information the loop destroys. All of its

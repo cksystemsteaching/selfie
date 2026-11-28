@@ -15,7 +15,7 @@ encodings but changes what they mean such that every instruction is
 a bijection on the machine state. Riscr executes RISC-R binaries,
 which are RISC-U binaries with bit 8 of e_flags set, forward and,
 without any trace, backward. See riscr.md for the instruction set
-and projects/reversible.md for the development plan.
+and its last sections for the toolchain and its checks.
 
 The emulator reuses mipster's loader, memory, contexts, and decoder,
 and replaces mipster's execution with RISC-R semantics: a reverse
@@ -27,7 +27,7 @@ what was read and written.
 Options in addition to selfie's options:
 
 -t binary translates the loaded RISC-U binary into a RISC-R binary
-in Bennett mode and writes it to binary (milestone M2),
+in Bennett mode and writes it to binary,
 -m 0-4096 ... runs a RISC-R binary forward until it exits,
 -rev 0-4096 ... runs it forward and then all instructions but the
 exit system call backward.
@@ -62,7 +62,7 @@ char* xor_table = (char*) 0; // 256x256 table of byte-wise exclusive ors, see in
 // -------------------- COMPOUND ASSIGNMENTS -----------------------
 // -----------------------------------------------------------------
 
-// Garbage-free mode (milestone M9): riscr compiles C* plus the three
+// Garbage-free mode: riscr compiles C* plus the three
 // compound assignments x += e, x -= e, and x ^= e, also with *x and
 // *(e) on the left, where the memory word assigned to is not read by
 // e and e calls no procedure. The scanner and the parser are selfie's:
@@ -139,11 +139,11 @@ uint64_t number_of_from_loops           = 0;
 // -------------------------- TRANSLATOR ---------------------------
 // -----------------------------------------------------------------
 
-// Bennett mode (milestone M2): translate RISC-U binaries into RISC-R
+// Bennett mode: translate RISC-U binaries into RISC-R
 // binaries. Every value a RISC-U instruction overwrites is exchanged
 // onto a history stack, every branch target gets a come-from, and a
 // flag pushed at every join records which way control arrived, see
-// projects/reversible.md. The translated program uses six registers
+// riscr.md. The translated program uses six registers
 // that starc never uses.
 
 uint64_t selfie_translate();

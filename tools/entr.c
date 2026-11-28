@@ -13,15 +13,15 @@ Entr counts. A BTOR2 model with some bits of its initial state open has
 a world per value of these bits, and a question, here whether a bad state
 is reached within a number of steps, marks some of the worlds. Their
 number is the count of the question and the logarithm of the count its
-entropy. See projects/entropy.md for the plan and the story.
+entropy. See bitr.md for the principle and the theorem.
 
-This file has, from milestone E1, the arithmetic of counts and the
+This file has the arithmetic of counts and the
 reference, which is the specification of every count that entr will ever
 report. The reference enumerates the worlds and runs the concrete
 evaluator of tools/btor2.h on each, or for a formula evaluates its clauses.
 It is exponential in the bits counted over, on purpose.
 
-From milestone E2 it has the loop, for formulas in DIMACS format: bracket
+It also has the loop, for formulas in DIMACS format: bracket
 a region, and if the bracket is undecided split the region and bracket the
 halves. The bracket is what is concluded without a split, the estimate
 picks the split, and every other technique is a switch of one of the two.

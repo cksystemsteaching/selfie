@@ -1,4 +1,4 @@
-// The bit-length loop of projects/reversible.md as C* has it: it counts
+// The bit-length loop of riscr.md as C* has it: it counts
 // in c how often x can be halved, x being the byte it reads. riscr
 // translates it with history: what an assignment overwrites, and a flag
 // per iteration, see riscr.md.

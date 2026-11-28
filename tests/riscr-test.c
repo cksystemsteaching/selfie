@@ -9,7 +9,7 @@ in Austria. For further information and code please refer to:
 
 selfie.cs.uni-salzburg.at
 
-riscr-test is the check for milestone M1 of projects/reversible.md.
+riscr-test is the check of make rev, see riscr.md.
 It emits hand-written RISC-R code using selfie's machine code
 library, writes the code as RISC-R binary, loads it again, runs it
 forward on riscr until it exits, runs the same number of

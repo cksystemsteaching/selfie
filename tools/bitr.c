@@ -1336,7 +1336,7 @@ void load_binary(char* name) {
 
   // code and data of the binary go into the live code and data segment states;
   // a model generated for the binary holds the same words already, which checks
-  // the loader against rotor's initialization, see projects/reversible.md
+  // the loader against rotor's initialization
 
   selfie_load(name);
 
