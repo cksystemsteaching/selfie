@@ -6,7 +6,7 @@ Target: CAV 2027, submission January 20, 2027 (conferences.i-cav.org/2027/cfp; c
 
 ## Status
 
-E1 done, E0 done but for external tools (November 28, 2026). `tools/entr.c` has the arithmetic of counts and the reference; `make count` (about 3 minutes) and `make baselines` are its checks, see the milestones.
+E1 done, E0 done but for external tools (November 28, 2026). `tools/entr.c` has the arithmetic of counts and the reference; `make count` (4 minutes) and `make baselines` are its checks, see the milestones.
 
 - **The reference counts what bitr enumerates.** On the 13 symbolic examples that end within 5,000 instructions on every input, the bad worlds of the reference are the inputs `bitr -bmc -all` lists, the same number as RISC-U and as RISC-R: 3 of 256 for the division example, 1.58 of 8 bits, after bitr's and riscr's numbers of instructions (77, 90, 107 and 322, 369, 431).
 - **The interval shows.** The five recursive and looping examples do not end within the bound on every input, and the reference says so: a count of 1 to 98 of 256 as RISC-U and of 1 to 219 as RISC-R for the factorial, since the translated program takes three and a half times the instructions under the same bound.
