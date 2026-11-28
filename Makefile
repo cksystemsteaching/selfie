@@ -1046,10 +1046,14 @@ ledger: entr entr-trace bitr babysat selfie rotor
 # E0: what today's bitr does on the symbolic examples and on the families of
 # examples/entropy, next to the reference: the table to measure entr against;
 # a program that reads n bytes one at a time reads n words of the input tape
+# a part of the table: make baselines baselines-list="branch-8 factor-2" baselines-table=part.txt
+baselines-list  := $(wildcard examples/symbolic/*.c) sum-1 sum-2 sum-4 sum-8 sum-16 password-1 password-2 password-4 password-8 password-16 loop-1 loop-16 loop-64 loop-256 branch-1 branch-2 branch-4 branch-8 branch-10 branch-12 factor-1 factor-2 factor-3
+baselines-table := baselines.txt
+
 baselines: entr bitr selfie riscr rotor
-	echo "benchmark isa | reference: count of worlds, seconds | bitr, first bad state: instructions, seconds, paths forked, SAT calls, conflicts | bitr, all inputs: inputs, seconds" > baselines.txt
+	echo "benchmark isa | reference: count of worlds, seconds | bitr, first bad state: instructions, seconds, paths forked, SAT calls, conflicts | bitr, all inputs: inputs, seconds" > $(baselines-table)
 	ms() { echo $$(( ($$(date +%s%N) - $$1) / 1000000 + 1000 )) | sed 's/\(...\)$$/.\1/' | awk '{ printf "%.3f", $$1 - 1 }'; }; \
-	for f in $(wildcard examples/symbolic/*.c) sum-1 sum-2 sum-4 sum-8 sum-16 password-1 password-2 password-4 password-8 password-16 loop-1 loop-16 loop-64 loop-256 branch-1 branch-2 branch-4 branch-8 branch-10 branch-12 factor-1 factor-2 factor-3; do \
+	for f in $(baselines-list); do \
 	  case $$f in \
 	    *.c) b=$${f%.c}; bytes=1 ;; \
 	    *) n=$${f#*-}; b=examples/entropy/$$f; \
@@ -1085,7 +1089,7 @@ baselines: entr bitr selfie riscr rotor
 	        all="$$(grep -c 'witness input-buffer\[0\]' baselines.out), $$(ms $$t)"; \
 	      else all="no answer in 60"; fi; \
 	    else all="no projection"; fi; \
-	    echo "$$(basename $$b) $$isa | $$reference | $$first | $$all" | tee -a baselines.txt; \
+	    echo "$$(basename $$b) $$isa | $$reference | $$first | $$all" | tee -a $(baselines-table); \
 	  done; \
 	done
 
