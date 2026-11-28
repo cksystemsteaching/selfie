@@ -62,3 +62,22 @@ loop-16 RISC-R | 1 of 256, 52.667 | 21136, 3.145, 1, 3, 64 | no projection
 loop-64 RISC-U | 1 of 256, 21.158 | 21602, 2.300, 1, 3, 1 | 1, 2.345
 loop-64 RISC-R | 1 of 256, 173.895 | 83344, 19.539, 1, 3, 98 | no projection
 loop-256 RISC-U | 1 of 256, 69.569 | 86114, 16.338, 1, 3, 1 | 1, 16.064
+loop-256 RISC-R | 0 to 256 of 256, 403.381 | no answer in 60 | no projection
+branch-1 RISC-U | 128 of 256, 0.196 | 115, 0.047, 1, 3, 0 | 128, 0.056
+branch-1 RISC-R | 128 of 256, 1.009 | 470, 0.086, 1, 3, 0 | no projection
+branch-2 RISC-U | 16384 of 65536, 53.973 | 150, 0.077, 3, 7, 0 | no answer in 60
+branch-2 RISC-R | - | 612, 0.139, 3, 7, 0 | no projection
+branch-4 RISC-U | - | 220, 0.109, 15, 31, 0 | no answer in 60
+branch-4 RISC-R | - | 896, 0.398, 15, 31, 0 | no projection
+branch-8 RISC-U | - | 360, 1.159, 255, 511, 0 | no answer in 60
+branch-8 RISC-R | - | 1464, 6.499, 255, 511, 0 | no projection
+branch-10 RISC-U | - | 430, 5.715, 1023, 2047, 0 | no answer in 60
+branch-10 RISC-R | - | 1748, 25.110, 1023, 2047, 0 | no projection
+branch-12 RISC-U | - | 500, 17.614, 4095, 8191, 0 | no answer in 60
+branch-12 RISC-R | - | no answer in 60 | no projection
+factor-1 RISC-U | 2 of 65536, 59.216 | 166, 0.086, 1, 3, 142 | 2, 0.059
+factor-1 RISC-R | - | 679, 0.735, 1, 3, 168 | no projection
+factor-2 RISC-U | - | 238, 1.615, 1, 3, 24004 | 2, 9.329
+factor-2 RISC-R | - | 966, 3.213, 1, 3, 31661 | no projection
+factor-3 RISC-U | - | no answer in 60 | no answer in 60
+factor-3 RISC-R | - | no answer in 60 | no projection
